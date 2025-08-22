@@ -11,7 +11,8 @@
 *.yml text
 *.sql text
 *.tf text
-*.sh text eol=lf  # 強制 Shell scripts 使用 LF
+# 強制 Shell scripts 使用 LF
+*.sh text eol=lf
 
 # Denote all files that are truly binary and should not be modified.
 *.png binary
