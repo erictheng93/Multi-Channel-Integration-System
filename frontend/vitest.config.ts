@@ -11,7 +11,10 @@ export default defineConfig({
     // 確保 DOM 事件正確處理
     environmentOptions: {
       jsdom: {
-        resources: 'usable'
+        resources: 'usable',
+        url: 'http://localhost:3000',
+        pretendToBeVisual: true,
+        runScripts: 'dangerously'
       }
     },
     coverage: {

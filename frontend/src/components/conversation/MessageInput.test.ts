@@ -7,7 +7,6 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import type { TestComponentInstance, MockProps } from '@/types/test-types'
-import type { Message as _Message, SendMessageRequest as _SendMessageRequest } from '@/types'
 
 // Mock the message API first before importing the component
 vi.mock('@/api/message', () => ({
@@ -16,19 +15,20 @@ vi.mock('@/api/message', () => ({
     list: vi.fn(),
     listPaginated: vi.fn(),
     search: vi.fn(),
-    delete: vi.fn(),
-    recall: vi.fn(),
-    sendDelayed: vi.fn(),
-    getPendingMessages: vi.fn(),
-    canRecallMessage: vi.fn(),
-    getMessageDetails: vi.fn()
+    recallMessage: vi.fn(),
+    uploadAttachment: vi.fn(),
+    markAsRead: vi.fn(),
+    get: vi.fn(),
+    edit: vi.fn(),
+    sendQuickReply: vi.fn()
   }
 }))
 
 import MessageInput from './MessageInput.vue'
+import { messageApi } from '@/api/message'
 
 // Get access to the mocked API
-const { messageApi: mockMessageApi } = vi.mocked(await import('@/api/message'))
+const mockMessageApi = vi.mocked(messageApi)
 
 // Mock the icon components
 vi.mock('@/components/icons', () => ({
@@ -92,7 +92,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const textarea = wrapper.find('.message-textarea')
 
-      expect(textarea.attributes('placeholder')).toBe('輸入訊息...')
+      expect(textarea.attributes('placeholder')).toBe('Type a message...')
     })
 
     it('should disable input when disabled prop is true', () => {
@@ -137,7 +137,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const textarea = wrapper.find('.message-textarea')
 
-      ;(mockMessageApi.send as any).mockResolvedValue({ 
+      mockMessageApi.send.mockResolvedValue({ 
         success: true, 
         data: { 
           id: 'msg-1',
@@ -196,7 +196,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      ;(mockMessageApi.send as any).mockResolvedValue({
+      mockMessageApi.send.mockResolvedValue({
         success: true,
         data: { 
           id: 'msg-1',
@@ -227,7 +227,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      ;(mockMessageApi.send as any).mockResolvedValue({
+      mockMessageApi.send.mockResolvedValue({
         success: true,
         data: { 
           id: 'msg-1',
@@ -258,7 +258,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      ;(mockMessageApi.send as any).mockResolvedValue({
+      mockMessageApi.send.mockResolvedValue({
         success: true,
         data: { 
           id: 'msg-1',
@@ -286,7 +286,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      ;(mockMessageApi.send as any).mockResolvedValue({
+      mockMessageApi.send.mockResolvedValue({
         success: false,
         error: 'Send failed',
         data: undefined
@@ -305,7 +305,7 @@ describe('MessageInput Component', () => {
       const sendButton = wrapper.find('.send-button')
 
       // Mock a delayed response
-      ;(mockMessageApi.send as any).mockImplementation(() => 
+      mockMessageApi.send.mockImplementation(() => 
         new Promise(resolve => setTimeout(() => resolve({ 
           success: true, 
           data: { 
@@ -344,7 +344,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      ;(mockMessageApi.send as any).mockResolvedValue({ 
+      mockMessageApi.send.mockResolvedValue({ 
         success: true, 
         data: { 
           id: 'msg-1',
@@ -378,7 +378,7 @@ describe('MessageInput Component', () => {
 
       const clickSpy = vi.spyOn(fileInput.element as HTMLInputElement, 'click')
 
-      await wrapper.find('button[title="附件"]').trigger('click')
+      await wrapper.find('button[title="Attachment"]').trigger('click')
 
       expect(clickSpy).toHaveBeenCalled()
     })
@@ -480,7 +480,7 @@ describe('MessageInput Component', () => {
       expect(wrapper.find('.attachments-preview').exists()).toBe(false)
       const errorMessage = wrapper.find('.error-message')
       if (errorMessage.exists()) {
-        expect(errorMessage.text()).toContain('超過 10MB 限制')
+        expect(errorMessage.text()).toContain('exceeds 10MB limit')
       }
     })
 
@@ -522,10 +522,10 @@ describe('MessageInput Component', () => {
     it('should show not implemented message when emoji button is clicked', async () => {
       const wrapper = createWrapper()
 
-      await wrapper.find('button[title="表情符號"]').trigger('click')
+      await wrapper.find('button[title="Emoji"]').trigger('click')
       await nextTick()
 
-      expect(wrapper.find('.error-message').text()).toBe('表情符號功能尚未實現')
+      expect(wrapper.find('.error-message').text()).toBe('Emoji function not implemented yet')
     })
 
     it('should clear emoji error message after timeout', async () => {
@@ -533,7 +533,7 @@ describe('MessageInput Component', () => {
       
       const wrapper = createWrapper()
 
-      await wrapper.find('button[title="表情符號"]').trigger('click')
+      await wrapper.find('button[title="Emoji"]').trigger('click')
       await nextTick()
 
       expect(wrapper.find('.error-message').exists()).toBe(true)
@@ -588,7 +588,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
       
-      ;(mockMessageApi.send as any).mockResolvedValue({
+      mockMessageApi.send.mockResolvedValue({
         success: false,
         error: 'Test error',
         data: undefined
@@ -615,13 +615,13 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      ;(mockMessageApi.send as any).mockRejectedValue(new Error('Network error'))
+      mockMessageApi.send.mockRejectedValue(new Error('Network error'))
 
       await textarea.setValue('Test message')
       await sendButton.trigger('click')
       await nextTick()
 
-      expect(wrapper.find('.error-message').text()).toBe('網路錯誤，請稍後再試')
+      expect(wrapper.find('.error-message').text()).toBe('Network error, please try again')
     })
 
     it('should clear error when typing', async () => {
@@ -630,7 +630,7 @@ describe('MessageInput Component', () => {
       const sendButton = wrapper.find('.send-button')
 
       // First create an error state
-      ;(mockMessageApi.send as any).mockResolvedValue({
+      mockMessageApi.send.mockResolvedValue({
         success: false,
         error: 'Test error',
         data: undefined
@@ -665,8 +665,8 @@ describe('MessageInput Component', () => {
     it('should have proper titles for action buttons', () => {
       const wrapper = createWrapper()
 
-      expect(wrapper.find('button[title="表情符號"]').attributes('title')).toBe('表情符號')
-      expect(wrapper.find('button[title="附件"]').attributes('title')).toBe('附件')
+      expect(wrapper.find('button[title="Emoji"]').attributes('title')).toBe('Emoji')
+      expect(wrapper.find('button[title="Attachment"]').attributes('title')).toBe('Attachment')
     })
 
     it('should have proper file input accept attribute', () => {

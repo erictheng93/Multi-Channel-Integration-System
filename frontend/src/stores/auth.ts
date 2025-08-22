@@ -198,7 +198,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       } catch (err) {
         console.log('Router not available, using window.location');
-        if (window.location.pathname !== '/login') {
+        if (typeof window !== 'undefined' && window.location && window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
       }
@@ -402,7 +402,7 @@ export const useAuthStore = defineStore('auth', () => {
         hasError,
         result,
         tokenValue: token.value ? 'exists' : 'null',
-        currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown'
+        currentPath: typeof window !== 'undefined' && window.location ? window.location.pathname : 'unknown'
       });
       return result;
     }),
