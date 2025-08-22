@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Backend TypeScript check
+echo "Checking backend TypeScript..."
+npx tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "❌ Backend TypeScript compilation failed!"
+  exit 1
+fi
+
+# Frontend checks
+echo "Checking frontend TypeScript and ESLint..."
+cd frontend
+
+# Frontend TypeScript check
+npx vue-tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "❌ Frontend TypeScript compilation failed!"
+  exit 1
+fi
+
+# ESLint check with warning limit
+npm run lint -- --max-warnings 80
+if [ $? -ne 0 ]; then
+  echo "❌ ESLint check failed! More than 80 warnings found."
+  exit 1
+fi
+
+cd ..
+
+echo "✅ All pre-commit checks passed!"

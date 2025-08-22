@@ -1,0 +1,6 @@
+# Cloudflare Pages 重定向規則
+# SPA 路由支援 - 所有非 API 請求都重定向到 index.html
+/*    /index.html   200
+
+# API 代理到後端 Worker
+/api/*  https://multi-channel.imfinethankyouandyou.com/api/:splat  200

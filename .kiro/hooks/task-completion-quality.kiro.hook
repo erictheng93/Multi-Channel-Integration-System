@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Task Completion Quality Check",
+  "description": "Automatically triggers unit testing, debugging, and documentation updates whenever a task is completed to maintain code quality and proper documentation",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "frontend/src/**/*.ts",
+      "frontend/src/**/*.vue",
+      "tests/**/*.ts",
+      "docs/**/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task appears to have been completed based on recent file changes. Please:\n\n1. **Run Unit Tests**: Execute relevant unit tests for the modified code areas to ensure functionality is working correctly\n2. **Debug Check**: Review the changes for potential bugs, edge cases, or integration issues\n3. **Documentation Update**: Update or create documentation for any new features, API changes, or architectural modifications\n4. **Code Quality Review**: Check for TypeScript type safety, proper error handling, and adherence to project patterns\n\nFocus on the recently modified files and their dependencies. Ensure the changes maintain the project's quality standards and are properly documented."
+  }
+}

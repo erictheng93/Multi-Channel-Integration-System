@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1755674240532,
+      "tag": "0000_amusing_dakota_north",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1755676623792,
+      "tag": "0001_needy_the_liberteens",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1755785905165,
+      "tag": "0002_natural_slyde",
+      "breakpoints": true
+    }
+  ]
+}
