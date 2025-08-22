@@ -244,11 +244,10 @@ export function useFileUpload() {
 
       if (response.success && response.data) {
         // 從列表中移除已刪除的檔案
-        if (response.data) {
-          files.value = files.value.filter(file => !response.data.successful.includes(file.id))
-          totalCount.value = Math.max(0, totalCount.value - response.data.successful.length)
-        }
-        return response.data
+        const data = response.data
+        files.value = files.value.filter(file => !data.successful.includes(file.id))
+        totalCount.value = Math.max(0, totalCount.value - data.successful.length)
+        return data
       } else {
         handleError(new Error(response.error || '批量刪除失敗'))
         return { successful: [], failed: fileIds }

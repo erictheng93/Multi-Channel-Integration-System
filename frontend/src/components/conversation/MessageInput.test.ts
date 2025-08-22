@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
-import type { TestComponentInstance, MockMessageApi, MockProps, TestGlobalConfig } from '@/types/test-types'
+import type { TestComponentInstance, MockProps } from '@/types/test-types'
 import type { Message as _Message, SendMessageRequest as _SendMessageRequest } from '@/types'
 
 // Mock the message API first before importing the component
@@ -73,7 +73,7 @@ describe('MessageInput Component', () => {
       },
       global: {
         plugins: [pinia]
-      } as TestGlobalConfig
+      }
     })
   }
 
@@ -137,7 +137,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const textarea = wrapper.find('.message-textarea')
 
-      mockMessageApi.send.mockResolvedValue({ 
+      ;(mockMessageApi.send as any).mockResolvedValue({ 
         success: true, 
         data: { 
           id: 'msg-1',
@@ -196,7 +196,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      mockMessageApi.send.mockResolvedValue({
+      ;(mockMessageApi.send as any).mockResolvedValue({
         success: true,
         data: { 
           id: 'msg-1',
@@ -227,7 +227,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      mockMessageApi.send.mockResolvedValue({
+      ;(mockMessageApi.send as any).mockResolvedValue({
         success: true,
         data: { 
           id: 'msg-1',
@@ -258,7 +258,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      mockMessageApi.send.mockResolvedValue({
+      ;(mockMessageApi.send as any).mockResolvedValue({
         success: true,
         data: { 
           id: 'msg-1',
@@ -286,7 +286,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      mockMessageApi.send.mockResolvedValue({
+      ;(mockMessageApi.send as any).mockResolvedValue({
         success: false,
         error: 'Send failed',
         data: undefined
@@ -305,7 +305,7 @@ describe('MessageInput Component', () => {
       const sendButton = wrapper.find('.send-button')
 
       // Mock a delayed response
-      mockMessageApi.send.mockImplementation(() => 
+      ;(mockMessageApi.send as any).mockImplementation(() => 
         new Promise(resolve => setTimeout(() => resolve({ 
           success: true, 
           data: { 
@@ -344,7 +344,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      mockMessageApi.send.mockResolvedValue({ 
+      ;(mockMessageApi.send as any).mockResolvedValue({ 
         success: true, 
         data: { 
           id: 'msg-1',
@@ -588,7 +588,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
       
-      mockMessageApi.send.mockResolvedValue({
+      ;(mockMessageApi.send as any).mockResolvedValue({
         success: false,
         error: 'Test error',
         data: undefined
@@ -615,7 +615,7 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      mockMessageApi.send.mockRejectedValue(new Error('Network error'))
+      ;(mockMessageApi.send as any).mockRejectedValue(new Error('Network error'))
 
       await textarea.setValue('Test message')
       await sendButton.trigger('click')
@@ -630,7 +630,7 @@ describe('MessageInput Component', () => {
       const sendButton = wrapper.find('.send-button')
 
       // First create an error state
-      mockMessageApi.send.mockResolvedValue({
+      ;(mockMessageApi.send as any).mockResolvedValue({
         success: false,
         error: 'Test error',
         data: undefined

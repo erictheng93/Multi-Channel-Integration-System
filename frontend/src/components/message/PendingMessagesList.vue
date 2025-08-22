@@ -308,7 +308,7 @@ const loadPendingMessages = async (page = 1) => {
       }
       
       const data = response.data as PendingMessagesResponse
-      messages.value = data?.items || []
+      messages.value = (data?.items as PendingMessage[]) || []
       totalCount.value = data?.total || 0
       currentPage.value = page
     } else {

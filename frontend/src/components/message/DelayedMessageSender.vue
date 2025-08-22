@@ -253,10 +253,12 @@ const sendDelayedMessage = async () => {
         message: `訊息將在 ${formData.value.delaySeconds} 秒後發送，撤回截止時間：${new Date(data?.recallDeadline || Date.now()).toLocaleTimeString()}`,
         messageId: data?.messageId,
         scheduledSendTime: data?.scheduledSendTime,
-        recallDeadline: data?.recallDeadline
+        recallDeadline: data?.recallDeadline?.toString()
       }
       
-      emit('message-sent', result.value)
+      if (result.value) {
+        emit('message-sent', result.value)
+      }
       resetForm()
     } else {
       result.value = {

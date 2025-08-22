@@ -234,6 +234,13 @@ import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
 
+// Local WindowWithDebug interface
+interface WindowWithDebug extends Window {
+  _loginFailureTimestamp?: number
+  _blockNavigation?: boolean
+  _loginInProgress?: boolean
+}
+
 const { login, loading, error, clearError } = useAuth()
 const { t } = useI18n()
 const router = useRouter()
@@ -252,7 +259,7 @@ const forcedPasswordChangeData = reactive({
     id: '',
     email: '',
     name: '',
-    role: 'agent' as 'admin' | 'agent'
+    role: 'agent' as 'admin' | 'manager' | 'agent'
   }
 })
 
@@ -298,11 +305,6 @@ watch(() => authStore.isAuthenticated, (newAuth, oldAuth) => {
   console.log('  - Stack trace:', new Error().stack)
   
   // 🚨 CRITICAL: 檢查是否在登入失敗的關鍵時間窗口內
-  interface WindowWithDebug extends Window {
-    _loginFailureTimestamp?: number
-    _blockNavigation?: boolean
-    _loginInProgress?: boolean
-  }
   const failureTimestamp = (window as WindowWithDebug)._loginFailureTimestamp
   if (failureTimestamp && (timestamp - failureTimestamp) < 5000) {
     console.log('🔥 AUTHENTICATION CHANGE IN CRITICAL WINDOW!')
@@ -560,7 +562,7 @@ onMounted(() => {
   
   // 🚨 攔截 Promise 操作
   const originalPromiseResolve = Promise.resolve
-  Promise.resolve = (value?: unknown) => {
+  Promise.resolve = ((value?: unknown) => {
     const promise = originalPromiseResolve(value)
     promise.then(() => {
       console.log('🎯 Promise.resolve().then() callback executing')
@@ -568,7 +570,7 @@ onMounted(() => {
       console.log('  - URL:', window.location.href)
     })
     return promise
-  }
+  }) as typeof Promise.resolve
   
   // 清理函數
   onBeforeUnmount(() => {

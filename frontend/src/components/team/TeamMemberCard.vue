@@ -248,7 +248,7 @@ const editForm = reactive({
   name: '',
   email: '',
   password: '',
-  role: 'agent' as 'admin' | 'agent',
+  role: 'agent' as 'admin' | 'manager' | 'agent',
   group: '',
   isActive: true
 })

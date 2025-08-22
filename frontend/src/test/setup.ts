@@ -193,23 +193,25 @@ beforeEach(() => {
             children: []
           }
           // Mock parent node with insertBefore
-          interface MockElement extends Partial<HTMLElement> {
-            parentNode?: {
-              insertBefore: ReturnType<typeof vi.fn>
-              appendChild: ReturnType<typeof vi.fn>
-              removeChild: ReturnType<typeof vi.fn>
-            }
+          interface MockParentNode extends Partial<ParentNode> {
+            insertBefore: ReturnType<typeof vi.fn>
+            appendChild: ReturnType<typeof vi.fn>
+            removeChild: ReturnType<typeof vi.fn>
+            closest: ReturnType<typeof vi.fn>
           }
-          (element as MockElement).parentNode = {
+          
+          const mockParentNode: MockParentNode = {
             insertBefore: vi.fn(),
             appendChild: vi.fn(),
             removeChild: vi.fn(),
             closest: vi.fn(),
             childElementCount: 0,
-            children: [],
+            children: [] as any as HTMLCollection,
             firstElementChild: null,
             lastElementChild: null
           }
+          
+          ;(element as any).parentNode = mockParentNode
           return element
         })
       },

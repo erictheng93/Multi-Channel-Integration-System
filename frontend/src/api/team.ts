@@ -24,7 +24,7 @@ export const teamApi = {
     name?: string;
     email?: string;
     password: string;
-    role: 'admin' | 'agent';
+    role: 'admin' | 'manager' | 'agent';
     group?: string;
     isActive: boolean;
   }): Promise<ApiResponse<TeamMember>> => {
@@ -52,7 +52,7 @@ export const teamApi = {
   },
 
   // 更新成員角色
-  updateMemberRole: async (memberId: string, role: 'admin' | 'agent'): Promise<ApiResponse<void>> => {
+  updateMemberRole: async (memberId: string, role: 'admin' | 'manager' | 'agent'): Promise<ApiResponse<void>> => {
     return apiClient.put(`/team/members/${memberId}/role`, { role })
   },
 

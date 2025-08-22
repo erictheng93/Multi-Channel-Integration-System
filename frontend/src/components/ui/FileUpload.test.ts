@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type MockedFunction as _MockedFunction } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import type { TestComponentInstance, MockProps, TestGlobalConfig } from '@/types/test-types'
+import type { TestComponentInstance, MockProps } from '@/types/test-types'
 import type { FileUploadItem, FileUploadResult as _FileUploadResult } from '@/types/file-upload'
 import FileUpload from './FileUpload.vue'
 
@@ -40,7 +40,7 @@ describe('FileUpload', () => {
             template: '<div data-testid="loading-spinner"></div>'
           }
         }
-      } as TestGlobalConfig
+      }
     })
   }
 
