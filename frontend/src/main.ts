@@ -27,25 +27,12 @@ const startApp = async () => {
     app.use(router)
     app.use(i18n)
 
-    // 初始化認證狀態
+    // 🔧 CRITICAL FIX: 使用統一的會話初始化 - 解決競爭條件
     const authStore = useAuthStore()
     
-    // 🔧 ULTRA DEBUG FIX: 更謹慎的認證狀態初始化
-    // 如果有 token 且會話有效且沒有錯誤狀態，才嘗試恢復用戶狀態
-    if (authStore.token && authStore.validateSession() && !authStore.error && !authStore.loading) {
-      try {
-        console.log('🏁 App startup: Attempting to restore user session')
-        await authStore.fetchCurrentAgent()
-        console.log('✅ App startup: User session restored successfully')
-      } catch (error) {
-        console.warn('⚠️ App startup: Failed to fetch current agent, clearing auth state:', error)
-        // 如果獲取用戶資料失敗，清理認證狀態但不重定向
-        // 讓用戶在需要認證的頁面時自然被引導到登入頁面
-        authStore.logout(false)
-      }
-    } else {
-      console.log('🏁 App startup: Skipping session restore - invalid token or error state exists')
-    }
+    console.log('🏁 App startup: Initializing session...')
+    await authStore.initializeSession()
+    console.log(`✅ App startup: Session initialization completed, status: ${authStore.sessionStatus}`)
 
     // Performance monitoring enabled in development
     if (import.meta.env.DEV) {

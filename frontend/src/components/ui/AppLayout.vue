@@ -210,6 +210,8 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 // Icons (using simple SVG components)
 const DashboardIcon = {
@@ -258,6 +260,8 @@ const SettingsIcon = {
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { showError } = useToast()
+const { confirmInfo } = useConfirm()
 
 const sidebarCollapsed = ref(false)
 const showNotifications = ref(false)
@@ -343,12 +347,17 @@ const handleLogout = async () => {
   showUserMenu.value = false
 
   // 顯示確認對話框
-  if (confirm('確定要登出嗎？')) {
+  const confirmed = await confirmInfo(
+    '登出確認',
+    '確定要登出嗎？登出後需要重新輸入帳號密碼。',
+    '登出'
+  )
+  if (confirmed) {
     try {
       await authStore.logout()
     } catch (error) {
       console.error('登出失敗:', error)
-      alert('登出失敗，請稍後再試')
+      showError('登出失敗', '請稍後再試')
     }
   }
 }

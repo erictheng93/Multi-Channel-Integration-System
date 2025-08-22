@@ -18,10 +18,10 @@ export interface Role {
 }
 
 export class PermissionService {
-  // Role hierarchy: admin > manager > agent
+  // Role hierarchy: admin > team > agent
   private static roleHierarchy = {
     admin: 3,
-    manager: 2, 
+    team: 2, 
     agent: 1
   };
 
@@ -33,9 +33,9 @@ export class PermissionService {
         { resource: '*', action: '*' }
       ]
     },
-    manager: {
-      id: 'manager',
-      name: '團隊主管',
+    team: {
+      id: 'team',
+      name: '團隊負責人',
       permissions: [
         // Conversation management for team
         { resource: 'conversation', action: 'view', conditions: { teamScope: true } },
@@ -226,7 +226,7 @@ export class PermissionService {
     }
 
     // Manager 可以看到團隊內的所有對話
-    if (user.role === 'manager') {
+    if (user.role === 'team') {
       // 返回團隊內的對話 ID
       return []; // 實際實作中從資料庫查詢
     }

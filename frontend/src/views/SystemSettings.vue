@@ -537,12 +537,14 @@ import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import { SettingsIcon, IntegrationIcon, AdvancedIcon, SystemIcon } from '@/components/icons'
 import { useI18n } from '@/composables/useI18n'
+import { useConfirm } from '@/composables/useConfirm'
 // 已移除所有診斷和測試工具的引用
 
 const route = useRoute()
 
 // i18n
 const { t } = useI18n()
+const { confirmDanger, confirmWarning } = useConfirm()
 
 // Reactive state
 const loading = ref(true)
@@ -921,7 +923,12 @@ const loadBackups = async () => {
 }
 
 const restoreDatabase = async (backupId: string) => {
-  if (!confirm('確定要恢復此備份嗎？這將覆蓋目前的資料庫內容。')) {
+  const confirmed = await confirmDanger(
+    '恢復資料庫備份',
+    '確定要恢復此備份嗎？這將覆蓋目前的資料庫內容。此操作無法復原。',
+    '恢復備份'
+  )
+  if (!confirmed) {
     return
   }
 
@@ -979,7 +986,12 @@ const healthCheck = async () => {
 }
 
 const restartSystem = async () => {
-  if (!confirm('確定要重啟系統嗎？這將中斷所有連線。')) {
+  const confirmed = await confirmWarning(
+    '重啟系統',
+    '確定要重啟系統嗎？這將中斷所有連線。',
+    '重啟系統'
+  )
+  if (!confirmed) {
     return
   }
 
@@ -1042,7 +1054,12 @@ const showMessage = (text: string, type: 'success' | 'error' | 'info') => {
 
 // 清除 LINE 憑證
 const clearLineCredentials = async () => {
-  if (!confirm('確定要清除所有 LINE 憑證嗎？此操作無法復原。')) {
+  const confirmed = await confirmDanger(
+    '清除 LINE 憑證',
+    '確定要清除所有 LINE 憑證嗎？此操作無法復原。',
+    '清除憑證'
+  )
+  if (!confirmed) {
     return
   }
 
@@ -1069,7 +1086,12 @@ const clearLineCredentials = async () => {
 
 // 清除 Facebook 憑證
 const clearFacebookCredentials = async () => {
-  if (!confirm('確定要清除所有 Facebook 憑證嗎？此操作無法復原。')) {
+  const confirmed = await confirmDanger(
+    '清除 Facebook 憑證',
+    '確定要清除所有 Facebook 憑證嗎？此操作無法復原。',
+    '清除憑證'
+  )
+  if (!confirmed) {
     return
   }
 

@@ -32,9 +32,10 @@ export const agents = sqliteTable('agents', {
   username: text('username').notNull().unique(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  passwordEncrypted: text('password_encrypted'), // AES encrypted password for admin access
   displayName: text('display_name').notNull(),
-  role: text('role').notNull().default('agent'), // 'admin', 'manager', 'agent'
-  teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table - nullable for admins
+  role: text('role').notNull().default('agent'), // 'admin', 'team', 'agent'
+  teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table - nullable for admins, required for team role
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   passwordPolicy: text('password_policy').default('changeable'), // 'changeable', 'unchangeable', 'must_change'
   lastLoginAt: text('last_login_at'),
@@ -47,8 +48,8 @@ export const invitations = sqliteTable('invitations', {
   id: text('id').primaryKey(),
   email: text('email').notNull(),
   name: text('name').notNull(),
-  role: text('role').notNull(), // 'admin', 'manager', 'agent'
-  teamId: integer('team_id').references(() => teams.id), // Team assignment for invitation - nullable for admins
+  role: text('role').notNull(), // 'admin', 'team', 'agent'
+  teamId: integer('team_id').references(() => teams.id), // Team assignment for invitation - nullable for admins, required for team role
   token: text('token').notNull().unique(),
   invitedBy: text('invited_by').notNull().references(() => agents.id),
   usedAt: text('used_at'),

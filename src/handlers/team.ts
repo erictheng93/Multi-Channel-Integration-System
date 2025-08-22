@@ -12,6 +12,7 @@ import {
   handleApiError 
 } from '../utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
+import { encryptPassword, decryptPassword } from '../utils/encryption'
 
 // 驗證管理員權限的輔助函數
 async function verifyAdminAuth(c: Context<{ Bindings: Bindings }>) {
@@ -29,7 +30,7 @@ async function verifyAdminAuth(c: Context<{ Bindings: Bindings }>) {
     }
     
     return { payload }
-  } catch (error) {
+  } catch (error: any) {
     return { error: unauthorizedResponse(c, 'Invalid token') }
   }
 }
@@ -85,7 +86,7 @@ export const getTeamMembers = async (c: Context<{ Bindings: Bindings }>) => {
     }))
 
     return successResponse(c, formattedMembers, 'Team members retrieved successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -152,20 +153,22 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     const memberId = uuidv4()
     const bcrypt = await import('bcryptjs');
     const passwordHash = await bcrypt.hash(password, 10)
+    const encryptedPassword = await encryptPassword(password, c.env)
     
     await db
       .prepare(`
         INSERT INTO agents (
-          id, username, email, password_hash, display_name, role, 
+          id, username, email, password_hash, password_encrypted, display_name, role, 
           is_active, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         memberId,
         loginId,
         email || null,
         passwordHash,
+        encryptedPassword, // 存儲加密密碼
         name || loginId,
         role,
         isActive ? 1 : 0,
@@ -188,7 +191,7 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     return successResponse(c, newMember, 'Member added successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -271,7 +274,7 @@ export const updateMemberStatus = async (c: Context<{ Bindings: Bindings }>) => 
     });
 
     return successResponse(c, null, 'Member status updated successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -328,7 +331,7 @@ export const updateMemberRole = async (c: Context<{ Bindings: Bindings }>) => {
     });
 
     return successResponse(c, null, 'Member role updated successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -354,10 +357,10 @@ export const resetMemberPassword = async (c: Context<{ Bindings: Bindings }>) =>
       .run()
 
     // 在實際環境中，這裡會發送郵件通知用戶新密碼
-    console.log(`New password for member ${memberId}: ${newPassword}`)
+    console.log(`Password reset completed for member ${memberId}`)
 
     return successResponse(c, { newPassword }, 'Password reset successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -451,7 +454,7 @@ export const resetPasswordWithPolicy = async (c: Context<{ Bindings: Bindings }>
       policy,
       message: `Password updated successfully with ${policy} policy`
     }, 'Password reset with policy successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -461,16 +464,15 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const db = c.env.DB
     const { currentPassword, newPassword } = await c.req.json<{
-      currentPassword: string;
+      currentPassword?: string;
       newPassword: string;
     }>()
     
     // 驗證輸入
-    if (!currentPassword || !newPassword) {
-      const errors = [];
-      if (!currentPassword) errors.push({ field: 'currentPassword', message: 'Current password is required' });
-      if (!newPassword) errors.push({ field: 'newPassword', message: 'New password is required' });
-      return validationErrorResponse(c, errors)
+    if (!newPassword) {
+      return validationErrorResponse(c, [
+        { field: 'newPassword', message: 'New password is required' }
+      ])
     }
 
     if (newPassword.length < 6) {
@@ -479,7 +481,7 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
       ])
     }
 
-    if (currentPassword === newPassword) {
+    if (currentPassword && currentPassword === newPassword) {
       return validationErrorResponse(c, [
         { field: 'newPassword', message: 'New password must be different from current password' }
       ])
@@ -497,7 +499,7 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
     let payload;
     try {
       payload = jwt.verify(token, c.env.JWT_SECRET) as any;
-    } catch (error) {
+    } catch (error: any) {
       return unauthorizedResponse(c, 'Invalid token');
     }
 
@@ -515,14 +517,17 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
       ])
     }
 
-    // 驗證當前密碼
     const bcrypt = await import('bcryptjs');
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
     
-    if (!isValidPassword) {
-      return validationErrorResponse(c, [
-        { field: 'currentPassword', message: 'Current password is incorrect' }
-      ])
+    // 如果提供了當前密碼，則驗證；如果是強制更改則跳過驗證
+    if (currentPassword) {
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+      
+      if (!isValidPassword) {
+        return validationErrorResponse(c, [
+          { field: 'currentPassword', message: 'Current password is incorrect' }
+        ])
+      }
     }
 
     // 加密新密碼
@@ -552,7 +557,255 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
     });
 
     return successResponse(c, null, 'Password changed successfully')
-  } catch (error) {
+  } catch (error: any) {
+    return handleApiError(error, c)
+  }
+}
+
+// 獲取成員解密密碼
+export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const db = c.env.DB
+    const memberId = c.req.param('id')
+    
+    // 驗證管理員權限
+    const authResult = await verifyAdminAuth(c)
+    if (authResult.error) return authResult.error
+
+    // 獲取成員資訊包括加密密碼
+    const member = await db
+      .prepare('SELECT username, display_name, password_hash, password_encrypted FROM agents WHERE id = ?')
+      .bind(memberId)
+      .first<{ username: string; display_name: string; password_hash: string; password_encrypted?: string }>()
+
+    if (!member) {
+      return validationErrorResponse(c, [
+        { field: 'memberId', message: 'Member not found', value: memberId }
+      ])
+    }
+
+    let decryptedPassword: string
+    
+    try {
+      if (member.password_encrypted) {
+        // 解密密碼
+        decryptedPassword = await decryptPassword(member.password_encrypted, c.env)
+      } else {
+        decryptedPassword = '未設定可查看密碼 - 請為此用戶重設新密碼'
+      }
+    } catch (error: any) {
+      console.error('Password decryption failed:', error)
+      decryptedPassword = '密碼解密失敗 - 請重設密碼'
+    }
+
+    return successResponse(c, { 
+      password: decryptedPassword,
+      username: member.username,
+      displayName: member.display_name
+    }, 'Password retrieved successfully')
+  } catch (error: any) {
+    return handleApiError(error, c)
+  }
+}
+
+// 更新成員資訊
+export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const db = c.env.DB
+    const memberId = c.req.param('id')
+    const updateData = await c.req.json<{
+      name?: string;
+      email?: string;
+      password?: string;
+      role?: 'admin' | 'agent';
+      group?: string;
+      status?: 'active' | 'inactive';
+    }>()
+    
+    // 驗證管理員權限
+    const authResult = await verifyAdminAuth(c)
+    if (authResult.error) return authResult.error
+    const { payload } = authResult
+
+    // 不能修改自己的角色或狀態
+    if (memberId === payload.userId) {
+      if (updateData.role || updateData.status === 'inactive') {
+        return validationErrorResponse(c, [
+          { field: 'memberId', message: 'Cannot modify your own role or deactivate your account', value: memberId }
+        ])
+      }
+    }
+
+    // 獲取當前成員資訊
+    const currentMember = await db
+      .prepare('SELECT display_name as name, email, role, is_active FROM agents WHERE id = ?')
+      .bind(memberId)
+      .first<{ name: string; email: string; role: string; is_active: number }>()
+
+    if (!currentMember) {
+      return validationErrorResponse(c, [
+        { field: 'memberId', message: 'Member not found', value: memberId }
+      ])
+    }
+
+    // 驗證email唯一性（如果更新了email）
+    if (updateData.email && updateData.email !== currentMember.email) {
+      const existingEmail = await db
+        .prepare('SELECT id FROM agents WHERE email = ? AND id != ?')
+        .bind(updateData.email, memberId)
+        .first()
+
+      if (existingEmail) {
+        return validationErrorResponse(c, [
+          { field: 'email', message: 'Email already exists', value: updateData.email }
+        ])
+      }
+    }
+
+    // 準備更新字段
+    const updateFields = []
+    const updateValues = []
+
+    if (updateData.name !== undefined) {
+      updateFields.push('display_name = ?')
+      updateValues.push(updateData.name)
+    }
+
+    if (updateData.email !== undefined) {
+      updateFields.push('email = ?')
+      updateValues.push(updateData.email)
+    }
+
+    if (updateData.role !== undefined) {
+      updateFields.push('role = ?')
+      updateValues.push(updateData.role)
+    }
+
+    if (updateData.status !== undefined) {
+      updateFields.push('is_active = ?')
+      updateValues.push(updateData.status === 'active' ? 1 : 0)
+    }
+
+    // 如果提供了新密碼，加密並更新
+    if (updateData.password !== undefined && updateData.password.trim() !== '') {
+      if (updateData.password.length < 6) {
+        return validationErrorResponse(c, [
+          { field: 'password', message: 'Password must be at least 6 characters', value: updateData.password.length }
+        ])
+      }
+
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(updateData.password, 10)
+      const encryptedPassword = await encryptPassword(updateData.password, c.env)
+      updateFields.push('password_hash = ?', 'password_encrypted = ?') // 同時更新加密密碼
+      updateValues.push(passwordHash, encryptedPassword)
+    }
+
+    if (updateFields.length === 0) {
+      return validationErrorResponse(c, [
+        { field: 'updateData', message: 'No fields to update' }
+      ])
+    }
+
+    // 添加更新時間
+    updateFields.push('updated_at = CURRENT_TIMESTAMP')
+    updateValues.push(memberId) // 最後的 WHERE id = ? 參數
+
+    // 執行更新
+    await db
+      .prepare(`UPDATE agents SET ${updateFields.join(', ')} WHERE id = ?`)
+      .bind(...updateValues)
+      .run()
+
+    // 記錄活動
+    const activityService = new ActivityService(db);
+    await activityService.logActivity({
+      userId: payload.userId.toString(),
+      userName: payload.username || 'Admin',
+      userRole: payload.role,
+      action: ACTIVITY_ACTIONS.TEAM_MEMBER_UPDATE,
+      resourceType: RESOURCE_TYPES.TEAM,
+      resourceId: memberId,
+      details: {
+        memberName: updateData.name || currentMember.name,
+        memberEmail: updateData.email || currentMember.email,
+        changes: updateData
+      },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    });
+
+    // 返回更新後的成員資訊
+    const updatedMember = await db
+      .prepare(`
+        SELECT 
+          id,
+          username as loginId,
+          email,
+          display_name as name,
+          role,
+          '' as "group",
+          is_active as isActive,
+          CASE WHEN is_active = 1 THEN 'active' ELSE 'inactive' END as status,
+          created_at as createdAt,
+          last_login_at as lastActive
+        FROM agents 
+        WHERE id = ?
+      `)
+      .bind(memberId)
+      .first<TeamMember>()
+
+    return successResponse(c, updatedMember, 'Member updated successfully')
+  } catch (error: any) {
+    return handleApiError(error, c)
+  }
+}
+
+// 遷移明文密碼到加密存儲 (臨時管理端點)
+export const migratePasswords = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const db = c.env.DB
+    
+    // 驗證管理員權限
+    const authResult = await verifyAdminAuth(c)
+    if (authResult.error) return authResult.error
+
+    console.log('🔄 Starting password migration...')
+    
+    // 獲取所有有明文密碼的用戶
+    const agents = await db
+      .prepare('SELECT id, username, password_plaintext FROM agents WHERE password_plaintext IS NOT NULL AND password_plaintext != "null"')
+      .all<{ id: string; username: string; password_plaintext: string }>()
+
+    console.log(`📋 Found ${agents.results.length} users with plaintext passwords`)
+
+    const results = []
+    for (const agent of agents.results) {
+      try {
+        console.log(`🔐 Encrypting password for user: ${agent.username}`)
+        
+        // 加密明文密碼
+        const encryptedPassword = await encryptPassword(agent.password_plaintext, c.env)
+        
+        // 更新數據庫：設定加密密碼，清除明文密碼
+        await db
+          .prepare('UPDATE agents SET password_encrypted = ?, password_plaintext = NULL WHERE id = ?')
+          .bind(encryptedPassword, agent.id)
+          .run()
+        
+        results.push({ username: agent.username, status: 'success' })
+        console.log(`✅ Successfully migrated password for: ${agent.username}`)
+      } catch (error: any) {
+        console.error(`❌ Failed to migrate password for ${agent.username}:`, error)
+        results.push({ username: agent.username, status: 'failed', error: error.message })
+      }
+    }
+
+    return successResponse(c, { 
+      migrated: results,
+      total: agents.results.length 
+    }, 'Password migration completed')
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -593,7 +846,7 @@ export const deleteMember = async (c: Context<{ Bindings: Bindings }>) => {
       .run()
 
     return successResponse(c, null, 'Member deleted successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
 }
@@ -629,7 +882,7 @@ export const revokeInvitation = async (c: Context<{ Bindings: Bindings }>) => {
       .run()
 
     return successResponse(c, null, 'Invitation revoked successfully')
-  } catch (error) {
+  } catch (error: any) {
     return handleApiError(error, c)
   }
   */

@@ -75,7 +75,7 @@ export async function generateHashCLI(password?: string): Promise<void> {
   
   try {
     const hash = await generatePasswordHash(targetPassword);
-    console.log('Password:', targetPassword);
+    console.log('Password hash generated successfully');
     console.log('Hash:', hash);
     
     // Verify the hash

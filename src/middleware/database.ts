@@ -84,15 +84,18 @@ export const authMiddleware = createMiddleware<HonoContext>(async (c, next): Pro
       return c.json({ error: 'Session expired' }, 401);
     }
     
-    // Set agent info in context
-    c.set('agent', {
-      id: session.agentId,
-      username: session.username,
-      role: session.role,
-      permissions: [],
-      sessionId: token,
-      lastActivity: new Date(),
-    });
+    // Get complete agent info from database
+    const db = c.get('db');
+    const dbService = new DatabaseService(db, kv);
+    const agent = await dbService.getAgentById(session.agentId);
+    
+    if (!agent) {
+      await kv.deleteSession(token);
+      return c.json({ error: 'Agent not found' }, 401);
+    }
+    
+    // Set complete agent info in context
+    c.set('agent', agent);
     
     await next();
   } catch (error) {
@@ -113,14 +116,14 @@ export const optionalAuthMiddleware = createMiddleware<HonoContext>(async (c, ne
       const session = await kv.getSession(token);
       
       if (session && new Date(session.expiresAt) >= new Date()) {
-        c.set('agent', {
-          id: session.agentId,
-          username: session.username,
-          role: session.role,
-          permissions: [],
-          sessionId: token,
-          lastActivity: new Date(),
-        });
+        const db = c.get('db');
+        const kv = c.get('kv');
+        const dbService = new DatabaseService(db, kv);
+        const agent = await dbService.getAgentById(session.agentId);
+        
+        if (agent) {
+          c.set('agent', agent);
+        }
       }
     } catch (error) {
       console.error('Optional auth middleware error:', error);

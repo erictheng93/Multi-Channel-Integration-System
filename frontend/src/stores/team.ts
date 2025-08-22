@@ -66,7 +66,7 @@ export const useTeamStore = defineStore('team', () => {
     name?: string
     email?: string
     password: string
-    role: 'admin' | 'agent'
+    role: 'admin' | 'team' | 'agent'
     group?: string
     isActive: boolean
   }) => {
@@ -92,7 +92,7 @@ export const useTeamStore = defineStore('team', () => {
 
   const inviteMember = async (request: {
     email: string
-    role: 'admin' | 'manager' | 'agent'
+    role: 'admin' | 'team' | 'agent'
     message?: string
     useQR?: boolean
   }) => {
@@ -116,7 +116,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  const updateMemberRole = async (memberId: string, role: 'admin' | 'manager' | 'agent') => {
+  const updateMemberRole = async (memberId: string, role: 'admin' | 'team' | 'agent') => {
     try {
       loading.value = true
       error.value = null

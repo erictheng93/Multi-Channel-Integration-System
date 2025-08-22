@@ -148,6 +148,61 @@ export class DatabaseService {
       .limit(limit);
   }
 
+  // Team-based conversation queries for role-based access control
+  async getConversationsByTeamId(teamId: number, status?: string, limit: number = 50) {
+    const conditions = [];
+    if (status) {
+      conditions.push(eq(schema.conversations.status, status));
+    }
+
+    // Get all conversations where the assigned agent belongs to the specified team
+    return await this.db.select({
+      id: schema.conversations.id,
+      userId: schema.conversations.userId,
+      agentId: schema.conversations.agentId,
+      platform: schema.conversations.platform,
+      status: schema.conversations.status,
+      title: schema.conversations.title,
+      lastMessageAt: schema.conversations.lastMessageAt,
+      createdAt: schema.conversations.createdAt,
+      updatedAt: schema.conversations.updatedAt,
+    })
+    .from(schema.conversations)
+    .leftJoin(schema.agents, eq(schema.conversations.agentId, schema.agents.id))
+    .where(and(
+      eq(schema.agents.teamId, teamId),
+      ...conditions
+    ))
+    .orderBy(desc(schema.conversations.lastMessageAt))
+    .limit(limit);
+  }
+
+  async getAllConversations(status?: string, limit: number = 50) {
+    const conditions = [];
+    if (status) {
+      conditions.push(eq(schema.conversations.status, status));
+    }
+
+    return await this.db.select().from(schema.conversations)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(schema.conversations.lastMessageAt))
+      .limit(limit);
+  }
+
+  // Role-based conversation access method
+  async getConversationsByRole(agent: schema.Agent, status?: string, limit: number = 50) {
+    if (agent.role === 'admin') {
+      // Admin can see all conversations
+      return await this.getAllConversations(status, limit);
+    } else if (agent.role === 'team' && agent.teamId) {
+      // Team leaders can see all conversations in their team
+      return await this.getConversationsByTeamId(agent.teamId, status, limit);
+    } else {
+      // Agents can only see their own conversations
+      return await this.getConversationsByAgentId(agent.id, status, limit);
+    }
+  }
+
   async updateConversation(id: string, updates: Partial<schema.NewConversation>) {
     const conversation = await this.db.update(schema.conversations)
       .set({ ...updates, updatedAt: new Date().toISOString() })
@@ -361,5 +416,89 @@ export class DatabaseService {
   async getAllAgents() {
     return await this.db.select().from(schema.agents)
       .where(eq(schema.agents.isActive, true));
+  }
+
+  // Team management operations
+  async createTeam(teamData: Omit<schema.NewTeam, 'id' | 'createdAt' | 'updatedAt'>) {
+    return await this.db.insert(schema.teams).values({
+      ...teamData,
+    }).returning();
+  }
+
+  async getTeamById(id: number) {
+    const result = await this.db.select().from(schema.teams)
+      .where(eq(schema.teams.id, id));
+    return result[0] || null;
+  }
+
+  async getAllTeams(includeInactive: boolean = false) {
+    const conditions = [];
+    if (!includeInactive) {
+      conditions.push(eq(schema.teams.isActive, true));
+    }
+
+    return await this.db.select().from(schema.teams)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(schema.teams.name);
+  }
+
+  async updateTeam(id: number, updates: Partial<schema.NewTeam>) {
+    return await this.db.update(schema.teams)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(eq(schema.teams.id, id))
+      .returning();
+  }
+
+  async deleteTeam(id: number) {
+    // Check if there are agents still assigned to this team
+    const agents = await this.db.select().from(schema.agents)
+      .where(eq(schema.agents.teamId, id));
+    
+    if (agents.length > 0) {
+      throw new Error('Cannot delete team with assigned agents');
+    }
+
+    return await this.db.delete(schema.teams)
+      .where(eq(schema.teams.id, id));
+  }
+
+  async getAgentsByTeamId(teamId: number) {
+    return await this.db.select().from(schema.agents)
+      .where(eq(schema.agents.teamId, teamId))
+      .orderBy(schema.agents.displayName);
+  }
+
+  // Permission validation methods
+  async canAgentAccessConversation(agent: schema.Agent, conversationId: string): Promise<boolean> {
+    const conversation = await this.getConversationById(conversationId);
+    if (!conversation) {
+      return false;
+    }
+
+    // Admin can access all conversations
+    if (agent.role === 'admin') {
+      return true;
+    }
+
+    // If conversation has an assigned agent
+    if (conversation.agentId) {
+      // Team leaders can access conversations assigned to agents in their team
+      if (agent.role === 'team' && agent.teamId) {
+        const assignedAgent = await this.getAgentById(conversation.agentId);
+        return assignedAgent?.teamId === agent.teamId;
+      }
+      
+      // Agents can only access their own conversations
+      return conversation.agentId === agent.id;
+    }
+
+    // For unassigned conversations:
+    // Team leaders can access unassigned conversations (to potentially assign them)
+    if (agent.role === 'team') {
+      return true;
+    }
+
+    // Agents can access unassigned conversations to potentially take them
+    return agent.role === 'agent';
   }
 }

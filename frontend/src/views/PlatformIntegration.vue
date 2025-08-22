@@ -390,6 +390,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { systemApi } from '@/api/system'
+import { useToast } from '@/composables/useToast'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import PlatformStatus from '@/components/platform/PlatformStatus.vue'
@@ -408,6 +409,8 @@ import {
 } from '@/components/icons'
 
 // State
+const { showSuccess, showError } = useToast()
+
 const loading = ref(false)
 const showSettingsModal = ref(false)
 const currentPlatform = ref<'line' | 'facebook'>('line')
@@ -658,12 +661,12 @@ const testPlatformConfig = async () => {
     const response = await systemApi.testIntegration(currentPlatform.value, config)
     
     if (response.success) {
-      alert('設定測試成功！')
+      showSuccess('測試成功', '平台設定測試完成')
     } else {
-      alert(`設定測試失敗：${response.error}`)
+      showError('測試失敗', response.error || '設定測試失敗')
     }
   } catch (error: unknown) {
-    alert(`設定測試失敗：${error instanceof Error ? error.message : String(error)}`)
+    showError('測試失敗', error instanceof Error ? error.message : String(error))
   } finally {
     testingConfig.value = false
   }
@@ -683,14 +686,14 @@ const savePlatformConfig = async () => {
     const response = await systemApi.updateSettings(settings)
     
     if (response.success) {
-      alert('設定已儲存！')
+      showSuccess('設定已儲存', '平台設定已成功更新')
       closeSettingsModal()
       await refreshAll()
     } else {
-      alert(`設定儲存失敗：${response.error}`)
+      showError('儲存失敗', response.error || '設定儲存失敗')
     }
   } catch (error: unknown) {
-    alert(`設定儲存失敗：${error instanceof Error ? error.message : String(error)}`)
+    showError('儲存失敗', error instanceof Error ? error.message : String(error))
   } finally {
     savingConfig.value = false
   }

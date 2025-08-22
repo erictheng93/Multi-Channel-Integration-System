@@ -47,7 +47,10 @@ import {
   changePassword,
   deleteMember, 
   getInvitations, 
-  revokeInvitation 
+  revokeInvitation,
+  getMemberPassword,
+  updateMember,
+  migratePasswords
 } from './handlers/team';
 import {
   storeCredential,
@@ -118,12 +121,15 @@ app.post('/api/team/members', jwtAuth, addTeamMember);
 app.post('/api/team/invite', jwtAuth, inviteMember);
 app.put('/api/team/members/:id/status', jwtAuth, updateMemberStatus);
 app.put('/api/team/members/:id/role', jwtAuth, updateMemberRole);
+app.get('/api/team/members/:id/password', jwtAuth, getMemberPassword);
+app.put('/api/team/members/:id', jwtAuth, updateMember);
 app.post('/api/team/members/:id/reset-password', jwtAuth, resetMemberPassword);
 app.post('/api/team/members/:id/reset-password-policy', jwtAuth, resetPasswordWithPolicy);
 app.post('/api/auth/change-password', changePassword);
 app.delete('/api/team/members/:id', jwtAuth, deleteMember);
 app.get('/api/team/invitations', jwtAuth, getInvitations);
 app.delete('/api/team/invitations/:id', jwtAuth, revokeInvitation);
+app.post('/api/team/migrate-passwords', jwtAuth, migratePasswords); // 臨時遷移端點
 
 // 延遲訊息路由
 app.route('/api/delayed-messages', delayedMessageMainHandler);
@@ -168,8 +174,7 @@ app.post('/api/webhook', async (c) => {
     
     if (!isValidSignature) {
       console.warn('Invalid LINE signature');
-      // 在開發環境可以註解掉這行，生產環境建議啟用
-      // return c.json({ error: 'Unauthorized' }, 401);
+      return c.json({ error: 'Unauthorized' }, 401);
     }
 
     if (!events || events.length === 0) {

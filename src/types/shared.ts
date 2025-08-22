@@ -48,7 +48,7 @@ export interface Agent {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   isActive: boolean;
   createdAt: number;
 }

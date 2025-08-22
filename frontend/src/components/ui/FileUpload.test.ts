@@ -196,7 +196,6 @@ describe('FileUpload', () => {
       wrapper = createWrapper({ showDropZone: true })
       
       const file = new File(['test'], 'test.txt', { type: 'text/plain' })
-      const component = wrapper.vm as any
       
       // Simulate file selection by triggering the file input change event
       const fileInput = wrapper.find('input[type="file"]')

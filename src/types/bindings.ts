@@ -1,5 +1,6 @@
 // Cloudflare Worker bindings with Drizzle and KV integration
 import { Database, KVService } from '../db';
+import type { Agent } from '../db/schema';
 
 // Runtime validation for required environment variables
 export function validateBindings(bindings: Partial<Bindings>): asserts bindings is Bindings {
@@ -68,15 +69,7 @@ export interface HonoContext {
     kv: KVService;
     dbService: any;
     conversationService: any;
-    agent?: {
-      id: string;
-      username: string;
-      role: string;
-      permissions: string[];
-      sessionId: string;
-      lastActivity: Date;
-      teamId?: string;
-    };
+    agent?: Agent;
   };
 }
 
@@ -112,5 +105,7 @@ export type {
   NewFileAttachment,
   DelayedMessage,
   NewDelayedMessage,
-  SessionData 
+  SessionData,
+  Team,
+  NewTeam
 } from '../db/schema';

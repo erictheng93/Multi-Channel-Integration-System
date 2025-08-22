@@ -24,7 +24,7 @@ export const teamApi = {
     name?: string;
     email?: string;
     password: string;
-    role: 'admin' | 'manager' | 'agent';
+    role: 'admin' | 'team' | 'agent';
     group?: string;
     isActive: boolean;
   }): Promise<ApiResponse<TeamMember>> => {
@@ -52,7 +52,7 @@ export const teamApi = {
   },
 
   // 更新成員角色
-  updateMemberRole: async (memberId: string, role: 'admin' | 'manager' | 'agent'): Promise<ApiResponse<void>> => {
+  updateMemberRole: async (memberId: string, role: 'admin' | 'team' | 'agent'): Promise<ApiResponse<void>> => {
     return apiClient.put(`/team/members/${memberId}/role`, { role })
   },
 
@@ -72,6 +72,15 @@ export const teamApi = {
     policy: 'changeable' | 'unchangeable' | 'must_change';
   }): Promise<ApiResponse<void>> => {
     return apiClient.post(`/team/members/${memberId}/reset-password-policy`, data)
+  },
+
+  // 獲取成員密碼
+  getMemberPassword: async (memberId: string): Promise<ApiResponse<{
+    password: string;
+    username: string;
+    displayName: string;
+  }>> => {
+    return apiClient.get(`/team/members/${memberId}/password`)
   },
 
   // 更新成員資訊
@@ -134,5 +143,13 @@ export const teamApi = {
     token: string;
   }>> => {
     return apiClient.post('/team/qr-invite', request)
+  },
+
+  // 遷移明文密碼到加密存儲 (臨時管理功能)
+  migratePasswords: async (): Promise<ApiResponse<{
+    migrated: Array<{ username: string; status: string; error?: string }>;
+    total: number;
+  }>> => {
+    return apiClient.post('/team/migrate-passwords')
   }
 }
