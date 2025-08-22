@@ -1,0 +1,75 @@
+{
+  "environments": {
+    "local": {
+      "baseUrl": "http://localhost:8787",
+      "description": "本地開發環境"
+    },
+    "dev": {
+      "baseUrl": "https://your-dev-api.example.com",
+      "description": "開發環境"
+    },
+    "prod": {
+      "baseUrl": "https://your-prod-api.example.com",
+      "description": "生產環境"
+    }
+  },
+  "testSettings": {
+    "timeout": 10000,
+    "retries": 3,
+    "concurrency": 5,
+    "loadTestDuration": 30
+  },
+  "testUsers": {
+    "admin": {
+      "username": "admin@example.com",
+      "password": "admin123",
+      "role": "admin"
+    },
+    "agent": {
+      "username": "agent@example.com",
+      "password": "agent123",
+      "role": "agent"
+    },
+    "testUser": {
+      "username": "test@example.com",
+      "password": "test123",
+      "role": "agent"
+    }
+  },
+  "endpoints": {
+    "health": [
+      "/",
+      "/api/health"
+    ],
+    "auth": [
+      "/api/auth/login",
+      "/api/auth/register",
+      "/api/auth/me",
+      "/api/auth/logout"
+    ],
+    "conversations": [
+      "/api/conversations",
+      "/api/conversations/pending",
+      "/api/conversations/assigned"
+    ],
+    "customers": [
+      "/api/customers",
+      "/api/customers/search"
+    ],
+    "teams": [
+      "/api/teams"
+    ],
+    "delayedMessages": [
+      "/api/delayed-messages"
+    ],
+    "qrCodes": [
+      "/api/qr-codes"
+    ],
+    "sessions": [
+      "/api/sessions"
+    ],
+    "webhook": [
+      "/api/webhook"
+    ]
+  }
+}

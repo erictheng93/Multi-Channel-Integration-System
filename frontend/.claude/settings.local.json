@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(npm run test:run:*)",
+      "Bash(npm run test:*)",
+      "Bash(touch:*)",
+      "Bash(npm test:*)",
+      "Bash(powershell:*)",
+      "Bash(wrangler d1 execute:*)",
+      "Bash(find:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx vite:*)",
+      "Bash(npm run copy-pages-config:*)",
+      "Bash(wrangler pages deploy:*)",
+      "Bash(wrangler d1 list:*)",
+      "Bash(wrangler deployments:*)",
+      "Bash(wrangler whoami:*)",
+      "Bash(wrangler d1 info:*)",
+      "Bash(wrangler secret:*)",
+      "Bash(curl:*)",
+      "Bash(npx drizzle-kit studio:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx drizzle-kit generate:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)",
+      "Bash(npx wrangler d1 execute:*)"
+    ],
+    "deny": []
+  }
+}

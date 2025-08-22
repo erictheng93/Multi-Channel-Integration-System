@@ -1,0 +1,25 @@
+# Terraform 相關檔案
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+tfplan
+crash.log
+crash.*.log
+
+# 臨時檔案
+*.tmp
+*.temp
+create_admin.sql
+
+# IDE 檔案
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 作業系統檔案
+.DS_Store
+Thumbs.db
