@@ -3,6 +3,93 @@ import { vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { messages, defaultLocale } from './src/locales'
 
+// CRITICAL: Setup window and DOM mocks FIRST before any other imports
+// Enhanced window.location mock - must be first before any imports
+const mockLocation = {
+  href: 'http://localhost:3000',
+  origin: 'http://localhost:3000',
+  protocol: 'http:',
+  host: 'localhost:3000',
+  hostname: 'localhost',
+  port: '3000',
+  pathname: '/',
+  search: '',
+  hash: '',
+  replace: vi.fn(),
+  assign: vi.fn(),
+  reload: vi.fn()
+}
+
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn()
+}
+
+// Ensure JSDOM window is properly setup
+if (typeof window !== 'undefined') {
+  // Enhance existing JSDOM window
+  Object.defineProperty(window, 'location', {
+    value: mockLocation,
+    writable: true,
+    configurable: true
+  })
+  
+  Object.defineProperty(window, 'localStorage', {
+    value: mockLocalStorage,
+    writable: true,
+    configurable: true
+  })
+  
+  // Ensure all event constructors are available on window
+  window.Event = window.Event || Event
+  window.MouseEvent = window.MouseEvent || MouseEvent
+  window.KeyboardEvent = window.KeyboardEvent || KeyboardEvent
+  window.InputEvent = window.InputEvent || InputEvent
+  window.FocusEvent = window.FocusEvent || FocusEvent
+  window.WheelEvent = window.WheelEvent || WheelEvent
+  window.TouchEvent = window.TouchEvent || function TouchEvent() {} as any
+  window.CustomEvent = window.CustomEvent || CustomEvent
+  window.UIEvent = window.UIEvent || UIEvent
+  window.CompositionEvent = window.CompositionEvent || function CompositionEvent() {} as any
+  window.DragEvent = window.DragEvent || function DragEvent() {} as any
+  
+  // Fix common JSDOM event issues
+  window.HTMLFormElement = window.HTMLFormElement || HTMLElement
+  window.HTMLSelectElement = window.HTMLSelectElement || HTMLElement
+  window.HTMLTextAreaElement = window.HTMLTextAreaElement || HTMLElement
+  window.HTMLInputElement = window.HTMLInputElement || HTMLElement
+} else {
+  // Create window if it doesn't exist
+  Object.defineProperty(global, 'window', {
+    value: {
+      location: mockLocation,
+      localStorage: mockLocalStorage,
+      document: global.document,
+      navigator: {
+        userAgent: 'jsdom'
+      }
+    },
+    writable: true,
+    configurable: true
+  })
+}
+
+// Also setup direct global access
+Object.defineProperty(global, 'location', {
+  value: mockLocation,
+  writable: true,
+  configurable: true
+})
+
+Object.defineProperty(global, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+  configurable: true
+})
+
 // 修復 JSDOM 事件構造器問題的最直接解決方案
 // 這個問題是由於 Vue Test Utils 創建的事件對象不被 JSDOM 識別為有效的 Event 實例
 
@@ -54,7 +141,7 @@ EventTarget.prototype.dispatchEvent = function(event: Event) {
   return originalDispatchEvent.call(this, event)
 }
 
-// 確保 Event 構造器可用
+// Additional global event constructor fallbacks
 if (typeof global.Event === 'undefined') {
   global.Event = Event
 }
@@ -67,6 +154,12 @@ if (typeof global.KeyboardEvent === 'undefined') {
 if (typeof global.InputEvent === 'undefined') {
   global.InputEvent = InputEvent
 }
+if (typeof global.FocusEvent === 'undefined') {
+  global.FocusEvent = FocusEvent
+}
+if (typeof global.CustomEvent === 'undefined') {
+  global.CustomEvent = CustomEvent
+}
 
 // 創建測試用的 i18n 實例
 const i18n = createI18n({
@@ -77,44 +170,6 @@ const i18n = createI18n({
   globalInjection: true,
   silentTranslationWarn: true,
   silentFallbackWarn: true
-})
-
-// Mock window.location for tests
-const mockLocation = {
-  href: 'http://localhost:3000',
-  origin: 'http://localhost:3000',
-  protocol: 'http:',
-  host: 'localhost:3000',
-  hostname: 'localhost',
-  port: '3000',
-  pathname: '/',
-  search: '',
-  hash: '',
-  replace: vi.fn(),
-  assign: vi.fn(),
-  reload: vi.fn()
-}
-
-// Setup global window mock
-Object.defineProperty(global, 'window', {
-  value: {
-    location: mockLocation,
-    localStorage: {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn()
-    }
-  },
-  writable: true,
-  configurable: true
-})
-
-// Setup global location for direct access
-Object.defineProperty(global, 'location', {
-  value: mockLocation,
-  writable: true,
-  configurable: true
 })
 
 // Vue Test Utils 全局配置

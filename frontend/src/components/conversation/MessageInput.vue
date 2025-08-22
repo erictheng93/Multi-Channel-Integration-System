@@ -5,7 +5,7 @@
         <textarea
           ref="textareaRef"
           v-model="messageText"
-          placeholder="輸入訊息..."
+          placeholder="Type a message..."
           class="message-textarea"
           :disabled="disabled || sending"
           rows="1"
@@ -18,7 +18,7 @@
             class="action-btn"
             type="button"
             :disabled="disabled || false"
-            title="表情符號"
+            title="Emoji"
             @click="toggleEmojiPicker"
           >
             <SmileIcon />
@@ -28,7 +28,7 @@
             class="action-btn"
             type="button"
             :disabled="disabled || false"
-            title="附件"
+            title="Attachment"
             @click="triggerFileUpload"
           >
             <PaperclipIcon />
@@ -186,11 +186,11 @@ const sendMessage = async () => {
           if (uploadResponse.success && uploadResponse.data) {
             attachmentIds.push(uploadResponse.data.url) // 使用 URL 作為標識符
           } else {
-            throw new Error(uploadResponse.error || '檔案上傳失敗')
+            throw new Error(uploadResponse.error || 'File upload failed')
           }
         } catch (uploadError) {
           console.error('Attachment upload error:', uploadError)
-          error.value = `檔案 ${attachment.name} 上傳失敗`
+          error.value = `File ${attachment.name} upload failed`
           return
         }
       }
@@ -219,11 +219,11 @@ const sendMessage = async () => {
         attachments: currentAttachments
       })
     } else {
-      error.value = (response.error as { message?: string })?.message || '發送失敗'
+      error.value = (response.error as { message?: string })?.message || 'Send failed'
     }
   } catch (err) {
     console.error('Send message error:', err)
-    error.value = '網路錯誤，請稍後再試'
+    error.value = 'Network error, please try again'
   } finally {
     sending.value = false
   }
@@ -246,7 +246,7 @@ const handleFileSelect = (event: Event) => {
     
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      error.value = `檔案 ${file.name} 超過 10MB 限制`
+      error.value = `File ${file.name} exceeds 10MB limit`
       continue
     }
     
@@ -280,7 +280,7 @@ const formatFileSize = (bytes: number): string => {
 
 const toggleEmojiPicker = () => {
   // TODO: Implement emoji picker
-  error.value = '表情符號功能尚未實現'
+  error.value = 'Emoji function not implemented yet'
   setTimeout(() => {
     error.value = ''
   }, 3000)
