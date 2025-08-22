@@ -22,7 +22,9 @@ export function useActivityTracker() {
 
   const handleUserActivity = () => {
     if (authStore.isAuthenticated) {
-      console.log('👆 User activity detected - extending session and checking token')
+      if (import.meta.env.DEV) {
+        console.log('👆 User activity detected - extending session and checking token')
+      }
       authStore.autoExtendSession()
       
       // 延遲執行 token 刷新，避免干擾導航
@@ -43,7 +45,9 @@ export function useActivityTracker() {
       document.addEventListener(event, handleUserActivity, { passive: true })
     })
     
-    console.log('👀 Activity tracking started - monitoring user interactions')
+    if (import.meta.env.DEV) {
+      console.log('👀 Activity tracking started - monitoring user interactions')
+    }
     resetActivityTimer()
   }
 

@@ -52,8 +52,8 @@ BEGIN
   UPDATE teams SET updated_at = datetime('now') WHERE id = NEW.id;
 END;
 
--- Insert some sample manager users for testing (optional - can be removed for production)
--- This creates a test manager user (password will need to be set separately)
+-- Insert some sample team users for testing (optional - can be removed for production)
+-- This creates a test team user (password will need to be set separately)
 -- INSERT OR IGNORE INTO agents (id, username, email, password_hash, display_name, role, team_id)
--- VALUES ('mgr001', 'testmanager', 'manager@example.com', '$2b$12$test_hash', 'Test Manager', 'manager', 
+-- VALUES ('team001', 'testteam', 'team@example.com', '$2b$12$test_hash', 'Test Team Leader', 'team', 
 --         (SELECT id FROM teams WHERE name = 'Default Team' LIMIT 1));

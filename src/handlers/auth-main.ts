@@ -220,7 +220,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
       return c.json({ error: 'All fields are required' }, 400);
     }
 
-    if (!['admin', 'manager', 'agent'].includes(role)) {
+    if (!['admin', 'team', 'agent'].includes(role)) {
       return c.json({ error: 'Invalid role' }, 400);
     }
 

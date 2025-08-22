@@ -79,7 +79,7 @@ bucket_name = "multi-channel-platform-attachments-dev"
 # 生產環境 R2 綁定
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments"
+bucket_name = "multi-channel-platform-attachments-production"
 
 # Queues 綁定 - 延遲訊息功能
 [[queues.producers]]

@@ -55,7 +55,7 @@ export interface TeamMember {
   loginId: string;
   name?: string;
   email?: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   status: 'active' | 'inactive' | 'pending';
   group?: string;
   avatar?: string;
@@ -67,7 +67,7 @@ export interface TeamMember {
 export interface Invitation {
   id: string;
   email: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   status: 'pending' | 'accepted' | 'declined' | 'expired';
   token: string;
   message?: string;
@@ -79,7 +79,7 @@ export interface Invitation {
 
 export interface InvitationRequest {
   email: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   message?: string;
   useQR?: boolean;
 }
@@ -94,7 +94,7 @@ export interface AcceptInvitationRequest {
 // 邀請請求類型
 export interface InviteRequest {
   email: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   message?: string;
   useQR?: boolean;
 }

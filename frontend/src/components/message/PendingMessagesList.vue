@@ -202,6 +202,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '@/composables'
+import { useToast } from '@/composables/useToast'
 import { 
   ClockIcon, 
   RefreshIcon, 
@@ -233,6 +234,7 @@ const emit = defineEmits<{
 }>()
 
 const { currentAgent } = useAuth()
+const { showError } = useToast()
 
 const loading = ref(false)
 const messages = ref<PendingMessage[]>([])
@@ -361,11 +363,11 @@ const confirmRecall = async () => {
       selectedMessage.value = null
     } else {
       console.error('Recall message failed:', response.error)
-      alert(response.error || '撤回失敗，請稍後再試')
+      showError('撤回失敗', response.error || '請稍後再試')
     }
   } catch (error) {
     console.error('Recall message error:', error)
-    alert('網路錯誤，請檢查連線狀態')
+    showError('網路錯誤', '請檢查連線狀態')
   } finally {
     recallingMessageId.value = null
   }

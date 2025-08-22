@@ -68,9 +68,10 @@ export async function combinedAuthGuard(
 ) {
   const authStore = useAuthStore()
 
-  console.log('🛡️ SUPER ULTRA DEBUG: AuthGuard called:', {
+  console.log('🛡️ AUTH GUARD: Initial check:', {
     from: from.path,
     to: to.path,
+    sessionStatus: authStore.sessionStatus,
     requiresAuth: to.meta.requiresAuth,
     requiresAdmin: to.meta.requiresAdmin,
     guestOnly: to.meta.guestOnly,
@@ -78,10 +79,23 @@ export async function combinedAuthGuard(
     hasToken: !!authStore.token,
     hasCurrentAgent: !!authStore.currentAgent,
     hasError: !!authStore.error,
-    loading: authStore.loading,
-    timestamp: Date.now(),
-    callStack: new Error().stack
+    timestamp: Date.now()
   });
+
+  // 🔧 CRITICAL FIX: 等待會話恢復完成 - 解決競爭條件
+  if (authStore.sessionStatus === 'pending') {
+    console.log('⏳ AUTH GUARD: Session restoration pending, waiting...');
+    
+    // 等待會話恢復完成，最多等待 5 秒
+    const maxWaitTime = 5000;
+    const startTime = Date.now();
+    
+    while (authStore.sessionStatus === 'pending' && (Date.now() - startTime) < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log(`✅ AUTH GUARD: Session restoration completed after ${Date.now() - startTime}ms, status: ${authStore.sessionStatus}`);
+  }
   
   // 🚨 CRITICAL: 檢查是否是從登入頁面觸發的導航
   if (from.path === '/login' && (to.path === '/dashboard' || to.path === '/')) {
@@ -127,58 +141,17 @@ export async function combinedAuthGuard(
       }
     }
 
-    // 檢查是否為訪客專用頁面
+    // 檢查是否為訪客專用頁面 (簡化邏輯 - 基於可靠的會話狀態)
     if (to.meta.guestOnly) {
-      console.log('👤 Route is guest only, checking if user is authenticated...');
-      console.log('👤 Auth check details:', {
-        isAuthenticated: authStore.isAuthenticated,
-        hasToken: !!authStore.token,
-        hasCurrentAgent: !!authStore.currentAgent,
-        sessionValid: authStore.token ? 'check needed' : 'no token',
-        hasError: !!authStore.error,
-        loading: authStore.loading
-      });
+      console.log('👤 GUEST ONLY PAGE: Checking authentication status');
+      console.log('👤 Session status:', authStore.sessionStatus);
+      console.log('👤 Is authenticated:', authStore.isAuthenticated);
       
-      // 🚨 SUPER ULTRA DEBUG FIX: 完全阻止任何可能導致跳轉的邏輯
-      console.log('🚨 GUEST ONLY PAGE LOGIC - SUPER DEBUG CHECK:');
-      console.log('  - From path:', from.path);
-      console.log('  - To path:', to.path);
-      console.log('  - Has error:', !!authStore.error);
-      console.log('  - Error value:', authStore.error);
-      console.log('  - Loading:', authStore.loading);
-      console.log('  - IsAuthenticated:', authStore.isAuthenticated);
-      console.log('  - Has token:', !!authStore.token);
-      console.log('  - Has currentAgent:', !!authStore.currentAgent);
-      
-      // 🔧 EMERGENCY BYPASS: 如果是登入頁面且有任何錯誤或載入狀態，完全跳過認證檢查
-      if (to.path === '/login' && (authStore.error || authStore.loading)) {
-        console.log('🚨 EMERGENCY BYPASS: Staying on login page due to error/loading state');
-        next()
-        return
-      }
-      
-      // 🔧 EMERGENCY BYPASS: 如果從登入頁面導航且目標不是登入頁面，檢查是否應該阻止
-      if (from.path === '/login' && to.path !== '/login') {
-        console.log('🚨 POTENTIAL UNWANTED NAVIGATION FROM LOGIN PAGE!');
-        console.log('  - Target:', to.path);
-        console.log('  - Should allow navigation?');
-        
-        // 只有在明確成功認證的情況下才允許導航
-        const hasValidAuth = authStore.token && authStore.currentAgent && !authStore.error && !authStore.loading
-        console.log('  - Has valid auth:', hasValidAuth);
-        
-        if (!hasValidAuth) {
-          console.log('🛑 BLOCKING navigation - auth state not fully valid');
-          next('/login') // 強制回到登入頁面
-          return
-        }
-      }
-      
-      // 原始邏輯 (簡化版)
-      if (authStore.isAuthenticated && authStore.currentAgent && authStore.token && !authStore.error) {
-        console.log('🔄 User is fully authenticated, redirecting to dashboard');
-        next('/dashboard')
-        return
+      // 🔧 簡化邏輯：基於會話狀態做判斷
+      if (authStore.sessionStatus === 'authenticated' && authStore.isAuthenticated) {
+        console.log('🔄 User is authenticated, redirecting to dashboard');
+        next('/dashboard');
+        return;
       }
       
       console.log('✅ Allowing access to guest page');

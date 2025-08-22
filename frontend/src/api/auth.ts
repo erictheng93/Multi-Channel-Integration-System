@@ -43,7 +43,7 @@ export const authApi = {
 
   // 更改密碼（用於強制密碼更改）
   changePassword: async (
-    data: { currentPassword: string; newPassword: string },
+    data: { newPassword: string; currentPassword?: string },
     tempToken?: string
   ): Promise<ApiResponse<void>> => {
     if (tempToken) {

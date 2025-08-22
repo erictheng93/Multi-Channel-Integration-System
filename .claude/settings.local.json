@@ -60,7 +60,8 @@
       "Bash(wrangler pages deploy:*)",
       "Bash(dir:*)",
       "Bash(wrangler auth:*)",
-      "Bash(npx drizzle-kit:*)"
+      "Bash(npx drizzle-kit:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

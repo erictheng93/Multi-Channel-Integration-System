@@ -12,6 +12,9 @@ import { useRouter } from 'vue-router';
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 天
 const TOKEN_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 分鐘
 
+// 會話恢復狀態類型
+type SessionStatus = 'pending' | 'authenticated' | 'unauthenticated' | 'restored';
+
 export const useAuthStore = defineStore('auth', () => {
   // 狀態
   const token = ref<string | null>(null);
@@ -20,6 +23,8 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
   const sessionExpiry = ref<number | null>(null);
+  // 🔧 新增：會話恢復狀態 - 解決競爭條件問題
+  const sessionStatus = ref<SessionStatus>('pending');
 
   // Initialize tokens from localStorage
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -45,10 +50,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 計算屬性
   const isAdmin = computed(() => currentAgent.value?.role === 'admin');
-  const isManager = computed(() => currentAgent.value?.role === 'manager');
+  const isTeam = computed(() => currentAgent.value?.role === 'team');
   const isAgent = computed(() => currentAgent.value?.role === 'agent');
-  const isManagerOrAdmin = computed(() => 
-    currentAgent.value?.role === 'admin' || currentAgent.value?.role === 'manager'
+  const isTeamOrAdmin = computed(() => 
+    currentAgent.value?.role === 'admin' || currentAgent.value?.role === 'team'
   );
 
   // 方法
@@ -108,6 +113,9 @@ export const useAuthStore = defineStore('auth', () => {
         // 記錄初始會話狀態
         logSessionStatus();
         
+        // 🔧 設定會話狀態為已認證
+        setSessionStatus('authenticated');
+        
         return true;
       } else {
         // 使用 API 回傳的詳細錯誤訊息
@@ -129,6 +137,9 @@ export const useAuthStore = defineStore('auth', () => {
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('sessionExpiry');
         }
+        
+        // 🔧 設定會話狀態為未認證
+        setSessionStatus('unauthenticated');
         
         return false;
       }
@@ -156,6 +167,9 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         error.value = '網路錯誤，請稍後再試';
       }
+      
+      // 🔧 設定會話狀態為未認證
+      setSessionStatus('unauthenticated');
       return false;
     } finally {
       loading.value = false;
@@ -187,6 +201,9 @@ export const useAuthStore = defineStore('auth', () => {
     
     // Remove auth headers
     authApi.removeAuthHeader();
+    
+    // 🔧 設定會話狀態為未認證
+    setSessionStatus('unauthenticated');
     
     // Navigate to login (only if not already on login page)
     if (typeof window !== 'undefined') {
@@ -226,24 +243,32 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 驗證會話是否有效
   function validateSession(): boolean {
-    console.log('🔍 validateSession called:', {
-      hasToken: !!token.value,
-      sessionExpiry: sessionExpiry.value,
-      now: Date.now(),
-      isValid: sessionExpiry.value ? Date.now() < sessionExpiry.value : 'no expiry set'
-    });
+    if (import.meta.env.DEV) {
+      console.log('🔍 validateSession called:', {
+        hasToken: !!token.value,
+        sessionExpiry: sessionExpiry.value,
+        now: Date.now(),
+        isValid: sessionExpiry.value ? Date.now() < sessionExpiry.value : 'no expiry set'
+      });
+    }
     
     if (!token.value) {
-      console.log('❌ validateSession: no token');
+      if (import.meta.env.DEV) {
+        console.log('❌ validateSession: no token');
+      }
       return false;
     }
     // 如果沒有設置過期時間，假設 token 仍然有效
     if (!sessionExpiry.value) {
-      console.log('✅ validateSession: no expiry set, assuming valid');
+      if (import.meta.env.DEV) {
+        console.log('✅ validateSession: no expiry set, assuming valid');
+      }
       return true;
     }
     const isValid = Date.now() < sessionExpiry.value;
-    console.log(`${isValid ? '✅' : '❌'} validateSession: ${isValid ? 'valid' : 'expired'}`);
+    if (import.meta.env.DEV) {
+      console.log(`${isValid ? '✅' : '❌'} validateSession: ${isValid ? 'valid' : 'expired'}`);
+    }
     return isValid;
   }
 
@@ -303,6 +328,55 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('🧹 clearError completed, new error:', error.value);
   }
 
+  // 🔧 新增：會話狀態管理方法 - 解決競爭條件
+  function setSessionStatus(status: SessionStatus) {
+    console.log(`🔄 Session status changing: ${sessionStatus.value} -> ${status}`);
+    sessionStatus.value = status;
+  }
+
+  // 會話恢復 - 統一的初始化邏輯
+  async function initializeSession(): Promise<void> {
+    console.log('🚀 Initializing session...');
+    setSessionStatus('pending');
+    
+    try {
+      // 檢查是否有存儲的 token
+      if (!token.value) {
+        console.log('❌ No stored token found');
+        setSessionStatus('unauthenticated');
+        return;
+      }
+      
+      // 檢查會話是否有效
+      if (!validateSession()) {
+        console.log('❌ Session expired, clearing auth state');
+        await logout(false);
+        setSessionStatus('unauthenticated');
+        return;
+      }
+      
+      // 嘗試獲取用戶資料
+      console.log('🔍 Fetching current agent...');
+      const response = await authApi.me();
+      
+      if (response.success && response.data) {
+        currentAgent.value = response.data;
+        setSessionStatus('authenticated');
+        console.log('✅ Session restored successfully');
+      } else if (response.status === 401) {
+        console.log('❌ Token invalid, clearing auth state');
+        await logout(false);
+        setSessionStatus('unauthenticated');
+      } else {
+        console.warn('⚠️ Failed to fetch user data but token might be valid');
+        setSessionStatus('unauthenticated');
+      }
+    } catch (error) {
+      console.error('💥 Session initialization error:', error);
+      setSessionStatus('unauthenticated');
+    }
+  }
+
   // 調試用：記錄會話狀態
   function logSessionStatus() {
     if (sessionExpiry.value) {
@@ -354,26 +428,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 初始化 - only in browser environment
+  // 🔧 新的初始化邏輯 - 設定認證標頭但不立即恢復會話
+  // 會話恢復將由 main.ts 調用 initializeSession() 來處理
   if (typeof window !== 'undefined' && token.value) {
     authApi.setAuthHeader(token.value, refreshToken.value || undefined);
-    if (validateSession()) {
-      fetchCurrentAgent().catch(err => {
-        console.warn('Initial fetchCurrentAgent failed:', err);
-        // 初始化時失敗不應該強制登出，讓用戶手動重新登入
-      });
-    } else {
-      // Session 已過期，清理但不重定向
-      token.value = null;
-      refreshToken.value = null;
-      sessionExpiry.value = null;
-      if (window.localStorage) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('sessionExpiry');
-      }
-      authApi.removeAuthHeader();
-    }
   }
 
   return {
@@ -384,6 +442,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     sessionExpiry,
+    sessionStatus,
     // 計算屬性
     isAuthenticated: computed(() => {
       const hasToken = !!token.value;
@@ -391,9 +450,10 @@ export const useAuthStore = defineStore('auth', () => {
       const hasCurrentAgent = !!currentAgent.value;
       const hasError = !!error.value;
       
-      // 🔧 ULTRA DEBUG FIX: 如果有錯誤狀態，不應該被視為已認證
-      // 這防止登入失敗時觸發 guestOnly 頁面的重定向邏輯
-      const result = hasToken && sessionValid && hasCurrentAgent && !hasError;
+      // 🔧 CRITICAL FIX: 優先考慮有效的認證數據，而不是錯誤狀態
+      // 如果用戶有有效的 token、session 和 agent 數據，即使有錯誤狀態也應視為已認證
+      // 錯誤狀態可能來自其他操作或是過時的錯誤
+      const result = hasToken && sessionValid && hasCurrentAgent;
       
       console.log('🔐 isAuthenticated computed:', {
         hasToken,
@@ -402,14 +462,28 @@ export const useAuthStore = defineStore('auth', () => {
         hasError,
         result,
         tokenValue: token.value ? 'exists' : 'null',
-        currentPath: typeof window !== 'undefined' && window.location ? window.location.pathname : 'unknown'
+        currentPath: typeof window !== 'undefined' && window.location ? window.location.pathname : 'unknown',
+        reasoning: 'Priority on valid auth data over error states'
       });
+      
+      // 🧹 AUTO-CLEANUP: 如果認證有效但有錯誤狀態，自動清除過時的錯誤
+      if (result && hasError) {
+        console.log('🧹 Auto-clearing stale error state since authentication is valid');
+        // 使用 nextTick 避免在計算屬性中直接修改響應式狀態
+        setTimeout(() => {
+          if (error.value) {
+            console.log('🧹 Clearing error:', error.value);
+            error.value = null;
+          }
+        }, 0);
+      }
+      
       return result;
     }),
     isAdmin,
-    isManager,
+    isTeam,
     isAgent,
-    isManagerOrAdmin,
+    isTeamOrAdmin,
     // 方法
     login,
     logout,
@@ -421,6 +495,9 @@ export const useAuthStore = defineStore('auth', () => {
     shouldRefreshToken,
     proactiveTokenRefresh,
     logSessionStatus,
-    clearError
+    clearError,
+    // 🔧 新增：會話恢復相關方法
+    setSessionStatus,
+    initializeSession
   };
 });

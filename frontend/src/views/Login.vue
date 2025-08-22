@@ -259,7 +259,7 @@ const forcedPasswordChangeData = reactive({
     id: '',
     email: '',
     name: '',
-    role: 'agent' as 'admin' | 'manager' | 'agent'
+    role: 'agent' as 'admin' | 'team' | 'agent'
   }
 })
 
@@ -290,65 +290,43 @@ watch(loading, (newLoading, oldLoading) => {
   console.log('  - Timestamp:', Date.now())
 }, { immediate: true })
 
-// 監控認證狀態變化
+// 🔧 認證狀態監控 - 當用戶已認證時自動導航到 dashboard
 const authStore = useAuthStore()
 watch(() => authStore.isAuthenticated, (newAuth, oldAuth) => {
-  const timestamp = Date.now()
-  console.log('🔐 SUPER ULTRA DEBUG: Authentication state change:')
-  console.log('  - oldAuth:', oldAuth)
-  console.log('  - newAuth:', newAuth)
-  console.log('  - hasToken:', !!authStore.token)
-  console.log('  - hasCurrentAgent:', !!authStore.currentAgent)
-  console.log('  - hasError:', !!authStore.error)
-  console.log('  - Current URL:', window.location.href)
-  console.log('  - Timestamp:', timestamp)
-  console.log('  - Stack trace:', new Error().stack)
+  console.log('🔐 AUTH STATE CHANGE:', {
+    from: oldAuth,
+    to: newAuth,
+    sessionStatus: authStore.sessionStatus,
+    hasToken: !!authStore.token,
+    hasCurrentAgent: !!authStore.currentAgent,
+    currentPath: router.currentRoute.value.path
+  });
   
-  // 🚨 CRITICAL: 檢查是否在登入失敗的關鍵時間窗口內
-  const failureTimestamp = (window as WindowWithDebug)._loginFailureTimestamp
-  if (failureTimestamp && (timestamp - failureTimestamp) < 5000) {
-    console.log('🔥 AUTHENTICATION CHANGE IN CRITICAL WINDOW!')
-    console.log(`  - ${timestamp - failureTimestamp}ms after login failure`)
-    console.log('  - This change might be causing unwanted navigation!')
-  }
-  
-  // 如果認證狀態從無變有，這可能觸發重定向
-  if (!oldAuth && newAuth) {
-    console.log('🚨 CRITICAL: Authentication became true! This might trigger redirect!')
-    console.log('  - Blocking any immediate navigation attempts...')
-    
-    // 暫時阻止路由導航
-    ;(window as WindowWithDebug)._blockNavigation = true
-    setTimeout(() => {
-      (window as WindowWithDebug)._blockNavigation = false
-      console.log('🔓 Navigation blocking released')
-    }, 1000)
+  // 如果用戶已認證且在登入頁面，導航到 dashboard
+  if (newAuth && router.currentRoute.value.path === '/login') {
+    console.log('🔄 User authenticated, redirecting to dashboard');
+    router.push('/dashboard').catch(err => {
+      console.warn('Navigation failed, using window.location:', err);
+      window.location.href = '/dashboard';
+    });
   }
 }, { immediate: true })
 
-// 監控 currentAgent 變化
+// 🔧 SIMPLIFIED: 簡化其他狀態監控
 watch(() => authStore.currentAgent, (newAgent, oldAgent) => {
-  console.log('👤 SUPER ULTRA DEBUG: CurrentAgent state change:')
-  console.log('  - oldAgent:', oldAgent)
-  console.log('  - newAgent:', newAgent)
-  console.log('  - Current URL:', window.location.href)
-  console.log('  - Timestamp:', Date.now())
+  console.log('👤 CURRENT AGENT CHANGE:', { 
+    hasOld: !!oldAgent, 
+    hasNew: !!newAgent,
+    sessionStatus: authStore.sessionStatus
+  });
 }, { immediate: true })
 
-// 監控 token 變化
 watch(() => authStore.token, (newToken, oldToken) => {
-  console.log('🎫 SUPER ULTRA DEBUG: Token state change:')
-  console.log('  - oldToken exists:', !!oldToken)
-  console.log('  - newToken exists:', !!newToken)
-  console.log('  - Current URL:', window.location.href)
-  console.log('  - Timestamp:', Date.now())
-  
-  if (!oldToken && newToken) {
-    console.log('🚨 CRITICAL: Token was set! This might affect authentication checks!')
-  }
-  if (oldToken && !newToken) {
-    console.log('🧹 INFO: Token was cleared')
-  }
+  console.log('🎫 TOKEN CHANGE:', { 
+    hasOld: !!oldToken, 
+    hasNew: !!newToken,
+    sessionStatus: authStore.sessionStatus
+  });
 }, { immediate: true })
 
 // 🔍 SUPER ULTRA DEBUG: 監控所有可能的導航和狀態變化
@@ -371,16 +349,8 @@ onMounted(() => {
     console.log('  - Navigation blocking:', !!(window as WindowWithDebug)._blockNavigation)
     console.log('  - Timestamp:', Date.now())
     
-    // 檢查多種阻止條件
-    if (error.value) {
-      console.log('🛑 BLOCKING navigation due to error state!')
-      return Promise.resolve()
-    }
-    
-    if ((window as WindowWithDebug)._blockNavigation) {
-      console.log('🛑 BLOCKING navigation due to navigation blocking flag!')
-      return Promise.resolve()
-    }
+    // 移除阻止導航的條件 - 允許正常導航
+    console.log('✅ Navigation allowed, proceeding...')
     
     return originalPush.apply(router, args)
   }
@@ -392,15 +362,8 @@ onMounted(() => {
     console.log('  - Navigation blocking:', !!(window as WindowWithDebug)._blockNavigation)
     console.log('  - Timestamp:', Date.now())
     
-    if (error.value) {
-      console.log('🛑 BLOCKING replace due to error state!')
-      return Promise.resolve()
-    }
-    
-    if ((window as WindowWithDebug)._blockNavigation) {
-      console.log('🛑 BLOCKING replace due to navigation blocking flag!')
-      return Promise.resolve()
-    }
+    // 移除阻止導航的條件 - 允許正常導航
+    console.log('✅ Replace navigation allowed, proceeding...')
     
     return originalReplace.apply(router, args)
   }
@@ -421,20 +384,28 @@ onMounted(() => {
     }
   }, 50) // 更頻繁檢查
   
-  // 🚨 CRITICAL: 攔截任何可能的頁面刷新或重載
-  const originalReload = window.location.reload
-  window.location.reload = () => {
-    console.log('🚨 WINDOW.LOCATION.RELOAD INTERCEPTED!')
-    console.log('  - Call stack:', new Error().stack)
+  // 🚨 CRITICAL: 監控頁面刷新或重載嘗試 (window.location.reload 是只讀的，無法覆蓋)
+  // 改用事件監聽器來監控刷新嘗試
+  const handleBeforeUnload = (event: BeforeUnloadEvent): string | undefined => {
+    console.log('🚨 BEFORE UNLOAD DETECTED!')
+    console.log('  - Event:', event)
+    console.log('  - Current URL:', window.location.href)
     console.log('  - Error state:', error.value)
+    console.log('  - Loading state:', loading.value)
+    console.log('  - Call stack:', new Error().stack)
     console.log('  - Timestamp:', Date.now())
-    // 在錯誤狀態下阻止重載
+    
     if (error.value) {
-      console.log('🛑 BLOCKING reload due to error state!')
-      return
+      console.log('🛑 PREVENTING page unload due to error state!')
+      event.preventDefault()
+      event.returnValue = '頁面仍在處理錯誤狀態，確定要離開嗎？'
+      return '頁面仍在處理錯誤狀態，確定要離開嗎？'
     }
-    return originalReload.apply(window.location)
+    
+    return undefined
   }
+  
+  window.addEventListener('beforeunload', handleBeforeUnload)
   
   // 🚨 攔截 history API
   const originalPushState = history.pushState
@@ -471,14 +442,6 @@ onMounted(() => {
   }
   
   // 監控所有可能的導航事件
-  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    console.log('⚠️ SUPER ULTRA DEBUG: Page is about to unload!')
-    console.log('  - Event:', event)
-    console.log('  - Current URL:', window.location.href)
-    console.log('  - Error state:', error.value)
-    console.log('  - Loading state:', loading.value)
-    console.log('  - Call stack:', new Error().stack)
-  }
   
   const handleUnload = (event: Event) => {
     console.log('🚪 SUPER ULTRA DEBUG: Page is unloading!')
@@ -522,7 +485,6 @@ onMounted(() => {
     console.log('  - Current URL:', window.location.href)
   }
   
-  window.addEventListener('beforeunload', handleBeforeUnload)
   window.addEventListener('unload', handleUnload)
   window.addEventListener('popstate', handlePopState)
   window.addEventListener('hashchange', handleHashChange)
@@ -560,17 +522,7 @@ onMounted(() => {
     return originalRequestAnimationFrame(wrappedCallback)
   }
   
-  // 🚨 攔截 Promise 操作
-  const originalPromiseResolve = Promise.resolve
-  Promise.resolve = ((value?: unknown) => {
-    const promise = originalPromiseResolve(value)
-    promise.then(() => {
-      console.log('🎯 Promise.resolve().then() callback executing')
-      console.log('  - Error state:', error.value)
-      console.log('  - URL:', window.location.href)
-    })
-    return promise
-  }) as typeof Promise.resolve
+  // 移除有問題的 Promise.resolve 攔截器 - 它會干擾 Vue Router
   
   // 清理函數
   onBeforeUnmount(() => {
@@ -587,15 +539,15 @@ onMounted(() => {
     window.setTimeout = originalSetTimeout
     window.setInterval = originalSetInterval
     window.requestAnimationFrame = originalRequestAnimationFrame
-    Promise.resolve = originalPromiseResolve
+    // Promise.resolve 不再需要恢復，因為沒有被攔截
     
-    // 恢復 location 和 history 方法
-    window.location.reload = originalReload
+    // 恢復 history 方法
     history.pushState = originalPushState
     history.replaceState = originalReplaceState
     
     clearInterval(locationWatcher)
     
+    // 移除事件監聽器
     window.removeEventListener('beforeunload', handleBeforeUnload)
     window.removeEventListener('unload', handleUnload)
     window.removeEventListener('popstate', handlePopState)
@@ -841,6 +793,10 @@ const handleLogin = async (event?: Event) => {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       console.log('🚀 ULTRA DEBUG: About to redirect to dashboard...')
+      // 確保清除任何錯誤狀態，避免影響導航
+      clearError()
+      console.log('🧹 ULTRA DEBUG: Cleared error state before navigation, error is now:', error.value)
+      
       await router.push('/dashboard')
       console.log('✅ ULTRA DEBUG: Router.push completed')
     } else if (result.mustChangePassword && result.tempToken && result.agent) {

@@ -195,19 +195,19 @@ Key test helpers:
 - Customer data collection and management
 
 ### Team Collaboration & Enterprise Role System
-- **3-Role Enterprise System**: Admin, Manager, Agent hierarchy
+- **3-Role Enterprise System**: Admin, Team, Agent hierarchy
 - **Role-Based Permissions**: Comprehensive permission service with team-scoped access
-- **Team Management**: Full team lifecycle with manager delegation
+- **Team Management**: Full team lifecycle with team leader delegation
 - **Multi-agent conversation handling** with role-based access control
 - **Real-time status updates** and activity tracking
-- **Manager Dashboard**: Team-specific analytics and reporting
+- **Team Dashboard**: Team-specific analytics and reporting
 - **Scalable Access Control**: Database-level permission enforcement
 
 ### Enterprise Role Hierarchy
 - **Admin (Level 3)**: System-wide access, all teams and configurations
-- **Manager (Level 2)**: Team-scoped management, agent supervision, analytics
+- **Team (Level 2)**: Team-scoped management, agent supervision, analytics
 - **Agent (Level 1)**: Assigned conversation access, customer interaction focus
-- **Team Assignment**: Mandatory for managers/agents, flexible team structure
+- **Team Assignment**: Mandatory for team role/agents, flexible team structure
 - **Permission Inheritance**: Higher roles inherit lower role capabilities
 - **Database Integration**: Teams table with foreign key relationships
 
@@ -260,8 +260,8 @@ The system is production-ready with:
 ## System Maturity
 
 This is a mature, well-tested system with enterprise-grade architecture featuring:
-- **Enterprise 3-Role System** with hierarchical permissions
-- **Team-based organization** with manager delegation
+- **Enterprise 3-Role System** with hierarchical permissions (Admin, Team, Agent)
+- **Team-based organization** with team leader delegation
 - **Comprehensive test suite** and TypeScript coverage ensure reliability
 - **Modern Vue 3 frontend** with role-based UI/UX
 - **Scalable architecture** supporting multi-team operations

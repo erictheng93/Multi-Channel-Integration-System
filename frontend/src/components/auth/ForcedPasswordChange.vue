@@ -1,6 +1,27 @@
 <template>
   <div class="forced-password-overlay">
     <div class="forced-password-modal">
+      <button 
+        type="button" 
+        class="close-button"
+        title="取消"
+        @click="handleCancel"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <path 
+            d="M18 6L6 18M6 6l12 12" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
       <div class="modal-icon">
         <div class="icon-container">
           <svg
@@ -48,17 +69,6 @@
           系統管理員要求您在首次登入時更改密碼。請設定一個新的安全密碼。
         </p>
         
-        <div class="form-group">
-          <label for="currentPassword">目前密碼 *</label>
-          <input
-            id="currentPassword"
-            v-model="form.currentPassword"
-            type="password"
-            required
-            placeholder="請輸入目前密碼"
-            class="password-input"
-          >
-        </div>
 
         <div class="form-group">
           <label for="newPassword">新密碼 *</label>
@@ -153,8 +163,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 interface Props {
   tempToken: string
@@ -162,22 +172,22 @@ interface Props {
     id: string
     email: string
     name: string
-    role: 'admin' | 'manager' | 'agent'
+    role: 'admin' | 'team' | 'agent'
   }
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   success: []
+  cancel: []
 }>()
 
-const router = useRouter()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const errorMessage = ref('')
 
 const form = reactive({
-  currentPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
@@ -189,8 +199,7 @@ const passwordMismatch = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  return form.currentPassword &&
-         form.newPassword.length >= 6 && 
+  return form.newPassword.length >= 6 && 
          form.confirmPassword && 
          !passwordMismatch.value
 })
@@ -203,7 +212,6 @@ const submitPasswordChange = async () => {
   
   try {
     const response = await authApi.changePassword({
-      currentPassword: form.currentPassword,
       newPassword: form.newPassword
     }, props.tempToken)
     
@@ -215,13 +223,31 @@ const submitPasswordChange = async () => {
       })
       
       if (loginResponse.success && loginResponse.data) {
-        // 存儲新的認證信息
+        // 手動設置認證狀態（模仿 authStore.login 的邏輯）
+        authStore.token = loginResponse.data.token
+        authStore.refreshToken = loginResponse.data.refreshToken || null
+        authStore.currentAgent = loginResponse.data.agent
+        
+        // 設定會話過期時間
+        const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 天
+        authStore.sessionExpiry = expiry
+        
+        // 儲存到 localStorage
         localStorage.setItem('token', loginResponse.data.token)
-        localStorage.setItem('refreshToken', loginResponse.data.refreshToken || '')
-        localStorage.setItem('agent', JSON.stringify(loginResponse.data.agent))
+        if (loginResponse.data.refreshToken) {
+          localStorage.setItem('refreshToken', loginResponse.data.refreshToken)
+        }
+        localStorage.setItem('sessionExpiry', expiry.toString())
+        
+        // 設定 API 認證標頭
+        authApi.setAuthHeader(loginResponse.data.token, loginResponse.data.refreshToken)
+        
+        // 設定會話狀態
+        authStore.setSessionStatus('authenticated')
         
         emit('success')
-        router.push('/dashboard')
+        // 讓路由守衛自動導航到 dashboard
+        window.location.href = '/dashboard'
       } else {
         errorMessage.value = '密碼更改成功，但重新登入失敗，請手動登入'
       }
@@ -234,6 +260,10 @@ const submitPasswordChange = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleCancel = () => {
+  emit('cancel')
 }
 </script>
 
@@ -429,6 +459,35 @@ const submitPasswordChange = async () => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.close-button {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--gray-600);
+  z-index: 10;
+}
+
+.close-button:hover {
+  background: white;
+  color: var(--gray-900);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.close-button:active {
+  transform: scale(0.95);
 }
 
 /* Responsive Design */

@@ -169,6 +169,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth, useConversations, useMessages } from '@/composables'
 import { conversationApi } from '@/api/conversations'
 import { messageApi } from '@/api/message'
+import { useConfirm } from '@/composables/useConfirm'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -315,7 +316,14 @@ async function assignToMe() {
 }
 
 async function closeConversation() {
-  if (!confirm('確定要結束這個對話嗎？') || closing.value) {return}
+  if (closing.value) {return}
+
+  const confirmed = await useConfirm().confirmWarning(
+    '結束對話',
+    '確定要結束這個對話嗎？結束後將無法再次開啟。',
+    '結束對話'
+  )
+  if (!confirmed) {return}
 
   closing.value = true
   try {

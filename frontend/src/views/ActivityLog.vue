@@ -552,7 +552,7 @@ const getActivityDescription = (activity: ActivityLog) => {
 const getRoleLabel = (role: string) => {
   const roleMap: Record<string, string> = {
     admin: '管理員',
-    manager: '主管',
+    team: '團隊管理員',
     agent: '客服'
   }
   return roleMap[role] || role

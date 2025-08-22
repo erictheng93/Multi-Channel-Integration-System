@@ -161,7 +161,7 @@ export async function createUser(
     email: string;
     password: string;
     displayName: string;
-    role: 'admin' | 'manager' | 'agent';
+    role: 'admin' | 'team' | 'agent';
     teamId?: number;
   }
 ): Promise<DbUser> {
@@ -201,7 +201,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
       username: agent.username as string,
       email: agent.email as string,
       displayName: agent.display_name as string,
-      role: agent.role as 'admin' | 'manager' | 'agent',
+      role: agent.role as 'admin' | 'team' | 'agent',
       teamId: null, // agents 表沒有 team_id
       teamName: null,
       isActive: Boolean(agent.is_active),
@@ -228,7 +228,7 @@ export async function getUserByUsername(db: D1Database, username: string): Promi
     username: agent.username as string,
     email: agent.email as string,
     displayName: agent.display_name as string,
-    role: agent.role as 'admin' | 'manager' | 'agent',
+    role: agent.role as 'admin' | 'team' | 'agent',
     teamId: null,
     teamName: null,
     isActive: Boolean(agent.is_active),
@@ -263,7 +263,7 @@ export async function authenticateUser(
     username: user.username as string,
     email: user.email as string,
     displayName: user.display_name as string,
-    role: user.role as 'admin' | 'manager' | 'agent',
+    role: user.role as 'admin' | 'team' | 'agent',
     teamId: user.team_id as number | null,
     teamName: user.team_name as string | null,
     isActive: Boolean(user.is_active),
@@ -290,7 +290,7 @@ export async function authenticateUserByEmail(
         username: agent.username as string,
         email: agent.email as string,
         displayName: agent.display_name as string,
-        role: agent.role as 'admin' | 'manager' | 'agent',
+        role: agent.role as 'admin' | 'team' | 'agent',
         teamId: null, // agents 表沒有 team_id
         teamName: null,
         isActive: Boolean(agent.is_active),
@@ -305,7 +305,7 @@ export async function authenticateUserByEmail(
 }
 
 // 權限檢查
-export function hasPermission(user: DbUser, requiredRole: 'admin' | 'manager' | 'agent'): boolean {
+export function hasPermission(user: DbUser, requiredRole: 'admin' | 'team' | 'agent'): boolean {
   if (user.role === 'admin') {
     return true; // admin 有所有權限
   }

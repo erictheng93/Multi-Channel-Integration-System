@@ -30,7 +30,7 @@
             class="role"
             :class="member.role"
           >
-            {{ member.role === 'admin' ? '管理員' : '客服' }}
+            {{ getRoleText(member.role) }}
           </span>
           <span
             class="status"
@@ -145,14 +145,16 @@
                   placeholder="請輸入新密碼"
                   autocomplete="new-password"
                   :readonly="!showPassword && !isPasswordLoaded"
+                  :disabled="passwordLoading"
                 >
                 <button
                   type="button"
                   class="password-toggle-btn"
-                  :title="showPassword ? '隱藏密碼' : '顯示密碼'"
+                  :title="passwordLoading ? '加載中...' : (showPassword ? '隱藏密碼' : '顯示密碼')"
+                  :disabled="passwordLoading"
                   @click="togglePasswordVisibility"
                 >
-                  {{ showPassword ? '🙈' : '👁️' }}
+                  {{ passwordLoading ? '⏳' : (showPassword ? '🙈' : '👁️') }}
                 </button>
               </div>
               <small class="form-help-text">管理員可以查看和修改成員密碼</small>
@@ -166,6 +168,9 @@
               >
                 <option value="agent">
                   客服
+                </option>
+                <option value="team">
+                  團隊負責人
                 </option>
                 <option value="admin">
                   管理員
@@ -216,6 +221,7 @@
 <script setup lang="ts">
 import { computed, ref, reactive, watch, nextTick, onUnmounted } from 'vue'
 import type { TeamMember } from '@/types'
+import { teamApi } from '@/api/team'
 
 interface Props {
   member: TeamMember
@@ -242,13 +248,14 @@ const editLoading = ref(false)
 const showPassword = ref(false)
 const actualPassword = ref('')
 const isPasswordLoaded = ref(false)
+const passwordLoading = ref(false)
 
 // Edit form data
 const editForm = reactive({
   name: '',
   email: '',
   password: '',
-  role: 'agent' as 'admin' | 'manager' | 'agent',
+  role: 'agent' as 'admin' | 'team' | 'agent',
   group: '',
   isActive: true
 })
@@ -263,8 +270,9 @@ watch(() => showEditModal.value, (newVal) => {
     editForm.group = props.member.group || ''
     editForm.isActive = props.member.status === 'active'
     showPassword.value = false
-    actualPassword.value = 'password123' // 模擬真實密碼
-    isPasswordLoaded.value = false
+    actualPassword.value = '' // 重置實際密碼
+    isPasswordLoaded.value = false // 確保每次都重新加載
+    passwordLoading.value = false
   }
 })
 
@@ -316,19 +324,38 @@ onUnmounted(() => {
 const submitEdit = async () => {
   editLoading.value = true
   try {
-    const updateData = {
+    const updateData: {
+      name: string;
+      email: string;
+      role: 'admin' | 'team' | 'agent';
+      group: string;
+      status: 'active' | 'inactive';
+      password?: string;
+    } = {
       name: editForm.name,
       email: editForm.email,
-      password: (isPasswordLoaded.value && editForm.password !== actualPassword.value) ? editForm.password : undefined,
       role: editForm.role,
       group: editForm.group,
       status: editForm.isActive ? 'active' as const : 'inactive' as const
     }
     
-    emit('editMember', props.member.id, updateData)
-    closeEditModal()
+    // 只有當密碼已加載且與原始密碼不同時才包含密碼更新
+    if (isPasswordLoaded.value && editForm.password !== actualPassword.value && editForm.password !== '••••••••') {
+      updateData.password = editForm.password
+    }
+    
+    const response = await teamApi.updateMember(props.member.id, updateData)
+    
+    if (response.success) {
+      emit('editMember', props.member.id, updateData)
+      closeEditModal()
+    } else {
+      console.error('更新成員失敗:', response.message)
+      // 可以在這裡添加用戶友好的錯誤提示
+    }
   } catch (error) {
     console.error('更新成員失敗:', error)
+    // 可以在這裡添加用戶友好的錯誤提示
   } finally {
     editLoading.value = false
   }
@@ -347,26 +374,53 @@ const getStatusText = (status: string) => {
   return statusMap[status as keyof typeof statusMap] || status
 }
 
+const getRoleText = (role: string) => {
+  const roleMap = {
+    admin: '管理員',
+    team: '團隊負責人',
+    agent: '客服'
+  }
+  return roleMap[role as keyof typeof roleMap] || role
+}
+
 const formatDate = (date: string | Date) => {
   return new Date(date).toLocaleString('zh-TW')
 }
 
 // Password visibility toggle
-const togglePasswordVisibility = () => {
+const togglePasswordVisibility = async () => {
   if (!showPassword.value) {
-    // 當要顯示密碼時，加載真實密碼
-    if (!isPasswordLoaded.value) {
+    // 當要顯示密碼時，從API加載真實密碼
+    if (!isPasswordLoaded.value && !passwordLoading.value) {
+      passwordLoading.value = true
+      
+      try {
+        const response = await teamApi.getMemberPassword(props.member.id)
+        
+        if (response.success && response.data) {
+          actualPassword.value = response.data.password
+          editForm.password = actualPassword.value
+          isPasswordLoaded.value = true
+          showPassword.value = true
+        } else {
+          console.error('Failed to load password:', response.message)
+          editForm.password = '••••••••'
+        }
+      } catch (error) {
+        console.error('Error loading password:', error)
+        editForm.password = '••••••••'
+      } finally {
+        passwordLoading.value = false
+      }
+    } else if (isPasswordLoaded.value) {
+      // 如果已經加載過，直接顯示
       editForm.password = actualPassword.value
-      isPasswordLoaded.value = true
+      showPassword.value = true
     }
-    showPassword.value = true
   } else {
     // 隱藏時回到偽密碼
     showPassword.value = false
-    if (isPasswordLoaded.value) {
-      editForm.password = '••••••••'
-      isPasswordLoaded.value = false
-    }
+    editForm.password = '••••••••'
   }
 }
 </script>
@@ -473,6 +527,11 @@ const togglePasswordVisibility = () => {
 .role.admin {
   background: #fef3c7;
   color: #92400e;
+}
+
+.role.team {
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 
 .role.agent {

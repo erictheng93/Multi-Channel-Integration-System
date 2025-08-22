@@ -205,6 +205,9 @@
                 <option value="agent">
                   客服
                 </option>
+                <option value="team">
+                  團隊負責人
+                </option>
                 <option value="admin">
                   管理員
                 </option>
@@ -502,6 +505,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables'
 import { useTeamStore } from '@/stores/team'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 import type { TeamMember } from '@/types'
@@ -534,6 +538,7 @@ const ShieldIcon = {
 
 // 組合式函數
 const { currentAgent } = useAuth()
+const { showSuccess, showError } = useToast()
 // const { 
 //   inviteMember, 
 //   updateMemberStatus, 
@@ -587,7 +592,7 @@ const addMemberForm = reactive({
   name: '',
   email: '',
   password: '',
-  role: 'agent' as 'admin' | 'agent',
+  role: 'agent' as 'admin' | 'team' | 'agent',
   group: '',
   isActive: true
 })
@@ -634,7 +639,7 @@ const submitAddMember = async () => {
     await teamStore.addMember(memberData)
 
     // 成功提示
-    alert('成功新增團隊成員！')
+    showSuccess('新增成員成功', '已成功新增團隊成員')
 
     // 重置表單
     Object.assign(addMemberForm, {
@@ -642,7 +647,7 @@ const submitAddMember = async () => {
       name: '',
       email: '',
       password: '',
-      role: 'agent' as 'admin' | 'agent',
+      role: 'agent' as 'admin' | 'team' | 'agent',
       group: '',
       isActive: true
     })
@@ -652,7 +657,7 @@ const submitAddMember = async () => {
     console.error('新增成員失敗:', error)
     // 顯示錯誤訊息給用戶
     const errorMessage = error instanceof Error ? error.message : '新增成員失敗，請稍後重試'
-    alert(`新增成員失敗：${errorMessage}`)
+    showError('新增成員失敗', errorMessage)
   } finally {
     addMemberLoading.value = false
   }
@@ -668,7 +673,7 @@ const closeAddMemberModal = () => {
     name: '',
     email: '',
     password: '',
-    role: 'agent' as 'admin' | 'agent',
+    role: 'agent' as 'admin' | 'team' | 'agent',
     group: '',
     isActive: true
   })
@@ -682,7 +687,7 @@ const toggleAddPasswordVisibility = () => {
 // 更新成員角色
 const updateMemberRole = async (memberId: string, role: string) => {
   try {
-    await teamStore.updateMemberRole(memberId, role as 'admin' | 'agent')
+    await teamStore.updateMemberRole(memberId, role as 'admin' | 'team' | 'agent')
   } catch (error) {
     console.error('更新角色失敗:', error)
   }
@@ -721,11 +726,19 @@ const submitPasswordReset = async () => {
       policy: passwordResetForm.policy
     })
     
-    alert(`成功為 ${passwordResetMember.value.name || passwordResetMember.value.loginId} 設定新密碼`)
+    // 顯示成功訊息
+    showSuccess(
+      '密碼設定成功',
+      `成功為 ${passwordResetMember.value.name || passwordResetMember.value.loginId} 設定新密碼`,
+      {
+        duration: 5000, // 5秒顯示時間
+        actionText: '確定'
+      }
+    )
     closePasswordResetModal()
   } catch (error) {
     console.error('設定密碼失敗:', error)
-    alert('設定密碼失敗，請稍後重試')
+    showError('設定密碼失敗', '請檢查網路連線或稍後重試')
   } finally {
     passwordResetLoading.value = false
   }
@@ -1114,6 +1127,7 @@ onMounted(() => {
 
 .password-reset-modal {
   max-width: 520px;
+  max-height: 90vh; /* 限制最大高度 */
   padding: 0;
   text-align: left;
   border: none;
@@ -1122,6 +1136,8 @@ onMounted(() => {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
   position: relative;
+  display: flex; /* 使用 Flexbox 佈局 */
+  flex-direction: column; /* 垂直排列 */
 }
 
 .modal-close {
@@ -1163,6 +1179,7 @@ onMounted(() => {
 .modal-icon {
   padding: var(--space-8) var(--space-8) var(--space-4);
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  flex-shrink: 0; /* 確保圖標區域不會被壓縮 */
 }
 
 .icon-container {
@@ -1190,6 +1207,9 @@ onMounted(() => {
 
 .modal-content {
   padding: var(--space-4) var(--space-8) var(--space-6);
+  flex: 1; /* 讓內容區塊填滿可用空間 */
+  overflow-y: auto; /* 內容可滾動 */
+  min-height: 0; /* 允許 flex item 縮小 */
 }
 
 .modal-title {
@@ -1229,6 +1249,9 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-6) var(--space-8) var(--space-8);
   justify-content: center;
+  flex-shrink: 0; /* 確保按鈕區域不會被壓縮 */
+  border-top: 1px solid var(--gray-100); /* 添加分隔線 */
+  background: white; /* 確保背景不透明 */
 }
 
 .btn-modern {
@@ -1495,6 +1518,9 @@ onMounted(() => {
   .password-reset-modal {
     max-width: 350px;
     margin: var(--space-4);
+    max-height: 85vh; /* 確保不會太高 */
+    display: flex;
+    flex-direction: column;
   }
 
   .simple-confirm-modal {
@@ -1505,6 +1531,7 @@ onMounted(() => {
 
   .modal-icon {
     padding: var(--space-6) var(--space-6) var(--space-3);
+    flex-shrink: 0; /* 確保圖標區域不會被壓縮 */
   }
 
   .icon-container {
@@ -1514,6 +1541,9 @@ onMounted(() => {
 
   .modal-content {
     padding: var(--space-3) var(--space-6) var(--space-4);
+    flex: 1; /* 讓內容區塊填滿可用空間 */
+    overflow-y: auto; /* 內容可滾動 */
+    min-height: 0; /* 允許 flex item 縮小 */
   }
 
   .modal-title {
@@ -1523,6 +1553,9 @@ onMounted(() => {
   .modal-actions {
     flex-direction: column;
     padding: var(--space-4) var(--space-6) var(--space-6);
+    flex-shrink: 0; /* 確保按鈕區域不會被壓縮 */
+    border-top: 1px solid var(--gray-100); /* 添加分隔線 */
+    background: white; /* 確保背景不透明 */
   }
 
   .btn-modern {

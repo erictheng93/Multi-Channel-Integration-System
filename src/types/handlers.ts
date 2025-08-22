@@ -11,7 +11,7 @@ export type HandlerContext = Context<{ Bindings: Bindings }>;
 export interface AuthPayload {
   userId: number;
   username: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   teamId?: number;
   iat: number;
   exp: number;

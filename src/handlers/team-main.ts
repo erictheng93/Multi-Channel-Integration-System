@@ -27,7 +27,7 @@ teamHandler.get('/', jwtAuth, async (c) => {
     const user = c.get('user');
     const includeInactive = c.req.query('includeInactive') === 'true';
     
-    // 非 admin/manager 用戶只能看到自己的團隊
+    // 非 admin/team 用戶只能看到自己的團隊
     if (user.role === 'agent' && user.teamId) {
       const team = await getTeamById(c.env.DB, user.teamId);
       return c.json({
@@ -115,11 +115,11 @@ teamHandler.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
     const teamId = parseInt(c.req.param('id'));
     const updates = await c.req.json();
     
-    // 檢查權限：managers 只能更新自己的團隊
-    if (user.role === 'manager' && user.teamId !== teamId) {
+    // 檢查權限：team 角色只能更新自己的團隊
+    if (user.role === 'team' && user.teamId !== teamId) {
       return c.json({
         success: false,
-        error: 'Managers can only update their own team',
+        error: 'Team leaders can only update their own team',
         timestamp: new Date().toISOString()
       }, 403);
     }

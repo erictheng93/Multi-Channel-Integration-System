@@ -5,7 +5,7 @@
 
 // 基礎枚舉型別
 export type Platform = 'line' | 'facebook'
-export type UserRole = 'admin' | 'manager' | 'agent'
+export type UserRole = 'admin' | 'team' | 'agent'
 export type ConversationStatus = 'open' | 'assigned' | 'closed'
 export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker'
 export type SenderType = 'user' | 'agent' | 'system' | 'customer' // 保留 customer 以支援現有代碼

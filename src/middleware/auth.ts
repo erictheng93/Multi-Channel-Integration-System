@@ -101,7 +101,7 @@ export async function sessionAuth(c: Context<{ Bindings: Bindings }>, next: Next
 /**
  * 角色權限中間件
  */
-export function requireRole(requiredRole: 'admin' | 'manager' | 'agent') {
+export function requireRole(requiredRole: 'admin' | 'team' | 'agent') {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     const user = c.get('user');
     
@@ -131,7 +131,7 @@ export function requireRole(requiredRole: 'admin' | 'manager' | 'agent') {
 /**
  * 角色層級權限中間件 - 檢查用戶是否有足夠的角色層級
  */
-export function requireRoleLevel(requiredRole: 'admin' | 'manager' | 'agent') {
+export function requireRoleLevel(requiredRole: 'admin' | 'team' | 'agent') {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     const user = c.get('user');
     
@@ -156,10 +156,10 @@ export function requireRoleLevel(requiredRole: 'admin' | 'manager' | 'agent') {
 }
 
 /**
- * 管理員或經理權限中間件
+ * 管理員或團隊負責人權限中間件
  */
 export function requireManagerOrAdmin() {
-  return requireRoleLevel('manager');
+  return requireRoleLevel('team');
 }
 
 /**

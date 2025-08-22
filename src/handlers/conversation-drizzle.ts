@@ -23,15 +23,8 @@ conversations.get('/', async (c) => {
     const pageNum = Math.max(parseInt(page), 1);
     // const offset = (pageNum - 1) * limitNum; // 暫時未使用
 
-    // 根據角色獲取對話
-    let conversationList;
-    if (agent!.role === 'admin') {
-      // 管理員可以看到所有對話
-      conversationList = await dbService.getConversationsByAgentId('', status, limitNum);
-    } else {
-      // 一般客服只能看到自己的對話
-      conversationList = await dbService.getConversationsByAgentId(agent!.id, status, limitNum);
-    }
+    // 根據角色獲取對話 - 使用新的三層權限體系
+    const conversationList = await dbService.getConversationsByRole(agent!, status, limitNum);
 
     return c.json({
       success: true,
@@ -58,9 +51,19 @@ conversations.get('/', async (c) => {
 conversations.get('/:id', async (c) => {
   try {
     const conversationId = c.req.param('id');
+    const agent = c.get('agent');
     const db = c.get('db');
     const kv = c.get('kv');
     const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
 
     // 獲取對話資訊
     const conversation = await dbService.getConversationById(conversationId);
@@ -109,6 +112,15 @@ conversations.post('/:id/messages', async (c) => {
     const db = c.get('db');
     const kv = c.get('kv');
     const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
 
     // 檢查對話是否存在
     const conversation = await dbService.getConversationById(conversationId);
@@ -168,6 +180,15 @@ conversations.patch('/:id/status', async (c) => {
     const kv = c.get('kv');
     const dbService = new DatabaseService(db, kv);
 
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
+
     // 檢查對話是否存在
     const conversation = await dbService.getConversationById(conversationId);
     if (!conversation) {
@@ -209,6 +230,15 @@ conversations.post('/:id/mark-read', async (c) => {
     const db = c.get('db');
     const kv = c.get('kv');
     const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
 
     await dbService.markMessagesAsRead(conversationId, agent!.id);
 

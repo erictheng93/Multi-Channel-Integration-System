@@ -191,7 +191,7 @@ export interface DbUser {
   username: string;
   email: string;
   displayName: string;
-  role: 'admin' | 'manager' | 'agent';
+  role: 'admin' | 'team' | 'agent';
   teamId?: number | null;
   teamName?: string | null;
   isActive: boolean;

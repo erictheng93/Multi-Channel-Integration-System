@@ -176,12 +176,16 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import { teamApi } from '@/api/team'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 // 路由和認證
 const route = useRoute()
 const router = useRouter()
 // const { } = useAuth() // Not using any auth methods here
 const authStore = useAuthStore()
+const { showSuccess } = useToast()
+const { confirmWarning } = useConfirm()
 
 // 響應式數據
 const loading = ref(true)
@@ -301,14 +305,19 @@ const acceptInvitation = async () => {
 
 // 拒絕邀請
 const declineInvitation = async () => {
-  if (!confirm('確定要拒絕此邀請嗎？')) {return}
+  const confirmed = await confirmWarning(
+    '拒絕邀請',
+    '確定要拒絕此邀請嗎？此操作無法復原。',
+    '拒絕邀請'
+  )
+  if (!confirmed) {return}
   
   submitting.value = true
   
   try {
     const response = await teamApi.declineInvitation(token.value)
     if (response.success) {
-      alert('已拒絕邀請')
+      showSuccess('邀請已拒絕', '您已成功拒絕此邀請', { duration: 3000 })
       router.push('/login')
     }
   } catch (err) {
