@@ -93,7 +93,7 @@ export class SystemSettingsTestSuite {
   private async testSettingsReadWrite() {
     console.group('📖 設定讀寫測試')
 
-    let originalSettings: unknown = null
+    let originalSettings: any = null
 
     // 測試讀取設定
     try {
@@ -150,7 +150,7 @@ export class SystemSettingsTestSuite {
         }
 
         // 恢復原始設定
-        await systemApi.updateSettings(originalSettings)
+        await systemApi.updateSettings(originalSettings as any)
         this.addResult('恢復設定', true, '原始設定已恢復')
 
       } else {

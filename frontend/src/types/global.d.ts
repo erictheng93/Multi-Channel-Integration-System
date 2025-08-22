@@ -27,4 +27,11 @@ declare global {
   namespace NodeJS {
     interface Timeout {}
   }
+  
+  // Window with debug properties
+  interface WindowWithDebug extends Window {
+    _loginFailureTimestamp?: number
+    _blockNavigation?: boolean
+    _loginInProgress?: boolean
+  }
 }

@@ -162,7 +162,7 @@ interface Props {
     id: string
     email: string
     name: string
-    role: 'admin' | 'agent'
+    role: 'admin' | 'manager' | 'agent'
   }
 }
 

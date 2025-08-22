@@ -90,11 +90,11 @@ export interface MockProps {
 
 // 測試用的 Event Emits 類型
 export interface TestEmits {
-  'message-sent'?: (result: unknown) => void
-  'upload-complete'?: (result: FileUploadResult) => void
-  'upload-error'?: (error: string) => void
-  'create-delayed'?: () => void
-  'view-pending'?: (messageId: string) => void
+  'message-sent'?: (...args: unknown[]) => void
+  'upload-complete'?: (...args: unknown[]) => void
+  'upload-error'?: (...args: unknown[]) => void
+  'create-delayed'?: (...args: unknown[]) => void
+  'view-pending'?: (...args: unknown[]) => void
   [key: string]: ((...args: unknown[]) => void) | undefined
 }
 

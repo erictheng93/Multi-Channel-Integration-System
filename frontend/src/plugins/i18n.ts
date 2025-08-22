@@ -46,7 +46,7 @@ export const i18n = createI18n({
 // 切換語言的函數
 export const setLocale = (locale: string) => {
   if (messages[locale as keyof typeof messages]) {
-    i18n.global.locale.value = locale as 'zh-TW' | 'en-US'
+    i18n.global.locale.value = locale as 'zh-TW' | 'en' | 'zh-CN'
     
     // 儲存到 localStorage
     if (typeof window !== 'undefined') {
