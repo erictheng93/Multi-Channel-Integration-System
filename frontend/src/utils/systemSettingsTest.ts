@@ -93,7 +93,7 @@ export class SystemSettingsTestSuite {
   private async testSettingsReadWrite() {
     console.group('📖 設定讀寫測試')
 
-    let originalSettings: any = null
+    let originalSettings: Record<string, unknown> | null = null
 
     // 測試讀取設定
     try {
@@ -102,7 +102,7 @@ export class SystemSettingsTestSuite {
       const duration = Date.now() - startTime
       
       if (response.success && response.data) {
-        originalSettings = response.data
+        originalSettings = response.data as Record<string, unknown>
         this.addResult('讀取設定', true, '設定讀取成功', {
           hasGeneral: !!response.data.general,
           hasIntegrations: !!response.data.integrations,
@@ -123,7 +123,7 @@ export class SystemSettingsTestSuite {
     try {
       const testSettings = {
         general: {
-          ...originalSettings.general,
+          ...(originalSettings?.general as Record<string, unknown> || {}),
           systemName: `Test System ${Date.now()}`
         }
       }
@@ -150,7 +150,9 @@ export class SystemSettingsTestSuite {
         }
 
         // 恢復原始設定
-        await systemApi.updateSettings(originalSettings as any)
+        if (originalSettings) {
+          await systemApi.updateSettings(originalSettings)
+        }
         this.addResult('恢復設定', true, '原始設定已恢復')
 
       } else {

@@ -85,10 +85,14 @@ export interface ToastProps {
 }
 
 const props = withDefaults(defineProps<ToastProps>(), {
+  description: undefined,
   type: 'success',
   duration: 4000, // 4秒
   showProgress: true,
-  showCloseButton: false
+  showCloseButton: false,
+  actionText: undefined,
+  onAction: undefined,
+  onClose: undefined
 })
 
 const emit = defineEmits<{
@@ -197,8 +201,8 @@ const startTimer = () => {
       currentStep++
       progressPercentage.value = Math.max(0, 100 - (currentStep / totalSteps) * 100)
       
-      if (currentStep >= totalSteps) {
-        clearInterval(progressTimer!)
+      if (currentStep >= totalSteps && progressTimer !== null) {
+        clearInterval(progressTimer)
         progressTimer = null
       }
     }, interval)

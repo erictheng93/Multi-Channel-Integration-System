@@ -69,11 +69,14 @@
 import { ref, computed } from 'vue'
 
 const props = withDefaults(defineProps<ConfirmDialogProps>(), {
+  message: undefined,
   type: 'default',
   confirmText: '確定',
   cancelText: '取消',
   loading: false,
-  closeOnOverlay: true
+  closeOnOverlay: true,
+  onConfirm: undefined,
+  onCancel: undefined
 })
 
 const emit = defineEmits<{
