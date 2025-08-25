@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, type App } from 'vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 export interface ConfirmOptions {
@@ -11,7 +11,7 @@ export interface ConfirmOptions {
   onCancel?: () => void
 }
 
-let activeApp: any = null
+let activeApp: App<Element> | null = null
 let activeContainer: HTMLElement | null = null
 
 export function useConfirm() {

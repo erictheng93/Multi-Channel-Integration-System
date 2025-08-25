@@ -1,10 +1,10 @@
-import { ref, createApp } from 'vue'
+import { ref, createApp, type App } from 'vue'
 import Toast from '@/components/ui/Toast.vue'
 import type { ToastProps } from '@/components/ui/Toast.vue'
 
 interface ToastInstance {
   id: string
-  app: any
+  app: unknown
   element: HTMLElement
 }
 
@@ -46,7 +46,7 @@ class ToastManager {
       // 延遲移除DOM，讓退場動畫完成
       setTimeout(() => {
         if (toast?.app) {
-          toast.app.unmount()
+          (toast.app as App<Element>).unmount()
         }
         if (toast?.element?.parentNode) {
           toast.element.parentNode.removeChild(toast.element)

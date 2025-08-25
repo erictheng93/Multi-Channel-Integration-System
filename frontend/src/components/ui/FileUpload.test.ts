@@ -179,7 +179,7 @@ describe('FileUpload', () => {
       const dropZone = wrapper.find('.drop-zone')
       
       // Directly test the component's drag state management
-      const component = wrapper.vm as any
+      const component = wrapper.vm as unknown as { isDragActive: boolean }
       
       // Simulate dragenter by setting isDragActive directly
       component.isDragActive = true

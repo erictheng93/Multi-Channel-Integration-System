@@ -251,10 +251,10 @@ class ApiMonitorService {
     )
 
     return results
-      .filter((result): result is PromiseFulfilledResult<ApiEndpointStatus | null> => 
+      .filter((result): result is PromiseFulfilledResult<ApiEndpointStatus> => 
         result.status === 'fulfilled' && result.value !== null
       )
-      .map(result => result.value!)
+      .map(result => result.value)
   }
 
   /**
