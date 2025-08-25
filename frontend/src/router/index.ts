@@ -86,6 +86,16 @@ const router = createRouter({
       }
     },
     {
+      path: '/api-monitor',
+      name: 'ApiMonitor',
+      component: () => import('@/views/ApiMonitor.vue'),
+      meta: { 
+        requiresAuth: true,
+        requiresAdmin: true,
+        title: 'API監控'
+      }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@/views/NotFound.vue'),
