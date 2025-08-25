@@ -34,7 +34,8 @@ import {
   restoreDatabase,
   clearCache,
   restartSystem,
-  healthCheck
+  healthCheck,
+  getApiStatus
 } from './handlers/system';
 import { 
   getTeamMembers, 
@@ -101,6 +102,7 @@ app.post('/api/system/database/restore/:backupId', jwtAuth, restoreDatabase);
 app.post('/api/system/cache/clear', jwtAuth, clearCache);
 app.post('/api/system/restart', jwtAuth, restartSystem);
 app.get('/api/system/health', healthCheck);
+app.get('/api/system/api-status', getApiStatus);
 
 // 憑證管理路由
 app.post('/api/credentials', jwtAuth, storeCredential);

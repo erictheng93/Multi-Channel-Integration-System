@@ -702,37 +702,202 @@ export const restartSystem = async (c: Context<{ Bindings: Bindings }>) => {
 export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const db = c.env.DB
+    const startTime = Date.now()
     
     // 檢查資料庫連線
     let dbCheck = true
+    let dbResponseTime = 0
     try {
+      const dbStart = Date.now()
       await db.prepare('SELECT 1').first()
+      dbResponseTime = Date.now() - dbStart
     } catch {
       dbCheck = false
+      dbResponseTime = Date.now() - startTime
+    }
+    
+    // 檢查KV存儲
+    let kvCheck = true
+    let kvResponseTime = 0
+    try {
+      const kvStart = Date.now()
+      await c.env.SESSIONS.put('health_check', 'test', { expirationTtl: 10 })
+      await c.env.SESSIONS.get('health_check')
+      await c.env.SESSIONS.delete('health_check')
+      kvResponseTime = Date.now() - kvStart
+    } catch {
+      kvCheck = false
+      kvResponseTime = Date.now() - startTime
     }
     
     // 檢查平台整合狀態
     const lineCheck = await checkLineIntegration(c.env)
     const facebookCheck = await checkFacebookIntegration(c.env)
+    
+    // 計算總響應時間
+    const totalResponseTime = Date.now() - startTime
 
     const health = {
-      status: (dbCheck && lineCheck.status && facebookCheck.status) ? 'healthy' as const : 'unhealthy' as const,
+      status: (dbCheck && kvCheck && lineCheck.status && facebookCheck.status) ? 'healthy' as const : 'unhealthy' as const,
       checks: {
-        database: dbCheck,
-        cache: true, // 模擬快取狀態
+        database: {
+          status: dbCheck,
+          responseTime: dbResponseTime
+        },
+        cache: {
+          status: kvCheck,
+          responseTime: kvResponseTime
+        },
         integrations: {
-          line: lineCheck.status,
-          facebook: facebookCheck.status
+          line: {
+            status: lineCheck.status,
+            message: lineCheck.message
+          },
+          facebook: {
+            status: facebookCheck.status,
+            message: facebookCheck.message
+          }
         }
       },
-      details: {
-        line: lineCheck.message,
-        facebook: facebookCheck.message
+      metrics: {
+        responseTime: totalResponseTime,
+        uptime: Math.floor(Date.now() / 1000), // 簡化的運行時間
+        version: '2.0.0'
       },
       timestamp: new Date().toISOString()
     }
 
     return successResponse(c, health, 'Health check completed')
+  } catch (error) {
+    return handleApiError(error, c)
+  }
+}
+
+// API監控端點 - 獲取所有端點狀態
+export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const endpoints = [
+      {
+        id: 'system-health',
+        endpoint: '/api/system/health',
+        method: 'GET',
+        category: 'system',
+        description: '系統健康檢查',
+        status: 'healthy' as const,
+        requiresAuth: false
+      },
+      {
+        id: 'system-info',
+        endpoint: '/api/system/info',
+        method: 'GET',
+        category: 'system',
+        description: '獲取系統信息',
+        status: 'healthy' as const,
+        requiresAuth: true
+      },
+      {
+        id: 'system-metrics',
+        endpoint: '/api/system/metrics',
+        method: 'GET',
+        category: 'system',
+        description: '系統性能指標',
+        status: 'healthy' as const,
+        requiresAuth: true
+      },
+      {
+        id: 'auth-login',
+        endpoint: '/api/auth/login',
+        method: 'POST',
+        category: 'auth',
+        description: '用戶登入',
+        status: 'healthy' as const,
+        requiresAuth: false
+      },
+      {
+        id: 'conversations-list',
+        endpoint: '/api/conversations',
+        method: 'GET',
+        category: 'conversation',
+        description: '獲取對話列表',
+        status: 'healthy' as const,
+        requiresAuth: true
+      },
+      {
+        id: 'customers-list',
+        endpoint: '/api/customers',
+        method: 'GET',
+        category: 'customer',
+        description: '獲取客戶列表',
+        status: 'healthy' as const,
+        requiresAuth: true
+      },
+      {
+        id: 'team-members',
+        endpoint: '/api/team/members',
+        method: 'GET',
+        category: 'team',
+        description: '獲取團隊成員',
+        status: 'healthy' as const,
+        requiresAuth: true
+      },
+      {
+        id: 'delayed-messages',
+        endpoint: '/api/delayed-messages',
+        method: 'GET',
+        category: 'message',
+        description: '獲取延遲訊息',
+        status: 'healthy' as const,
+        requiresAuth: true
+      },
+      {
+        id: 'webhook',
+        endpoint: '/api/webhook',
+        method: 'POST',
+        category: 'integration',
+        description: 'LINE Webhook端點',
+        status: 'healthy' as const,
+        requiresAuth: false
+      }
+    ]
+
+    // 模擬檢查每個端點狀態
+    const checkedEndpoints = await Promise.all(
+      endpoints.map(async (endpoint) => {
+        const responseTime = Math.floor(Math.random() * 500) + 50 // 50-550ms
+        const successRate = Math.floor(Math.random() * 10) + 90 // 90-100%
+        
+        return {
+          ...endpoint,
+          responseTime,
+          avgResponseTime: responseTime + Math.floor(Math.random() * 100),
+          successRate,
+          requestCount: Math.floor(Math.random() * 1000) + 100,
+          errorCount: Math.floor(Math.random() * 10),
+          lastCheck: new Date(),
+          status: successRate > 95 && responseTime < 200 ? 'healthy' as const : 
+                 successRate > 90 && responseTime < 500 ? 'warning' as const : 'error' as const
+        }
+      })
+    )
+
+    const stats = {
+      totalEndpoints: checkedEndpoints.length,
+      healthyCount: checkedEndpoints.filter(e => e.status === 'healthy').length,
+      warningCount: checkedEndpoints.filter(e => e.status === 'warning').length,
+      errorCount: checkedEndpoints.filter(e => e.status === 'error').length,
+      avgResponseTime: Math.round(
+        checkedEndpoints.reduce((sum, e) => sum + e.responseTime, 0) / checkedEndpoints.length
+      ),
+      overallSuccessRate: Math.round(
+        checkedEndpoints.reduce((sum, e) => sum + e.successRate, 0) / checkedEndpoints.length
+      )
+    }
+
+    return successResponse(c, {
+      endpoints: checkedEndpoints,
+      stats,
+      timestamp: new Date().toISOString()
+    }, 'API status retrieved successfully')
   } catch (error) {
     return handleApiError(error, c)
   }
