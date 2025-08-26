@@ -2,116 +2,101 @@
 # 專案名稱: multi-channel-platform
 # Created by: Assistant
 
+# 生產環境 Worker 配置
 name = "multi-channel-platform"
-main = "src/index.ts"  # 主要入口點
-compatibility_date = "2025-07-31"  # 使用 jsonc 中較新的日期
-compatibility_flags = ["nodejs_compat"]  # 從 jsonc 整合
+main = "src/index.ts"
+compatibility_date = "2025-07-31"
+compatibility_flags = ["nodejs_compat"]
 
-# 開發環境變數
+# 生產環境變數
 [vars]
-R2_PUBLIC_URL = "https://s3-dev.imfinethankyouandyou.com"
-# 憑證加密密鑰 - 在生產環境中請使用強密碼並通過環境變數設置
-ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
+ENVIRONMENT = "production"
+R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+ENCRYPTION_KEY = "production-encryption-key-change-me"
 
-# 開發環境路由配置
+# 生產環境路由
 [[routes]]
-pattern = "multi-channel-dev.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
-
-# 觀察性設置 - 啟用日誌
-[observability.logs]
-enabled = true
-
-# D1 資料庫綁定 (開發環境)
-[[d1_databases]]
-binding = "DB"
-database_name = "multi-channel-platform-dev"
-database_id = "3b7339f0-80de-49dc-b079-312df4a4c316"  # 開發環境資料庫 ID
-migrations_dir = "database/migrations"
-
-# KV Namespaces 綁定 (開發環境)
-[[kv_namespaces]]
-binding = "SESSIONS"
-id = "e7687b9663cb492aa398a29b29956128"  # 開發環境 SESSIONS-dev
-
-[[kv_namespaces]]
-binding = "CACHE" 
-id = "b7ca23b7839946cdb78ef7103f29ce82"  # 開發環境 CACHE-dev
-
-# Durable Objects 配置已暫時移除，未來可根據需求重新啟用
-# [[durable_objects.bindings]]
-# name = "CONVERSATION_ROOM"
-# class_name = "ConversationRoom"
-
-# [[migrations]]
-# tag = "v1"
-# new_classes = ["ConversationRoom"]
-
-# 生產環境配置
-[env.production]
-
-# 生產環境專用路由
-[[env.production.routes]]
 pattern = "multi-channel.imfinethankyouandyou.com/*"
 zone_name = "imfinethankyouandyou.com"
 
-[env.production.vars]
-ENVIRONMENT = "production"
-R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
-# 生產環境請設置強加密密鑰
-ENCRYPTION_KEY = "production-encryption-key-change-me"
+# 觀察性設置
+[observability.logs]
+enabled = true
 
-# D1 資料庫綁定 (生產環境) - 使用獨立的生產資料庫
-[[env.production.d1_databases]]
+# 生產環境 D1 資料庫
+[[d1_databases]]
 binding = "DB"
 database_name = "multi-channel-platform"
-database_id = "08ae6790-2494-40a8-a07a-df3920783159"  # 生產環境資料庫 ID
+database_id = "08ae6790-2494-40a8-a07a-df3920783159"
+migrations_dir = "database/migrations"
 
-# KV 綁定 (生產環境) - 使用無後綴的生產 KV
-[[env.production.kv_namespaces]]
+# 生產環境 KV Namespaces
+[[kv_namespaces]]
 binding = "SESSIONS"
-id = "ace3f7202e6a4dd8b98c50e9b91b2431"  # 生產環境 SESSIONS (無後綴)
+id = "ace3f7202e6a4dd8b98c50e9b91b2431"
 
-[[env.production.kv_namespaces]]
+[[kv_namespaces]]
 binding = "CACHE"
-id = "f3bc7a55c8a14f4fb28b8321fa01dc73"  # 生產環境 CACHE (無後綴)
+id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
 
-# R2 存儲綁定 - 檔案上傳功能
+# 生產環境 R2 存儲
 [[r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-dev"
-
-# 生產環境 R2 綁定
-[[env.production.r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "multi-channel-platform-attachments"
 
-# Queues 綁定 - 延遲訊息功能
+# 生產環境 Queue
 [[queues.producers]]
 binding = "MESSAGE_QUEUE"
-queue = "message-queue-dev"
+queue = "message-queue"
 
-# Queue consumer configuration
 [[queues.consumers]]
+queue = "message-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+
+# =====================================
+# 開發環境配置 - 獨立的 Worker
+# =====================================
+[env.dev]
+name = "multi-channel-platform-dev"
+
+# 開發環境專用路由
+[[env.dev.routes]]
+pattern = "multi-channel-dev.imfinethankyouandyou.com/*"
+zone_name = "imfinethankyouandyou.com"
+
+# 開發環境變數
+[env.dev.vars]
+ENVIRONMENT = "development"
+R2_PUBLIC_URL = "https://s3-dev.imfinethankyouandyou.com"
+ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
+
+# 開發環境 D1 資料庫
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "multi-channel-platform-dev"
+database_id = "3b7339f0-80de-49dc-b079-312df4a4c316"
+
+# 開發環境 KV Namespaces
+[[env.dev.kv_namespaces]]
+binding = "SESSIONS"
+id = "e7687b9663cb492aa398a29b29956128"
+
+[[env.dev.kv_namespaces]]
+binding = "CACHE"
+id = "b7ca23b7839946cdb78ef7103f29ce82"
+
+# 開發環境 R2 存儲
+[[env.dev.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "multi-channel-platform-attachments-dev"
+
+# 開發環境 Queue
+[[env.dev.queues.producers]]
+binding = "MESSAGE_QUEUE"
+queue = "message-queue-dev"
+
+[[env.dev.queues.consumers]]
 queue = "message-queue-dev"
 max_batch_size = 10
 max_batch_timeout = 5
-
-# 生產環境 Queues 綁定
-[[env.production.queues.producers]]
-binding = "MESSAGE_QUEUE"
-queue = "message-queue"
-
-# Production queue consumer configuration
-[[env.production.queues.consumers]]
-queue = "message-queue"
-max_batch_size = 10
-max_batch_timeout = 5
-
-# AI 綁定 - 從 jsonc 整合但註解掉，需要時再啟用
-# [ai]
-# binding = "AI"
-
-# 變數配置 - 從 jsonc 整合但註解掉，需要時再啟用
-# [vars]
-# MY_VAR = "my-variable"

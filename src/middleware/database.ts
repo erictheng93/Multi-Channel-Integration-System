@@ -7,10 +7,10 @@ import type { HonoContext } from '../types/bindings';
 // Database and KV initialization middleware
 export const databaseMiddleware = createMiddleware<HonoContext>(async (c, next) => {
   // Initialize database connection
-  const db = createDb(c.env.DB);
+  const db = createDb(c.env.DB || c.env.DB_PROD);
   
   // Initialize KV service
-  const kv = new KVService(c.env.SESSIONS, c.env.CACHE);
+  const kv = new KVService(c.env.SESSIONS, c.env.CACHE || c.env.SESSIONS);
   
   // Initialize database service
   const dbService = new DatabaseService(db, kv);

@@ -63,7 +63,14 @@
       "Bash(npx drizzle-kit:*)",
       "Bash(sed:*)",
       "Bash(wrangler list:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(wrangler kv key list:*)",
+      "Bash(wrangler kv key get:*)",
+      "Bash(sqlite3:*)",
+      "Bash(wrangler kv key put:*)",
+      "Bash(wrangler secret list:*)",
+      "Bash(wrangler whoami:*)",
+      "Bash(wrangler tail:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

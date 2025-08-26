@@ -148,23 +148,6 @@
             <span v-else>{{ t('login.loginButton') }}</span>
           </button>
 
-          <!-- Debug: Show error state -->
-          <div style="background: #f0f0f0; padding: 8px; margin: 8px 0; font-size: 12px; border-radius: 4px;">
-            <strong>DEBUG INFO:</strong><br>
-            error value: {{ error }}<br>
-            error type: {{ typeof error }}<br>
-            error truthiness: {{ !!error }}<br>
-            loading: {{ loading }}
-          </div>
-
-          <!-- Test Button -->
-          <button 
-            type="button" 
-            style="background: orange; color: white; padding: 4px 8px; margin: 4px 0; border: none; border-radius: 4px; font-size: 12px;" 
-            @click="testError"
-          >
-            Test Error Display
-          </button>
 
           <div
             v-if="error"
@@ -676,26 +659,10 @@ const getErrorMessage = (errorMsg: string) => {
   return detailedErrorMsg || '登入過程中發生未知錯誤，請檢查帳號密碼後重試'
 }
 
-// Test function to manually set an error
-const testError = () => {
-  console.log('🧪 Testing error display...')
-  // Try to directly set error in authStore
-  const authStore = useAuthStore()
-  authStore.error = 'Test Error Message'
-  console.log('🧪 Set authStore.error to:', authStore.error)
-  console.log('🧪 useAuth error value:', error.value)
-}
-
-// ULTRA DEBUG: Handle Enter key separately
+// Handle Enter key in form
 const handleLoginFromEnter = (event: KeyboardEvent) => {
-  console.log('⌨️ ULTRA DEBUG: Enter key pressed in form')
-  console.log('  - Event:', event)
-  console.log('  - Target:', event.target)
   event.preventDefault()
   event.stopPropagation()
-  console.log('  - Prevented default for Enter key')
-  
-  // Call handleLogin without event parameter
   handleLogin()
 }
 
