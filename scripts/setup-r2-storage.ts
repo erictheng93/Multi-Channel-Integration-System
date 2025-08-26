@@ -34,18 +34,18 @@ interface R2ConfigType {
 // R2 Bucket 配置
 const R2_CONFIG: R2ConfigType = {
   development: {
-    bucketName: 'multi-channel-platform-attachments-develop',
+    bucketName: 'multi-channel-platform-attachments-dev',
     corsPolicy: {
-      AllowedOrigins: ['http://localhost:5173', 'http://localhost:8787'],
+      AllowedOrigins: ['http://localhost:5173', 'http://localhost:8787', 'https://s3-dev.imfinethankyouandyou.com'],
       AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE'],
       AllowedHeaders: ['*'],
       MaxAgeSeconds: 3600
     }
   },
   production: {
-    bucketName: 'multi-channel-platform-attachments-production',
+    bucketName: 'multi-channel-platform-attachments',
     corsPolicy: {
-      AllowedOrigins: ['https://multi-channel.imfinethankyouandyou.com'], // 實際域名
+      AllowedOrigins: ['https://multi-channel.imfinethankyouandyou.com', 'https://s3.imfinethankyouandyou.com'], // 實際域名
       AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE'],
       AllowedHeaders: ['*'],
       MaxAgeSeconds: 3600

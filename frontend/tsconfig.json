@@ -58,7 +58,8 @@
     "src/**/*.d.ts", 
     "src/**/*.tsx", 
     "src/**/*.vue",
-    "src/types/global.d.ts"
+    "src/types/global.d.ts",
+    "vite-env.d.ts"
   ],
   "exclude": ["node_modules", "dist"],
   "references": [{ "path": "./tsconfig.node.json" }]

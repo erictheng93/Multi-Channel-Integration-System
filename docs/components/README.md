@@ -55,4 +55,5 @@
 - [前端開發指南](../guides/FRONTEND_README.md)
 - [API 文檔](../api/)
 - [測試指南](../testing/)
-- [部署指南](../guides/DEPLOYMENT_GUIDE.md)
+- [新用戶部署指南](../NEW_USER_DEPLOYMENT_GUIDE.md) - 完整自動化部署
+- [開發者部署指南](../guides/DEPLOYMENT_GUIDE.md) - 手動部署參考

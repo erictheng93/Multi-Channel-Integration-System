@@ -179,11 +179,11 @@ export class PermissionService {
     );
   }
 
-  private static async getUserWithTeam(userId: number, db?: D1Database) {
+  private static async getUserWithTeam(userId: string | number, db?: D1Database) {
     if (!db) {
       // 暫時返回模擬資料，實際使用時需要傳入 db
       return {
-        id: userId,
+        id: typeof userId === 'string' ? parseInt(userId) : userId,
         role: 'agent',
         team_id: 1,
         teamId: 1,
@@ -194,7 +194,7 @@ export class PermissionService {
     try {
       const user = await db
         .prepare('SELECT id, role, team_id, is_active FROM agents WHERE id = ?')
-        .bind(userId.toString())
+        .bind(typeof userId === 'string' ? userId : userId.toString())
         .first<{ id: string; role: string; team_id: number | null; is_active: boolean }>();
 
       if (!user || !user.is_active) {
@@ -215,28 +215,56 @@ export class PermissionService {
   }
 
   // 獲取用戶可見的對話列表
-  static async getVisibleConversations(userId: number): Promise<number[]> {
-    const user = await this.getUserWithTeam(userId);
-    if (!user) return [];
-
-    // Admin 可以看到所有對話
-    if (user.role === 'admin') {
-      // 返回所有對話 ID
-      return []; // 實際實作中從資料庫查詢
+  static async getVisibleConversations(userId: string | number, db?: D1Database): Promise<string[]> {
+    console.log(`🔍 getVisibleConversations called with userId: ${userId} (type: ${typeof userId})`);
+    const user = await this.getUserWithTeam(userId, db);
+    console.log(`👤 getUserWithTeam returned:`, user);
+    if (!user) {
+      console.log('❌ No user found, returning empty array');
+      return [];
     }
 
-    // Manager 可以看到團隊內的所有對話
-    if (user.role === 'team') {
-      // 返回團隊內的對話 ID
-      return []; // 實際實作中從資料庫查詢
-    }
+    try {
+      const database = db;
+      if (!database) {
+        console.error('Database not available in getVisibleConversations');
+        return [];
+      }
 
-    // Agent 只能看到指派給自己的對話
-    if (user.role === 'agent') {
-      // 返回指派給該用戶的對話 ID
-      return []; // 實際實作中從資料庫查詢
-    }
+      // Admin 可以看到所有對話
+      if (user.role === 'admin') {
+        const result = await database.prepare('SELECT id FROM conversations ORDER BY updated_at DESC').all();
+        return (result.results || []).map((row: any) => row.id);
+      }
 
-    return [];
+      // Manager 可以看到團隊內的所有對話
+      if (user.role === 'team' && user.team_id) {
+        const result = await database.prepare(`
+          SELECT c.id FROM conversations c 
+          LEFT JOIN agents a ON c.agent_id = a.id 
+          WHERE a.team_id = ? OR c.agent_id IS NULL
+          ORDER BY c.updated_at DESC
+        `).bind(user.team_id).all();
+        return (result.results || []).map((row: any) => row.id);
+      }
+
+      // Agent 只能看到指派給自己的對話或未指派的對話
+      if (user.role === 'agent') {
+        const userIdStr = typeof userId === 'string' ? userId : userId.toString();
+        console.log(`🔍 Agent ${userIdStr} (role: ${user.role}) searching for conversations`);
+        const result = await database.prepare(`
+          SELECT id FROM conversations 
+          WHERE agent_id = ? OR agent_id IS NULL
+          ORDER BY updated_at DESC
+        `).bind(userIdStr).all();
+        console.log(`📋 Found ${(result.results || []).length} conversations for agent ${userIdStr}`);
+        return (result.results || []).map((row: any) => row.id);
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Error in getVisibleConversations:', error);
+      return [];
+    }
   }
 }

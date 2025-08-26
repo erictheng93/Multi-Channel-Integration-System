@@ -22,7 +22,8 @@
 
 ## 📖 指南
 - [文檔重組指南](guides/DOCUMENTATION_REORGANIZATION_GUIDE.md) - **新增**: 新文檔結構指南
-- [部署指南](guides/DEPLOYMENT_GUIDE.md) - 完整部署說明
+- [新用戶部署指南](NEW_USER_DEPLOYMENT_GUIDE.md) - 完整自動化部署指南（推薦）
+- [開發者部署指南](guides/DEPLOYMENT_GUIDE.md) - 手動部署參考
 - [部署說明](guides/DEPLOYMENT_README.md) - 部署概述
 - [Cloudflare Pages 設置](guides/CLOUDFLARE_PAGES_SETUP.md) - Pages 部署
 - [Cloudflare Pages 部署](guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) - 前端部署
@@ -116,7 +117,7 @@
 ### 新用戶
 1. 從[快速開始指南](guides/QUICK_START.md)開始
 2. 閱讀[用戶手冊](features/USER_MANUAL.md)了解系統使用
-3. 查看[部署指南](guides/DEPLOYMENT_GUIDE.md)進行設置
+3. 查看[新用戶部署指南](NEW_USER_DEPLOYMENT_GUIDE.md)進行自動化設置
 
 ### 開發者
 1. 查看[MVP 說明](MVP-README.md)了解技術概述
