@@ -172,6 +172,10 @@ const i18n = createI18n({
   silentFallbackWarn: true
 })
 
+// Mock Vite environment variables for testing
+vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:8787')
+vi.stubEnv('VITE_ENVIRONMENT', 'test')
+
 // Vue Test Utils 全局配置
 config.global.plugins = [i18n]
 config.global.mocks = {

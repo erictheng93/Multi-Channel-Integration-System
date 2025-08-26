@@ -18,40 +18,77 @@ export function validateBindings(bindings: Partial<Bindings>): asserts bindings 
 }
 
 export interface Bindings {
-  // D1 Database
-  DB: D1Database;
+  // D1 Databases - Both environments bound
+  DB_PROD: D1Database;
+  DB_DEV: D1Database;
   
-  // KV Namespaces
+  // KV Namespaces - Both environments bound
+  SESSIONS_PROD: KVNamespace;
+  SESSIONS_DEV: KVNamespace;
+  CACHE_PROD: KVNamespace;
+  CACHE_DEV: KVNamespace;
+  
+  // R2 Storage - Both environments bound
+  R2_BUCKET_PROD: R2Bucket;
+  R2_BUCKET_DEV: R2Bucket;
+  
+  // Queues - Both environments bound
+  MESSAGE_QUEUE_PROD: Queue;
+  MESSAGE_QUEUE_DEV: Queue;
+  
+  // These are set by resourceMiddleware based on ENVIRONMENT
+  DB: D1Database;
   SESSIONS: KVNamespace;
   CACHE: KVNamespace;
-  
-  // R2 Storage
   R2_BUCKET: R2Bucket;
-  
-  // Queue
   MESSAGE_QUEUE: Queue;
+  KV: KVNamespace; // Alias for SESSIONS
   
   // Durable Objects (optional)
   CONVERSATION_ROOM?: DurableObjectNamespace;
   
-  // Environment variables
+  // Environment variables - LINE
+  LINE_CHANNEL_ACCESS_TOKEN: string;
+  LINE_CHANNEL_SECRET: string;
+  LINE_BOT_BASIC_ID?: string;
+  
+  // Environment variables - JWT and Auth
+  JWT_SECRET: string;
+  ENCRYPTION_KEY: string;
+  ADMIN_PASSWORD?: string;
+  
+  // Environment variables - Facebook
+  FACEBOOK_PAGE_ACCESS_TOKEN?: string;
+  FACEBOOK_APP_SECRET?: string;
+  FACEBOOK_VERIFY_TOKEN?: string;
+  FB_PAGE_ACCESS_TOKEN?: string; // Alias for backward compatibility
+  FB_APP_SECRET?: string; // Alias for backward compatibility
+  FB_VERIFY_TOKEN?: string; // Alias for backward compatibility
+  
+  // Environment variables - System
   ENVIRONMENT?: string;
-  LINE_CHANNEL_ACCESS_TOKEN?: string;
-  LINE_CHANNEL_SECRET?: string;
-  JWT_SECRET?: string;
+  FRONTEND_URL?: string;
+  CURRENT_ENVIRONMENT?: string;
+  
+  // Environment variables - Cloudflare
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_DATABASE_ID?: string;
   CLOUDFLARE_D1_TOKEN?: string;
   
-  // Additional platform tokens
-  FACEBOOK_PAGE_ACCESS_TOKEN?: string;
-  FACEBOOK_APP_SECRET?: string;
-  FACEBOOK_VERIFY_TOKEN?: string;
-  
   // File upload settings
   MAX_FILE_SIZE?: string;
   ALLOWED_FILE_TYPES?: string;
-  R2_PUBLIC_URL?: string;
+  R2_PUBLIC_URL: string;
+  R2_CUSTOM_DOMAIN?: string;
+  R2_BUCKET_NAME?: string;
+  
+  // Additional optional buckets
+  FILES?: R2Bucket;
+  AVATARS?: R2Bucket;
+  
+  // Additional optional queues
+  NOTIFICATION_QUEUE?: Queue;
+  DELAYED_QUEUE?: Queue;
 }
 
 // Extended context with database and KV services

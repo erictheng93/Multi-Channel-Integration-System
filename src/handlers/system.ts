@@ -60,7 +60,10 @@ const getEncryptionKey = (env: Bindings): string => {
 // 從 KV 獲取憑證的輔助函數
 const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'facebook') => {
   try {
+    console.log(`Getting ${platform} credentials from KV...`)
     const encryptionKey = getEncryptionKey(env)
+    console.log('Encryption key available:', !!encryptionKey)
+    
     const credentialTypes = platform === 'line' 
       ? ['channelId', 'channelSecret', 'accessToken']
       : ['appId', 'appSecret', 'pageId', 'pageToken']
@@ -69,12 +72,24 @@ const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'facebook'
     
     for (const type of credentialTypes) {
       const key = `credentials:${platform}:${type}`
+      console.log(`Retrieving KV key: ${key}`)
+      
       const encryptedValue = await env.CACHE?.get(key)
       if (encryptedValue) {
-        credentials[type] = await decrypt(encryptedValue, encryptionKey)
+        console.log(`Found encrypted value for ${key}, length:`, encryptedValue.length)
+        try {
+          credentials[type] = await decrypt(encryptedValue, encryptionKey)
+          console.log(`Successfully decrypted ${key}`)
+        } catch (decryptError) {
+          console.error(`Failed to decrypt ${key}:`, decryptError)
+          // Continue with other credentials even if one fails
+        }
+      } else {
+        console.log(`No value found for KV key: ${key}`)
       }
     }
     
+    console.log('Final credentials object keys:', Object.keys(credentials))
     return Object.keys(credentials).length > 0 ? credentials : null
   } catch (error) {
     console.error(`Failed to get ${platform} credentials from KV:`, error)
@@ -716,18 +731,23 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
       dbResponseTime = Date.now() - startTime
     }
     
-    // 檢查KV存儲
+    // 檢查KV存儲 - 使用 CACHE 而不是 SESSIONS 進行健康檢查
     let kvCheck = true
     let kvResponseTime = 0
+    const kvStart = Date.now()
     try {
-      const kvStart = Date.now()
-      await c.env.SESSIONS.put('health_check', 'test', { expirationTtl: 10 })
-      await c.env.SESSIONS.get('health_check')
-      await c.env.SESSIONS.delete('health_check')
+      if (c.env.CACHE) {
+        await c.env.CACHE.put('health_check', 'test', { expirationTtl: 10 })
+        await c.env.CACHE.get('health_check')
+        await c.env.CACHE.delete('health_check')
+      } else {
+        throw new Error('CACHE KV binding not available')
+      }
       kvResponseTime = Date.now() - kvStart
-    } catch {
+    } catch (kvError) {
+      console.error('KV health check failed:', kvError)
       kvCheck = false
-      kvResponseTime = Date.now() - startTime
+      kvResponseTime = Date.now() - kvStart
     }
     
     // 檢查平台整合狀態
@@ -906,13 +926,20 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
 // 檢查 LINE 整合狀態
 async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; message: string }> {
   try {
+    console.log('Starting LINE integration check...')
+    
     // 嘗試從 KV 獲取憑證
     const credentials = await getCredentialsFromKV(env, 'line')
+    console.log('LINE credentials from KV:', credentials ? 'Found credentials' : 'No credentials')
+    
     const accessToken = credentials?.accessToken || env.LINE_CHANNEL_ACCESS_TOKEN
 
     if (!accessToken) {
+      console.log('No LINE access token found in KV or environment')
       return { status: false, message: 'LINE Access Token not configured' }
     }
+
+    console.log('LINE access token available, length:', accessToken.length)
 
     // 簡單的 Bot 資訊檢查
     const response = await fetch('https://api.line.me/v2/bot/info', {
@@ -922,14 +949,28 @@ async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; m
       signal: AbortSignal.timeout(5000) // 5 秒超時
     })
 
+    console.log('LINE API response status:', response.status)
+
     if (response.ok) {
       const botInfo = await response.json()
+      console.log('LINE bot info retrieved successfully')
       const botName = isLineBotInfo(botInfo) ? botInfo.displayName : 'Unknown Bot'
       return { status: true, message: `LINE Bot connected: ${botName}` }
     } else {
-      return { status: false, message: `LINE API error: ${response.status}` }
+      const errorText = await response.text().catch(() => 'Unable to read error')
+      console.error('LINE API error response:', errorText)
+      
+      let errorMessage = `LINE API error: ${response.status}`
+      if (response.status === 401) {
+        errorMessage += ' (Invalid or expired access token)'
+      } else if (response.status === 403) {
+        errorMessage += ' (Insufficient permissions)'
+      }
+      
+      return { status: false, message: errorMessage }
     }
   } catch (error) {
+    console.error('LINE integration check error:', error)
     return { 
       status: false, 
       message: `LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}` 

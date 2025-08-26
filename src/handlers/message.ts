@@ -206,7 +206,10 @@ export const messageHandler = {
                 } else if (conversation.platform === 'facebook') {
                     // 發送 Facebook Messenger 訊息
                     const { FacebookAdapter } = await import('../integrations/platform-adapter');
-                    const facebookAdapter = new FacebookAdapter(c.env.FB_APP_SECRET, c.env.FB_PAGE_ACCESS_TOKEN);
+                    const facebookAdapter = new FacebookAdapter(
+                        c.env.FB_APP_SECRET || '', 
+                        c.env.FB_PAGE_ACCESS_TOKEN || ''
+                    );
                     
                     if (mediaType && mediaUrl) {
                         // 發送多媒體訊息
