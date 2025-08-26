@@ -61,7 +61,9 @@
       "Bash(dir:*)",
       "Bash(wrangler auth:*)",
       "Bash(npx drizzle-kit:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(wrangler list:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

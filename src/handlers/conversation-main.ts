@@ -11,7 +11,7 @@ const conversationHandler = new Hono<{ Bindings: Bindings }>();
 conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = c.req.param('id');
     const { teamId, userId, reason } = await c.req.json();
     
     // 檢查權限
@@ -61,7 +61,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
 conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = c.req.param('id');
     const { fromTeamId, toTeamId, fromUserId, toUserId, reason } = await c.req.json();
     
     // 檢查權限
@@ -109,7 +109,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
 conversationHandler.get('/', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const visibleConversationIds = await PermissionService.getVisibleConversations(typeof user.id === 'string' ? parseInt(user.id, 10) : user.id);
+    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
     
     // 如果沒有可見對話，返回空列表
     if (visibleConversationIds.length === 0) {
@@ -125,15 +125,11 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     const query = `
       SELECT 
         c.*,
-        cu.display_name as customer_name,
-        cu.platform,
-        cu.platform_user_id,
-        t.name as team_name,
-        u.display_name as assigned_user_name
+        u.display_name as customer_name,
+        u.platform,
+        u.platform_id
       FROM conversations c
-      LEFT JOIN customers cu ON c.customer_id = cu.id
-      LEFT JOIN teams t ON c.assigned_team_id = t.id
-      LEFT JOIN users u ON c.assigned_user_id = u.id
+      LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id IN (${placeholders})
       ORDER BY c.updated_at DESC
     `;
@@ -162,7 +158,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
 conversationHandler.get('/:id', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = c.req.param('id');
     
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(
@@ -183,15 +179,11 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
     const conversation = await c.env.DB.prepare(`
       SELECT 
         c.*,
-        cu.display_name as customer_name,
-        cu.platform,
-        cu.platform_user_id,
-        t.name as team_name,
-        u.display_name as assigned_user_name
+        u.display_name as customer_name,
+        u.platform,
+        u.platform_id
       FROM conversations c
-      LEFT JOIN customers cu ON c.customer_id = cu.id
-      LEFT JOIN teams t ON c.assigned_team_id = t.id
-      LEFT JOIN users u ON c.assigned_user_id = u.id
+      LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?
     `).bind(conversationId).first();
 

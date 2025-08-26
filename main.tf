@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.1"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.1"
+    }
   }
 }
 
@@ -41,8 +45,11 @@ locals {
   # 環境後綴: production 為空, development 為 -dev
   env_suffix = var.environment == "production" ? "" : "-dev"
   
-  # 基礎專案名稱
-  base_project_name = var.project_name
+  # 基礎專案名稱 - 確保生產環境使用正確的名稱
+  base_project_name = "multi-channel-platform"
+  
+  # Worker 名稱: 生產環境 = multi-channel-platform, 開發環境 = multi-channel-platform-dev
+  worker_name = "${local.base_project_name}${local.env_suffix}"
 }
 
 # D1 資料庫
@@ -84,7 +91,7 @@ resource "cloudflare_queue" "delayed_message_queue" {
 # Workers Script - 主應用
 resource "cloudflare_worker_script" "main" {
   account_id = local.account_id
-  name       = local.project_name
+  name       = local.worker_name
   content    = file("${path.module}/dist/index.js")
   
   # 環境變數
@@ -192,7 +199,7 @@ resource "cloudflare_worker_domain" "main" {
 # Pages 專案 - 前端應用
 resource "cloudflare_pages_project" "frontend" {
   account_id        = local.account_id
-  name              = "${local.project_name}-frontend"
+  name              = "${local.base_project_name}-frontend"
   production_branch = "main"
   
   build_config {
@@ -204,7 +211,7 @@ resource "cloudflare_pages_project" "frontend" {
   deployment_configs {
     production {
       environment_variables = {
-        VITE_API_BASE_URL           = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.project_name}.${var.cloudflare_account_id}.workers.dev"
+        VITE_API_BASE_URL           = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.worker_name}.${local.account_id}.workers.dev"
         VITE_DEV_MODE              = "false"
         VITE_ENABLE_DEBUG_LOGS     = "false"
         VITE_ENABLE_PERFORMANCE_MONITORING = "true"
@@ -213,7 +220,7 @@ resource "cloudflare_pages_project" "frontend" {
     
     preview {
       environment_variables = {
-        VITE_API_BASE_URL           = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.project_name}.${var.cloudflare_account_id}.workers.dev"
+        VITE_API_BASE_URL           = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.worker_name}.${local.account_id}.workers.dev"
         VITE_DEV_MODE              = "true"
         VITE_ENABLE_DEBUG_LOGS     = "true"
         VITE_ENABLE_PERFORMANCE_MONITORING = "false"

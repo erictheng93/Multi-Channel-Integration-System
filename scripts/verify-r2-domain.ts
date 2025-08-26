@@ -15,13 +15,13 @@ interface R2DomainConfig {
 const R2_CONFIGS: R2DomainConfig[] = [
   {
     environment: 'development',
-    bucketName: 'multi-channel-platform-attachments-develop',
-    customDomain: 's3dev.imfinethankyouandyou.com',
-    expectedUrl: 'https://s3dev.imfinethankyouandyou.com'
+    bucketName: 'multi-channel-platform-attachments-dev',
+    customDomain: 's3-dev.imfinethankyouandyou.com',
+    expectedUrl: 'https://s3-dev.imfinethankyouandyou.com'
   },
   {
     environment: 'production',
-    bucketName: 'multi-channel-platform-attachments-production',
+    bucketName: 'multi-channel-platform-attachments',
     customDomain: 's3.imfinethankyouandyou.com',
     expectedUrl: 'https://s3.imfinethankyouandyou.com'
   }

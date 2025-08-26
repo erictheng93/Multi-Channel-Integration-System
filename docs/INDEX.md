@@ -33,7 +33,8 @@
 - [活動記錄部署指南](guides/activity-log-deployment.md) - 活動記錄功能部署 ⭐
 - [API 測試指南](guides/API_TESTING_GUIDE.md) - 完整 API 測試方案 ⭐
 - [域名驗證報告](guides/DOMAIN_VERIFICATION_REPORT.md) - 域名配置驗證 ⭐
-- [部署指南](guides/DEPLOYMENT_GUIDE.md) - 系統部署說明
+- [新用戶部署指南](NEW_USER_DEPLOYMENT_GUIDE.md) - 完整自動化部署指南（推薦） ⭐
+- [開發者部署指南](guides/DEPLOYMENT_GUIDE.md) - 手動部署參考
 - [快速開始](guides/QUICK_START.md) - 快速上手指南
 - [本地開發設定](guides/LOCAL_DEVELOPMENT_SETUP.md) - 開發環境配置
 - [Terraform 快速開始](guides/TERRAFORM_QUICK_START.md) - 基礎設施部署
@@ -117,9 +118,10 @@
 3. [測試指南](testing/TESTING_GUIDE.md) - 測試執行方法
 
 ### 部署和維運
-1. [部署指南](guides/DEPLOYMENT_GUIDE.md) - 生產環境部署
-2. [域名驗證報告](guides/DOMAIN_VERIFICATION_REPORT.md) - 域名配置
-3. [系統健康報告](guides/SYSTEM_HEALTH_REPORT.md) - 系統監控
+1. [新用戶部署指南](NEW_USER_DEPLOYMENT_GUIDE.md) - 自動化部署（推薦）
+2. [開發者部署指南](guides/DEPLOYMENT_GUIDE.md) - 手動部署參考
+3. [域名驗證報告](guides/DOMAIN_VERIFICATION_REPORT.md) - 域名配置
+4. [系統健康報告](guides/SYSTEM_HEALTH_REPORT.md) - 系統監控
 
 ### 功能使用
 1. [用戶手冊](features/USER_MANUAL.md) - 系統使用說明

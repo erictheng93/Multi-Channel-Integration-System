@@ -5,7 +5,7 @@ declare namespace Cloudflare {
 	interface Env {
 		SESSIONS: KVNamespace;
 		CACHE: KVNamespace;
-		R2_PUBLIC_URL: "https://s3dev.imfinethankyouandyou.com" | "https://s3.imfinethankyouandyou.com";
+		R2_PUBLIC_URL: "https://s3-dev.imfinethankyouandyou.com" | "https://s3.imfinethankyouandyou.com";
 		ENVIRONMENT: "production";
 		LINE_CHANNEL_ACCESS_TOKEN: string;
 		LINE_CHANNEL_SECRET: string;

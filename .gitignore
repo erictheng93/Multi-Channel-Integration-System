@@ -15,9 +15,13 @@ dist/
 node_modules/
 .wrangler
 
-# env
+# env - 所有環境變數檔案
 .env
+.env.*
+!.env.example
+!.env.*.example
 .env.production
+.env.terraform
 .dev.vars
 tests/.env
 

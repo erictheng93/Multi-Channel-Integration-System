@@ -16,13 +16,13 @@ variable "zone_id" {
 
 # 專案配置
 variable "project_name" {
-  description = "專案名稱 (將用作資源前綴)"
+  description = "專案名稱 (將用作資源前綴) - 生產環境固定為 multi-channel-platform"
   type        = string
   default     = "multi-channel-platform"
   
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.project_name))
-    error_message = "專案名稱只能包含小寫字母、數字和連字符。"
+    condition     = can(regex("^[a-z0-9-]+$", var.project_name)) && var.project_name == "multi-channel-platform"
+    error_message = "專案名稱必須是 multi-channel-platform，只能包含小寫字母、數字和連字符。"
   }
 }
 

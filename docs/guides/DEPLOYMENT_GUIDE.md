@@ -1,30 +1,45 @@
-# 多渠道客服系統部署指南
+# 多渠道客服系統部署指南 (舊版)
+
+**⚠️ 注意**: 這是舊版部署指南，主要用於手動部署和開發參考。  
+**推薦**: 新用戶請使用 [新用戶完整部署指南](../NEW_USER_DEPLOYMENT_GUIDE.md) 進行自動化部署。
 
 ## 系統架構概覽
 
-這是一個基於 Cloudflare Workers 的多渠道客服管理系統，支援以下功能：
+這是一個基於 Cloudflare Workers 的多渠道客服管理系統 v3.0，支援以下功能：
 
-### 核心功能
-- ✅ **多平台整合**: Line OA, Facebook Messenger
-- ✅ **權限管理**: 基於角色的訪問控制 (RBAC)
-- ✅ **團隊協作**: 內建權限管理和對話指派
-- ✅ **QR Code 生成**: 自動客戶指派
-- ✅ **訊息撤回**: 延遲發送機制 (0-120秒)
-- ✅ **標籤系統**: 客戶和對話標籤管理
-- ✅ **對話轉移**: 團隊間對話轉移
+### 核心功能 v3.0
+- ✅ **多平台整合**: LINE OA, Facebook Messenger 統一管理
+- ✅ **企業級權限**: Admin, Team, Agent 三級權限系統
+- ✅ **團隊協作**: 即時多人協作與對話指派
+- ✅ **QR Code 生成**: 自動客戶指派到指定團隊
+- ✅ **訊息撤回**: 延遲發送機制 (1-120秒可調)
+- ✅ **API 監控**: 實時 API 健康狀態監控
+- ✅ **延遲發送**: 企業級撤回機制
 - ✅ **即時協作**: 基於 Durable Objects 的 WebSocket
+- ✅ **雙軌部署**: 開發者/用戶雙軌部署系統
 
-### 技術棧
-- **後端**: Cloudflare Workers (Hono.js)
-- **ORM**: Drizzle ORM (型別安全的資料庫操作)
-- **資料庫**: Cloudflare D1 (SQLite)
-- **快取**: Cloudflare KV (Session 管理 + 智能快取)
-- **檔案存儲**: Cloudflare R2
-- **佇列**: Cloudflare Queues
+### 技術棧 v3.0
+- **後端**: Cloudflare Workers + Hono.js + Drizzle ORM
+- **前端**: Vue 3 + Composition API + TypeScript
+- **資料庫**: Cloudflare D1 (SQLite) 
+- **快取**: Cloudflare KV (Session + 智能快取)
+- **存儲**: Cloudflare R2 (檔案附件)
+- **佇列**: Cloudflare Queues (訊息處理)
 - **即時通訊**: Durable Objects + WebSocket
-- **前端**: Vue.js 3 + TypeScript
+- **部署**: Terraform (IaC) + PowerShell 自動化
 
-## 部署步驟
+## ⚠️ 重要提醒
+
+**推薦部署方式**:
+- 🚀 **新用戶**: 使用 `.\scripts\user-deploy.ps1` (Terraform 自動化部署)
+- 🔧 **開發者**: 使用 `.\scripts\developer-deploy.ps1` (快速迭代部署)
+- 📖 **詳細指南**: 查看 [新用戶完整部署指南](../NEW_USER_DEPLOYMENT_GUIDE.md)
+
+以下內容為手動部署參考，建議僅在需要深度自訂或故障排除時使用。
+
+---
+
+## 手動部署步驟 (進階用戶)
 
 ### 1. 環境準備
 

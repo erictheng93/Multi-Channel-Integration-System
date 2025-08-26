@@ -9,13 +9,13 @@ compatibility_flags = ["nodejs_compat"]  # 從 jsonc 整合
 
 # 開發環境變數
 [vars]
-R2_PUBLIC_URL = "https://s3dev.imfinethankyouandyou.com"
+R2_PUBLIC_URL = "https://s3-dev.imfinethankyouandyou.com"
 # 憑證加密密鑰 - 在生產環境中請使用強密碼並通過環境變數設置
 ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
 
-# 路由配置 - 使用自訂網域
+# 開發環境路由配置
 [[routes]]
-pattern = "multi-channel.imfinethankyouandyou.com/*"
+pattern = "multi-channel-dev.imfinethankyouandyou.com/*"
 zone_name = "imfinethankyouandyou.com"
 
 # 觀察性設置 - 啟用日誌
@@ -50,6 +50,11 @@ id = "b7ca23b7839946cdb78ef7103f29ce82"  # 開發環境 CACHE-dev
 # 生產環境配置
 [env.production]
 
+# 生產環境專用路由
+[[env.production.routes]]
+pattern = "multi-channel.imfinethankyouandyou.com/*"
+zone_name = "imfinethankyouandyou.com"
+
 [env.production.vars]
 ENVIRONMENT = "production"
 R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
@@ -62,14 +67,14 @@ binding = "DB"
 database_name = "multi-channel-platform"
 database_id = "08ae6790-2494-40a8-a07a-df3920783159"  # 生產環境資料庫 ID
 
-# KV 綁定 (生產環境) - 使用獨立的生產環境 KV
+# KV 綁定 (生產環境) - 使用無後綴的生產 KV
 [[env.production.kv_namespaces]]
 binding = "SESSIONS"
-id = "ace3f7202e6a4dd8b98c50e9b91b2431"  # 生產環境專用 SESSIONS
+id = "ace3f7202e6a4dd8b98c50e9b91b2431"  # 生產環境 SESSIONS (無後綴)
 
 [[env.production.kv_namespaces]]
 binding = "CACHE"
-id = "f3bc7a55c8a14f4fb28b8321fa01dc73"  # 生產環境專用 CACHE
+id = "f3bc7a55c8a14f4fb28b8321fa01dc73"  # 生產環境 CACHE (無後綴)
 
 # R2 存儲綁定 - 檔案上傳功能
 [[r2_buckets]]
@@ -79,7 +84,7 @@ bucket_name = "multi-channel-platform-attachments-dev"
 # 生產環境 R2 綁定
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-production"
+bucket_name = "multi-channel-platform-attachments"
 
 # Queues 綁定 - 延遲訊息功能
 [[queues.producers]]
