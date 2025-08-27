@@ -54,7 +54,7 @@ Write-Host "✅ All required files present" -ForegroundColor Green
 Write-Host "Deploying to Cloudflare Pages..." -ForegroundColor Yellow
 
 try {
-    wrangler pages deploy dist --project-name=$ProjectName --compatibility-date=2024-01-01
+    wrangler pages deploy dist --project-name=$ProjectName
     Write-Host "✅ Deployment completed successfully!" -ForegroundColor Green
     Write-Host "Your app should be available at: https://$ProjectName.pages.dev" -ForegroundColor Cyan
 } catch {
