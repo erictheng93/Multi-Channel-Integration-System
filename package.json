@@ -4,13 +4,14 @@
   "scripts": {
     "prepare": "husky install",
     "dev": "wrangler dev",
+    "dev:local": "wrangler dev --local",
     "build": "tsc --noEmit",
     "lint:check": "npx tsc --noEmit && cd frontend && npx vue-tsc --noEmit && npm run lint -- --max-warnings 80",
     "deploy": "wrangler deploy --minify",
     "deploy:dev": "wrangler deploy --env dev --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "db:migrate": "wrangler d1 migrations apply DB_DEV --local",
-    "db:migrate:prod": "wrangler d1 migrations apply DB_PROD --remote",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
     "db:seed": "wrangler d1 execute multi-channel-platform --local --file=./seed.sql",
     "db:migrate:attachments": "npx tsx database/migrate-file-attachments.ts",
     "db:migrate:attachments:verify": "npx tsx database/migrate-file-attachments.ts --verify",
@@ -78,6 +79,6 @@
     "jsdom": "^26.1.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "wrangler": "^4.31.0"
+    "wrangler": "^4.33.0"
   }
 }

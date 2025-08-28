@@ -37,6 +37,7 @@ export interface Agent {
   id: EntityId
   email: string
   name: string
+  displayName: string
   role: UserRole
   isActive: boolean
   isOnline?: boolean // 向後兼容字段

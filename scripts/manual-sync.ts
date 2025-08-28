@@ -13,7 +13,6 @@ const TABLES_TO_SYNC = [
   'file_attachments',
   'file_metadata',
   'file_access_logs',
-  'app_users',
   'teams',
   'pending_messages',
   'message_recall_logs',

@@ -6,7 +6,7 @@
         <div class="welcome-content">
           <div class="welcome-greeting">
             <h1 class="welcome-title">
-              {{ t('dashboard.welcome') }}，{{ currentAgent?.name }}
+              {{ t('dashboard.welcome') }}，{{ currentAgent?.displayName || currentAgent?.name || '載入中...' }}
             </h1>
             <p class="welcome-subtitle">
               {{ currentDate }}
@@ -381,6 +381,18 @@ const { t } = useI18n()
 
 // 開發模式檢查
 // const isDev = computed(() => import.meta.env.DEV)
+
+// Debug auth data in development
+if (import.meta.env.DEV) {
+  import('@/utils/debug-auth').then(({ debugAuthData }) => {
+    console.log('🎯 Dashboard mounted - debugging auth data:')
+    debugAuthData()
+    
+    // Also log currentAgent directly
+    console.log('🎯 currentAgent from useAuth:', currentAgent.value)
+  })
+}
+
 // 簡化方法 - 直接初始化，但使用不同的順序
 const conversationsData = useConversations()
 const conversations = conversationsData.conversations
@@ -631,6 +643,16 @@ const formatTime = (date: Date) => {
   return date.toLocaleDateString('zh-TW')
 }
 
+// 監聽 currentAgent 變化 - 啟用調試
+watch(() => currentAgent.value, (newAgent, oldAgent) => {
+  console.log('👤 Dashboard: currentAgent changed', {
+    old: oldAgent,
+    new: newAgent,
+    displayName: newAgent?.displayName,
+    name: newAgent?.name
+  })
+}, { immediate: true, deep: true })
+
 // 監聽路由變化，確保Dashboard正確重新渲染
 watch(() => router.currentRoute.value.path, (newPath, oldPath) => {
   console.log('🔄 Dashboard: Route changed from', oldPath, 'to', newPath)
@@ -647,7 +669,6 @@ onMounted(async () => {
   console.log('🚀 Dashboard mounted')
 
   // 啟動 token 刷新檢查和活動追蹤
-  console.log('🚀 Starting token refresh and activity tracking in Dashboard')
   startTokenRefreshCheck()
   startTracking()
 })

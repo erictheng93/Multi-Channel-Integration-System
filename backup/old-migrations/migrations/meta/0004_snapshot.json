@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "72c19b70-2aad-469c-ad0a-10ccb53215fe",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "574146dc-5697-4015-804b-124e8d100b87",
+  "prevId": "aab24f5f-ec2c-4ef2-bc8e-c0c54148408c",
   "tables": {
     "agents": {
       "name": "agents",

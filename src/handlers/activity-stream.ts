@@ -3,55 +3,7 @@ import { Context } from 'hono'
 import type { Bindings } from '../types'
 import { ActivityService } from '../services/activity-service'
 import { errorResponse } from '../utils/api-response'
-
-// JWT 驗證函數 (使用 Web Crypto API)
-async function verifyJWT(token: string, secret: string): Promise<any> {
-  const parts = token.split('.')
-  if (parts.length !== 3) {
-    throw new Error('Invalid JWT format')
-  }
-
-  const [header, payload, signature] = parts
-  
-  if (!payload) {
-    throw new Error('Missing JWT payload')
-  }
-  
-  // 解碼 payload
-  const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
-  
-  // 檢查過期時間
-  if (decodedPayload.exp && Date.now() >= decodedPayload.exp * 1000) {
-    throw new Error('Token expired')
-  }
-  
-  // 驗證簽名
-  const encoder = new TextEncoder()
-  const data = encoder.encode(`${header}.${payload}`)
-  const secretKey = encoder.encode(secret)
-  
-  const key = await crypto.subtle.importKey(
-    'raw',
-    secretKey,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify']
-  )
-  
-  if (!signature) {
-    throw new Error('Missing JWT signature')
-  }
-  
-  const signatureBytes = Uint8Array.from(atob(signature.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
-  
-  const isValid = await crypto.subtle.verify('HMAC', key, signatureBytes, data)
-  
-  if (!isValid) {
-    throw new Error('Invalid signature')
-  }
-  
-  return decodedPayload
-}
+import { verifyJWT } from '../utils/auth'
 
 export const activityStreamHandler = {
   // 建立 SSE 連接

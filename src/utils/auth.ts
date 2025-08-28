@@ -157,7 +157,6 @@ export function generateRandomString(length: number = 32): string {
 export async function createUser(
   db: D1Database,
   userData: {
-    username: string;
     email: string;
     password: string;
     displayName: string;
@@ -167,12 +166,13 @@ export async function createUser(
 ): Promise<DbUser> {
   const hashedPassword = await hashPassword(userData.password);
   const now = new Date().toISOString();
+  const userId = crypto.randomUUID();
 
   const result = await db.prepare(`
-    INSERT INTO app_users (username, email, password_hash, display_name, role, team_id, created_at, updated_at)
+    INSERT INTO agents (id, email, password_hash, display_name, role, team_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    userData.username,
+    userId,
     userData.email,
     hashedPassword,
     userData.displayName,
@@ -186,24 +186,35 @@ export async function createUser(
     throw new Error('Failed to create user');
   }
 
-  return getUserById(db, result.meta.last_row_id as number);
+  // Since agents table uses UUID, we need to fetch the created user
+  const createdUser = await db.prepare(`
+    SELECT * FROM agents WHERE id = ?
+  `).bind(userId).first();
+  
+  if (!createdUser) {
+    throw new Error('Failed to retrieve created user');
+  }
+  
+  return getUserById(db, createdUser.id as string);
 }
 
 export async function getUserById(db: D1Database, userId: number | string): Promise<DbUser> {
-  // 首先檢查 agents 表（新的用戶表）
+  // 檢查 agents 表
   const agent = await db.prepare(`
-    SELECT * FROM agents WHERE id = ? AND is_active = 1
+    SELECT a.*, t.name as team_name 
+    FROM agents a
+    LEFT JOIN teams t ON a.team_id = t.id
+    WHERE a.id = ? AND a.is_active = 1
   `).bind(userId.toString()).first();
 
   if (agent) {
     return {
       id: agent.id as string,
-      username: agent.username as string,
       email: agent.email as string,
       displayName: agent.display_name as string,
       role: agent.role as 'admin' | 'team' | 'agent',
-      teamId: null, // agents 表沒有 team_id
-      teamName: null,
+      teamId: agent.team_id as number | null,
+      teamName: agent.team_name as string | null,
       isActive: Boolean(agent.is_active),
       createdAt: agent.created_at as string,
       updatedAt: agent.updated_at as string || agent.created_at as string
@@ -214,40 +225,19 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
   throw new Error('User not found');
 }
 
-export async function getUserByUsername(db: D1Database, username: string): Promise<DbUser | null> {
-  const agent = await db.prepare(`
-    SELECT * FROM agents WHERE username = ? AND is_active = 1
-  `).bind(username).first();
-
-  if (!agent) {
-    return null;
-  }
-
-  return {
-    id: agent.id as string,
-    username: agent.username as string,
-    email: agent.email as string,
-    displayName: agent.display_name as string,
-    role: agent.role as 'admin' | 'team' | 'agent',
-    teamId: null,
-    teamName: null,
-    isActive: Boolean(agent.is_active),
-    createdAt: agent.created_at as string,
-    updatedAt: agent.updated_at as string || agent.created_at as string
-  };
-}
+// getUserByUsername function removed - using email for authentication instead
 
 export async function authenticateUser(
   db: D1Database,
-  username: string,
+  email: string,
   password: string
 ): Promise<DbUser | null> {
   const user = await db.prepare(`
     SELECT u.*, t.name as team_name
-    FROM app_users u
+    FROM agents u
     LEFT JOIN teams t ON u.team_id = t.id
-    WHERE u.username = ? AND u.is_active = 1
-  `).bind(username).first();
+    WHERE u.email = ? AND u.is_active = 1
+  `).bind(email).first();
 
   if (!user) {
     return null;
@@ -260,7 +250,6 @@ export async function authenticateUser(
 
   return {
     id: user.id as number,
-    username: user.username as string,
     email: user.email as string,
     displayName: user.display_name as string,
     role: user.role as 'admin' | 'team' | 'agent',
@@ -277,9 +266,12 @@ export async function authenticateUserByEmail(
   email: string,
   password: string
 ): Promise<DbUser | null> {
-  // 首先檢查 agents 表（新的用戶表）
+  // 檢查 agents 表
   const agent = await db.prepare(`
-    SELECT * FROM agents WHERE email = ? AND is_active = 1
+    SELECT a.*, t.name as team_name 
+    FROM agents a
+    LEFT JOIN teams t ON a.team_id = t.id
+    WHERE a.email = ? AND a.is_active = 1
   `).bind(email).first();
 
   if (agent) {
@@ -287,12 +279,11 @@ export async function authenticateUserByEmail(
     if (isValidPassword) {
       return {
         id: agent.id as string, // agents 表使用字符串 ID
-        username: agent.username as string,
         email: agent.email as string,
         displayName: agent.display_name as string,
         role: agent.role as 'admin' | 'team' | 'agent',
-        teamId: null, // agents 表沒有 team_id
-        teamName: null,
+        teamId: agent.team_id as number | null,
+        teamName: agent.team_name as string | null,
         isActive: Boolean(agent.is_active),
         createdAt: agent.created_at as string,
         updatedAt: agent.updated_at as string || agent.created_at as string

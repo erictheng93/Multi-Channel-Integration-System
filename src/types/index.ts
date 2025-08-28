@@ -187,8 +187,7 @@ export type PlatformMediaData = LineMediaData | FacebookMediaData;
 
 // 資料庫用戶相關類型定義（向後相容）
 export interface DbUser {
-  id: number | string; // 支持數字 ID (app_users) 和字符串 ID (agents)
-  username: string;
+  id: number | string; // 支持字符串 ID (agents)
   email: string;
   displayName: string;
   role: 'admin' | 'team' | 'agent';
@@ -232,7 +231,7 @@ export interface CustomerTagRelation {
 
 export interface JWTPayload {
   userId: number | string;  // Support both number (users table) and string (agents table)
-  username: string;
+  displayName: string;  // Using displayName instead of username
   email?: string;  // Optional email field
   role: string;
   teamId?: number | undefined;  // Allow undefined explicitly

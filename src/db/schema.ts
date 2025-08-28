@@ -29,10 +29,8 @@ export const teams = sqliteTable('teams', {
 // Agents table - 客服人員
 export const agents = sqliteTable('agents', {
   id: text('id').primaryKey(),
-  username: text('username').notNull().unique(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  passwordEncrypted: text('password_encrypted'), // AES encrypted password for admin access
   displayName: text('display_name').notNull(),
   role: text('role').notNull().default('agent'), // 'admin', 'team', 'agent'
   teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table - nullable for admins, required for team role
@@ -116,7 +114,6 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 // Session storage for KV - 這個不需要在 D1 中，但定義型別
 export interface SessionData {
   agentId: string;
-  username: string;
   role: string;
   loginAt: string;
   expiresAt: string;

@@ -12,7 +12,6 @@ import {
   handleApiError 
 } from '../utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
-import { encryptPassword, decryptPassword } from '../utils/encryption'
 
 // 驗證管理員權限的輔助函數
 async function verifyAdminAuth(c: Context<{ Bindings: Bindings }>) {
@@ -153,22 +152,20 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     const memberId = uuidv4()
     const bcrypt = await import('bcryptjs');
     const passwordHash = await bcrypt.hash(password, 10)
-    const encryptedPassword = await encryptPassword(password, c.env)
     
     await db
       .prepare(`
         INSERT INTO agents (
-          id, username, email, password_hash, password_encrypted, display_name, role, 
+          id, username, email, password_hash, display_name, role, 
           is_active, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         memberId,
         loginId,
         email || null,
         passwordHash,
-        encryptedPassword, // 存儲加密密碼
         name || loginId,
         role,
         isActive ? 1 : 0,
@@ -572,11 +569,11 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
     const authResult = await verifyAdminAuth(c)
     if (authResult.error) return authResult.error
 
-    // 獲取成員資訊包括加密密碼
+    // 獲取成員資訊
     const member = await db
-      .prepare('SELECT username, display_name, password_hash, password_encrypted FROM agents WHERE id = ?')
+      .prepare('SELECT username, display_name, password_hash FROM agents WHERE id = ?')
       .bind(memberId)
-      .first<{ username: string; display_name: string; password_hash: string; password_encrypted?: string }>()
+      .first<{ username: string; display_name: string; password_hash: string }>()
 
     if (!member) {
       return validationErrorResponse(c, [
@@ -584,19 +581,8 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
       ])
     }
 
-    let decryptedPassword: string
-    
-    try {
-      if (member.password_encrypted) {
-        // 解密密碼
-        decryptedPassword = await decryptPassword(member.password_encrypted, c.env)
-      } else {
-        decryptedPassword = '未設定可查看密碼 - 請為此用戶重設新密碼'
-      }
-    } catch (error: any) {
-      console.error('Password decryption failed:', error)
-      decryptedPassword = '密碼解密失敗 - 請重設密碼'
-    }
+    // 密碼已改為單向雜湊，無法解密
+    const decryptedPassword = '密碼已加密儲存，無法查看 - 請使用重設密碼功能'
 
     return successResponse(c, { 
       password: decryptedPassword,
@@ -696,9 +682,8 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
 
       const bcrypt = await import('bcryptjs');
       const passwordHash = await bcrypt.hash(updateData.password, 10)
-      const encryptedPassword = await encryptPassword(updateData.password, c.env)
-      updateFields.push('password_hash = ?', 'password_encrypted = ?') // 同時更新加密密碼
-      updateValues.push(passwordHash, encryptedPassword)
+      updateFields.push('password_hash = ?')
+      updateValues.push(passwordHash)
     }
 
     if (updateFields.length === 0) {
@@ -784,13 +769,10 @@ export const migratePasswords = async (c: Context<{ Bindings: Bindings }>) => {
       try {
         console.log(`🔐 Encrypting password for user: ${agent.username}`)
         
-        // 加密明文密碼
-        const encryptedPassword = await encryptPassword(agent.password_plaintext, c.env)
-        
-        // 更新數據庫：設定加密密碼，清除明文密碼
+        // 清除明文密碼（不再需要加密存儲）
         await db
-          .prepare('UPDATE agents SET password_encrypted = ?, password_plaintext = NULL WHERE id = ?')
-          .bind(encryptedPassword, agent.id)
+          .prepare('UPDATE agents SET password_plaintext = NULL WHERE id = ?')
+          .bind(agent.id)
           .run()
         
         results.push({ username: agent.username, status: 'success' })
