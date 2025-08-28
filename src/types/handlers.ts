@@ -10,7 +10,8 @@ export type HandlerContext = Context<{ Bindings: Bindings }>;
 // Authentication payload types
 export interface AuthPayload {
   userId: number;
-  username: string;
+  displayName: string;
+  email?: string;
   role: 'admin' | 'team' | 'agent';
   teamId?: number;
   iat: number;
@@ -203,7 +204,7 @@ export interface HandlerError {
 export function isAuthPayload(obj: any): obj is AuthPayload {
   return obj && 
     typeof obj.userId === 'number' && 
-    typeof obj.username === 'string' && 
+    typeof obj.displayName === 'string' && 
     typeof obj.role === 'string';
 }
 

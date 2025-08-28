@@ -80,6 +80,13 @@ export const useAuthStore = defineStore('auth', () => {
         }
         
         console.log('✅ Login API successful, setting auth state...');
+        console.log('📌 Login agent data received:', {
+          id: loginData.agent.id,
+          email: loginData.agent.email,
+          name: loginData.agent.name,
+          displayName: loginData.agent.displayName,
+          role: loginData.agent.role
+        });
         token.value = loginData.token;
         refreshToken.value = loginData.refreshToken || null;
         currentAgent.value = loginData.agent;
@@ -228,6 +235,13 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authApi.me();
       if (response.success && response.data) {
+        console.log('📌 fetchCurrentAgent data:', {
+          id: response.data.id,
+          email: response.data.email,
+          name: response.data.name,
+          displayName: response.data.displayName,
+          role: response.data.role
+        });
         currentAgent.value = response.data;
       } else if (response.status === 401) {
         // Token 確實已過期，清理認證狀態
@@ -361,6 +375,13 @@ export const useAuthStore = defineStore('auth', () => {
       
       if (response.success && response.data) {
         currentAgent.value = response.data;
+        console.log('📌 Current agent data:', {
+          id: response.data.id,
+          email: response.data.email,
+          name: response.data.name,
+          displayName: response.data.displayName,
+          role: response.data.role
+        });
         setSessionStatus('authenticated');
         console.log('✅ Session restored successfully');
       } else if (response.status === 401) {

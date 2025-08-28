@@ -21,63 +21,40 @@ const authHandler = new Hono<{ Bindings: Bindings }>();
 // 用戶登入
 authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
   try {
-    const { email, username, password } = await c.req.json();
+    const { email, password } = await c.req.json();
     
     // 清理輸入數據 - 移除前後空格
     const cleanEmail = email?.trim();
-    const cleanUsername = username?.trim();
     const cleanPassword = password?.trim();
     
-    // 支援 email 或 username 登入
-    const loginField = cleanEmail || cleanUsername;
-    
-    if (!loginField || !cleanPassword) {
-      return c.json({ error: 'Email/Username and password are required' }, 400);
+    if (!cleanEmail || !cleanPassword) {
+      return c.json({ error: 'Email and password are required' }, 400);
     }
 
-    // 驗證用戶 - 優先使用 email，如果沒有則使用 username
+    // 驗證用戶 - 使用 email
     let user = null;
     let userRow = null;
     let errorMessage = '';
     
-    if (cleanEmail) {
-      // 檢查用戶是否存在，同時獲取 password_policy
-      userRow = await c.env.DB.prepare(`
-        SELECT id, email, is_active, password_policy FROM agents WHERE email = ?
-      `).bind(cleanEmail).first();
-      
-      if (!userRow) {
-        errorMessage = 'User not found';
-      } else if (!userRow.is_active) {
-        errorMessage = 'Account disabled';
-      } else {
-        // 用戶存在且活躍，檢查密碼
-        user = await authenticateUserByEmail(c.env.DB, cleanEmail, cleanPassword);
-        if (!user) {
-          errorMessage = 'Wrong password';
-        }
-      }
+    // 檢查用戶是否存在，同時獲取 password_policy
+    userRow = await c.env.DB.prepare(`
+      SELECT id, email, is_active, password_policy FROM agents WHERE email = ?
+    `).bind(cleanEmail).first();
+    
+    if (!userRow) {
+      errorMessage = 'User not found';
+    } else if (!userRow.is_active) {
+      errorMessage = 'Account disabled';
     } else {
-      // 使用 username 登入
-      const existingUser = await c.env.DB.prepare(`
-        SELECT username, is_active FROM app_users WHERE username = ?
-      `).bind(cleanUsername).first();
-      
-      if (!existingUser) {
-        errorMessage = 'User not found';
-      } else if (!existingUser.is_active) {
-        errorMessage = 'Account disabled';
-      } else {
-        // 用戶存在且活躍，檢查密碼
-        user = await authenticateUser(c.env.DB, cleanUsername, cleanPassword);
-        if (!user) {
-          errorMessage = 'Wrong password';
-        }
+      // 用戶存在且活躍，檢查密碼
+      user = await authenticateUserByEmail(c.env.DB, cleanEmail, cleanPassword);
+      if (!user) {
+        errorMessage = 'Wrong password';
       }
     }
     
     if (!user) {
-      return c.json({ error: errorMessage || 'Invalid email/username or password' }, 401);
+      return c.json({ error: errorMessage || 'Invalid email or password' }, 401);
     }
 
     // 檢查密碼政策
@@ -88,7 +65,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       const tempToken = await signJWT(
         { 
           userId: user.id,
-          username: user.username || user.email,
+          displayName: user.displayName,
           email: user.email,
           role: user.role,
           teamId: user.teamId || undefined,
@@ -107,6 +84,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
             id: user.id.toString(),
             email: user.email,
             name: user.displayName,
+            displayName: user.displayName,
             role: user.role,
             isActive: user.isActive,
             createdAt: new Date(user.createdAt).getTime()
@@ -131,7 +109,8 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     const token = await signJWT(
       { 
         userId: user.id, // 保持原始 ID 格式
-        username: user.username || user.email, // 使用 username 或 email 作為備用
+        displayName: user.displayName,
+        email: user.email,
         role: user.role,
         teamId: user.teamId || undefined,
         type: 'access'
@@ -144,7 +123,8 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     const refreshToken = await signJWT(
       { 
         userId: user.id, // 保持原始 ID 格式
-        username: user.username || user.email, // 使用 username 或 email 作為備用
+        displayName: user.displayName,
+        email: user.email,
         role: user.role,
         teamId: user.teamId || undefined,
         type: 'refresh'
@@ -158,7 +138,8 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       c.env.SESSIONS,
       typeof user.id === 'string' ? parseInt(user.id, 10) : user.id,
       {
-        username: user.username,
+        displayName: user.displayName,
+        email: user.email,
         role: user.role,
         teamId: user.teamId || undefined,
         loginAt: new Date().toISOString()
@@ -175,7 +156,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       resourceType: RESOURCE_TYPES.USER,
       resourceId: user.id.toString(),
       details: {
-        loginMethod: email ? 'email' : 'username',
+        loginMethod: 'email',
         sessionId
       },
       ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
@@ -191,6 +172,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
           id: user.id.toString(),
           email: user.email,
           name: user.displayName,
+          displayName: user.displayName,
           role: user.role,
           isActive: user.isActive,
           createdAt: new Date(user.createdAt).getTime()
@@ -214,9 +196,9 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
 // 用戶註冊（僅 admin 可以創建新用戶）
 authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
   try {
-    const { username, email, password, displayName, role, teamId } = await c.req.json();
+    const { email, password, displayName, role, teamId } = await c.req.json();
     
-    if (!username || !email || !password || !displayName || !role) {
+    if (!email || !password || !displayName || !role) {
       return c.json({ error: 'All fields are required' }, 400);
     }
 
@@ -224,18 +206,17 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
       return c.json({ error: 'Invalid role' }, 400);
     }
 
-    // 檢查用戶名是否已存在
+    // 檢查 email 是否已存在
     const existingUser = await c.env.DB.prepare(
-      'SELECT id FROM users WHERE username = ? OR email = ?'
-    ).bind(username, email).first();
+      'SELECT id FROM agents WHERE email = ?'
+    ).bind(email).first();
 
     if (existingUser) {
-      return c.json({ error: 'Username or email already exists' }, 409);
+      return c.json({ error: 'Email already exists' }, 409);
     }
 
     // 創建用戶
     const newUser = await createUser(c.env.DB, {
-      username,
       email,
       password,
       displayName,
@@ -248,14 +229,13 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
     const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: currentUser.id.toString(),
-      userName: currentUser.displayName || currentUser.username,
+      userName: currentUser.displayName,
       userRole: currentUser.role,
       action: ACTIVITY_ACTIONS.USER_CREATE,
       resourceType: RESOURCE_TYPES.USER,
       resourceId: newUser.id.toString(),
       details: {
         createdUser: {
-          username: newUser.username,
           email: newUser.email,
           displayName: newUser.displayName,
           role: newUser.role,
@@ -271,7 +251,6 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
       data: {
         user: {
           id: newUser.id,
-          username: newUser.username,
           email: newUser.email,
           displayName: newUser.displayName,
           role: newUser.role,
@@ -307,7 +286,7 @@ authHandler.post('/logout', sessionAuth, async (c) => {
       const activityService = new ActivityService(c.env.DB);
       await activityService.logActivity({
         userId: user.id.toString(),
-        userName: user.displayName || user.username,
+        userName: user.displayName,
         userRole: user.role,
         action: ACTIVITY_ACTIONS.USER_LOGOUT,
         resourceType: RESOURCE_TYPES.USER,
@@ -346,7 +325,6 @@ authHandler.get('/profile', jwtAuth, async (c) => {
       data: {
         user: {
           id: user.id,
-          username: user.username,
           email: user.email,
           displayName: user.displayName,
           role: user.role,
@@ -381,6 +359,7 @@ authHandler.get('/me', jwtAuth, async (c) => {
         id: user.id.toString(),
         email: user.email,
         name: user.displayName,
+        displayName: user.displayName,
         role: user.role,
         isActive: user.isActive,
         createdAt: new Date(user.createdAt).getTime()
@@ -459,7 +438,8 @@ authHandler.post('/refresh', async (c) => {
     const newToken = await signJWT(
       { 
         userId: payload.userId,
-        username: payload.username,
+        displayName: payload.displayName || userRow.display_name || userRow.displayName,
+        email: payload.email || userRow.email,
         role: payload.role,
         teamId: payload.teamId,
         type: 'access'
@@ -472,7 +452,8 @@ authHandler.post('/refresh', async (c) => {
     const newRefreshToken = await signJWT(
       { 
         userId: payload.userId,
-        username: payload.username,
+        displayName: payload.displayName || userRow.display_name || userRow.displayName,
+        email: payload.email || userRow.email,
         role: payload.role,
         teamId: payload.teamId,
         type: 'refresh'

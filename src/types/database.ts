@@ -101,7 +101,6 @@ export interface MessageDbRecord {
 // User database record types
 export interface UserDbRecord {
   id: number;
-  username: string;
   email: string;
   displayName: string;
   role: 'admin' | 'agent';
@@ -208,7 +207,7 @@ export interface MessageMetadata {
 // Context types for various operations
 export interface AuthContext {
   userId: number;
-  username: string;
+  displayName: string;
   role: string;
   teamId?: number;
   permissions?: string[];
