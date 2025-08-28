@@ -42,11 +42,9 @@ export async function onRequest(context: EventContext<CloudflareEnv, string, Clo
   newResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   newResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   
-  // CSP 標頭 (根據需要調整)
-  newResponse.headers.set(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://multi-channel.imfinethankyouandyou.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
-  );
+  // CSP 標頭 - Let _headers file handle this to avoid conflicts
+  // The CSP is set in _headers or _headers.dev file based on environment
+  // Don't override it here
 
   return newResponse;
 }

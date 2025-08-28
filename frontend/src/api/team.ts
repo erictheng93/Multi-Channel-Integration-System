@@ -77,7 +77,7 @@ export const teamApi = {
   // 獲取成員密碼
   getMemberPassword: async (memberId: string): Promise<ApiResponse<{
     password: string;
-    username: string;
+    username: string;  // 保留作為向後兼容，但實際上會使用 displayName 的值
     displayName: string;
   }>> => {
     return apiClient.get(`/team/members/${memberId}/password`)
@@ -147,7 +147,7 @@ export const teamApi = {
 
   // 遷移明文密碼到加密存儲 (臨時管理功能)
   migratePasswords: async (): Promise<ApiResponse<{
-    migrated: Array<{ username: string; status: string; error?: string }>;
+    migrated: Array<{ username: string; status: string; error?: string }>;  // username 實際上是 displayName
     total: number;
   }>> => {
     return apiClient.post('/team/migrate-passwords')

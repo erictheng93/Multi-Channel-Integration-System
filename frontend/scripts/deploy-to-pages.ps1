@@ -2,11 +2,19 @@
 
 param(
     [string]$ProjectName = "multi-channel-platform-frontend",
+    [string]$Environment = "production",
     [switch]$SkipBuild = $false
 )
 
 Write-Host "Deploying to Cloudflare Pages..." -ForegroundColor Green
 Write-Host "Project Name: $ProjectName" -ForegroundColor Cyan
+Write-Host "Environment: $Environment" -ForegroundColor Cyan
+
+# 根據環境設定項目名稱
+if ($Environment -eq "development") {
+    $ProjectName = "multi-channel-platform-frontend-dev"
+    Write-Host "Using development project: $ProjectName" -ForegroundColor Yellow
+}
 
 # 檢查 Wrangler 是否已安裝
 try {
@@ -20,10 +28,14 @@ try {
 
 # 構建專案（除非跳過）
 if (-not $SkipBuild) {
-    Write-Host "Building project..." -ForegroundColor Yellow
+    Write-Host "Building project for $Environment environment..." -ForegroundColor Yellow
     
     try {
-        npm run build:pages
+        if ($Environment -eq "development") {
+            npm run build:pages:dev
+        } else {
+            npm run build:pages
+        }
         Write-Host "✅ Build completed successfully" -ForegroundColor Green
     } catch {
         Write-Host "❌ Build failed" -ForegroundColor Red

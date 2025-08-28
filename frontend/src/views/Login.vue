@@ -34,7 +34,6 @@
         <form
           class="login-form"
           @submit.prevent="handleLogin"
-          @keydown.enter.prevent="handleLoginFromEnter"
         >
           <div class="input-group">
             <input
@@ -44,6 +43,7 @@
               class="form-input"
               :class="{ 'error': errors.email }"
               :placeholder="t('login.emailPlaceholder')"
+              autocomplete="email"
               required
               :disabled="loading"
             >
@@ -64,6 +64,7 @@
                 class="form-input"
                 :class="{ 'error': errors.password }"
                 :placeholder="t('login.passwordPlaceholder')"
+                autocomplete="current-password"
                 required
                 :disabled="loading"
               >
@@ -127,19 +128,20 @@
           <div class="form-options">
             <label class="remember-me">
               <input
+                id="rememberMe"
                 v-model="formData.rememberMe"
                 type="checkbox"
                 class="checkbox"
+                name="rememberMe"
               >
               <span>記住我</span>
             </label>
           </div>
 
           <button
-            type="button"
+            type="submit"
             class="submit-btn"
             :disabled="loading || !isValid"
-            @click="handleLogin"
           >
             <span
               v-if="loading"
@@ -426,9 +428,10 @@ onMounted(() => {
   
   // 監控所有可能的導航事件
   
-  const handleUnload = (event: Event) => {
-    console.log('🚪 SUPER ULTRA DEBUG: Page is unloading!')
+  const handlePageHide = (event: PageTransitionEvent) => {
+    console.log('🚪 SUPER ULTRA DEBUG: Page is hiding!')
     console.log('  - Event:', event)
+    console.log('  - Persisted:', event.persisted)
     console.log('  - Current URL:', window.location.href)
   }
   
@@ -468,7 +471,7 @@ onMounted(() => {
     console.log('  - Current URL:', window.location.href)
   }
   
-  window.addEventListener('unload', handleUnload)
+  window.addEventListener('pagehide', handlePageHide)
   window.addEventListener('popstate', handlePopState)
   window.addEventListener('hashchange', handleHashChange)
   document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -532,7 +535,7 @@ onMounted(() => {
     
     // 移除事件監聽器
     window.removeEventListener('beforeunload', handleBeforeUnload)
-    window.removeEventListener('unload', handleUnload)
+    window.removeEventListener('pagehide', handlePageHide)
     window.removeEventListener('popstate', handlePopState)
     window.removeEventListener('hashchange', handleHashChange)
     document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -548,6 +551,21 @@ watch(() => router.currentRoute.value.path, (newPath, oldPath) => {
   console.log('  - New path:', newPath)
   console.log('  - Full route:', router.currentRoute.value)
 }, { immediate: true })
+
+// 監控表單驗證狀態
+watch(isValid, (newValid, oldValid) => {
+  console.log('✅ FORM VALIDATION STATE CHANGE:')
+  console.log('  - oldValid:', oldValid)
+  console.log('  - newValid:', newValid)
+  console.log('  - formData:', formData.value)
+  console.log('  - errors:', errors.value)
+  console.log('  - Button should be disabled:', !newValid)
+}, { immediate: true })
+
+// 監控表單數據變化 (簡化)
+watch(formData, (newData) => {
+  console.log('📝 Form isValid:', isValid.value, '| Email:', newData.email.length > 0, '| Password:', newData.password.length > 0)
+}, { deep: true })
 
 setValidator('email', (value: string) => {
   if (!value.trim()) {
@@ -659,12 +677,6 @@ const getErrorMessage = (errorMsg: string) => {
   return detailedErrorMsg || '登入過程中發生未知錯誤，請檢查帳號密碼後重試'
 }
 
-// Handle Enter key in form
-const handleLoginFromEnter = (event: KeyboardEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
-  handleLogin()
-}
 
 // 處理強制密碼更改成功
 const onPasswordChangeSuccess = () => {
@@ -674,8 +686,13 @@ const onPasswordChangeSuccess = () => {
 
 const handleLogin = async (event?: Event) => {
   const timestamp = Date.now()
+  console.log('🔥 LOGIN FUNCTION CALLED! 🔥')
   console.log(`🔐 SUPER ULTRA DEBUG: handleLogin called at ${timestamp}`)
   console.log('  - Form data:', formData.value)
+  console.log('  - isValid:', isValid.value)
+  console.log('  - errors:', errors.value)
+  console.log('  - loading:', loading.value)
+  console.log('  - Button should be disabled:', loading.value || !isValid.value)
   console.log('  - Current URL before login:', window.location.href)
   console.log('  - Current route before login:', router.currentRoute.value.path)
   console.log('  - Event object:', event)

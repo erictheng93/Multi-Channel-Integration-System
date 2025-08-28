@@ -99,6 +99,7 @@ describe('Integration: Authentication Flow', () => {
     authStore.currentAgent = { 
       id: '1', 
       name: 'Test Agent', 
+      displayName: 'Test Agent',
       email: 'test@example.com',
       isOnline: true,
       platforms: ['line'],

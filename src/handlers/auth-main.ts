@@ -3,7 +3,6 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { 
   signJWT, 
-  authenticateUser, 
   authenticateUserByEmail,
   createUser, 
   createSession

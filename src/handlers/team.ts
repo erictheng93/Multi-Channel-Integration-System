@@ -64,7 +64,7 @@ export const getTeamMembers = async (c: Context<{ Bindings: Bindings }>) => {
       .prepare(`
         SELECT 
           id,
-          username as loginId,
+          display_name as loginId,
           email,
           display_name as name,
           role,
@@ -122,9 +122,9 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     const authResult = await verifyAdminAuth(c)
     if (authResult.error) return authResult.error
 
-    // 檢查 username 是否已存在
+    // 檢查 display_name 是否已存在
     const existingUsername = await db
-      .prepare('SELECT id FROM agents WHERE username = ?')
+      .prepare('SELECT id FROM agents WHERE display_name = ?')
       .bind(loginId)
       .first()
 
@@ -156,14 +156,13 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     await db
       .prepare(`
         INSERT INTO agents (
-          id, username, email, password_hash, display_name, role, 
+          id, email, password_hash, display_name, role, 
           is_active, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         memberId,
-        loginId,
         email || null,
         passwordHash,
         name || loginId,
@@ -571,9 +570,9 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 獲取成員資訊
     const member = await db
-      .prepare('SELECT username, display_name, password_hash FROM agents WHERE id = ?')
+      .prepare('SELECT display_name, password_hash FROM agents WHERE id = ?')
       .bind(memberId)
-      .first<{ username: string; display_name: string; password_hash: string }>()
+      .first<{ display_name: string; password_hash: string }>()
 
     if (!member) {
       return validationErrorResponse(c, [
@@ -586,7 +585,7 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
 
     return successResponse(c, { 
       password: decryptedPassword,
-      username: member.username,
+      username: member.display_name,
       displayName: member.display_name
     }, 'Password retrieved successfully')
   } catch (error: any) {
@@ -725,7 +724,7 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
       .prepare(`
         SELECT 
           id,
-          username as loginId,
+          display_name as loginId,
           email,
           display_name as name,
           role,
@@ -759,15 +758,15 @@ export const migratePasswords = async (c: Context<{ Bindings: Bindings }>) => {
     
     // 獲取所有有明文密碼的用戶
     const agents = await db
-      .prepare('SELECT id, username, password_plaintext FROM agents WHERE password_plaintext IS NOT NULL AND password_plaintext != "null"')
-      .all<{ id: string; username: string; password_plaintext: string }>()
+      .prepare('SELECT id, display_name, password_plaintext FROM agents WHERE password_plaintext IS NOT NULL AND password_plaintext != "null"')
+      .all<{ id: string; display_name: string; password_plaintext: string }>()
 
     console.log(`📋 Found ${agents.results.length} users with plaintext passwords`)
 
     const results = []
     for (const agent of agents.results) {
       try {
-        console.log(`🔐 Encrypting password for user: ${agent.username}`)
+        console.log(`🔐 Encrypting password for user: ${agent.display_name}`)
         
         // 清除明文密碼（不再需要加密存儲）
         await db
@@ -775,11 +774,11 @@ export const migratePasswords = async (c: Context<{ Bindings: Bindings }>) => {
           .bind(agent.id)
           .run()
         
-        results.push({ username: agent.username, status: 'success' })
-        console.log(`✅ Successfully migrated password for: ${agent.username}`)
+        results.push({ username: agent.display_name, status: 'success' })
+        console.log(`✅ Successfully migrated password for: ${agent.display_name}`)
       } catch (error: any) {
-        console.error(`❌ Failed to migrate password for ${agent.username}:`, error)
-        results.push({ username: agent.username, status: 'failed', error: error.message })
+        console.error(`❌ Failed to migrate password for ${agent.display_name}:`, error)
+        results.push({ username: agent.display_name, status: 'failed', error: error.message })
       }
     }
 

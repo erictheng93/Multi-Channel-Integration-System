@@ -82,9 +82,9 @@ export class DatabaseService {
     return await this.db.select().from(schema.agents).where(eq(schema.agents.id, id)).get();
   }
 
-  async getAgentByUsername(username: string) {
+  async getAgentByEmail(email: string) {
     return await this.db.select().from(schema.agents)
-      .where(eq(schema.agents.username, username)).get();
+      .where(eq(schema.agents.email, email)).get();
   }
 
   async updateAgentLastLogin(id: string) {
