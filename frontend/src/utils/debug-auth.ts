@@ -17,7 +17,7 @@ export function debugAuthData() {
     try {
       const parts = token.split('.')
       if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]))
+        const payload = JSON.parse(atob(parts[1] || ''))
         console.log('2. JWT Token payload:')
         console.log('  - userId:', payload.userId)
         console.log('  - username:', payload.username)
@@ -51,6 +51,6 @@ export function debugAuthData() {
 
 // Auto-run in development
 if (import.meta.env.DEV) {
-  (window as any).debugAuth = debugAuthData
+  (window as unknown as Record<string, unknown>).debugAuth = debugAuthData
   console.log('Debug auth available: run debugAuth() in console')
 }

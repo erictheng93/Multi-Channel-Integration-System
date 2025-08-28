@@ -1,6 +1,7 @@
 # Cloudflare Pages 配置
 name = "multi-channel-platform-frontend"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
 
 [env.production]
 # 生產環境配置

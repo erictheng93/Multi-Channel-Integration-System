@@ -268,6 +268,7 @@ const acceptInvitation = async () => {
         ...agent,
         email: agent.email || '', // 確保 email 不是 undefined
         name: agent.name || agent.loginId, // 確保 name 不是 undefined
+        displayName: agent.name || agent.loginId, // 添加 displayName 欄位
         isOnline: true, // 新註冊的用戶默認為在線
         platforms: [], // 新用戶默認沒有分配平台
         isActive: true, // 新用戶默認為活躍

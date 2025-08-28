@@ -156,7 +156,7 @@ export async function getTeamMembers(db: D1Database, teamId: number): Promise<Db
 
   return result.results.map(user => ({
     id: user.id as number,
-    username: user.username as string,
+    username: user.display_name as string,  // 使用 display_name 替代 username
     email: user.email as string,
     displayName: user.display_name as string,
     role: user.role as 'admin' | 'agent',

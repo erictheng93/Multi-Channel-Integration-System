@@ -16,9 +16,9 @@ const mockCustomers: Customer[] = [
 ]
 
 const mockAgents: Agent[] = [
-  { id: '1', name: '客服小王', email: 'wang@example.com', isOnline: true, platforms: ['line', 'facebook'], role: 'agent', isActive: true, createdAt: Date.now() },
-  { id: '2', name: '客服小李', email: 'li@example.com', isOnline: true, platforms: ['line', 'facebook'], role: 'agent', isActive: true, createdAt: Date.now() },
-  { id: '3', name: '主管小陳', email: 'chen@example.com', isOnline: false, platforms, role: 'admin', isActive: true, createdAt: Date.now() }
+  { id: '1', name: '客服小王', displayName: '客服小王', email: 'wang@example.com', isOnline: true, platforms: ['line', 'facebook'], role: 'agent', isActive: true, createdAt: Date.now() },
+  { id: '2', name: '客服小李', displayName: '客服小李', email: 'li@example.com', isOnline: true, platforms: ['line', 'facebook'], role: 'agent', isActive: true, createdAt: Date.now() },
+  { id: '3', name: '主管小陳', displayName: '主管小陳', email: 'chen@example.com', isOnline: false, platforms, role: 'admin', isActive: true, createdAt: Date.now() }
 ]
 
 export function generateMockConversations(count: number = 20): Conversation[] {

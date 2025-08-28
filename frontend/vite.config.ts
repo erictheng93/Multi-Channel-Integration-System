@@ -1,10 +1,17 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 import viteCompression from 'vite-plugin-compression'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // 載入環境變數
+  const env = loadEnv(mode, process.cwd(), '')
+  
+  // 如果是開發模式且存在 pages 專用配置，則使用它
+  const isPagesDevBuild = mode === 'development' && process.env.VITE_BUILD_TYPE === 'pages'
+  
+  return {
   plugins: [
     vue(),
     // Gzip compression for production
@@ -127,5 +134,6 @@ export default defineConfig({
   // Enable compression in development for testing
   esbuild: {
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : ['debugger']
+  }
   }
 })

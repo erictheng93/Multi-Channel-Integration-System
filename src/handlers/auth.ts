@@ -63,7 +63,7 @@ export const authHandler = {
         const tempToken = await signJWT(
           { 
             userId: typeof agentRow.id === 'string' ? parseInt(agentRow.id, 10) : Number(agentRow.id),
-            username: agentRow.email as string,
+            displayName: agentRow.display_name as string,
             email: agentRow.email as string, 
             role: agentRow.role as 'admin' | 'agent',
             type: 'temp_password_change'
@@ -83,7 +83,7 @@ export const authHandler = {
       const token = await signJWT(
         { 
           userId: typeof agentRow.id === 'string' ? parseInt(agentRow.id, 10) : Number(agentRow.id),
-          username: agentRow.email as string,
+          displayName: agentRow.display_name as string,
           email: agentRow.email as string, 
           role: agentRow.role as 'admin' | 'agent',
           type: 'access'
@@ -96,7 +96,7 @@ export const authHandler = {
       const refreshToken = await signJWT(
         { 
           userId: typeof agentRow.id === 'string' ? parseInt(agentRow.id, 10) : Number(agentRow.id),
-          username: agentRow.email as string,
+          displayName: agentRow.display_name as string,
           email: agentRow.email as string, 
           role: agentRow.role as 'admin' | 'agent',
           type: 'refresh'
@@ -192,7 +192,7 @@ export const authHandler = {
       const newToken = await signJWT(
         { 
           userId: payload.userId,
-          username: payload.username,
+          displayName: payload.displayName,
           email: payload.email, 
           role: payload.role,
           type: 'access'
@@ -205,7 +205,7 @@ export const authHandler = {
       const newRefreshToken = await signJWT(
         { 
           userId: payload.userId,
-          username: payload.username,
+          displayName: payload.displayName,
           email: payload.email, 
           role: payload.role,
           type: 'refresh'

@@ -26,15 +26,26 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔧 新增：會話恢復狀態 - 解決競爭條件問題
   const sessionStatus = ref<SessionStatus>('pending');
 
-  // Initialize tokens from localStorage
+  // Initialize tokens and agent from localStorage
   if (typeof window !== 'undefined' && window.localStorage) {
     const storedToken = localStorage.getItem('token');
     const storedRefreshToken = localStorage.getItem('refreshToken');
     const expiry = localStorage.getItem('sessionExpiry');
+    const storedAgent = localStorage.getItem('currentAgent');
     
     token.value = storedToken || null;
     refreshToken.value = storedRefreshToken || null;
     sessionExpiry.value = expiry ? parseInt(expiry, 10) : null;
+    
+    // Restore currentAgent from localStorage
+    if (storedAgent) {
+      try {
+        currentAgent.value = JSON.parse(storedAgent);
+      } catch (e) {
+        console.error('Failed to parse stored agent:', e);
+        currentAgent.value = null;
+      }
+    }
     
     // Check if session has expired
     if (sessionExpiry.value && Date.now() > sessionExpiry.value) {
@@ -42,9 +53,11 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = null;
       refreshToken.value = null;
       sessionExpiry.value = null;
+      currentAgent.value = null;
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('sessionExpiry');
+      localStorage.removeItem('currentAgent');
     }
   }
 
@@ -96,13 +109,15 @@ export const useAuthStore = defineStore('auth', () => {
         sessionExpiry.value = expiry;
         
         console.log('💾 Saving to localStorage...');
-        // 儲存 tokens 和過期時間
+        // 儲存 tokens、過期時間和 currentAgent
         if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.setItem('token', loginData.token);
           if (loginData.refreshToken) {
             localStorage.setItem('refreshToken', loginData.refreshToken);
           }
           localStorage.setItem('sessionExpiry', expiry.toString());
+          // Save currentAgent to localStorage
+          localStorage.setItem('currentAgent', JSON.stringify(loginData.agent));
         }
         
         // 設定預設 header
@@ -143,6 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('sessionExpiry');
+          localStorage.removeItem('currentAgent');
         }
         
         // 🔧 設定會話狀態為未認證
@@ -204,6 +220,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('sessionExpiry');
+      localStorage.removeItem('currentAgent');
     }
     
     // Remove auth headers

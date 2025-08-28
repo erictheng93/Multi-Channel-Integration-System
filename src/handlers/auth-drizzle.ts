@@ -15,12 +15,12 @@ auth.use('*', databaseMiddleware);
 // 登入
 auth.post('/login', async (c) => {
   try {
-    const { username, password } = await c.req.json();
+    const { email, password } = await c.req.json();
     
-    if (!username || !password) {
+    if (!email || !password) {
       return c.json({ 
         success: false, 
-        error: 'Username and password are required' 
+        error: 'Email and password are required' 
       }, 400);
     }
 
@@ -29,7 +29,7 @@ auth.post('/login', async (c) => {
     const dbService = new DatabaseService(db, kv);
 
     // 查找用戶
-    const agent = await dbService.getAgentByUsername(username);
+    const agent = await dbService.getAgentByEmail(email);
     
     if (!agent || !agent.isActive) {
       return c.json({ 
@@ -54,7 +54,6 @@ auth.post('/login', async (c) => {
     
     const sessionData: SessionData = {
       agentId: agent.id,
-      username: agent.username,
       role: agent.role,
       loginAt: new Date().toISOString(),
       expiresAt: expiresAt.toISOString(),
@@ -72,7 +71,6 @@ auth.post('/login', async (c) => {
         token: sessionToken,
         agent: {
           id: agent.id,
-          username: agent.username,
           email: agent.email,
           displayName: agent.displayName,
           role: agent.role,
@@ -137,7 +135,6 @@ auth.get('/me', authMiddleware, async (c) => {
       success: true,
       data: {
         id: currentAgent.id,
-        username: currentAgent.username,
         email: currentAgent.email,
         displayName: currentAgent.displayName,
         role: currentAgent.role,
@@ -168,9 +165,9 @@ auth.post('/register', authMiddleware, async (c) => {
       }, 403);
     }
 
-    const { username, email, password, displayName, role = 'agent' } = await c.req.json();
+    const { email, password, displayName, role = 'agent' } = await c.req.json();
     
-    if (!username || !email || !password || !displayName) {
+    if (!email || !password || !displayName) {
       return c.json({ 
         success: false, 
         error: 'All fields are required' 
@@ -181,12 +178,12 @@ auth.post('/register', authMiddleware, async (c) => {
     const kv = c.get('kv');
     const dbService = new DatabaseService(db, kv);
 
-    // 檢查用戶名是否已存在
-    const existingAgent = await dbService.getAgentByUsername(username);
+    // 檢查郵箱是否已存在
+    const existingAgent = await dbService.getAgentByEmail(email);
     if (existingAgent) {
       return c.json({ 
         success: false, 
-        error: 'Username already exists' 
+        error: 'Email already exists' 
       }, 409);
     }
 
@@ -195,7 +192,6 @@ auth.post('/register', authMiddleware, async (c) => {
 
     // 建立新的客服人員
     const newAgent = await dbService.createAgent({
-      username,
       email,
       passwordHash,
       displayName,
@@ -213,7 +209,6 @@ auth.post('/register', authMiddleware, async (c) => {
       success: true,
       data: {
         id: newAgent.id,
-        username: newAgent.username,
         email: newAgent.email,
         displayName: newAgent.displayName,
         role: newAgent.role,

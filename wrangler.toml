@@ -12,8 +12,6 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
-ENCRYPTION_KEY = "production-encryption-key-change-me"
-JWT_SECRET = "your-super-secret-jwt-key-change-this-in-production"
 
 # 生產環境路由
 [[routes]]
@@ -70,8 +68,6 @@ zone_name = "imfinethankyouandyou.com"
 [env.dev.vars]
 ENVIRONMENT = "development"
 R2_PUBLIC_URL = "https://s3-dev.imfinethankyouandyou.com"
-ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
-JWT_SECRET = "dev-jwt-secret-key-for-development-only"
 
 # 開發環境 D1 資料庫
 [[env.dev.d1_databases]]
