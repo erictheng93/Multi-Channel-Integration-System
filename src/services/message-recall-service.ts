@@ -49,25 +49,24 @@ export class MessageRecallService {
     try {
       // 1. 儲存到 D1 (持久化) 
       await this.env.DB.prepare(`
-        INSERT INTO pending_messages (
-          id, conversation_id, sender_id, content, message_type,
-          recipient_platform_id, platform, delay_seconds,
-          scheduled_send_time, recall_deadline, status, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        INSERT INTO delayed_messages (
+          id, conversation_id, agent_id, content, message_type,
+          scheduled_at, status, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
       `).bind(
         messageId,
         request.conversationId,
         request.senderId,
         request.content,
         request.messageType || 'text',
-        request.recipientPlatformId,
-        request.platform,
-        request.delaySeconds,
         scheduledSendTime.toISOString(),
-        recallDeadline.toISOString(),
-        JSON.stringify({ 
-          mediaUrl: request.mediaUrl, 
-          originalSendTime: now.toISOString() 
+        JSON.stringify({
+          recipientPlatformId: request.recipientPlatformId,
+          platform: request.platform,
+          delaySeconds: request.delaySeconds,
+          mediaUrl: request.mediaUrl,
+          originalSendTime: now.toISOString(),
+          recallDeadline: recallDeadline.toISOString()
         })
       ).run();
 
@@ -192,7 +191,7 @@ export class MessageRecallService {
 
       // 2. 從 D1 獲取待發送訊息
       const pendingMessage = await this.env.DB.prepare(`
-        SELECT * FROM pending_messages WHERE id = ? AND status = 'pending'
+        SELECT * FROM delayed_messages WHERE id = ? AND status = 'pending'
       `).bind(messageId).first();
 
       if (!pendingMessage) {
@@ -206,7 +205,7 @@ export class MessageRecallService {
       const now = new Date();
       const newStatus = sendSuccess ? 'sent' : 'failed';
 
-      await this.updateMessageStatus(messageId, newStatus, String(pendingMessage.sender_id), now, sendSuccess);
+      await this.updateMessageStatus(messageId, newStatus, String(pendingMessage.agent_id), now, sendSuccess);
 
       // 5. 清理 KV 標記
       await this.cleanupKVMarkers(messageId);
@@ -250,23 +249,23 @@ export class MessageRecallService {
       SELECT 
         pm.*,
         c.id as conversation_id,
-        u.name as customer_name,
+        cu.display_name as customer_name,
         CASE 
-          WHEN pm.status = 'pending' AND datetime('now') < pm.recall_deadline THEN 1
+          WHEN pm.status = 'pending' AND datetime('now') < pm.scheduled_at THEN 1
           ELSE 0
         END as can_recall
-      FROM pending_messages pm
+      FROM delayed_messages pm
       JOIN conversations c ON pm.conversation_id = c.id
-      JOIN users u ON c.user_id = u.id
-      WHERE pm.sender_id = ? AND pm.status = 'pending'
-      ORDER BY pm.scheduled_send_time ASC
+      JOIN customers cu ON c.customer_id = cu.id
+      WHERE pm.agent_id = ? AND pm.status = 'pending'
+      ORDER BY pm.scheduled_at ASC
       LIMIT ? OFFSET ?
     `).bind(userId, pageSize, offset).all();
 
     const totalResult = await this.env.DB.prepare(`
       SELECT COUNT(*) as total
-      FROM pending_messages
-      WHERE sender_id = ? AND status = 'pending'
+      FROM delayed_messages
+      WHERE agent_id = ? AND status = 'pending'
     `).bind(userId).first();
 
     return {
@@ -297,12 +296,12 @@ export class MessageRecallService {
     timestamp: Date, 
     createMessageRecord = false
   ) {
-    // 更新 pending_messages 狀態
+    // 更新 delayed_messages 狀態
     const updateField = status === 'sent' ? 'sent_at' : 
                        status === 'cancelled' ? 'cancelled_at' : 'updated_at';
 
     await this.env.DB.prepare(`
-      UPDATE pending_messages 
+      UPDATE delayed_messages 
       SET status = ?, ${updateField} = ?, updated_at = ?
       WHERE id = ?
     `).bind(status, timestamp.toISOString(), timestamp.toISOString(), messageId).run();
@@ -310,19 +309,19 @@ export class MessageRecallService {
     // 如果發送成功，創建正式訊息記錄
     if (createMessageRecord && status === 'sent') {
       const pendingMessage = await this.env.DB.prepare(`
-        SELECT * FROM pending_messages WHERE id = ?
+        SELECT * FROM delayed_messages WHERE id = ?
       `).bind(messageId).first();
 
       if (pendingMessage) {
         await this.env.DB.prepare(`
           INSERT INTO messages (
-            id, conversation_id, sender_type, sender_id, content,
+            id, conversation_id, sender_type, agent_sender_id, content,
             message_type, is_sent, delivery_status, sent_at, created_at
           ) VALUES (?, ?, 'agent', ?, ?, ?, 1, 'sent', ?, ?)
         `).bind(
           messageId,
           pendingMessage.conversation_id,
-          pendingMessage.sender_id,
+          pendingMessage.agent_id,
           pendingMessage.content,
           pendingMessage.message_type,
           timestamp.toISOString(),

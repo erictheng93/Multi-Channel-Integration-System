@@ -7,11 +7,7 @@ pages_build_output_dir = "dist"
 # 生產環境配置
 compatibility_date = "2024-01-01"
 
-# Pages 專案設定
-[build]
-command = "npm run build"
-cwd = "frontend"
-destination = "dist"
+# Pages 專案設定 (使用 .pages.toml 而不是此處的 build 配置)
 
 # 環境變數 (在 Cloudflare Dashboard 中設定)
 [env.production.vars]

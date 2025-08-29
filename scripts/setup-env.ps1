@@ -40,9 +40,8 @@ FACEBOOK_APP_SECRET=your-facebook-app-secret
 FACEBOOK_VERIFY_TOKEN=$fbVerifyToken
 
 # Cloudflare R2 配置
-# 開發環境: https://s3dev.imfinethankyouandyou.com
 # 生產環境: https://s3.imfinethankyouandyou.com
-R2_PUBLIC_URL=https://s3dev.imfinethankyouandyou.com
+R2_PUBLIC_URL=https://s3.imfinethankyouandyou.com
 R2_ACCOUNT_ID=your-cloudflare-account-id
 
 # 檔案上傳配置

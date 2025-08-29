@@ -1,5 +1,5 @@
 // 專案名稱：Multi-Channel Support MVP
-// 檔案路徑：/frontend/src/api/conversations.ts
+// 檔案路徑：/frontend/src/conversations.ts
 // Created by: API Service Developer
 
 import { apiClient } from './base'
@@ -11,6 +11,71 @@ import type {
   PaginatedResponse,
   Platform 
 } from '@/types'
+
+// API 返回的原始對話數據格式 (snake_case)
+interface RawConversationData {
+  id: string
+  customer_id: number
+  assigned_team_id: number | null
+  assigned_user_id: string | null
+  status: 'active' | 'assigned' | 'closed'
+  last_message_at: string
+  created_at: string
+  updated_at: string
+  customer_name?: string
+  platform: Platform
+  platform_user_id: string
+  last_message_content?: string
+  unread_count?: number
+}
+
+// 數據轉換適配器
+function adaptConversationData(rawData: RawConversationData): Conversation {
+  // 狀態映射: API 的 'active' 對應前端的 'open'
+  const statusMap: Record<string, 'open' | 'assigned' | 'closed'> = {
+    'active': 'open',
+    'assigned': 'assigned',
+    'closed': 'closed'
+  }
+
+  return {
+    id: rawData.id,
+    userId: rawData.customer_id.toString(),
+    user: rawData.customer_name ? {
+      id: rawData.customer_id.toString(),
+      name: rawData.customer_name,
+      platform: rawData.platform,
+      platformUserId: rawData.platform_user_id,
+      createdAt: new Date(rawData.created_at).getTime()
+    } : undefined,
+    customer: rawData.customer_name ? {
+      id: rawData.customer_id.toString(),
+      name: rawData.customer_name,
+      platform: rawData.platform,
+      platformUserId: rawData.platform_user_id,
+      createdAt: new Date(rawData.created_at).getTime()
+    } : undefined,
+    assignedTo: rawData.assigned_user_id || undefined,
+    assignedAgentId: rawData.assigned_user_id || undefined,
+    status: statusMap[rawData.status] || 'open',
+    platform: rawData.platform,
+    lastMessageAt: new Date(rawData.last_message_at).getTime(),
+    lastMessage: rawData.last_message_content ? {
+      id: `last-${rawData.id}`,
+      conversationId: rawData.id,
+      senderId: rawData.customer_id.toString(),
+      senderType: 'customer' as const,
+      content: rawData.last_message_content,
+      messageType: 'text' as const,
+      platform: rawData.platform,
+      timestamp: new Date(rawData.last_message_at).getTime(),
+      createdAt: new Date(rawData.last_message_at).getTime()
+    } : undefined,
+    unreadCount: rawData.unread_count || 0,
+    createdAt: new Date(rawData.created_at).getTime(),
+    updatedAt: new Date(rawData.updated_at).getTime()
+  }
+}
 
 interface ConversationListParams {
   page?: number;
@@ -44,7 +109,18 @@ export const conversationApi = {
     if (filters?.assignedTo) {queryParams.append('assignedTo', filters.assignedTo);}
     
     const queryString = queryParams.toString();
-    return apiClient.get(`/api/conversations${queryString ? `?${queryString}` : ''}`);
+    const response = await apiClient.get<RawConversationData[]>(`/conversations${queryString ? `?${queryString}` : ''}`);
+    
+    // 轉換數據格式
+    if (response.success && response.data && Array.isArray(response.data)) {
+      const adaptedConversations = response.data.map(adaptConversationData);
+      return {
+        success: true,
+        data: adaptedConversations
+      };
+    }
+    
+    return { success: false, error: response.error || '獲取對話列表失敗' };
   },
 
   // 獲取對話列表（分頁版本，強類型）
@@ -58,12 +134,46 @@ export const conversationApi = {
     if (params.search) {queryParams.append('search', params.search);}
     
     const queryString = queryParams.toString();
-    return apiClient.get(`/api/conversations${queryString ? `?${queryString}` : ''}`);
+    const response = await apiClient.get<RawConversationData[] | PaginatedResponse<RawConversationData>>(`/conversations${queryString ? `?${queryString}` : ''}`);
+    
+    // 轉換數據格式
+    if (response.success && response.data) {
+      if (Array.isArray(response.data)) {
+        // Direct array format from backend
+        const adaptedConversations = response.data.map(adaptConversationData);
+        return {
+          success: true,
+          data: {
+            items: adaptedConversations,
+            page: params.page || 1,
+            pageSize: params.pageSize || 20,
+            total: adaptedConversations.length,
+            totalPages: Math.ceil(adaptedConversations.length / (params.pageSize || 20))
+          }
+        };
+      } else {
+        // Paginated response format
+        const paginatedData = response.data as PaginatedResponse<RawConversationData>;
+        const adaptedConversations = (paginatedData.items || []).map(adaptConversationData);
+        return {
+          success: true,
+          data: {
+            items: adaptedConversations,
+            page: paginatedData.page,
+            pageSize: paginatedData.pageSize,
+            total: paginatedData.total,
+            totalPages: paginatedData.totalPages
+          }
+        };
+      }
+    }
+    
+    return { success: false, error: response.error || '獲取對話列表失敗' };
   },
 
   // 獲取對話統計
   getStats: async (): Promise<ApiResponse<ConversationStats>> => {
-    return apiClient.get('/api/conversations/stats');
+    return apiClient.get('/conversations/stats');
   },
 
   // 獲取單一對話
@@ -71,7 +181,18 @@ export const conversationApi = {
     if (!id?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.get(`/api/conversations/${id}`);
+    const response = await apiClient.get<RawConversationData>(`/conversations/${id}`);
+    
+    // 轉換數據格式
+    if (response.success && response.data) {
+      const adaptedConversation = adaptConversationData(response.data);
+      return {
+        success: true,
+        data: adaptedConversation
+      };
+    }
+    
+    return { success: false, error: response.error || '獲取對話失敗' };
   },
 
   // 獲取對話訊息
@@ -90,7 +211,7 @@ export const conversationApi = {
     if (params?.since) {queryParams.append('since', params.since);}
     
     const queryString = queryParams.toString();
-    return apiClient.get(`/api/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get(`/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`);
   },
 
   // 發送訊息
@@ -102,7 +223,7 @@ export const conversationApi = {
       return { success: false, error: '訊息內容不能為空' };
     }
     
-    return apiClient.post(`/api/conversations/${conversationId}/messages`, {
+    return apiClient.post(`/conversations/${conversationId}/messages`, {
       content: request.content.trim(),
       messageType: request.messageType || 'text',
       platform: request.platform
@@ -114,7 +235,7 @@ export const conversationApi = {
     if (!conversationId?.trim() || !agentId?.trim()) {
       return { success: false, error: '對話 ID 和客服 ID 不能為空' };
     }
-    return apiClient.put(`/api/conversations/${conversationId}/assign`, { agentId });
+    return apiClient.put(`/conversations/${conversationId}/assign`, { agentId });
   },
 
   // 關閉對話
@@ -122,7 +243,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/api/conversations/${conversationId}/close`, reason ? { reason } : undefined);
+    return apiClient.put(`/conversations/${conversationId}/close`, reason ? { reason } : undefined);
   },
 
   // 重新開啟對話
@@ -130,7 +251,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/api/conversations/${conversationId}/reopen`);
+    return apiClient.put(`/conversations/${conversationId}/reopen`);
   },
 
   // 標記對話為已讀
@@ -138,7 +259,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/api/conversations/${conversationId}/read`);
+    return apiClient.put(`/conversations/${conversationId}/read`);
   },
 
   // 設置對話標籤
@@ -146,7 +267,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/api/conversations/${conversationId}/tags`, { tags });
+    return apiClient.put(`/conversations/${conversationId}/tags`, { tags });
   },
 
   // 搜索對話

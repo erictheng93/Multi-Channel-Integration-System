@@ -3,7 +3,6 @@
 
 [build]
 command = "npm run build:pages"
-destination = "dist"
 
 # 環境變數配置
 [env.production.vars]

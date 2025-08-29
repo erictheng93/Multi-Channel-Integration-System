@@ -63,7 +63,7 @@ output "r2_bucket_name" {
 
 output "r2_public_url" {
   description = "R2 公開 URL (已配置自定義域名)"
-  value       = var.environment == "production" ? "https://s3.imfinethankyouandyou.com" : "https://s3-dev.imfinethankyouandyou.com"
+  value       = "https://s3.imfinethankyouandyou.com"
 }
 
 # KV 命名空間

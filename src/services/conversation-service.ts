@@ -30,7 +30,7 @@ export class ConversationService {
 
       // Update conversation
       const conversation = await this.dbService.updateConversation(conversationId, {
-        agentId,
+        assignedUserId: agentId, // Keep as string to match agents table TEXT id
         status: 'in-progress',
         updatedAt: new Date().toISOString()
       });
@@ -85,11 +85,12 @@ export class ConversationService {
       throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((rateLimit.resetTime - Date.now()) / 1000)} seconds`);
     }
 
-    // Create message
+    // Create message  
     const message = await this.dbService.createMessage({
       conversationId,
-      senderId,
       senderType,
+      agentSenderId: senderType === 'agent' ? senderId : null,
+      customerSenderId: senderType === 'user' ? parseInt(senderId) || null : null,
       content,
       messageType: 'text'
     });
@@ -130,7 +131,7 @@ export class ConversationService {
       const result = await this.dbService.batchUpdateConversationStatus(
         conversationIds, 
         'in-progress', 
-        agentId
+        agentId // Keep as string to match database schema
       );
 
       // Publish bulk assignment event

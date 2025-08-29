@@ -1,7 +1,9 @@
 // 用戶資料同步服務
+import { eq, and, isNull } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
+import { customers } from '../db/schema';
 import type { 
-  Bindings, 
-  DatabaseRow
+  Bindings
 } from '../types';
 import { 
   isLineProfile,
@@ -163,22 +165,26 @@ export class UserSyncService {
       console.log(`Syncing stale users (older than ${new Date(cutoffTime).toISOString()})`);
       
       // 查詢需要更新的用戶
-      const staleUsers = await this.env.DB.prepare(`
-        SELECT platform_user_id, platform 
-        FROM customers 
-        WHERE profile_updated_at IS NULL 
-           OR profile_updated_at < ? 
-        ORDER BY profile_updated_at ASC 
-        LIMIT 50
-      `).bind(cutoffTime.toISOString()).all();
+      const drizzleDb = drizzle(this.env.DB);
+      const staleUsers = await drizzleDb
+        .select({
+          platformUserId: customers.platformUserId,
+          platform: customers.platform
+        })
+        .from(customers)
+        .where(
+          isNull(customers.updatedAt)
+        )
+        .orderBy(customers.updatedAt)
+        .limit(50);
 
-      if (staleUsers.results.length === 0) {
+      if (staleUsers.length === 0) {
         console.log('No stale users found');
         return 0;
       }
 
-      const userList = staleUsers.results.map((user: DatabaseRow) => ({
-        userId: user.platform_user_id,
+      const userList = staleUsers.map((user) => ({
+        userId: user.platformUserId,
         platform: user.platform
       }));
 
@@ -197,28 +203,22 @@ export class UserSyncService {
    */
   private async updateUserInDatabase(userProfile: UserProfile): Promise<void> {
     try {
-      await this.env.DB.prepare(`
-        UPDATE customers 
-        SET 
-          display_name = ?,
-          avatar_url = ?,
-          profile_data = ?,
-          profile_updated_at = datetime('now')
-        WHERE platform_user_id = ? AND platform = ?
-      `).bind(
-        userProfile.displayName,
-        userProfile.pictureUrl || null,
-        JSON.stringify({
-          statusMessage: userProfile.statusMessage,
-          locale: userProfile.locale,
-          timezone: userProfile.timezone,
-          firstName: userProfile.firstName,
-          lastName: userProfile.lastName,
-          lastSynced: userProfile.lastUpdated.toISOString()
-        }),
-        userProfile.platformUserId,
-        userProfile.platform
-      ).run();
+      const drizzleDb = drizzle(this.env.DB);
+      const timestamp = new Date().toISOString();
+      
+      await drizzleDb
+        .update(customers)
+        .set({
+          displayName: userProfile.displayName,
+          avatarUrl: userProfile.pictureUrl || null,
+          updatedAt: timestamp
+        })
+        .where(
+          and(
+            eq(customers.platformUserId, userProfile.platformUserId),
+            eq(customers.platform, userProfile.platform)
+          )
+        );
     } catch (error) {
       console.error('Error updating user in database:', error);
       throw error;
@@ -232,30 +232,34 @@ export class UserSyncService {
     try {
       // 如果不強制同步，先嘗試從資料庫獲取
       if (!forceSync) {
-        const user = await this.env.DB.prepare(`
-          SELECT * FROM customers 
-          WHERE platform_user_id = ? AND platform = ?
-        `).bind(userId, platform).first();
+        const drizzleDb = drizzle(this.env.DB);
+        const user = await drizzleDb
+          .select()
+          .from(customers)
+          .where(
+            and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, platform)
+            )
+          )
+          .get();
 
         if (user) {
-          const userData = user as any;  // TODO: Fix UserSyncData interface
-          const profileData = userData.profile_data ? JSON.parse(userData.profile_data) : {};
-          
-          // 如果資料不超過 24 小時，返回快取資料
-          const lastUpdated = userData.profile_updated_at ? new Date(userData.profile_updated_at) : null;
+          // 使用 updatedAt 並提供預設值
+          const lastUpdated = user.updatedAt ? new Date(user.updatedAt) : null;
           const isRecent = lastUpdated && (Date.now() - lastUpdated.getTime()) < 24 * 60 * 60 * 1000;
           
           if (isRecent) {
             return {
               platformUserId: userId,
               platform,
-              displayName: userData.display_name,
-              pictureUrl: userData.avatar_url,
-              statusMessage: profileData.statusMessage,
-              locale: profileData.locale,
-              timezone: profileData.timezone,
-              firstName: profileData.firstName,
-              lastName: profileData.lastName,
+              displayName: user.displayName || 'Unknown User',
+              pictureUrl: user.avatarUrl || '',
+              statusMessage: '',
+              locale: '',
+              timezone: 0,
+              firstName: '',
+              lastName: '',
               lastUpdated: lastUpdated || new Date()
             };
           }
@@ -281,22 +285,30 @@ export class UserSyncService {
    */
   async needsUpdate(userId: string, platform: string, maxAge = 24 * 60 * 60 * 1000): Promise<boolean> {
     try {
-      const user = await this.env.DB.prepare(`
-        SELECT profile_updated_at FROM customers 
-        WHERE platform_user_id = ? AND platform = ?
-      `).bind(userId, platform).first();
+      const drizzleDb = drizzle(this.env.DB);
+      const user = await drizzleDb
+        .select({
+          updatedAt: customers.updatedAt
+        })
+        .from(customers)
+        .where(
+          and(
+            eq(customers.platformUserId, userId),
+            eq(customers.platform, platform)
+          )
+        )
+        .get();
 
       if (!user) return true;
 
-      const userData = user as any;  // TODO: Fix UserSyncData interface
-      const lastUpdated = userData.profile_updated_at ? new Date(userData.profile_updated_at) : null;
+      const lastUpdated = user.updatedAt ? new Date(user.updatedAt) : null;
       
       if (!lastUpdated) return true;
       
       return (Date.now() - lastUpdated.getTime()) > maxAge;
     } catch (error) {
       console.error('Error checking if user needs update:', error);
-      return true;
+      return true; // 如果查詢失敗，總是嘗試更新
     }
   }
 }

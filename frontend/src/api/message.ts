@@ -47,7 +47,7 @@ export const messageApi = {
     if (params?.messageType) {queryParams.append('messageType', params.messageType);}
     
     const queryString = queryParams.toString();
-    return apiClient.get(`/api/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get(`/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`);
   },
 
   // 獲取分頁訊息列表
@@ -64,7 +64,7 @@ export const messageApi = {
     if (params?.before) {queryParams.append('before', params.before);}
     if (params?.messageType) {queryParams.append('messageType', params.messageType);}
     
-    return apiClient.get(`/api/conversations/${conversationId}/messages?${queryParams.toString()}`);
+    return apiClient.get(`/conversations/${conversationId}/messages?${queryParams.toString()}`);
   },
 
   // 發送訊息
@@ -86,7 +86,7 @@ export const messageApi = {
       attachmentIds: data.attachmentIds
     };
     
-    return apiClient.post(`/api/conversations/${conversationId}/messages`, payload);
+    return apiClient.post(`/conversations/${conversationId}/messages`, payload);
   },
 
   // 發送快速回覆
@@ -114,7 +114,7 @@ export const messageApi = {
     formData.append('messageType', request.messageType);
     
     // 使用 apiClient 的 uploadFile 方法處理 FormData
-    return apiClient.uploadFile(`/api/conversations/${conversationId}/attachments`, formData);
+    return apiClient.uploadFile(`/conversations/${conversationId}/attachments`, formData);
   },
 
   // 標記訊息為已讀
@@ -124,8 +124,8 @@ export const messageApi = {
     }
     
     const endpoint = messageId 
-      ? `/api/conversations/${conversationId}/messages/${messageId}/read`
-      : `/api/conversations/${conversationId}/messages/read`;
+      ? `/conversations/${conversationId}/messages/${messageId}/read`
+      : `/conversations/${conversationId}/messages/read`;
       
     return apiClient.put(endpoint);
   },
@@ -136,7 +136,7 @@ export const messageApi = {
       return { success: false, error: '對話 ID 和訊息 ID 不能為空' };
     }
     
-    return apiClient.request('DELETE', `/api/conversations/${conversationId}/messages/${request.messageId}`, {
+    return apiClient.request('DELETE', `/conversations/${conversationId}/messages/${request.messageId}`, {
       reason: request.reason
     });
   },
@@ -147,7 +147,7 @@ export const messageApi = {
       return { success: false, error: '對話 ID 和訊息 ID 不能為空' };
     }
     
-    return apiClient.get(`/api/conversations/${conversationId}/messages/${messageId}`);
+    return apiClient.get(`/conversations/${conversationId}/messages/${messageId}`);
   },
 
   // 編輯訊息
@@ -160,7 +160,7 @@ export const messageApi = {
       return { success: false, error: '新的訊息內容不能為空' };
     }
     
-    return apiClient.put(`/api/conversations/${conversationId}/messages/${messageId}`, {
+    return apiClient.put(`/conversations/${conversationId}/messages/${messageId}`, {
       content: newContent.trim()
     });
   },
@@ -179,6 +179,6 @@ export const messageApi = {
     queryParams.append('q', query.trim());
     if (messageType) {queryParams.append('messageType', messageType);}
     
-    return apiClient.get(`/api/conversations/${conversationId}/messages/search?${queryParams.toString()}`);
+    return apiClient.get(`/conversations/${conversationId}/messages/search?${queryParams.toString()}`);
   }
 }

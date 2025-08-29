@@ -1,449 +1,300 @@
-// worker/src/handlers/conversation.ts
-// 專案名稱：Multi-Channel Support MVP
-// 檔案路徑：/src/handlers/conversation.ts
-// Created by: API Handler Developer
-
+// 使用 Drizzle ORM 和 KV 的對話處理器
+import { Hono } from 'hono';
 import { Context } from 'hono';
-import type { 
-  Bindings, 
-  QueryParams, 
-  // ConversationDbRecord, // 暫時未使用
-  DatabaseRow,
-  // D1Result // 暫時未使用
-} from '../types';
-import { asString, asNumber } from '../types/database';
+import { DatabaseService } from '../services/database';
+import { databaseMiddleware, authMiddleware } from '../middleware/database';
+import type { HonoContext, Bindings } from '../types/bindings';
 import { 
   successResponse, 
-  paginatedResponse,
   errorResponse, 
   validationErrorResponse, 
-  // unauthorizedResponse, // 暫時未使用
   notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
-import { ActivityService } from '../services/activity-service';
 
-/*
-interface ConversationFilters {
-  status?: string;
-  priority?: string;
-  assignedUserId?: number;
-  assignedTeamId?: number;
-  tagId?: number;
-  search?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  hasUnread?: boolean;
-}
-*/
+const conversations = new Hono<HonoContext>();
 
-export const conversationHandler = {
-  // 取得對話列表（增強版）
-  async list(c: Context<{ Bindings: Bindings }>) {
-    try {
-      const payload = c.get('jwtPayload');
-      const { 
-        page = '1', 
-        pageSize = '20', 
-        status,
-        priority,
-        assignedUserId,
-        assignedTeamId,
-        tagId,
-        search,
-        dateFrom,
-        dateTo,
-        hasUnread
-      } = c.req.query();
-      const offset = (parseInt(page) - 1) * parseInt(pageSize);
+// Apply middleware
+conversations.use('*', databaseMiddleware);
+conversations.use('*', authMiddleware);
 
-      // 建立查詢
-      let query = `
-        SELECT DISTINCT c.*,
-               cu.display_name as user_name,
-               cu.platform,
-               cu.platform_user_id,
-               cu.avatar_url,
-               u.display_name as agent_name,
-               u.email as agent_email,
-               t.name as team_name,
-               GROUP_CONCAT(tag.name, ',') as tag_names,
-               GROUP_CONCAT(tag.color, ',') as tag_colors
-        FROM conversations c
-        LEFT JOIN customers cu ON c.customer_id = cu.id
-        LEFT JOIN users u ON c.assigned_user_id = u.id
-        LEFT JOIN teams t ON c.assigned_team_id = t.id
-        LEFT JOIN conversation_tags ct ON c.id = ct.conversation_id
-        LEFT JOIN tags tag ON ct.tag_id = tag.id AND tag.is_active = TRUE
-      `;
+// 獲取對話列表
+conversations.get('/', async (c) => {
+  try {
+    const agent = c.get('agent');
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
 
-      const params: QueryParams = [];
-      const whereConditions: string[] = [];
+    const { status, limit = '50', page = '1' } = c.req.query();
+    const limitNum = Math.min(parseInt(limit), 100);
+    const pageNum = Math.max(parseInt(page), 1);
+    // const offset = (pageNum - 1) * limitNum; // 暫時未使用
 
-      // 狀態篩選
-      if (status) {
-        whereConditions.push('c.status = ?');
-        params.push(status);
-      }
+    // 根據角色獲取對話 - 使用新的三層權限體系
+    const conversationList = await dbService.getConversationsByRole(agent!, status, limitNum);
 
-      // 優先級篩選
-      if (priority) {
-        whereConditions.push('c.priority = ?');
-        params.push(priority);
-      }
-
-      // 指派用戶篩選
-      if (assignedUserId) {
-        whereConditions.push('c.assigned_user_id = ?');
-        params.push(parseInt(assignedUserId));
-      }
-
-      // 指派團隊篩選
-      if (assignedTeamId) {
-        whereConditions.push('c.assigned_team_id = ?');
-        params.push(parseInt(assignedTeamId));
-      }
-
-      // 標籤篩選
-      if (tagId) {
-        whereConditions.push('ct.tag_id = ?');
-        params.push(parseInt(tagId));
-      }
-
-      // 搜索（客戶名稱或對話內容）
-      if (search) {
-        whereConditions.push(`(
-          cu.display_name LIKE ? OR 
-          cu.email LIKE ? OR 
-          EXISTS (
-            SELECT 1 FROM messages m 
-            WHERE m.conversation_id = c.id AND m.content LIKE ?
-          )
-        )`);
-        const searchTerm = `%${search}%`;
-        params.push(searchTerm, searchTerm, searchTerm);
-      }
-
-      // 日期範圍篩選
-      if (dateFrom) {
-        whereConditions.push('c.created_at >= ?');
-        params.push(dateFrom);
-      }
-      if (dateTo) {
-        whereConditions.push('c.created_at <= ?');
-        params.push(dateTo);
-      }
-
-      // 未讀訊息篩選
-      if (hasUnread === 'true') {
-        whereConditions.push(`EXISTS (
-          SELECT 1 FROM messages m 
-          WHERE m.conversation_id = c.id 
-            AND m.sender_type = 'customer' 
-            AND m.created_at > COALESCE((
-              SELECT MAX(created_at) 
-              FROM messages m2 
-              WHERE m2.conversation_id = c.id 
-                AND m2.sender_type = 'agent'
-            ), '1970-01-01')
-        )`);
-      }
-
-      // 權限控制：非管理員只能看到分配給自己或自己團隊的對話
-      if (payload && payload.role !== 'admin') {
-        whereConditions.push('(c.assigned_user_id = ? OR c.assigned_team_id = ?)');
-        params.push(payload.userId, payload.teamId);
-      }
-
-      if (whereConditions.length > 0) {
-        query += ' WHERE ' + whereConditions.join(' AND ');
-      }
-
-      query += ` 
-        GROUP BY c.id 
-        ORDER BY 
-          CASE c.priority 
-            WHEN 'urgent' THEN 1
-            WHEN 'high' THEN 2
-            WHEN 'normal' THEN 3
-            WHEN 'low' THEN 4
-            ELSE 5
-          END,
-          c.last_message_at DESC 
-        LIMIT ? OFFSET ?
-      `;
-      params.push(parseInt(pageSize), offset);
-
-      // 執行查詢
-      const conversations = await c.env.DB.prepare(query).bind(...params).all();
-
-      // 計算總數
-      let countQuery = `
-        SELECT COUNT(DISTINCT c.id) as total 
-        FROM conversations c
-        LEFT JOIN customers cu ON c.customer_id = cu.id
-        LEFT JOIN conversation_tags ct ON c.id = ct.conversation_id
-        LEFT JOIN tags tag ON ct.tag_id = tag.id AND tag.is_active = TRUE
-      `;
-      if (whereConditions.length > 0) {
-        countQuery += ' WHERE ' + whereConditions.join(' AND ');
-      }
-
-      const countParams = params.slice(0, -2); // 移除 LIMIT 和 OFFSET 參數
-      const countResult = await c.env.DB.prepare(countQuery).bind(...countParams).first();
-
-      // 計算未讀數（可選：為了性能可以先設為 0，後續優化）
-      const conversationIds = conversations?.results ? conversations.results.map((conv: DatabaseRow) => asNumber(conv.id)) : [];
-      const unreadCounts: Record<string, number> = {};
-
-      if (conversationIds.length > 0) {
-        const placeholders = conversationIds.map(() => '?').join(',');
-        const unreadQuery = await c.env.DB.prepare(`
-          SELECT conversation_id, COUNT(*) as unread_count
-          FROM messages 
-          WHERE conversation_id IN (${placeholders}) 
-            AND sender_type = 'customer' 
-            AND created_at > COALESCE((
-              SELECT MAX(created_at) 
-              FROM messages m2 
-              WHERE m2.conversation_id = messages.conversation_id 
-                AND m2.sender_type = 'agent'
-            ), '1970-01-01')
-          GROUP BY conversation_id
-        `).bind(...conversationIds).all();
-
-        if (unreadQuery?.results) {
-          unreadQuery.results.forEach((row: DatabaseRow) => {
-            unreadCounts[asString(row.conversation_id)] = asNumber(row.unread_count);
-          });
+    return c.json({
+      success: true,
+      data: {
+        conversations: conversationList,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: conversationList.length,
         }
       }
+    });
 
-      // 格式化結果
-      const formattedConversations = conversations?.results ? conversations.results.map((conv: DatabaseRow) => ({
-        id: String(conv.id),
-        userId: String(conv.customer_id),
-        user: conv.user_name ? {
-          id: String(conv.customer_id),
-          name: conv.user_name,
-          platform: conv.platform,
-          platformUserId: conv.platform_user_id,
-          avatarUrl: conv.avatar_url,
-          createdAt: Date.now()
-        } : null,
-        assignedTo: conv.assigned_user_id ? String(conv.assigned_user_id) : undefined,
-        assignedAgent: conv.assigned_user_id ? {
-          id: String(conv.assigned_user_id),
-          name: conv.agent_name,
-          email: conv.agent_email,
-          role: 'agent' as const,
-          isActive: true,
-          createdAt: Date.now()
-        } : null,
-        assignedTeam: conv.assigned_team_id ? {
-          id: conv.assigned_team_id,
-          name: conv.team_name
-        } : null,
-        status: conv.status === 'active' ? 'open' :
-          conv.status === 'pending' ? 'assigned' : 'closed',
-        priority: conv.priority || 'normal',
-        tags: conv.tag_names ? conv.tag_names.split(',').map((name: string, index: number) => ({
-          name,
-          color: conv.tag_colors?.split(',')[index] || '#3B82F6'
-        })) : [],
-        lastMessageAt: conv.last_message_at ?
-          new Date(String(conv.last_message_at)).getTime() :
-          new Date(String(conv.created_at)).getTime(),
-        unreadCount: unreadCounts[conv.id] || 0,
-        createdAt: new Date(String(conv.created_at)).getTime(),
-        updatedAt: new Date(String(conv.updated_at)).getTime(),
-        internalNotes: conv.internal_notes
-      })) : [];
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Internal server error' 
+    }, 500);
+  }
+});
 
-      return paginatedResponse(c, formattedConversations, {
-        page: parseInt(page),
-        limit: parseInt(pageSize),
-        total: (countResult?.total as number) || 0
-      }, 'Conversations retrieved successfully');
+// 獲取特定對話
+conversations.get('/:id', async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
 
-    } catch (error) {
-      console.error('Failed to get conversations:', error);
-      return errorResponse(c, 'Failed to get conversations', 500);
+    if (!conversationId) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation ID is required' 
+      }, 400);
     }
-  },
 
-  // 取得單一對話
-  async get(c: Context<{ Bindings: Bindings }>) {
-    try {
-      const conversationId = c.req.param('id');
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
 
-      const conversation = await c.env.DB.prepare(`
-        SELECT c.*,
-               cu.display_name as user_name,
-               cu.platform,
-               cu.platform_user_id,
-               cu.avatar_url,
-               u.displayName as agent_name,
-               u.email as agent_email
-        FROM conversations c
-        LEFT JOIN customers cu ON c.customer_id = cu.id
-        LEFT JOIN users u ON c.assigned_user_id = u.id
-        WHERE c.id = ?
-      `).bind(conversationId).first();
+    // 獲取對話資訊
+    const conversation = await dbService.getConversationById(conversationId);
+    
+    if (!conversation) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation not found' 
+      }, 404);
+    }
 
-      if (!conversation) {
-        return notFoundResponse(c, 'Conversation');
+    // 獲取對話中的訊息
+    const messages = await dbService.getMessagesByConversationId(conversationId, 100);
+
+    return c.json({
+      success: true,
+      data: {
+        conversation,
+        messages: messages.reverse(), // 按時間順序排列
       }
+    });
 
-      // 計算未讀數
-      const unreadResult = await c.env.DB.prepare(`
-        SELECT COUNT(*) as unread_count
-        FROM messages 
-        WHERE conversation_id = ? 
-          AND sender_type = 'customer' 
-          AND created_at > COALESCE((
-            SELECT MAX(created_at) 
-            FROM messages m2 
-            WHERE m2.conversation_id = ? 
-              AND m2.sender_type = 'agent'
-          ), '1970-01-01')
-      `).bind(conversationId, conversationId).first();
+  } catch (error) {
+    console.error('Get conversation error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Internal server error' 
+    }, 500);
+  }
+});
 
-      return successResponse(c, {
-        id: String(conversation.id),
-        userId: String(conversation.customer_id),
-        user: conversation.user_name ? {
-          id: String(conversation.customer_id),
-          name: conversation.user_name,
-          platform: conversation.platform,
-          platformUserId: conversation.platform_user_id,
-          avatarUrl: conversation.avatar_url,
-          createdAt: Date.now()
-        } : null,
-        assignedTo: conversation.assigned_user_id ? String(conversation.assigned_user_id) : undefined,
-        assignedAgent: conversation.assigned_user_id ? {
-          id: String(conversation.assigned_user_id),
-          name: conversation.agent_name,
-          email: conversation.agent_email,
-          role: 'agent' as const,
-          isActive: true,
-          createdAt: Date.now()
-        } : null,
-        status: conversation.status === 'active' ? 'open' :
-          conversation.status === 'pending' ? 'assigned' : 'closed',
-        lastMessageAt: conversation.last_message_at ?
-          new Date(String(conversation.last_message_at)).getTime() :
-          new Date(String(conversation.created_at)).getTime(),
-        unreadCount: unreadResult?.unread_count || 0,
-        createdAt: new Date(String(conversation.created_at)).getTime(),
-        updatedAt: new Date(String(conversation.updated_at)).getTime()
+// 發送訊息
+conversations.post('/:id/messages', async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const { content, messageType = 'text' } = await c.req.json();
+
+    if (!content) {
+      return c.json({ 
+        success: false, 
+        error: 'Message content is required' 
+      }, 400);
+    }
+
+    if (!conversationId) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation ID is required' 
+      }, 400);
+    }
+
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
+
+    // 檢查對話是否存在
+    const conversation = await dbService.getConversationById(conversationId);
+    if (!conversation) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation not found' 
+      }, 404);
+    }
+
+    // 建立訊息
+    const message = await dbService.createMessage({
+      conversationId,
+      senderType: 'agent',
+      agentSenderId: agent!.id, // Use correct schema field name
+      content,
+      messageType,
+    });
+
+    // 如果對話狀態是 pending，更新為 in-progress
+    if (conversation.status === 'pending') {
+      await dbService.updateConversation(conversationId, {
+        status: 'in-progress',
+        assignedUserId: agent!.id, // Keep as string - agents table uses TEXT id
       });
-
-    } catch (error) {
-      console.error('Failed to get conversation:', error);
-      return errorResponse(c, 'Failed to get conversation', 500);
     }
-  },
 
-  // 指派對話
-  async assign(c: Context<{ Bindings: Bindings }>) {
-    try {
-      const conversationId = c.req.param('id');
-      const { agentId } = await c.req.json();
-      const payload = c.get('jwtPayload');
+    return c.json({
+      success: true,
+      data: message
+    });
 
-      // 如果沒有指定 agentId，則指派給當前用戶
-      const assignToId = agentId || payload?.userId;
+  } catch (error) {
+    console.error('Send message error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Internal server error' 
+    }, 500);
+  }
+});
 
-      if (!assignToId) {
-        return errorResponse(c, 'Agent ID is required', 400);
-      }
+// 更新對話狀態
+conversations.patch('/:id/status', async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const { status } = await c.req.json();
 
-      // 獲取原始對話資訊
-      const originalConversation = await c.env.DB.prepare(`
-        SELECT assigned_user_id, status FROM conversations WHERE id = ?
-      `).bind(conversationId).first<{ assigned_user_id: string | null; status: string }>();
-
-      // 更新對話
-      await c.env.DB.prepare(`
-        UPDATE conversations 
-        SET assigned_user_id = ?, status = 'pending', updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(assignToId, conversationId).run();
-
-      // 記錄活動
-      const activityService = new ActivityService(c.env.DB);
-      const isTransfer = originalConversation?.assigned_user_id && 
-                        originalConversation.assigned_user_id !== assignToId;
-      
-      await activityService.logActivity({
-        userId: payload?.userId || 'system',
-        userName: payload?.username || 'System',
-        userRole: payload?.role || 'system',
-        action: isTransfer ? 'conversation_transfer' : 'conversation_assign',
-        resourceType: 'conversation',
-        resourceId: conversationId,
-        details: {
-          fromAgent: originalConversation?.assigned_user_id,
-          toAgent: assignToId,
-          previousStatus: originalConversation?.status
-        },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || undefined,
-        userAgent: c.req.header('User-Agent') || undefined
-      });
-
-      return successResponse(c, null, 'Conversation assigned successfully');
-
-    } catch (error) {
-      console.error('Failed to assign conversation:', error);
-      return errorResponse(c, 'Failed to assign conversation', 500);
+    if (!['pending', 'in-progress', 'closed'].includes(status)) {
+      return c.json({ 
+        success: false, 
+        error: 'Invalid status' 
+      }, 400);
     }
-  },
 
-  // 關閉對話
-  async close(c: Context<{ Bindings: Bindings }>) {
-    try {
-      const conversationId = c.req.param('id');
-      const payload = c.get('jwtPayload');
-
-      // 獲取對話資訊
-      const conversation = await c.env.DB.prepare(`
-        SELECT assigned_user_id, status FROM conversations WHERE id = ?
-      `).bind(conversationId).first<{ assigned_user_id: string | null; status: string }>();
-
-      await c.env.DB.prepare(`
-        UPDATE conversations 
-        SET status = 'closed', updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(conversationId).run();
-
-      // 記錄對話關閉活動
-      if (payload) {
-        const activityService = new ActivityService(c.env.DB);
-        await activityService.logActivity({
-          userId: payload.userId.toString(),
-          userName: payload.username || 'User',
-          userRole: payload.role,
-          action: 'conversation_close',
-          resourceType: 'conversation',
-          resourceId: conversationId,
-          details: {
-            previousStatus: conversation?.status,
-            assignedAgent: conversation?.assigned_user_id
-          },
-          ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-          userAgent: c.req.header('User-Agent')
-        });
-      }
-
-      return successResponse(c, null, 'Conversation closed successfully');
-
-    } catch (error) {
-      console.error('Failed to close conversation:', error);
-      return errorResponse(c, 'Failed to close conversation', 500);
+    if (!conversationId) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation ID is required' 
+      }, 400);
     }
-  },
 
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
+
+    // 檢查對話是否存在
+    const conversation = await dbService.getConversationById(conversationId);
+    if (!conversation) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation not found' 
+      }, 404);
+    }
+
+    // 更新對話狀態
+    const updates: any = { status };
+    
+    // 如果狀態變為 in-progress 且沒有指派客服，指派當前客服
+    if (status === 'in-progress' && !conversation.assignedUserId) {
+      updates.assignedUserId = agent!.id;
+    }
+
+    const updatedConversation = await dbService.updateConversation(conversationId, updates);
+
+    return c.json({
+      success: true,
+      data: updatedConversation
+    });
+
+  } catch (error) {
+    console.error('Update conversation status error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Internal server error' 
+    }, 500);
+  }
+});
+
+// 標記訊息為已讀
+conversations.post('/:id/mark-read', async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+
+    if (!conversationId) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation ID is required' 
+      }, 400);
+    }
+
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
+
+    await dbService.markMessagesAsRead(conversationId, agent!.id);
+
+    return c.json({
+      success: true,
+      message: 'Messages marked as read'
+    });
+
+  } catch (error) {
+    console.error('Mark messages as read error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Internal server error' 
+    }, 500);
+  }
+});
+
+// 傳統處理器方法（為了向後兼容）
+const handlerMethods = {
   // 設定對話優先級
   async setPriority(c: Context<{ Bindings: Bindings }>) {
     try {
@@ -628,7 +479,7 @@ export const conversationHandler = {
         ORDER BY ct.created_at DESC
       `).bind(conversationId).all();
 
-      const transferHistory = transfers?.results ? transfers.results.map((transfer: DatabaseRow) => ({
+      const transferHistory = transfers?.results ? transfers.results.map((transfer: any) => ({
         id: transfer.id,
         fromTeam: transfer.from_team_id ? {
           id: transfer.from_team_id,
@@ -662,7 +513,7 @@ export const conversationHandler = {
     }
   },
 
-  // 批量操作對話
+  // 批量操作對話  
   async bulkOperation(c: Context<{ Bindings: Bindings }>) {
     try {
       const { operation, conversationIds, data } = await c.req.json();
@@ -806,40 +657,6 @@ export const conversationHandler = {
           assignedCount++;
           agentIndex = (agentIndex + 1) % agents.length;
         }
-
-      } else if (strategy === 'skill_based') {
-        // 基於技能的分配（這裡可以根據標籤或客戶類型進行智能分配）
-        // 簡化實現：根據對話的標籤匹配客服
-        for (const conv of unassignedConversations.results.slice(0, 10)) {
-          // 獲取對話標籤
-          const conversationTags = await c.env.DB.prepare(`
-            SELECT tag_id FROM conversation_tags WHERE conversation_id = ?
-          `).bind(conv.id).all();
-
-          if (conversationTags?.results && conversationTags.results.length > 0) {
-            // 找到有相關技能的客服（簡化邏輯）
-            const skillBasedAgent = await c.env.DB.prepare(`
-              SELECT u.id, COUNT(c.id) as workload
-              FROM users u
-              LEFT JOIN conversations c ON u.id = c.assigned_user_id AND c.status IN ('active', 'assigned')
-              WHERE u.is_active = TRUE AND u.role = 'agent'
-              ${teamId ? 'AND u.team_id = ?' : ''}
-              GROUP BY u.id
-              ORDER BY workload ASC
-              LIMIT 1
-            `).bind(...(teamId ? [teamId] : [])).first();
-
-            if (skillBasedAgent) {
-              await c.env.DB.prepare(`
-                UPDATE conversations 
-                SET assigned_user_id = ?, status = 'assigned', updated_at = datetime('now')
-                WHERE id = ?
-              `).bind(skillBasedAgent.id, conv.id).run();
-
-              assignedCount++;
-            }
-          }
-        }
       }
 
       return successResponse(c, { 
@@ -853,3 +670,7 @@ export const conversationHandler = {
     }
   }
 };
+
+// 導出 Hono app 和傳統處理器對象
+export const conversationHandler = Object.assign(conversations, handlerMethods);
+export default conversations;

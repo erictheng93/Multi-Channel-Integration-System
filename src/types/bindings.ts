@@ -130,8 +130,6 @@ export interface AuditContext {
 
 // Export commonly used types from schema
 export type { 
-  User, 
-  NewUser, 
   Agent, 
   NewAgent, 
   Conversation, 

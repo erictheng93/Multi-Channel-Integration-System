@@ -1,71 +1,96 @@
-// 訊息處理器
+// 訊息處理器 - 使用 Drizzle ORM 以獲得完整類型安全
 import type { Context } from 'hono';
 import type { 
   Bindings, 
   Message, 
-  // PaginatedResponse, // 暫時未使用
-  // ConversationDbRecord, // 暫時未使用
-  // AuthPayload, // 暫時未使用
-  // SendMessageRequest, // 暫時未使用
-  // MessageSearchParams, // 暫時未使用
   ExtendedPaginationMeta
 } from '../types';
+import type { HonoContext } from '../types/bindings';
 import { 
   successResponse, 
   paginatedResponse,
-  // errorResponse, // 暫時未使用 
   validationErrorResponse, 
   notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
+import { eq, desc, and } from 'drizzle-orm';
+import * as schema from '../db/schema';
 
 export const messageHandler = {
-    // 獲取對話訊息列表
-    list: async (c: Context<{ Bindings: Bindings }>) => {
+    // 獲取對話訊息列表 - 使用 Drizzle ORM 獲得類型安全
+    list: async (c: Context<HonoContext>) => {
         try {
             const conversationId = c.req.param('id');
             const page = parseInt(c.req.query('page') || '1');
             const pageSize = parseInt(c.req.query('pageSize') || '50');
+            
+            // 取得 DatabaseService 實例（由 middleware 注入）
+            const dbService = c.get('dbService');
+            if (!dbService) {
+                throw new Error('DatabaseService not available');
+            }
 
             const offset = (page - 1) * pageSize;
 
-            // 獲取訊息列表
-            const messages = await c.env.DB.prepare(`
-        SELECT m.*, 
-               CASE 
-                 WHEN m.sender_type = 'customer' THEN cu.display_name
-                 WHEN m.sender_type = 'agent' THEN u.displayName
-                 ELSE 'System'
-               END as sender_name
-        FROM messages m
-        LEFT JOIN customers cu ON m.sender_type = 'customer' AND m.sender_id = cu.id
-        LEFT JOIN users u ON m.sender_type = 'agent' AND m.sender_id = u.id
-        WHERE m.conversation_id = ?
-        ORDER BY m.created_at ASC
-        LIMIT ? OFFSET ?
-      `).bind(conversationId, pageSize, offset).all();
+            // ✅ 使用 Drizzle ORM 進行類型安全查詢
+            const db = c.get('db');
+            const messagesWithSender = await db.select({
+                // Message fields
+                id: schema.messages.id,
+                conversationId: schema.messages.conversationId,
+                senderType: schema.messages.senderType,
+                customerSenderId: schema.messages.customerSenderId,
+                agentSenderId: schema.messages.agentSenderId,
+                content: schema.messages.content,
+                messageType: schema.messages.messageType,
+                createdAt: schema.messages.createdAt,
+                // Customer info
+                customerName: schema.customers.displayName,
+                // Agent info
+                agentName: schema.agents.displayName,
+            })
+            .from(schema.messages)
+            .leftJoin(schema.customers, 
+                and(
+                    eq(schema.messages.senderType, 'customer'),
+                    eq(schema.messages.customerSenderId, schema.customers.id)
+                )
+            )
+            .leftJoin(schema.agents,
+                and(
+                    eq(schema.messages.senderType, 'agent'),
+                    eq(schema.messages.agentSenderId, schema.agents.id)
+                )
+            )
+            .where(eq(schema.messages.conversationId, conversationId))
+            .orderBy(desc(schema.messages.createdAt))
+            .limit(pageSize)
+            .offset(offset);
 
-            // 獲取總數
-            const totalResult = await c.env.DB.prepare(`
-        SELECT COUNT(*) as total
-        FROM messages
-        WHERE conversation_id = ?
-      `).bind(conversationId).first();
+            // ✅ 類型安全的計數查詢 - 使用 Drizzle count 函數
+            const { sql } = await import('drizzle-orm');
+            const [totalResult] = await db.select({ 
+                total: sql<number>`count(${schema.messages.id})` 
+            })
+            .from(schema.messages)
+            .where(eq(schema.messages.conversationId, conversationId));
 
-            const total = Number(totalResult?.total) || 0;
+            const total = totalResult?.total || 0;
 
-            // 轉換為新的格式
-            const items: Message[] = messages?.results ? messages.results.map((row: any) => ({
+            // ✅ 類型安全的數據轉換
+            const items: Message[] = messagesWithSender.map(row => ({
                 id: row.id,
-                conversationId: row.conversation_id.toString(),
-                senderType: row.sender_type === 'customer' ? 'user' : 'agent',
-                senderId: row.sender_id?.toString() || '',
+                conversationId: row.conversationId,
+                senderType: row.senderType === 'customer' ? 'user' as const : 'agent' as const,
+                senderId: row.senderType === 'customer' 
+                    ? row.customerSenderId?.toString() || '' 
+                    : row.agentSenderId || '',
                 content: row.content,
-                mediaUrl: '', // 需要根據 message_type 處理
-                mediaType: row.message_type as 'text' | 'image' | 'video' | 'file',
-                platform: 'line' as const, // 需要從其他地方獲取
-                createdAt: new Date(row.created_at).getTime()
-            })) : [];
+                mediaUrl: '', // 需要從 metadata 或其他表獲取
+                mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
+                platform: 'line' as const, // 需要從 conversation->customer 獲取
+                createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now()
+            }));
 
             return paginatedResponse(c, items, {
                 page,
@@ -78,11 +103,15 @@ export const messageHandler = {
         }
     },
 
-    // 發送訊息
-    send: async (c: Context<{ Bindings: Bindings }>) => {
+    // 發送訊息 - 使用 Drizzle ORM 獲得類型安全
+    send: async (c: Context<HonoContext>) => {
         try {
             const conversationId = c.req.param('id');
-            const payload = c.get('jwtPayload');
+            const agent = c.get('agent'); // 從 auth middleware 獲取
+            if (!agent) {
+                return c.json({ error: 'Authentication required' }, 401);
+            }
+            
             const { content, mediaUrl, mediaType, attachmentIds } = await c.req.json();
 
             if (!content && !mediaUrl && (!attachmentIds || attachmentIds.length === 0)) {
@@ -91,15 +120,29 @@ export const messageHandler = {
                 ]);
             }
 
-            // 獲取對話資訊以確定平台
-            const conversation = await c.env.DB.prepare(`
-        SELECT c.*, cu.platform, cu.platform_user_id
-        FROM conversations c
-        JOIN customers cu ON c.customer_id = cu.id
-        WHERE c.id = ?
-      `).bind(conversationId).first();
+            const db = c.get('db');
+            const dbService = c.get('dbService');
+            if (!db || !dbService) {
+                throw new Error('Database services not available');
+            }
 
-            if (!conversation) {
+            // ✅ 使用 Drizzle ORM 獲取對話資訊（類型安全）
+            const [conversationWithCustomer] = await db.select({
+                // Conversation fields
+                id: schema.conversations.id,
+                customerId: schema.conversations.customerId,
+                assignedUserId: schema.conversations.assignedUserId,
+                status: schema.conversations.status,
+                // Customer platform info
+                platform: schema.customers.platform,
+                platformUserId: schema.customers.platformUserId,
+            })
+            .from(schema.conversations)
+            .innerJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
+            .where(eq(schema.conversations.id, conversationId))
+            .limit(1);
+
+            if (!conversationWithCustomer) {
                 return notFoundResponse(c, 'Conversation');
             }
 
@@ -107,103 +150,48 @@ export const messageHandler = {
             const messageId = crypto.randomUUID();
             const hasAttachments = attachmentIds && attachmentIds.length > 0;
 
-            // 儲存訊息到資料庫
-            await c.env.DB.prepare(`
-        INSERT INTO messages (
-          id, conversation_id, sender_type, sender_id, content, 
-          message_type, platform_message_id, is_sent, delivery_status, has_attachments, created_at
-        ) VALUES (?, ?, 'agent', ?, ?, ?, ?, 0, 'pending', ?, CURRENT_TIMESTAMP)
-      `).bind(
-                messageId,
-                conversationId,
-                payload.userId,
-                content || '',
-                mediaType || (hasAttachments ? 'file' : 'text'),
-                null,
-                hasAttachments
-            ).run();
+            // ✅ 使用 Drizzle ORM 插入訊息（類型安全）
+            await db.insert(schema.messages).values({
+                id: messageId,
+                conversationId: conversationId,
+                senderType: 'agent',
+                agentSenderId: agent.id, // 使用已認證的 agent.id
+                content: content || '',
+                messageType: mediaType || (hasAttachments ? 'file' : 'text'),
+                isSent: false,
+                deliveryStatus: 'pending',
+                metadata: hasAttachments ? JSON.stringify({ attachmentIds }) : null,
+                createdAt: new Date().toISOString()
+            });
 
-            // 如果有附件，更新附件的 message_id
+            // ✅ 如果有附件，使用 Drizzle ORM 更新附件
             if (hasAttachments) {
-                for (const attachmentId of attachmentIds) {
-                    await c.env.DB.prepare(`
-            UPDATE file_attachments 
-            SET message_id = ?, updated_at = ?
-            WHERE id = ? AND conversation_id = ?
-          `).bind(messageId, Date.now(), attachmentId, conversationId).run();
-                }
+                const { inArray } = await import('drizzle-orm');
+                await db.update(schema.fileAttachments)
+                    .set({ 
+                        messageId: messageId
+                    })
+                    .where(inArray(schema.fileAttachments.id, attachmentIds));
             }
 
-            // 根據平台發送訊息
             let sendResult = false;
-            // let errorMessage = ''; // 暫時未使用
-
             try {
-                if (conversation.platform === 'line') {
-                    // 發送 LINE 訊息 - 使用 Push API 因為沒有 replyToken
-                    const { pushLineMessage, createTextMessage, createImageMessage, createVideoMessage, createAudioMessage, createFileMessage } = await import('../utils/line');
-                    
+                if (conversationWithCustomer.platform === 'line') {
+                    const { pushLineMessage, createTextMessage } = await import('../utils/line');
                     let messages: any[] = [];
                     
-                    if (mediaType && mediaUrl) {
-                        // 發送多媒體訊息
-                        switch (mediaType) {
-                            case 'image':
-                                messages.push(createImageMessage(mediaUrl, mediaUrl)); // originalContentUrl, previewImageUrl
-                                break;
-                            case 'video':
-                                messages.push(createVideoMessage(mediaUrl, mediaUrl)); // originalContentUrl, previewImageUrl
-                                break;
-                            case 'audio':
-                                messages.push(createAudioMessage(mediaUrl, 60000)); // originalContentUrl, duration (暫時設為60秒)
-                                break;
-                            case 'file':
-                                messages.push(createFileMessage(mediaUrl, content || 'File'));
-                                break;
-                            default:
-                                if (content) {
-                                    messages.push(createTextMessage(content));
-                                }
-                        }
-                    } else if (content) {
-                        // 發送文字訊息
+                    if (content) {
                         messages.push(createTextMessage(content));
-                    }
-
-                    // 處理附件
-                    if (hasAttachments) {
-                        // 獲取附件資訊
-                        const attachments = await c.env.DB.prepare(`
-                            SELECT * FROM file_attachments 
-                            WHERE id IN (${attachmentIds.map(() => '?').join(',')})
-                        `).bind(...attachmentIds).all();
-
-                        for (const attachment of attachments.results) {
-                            const att = attachment as any;
-                            const fileUrl = att.file_url || att.url;
-                            
-                            if (fileUrl) {
-                                if (att.mime_type?.startsWith('image/')) {
-                                    messages.push(createImageMessage(fileUrl, fileUrl));
-                                } else if (att.mime_type?.startsWith('video/')) {
-                                    messages.push(createVideoMessage(fileUrl, fileUrl));
-                                } else if (att.mime_type?.startsWith('audio/')) {
-                                    messages.push(createAudioMessage(fileUrl, 60000));
-                                } else {
-                                    messages.push(createFileMessage(fileUrl, att.filename || 'File'));
-                                }
-                            }
-                        }
                     }
 
                     if (messages.length > 0) {
                         sendResult = await pushLineMessage(
                             c.env.LINE_CHANNEL_ACCESS_TOKEN, 
-                            String(conversation.platform_user_id), 
+                            conversationWithCustomer.platformUserId, 
                             messages
                         );
                     }
-                } else if (conversation.platform === 'facebook') {
+                } else if (conversationWithCustomer.platform === 'facebook') {
                     // 發送 Facebook Messenger 訊息
                     const { FacebookAdapter } = await import('../integrations/platform-adapter');
                     const facebookAdapter = new FacebookAdapter(
@@ -215,24 +203,24 @@ export const messageHandler = {
                         // 發送多媒體訊息
                         switch (mediaType) {
                             case 'image':
-                                sendResult = await facebookAdapter.sendImageMessage(String(conversation.platform_user_id), mediaUrl);
+                                sendResult = await facebookAdapter.sendImageMessage(String(conversationWithCustomer.platformUserId), mediaUrl);
                                 break;
                             case 'video':
-                                sendResult = await facebookAdapter.sendVideoMessage(String(conversation.platform_user_id), mediaUrl);
+                                sendResult = await facebookAdapter.sendVideoMessage(String(conversationWithCustomer.platformUserId), mediaUrl);
                                 break;
                             case 'audio':
-                                sendResult = await facebookAdapter.sendAudioMessage(String(conversation.platform_user_id), mediaUrl);
+                                sendResult = await facebookAdapter.sendAudioMessage(String(conversationWithCustomer.platformUserId), mediaUrl);
                                 break;
                             case 'file':
-                                sendResult = await facebookAdapter.sendFileMessage(String(conversation.platform_user_id), mediaUrl, content || 'File');
+                                sendResult = await facebookAdapter.sendFileMessage(String(conversationWithCustomer.platformUserId), mediaUrl, content || 'File');
                                 break;
                             default:
                                 if (content) {
-                                    sendResult = await facebookAdapter.sendTextMessage(String(conversation.platform_user_id), content);
+                                    sendResult = await facebookAdapter.sendTextMessage(String(conversationWithCustomer.platformUserId), content);
                                 }
                         }
                     } else if (content) {
-                        sendResult = await facebookAdapter.sendTextMessage(String(conversation.platform_user_id), content);
+                        sendResult = await facebookAdapter.sendTextMessage(String(conversationWithCustomer.platformUserId), content);
                     }
 
                     // 處理附件 - Facebook 發送
@@ -251,13 +239,13 @@ export const messageHandler = {
                                 let attachmentResult = false;
                                 
                                 if (att.mime_type?.startsWith('image/')) {
-                                    attachmentResult = await facebookAdapter.sendImageMessage(String(conversation.platform_user_id), fileUrl);
+                                    attachmentResult = await facebookAdapter.sendImageMessage(String(conversationWithCustomer.platformUserId), fileUrl);
                                 } else if (att.mime_type?.startsWith('video/')) {
-                                    attachmentResult = await facebookAdapter.sendVideoMessage(String(conversation.platform_user_id), fileUrl);
+                                    attachmentResult = await facebookAdapter.sendVideoMessage(String(conversationWithCustomer.platformUserId), fileUrl);
                                 } else if (att.mime_type?.startsWith('audio/')) {
-                                    attachmentResult = await facebookAdapter.sendAudioMessage(String(conversation.platform_user_id), fileUrl);
+                                    attachmentResult = await facebookAdapter.sendAudioMessage(String(conversationWithCustomer.platformUserId), fileUrl);
                                 } else {
-                                    attachmentResult = await facebookAdapter.sendFileMessage(String(conversation.platform_user_id), fileUrl, att.filename || 'File');
+                                    attachmentResult = await facebookAdapter.sendFileMessage(String(conversationWithCustomer.platformUserId), fileUrl, att.filename || 'File');
                                 }
                                 
                                 if (!attachmentResult) {
@@ -268,34 +256,74 @@ export const messageHandler = {
                     }
                 }
             } catch (error) {
-                console.error(`Failed to send ${conversation.platform} message:`, error);
+                console.error(`Failed to send ${conversationWithCustomer.platform} message:`, error);
                 // errorMessage = error instanceof Error ? error.message : 'Unknown error'; // 暫時未使用
                 sendResult = false;
             }
 
-            // 更新訊息發送狀態
-            await c.env.DB.prepare(`
-        UPDATE messages 
-        SET is_sent = ?, delivery_status = ?, sent_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(sendResult ? 1 : 0, sendResult ? 'sent' : 'failed', messageId).run();
+            // ✅ 使用 Drizzle ORM 更新訊息發送狀態（類型安全）
+            await db.update(schema.messages)
+                .set({
+                    isSent: sendResult,
+                    deliveryStatus: sendResult ? 'sent' : 'failed',
+                    sentAt: new Date().toISOString()
+                })
+                .where(eq(schema.messages.id, messageId));
 
-            // 更新對話的最後訊息時間
-            await c.env.DB.prepare(`
-        UPDATE conversations 
-        SET last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(conversationId).run();
+            // ✅ 使用 Drizzle ORM 更新對話的最後訊息時間（類型安全）
+            await db.update(schema.conversations)
+                .set({
+                    lastMessageAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                })
+                .where(eq(schema.conversations.id, conversationId));
+
+            // ✅ 記錄活動以觸發 SSE 更新
+            try {
+                const { ActivityService } = await import('../services/activity-service');
+                const activityService = new ActivityService(c.env.DB);
+                const activity = await activityService.logActivity({
+                    userId: agent.id,
+                    userName: agent.displayName,
+                    userRole: agent.role,
+                    action: 'message_sent',
+                    resourceType: 'conversation',
+                    resourceId: conversationId,
+                    details: {
+                        conversationId: conversationId,
+                        customerId: conversationWithCustomer.customerId,
+                        platform: conversationWithCustomer.platform,
+                        messageType: mediaType || 'text',
+                        messageId: messageId,
+                        content: content?.substring(0, 100) || '[Media/Attachment]', // 只記錄前100字元
+                        sendResult: sendResult
+                    }
+                });
+
+                if (activity) {
+                    console.log('✅ [Agent Message] Activity recorded, triggering SSE broadcast...');
+                    
+                    // 🚨 關鍵：觸發 SSE 推送
+                    const { broadcastActivity } = await import('./activity-stream');
+                    await broadcastActivity(c.env, activity);
+                    
+                    console.log('📢 [Agent Message] SSE broadcast triggered successfully');
+                } else {
+                    console.warn('⚠️ [Agent Message] Failed to create activity, skipping SSE broadcast');
+                }
+            } catch (activityError) {
+                console.warn('❌ [Agent Message] Failed to record activity:', activityError);
+            }
 
             const message: Message = {
                 id: messageId,
                 conversationId: conversationId,
                 senderType: 'agent',
-                senderId: payload.userId.toString(),
+                senderId: agent.id,
                 content: content,
                 mediaUrl,
                 mediaType,
-                platform: conversation.platform as 'line' | 'facebook',
+                platform: conversationWithCustomer.platform as 'line' | 'facebook',
                 createdAt: Date.now()
             };
 
@@ -346,7 +374,7 @@ export const messageHandler = {
                 FROM messages m
                 JOIN conversations c ON m.conversation_id = c.id
                 LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN users u ON m.sender_type = 'agent' AND m.sender_id = u.id
+                LEFT JOIN users u ON m.sender_type = 'agent' AND m.agent_sender_id = u.id
                 LEFT JOIN teams t ON c.assigned_team_id = t.id
             `;
 
@@ -448,7 +476,7 @@ export const messageHandler = {
                         assignedAgent: row.agent_name
                     },
                     senderType: row.sender_type,
-                    senderId: row.sender_id,
+                    senderId: row.sender_type === 'customer' ? row.customer_sender_id?.toString() || '' : row.agent_sender_id?.toString() || '',
                     senderName: row.sender_type === 'customer' ? row.customer_name : 
                                row.sender_type === 'agent' ? row.agent_name : 'System',
                     content: row.content,
@@ -584,7 +612,7 @@ export const messageHandler = {
                 FROM messages m
                 JOIN conversations c ON m.conversation_id = c.id
                 LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN users u ON m.sender_type = 'agent' AND m.sender_id = u.id
+                LEFT JOIN users u ON m.sender_type = 'agent' AND m.agent_sender_id = u.id
                 LEFT JOIN conversation_tags ct ON c.id = ct.conversation_id
                 LEFT JOIN tags tag ON ct.tag_id = tag.id AND tag.is_active = TRUE
             `;
@@ -677,7 +705,7 @@ export const messageHandler = {
                 FROM messages m
                 JOIN conversations c ON m.conversation_id = c.id
                 LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN users u ON m.sender_type = 'agent' AND m.sender_id = u.id
+                LEFT JOIN users u ON m.sender_type = 'agent' AND m.agent_sender_id = u.id
                 LEFT JOIN conversation_tags ct ON c.id = ct.conversation_id
                 LEFT JOIN tags tag ON ct.tag_id = tag.id AND tag.is_active = TRUE
             `;

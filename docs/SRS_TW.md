@@ -183,11 +183,13 @@ database_id = "3b7339f0-80de-49dc-b079-312df4a4c316"
 ```toml
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "e7687b9663cb492aa398a29b29956128"
+id = "ace3f7202e6a4dd8b98c50e9b91b2431"
+preview_id = "df901efdffa143638a02f6c6d2d6459f"
 
 [[kv_namespaces]]
 binding = "CACHE"
-id = "b7ca23b7839946cdb78ef7103f29ce82"
+id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
+preview_id = "bafc060a634943b19409b7ecbb1b4f5b"
 ```
 
 #### 3.1.4 Cloudflare R2儲存

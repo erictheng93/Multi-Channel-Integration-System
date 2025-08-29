@@ -285,7 +285,7 @@
                   stroke-width="2"
                 />
                 <path
-                  d="8 14s1.5 2 4 2 4-2 4-2"
+                  d="M8 14s1.5 2 4 2 4-2 4-2"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
