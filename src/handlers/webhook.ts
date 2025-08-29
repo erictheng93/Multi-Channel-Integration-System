@@ -4,6 +4,10 @@
 // Created by: Webhook Handler Developer
 
 import { Context } from 'hono';
+import { eq, and, ne } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
+import { customers, conversations, messages } from '../db/schema';
+import { convertConversation } from '../utils/drizzle-converters';
 import type { 
   Bindings, 
   LineWebhookBody, 
@@ -20,27 +24,45 @@ import {
   unauthorizedResponse,
   handleApiError 
 } from '../utils/api-response';
+import { ActivityService } from '../services/activity-service';
 
 export const webhookHandler = {
   // 處理 Line Webhook
   async line(c: Context<{ Bindings: Bindings }>) {
+    console.log('🔔 [LINE Webhook] Request received at:', new Date().toISOString());
+    
     try {
       // 驗證簽名
       const signature = c.req.header('X-Line-Signature');
       const body = await c.req.text();
+      
+      console.log('🔍 [LINE Webhook] Headers:', {
+        'X-Line-Signature': signature ? 'Present' : 'Missing',
+        'Content-Type': c.req.header('Content-Type'),
+        'Content-Length': body.length
+      });
 
       // 檢查 payload 大小 (1MB 限制)
       if (body.length > 1024 * 1024) {
+        console.error('❌ [LINE Webhook] Payload too large:', body.length);
         return errorResponse(c, 'Payload too large', 413);
       }
 
       if (!signature) {
+        console.error('❌ [LINE Webhook] Missing X-Line-Signature header');
         return errorResponse(c, 'Missing signature');
       }
 
-      if (!(await verifyLineSignature(body, signature, c.env.LINE_CHANNEL_SECRET))) {
+      console.log('🔐 [LINE Webhook] Verifying signature...');
+      const isValid = await verifyLineSignature(body, signature, c.env.LINE_CHANNEL_SECRET);
+      
+      if (!isValid) {
+        console.error('❌ [LINE Webhook] Invalid signature');
+        console.log('   Received signature:', signature.substring(0, 20) + '...');
         return unauthorizedResponse(c, 'Invalid signature');
       }
+      
+      console.log('✅ [LINE Webhook] Signature verified successfully');
 
       let data: LineWebhookBody;
       try {
@@ -51,16 +73,32 @@ export const webhookHandler = {
 
       // 輸入驗證
       if (!validateLineWebhook(data)) {
+        console.error('❌ [LINE Webhook] Invalid webhook payload structure');
         return errorResponse(c, 'Invalid webhook payload');
       }
 
+      console.log('📦 [LINE Webhook] Processing events:', {
+        destination: data.destination,
+        eventCount: data.events.length,
+        firstEventType: data.events[0]?.type
+      });
+
       // 處理事件
       for (const event of data.events) {
+        console.log('🎯 [LINE Webhook] Processing event:', {
+          type: event.type,
+          userId: event.source?.userId?.substring(0, 10) + '...',
+          messageType: event.message?.type
+        });
+        
         if (event.type === 'message' && event.message) {
           await processLineMessage(c.env, event);
+        } else {
+          console.log('🔄 [LINE Webhook] Skipping non-message event:', event.type);
         }
       }
 
+      console.log('✅ [LINE Webhook] All events processed successfully');
       return successResponse(c, null, 'LINE webhook processed successfully');
     } catch (error) {
       return handleApiError(error, c);
@@ -187,8 +225,10 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
   const message = event.message;
   
+  console.log('💬 [LINE Message] Processing message from user:', userId.substring(0, 10) + '...');
+  
   if (!message) {
-    console.warn('No message in LINE event');
+    console.warn('⚠️ [LINE Message] No message in LINE event');
     return;
   }
   
@@ -254,10 +294,15 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
     }
 
     // 查詢或建立使用者
-    let user = await env.DB.prepare(`
-      SELECT * FROM customers 
-      WHERE platform_user_id = ? AND platform = ?
-    `).bind(userId, 'line').first();
+    const drizzleDb = drizzle(env.DB);
+    let user = await drizzleDb
+      .select()
+      .from(customers)
+      .where(and(
+        eq(customers.platformUserId, userId),
+        eq(customers.platform, 'line')
+      ))
+      .get();
 
     if (!user) {
       // 使用用戶同步服務獲取用戶資料
@@ -276,15 +321,36 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
         console.warn('Failed to sync LINE user profile:', profileError);
       }
 
-      // 建立新使用者（讓資料庫自動生成 ID）
-      const result = await env.DB.prepare(`
-        INSERT INTO customers (platform, platform_user_id, display_name, avatar_url, profile_updated_at)
-        VALUES (?, ?, ?, ?, datetime('now'))
-      `).bind('line', userId, displayName, avatarUrl).run();
+      // 建立新使用者
+      const timestamp = new Date().toISOString();
+      await drizzleDb
+        .insert(customers)
+        .values({
+          platform: 'line',
+          platformUserId: userId,
+          displayName,
+          avatarUrl,
+          createdAt: timestamp,
+          updatedAt: timestamp
+        });
 
-      const customerId = result.meta.last_row_id;
-      user = { id: customerId, platform_user_id: userId };
-    } else {
+      // 重新查詢刚建立的用户
+      user = await drizzleDb
+        .select()
+        .from(customers)
+        .where(and(
+          eq(customers.platformUserId, userId),
+          eq(customers.platform, 'line')
+        ))
+        .get();
+    } 
+    
+    if (!user) {
+      console.error('Failed to find or create user after insert');
+      return;
+    }
+    
+    if (user.id) {
       // 檢查是否需要更新用戶資料
       try {
         const { createUserSyncService } = await import('../services/user-sync');
@@ -303,49 +369,125 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
     }
 
     // 查詢或建立對話
-    let conversation = await env.DB.prepare(`
-      SELECT * FROM conversations 
-      WHERE customer_id = ? AND status != ?
-    `).bind(user.id, 'closed').first();
+    let conversation = await drizzleDb
+      .select()
+      .from(conversations)
+      .where(and(
+        eq(conversations.customerId, user.id),
+        ne(conversations.status, 'closed')
+      ))
+      .get();
 
     if (!conversation) {
-      // 建立新對話（讓資料庫自動生成 ID）
-      const result = await env.DB.prepare(`
-        INSERT INTO conversations (
-          customer_id, status, last_message_at
-        ) VALUES (?, ?, datetime('now'))
-      `).bind(user.id, 'active').run();
+      // 建立新對話（使用 UUID）
+      const conversationId = uuidv4();
+      const timestamp = new Date().toISOString();
+      try {
+        await drizzleDb
+          .insert(conversations)
+          .values({
+            id: conversationId,
+            customerId: user.id,
+            status: 'active',
+            lastMessageAt: timestamp,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          });
 
-      const conversationId = result.meta.last_row_id;
-      conversation = { id: conversationId };
+        // Re-query the created conversation to get full object
+        const newConversation = await drizzleDb
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, conversationId))
+          .get();
+        
+        if (!newConversation) {
+          throw new Error('Failed to retrieve created conversation');
+        }
+        
+        conversation = convertConversation(newConversation);
+        console.log(`✅ Created new conversation: ${conversationId}`);
+      } catch (convError) {
+        console.error('❌ Failed to create conversation:', convError);
+        throw new Error(`Failed to create conversation: ${convError}`);
+      }
     } else {
       // 更新對話
-      await env.DB.prepare(`
-        UPDATE conversations 
-        SET last_message_at = datetime('now'), updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(conversation.id).run();
+      const timestamp = new Date().toISOString();
+      await drizzleDb
+        .update(conversations)
+        .set({
+          lastMessageAt: timestamp,
+          updatedAt: timestamp
+        })
+        .where(eq(conversations.id, conversation.id));
+    }
+
+    // 🚨 冪等性檢查：檢查是否已存在相同的 platformMessageId
+    const existingMessage = await drizzleDb
+      .select()
+      .from(messages)
+      .where(eq(messages.platformMessageId, message.id))
+      .get();
+
+    if (existingMessage) {
+      console.log(`⚠️ [LINE Webhook] Message already exists with platformMessageId: ${message.id}, skipping duplicate processing`);
+      return; // 直接返回，不重複處理
     }
 
     // 儲存訊息（使用 UUID 作為訊息 ID）
     const messageId = uuidv4();
-    await env.DB.prepare(`
-      INSERT INTO messages (
-        id, conversation_id, sender_type, sender_id, content, 
-        message_type, platform_message_id, is_sent, delivery_status, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      messageId,
-      conversation.id,
-      'customer',
-      user.id,
-      messageContent,
-      messageType,
-      message.id,
-      true,
-      'delivered',
-      mediaData ? JSON.stringify(mediaData) : null
-    ).run();
+    const timestamp = new Date().toISOString();
+    await drizzleDb
+      .insert(messages)
+      .values({
+        id: messageId,
+        conversationId: conversation.id,
+        senderType: 'customer',
+        customerSenderId: user.id,
+        content: messageContent,
+        messageType: messageType,
+        platformMessageId: message.id,
+        isSent: true,
+        deliveryStatus: 'delivered',
+        metadata: mediaData ? JSON.stringify(mediaData) : null,
+        createdAt: timestamp
+      });
+
+    // 記錄活動以觸發 SSE 更新
+    try {
+      const activityService = new ActivityService(env.DB);
+      const activity = await activityService.logActivity({
+        userId: 'system',
+        userName: 'Webhook Handler',
+        userRole: 'system',
+        action: 'message_received',
+        resourceType: 'conversation',
+        resourceId: String(conversation.id),
+        details: {
+          conversationId: conversation.id,
+          customerId: user.id,
+          platform: 'line',
+          messageType: messageType,
+          messageId: messageId,
+          content: messageContent.substring(0, 100) // 只記錄前100字元
+        }
+      });
+
+      if (activity) {
+        console.log('✅ [LINE Webhook] Activity recorded, triggering SSE broadcast...');
+        
+        // 🚨 關鍵修復：觸發 SSE 推送
+        const { broadcastActivity } = await import('./activity-stream');
+        await broadcastActivity(env, activity);
+        
+        console.log('📢 [LINE Webhook] SSE broadcast triggered successfully');
+      } else {
+        console.warn('⚠️ [LINE Webhook] Failed to create activity, skipping SSE broadcast');
+      }
+    } catch (activityError) {
+      console.warn('❌ [LINE Webhook] Failed to record activity:', activityError);
+    }
 
     // 如果是多媒體訊息，下載並存儲到 R2
     if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
@@ -478,10 +620,15 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
     }
 
     // 查詢或建立使用者
-    let user = await env.DB.prepare(`
-      SELECT * FROM customers 
-      WHERE platform_user_id = ? AND platform = ?
-    `).bind(userId, 'facebook').first();
+    const drizzleDb = drizzle(env.DB);
+    let user = await drizzleDb
+      .select()
+      .from(customers)
+      .where(and(
+        eq(customers.platformUserId, userId),
+        eq(customers.platform, 'facebook')
+      ))
+      .get();
 
     if (!user) {
       // 使用用戶同步服務獲取用戶資料
@@ -500,14 +647,28 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         console.warn('Failed to sync Facebook user profile:', profileError);
       }
 
-      // 建立新使用者（讓資料庫自動生成 ID）
-      const result = await env.DB.prepare(`
-        INSERT INTO customers (platform, platform_user_id, display_name, avatar_url, profile_updated_at)
-        VALUES (?, ?, ?, ?, datetime('now'))
-      `).bind('facebook', userId, displayName, avatarUrl).run();
+      // 建立新使用者
+      const timestamp = new Date().toISOString();
+      await drizzleDb
+        .insert(customers)
+        .values({
+          platform: 'facebook',
+          platformUserId: userId,
+          displayName,
+          avatarUrl,
+          createdAt: timestamp,
+          updatedAt: timestamp
+        });
 
-      const customerId = result.meta.last_row_id;
-      user = { id: customerId, platform_user_id: userId };
+      // 重新查詢刚建立的用户
+      user = await drizzleDb
+        .select()
+        .from(customers)
+        .where(and(
+          eq(customers.platformUserId, userId),
+          eq(customers.platform, 'facebook')
+        ))
+        .get();
     } else {
       // 檢查是否需要更新用戶資料
       try {
@@ -525,51 +686,135 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         console.warn('Error checking Facebook user sync status:', syncError);
       }
     }
+    
+    // 確保用戶存在才繼續
+    if (!user) {
+      console.error('No user available for Facebook conversation');
+      return;
+    }
 
     // 查詢或建立對話
-    let conversation = await env.DB.prepare(`
-      SELECT * FROM conversations 
-      WHERE customer_id = ? AND status != ?
-    `).bind(user.id, 'closed').first();
+    let conversation = await drizzleDb
+      .select()
+      .from(conversations)
+      .where(and(
+        eq(conversations.customerId, user.id),
+        ne(conversations.status, 'closed')
+      ))
+      .get();
 
     if (!conversation) {
-      // 建立新對話（讓資料庫自動生成 ID）
-      const result = await env.DB.prepare(`
-        INSERT INTO conversations (
-          customer_id, status, last_message_at
-        ) VALUES (?, ?, datetime('now'))
-      `).bind(user.id, 'active').run();
+      // 建立新對話（使用 UUID）
+      const conversationId = uuidv4();
+      const timestamp = new Date().toISOString();
+      try {
+        await drizzleDb
+          .insert(conversations)
+          .values({
+            id: conversationId,
+            customerId: user.id,
+            status: 'active',
+            lastMessageAt: timestamp,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          });
 
-      const conversationId = result.meta.last_row_id;
-      conversation = { id: conversationId };
+        // Re-query the created conversation to get full object
+        const newConversation = await drizzleDb
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, conversationId))
+          .get();
+        
+        if (!newConversation) {
+          throw new Error('Failed to retrieve created conversation');
+        }
+        
+        conversation = convertConversation(newConversation);
+        console.log(`✅ Created new conversation: ${conversationId}`);
+      } catch (convError) {
+        console.error('❌ Failed to create conversation:', convError);
+        throw new Error(`Failed to create conversation: ${convError}`);
+      }
     } else {
       // 更新對話
-      await env.DB.prepare(`
-        UPDATE conversations 
-        SET last_message_at = datetime('now'), updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(conversation.id).run();
+      const timestamp = new Date().toISOString();
+      await drizzleDb
+        .update(conversations)
+        .set({
+          lastMessageAt: timestamp,
+          updatedAt: timestamp
+        })
+        .where(eq(conversations.id, conversation.id));
+    }
+
+    // 🚨 冪等性檢查：檢查是否已存在相同的 platformMessageId (Facebook)
+    if (message.mid) {
+      const existingMessage = await drizzleDb
+        .select()
+        .from(messages)
+        .where(eq(messages.platformMessageId, message.mid))
+        .get();
+
+      if (existingMessage) {
+        console.log(`⚠️ [Facebook Webhook] Message already exists with platformMessageId: ${message.mid}, skipping duplicate processing`);
+        return; // 直接返回，不重複處理
+      }
     }
 
     // 儲存訊息（使用 UUID 作為訊息 ID）
     const messageId = uuidv4();
-    await env.DB.prepare(`
-      INSERT INTO messages (
-        id, conversation_id, sender_type, sender_id, content, 
-        message_type, platform_message_id, is_sent, delivery_status, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      messageId,
-      conversation.id,
-      'customer',
-      user.id,
-      messageContent,
-      messageType,
-      message.mid || null,
-      true,
-      'delivered',
-      mediaData ? JSON.stringify(mediaData) : null
-    ).run();
+    const timestamp = new Date().toISOString();
+    await drizzleDb
+      .insert(messages)
+      .values({
+        id: messageId,
+        conversationId: conversation.id,
+        senderType: 'customer',
+        customerSenderId: user.id,
+        content: messageContent,
+        messageType: messageType,
+        platformMessageId: message.mid || null,
+        isSent: true,
+        deliveryStatus: 'delivered',
+        metadata: mediaData ? JSON.stringify(mediaData) : null,
+        createdAt: timestamp
+      });
+
+    // 記錄活動以觸發 SSE 更新
+    try {
+      const activityService = new ActivityService(env.DB);
+      const activity = await activityService.logActivity({
+        userId: 'system',
+        userName: 'Webhook Handler',
+        userRole: 'system',
+        action: 'message_received',
+        resourceType: 'conversation',
+        resourceId: String(conversation.id),
+        details: {
+          conversationId: conversation.id,
+          customerId: user.id,
+          platform: 'facebook',
+          messageType: messageType,
+          messageId: messageId,
+          content: messageContent.substring(0, 100) // 只記錄前100字元
+        }
+      });
+
+      if (activity) {
+        console.log('✅ [Facebook Webhook] Activity recorded, triggering SSE broadcast...');
+        
+        // 🚨 關鍵修復：觸發 SSE 推送
+        const { broadcastActivity } = await import('./activity-stream');
+        await broadcastActivity(env, activity);
+        
+        console.log('📢 [Facebook Webhook] SSE broadcast triggered successfully');
+      } else {
+        console.warn('⚠️ [Facebook Webhook] Failed to create activity, skipping SSE broadcast');
+      }
+    } catch (activityError) {
+      console.warn('❌ [Facebook Webhook] Failed to record activity:', activityError);
+    }
 
     // 如果是多媒體訊息，下載並存儲到 R2
     if (mediaData && mediaData.url && messageType !== 'location') {

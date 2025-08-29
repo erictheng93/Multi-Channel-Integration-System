@@ -24,11 +24,11 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
 
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(
-      typeof user.id === 'string' ? parseInt(user.id, 10) : user.id, 
+      user.id, // ✅ agents表ID是TEXT類型，保持字符串
       'message', 
       'send', 
       { 
-        userId: typeof user.id === 'string' ? parseInt(user.id, 10) : user.id,
+        userId: user.id, // ✅ 保持一致的字符串ID
         role: user.role,
         resourceId: conversationId 
       }

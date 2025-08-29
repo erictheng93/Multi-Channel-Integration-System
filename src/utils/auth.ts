@@ -1,3 +1,7 @@
+import { eq, and } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
+import { agents, teams } from '../db/schema';
+import { convertAgent } from './drizzle-converters';
 import type { DbUser, JWTPayload } from '../types';
 
 /**
@@ -167,58 +171,73 @@ export async function createUser(
   const hashedPassword = await hashPassword(userData.password);
   const now = new Date().toISOString();
   const userId = crypto.randomUUID();
+  const drizzleDb = drizzle(db);
 
-  const result = await db.prepare(`
-    INSERT INTO agents (id, email, password_hash, display_name, role, team_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    userId,
-    userData.email,
-    hashedPassword,
-    userData.displayName,
-    userData.role,
-    userData.teamId || null,
-    now,
-    now
-  ).run();
+  await drizzleDb
+    .insert(agents)
+    .values({
+      id: userId,
+      email: userData.email,
+      passwordHash: hashedPassword,
+      displayName: userData.displayName,
+      role: userData.role,
+      teamId: userData.teamId || null,
+      createdAt: now,
+      updatedAt: now
+    });
 
-  if (!result.success) {
-    throw new Error('Failed to create user');
-  }
-
-  // Since agents table uses UUID, we need to fetch the created user
-  const createdUser = await db.prepare(`
-    SELECT * FROM agents WHERE id = ?
-  `).bind(userId).first();
+  // Fetch the created user
+  const createdUser = await drizzleDb
+    .select()
+    .from(agents)
+    .where(eq(agents.id, userId))
+    .get();
   
   if (!createdUser) {
     throw new Error('Failed to retrieve created user');
   }
   
-  return getUserById(db, createdUser.id as string);
+  return getUserById(db, createdUser.id);
 }
 
 export async function getUserById(db: D1Database, userId: number | string): Promise<DbUser> {
+  const drizzleDb = drizzle(db);
+  
   // 檢查 agents 表
-  const agent = await db.prepare(`
-    SELECT a.*, t.name as team_name 
-    FROM agents a
-    LEFT JOIN teams t ON a.team_id = t.id
-    WHERE a.id = ? AND a.is_active = 1
-  `).bind(userId.toString()).first();
+  const agent = await drizzleDb
+    .select({
+      id: agents.id,
+      email: agents.email,
+      display_name: agents.displayName,
+      role: agents.role,
+      team_id: agents.teamId,
+      team_name: teams.name,
+      is_active: agents.isActive,
+      created_at: agents.createdAt,
+      updated_at: agents.updatedAt
+    })
+    .from(agents)
+    .leftJoin(teams, eq(agents.teamId, teams.id))
+    .where(and(
+      eq(agents.id, userId.toString()),
+      eq(agents.isActive, true)
+    ))
+    .get();
 
   if (agent) {
-    return {
-      id: agent.id as string,
-      email: agent.email as string,
-      displayName: agent.display_name as string,
-      role: agent.role as 'admin' | 'team' | 'agent',
-      teamId: agent.team_id as number | null,
-      teamName: agent.team_name as string | null,
+    return convertAgent({
+      id: agent.id,
+      email: agent.email,
+      displayName: agent.display_name,
+      role: agent.role,
+      teamId: agent.team_id,
       isActive: Boolean(agent.is_active),
-      createdAt: agent.created_at as string,
-      updatedAt: agent.updated_at as string || agent.created_at as string
-    };
+      createdAt: agent.created_at,
+      updatedAt: agent.updated_at,
+      passwordHash: '', // Not needed for return
+      passwordPolicy: 'changeable',
+      lastLoginAt: null
+    }, agent.team_name || undefined);
   }
 
   // 未找到用戶
@@ -232,33 +251,51 @@ export async function authenticateUser(
   email: string,
   password: string
 ): Promise<DbUser | null> {
-  const user = await db.prepare(`
-    SELECT u.*, t.name as team_name
-    FROM agents u
-    LEFT JOIN teams t ON u.team_id = t.id
-    WHERE u.email = ? AND u.is_active = 1
-  `).bind(email).first();
+  const drizzleDb = drizzle(db);
+  
+  const user = await drizzleDb
+    .select({
+      id: agents.id,
+      email: agents.email,
+      password_hash: agents.passwordHash,
+      display_name: agents.displayName,
+      role: agents.role,
+      team_id: agents.teamId,
+      team_name: teams.name,
+      is_active: agents.isActive,
+      created_at: agents.createdAt,
+      updated_at: agents.updatedAt
+    })
+    .from(agents)
+    .leftJoin(teams, eq(agents.teamId, teams.id))
+    .where(and(
+      eq(agents.email, email),
+      eq(agents.isActive, true)
+    ))
+    .get();
 
   if (!user) {
     return null;
   }
 
-  const isValidPassword = await verifyPassword(password, user.password_hash as string);
+  const isValidPassword = await verifyPassword(password, user.password_hash);
   if (!isValidPassword) {
     return null;
   }
 
-  return {
-    id: user.id as number,
-    email: user.email as string,
-    displayName: user.display_name as string,
-    role: user.role as 'admin' | 'team' | 'agent',
-    teamId: user.team_id as number | null,
-    teamName: user.team_name as string | null,
+  return convertAgent({
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    role: user.role,
+    teamId: user.team_id,
     isActive: Boolean(user.is_active),
-    createdAt: user.created_at as string,
-    updatedAt: user.updated_at as string
-  };
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
+    passwordHash: '', // Not needed for return
+    passwordPolicy: 'changeable',
+    lastLoginAt: null
+  }, user.team_name || undefined);
 }
 
 export async function authenticateUserByEmail(
@@ -266,28 +303,46 @@ export async function authenticateUserByEmail(
   email: string,
   password: string
 ): Promise<DbUser | null> {
+  const drizzleDb = drizzle(db);
+  
   // 檢查 agents 表
-  const agent = await db.prepare(`
-    SELECT a.*, t.name as team_name 
-    FROM agents a
-    LEFT JOIN teams t ON a.team_id = t.id
-    WHERE a.email = ? AND a.is_active = 1
-  `).bind(email).first();
+  const agent = await drizzleDb
+    .select({
+      id: agents.id,
+      email: agents.email,
+      password_hash: agents.passwordHash,
+      display_name: agents.displayName,
+      role: agents.role,
+      team_id: agents.teamId,
+      team_name: teams.name,
+      is_active: agents.isActive,
+      created_at: agents.createdAt,
+      updated_at: agents.updatedAt
+    })
+    .from(agents)
+    .leftJoin(teams, eq(agents.teamId, teams.id))
+    .where(and(
+      eq(agents.email, email),
+      eq(agents.isActive, true)
+    ))
+    .get();
 
   if (agent) {
-    const isValidPassword = await verifyPassword(password, agent.password_hash as string);
+    const isValidPassword = await verifyPassword(password, agent.password_hash);
     if (isValidPassword) {
-      return {
-        id: agent.id as string, // agents 表使用字符串 ID
-        email: agent.email as string,
-        displayName: agent.display_name as string,
-        role: agent.role as 'admin' | 'team' | 'agent',
-        teamId: agent.team_id as number | null,
-        teamName: agent.team_name as string | null,
+      return convertAgent({
+        id: agent.id,
+        email: agent.email,
+        displayName: agent.display_name,
+        role: agent.role,
+        teamId: agent.team_id,
         isActive: Boolean(agent.is_active),
-        createdAt: agent.created_at as string,
-        updatedAt: agent.updated_at as string || agent.created_at as string
-      };
+        createdAt: agent.created_at,
+        updatedAt: agent.updated_at,
+        passwordHash: '', // Not needed for return
+        passwordPolicy: 'changeable',
+        lastLoginAt: null
+      }, agent.team_name || undefined);
     }
   }
 
@@ -315,7 +370,7 @@ export function canAccessTeam(user: DbUser, teamId: number): boolean {
 // 會話管理
 export async function createSession(
   kv: KVNamespace,
-  userId: number,
+  userId: string | number,
   sessionData: Record<string, unknown>,
   expirationTtl: number = 24 * 60 * 60 // 24 小時
 ): Promise<string> {
@@ -339,7 +394,12 @@ export async function getSession(kv: KVNamespace, sessionId: string): Promise<Re
     return null;
   }
 
-  return JSON.parse(sessionData);
+  try {
+    return JSON.parse(sessionData);
+  } catch (error) {
+    console.error('Failed to parse session data:', error);
+    return null;
+  }
 }
 
 export async function deleteSession(kv: KVNamespace, sessionId: string): Promise<void> {

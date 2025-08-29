@@ -1,0 +1,22 @@
+-- 修復 customers 表缺少的欄位
+-- 添加 profile_updated_at 和 profile_data 欄位
+
+-- 檢查並添加 profile_updated_at 欄位
+ALTER TABLE customers 
+ADD COLUMN profile_updated_at DATETIME DEFAULT NULL;
+
+-- 檢查並添加 profile_data 欄位
+ALTER TABLE customers 
+ADD COLUMN profile_data TEXT DEFAULT NULL;
+
+-- 更新現有記錄的 profile_updated_at 為當前時間
+UPDATE customers 
+SET profile_updated_at = datetime('now') 
+WHERE profile_updated_at IS NULL;
+
+-- 添加索引以提高查詢效率
+CREATE INDEX IF NOT EXISTS idx_customers_profile_updated 
+ON customers(profile_updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_customers_platform_user 
+ON customers(platform, platform_user_id);

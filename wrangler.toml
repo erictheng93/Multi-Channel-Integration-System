@@ -33,15 +33,18 @@ migrations_dir = "migrations"
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "ace3f7202e6a4dd8b98c50e9b91b2431"
+preview_id = "ace3f7202e6a4dd8b98c50e9b91b2431"
 
 [[kv_namespaces]]
 binding = "CACHE"
 id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
+preview_id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
 
 # 生產環境 R2 存儲
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "multi-channel-platform-attachments"
+preview_bucket_name = "multi-channel-platform-attachments"
 
 # 生產環境 Queue
 [[queues.producers]]
@@ -53,48 +56,3 @@ queue = "message-queue"
 max_batch_size = 10
 max_batch_timeout = 5
 
-# =====================================
-# 開發環境配置 - 獨立的 Worker
-# =====================================
-[env.dev]
-name = "multi-channel-platform-dev"
-
-# 開發環境專用路由
-[[env.dev.routes]]
-pattern = "multi-channel-dev.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
-
-# 開發環境變數
-[env.dev.vars]
-ENVIRONMENT = "development"
-R2_PUBLIC_URL = "https://s3-dev.imfinethankyouandyou.com"
-
-# 開發環境 D1 資料庫
-[[env.dev.d1_databases]]
-binding = "DB"
-database_name = "multi-channel-platform-dev"
-database_id = "3b7339f0-80de-49dc-b079-312df4a4c316"
-
-# 開發環境 KV Namespaces
-[[env.dev.kv_namespaces]]
-binding = "SESSIONS"
-id = "e7687b9663cb492aa398a29b29956128"
-
-[[env.dev.kv_namespaces]]
-binding = "CACHE"
-id = "b7ca23b7839946cdb78ef7103f29ce82"
-
-# 開發環境 R2 存儲
-[[env.dev.r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-dev"
-
-# 開發環境 Queue
-[[env.dev.queues.producers]]
-binding = "MESSAGE_QUEUE"
-queue = "message-queue-dev"
-
-[[env.dev.queues.consumers]]
-queue = "message-queue-dev"
-max_batch_size = 10
-max_batch_timeout = 5

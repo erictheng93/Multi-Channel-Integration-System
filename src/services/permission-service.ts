@@ -1,4 +1,7 @@
 // 權限管理服務
+import { eq, and, isNull, or, desc } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
+import { agents, conversations } from '../db/schema';
 import type {
   // PermissionRule,
   PermissionContext,
@@ -39,7 +42,6 @@ export class PermissionService {
       permissions: [
         // Conversation management for team
         { resource: 'conversation', action: 'view', conditions: { teamScope: true } },
-        { resource: 'conversation', action: 'assign' },
         { resource: 'conversation', action: 'transfer' },
         { resource: 'conversation', action: 'close' },
         { resource: 'conversation', action: 'reopen' },
@@ -88,14 +90,19 @@ export class PermissionService {
   };
 
   static async checkPermission(
-    userId: number,
+    userId: string | number, // ✅ 支持字符串和數字ID
     resource: string,
     action: string,
     context?: PermissionContext,
     db?: D1Database
   ): Promise<boolean> {
-    // Input validation
-    if (!userId || userId <= 0 || !resource || !action) {
+    // ✅ 修正輸入驗證邏輯
+    if (!userId || !resource || !action) {
+      return false;
+    }
+    
+    // 對數字ID進行額外驗證
+    if (typeof userId === 'number' && userId <= 0) {
       return false;
     }
 
@@ -179,8 +186,11 @@ export class PermissionService {
     );
   }
 
-  private static async getUserWithTeam(userId: string | number, db?: D1Database) {
+  private static async getUserWithTeam(userId: string | number, db?: D1Database): Promise<UserPermissionData | null> {
+    console.log(`🔍 getUserWithTeam called with userId: ${userId} (type: ${typeof userId}), db: ${db ? 'available' : 'not available'}`);
+    
     if (!db) {
+      console.log('⚠️  No database provided, returning mock data');
       // 暫時返回模擬資料，實際使用時需要傳入 db
       return {
         id: typeof userId === 'string' ? parseInt(userId) : userId,
@@ -192,22 +202,44 @@ export class PermissionService {
     }
 
     try {
-      const user = await db
-        .prepare('SELECT id, role, team_id, is_active FROM agents WHERE id = ?')
-        .bind(typeof userId === 'string' ? userId : userId.toString())
-        .first<{ id: string; role: string; team_id: number | null; is_active: boolean }>();
+      const drizzleDb = drizzle(db);
+      const userIdStr = typeof userId === 'string' ? userId : userId.toString();
+      
+      console.log(`📋 Querying agents table for id: "${userIdStr}"`);
+      
+      const user = await drizzleDb
+        .select({
+          id: agents.id,
+          role: agents.role,
+          teamId: agents.teamId,
+          isActive: agents.isActive
+        })
+        .from(agents)
+        .where(
+          and(
+            eq(agents.id, userIdStr),
+            eq(agents.isActive, true)
+          )
+        )
+        .get();
 
-      if (!user || !user.is_active) {
+      console.log(`👤 Database query result:`, user);
+
+      if (!user) {
+        console.log('❌ No user found in database');
         return null;
       }
 
-      return {
-        id: parseInt(user.id),
-        role: user.role,
-        team_id: user.team_id,
-        teamId: user.team_id,
-        isActive: user.is_active
+      const userData = {
+        id: parseInt(user.id), // 轉換為數字以符合 UserPermissionData 類型
+        role: user.role as string,
+        team_id: user.teamId,
+        teamId: user.teamId,
+        isActive: Boolean(user.isActive)
       };
+      
+      console.log(`✅ Returning user data:`, userData);
+      return userData;
     } catch (error) {
       console.error('Failed to get user:', error);
       return null;
@@ -233,32 +265,65 @@ export class PermissionService {
 
       // Admin 可以看到所有對話
       if (user.role === 'admin') {
-        const result = await database.prepare('SELECT id FROM conversations ORDER BY updated_at DESC').all();
-        return (result.results || []).map((row: any) => row.id);
+        const drizzleDb = drizzle(database);
+        const result = await drizzleDb
+          .select({ id: conversations.id })
+          .from(conversations)
+          .orderBy(desc(conversations.updatedAt));
+        return result.map(row => row.id);
       }
 
       // Manager 可以看到團隊內的所有對話
       if (user.role === 'team' && user.team_id) {
-        const result = await database.prepare(`
-          SELECT c.id FROM conversations c 
-          LEFT JOIN agents a ON c.agent_id = a.id 
-          WHERE a.team_id = ? OR c.agent_id IS NULL
-          ORDER BY c.updated_at DESC
-        `).bind(user.team_id).all();
-        return (result.results || []).map((row: any) => row.id);
+        const drizzleDb = drizzle(database);
+        const result = await drizzleDb
+          .select({ id: conversations.id })
+          .from(conversations)
+          .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
+          .where(
+            or(
+              eq(agents.teamId, user.team_id),
+              isNull(conversations.assignedUserId)
+            )
+          )
+          .orderBy(desc(conversations.updatedAt));
+        return result.map(row => row.id);
       }
 
       // Agent 只能看到指派給自己的對話或未指派的對話
       if (user.role === 'agent') {
         const userIdStr = typeof userId === 'string' ? userId : userId.toString();
         console.log(`🔍 Agent ${userIdStr} (role: ${user.role}) searching for conversations`);
-        const result = await database.prepare(`
-          SELECT id FROM conversations 
-          WHERE agent_id = ? OR agent_id IS NULL
-          ORDER BY updated_at DESC
-        `).bind(userIdStr).all();
-        console.log(`📋 Found ${(result.results || []).length} conversations for agent ${userIdStr}`);
-        return (result.results || []).map((row: any) => row.id);
+        
+        const drizzleDb = drizzle(database);
+        
+        // First, let's see ALL conversations in the database
+        const allConversations = await drizzleDb
+          .select({ 
+            id: conversations.id, 
+            assignedUserId: conversations.assignedUserId,
+            status: conversations.status,
+            updatedAt: conversations.updatedAt
+          })
+          .from(conversations)
+          .orderBy(desc(conversations.updatedAt));
+        
+        console.log(`🗂️  All conversations in database:`, allConversations);
+        console.log(`🔍 Looking for conversations assigned to: "${userIdStr}" or unassigned (null)`);
+        
+        const result = await drizzleDb
+          .select({ id: conversations.id })
+          .from(conversations)
+          .where(
+            or(
+              eq(conversations.assignedUserId, userIdStr),
+              isNull(conversations.assignedUserId)
+            )
+          )
+          .orderBy(desc(conversations.updatedAt));
+        
+        console.log(`📋 Found ${result.length} conversations for agent ${userIdStr}:`, result.map(r => r.id));
+        return result.map(row => row.id);
       }
 
       return [];

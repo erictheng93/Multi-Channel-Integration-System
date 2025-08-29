@@ -1,11 +1,25 @@
+import { eq, and, desc, asc, count } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
+import { 
+  customers, 
+  conversations, 
+  messages, 
+  systemSettings
+} from '../db/schema';
+import { 
+  convertCustomer,
+  convertConversation,
+  convertMessage,
+  // prepareCustomerInsert,
+  // prepareConversationInsert,
+  // prepareMessageInsert
+} from './drizzle-converters';
 import type { 
-  Customer, 
+  Customer,
   DbConversation, 
   DbMessage, 
   QueryParams, 
-  // QueryParam,
-  CustomerMetadata,
-  // DatabaseRow 
+  CustomerMetadata
 } from '../types';
 
 /**
@@ -25,12 +39,17 @@ export async function findOrCreateCustomer(
   }
 ): Promise<Customer> {
   const timestamp = new Date().toISOString();
+  const drizzleDb = drizzle(db);
   
   // 先嘗試找到現有客戶
-  const existingCustomer = await db
-    .prepare('SELECT * FROM customers WHERE platform = ? AND platform_user_id = ?')
-    .bind(platform, platformUserId)
-    .first<Customer>();
+  const existingCustomer = await drizzleDb
+    .select()
+    .from(customers)
+    .where(and(
+      eq(customers.platform, platform),
+      eq(customers.platformUserId, platformUserId)
+    ))
+    .get();
 
   if (existingCustomer) {
     // 如果客戶已存在，但有新的資訊要更新
@@ -38,12 +57,12 @@ export async function findOrCreateCustomer(
       const updateFields: string[] = [];
       const updateValues: QueryParams = [];
       
-      if (additionalInfo.displayName && additionalInfo.displayName !== existingCustomer.display_name) {
+      if (additionalInfo.displayName && additionalInfo.displayName !== existingCustomer.displayName) {
         updateFields.push('display_name = ?');
         updateValues.push(additionalInfo.displayName);
       }
       
-      if (additionalInfo.avatarUrl && additionalInfo.avatarUrl !== existingCustomer.avatar_url) {
+      if (additionalInfo.avatarUrl && additionalInfo.avatarUrl !== existingCustomer.avatarUrl) {
         updateFields.push('avatar_url = ?');
         updateValues.push(additionalInfo.avatarUrl);
       }
@@ -67,69 +86,76 @@ export async function findOrCreateCustomer(
       
       // 如果有需要更新的欄位
       if (updateFields.length > 0) {
-        updateFields.push('updated_at = ?');
-        updateValues.push(timestamp);
-        updateValues.push(existingCustomer.id);
+        const updateData: Partial<typeof customers.$inferInsert> = {
+          updatedAt: timestamp
+        };
         
-        await db
-          .prepare(`UPDATE customers SET ${updateFields.join(', ')} WHERE id = ?`)
-          .bind(...updateValues)
-          .run();
+        if (additionalInfo.displayName) updateData.displayName = additionalInfo.displayName;
+        if (additionalInfo.avatarUrl) updateData.avatarUrl = additionalInfo.avatarUrl;
+        if (additionalInfo.phone) updateData.phone = additionalInfo.phone;
+        if (additionalInfo.email) updateData.email = additionalInfo.email;
+        if (additionalInfo.metadata) {
+          const existingMetadata = existingCustomer.metadata ? JSON.parse(existingCustomer.metadata) : {};
+          const mergedMetadata = { ...existingMetadata, ...additionalInfo.metadata };
+          updateData.metadata = JSON.stringify(mergedMetadata);
+        }
+        
+        await drizzleDb
+          .update(customers)
+          .set(updateData)
+          .where(eq(customers.id, existingCustomer.id));
           
         console.log(`📝 客戶資訊已更新 - ID: ${existingCustomer.id}, 平台: ${platform}, 用戶ID: ${platformUserId}`);
         
         // 重新獲取更新後的客戶資料
-        const updatedCustomer = await db
-          .prepare('SELECT * FROM customers WHERE id = ?')
-          .bind(existingCustomer.id)
-          .first<Customer>();
+        const updatedCustomer = await drizzleDb
+          .select()
+          .from(customers)
+          .where(eq(customers.id, existingCustomer.id))
+          .get();
           
-        return updatedCustomer || existingCustomer;
+        return convertCustomer(updatedCustomer || existingCustomer);
       }
     }
     
     console.log(`👤 找到現有客戶 - ID: ${existingCustomer.id}, 平台: ${platform}, 用戶ID: ${platformUserId}`);
-    return existingCustomer;
+    return convertCustomer(existingCustomer);
   }
 
   // 如果客戶不存在，建立新客戶
-  const insertResult = await db
-    .prepare(`
-      INSERT INTO customers (
-        platform, platform_user_id, display_name, avatar_url, 
-        phone, email, source_team_id, metadata, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      platform, 
-      platformUserId,
-      additionalInfo?.displayName || null,
-      additionalInfo?.avatarUrl || null,
-      additionalInfo?.phone || null,
-      additionalInfo?.email || null,
-      additionalInfo?.sourceTeamId || null,
-      additionalInfo?.metadata ? JSON.stringify(additionalInfo.metadata) : null,
-      timestamp,
-      timestamp
-    )
-    .run();
+  const newCustomerData = {
+    platform,
+    platformUserId,
+    displayName: additionalInfo?.displayName || null,
+    avatarUrl: additionalInfo?.avatarUrl || null,
+    phone: additionalInfo?.phone || null,
+    email: additionalInfo?.email || null,
+    sourceTeamId: additionalInfo?.sourceTeamId || null,
+    metadata: additionalInfo?.metadata ? JSON.stringify(additionalInfo.metadata) : null,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
 
-  if (!insertResult.success) {
-    throw new Error('Failed to create customer');
-  }
+  await drizzleDb
+    .insert(customers)
+    .values(newCustomerData);
 
   // 重新獲取剛建立的客戶
-  const newCustomer = await db
-    .prepare('SELECT * FROM customers WHERE platform = ? AND platform_user_id = ?')
-    .bind(platform, platformUserId)
-    .first<Customer>();
+  const newCustomer = await drizzleDb
+    .select()
+    .from(customers)
+    .where(and(
+      eq(customers.platform, platform),
+      eq(customers.platformUserId, platformUserId)
+    ))
+    .get();
 
   if (!newCustomer) {
     throw new Error('Failed to retrieve created customer');
   }
 
   console.log(`🆕 建立新客戶 - ID: ${newCustomer.id}, 平台: ${platform}, 用戶ID: ${platformUserId}`);
-  return newCustomer;
+  return convertCustomer(newCustomer);
 }
 
 /**
@@ -140,44 +166,59 @@ export async function findOrCreateConversation(
   customerId: number
 ): Promise<DbConversation> {
   const timestamp = new Date().toISOString();
+  const drizzleDb = drizzle(db);
 
   // 先嘗試找到現有的活躍對話
-  const existingConversation = await db
-    .prepare('SELECT * FROM conversations WHERE customer_id = ? AND status = ?')
-    .bind(customerId, 'active')
-    .first<DbConversation>();
+  const existingConversation = await drizzleDb
+    .select()
+    .from(conversations)
+    .where(and(
+      eq(conversations.customerId, customerId),
+      eq(conversations.status, 'active')
+    ))
+    .get();
 
   if (existingConversation) {
     // 更新最後訊息時間
-    await db
-      .prepare('UPDATE conversations SET last_message_at = ?, updated_at = ? WHERE id = ?')
-      .bind(timestamp, timestamp, existingConversation.id)
-      .run();
+    await drizzleDb
+      .update(conversations)
+      .set({
+        lastMessageAt: timestamp,
+        updatedAt: timestamp
+      })
+      .where(eq(conversations.id, existingConversation.id));
 
-    return existingConversation;
+    return convertConversation(existingConversation);
   }
 
   // 如果沒有活躍對話，建立新對話
-  const insertResult = await db
-    .prepare('INSERT INTO conversations (customer_id, status, last_message_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-    .bind(customerId, 'active', timestamp, timestamp, timestamp)
-    .run();
-
-  if (!insertResult.success) {
-    throw new Error('Failed to create conversation');
-  }
+  const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  await drizzleDb
+    .insert(conversations)
+    .values({
+      id: conversationId,
+      customerId,
+      status: 'active',
+      lastMessageAt: timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    });
 
   // 重新獲取剛建立的對話
-  const newConversation = await db
-    .prepare('SELECT * FROM conversations WHERE customer_id = ? ORDER BY created_at DESC LIMIT 1')
-    .bind(customerId)
-    .first<DbConversation>();
+  const newConversation = await drizzleDb
+    .select()
+    .from(conversations)
+    .where(eq(conversations.customerId, customerId))
+    .orderBy(desc(conversations.createdAt))
+    .limit(1)
+    .get();
 
   if (!newConversation) {
     throw new Error('Failed to retrieve created conversation');
   }
 
-  return newConversation;
+  return convertConversation(newConversation);
 }
 
 /**
@@ -187,67 +228,60 @@ export async function saveMessage(
   db: D1Database,
   messageData: {
     id: string;
-    conversationId: number;
+    conversationId: string;
     senderType: 'customer' | 'agent' | 'system';
-    senderId?: number;
+    senderId?: string;
     content: string;
     messageType: 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker';
     platformMessageId?: string;
     direction: 'inbound' | 'outbound';
-    replyToMessageId?: string; // 回覆的目標訊息ID
-    threadId?: string; // 訊息線程ID
-    sessionId?: string; // 會話ID
-    sessionSequence?: number; // 會話中的順序
-    metadata?: Record<string, unknown>; // 額外的元數據
+    replyToMessageId?: string;
+    threadId?: string;
+    sessionId?: string;
+    sessionSequence?: number;
+    metadata?: Record<string, unknown>;
   }
 ): Promise<DbMessage> {
   const timestamp = new Date().toISOString();
+  const drizzleDb = drizzle(db);
 
-  const insertResult = await db
-    .prepare(`
-      INSERT INTO messages (
-        id, conversation_id, sender_type, sender_id, content, 
-        message_type, platform_message_id, is_recalled, is_sent, 
-        delivery_status, reply_to_message_id, thread_id, session_id,
-        session_sequence, metadata, sent_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      messageData.id,
-      messageData.conversationId,
-      messageData.senderType,
-      messageData.senderId || null,
-      messageData.content,
-      messageData.messageType,
-      messageData.platformMessageId || null,
-      false, // is_recalled
-      messageData.direction === 'outbound', // is_sent
-      messageData.direction === 'outbound' ? 'sent' : 'pending', // delivery_status
-      messageData.replyToMessageId || null,
-      messageData.threadId || null,
-      messageData.sessionId || null,
-      messageData.sessionSequence || 1,
-      messageData.metadata ? JSON.stringify(messageData.metadata) : null,
-      messageData.direction === 'outbound' ? timestamp : null, // sent_at
-      timestamp
-    )
-    .run();
+  const messageInsertData = {
+    id: messageData.id,
+    conversationId: messageData.conversationId,
+    senderType: messageData.senderType,
+    customerSenderId: messageData.senderType === 'customer' ? parseInt(messageData.senderId || '0') || null : null,
+    agentSenderId: messageData.senderType === 'agent' ? messageData.senderId || null : null,
+    content: messageData.content,
+    messageType: messageData.messageType,
+    platformMessageId: messageData.platformMessageId || null,
+    isRecalled: false,
+    isSent: messageData.direction === 'outbound',
+    deliveryStatus: messageData.direction === 'outbound' ? 'sent' : 'pending',
+    replyToMessageId: messageData.replyToMessageId || null,
+    threadId: messageData.threadId || null,
+    sessionId: messageData.sessionId || null,
+    sessionSequence: messageData.sessionSequence || 1,
+    metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : null,
+    sentAt: messageData.direction === 'outbound' ? timestamp : null,
+    createdAt: timestamp
+  };
 
-  if (!insertResult.success) {
-    throw new Error('Failed to save message');
-  }
+  await drizzleDb
+    .insert(messages)
+    .values(messageInsertData);
 
   // 重新獲取剛儲存的訊息
-  const savedMessage = await db
-    .prepare('SELECT * FROM messages WHERE id = ?')
-    .bind(messageData.id)
-    .first<DbMessage>();
+  const savedMessage = await drizzleDb
+    .select()
+    .from(messages)
+    .where(eq(messages.id, messageData.id))
+    .get();
 
   if (!savedMessage) {
     throw new Error('Failed to retrieve saved message');
   }
 
-  return savedMessage;
+  return convertMessage(savedMessage);
 }
 
 /**
@@ -257,10 +291,13 @@ export async function getSystemSetting(
   db: D1Database, 
   key: string
 ): Promise<string | null> {
-  const result = await db
-    .prepare('SELECT value FROM system_settings WHERE key = ?')
-    .bind(key)
-    .first<{ value: string }>();
+  const drizzleDb = drizzle(db);
+  
+  const result = await drizzleDb
+    .select({ value: systemSettings.value })
+    .from(systemSettings)
+    .where(eq(systemSettings.key, key))
+    .get();
 
   return result?.value || null;
 }
@@ -270,20 +307,19 @@ export async function getSystemSetting(
  */
 export async function getConversationMessages(
   db: D1Database,
-  conversationId: number,
+  conversationId: string,
   limit: number = 50
 ): Promise<DbMessage[]> {
-  const messages = await db
-    .prepare(`
-      SELECT * FROM messages 
-      WHERE conversation_id = ? 
-      ORDER BY created_at DESC 
-      LIMIT ?
-    `)
-    .bind(conversationId, limit)
-    .all<DbMessage>();
+  const drizzleDb = drizzle(db);
+  
+  const messageList = await drizzleDb
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
 
-  return messages.results || [];
+  return messageList.map(convertMessage);
 }
 
 /**
@@ -293,16 +329,15 @@ export async function getCustomerConversations(
   db: D1Database,
   customerId: number
 ): Promise<DbConversation[]> {
-  const conversations = await db
-    .prepare(`
-      SELECT * FROM conversations 
-      WHERE customer_id = ? 
-      ORDER BY last_message_at DESC
-    `)
-    .bind(customerId)
-    .all<DbConversation>();
+  const drizzleDb = drizzle(db);
+  
+  const conversationList = await drizzleDb
+    .select()
+    .from(conversations)
+    .where(eq(conversations.customerId, customerId))
+    .orderBy(desc(conversations.lastMessageAt));
 
-  return conversations.results || [];
+  return conversationList.map(convertConversation);
 }
 
 /**
@@ -316,38 +351,73 @@ export async function getMessageStats(
   totalConversations: number;
   recentMessages: DbMessage[];
 }> {
+  const drizzleDb = drizzle(db);
+
   // 總訊息數
-  const totalMessagesResult = await db
-    .prepare('SELECT COUNT(*) as count FROM messages')
-    .first<{ count: number }>();
+  const totalMessagesResult = await drizzleDb
+    .select({ count: count() })
+    .from(messages)
+    .get();
 
   // 總客戶數
-  const totalCustomersResult = await db
-    .prepare('SELECT COUNT(*) as count FROM customers')
-    .first<{ count: number }>();
+  const totalCustomersResult = await drizzleDb
+    .select({ count: count() })
+    .from(customers)
+    .get();
 
   // 總對話數
-  const totalConversationsResult = await db
-    .prepare('SELECT COUNT(*) as count FROM conversations')
-    .first<{ count: number }>();
+  const totalConversationsResult = await drizzleDb
+    .select({ count: count() })
+    .from(conversations)
+    .get();
 
   // 最近的訊息
-  const recentMessages = await db
-    .prepare(`
-      SELECT m.*, c.display_name as customer_name, c.platform 
-      FROM messages m 
-      LEFT JOIN conversations conv ON m.conversation_id = conv.id
-      LEFT JOIN customers c ON conv.customer_id = c.id
-      ORDER BY m.created_at DESC 
-      LIMIT 10
-    `)
-    .all<DbMessage & { customer_name?: string; platform?: string }>();
+  const recentMessagesData = await drizzleDb
+    .select({
+      id: messages.id,
+      conversationId: messages.conversationId,
+      senderType: messages.senderType,
+      customerSenderId: messages.customerSenderId,
+      agentSenderId: messages.agentSenderId,
+      content: messages.content,
+      messageType: messages.messageType,
+      platformMessageId: messages.platformMessageId,
+      isRecalled: messages.isRecalled,
+      isSent: messages.isSent,
+      deliveryStatus: messages.deliveryStatus,
+      replyToMessageId: messages.replyToMessageId,
+      threadId: messages.threadId,
+      sessionId: messages.sessionId,
+      sessionSequence: messages.sessionSequence,
+      metadata: messages.metadata,
+      sentAt: messages.sentAt,
+      createdAt: messages.createdAt,
+      customer_name: customers.displayName,
+      platform: customers.platform
+    })
+    .from(messages)
+    .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+    .leftJoin(customers, eq(conversations.customerId, customers.id))
+    .orderBy(desc(messages.createdAt))
+    .limit(10);
+
+  // 轉換為 DbMessage 格式，保留額外字段
+  const recentMessages = recentMessagesData.map(msg => {
+    const baseMessage = convertMessage(msg);
+    return {
+      ...baseMessage,
+      customer_name: msg.customer_name,
+      platform: msg.platform,
+      recallDeadline: msg.recallDeadline || null,
+      recalledAt: msg.recalledAt || null
+    };
+  });
 
   return {
     totalMessages: totalMessagesResult?.count || 0,
     totalCustomers: totalCustomersResult?.count || 0,
     totalConversations: totalConversationsResult?.count || 0,
-    recentMessages: recentMessages.results || []
+    recentMessages
   };
 }
 
@@ -358,16 +428,15 @@ export async function getMessageReplies(
   db: D1Database,
   messageId: string
 ): Promise<DbMessage[]> {
-  const replies = await db
-    .prepare(`
-      SELECT * FROM messages 
-      WHERE reply_to_message_id = ? 
-      ORDER BY created_at ASC
-    `)
-    .bind(messageId)
-    .all<DbMessage>();
+  const drizzleDb = drizzle(db);
+  
+  const replies = await drizzleDb
+    .select()
+    .from(messages)
+    .where(eq(messages.replyToMessageId, messageId))
+    .orderBy(asc(messages.createdAt));
 
-  return replies.results || [];
+  return replies.map(convertMessage);
 }
 
 /**
@@ -377,16 +446,15 @@ export async function getMessageThread(
   db: D1Database,
   threadId: string
 ): Promise<DbMessage[]> {
-  const threadMessages = await db
-    .prepare(`
-      SELECT * FROM messages 
-      WHERE thread_id = ? 
-      ORDER BY created_at ASC
-    `)
-    .bind(threadId)
-    .all<DbMessage>();
+  const drizzleDb = drizzle(db);
+  
+  const threadMessages = await drizzleDb
+    .select()
+    .from(messages)
+    .where(eq(messages.threadId, threadId))
+    .orderBy(asc(messages.createdAt));
 
-  return threadMessages.results || [];
+  return threadMessages.map(convertMessage);
 }
 
 /**
@@ -394,41 +462,41 @@ export async function getMessageThread(
  */
 export async function getConversationMessageTree(
   db: D1Database,
-  conversationId: number
+  conversationId: string
 ): Promise<{
   messages: DbMessage[];
   messageMap: Map<string, DbMessage>;
   replyMap: Map<string, DbMessage[]>;
 }> {
-  // 獲取對話的所有訊息
-  const messages = await db
-    .prepare(`
-      SELECT * FROM messages 
-      WHERE conversation_id = ? 
-      ORDER BY created_at ASC
-    `)
-    .bind(conversationId)
-    .all<DbMessage>();
+  const drizzleDb = drizzle(db);
 
-  const messageList = messages.results || [];
+  // 獲取對話的所有訊息
+  const messageList = await drizzleDb
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt));
+
   const messageMap = new Map<string, DbMessage>();
   const replyMap = new Map<string, DbMessage[]>();
 
+  const convertedMessages = messageList.map(convertMessage);
+  
   // 建立訊息映射
-  messageList.forEach(message => {
+  convertedMessages.forEach(message => {
     messageMap.set(message.id, message);
     
     // 如果是回覆訊息，加入回覆映射
-    if (message.reply_to_message_id) {
-      if (!replyMap.has(message.reply_to_message_id)) {
-        replyMap.set(message.reply_to_message_id, []);
+    if (message.replyToMessageId) {
+      if (!replyMap.has(message.replyToMessageId)) {
+        replyMap.set(message.replyToMessageId, []);
       }
-      replyMap.get(message.reply_to_message_id)!.push(message);
+      replyMap.get(message.replyToMessageId)!.push(message);
     }
   });
 
   return {
-    messages: messageList,
+    messages: convertedMessages,
     messageMap,
     replyMap
   };
@@ -441,16 +509,15 @@ export async function getAllCustomers(
   db: D1Database,
   limit: number = 100
 ): Promise<Customer[]> {
-  const customers = await db
-    .prepare(`
-      SELECT * FROM customers 
-      ORDER BY created_at DESC 
-      LIMIT ?
-    `)
-    .bind(limit)
-    .all<Customer>();
+  const drizzleDb = drizzle(db);
+  
+  const customerList = await drizzleDb
+    .select()
+    .from(customers)
+    .orderBy(desc(customers.createdAt))
+    .limit(limit);
 
-  return customers.results || [];
+  return customerList.map(convertCustomer);
 }
 
 /**
@@ -460,12 +527,15 @@ export async function getCustomerById(
   db: D1Database,
   customerId: number
 ): Promise<Customer | null> {
-  const customer = await db
-    .prepare('SELECT * FROM customers WHERE id = ?')
-    .bind(customerId)
-    .first<Customer>();
+  const drizzleDb = drizzle(db);
+  
+  const customer = await drizzleDb
+    .select()
+    .from(customers)
+    .where(eq(customers.id, customerId))
+    .get();
 
-  return customer || null;
+  return customer ? convertCustomer(customer) : null;
 }
 
 /**
@@ -476,12 +546,18 @@ export async function getCustomerByPlatformId(
   platform: string,
   platformUserId: string
 ): Promise<Customer | null> {
-  const customer = await db
-    .prepare('SELECT * FROM customers WHERE platform = ? AND platform_user_id = ?')
-    .bind(platform, platformUserId)
-    .first<Customer>();
+  const drizzleDb = drizzle(db);
+  
+  const customer = await drizzleDb
+    .select()
+    .from(customers)
+    .where(and(
+      eq(customers.platform, platform),
+      eq(customers.platformUserId, platformUserId)
+    ))
+    .get();
 
-  return customer || null;
+  return customer ? convertCustomer(customer) : null;
 }
 
 /**
@@ -498,46 +574,52 @@ export async function updateCustomer(
     metadata?: Record<string, unknown>;
   }
 ): Promise<boolean> {
-  const updateFields: string[] = [];
-  const updateValues: any[] = [];
+  const drizzleDb = drizzle(db);
+  
+  const updateData: Partial<typeof customers.$inferInsert> = {
+    updatedAt: new Date().toISOString()
+  };
+  
+  let hasUpdates = false;
   
   if (updates.displayName !== undefined) {
-    updateFields.push('display_name = ?');
-    updateValues.push(updates.displayName);
+    updateData.displayName = updates.displayName;
+    hasUpdates = true;
   }
   
   if (updates.avatarUrl !== undefined) {
-    updateFields.push('avatar_url = ?');
-    updateValues.push(updates.avatarUrl);
+    updateData.avatarUrl = updates.avatarUrl;
+    hasUpdates = true;
   }
   
   if (updates.phone !== undefined) {
-    updateFields.push('phone = ?');
-    updateValues.push(updates.phone);
+    updateData.phone = updates.phone;
+    hasUpdates = true;
   }
   
   if (updates.email !== undefined) {
-    updateFields.push('email = ?');
-    updateValues.push(updates.email);
+    updateData.email = updates.email;
+    hasUpdates = true;
   }
   
   if (updates.metadata !== undefined) {
-    updateFields.push('metadata = ?');
-    updateValues.push(JSON.stringify(updates.metadata));
+    updateData.metadata = JSON.stringify(updates.metadata);
+    hasUpdates = true;
   }
   
-  if (updateFields.length === 0) {
+  if (!hasUpdates) {
     return false;
   }
   
-  updateFields.push('updated_at = ?');
-  updateValues.push(new Date().toISOString());
-  updateValues.push(customerId);
-  
-  const result = await db
-    .prepare(`UPDATE customers SET ${updateFields.join(', ')} WHERE id = ?`)
-    .bind(...updateValues)
-    .run();
+  try {
+    await drizzleDb
+      .update(customers)
+      .set(updateData)
+      .where(eq(customers.id, customerId));
     
-  return result.success;
+    return true;
+  } catch (error) {
+    console.error('Failed to update customer:', error);
+    return false;
+  }
 }

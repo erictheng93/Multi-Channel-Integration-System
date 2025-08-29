@@ -93,7 +93,7 @@ export const activitiesApi = {
     })
 
     const queryString = params.toString()
-    return apiClient.get(`/api/activities${queryString ? `?${queryString}` : ''}`)
+    return apiClient.get(`/activities${queryString ? `?${queryString}` : ''}`)
   },
 
   // 獲取用戶活動統計
@@ -110,7 +110,7 @@ export const activitiesApi = {
     if (validDays !== 30) { params.append('days', validDays.toString()) }
     
     const queryString = params.toString()
-    return apiClient.get(`/api/activities/users/${encodeURIComponent(userId)}/stats${queryString ? `?${queryString}` : ''}`)
+    return apiClient.get(`/activities/users/${encodeURIComponent(userId)}/stats${queryString ? `?${queryString}` : ''}`)
   },
 
   // 獲取活動統計概覽（僅限管理員）
@@ -122,7 +122,7 @@ export const activitiesApi = {
     if (validDays !== 7) { params.append('days', validDays.toString()) }
     
     const queryString = params.toString()
-    return apiClient.get(`/api/activities/overview${queryString ? `?${queryString}` : ''}`)
+    return apiClient.get(`/activities/overview${queryString ? `?${queryString}` : ''}`)
   },
 
   // 清理舊的活動記錄（僅限管理員）
@@ -134,7 +134,7 @@ export const activitiesApi = {
     if (validDays !== 90) { params.append('days', validDays.toString()) }
     
     const queryString = params.toString()
-    return apiClient.delete(`/api/activities/cleanup${queryString ? `?${queryString}` : ''}`)
+    return apiClient.delete(`/activities/cleanup${queryString ? `?${queryString}` : ''}`)
   },
 
   // 匯出活動記錄
@@ -167,7 +167,7 @@ export const activitiesApi = {
     
     try {
       // Use apiClient for consistent authentication
-      const response = await fetch(`/api/activities/export${queryString ? `?${queryString}` : ''}`, {
+      const response = await fetch(`/activities/export${queryString ? `?${queryString}` : ''}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,

@@ -62,12 +62,12 @@ export function useActivityStream() {
   const connect = () => {
     if (!token.value || !isAuthenticated.value) {
       error.value = '需要登入才能建立連線'
-      console.warn('❌ Cannot connect: not authenticated')
+      console.warn('❌ [SSE Client] Cannot connect: not authenticated')
       return
     }
 
     if (eventSource) {
-      console.log('🔄 Closing existing connection before reconnecting')
+      console.log('🔄 [SSE Client] Closing existing connection before reconnecting')
       disconnect()
     }
 
@@ -75,16 +75,30 @@ export function useActivityStream() {
     error.value = null
 
     try {
-      console.log('🚀 Establishing SSE connection...')
+      console.log('🚀 [SSE Client] Establishing SSE connection...')
       
       // 建立 EventSource 連接，通過查詢參數傳遞 token
-      const url = `/api/activities/stream?token=${encodeURIComponent(token.value)}`
+      // 根據環境決定 URL
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+      const isRemoteApi = baseUrl && !baseUrl.includes('localhost')
+      
+      // 如果是遠端 API，直接使用完整 URL；否則使用相對路徑
+      const url = isRemoteApi 
+        ? `${baseUrl}/api/activities/stream?token=${encodeURIComponent(token.value)}`
+        : `/api/activities/stream?token=${encodeURIComponent(token.value)}`
+      
+      console.log('🌐 [SSE Client] Connecting to:', url.replace(/token=[^&]+/, 'token=***'))
+      
       eventSource = new EventSource(url, {
         withCredentials: false
       })
       
       eventSource.onopen = () => {
-        console.log('✅ SSE connection established')
+        console.log('✅ [SSE Client] Connection established successfully')
+        console.log('📊 [SSE Client] Connection state:', {
+          readyState: eventSource?.readyState,
+          url: eventSource?.url?.replace(/token=[^&]+/, 'token=***')
+        })
         isConnected.value = true
         isConnecting.value = false
         error.value = null
@@ -96,26 +110,41 @@ export function useActivityStream() {
       }
 
       eventSource.onmessage = (event) => {
+        console.log('📩 [SSE Client] Received message:', {
+          timestamp: new Date().toISOString(),
+          data: event.data.substring(0, 200) + (event.data.length > 200 ? '...' : '')
+        })
+        
         try {
           const data: SSEMessage = JSON.parse(event.data)
+          console.log('📋 [SSE Client] Parsed message:', {
+            type: data.type,
+            dataLength: data.data?.length || 0,
+            timestamp: data.timestamp
+          })
           handleSSEMessage(data)
         } catch (err) {
-          console.error('❌ Failed to parse SSE message:', err, event.data)
+          console.error('❌ [SSE Client] Failed to parse SSE message:', err, event.data)
         }
       }
 
       eventSource.onerror = (event) => {
-        console.error('❌ SSE connection error:', event)
+        console.error('❌ [SSE Client] Connection error:', {
+          readyState: eventSource?.readyState,
+          error: event,
+          timestamp: new Date().toISOString()
+        })
         isConnected.value = false
         isConnecting.value = false
         error.value = '連線中斷'
         
         // 自動重連機制
         if (retryCount.value < maxRetries) {
+          console.log(`🔄 [SSE Client] Scheduling reconnect attempt ${retryCount.value + 1}/${maxRetries}`)
           scheduleReconnect()
         } else {
           error.value = `連線失敗，已嘗試 ${maxRetries} 次`
-          console.error(`❌ Max retries (${maxRetries}) reached`)
+          console.error(`❌ [SSE Client] Max retries (${maxRetries}) reached`)
         }
       }
 
@@ -130,29 +159,40 @@ export function useActivityStream() {
   const handleSSEMessage = (data: SSEMessage) => {
     lastUpdateTime.value = new Date()
     
+    console.log('🔄 [SSE Client] Processing message type:', data.type)
+    
     switch (data.type) {
       case 'connected':
-        console.log('🔗 SSE connection confirmed:', data.message)
+        console.log('🔗 [SSE Client] Connection confirmed:', data.message)
         break
         
       case 'activities_update':
         if (data.data && Array.isArray(data.data)) {
+          const previousCount = activities.value.length
           activities.value = data.data
-          console.log(`📊 Received ${data.data.length} activities`)
+          console.log(`📊 [SSE Client] Activities updated: ${previousCount} → ${data.data.length}`)
+          console.log('📋 [SSE Client] Latest activities:', data.data.slice(0, 3).map(a => ({
+            action: a.action,
+            resourceType: a.resourceType,
+            createdAt: a.createdAt
+          })))
+        } else {
+          console.warn('⚠️ [SSE Client] Invalid activities_update data:', data.data)
         }
         break
         
       case 'heartbeat':
-        console.log('💓 Heartbeat received')
+        console.log('💓 [SSE Client] Heartbeat received at', data.timestamp)
         break
         
       case 'error':
-        console.error('❌ Server error:', data.message)
+        console.error('❌ [SSE Client] Server error:', data.message)
         error.value = data.message || '伺服器錯誤'
         break
         
       default:
-        console.log('❓ Unknown SSE message type:', data.type)
+        console.log('❓ [SSE Client] Unknown SSE message type:', data.type)
+        console.log('📄 [SSE Client] Full message data:', data)
     }
   }
 

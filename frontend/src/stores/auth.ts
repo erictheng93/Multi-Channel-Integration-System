@@ -6,7 +6,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Agent, LoginRequest, LoginResponse } from '@/types';
 import { authApi } from '@/api/auth';
-import { useRouter } from 'vue-router';
 
 // 會話時間常量 - 統一管理
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 天
@@ -71,19 +70,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 方法
   async function login(credentials: LoginRequest) {
-    console.log('🏪 authStore.login called with:', credentials);
     loading.value = true;
     error.value = null;
 
     try {
-      console.log('📡 Calling authApi.login...');
       const response = await authApi.login(credentials);
-      console.log('📨 API response:', response);
       if (response.success && response.data) {
         const loginData = response.data as LoginResponse;
         // 檢查是否需要強制更改密碼
         if (loginData.mustChangePassword) {
-          console.log('🔐 Password must be changed before login');
           return {
             success: false,
             mustChangePassword: true,
@@ -91,15 +86,6 @@ export const useAuthStore = defineStore('auth', () => {
             agent: loginData.agent
           };
         }
-        
-        console.log('✅ Login API successful, setting auth state...');
-        console.log('📌 Login agent data received:', {
-          id: loginData.agent.id,
-          email: loginData.agent.email,
-          name: loginData.agent.name,
-          displayName: loginData.agent.displayName,
-          role: loginData.agent.role
-        });
         token.value = loginData.token;
         refreshToken.value = loginData.refreshToken || null;
         currentAgent.value = loginData.agent;
@@ -107,8 +93,6 @@ export const useAuthStore = defineStore('auth', () => {
         // Set session expiry
         const expiry = Date.now() + SESSION_DURATION;
         sessionExpiry.value = expiry;
-        
-        console.log('💾 Saving to localStorage...');
         // 儲存 tokens、過期時間和 currentAgent
         if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.setItem('token', loginData.token);
@@ -123,15 +107,6 @@ export const useAuthStore = defineStore('auth', () => {
         // 設定預設 header
         authApi.setAuthHeader(loginData.token, loginData.refreshToken);
         
-        console.log('🔐 Auth state after login:');
-        console.log('- token:', !!token.value);
-        console.log('- tokenValue:', token.value ? `${token.value.substring(0, 20)  }...` : null);
-        console.log('- currentAgent:', currentAgent.value);
-        console.log('- sessionExpiry:', sessionExpiry.value);
-        console.log('- sessionExpiryDate:', sessionExpiry.value ? new Date(sessionExpiry.value).toLocaleString() : null);
-        console.log('- validateSession():', validateSession());
-        console.log('- isAuthenticated:', !!token.value && validateSession());
-        
         // 記錄初始會話狀態
         logSessionStatus();
         
@@ -142,10 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         // 使用 API 回傳的詳細錯誤訊息
         const apiError = response.error || '登入失敗';
-        console.log('❌ Login API failed with error:', apiError);
         error.value = apiError;
-        console.log('📊 Error value set to:', error.value);
-        console.log('📊 Error ref value:', error.value);
         
         // 確保清理任何可能設置的認證狀態，但保留錯誤訊息
         token.value = null;
@@ -167,7 +139,6 @@ export const useAuthStore = defineStore('auth', () => {
         return false;
       }
     } catch (err) {
-      console.error('🚨 Login error caught:', err);
       
       // 確保清理任何可能設置的認證狀態
       token.value = null;
@@ -230,19 +201,8 @@ export const useAuthStore = defineStore('auth', () => {
     setSessionStatus('unauthenticated');
     
     // Navigate to login (only if not already on login page)
-    if (typeof window !== 'undefined') {
-      try {
-        const router = useRouter();
-        const currentPath = router.currentRoute.value.path;
-        if (currentPath !== '/login') {
-          await router.push('/login');
-        }
-      } catch (err) {
-        console.log('Router not available, using window.location');
-        if (typeof window !== 'undefined' && window.location && window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-      }
+    if (typeof window !== 'undefined' && window.location && !window.location.pathname.includes('/login')) {
+      window.location.href = '/login';
     }
   }
 

@@ -137,28 +137,31 @@ export function useModernForm<T extends Record<string, unknown>>(initialData: T)
   
   // 計算屬性
   const isValid = computed(() => {
-    // 如果還沒有註冊任何驗證器，表單不應該被視為有效
     const validatorKeys = Object.keys(validators.value)
+    
+    // 如果沒有驗證器，表單無效
     if (validatorKeys.length === 0) {
       return false
     }
     
-    // 檢查是否有驗證錯誤
-    if (Object.keys(errors.value).length > 0) {
-      return false
-    }
+    // 實時驗證所有字段並更新錯誤狀態
+    let hasErrors = false
+    const newErrors: Partial<Record<keyof T, string>> = {}
     
-    // 檢查所有有驗證器的字段是否通過驗證
     for (const [field, validator] of Object.entries(validators.value)) {
       if (validator) {
         const error = (validator as (value: any) => string | null)(formData.value[field as keyof T])
         if (error) {
-          return false
+          newErrors[field as keyof T] = error
+          hasErrors = true
         }
       }
     }
     
-    return true
+    // 更新錯誤狀態
+    errors.value = newErrors
+    
+    return !hasErrors
   })
   const isDirty = computed(() => Object.keys(touched.value).length > 0)
   
@@ -168,6 +171,7 @@ export function useModernForm<T extends Record<string, unknown>>(initialData: T)
     touched,
     isValid,
     isDirty,
+    validators,
     setValidator,
     validateField,
     validateForm,

@@ -60,7 +60,6 @@ npm run db:push               # Push schema changes
 
 # Deployment
 npm run deploy                # Deploy to production
-npm run deploy:dev            # Deploy to development
 
 # Testing & Validation
 npm run test:handlers         # Test all handlers

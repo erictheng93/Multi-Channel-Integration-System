@@ -148,23 +148,46 @@ async function getRecentActivities(env: Bindings, userRole: string, userId: stri
   }
 }
 
-// 廣播新活動到所有連接的客戶端 (未來可以擴展)
+// 廣播新活動到所有連接的客戶端
 export async function broadcastActivity(env: Bindings, activity: any) {
-  // 這裡可以實現將活動廣播到所有連接的 SSE 客戶端
-  // 目前先記錄日誌，未來可以使用 Durable Objects 或 KV 來實現
-  console.log('📢 New activity to broadcast:', activity)
+  console.log('📢 [SSE Broadcast] Broadcasting new activity:', {
+    action: activity.action,
+    resourceType: activity.resourceType,
+    resourceId: activity.resourceId,
+    timestamp: activity.createdAt
+  })
   
   // 將活動存儲到 KV，供 SSE 端點讀取
   try {
     if (env.CACHE) {
       const timestamp = Date.now()
+      const activityKey = `recent_activity_${timestamp}`
+      
       await env.CACHE.put(
-        `recent_activity_${timestamp}`, 
-        JSON.stringify(activity),
+        activityKey, 
+        JSON.stringify({
+          ...activity,
+          broadcastTimestamp: timestamp
+        }),
         { expirationTtl: 300 } // 5分鐘過期
       )
+      
+      // 存儲一個"最新活動"指標，讓 SSE 知道有新活動
+      await env.CACHE.put(
+        'latest_activity_broadcast',
+        JSON.stringify({
+          timestamp,
+          activityId: activity.id,
+          action: activity.action
+        }),
+        { expirationTtl: 300 }
+      )
+      
+      console.log('✅ [SSE Broadcast] Activity cached successfully:', activityKey)
+    } else {
+      console.warn('⚠️ [SSE Broadcast] CACHE not available, cannot broadcast')
     }
   } catch (error) {
-    console.error('Failed to cache activity for broadcast:', error)
+    console.error('❌ [SSE Broadcast] Failed to cache activity for broadcast:', error)
   }
 }

@@ -355,7 +355,7 @@ export async function getSessionMessages(
     .prepare(`
       SELECT * FROM messages 
       WHERE session_id = ? 
-      ORDER BY session_sequence ASC, created_at ASC
+      ORDER BY session_sequence DESC, created_at DESC
     `)
     .bind(sessionId)
     .all<Message>();

@@ -1,0 +1,23 @@
+# wrangler.toml.local
+# Local development configuration override
+# This file ensures consistent local database usage during development
+# 
+# IMPORTANT: This forces all local development to use the same SQLite database
+# to prevent multiple database files from being created
+# 
+# The local database files are stored in .wrangler/state/v3/d1/miniflare-D1DatabaseObject/
+# Main SQLite file: dc23354e195c301b4778615a1d18f9e116936b7ddbf1fa5ed62c6ac8bb6640a8.sqlite
+
+# Force local development to use a consistent database configuration
+[[d1_databases]]
+binding = "DB"
+database_name = "multi-channel-platform-local"
+database_id = "08ae6790-2494-40a8-a07a-df3920783159"
+migrations_dir = "migrations"
+
+# Override dev environment to use the same local database
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "multi-channel-platform-local"
+database_id = "08ae6790-2494-40a8-a07a-df3920783159"
+migrations_dir = "migrations"

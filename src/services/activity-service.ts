@@ -1,4 +1,7 @@
 // 活動記錄服務
+import { eq, and, gte, lte, desc, count } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
+import { activities } from '../db/schema';
 
 export interface ActivityLog {
   id: number
@@ -30,30 +33,48 @@ export class ActivityService {
   constructor(private db: D1Database) {}
 
   // 記錄活動
-  async logActivity(request: CreateActivityRequest): Promise<void> {
+  async logActivity(request: CreateActivityRequest): Promise<ActivityLog | null> {
     try {
-      await this.db
-        .prepare(`
-          INSERT INTO activities (
-            user_id, user_name, user_role, action, resource_type, 
-            resource_id, details, ip_address, user_agent, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-        `)
-        .bind(
-          request.userId,
-          request.userName,
-          request.userRole,
-          request.action,
-          request.resourceType,
-          request.resourceId || null,
-          request.details ? JSON.stringify(request.details) : null,
-          request.ipAddress || null,
-          request.userAgent || null
-        )
-        .run()
+      const drizzleDb = drizzle(this.db);
+      const timestamp = new Date().toISOString();
+      
+      const result = await drizzleDb
+        .insert(activities)
+        .values({
+          userId: request.userId,
+          userName: request.userName,
+          userRole: request.userRole,
+          action: request.action,
+          resourceType: request.resourceType,
+          resourceId: request.resourceId || null,
+          details: request.details ? JSON.stringify(request.details) : null,
+          ipAddress: request.ipAddress || null,
+          userAgent: request.userAgent || null,
+          createdAt: timestamp
+        })
+        .returning({ id: activities.id });
+
+      // 返回創建的活動對象
+      const createdActivity: ActivityLog = {
+        id: result[0]?.id || 0,
+        userId: request.userId,
+        userName: request.userName,
+        userRole: request.userRole,
+        action: request.action,
+        resourceType: request.resourceType,
+        resourceId: request.resourceId,
+        details: request.details,
+        ipAddress: request.ipAddress,
+        userAgent: request.userAgent,
+        createdAt: timestamp
+      }
+
+      console.log('✅ [Activity Service] Activity logged with ID:', createdActivity.id)
+      return createdActivity
     } catch (error) {
-      console.error('Failed to log activity:', error)
+      console.error('❌ [Activity Service] Failed to log activity:', error)
       // 不拋出錯誤，避免影響主要業務流程
+      return null
     }
   }
 
@@ -83,86 +104,64 @@ export class ActivityService {
       endDate
     } = params
 
-    // 構建查詢條件
-    const conditions: string[] = []
-    const bindings: unknown[] = []
+    // 構建 Drizzle 查詢條件
+    const drizzleDb = drizzle(this.db);
+    const conditions = [];
 
     if (userId) {
-      conditions.push('user_id = ?')
-      bindings.push(userId)
+      conditions.push(eq(activities.userId, userId));
     }
 
     if (action) {
-      conditions.push('action = ?')
-      bindings.push(action)
+      conditions.push(eq(activities.action, action));
     }
 
     if (resourceType) {
-      conditions.push('resource_type = ?')
-      bindings.push(resourceType)
+      conditions.push(eq(activities.resourceType, resourceType));
     }
 
     if (startDate) {
-      conditions.push('created_at >= ?')
-      bindings.push(startDate)
+      conditions.push(gte(activities.createdAt, startDate));
     }
 
     if (endDate) {
-      conditions.push('created_at <= ?')
-      bindings.push(endDate)
+      conditions.push(lte(activities.createdAt, endDate));
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
     // 獲取總數
-    const countResult = await this.db
-      .prepare(`SELECT COUNT(*) as count FROM activities ${whereClause}`)
-      .bind(...bindings)
-      .first<{ count: number }>()
+    const [totalResult] = await drizzleDb
+      .select({ count: count() })
+      .from(activities)
+      .where(whereCondition);
 
-    const total = countResult?.count || 0
-    const totalPages = Math.ceil(total / pageSize)
-    const offset = (page - 1) * pageSize
+    const total = totalResult?.count || 0;
+    const totalPages = Math.ceil(total / pageSize);
+    const offset = (page - 1) * pageSize;
 
     // 獲取活動記錄
-    const activities = await this.db
-      .prepare(`
-        SELECT 
-          id, user_id, user_name, user_role, action, resource_type,
-          resource_id, details, ip_address, user_agent, created_at
-        FROM activities 
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT ? OFFSET ?
-      `)
-      .bind(...bindings, pageSize, offset)
-      .all<{
-        id: number
-        user_id: string
-        user_name: string
-        user_role: string
-        action: string
-        resource_type: string
-        resource_id: string | null
-        details: string | null
-        ip_address: string | null
-        user_agent: string | null
-        created_at: string
-      }>()
+    const activityList = await drizzleDb
+      .select()
+      .from(activities)
+      .where(whereCondition)
+      .orderBy(desc(activities.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-    const items: ActivityLog[] = activities.results.map(row => ({
+    const items: ActivityLog[] = activityList.map(row => ({
       id: row.id,
-      userId: row.user_id,
-      userName: row.user_name,
-      userRole: row.user_role,
+      userId: row.userId,
+      userName: row.userName,
+      userRole: row.userRole,
       action: row.action,
-      resourceType: row.resource_type,
-      resourceId: row.resource_id ?? undefined,
+      resourceType: row.resourceType,
+      resourceId: row.resourceId ?? undefined,
       details: row.details ? JSON.parse(row.details) : undefined,
-      ipAddress: row.ip_address ?? undefined,
-      userAgent: row.user_agent ?? undefined,
-      createdAt: row.created_at
-    }))
+      ipAddress: row.ipAddress ?? undefined,
+      userAgent: row.userAgent ?? undefined,
+      createdAt: row.createdAt || new Date().toISOString()
+    }));
 
     return {
       items,
@@ -183,19 +182,21 @@ export class ActivityService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
+    const drizzleDb = drizzle(this.db);
+    const conditions = and(
+      eq(activities.userId, userId),
+      gte(activities.createdAt, startDateStr)
+    );
+
     // 總操作數
-    const totalResult = await this.db
-      .prepare(`
-        SELECT COUNT(*) as count 
-        FROM activities 
-        WHERE user_id = ? AND created_at >= ?
-      `)
-      .bind(userId, startDateStr)
-      .first<{ count: number }>()
+    const [totalResult] = await drizzleDb
+      .select({ count: count() })
+      .from(activities)
+      .where(conditions);
 
-    const totalActions = totalResult?.count || 0
+    const totalActions = totalResult?.count || 0;
 
-    // 按操作類型統計
+    // 按操作類型統計 (由於 Drizzle 不支持 GROUP BY，使用原生 SQL)
     const actionStats = await this.db
       .prepare(`
         SELECT action, COUNT(*) as count 
@@ -205,12 +206,12 @@ export class ActivityService {
         ORDER BY count DESC
       `)
       .bind(userId, startDateStr)
-      .all<{ action: string; count: number }>()
+      .all<{ action: string; count: number }>();
 
-    const actionsByType: Record<string, number> = {}
-    actionStats.results.forEach(row => {
-      actionsByType[row.action] = row.count
-    })
+    const actionsByType: Record<string, number> = {};
+    (actionStats.results || []).forEach(row => {
+      actionsByType[row.action] = row.count;
+    });
 
     // 最近的操作
     const recentActivities = await this.getActivities({
@@ -232,12 +233,15 @@ export class ActivityService {
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
     const cutoffDateStr = cutoffDate.toISOString()
 
+    const drizzleDb = drizzle(this.db);
+    
+    // 由於 Drizzle 不支持 DELETE 返回影響的行數，使用原生 SQL
     const result = await this.db
       .prepare('DELETE FROM activities WHERE created_at < ?')
       .bind(cutoffDateStr)
-      .run()
+      .run();
 
-    return result.meta.changes || 0
+    return result.meta.changes || 0;
   }
 }
 

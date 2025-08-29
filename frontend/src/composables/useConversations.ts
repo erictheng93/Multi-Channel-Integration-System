@@ -12,7 +12,7 @@ export function useConversations() {
   // 狀態
   const selectedConversationId = ref<string | null>(null)
 
-  // 異步數據
+  // 異步數據 - 設置 immediate: false 避免自動觸發
   const {
     data: conversations,
     pending: loading,
@@ -22,7 +22,7 @@ export function useConversations() {
     'conversations',
     () => conversationsStore.fetchConversations(),
     {
-      immediate: true,
+      immediate: false,  // 改為 false，避免自動觸發造成循環
       transform: () => conversationsStore.conversations
     }
   )

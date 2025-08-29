@@ -3,12 +3,13 @@
   "type": "module",
   "scripts": {
     "prepare": "husky install",
-    "dev": "wrangler dev",
-    "dev:local": "wrangler dev --local",
+    "dev": "wrangler dev --local --persist-to .wrangler",
+    "dev:remote": "wrangler dev --remote",
+    "dev:local": "wrangler dev --local --persist-to .wrangler",
+    "dev:beta": "wrangler dev --x-remote-bindings",
     "build": "tsc --noEmit",
     "lint:check": "npx tsc --noEmit && cd frontend && npx vue-tsc --noEmit && npm run lint -- --max-warnings 80",
     "deploy": "wrangler deploy --minify",
-    "deploy:dev": "wrangler deploy --env dev --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
@@ -56,7 +57,10 @@
     "test:health": "cd tests && npx tsx quick-health-check.ts",
     "test:health:prod": "cd tests && npx tsx quick-health-check.ts https://your-prod-api.example.com",
     "hash": "npx tsx scripts/generate-hash.ts",
-    "hash:batch": "npx tsx scripts/generate-hash.ts batch"
+    "hash:batch": "npx tsx scripts/generate-hash.ts batch",
+    "sync:db:local": "tsx scripts/sync-database-structure.ts local",
+    "sync:db:prod": "tsx scripts/sync-database-structure.ts prod",
+    "sync:db:all": "tsx scripts/sync-database-structure.ts all"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

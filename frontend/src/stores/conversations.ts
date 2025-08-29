@@ -99,20 +99,38 @@ export const useConversationsStore = defineStore('conversations', () => {
       })
 
       if (response.success && response.data) {
-        const data = response.data as PaginatedResponse<Conversation>
+        // Handle both response formats: array directly or paginated object
+        let conversationList: Conversation[]
+        let paginationData: any
+
+        if (Array.isArray(response.data)) {
+          // Direct array format from backend
+          conversationList = response.data as Conversation[]
+          paginationData = {
+            page: typeof page === 'string' ? parseInt(page) : page,
+            pageSize: pagination.value.pageSize,
+            total: conversationList.length,
+            totalPages: Math.ceil(conversationList.length / pagination.value.pageSize)
+          }
+        } else {
+          // Paginated response format
+          const data = response.data as PaginatedResponse<Conversation>
+          conversationList = data.items || []
+          paginationData = {
+            page: data.page,
+            pageSize: data.pageSize,
+            total: data.total,
+            totalPages: data.totalPages
+          }
+        }
 
         if (append) {
-          conversations.value = [...conversations.value, ...data.items]
+          conversations.value = [...conversations.value, ...conversationList]
         } else {
-          conversations.value = data.items
+          conversations.value = conversationList
         }
 
-        pagination.value = {
-          page: data.page,
-          pageSize: data.pageSize,
-          total: data.total,
-          totalPages: data.totalPages
-        }
+        pagination.value = paginationData
       } else {
         handleError(response.error, '獲取對話列表失敗')
 

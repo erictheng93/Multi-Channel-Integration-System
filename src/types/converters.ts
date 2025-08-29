@@ -32,26 +32,26 @@ export function dbConversationToConversation(
   agent?: Agent
 ): Conversation {
   return {
-    id: dbConv.id.toString(),
-    userId: dbConv.customer_id.toString(),
+    id: dbConv.id,
+    userId: dbConv.customerId.toString(),
     user: user || {
-      id: dbConv.customer_id.toString(),
+      id: dbConv.customerId.toString(),
       platform: 'line' as const,
       platformUserId: '',
       name: 'Unknown User',
       avatarUrl: '',
       createdAt: Date.now()
     },
-    assignedTo: dbConv.assigned_user_id?.toString() || '',
+    assignedTo: dbConv.assignedUserId || '',
     ...(agent && { assignedAgent: agent }),
     status: dbConv.status === 'active' ? 'open' : 
             dbConv.status === 'pending' ? 'assigned' : 'closed',
-    lastMessageAt: dbConv.last_message_at ? 
-                   new Date(dbConv.last_message_at).getTime() : 
-                   new Date(dbConv.created_at).getTime(),
+    lastMessageAt: dbConv.lastMessageAt ? 
+                   new Date(dbConv.lastMessageAt).getTime() : 
+                   new Date(dbConv.createdAt).getTime(),
     unreadCount: 0, // 需要從其他地方計算
-    createdAt: new Date(dbConv.created_at).getTime(),
-    updatedAt: new Date(dbConv.updated_at).getTime()
+    createdAt: new Date(dbConv.createdAt).getTime(),
+    updatedAt: new Date(dbConv.updatedAt).getTime()
   };
 }
 
@@ -59,14 +59,14 @@ export function dbConversationToConversation(
 export function dbMessageToMessage(dbMsg: DbMessage): Message {
   return {
     id: dbMsg.id,
-    conversationId: dbMsg.conversation_id.toString(),
-    senderType: dbMsg.sender_type === 'customer' ? 'user' : 'agent',
-    senderId: dbMsg.sender_id?.toString() || '',
+    conversationId: dbMsg.conversationId,
+    senderType: dbMsg.senderType === 'customer' ? 'user' : 'agent',
+    senderId: dbMsg.senderType === 'customer' ? dbMsg.customerSenderId?.toString() || '' : dbMsg.agentSenderId || '',
     content: dbMsg.content,
-    mediaUrl: '', // 需要根據 message_type 處理
-    mediaType: dbMsg.message_type as 'text' | 'image' | 'video' | 'file',
+    mediaUrl: '', // 需要根據 messageType 處理
+    mediaType: dbMsg.messageType as 'text' | 'image' | 'video' | 'file',
     platform: 'line', // 需要從其他地方獲取
-    createdAt: new Date(dbMsg.created_at).getTime()
+    createdAt: new Date(dbMsg.createdAt).getTime()
   };
 }
 

@@ -70,7 +70,10 @@
       "Bash(wrangler kv key put:*)",
       "Bash(wrangler secret list:*)",
       "Bash(wrangler whoami:*)",
-      "Bash(wrangler tail:*)"
+      "Bash(wrangler tail:*)",
+      "Bash(npx wrangler dev:*)",
+      "WebFetch(domain:multi-channel.imfinethankyouandyou.com)",
+      "WebSearch"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

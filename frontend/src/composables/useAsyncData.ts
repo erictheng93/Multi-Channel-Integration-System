@@ -1,5 +1,5 @@
 // 現代化異步數據處理 Composable
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useError } from './useError'
 
 export interface UseAsyncDataOptions<T> {
@@ -89,10 +89,15 @@ export function useAsyncData<T = unknown>(
     clearError()
   }
 
-  // 自動執行
+  // 自動執行 - 修復刷新時不執行的問題
   if (immediate) {
-    onMounted(() => {
-      execute()
+    // 使用 nextTick 而不是 onMounted，確保在任何情況下都能執行
+    // 包括頁面刷新和路由導航
+    Promise.resolve().then(() => {
+      // 確保只在客戶端執行
+      if (typeof window !== 'undefined') {
+        execute()
+      }
     })
   }
 

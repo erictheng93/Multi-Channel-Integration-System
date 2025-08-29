@@ -30,10 +30,19 @@ const router = createRouter({
     {
       path: '/conversations',
       name: 'Conversations',
-      component: () => import('@/views/Conversations.vue'),
+      component: () => import('@/views/ConversationsTable.vue'),  // 使用新的表格版本
       meta: { 
         requiresAuth: true,
         title: '對話管理'
+      }
+    },
+    {
+      path: '/conversations-safe',
+      name: 'ConversationsSafe',
+      component: () => import('@/views/ConversationsSafe.vue'),
+      meta: { 
+        requiresAuth: true,
+        title: '對話管理 (安全版本)'
       }
     },
     {
@@ -107,29 +116,21 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  console.log('🚦 SUPER ULTRA DEBUG: Router navigation:', from.path, '->', to.path)
-  console.log('  - Timestamp:', Date.now())
-  console.log('  - From full route:', from)
-  console.log('  - To full route:', to)
-  console.log('  - Call stack:', new Error().stack)
-  
-  // 檢查是否是從登入頁面導航離開
-  if (from.path === '/login') {
-    console.log('🚨 NAVIGATION FROM LOGIN PAGE DETECTED!')
-    console.log('  - Target path:', to.path)
-    console.log('  - Navigation trigger stack:', new Error().stack)
-    
-    // 如果是導航到 dashboard，這可能是不當的重定向
-    if (to.path === '/dashboard' || to.path === '/') {
-      console.log('🔥 CRITICAL: Potential unwanted redirect from login to dashboard!')
-    }
-  }
+  // 簡化的調試日誌
+  console.log('🚦 Navigation:', from.path, '->', to.path)
   
   // Set page title
   if (to.meta.title) {
     document.title = `${to.meta.title} - Multi-Channel Support`
   } else {
     document.title = 'Multi-Channel Support'
+  }
+  
+  // 防止無限循環 - 如果已經在目標路徑，直接允許
+  if (to.path === from.path) {
+    console.log('⚠️ Same path navigation detected, allowing...')
+    next()
+    return
   }
   
   // Use combined auth guard for all authentication logic

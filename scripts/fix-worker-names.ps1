@@ -14,7 +14,6 @@ Write-Host ""
 
 # 正確的 Worker 名稱
 $CORRECT_PRODUCTION_WORKER = "multi-channel-platform"
-$CORRECT_DEV_WORKER = "multi-channel-platform-dev"
 
 # 檢查 Wrangler 登入狀態
 Write-Host "檢查 Cloudflare 登入狀態..." -ForegroundColor Yellow
@@ -62,9 +61,6 @@ Write-Host "生產環境 Worker:" -ForegroundColor Cyan
 Write-Host "  名稱: $CORRECT_PRODUCTION_WORKER" -ForegroundColor White
 Write-Host "  部署命令: wrangler deploy --env production" -ForegroundColor Gray
 Write-Host ""
-Write-Host "開發環境 Worker:" -ForegroundColor Cyan  
-Write-Host "  名稱: $CORRECT_DEV_WORKER" -ForegroundColor White
-Write-Host "  部署命令: wrangler deploy" -ForegroundColor Gray
 Write-Host ""
 
 # 檢查配置文件
@@ -151,7 +147,6 @@ Write-Host "=== 檢查完成 ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "重要提醒:" -ForegroundColor Yellow
 Write-Host "• 生產環境 Worker 名稱必須是: $CORRECT_PRODUCTION_WORKER" -ForegroundColor White
-Write-Host "• 開發環境 Worker 名稱必須是: $CORRECT_DEV_WORKER" -ForegroundColor White
 Write-Host "• 如有任何 multi-channel-platform-production Worker，請手動刪除" -ForegroundColor White
 Write-Host ""
 Write-Host "如需協助，請檢查 Cloudflare Dashboard:" -ForegroundColor Cyan

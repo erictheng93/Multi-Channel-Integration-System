@@ -1,5 +1,5 @@
 // 現代化認證 Composable
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { useError } from './useError'
@@ -16,39 +16,19 @@ export function useAuth() {
   const isAgent = computed(() => authStore.currentAgent?.role === 'agent')
   const loading = computed(() => authStore.loading)
   // 使用 authStore 的錯誤狀態而不是 useError 的錯誤狀態
-  const error = computed(() => {
-    const errorValue = authStore.error
-    console.log('🔍 useAuth error computed called:')
-    console.log('  - authStore.error:', errorValue)
-    console.log('  - type:', typeof errorValue)
-    console.log('  - truthy:', !!errorValue)
-    console.log('  - JSON:', JSON.stringify(errorValue))
-    return errorValue
-  })
-
-  // 調試：監控錯誤狀態變化
-  watch(() => authStore.error, (newError, oldError) => {
-    console.log('👀 useAuth watching authStore.error change:')
-    console.log('  - oldError:', oldError)
-    console.log('  - newError:', newError)
-  }, { immediate: true })
+  const error = computed(() => authStore.error)
 
   // 登入
   const login = async (credentials: { email: string; password: string }) => {
-    console.log('🔐 useAuth.login called with:', credentials)
     // 使用 authStore 的 clearError 方法
     authStore.clearError()
     try {
-      console.log('📞 Calling authStore.login...')
       const result = await authStore.login(credentials)
-      console.log('🎯 authStore.login result:', result)
       
       // 處理結果
       if (result === true) {
-        console.log('✅ Login successful')
         return { success: true }
       } else if (typeof result === 'object' && result.mustChangePassword) {
-        console.log('🔐 Password must be changed')
         return {
           success: false,
           mustChangePassword: true,
@@ -57,10 +37,8 @@ export function useAuth() {
         }
       }
       
-      console.log('❌ Login failed, error from store:', authStore.error)
       return { success: false }
     } catch (err) {
-      console.error('💥 Login error:', err)
       // authStore.login 已經處理了錯誤，不需要重複處理
       return { success: false }
     }

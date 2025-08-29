@@ -296,7 +296,7 @@ delayedMessages.post('/process', async (c) => {
       // 建立實際訊息
       const message = await dbService.createMessage({
         conversationId: delayedMessage.conversationId,
-        senderId: delayedMessage.agentId,
+        senderId: parseInt(delayedMessage.agentId) || 0,
         senderType: 'agent',
         messageType: delayedMessage.messageType,
         content: delayedMessage.content,

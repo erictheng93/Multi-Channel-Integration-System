@@ -2,13 +2,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { 
-  Bindings, 
-  LineEvent, 
-  LineWebhookBody
-} from './types';
-import { findOrCreateCustomer, findOrCreateConversation, saveMessage } from './utils/database';
-import { sendLineReply, verifyLineSignature, createTextMessage } from './utils/line';
+import type { Bindings } from './types';
 
 // 導入所有 handlers
 import {
@@ -160,207 +154,16 @@ app.get('/api/activities/stream', activityStreamHandler.connect);
 
 // ==================== Webhook 處理 ====================
 
-// 處理 LINE Webhook 的路由（保持原有實現）
-app.post('/api/webhook', async (c) => {
-  try {
-    const rawBody = await c.req.text();
-    const body: LineWebhookBody = JSON.parse(rawBody);
-    
-    console.log(`Received webhook: ${JSON.stringify(body, null, 2)}`);
+import { webhookHandler } from './handlers/webhook';
 
-    const { events } = body;
+// LINE Webhook 路由 - 使用正確的處理器
+app.post('/api/webhook', webhookHandler.line);
+app.post('/api/webhooks/line', webhookHandler.line);
 
-    // LINE Signature 驗證（生產環境建議啟用）
-    const signature = c.req.header('x-line-signature');
-    const isValidSignature = await verifyLineSignature(rawBody, signature, c.env.LINE_CHANNEL_SECRET);
-    
-    if (!isValidSignature) {
-      console.warn('Invalid LINE signature');
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
+// Facebook Webhook 路由
+app.all('/api/webhooks/facebook', webhookHandler.facebook);
 
-    if (!events || events.length === 0) {
-      return c.json({ message: 'No events received' }, 200);
-    }
-
-    // 準備一個 Promise 陣列來處理所有事件的非同步任務
-    const tasks = events.map((event: LineEvent) => {
-      switch (event.type) {
-        case 'message':
-          if (event.message?.type === 'text') {
-            return handleTextMessageEvent(c, event);
-          }
-          break;
-        case 'follow':
-          return handleFollowEvent(c, event);
-        case 'unfollow':
-          return handleUnfollowEvent(c, event);
-        default:
-          console.log(`Unhandled event type: ${event.type}`);
-      }
-      return Promise.resolve();
-    });
-
-    // 使用 waitUntil 來確保所有背景任務在回覆後也能完成
-    c.executionCtx.waitUntil(Promise.all(tasks));
-
-    // 立即回覆 LINE 一個 OK，表示已收到請求
-    return c.json({ message: 'OK' }, 200);
-
-  } catch (error) {
-    console.error('Error processing webhook:', error);
-    return c.json({ error: 'Internal Server Error' }, 500);
-  }
-});
-
-// ==================== Webhook 事件處理函數 ====================
-
-/**
- * 處理文字訊息事件
- */
-async function handleTextMessageEvent(
-  c: { env: Bindings }, 
-  event: LineEvent
-): Promise<void> {
-  const lineUserId = event.source.userId;
-  const messageText = event.message?.text;
-  const messageId = event.message?.id;
-
-  if (!messageText || !messageId || !event.replyToken) {
-    console.error('Missing required message data');
-    return;
-  }
-
-  try {
-    console.log(`📱 處理來自用戶 ${lineUserId} 的訊息: "${messageText}"`);
-
-    // 1. 尋找或建立客戶
-    const customer = await findOrCreateCustomer(c.env.DB, 'line', lineUserId);
-    console.log(`👤 客戶處理完成 - ID: ${customer.id}, 平台: ${customer.platform}`);
-    
-    // 2. 尋找或建立對話
-    const conversation = await findOrCreateConversation(c.env.DB, customer.id);
-    console.log(`💬 對話處理完成 - ID: ${conversation.id}, 狀態: ${conversation.status}`);
-    
-    // 3. 生成線程ID（用於關聯這組對話）
-    const threadId = `thread_${conversation.id}_${Date.now()}`;
-    
-    // 4. 儲存傳入的訊息到 D1 資料庫
-    const inboundMessage = await saveMessage(c.env.DB, {
-      id: messageId,
-      conversationId: conversation.id,
-      senderType: 'customer',
-      senderId: customer.id,
-      content: messageText,
-      messageType: 'text',
-      platformMessageId: messageId,
-      direction: 'inbound',
-      threadId: threadId,
-      metadata: {
-        lineUserId: lineUserId,
-        replyToken: event.replyToken,
-        webhookEventId: (event as any).webhookEventId,
-        timestamp: event.timestamp
-      }
-    });
-    console.log(`💾 傳入訊息已儲存 - ID: ${inboundMessage.id}`);
-
-    // 5. 生成回覆訊息
-    const replyText = generateReplyText(messageText);
-    const replyMessage = createTextMessage(replyText);
-    console.log(`🤖 生成回覆訊息: "${replyText}"`);
-
-    // 6. 發送回覆到 LINE 平台
-    const success = await sendLineReply(
-      c.env.LINE_CHANNEL_ACCESS_TOKEN,
-      event.replyToken,
-      [replyMessage]
-    );
-
-    if (success) {
-      // 7. 儲存發送的回覆訊息到 D1 資料庫
-      const replyId = `reply_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-      const outboundMessage = await saveMessage(c.env.DB, {
-        id: replyId,
-        conversationId: conversation.id,
-        senderType: 'agent',
-        content: replyText,
-        messageType: 'text',
-        direction: 'outbound',
-        replyToMessageId: messageId,
-        threadId: threadId,
-        metadata: {
-          originalMessageId: messageId,
-          originalContent: messageText,
-          replyMethod: 'line_reply_api',
-          generatedAt: new Date().toISOString()
-        }
-      });
-      console.log(`💾 回覆訊息已儲存 - ID: ${outboundMessage.id}`);
-      console.log(`✅ 完整流程完成: 手機 → LINE → Worker → D1 → Worker → LINE → 手機`);
-    } else {
-      console.error('❌ 發送回覆失敗，未儲存回覆訊息');
-    }
-
-  } catch (error) {
-    console.error('❌ 處理文字訊息時發生錯誤:', error);
-  }
-}
-
-/**
- * 處理用戶關注事件
- */
-async function handleFollowEvent(
-  c: { env: Bindings }, 
-  event: LineEvent
-): Promise<void> {
-  const lineUserId = event.source.userId;
-
-  try {
-    // 建立或更新客戶資料
-    await findOrCreateCustomer(c.env.DB, 'line', lineUserId);
-    
-    if (event.replyToken) {
-      const welcomeMessage = createTextMessage('歡迎加入！我是您的專屬客服助手，有任何問題都可以問我喔！');
-      await sendLineReply(
-        c.env.LINE_CHANNEL_ACCESS_TOKEN,
-        event.replyToken,
-        [welcomeMessage]
-      );
-    }
-
-    console.log(`User ${lineUserId} followed the bot`);
-  } catch (error) {
-    console.error('Error handling follow event:', error);
-  }
-}
-
-/**
- * 處理用戶取消關注事件
- */
-async function handleUnfollowEvent(
-  _c: { env: Bindings }, 
-  event: LineEvent
-): Promise<void> {
-  const lineUserId = event.source.userId;
-  console.log(`User ${lineUserId} unfollowed the bot`);
-  
-  // 可以在這裡記錄取消關注的事件，但不需要回覆訊息
-}
-
-/**
- * 生成回覆文字
- */
-function generateReplyText(inputText: string): string {
-  // 簡單的鸚鵡回覆邏輯，未來可以擴展為更智能的回覆
-  const responses = [
-    `您說了：「${inputText}」`,
-    `我收到您的訊息：${inputText}`,
-    `謝謝您的訊息：${inputText}，我會盡快為您處理！`
-  ];
-  
-  return responses[Math.floor(Math.random() * responses.length)] || responses[0] || '謝謝您的訊息！';
-}
+// Webhook 事件處理由 handlers/webhook.ts 負責
 
 // ==================== 錯誤處理 ====================
 

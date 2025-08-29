@@ -9,62 +9,62 @@ export class DatabaseService {
     private kv: KVService
   ) {}
 
-  // User operations
-  async createUser(userData: Omit<schema.NewUser, 'id' | 'createdAt' | 'updatedAt'>) {
-    const id = uuidv4();
-    const user = await this.db.insert(schema.users).values({
-      id,
-      ...userData,
+  // Customer operations (replacing user operations)
+  async createCustomer(customerData: Omit<schema.NewCustomer, 'id' | 'createdAt' | 'updatedAt'>) {
+    const customer = await this.db.insert(schema.customers).values({
+      ...customerData,
     }).returning();
 
-    // Cache the user
-    await this.kv.cacheUser(id, user[0]);
-    
-    return user[0];
-  }
-
-  async getUserById(id: string) {
-    // Try cache first
-    const cached = await this.kv.getCachedUser(id);
-    if (cached) return cached;
-
-    const user = await this.db.select().from(schema.users).where(eq(schema.users.id, id)).get();
-    
-    if (user) {
-      await this.kv.cacheUser(id, user);
+    // Cache the customer
+    if (customer[0]) {
+      await this.kv.setCache(`customer:${customer[0].id}`, customer[0], 3600);
     }
     
-    return user;
+    return customer[0];
   }
 
-  async getUserByPlatformId(platformId: string, platform: string) {
-    const cacheKey = `user:${platform}:${platformId}`;
+  async getCustomerById(id: number) {
+    // Try cache first
+    const cached = await this.kv.getCache(`customer:${id}`);
+    if (cached) return cached;
+
+    const customer = await this.db.select().from(schema.customers).where(eq(schema.customers.id, id)).get();
+    
+    if (customer) {
+      await this.kv.setCache(`customer:${id}`, customer, 3600);
+    }
+    
+    return customer;
+  }
+
+  async getCustomerByPlatformId(platformUserId: string, platform: string) {
+    const cacheKey = `customer:${platform}:${platformUserId}`;
     const cached = await this.kv.getCache(cacheKey);
     if (cached) return cached;
 
-    const user = await this.db.select().from(schema.users)
+    const customer = await this.db.select().from(schema.customers)
       .where(and(
-        eq(schema.users.platformId, platformId),
-        eq(schema.users.platform, platform)
+        eq(schema.customers.platformUserId, platformUserId),
+        eq(schema.customers.platform, platform)
       )).get();
 
-    if (user) {
-      await this.kv.setCache(cacheKey, user, 3600);
+    if (customer) {
+      await this.kv.setCache(cacheKey, customer, 3600);
     }
 
-    return user;
+    return customer;
   }
 
-  async updateUser(id: string, updates: Partial<schema.NewUser>) {
-    const user = await this.db.update(schema.users)
+  async updateCustomer(id: number, updates: Partial<schema.NewCustomer>) {
+    const customer = await this.db.update(schema.customers)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(eq(schema.users.id, id))
+      .where(eq(schema.customers.id, id))
       .returning();
 
     // Invalidate cache
-    await this.kv.invalidateUserCache(id);
+    await this.kv.deleteCache(`customer:${id}`);
     
-    return user[0];
+    return customer[0];
   }
 
   // Agent operations
@@ -104,11 +104,11 @@ export class DatabaseService {
 
     // Multi-layer caching
     await Promise.all([
-      this.kv.cacheConversation(id, conversation[0]),
-      // Cache by user for quick lookup
-      this.kv.setCache(`user_conversations:${conversationData.userId}`, null, 0), // Invalidate user's conversation list
+      conversation[0] ? this.kv.setCache(`conversation:${conversation[0].id}`, conversation[0], 3600) : Promise.resolve(),
+      // Cache by customer for quick lookup
+      this.kv.setCache(`customer_conversations:${conversationData.customerId}`, null, 0), // Invalidate customer's conversation list
       // Cache conversation count for dashboard
-      this.incrementConversationCount(conversationData.status || 'pending')
+      this.incrementConversationCount(conversationData.status || 'active')
     ]);
     
     return conversation[0];
@@ -116,28 +116,28 @@ export class DatabaseService {
 
   async getConversationById(id: string) {
     // Try cache first
-    const cached = await this.kv.getCachedConversation(id);
+    const cached = await this.kv.getCache(`conversation:${id}`);
     if (cached) return cached;
 
     const conversation = await this.db.select().from(schema.conversations)
       .where(eq(schema.conversations.id, id)).get();
 
     if (conversation) {
-      await this.kv.cacheConversation(id, conversation);
+      await this.kv.setCache(`conversation:${id}`, conversation, 3600);
     }
 
     return conversation;
   }
 
-  async getConversationsByUserId(userId: string, limit: number = 50) {
+  async getConversationsByCustomerId(customerId: number, limit: number = 50) {
     return await this.db.select().from(schema.conversations)
-      .where(eq(schema.conversations.userId, userId))
+      .where(eq(schema.conversations.customerId, customerId))
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
   }
 
-  async getConversationsByAgentId(agentId: string, status?: string, limit: number = 50) {
-    const conditions = [eq(schema.conversations.agentId, agentId)];
+  async getConversationsByAgentId(assignedUserId: number, status?: string, limit: number = 50) {
+    const conditions = [eq(schema.conversations.assignedUserId, String(assignedUserId))];
     if (status) {
       conditions.push(eq(schema.conversations.status, status));
     }
@@ -158,17 +158,16 @@ export class DatabaseService {
     // Get all conversations where the assigned agent belongs to the specified team
     return await this.db.select({
       id: schema.conversations.id,
-      userId: schema.conversations.userId,
-      agentId: schema.conversations.agentId,
-      platform: schema.conversations.platform,
+      customerId: schema.conversations.customerId,
+      assignedUserId: schema.conversations.assignedUserId,
+      assignedTeamId: schema.conversations.assignedTeamId,
       status: schema.conversations.status,
-      title: schema.conversations.title,
       lastMessageAt: schema.conversations.lastMessageAt,
       createdAt: schema.conversations.createdAt,
       updatedAt: schema.conversations.updatedAt,
     })
     .from(schema.conversations)
-    .leftJoin(schema.agents, eq(schema.conversations.agentId, schema.agents.id))
+    .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
     .where(and(
       eq(schema.agents.teamId, teamId),
       ...conditions
@@ -199,7 +198,8 @@ export class DatabaseService {
       return await this.getConversationsByTeamId(agent.teamId, status, limit);
     } else {
       // Agents can only see their own conversations
-      return await this.getConversationsByAgentId(agent.id, status, limit);
+      const agentIdAsNumber = parseInt(agent.id) || 0;
+      return await this.getConversationsByAgentId(agentIdAsNumber, status, limit);
     }
   }
 
@@ -210,7 +210,7 @@ export class DatabaseService {
       .returning();
 
     // Invalidate cache
-    await this.kv.invalidateConversationCache(id);
+    await this.kv.deleteCache(`conversation:${id}`);
     
     return conversation[0];
   }
@@ -239,13 +239,10 @@ export class DatabaseService {
       .offset(offset);
   }
 
-  async markMessagesAsRead(conversationId: string, _agentId: string) {
-    return await this.db.update(schema.messages)
-      .set({ isRead: true })
-      .where(and(
-        eq(schema.messages.conversationId, conversationId),
-        eq(schema.messages.senderType, 'user')
-      ));
+  async markMessagesAsRead(_conversationId: string, _agentId: string) {
+    // Note: Currently there's no isRead field in messages table
+    // This is a placeholder for future implementation
+    return Promise.resolve({ success: true });
   }
 
   // File attachment operations
@@ -306,7 +303,7 @@ export class DatabaseService {
   async getActiveConversationCount(agentId: string) {
     const conversations = await this.db.select().from(schema.conversations)
       .where(and(
-        eq(schema.conversations.agentId, agentId),
+        eq(schema.conversations.assignedUserId, agentId.toString()),
         or(
           eq(schema.conversations.status, 'pending'),
           eq(schema.conversations.status, 'in-progress')
@@ -317,12 +314,12 @@ export class DatabaseService {
   }
 
   // Batch operations with cache invalidation
-  async batchUpdateConversationStatus(conversationIds: string[], status: string, agentId?: string) {
+  async batchUpdateConversationStatus(conversationIds: string[], status: string, assignedUserId?: string) {
     const updates = conversationIds.map(id => 
       this.db.update(schema.conversations)
         .set({ 
           status, 
-          agentId: agentId || null,
+          assignedUserId: assignedUserId || null,
           updatedAt: new Date().toISOString() 
         })
         .where(eq(schema.conversations.id, id))
@@ -332,7 +329,7 @@ export class DatabaseService {
 
     // Batch cache invalidation
     const cacheInvalidations = conversationIds.map(id => 
-      this.kv.invalidateConversationCache(id)
+      this.kv.deleteCache(`conversation:${id}`)
     );
     await Promise.all(cacheInvalidations);
 
@@ -369,11 +366,10 @@ export class DatabaseService {
   async searchConversations(query: string, limit: number = 20) {
     return await this.db.select()
       .from(schema.conversations)
-      .leftJoin(schema.users, eq(schema.conversations.userId, schema.users.id))
-      .where(or(
-        like(schema.conversations.title, `%${query}%`),
-        like(schema.users.displayName, `%${query}%`)
-      ))
+      .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
+      .where(
+        like(schema.customers.displayName, `%${query}%`)
+      )
       .limit(limit);
   }
 
@@ -480,25 +476,17 @@ export class DatabaseService {
       return true;
     }
 
-    // If conversation has an assigned agent
-    if (conversation.agentId) {
-      // Team leaders can access conversations assigned to agents in their team
-      if (agent.role === 'team' && agent.teamId) {
-        const assignedAgent = await this.getAgentById(conversation.agentId);
-        return assignedAgent?.teamId === agent.teamId;
-      }
-      
-      // Agents can only access their own conversations
-      return conversation.agentId === agent.id;
-    }
-
-    // For unassigned conversations:
-    // Team leaders can access unassigned conversations (to potentially assign them)
-    if (agent.role === 'team') {
+    // For unassigned conversations (no assignedTeamId): all users can see them
+    if (!conversation.assignedTeamId) {
       return true;
     }
 
-    // Agents can access unassigned conversations to potentially take them
-    return agent.role === 'agent';
+    // For assigned conversations: only users from the assigned team can access
+    if (agent.teamId && agent.teamId === conversation.assignedTeamId) {
+      return true;
+    }
+
+    // Default: deny access
+    return false;
   }
 }

@@ -145,7 +145,7 @@ export const systemApi = {
     if (params?.limit) {queryParams.append('limit', params.limit.toString())}
     
     const queryString = queryParams.toString()
-    return apiClient.get(`/api/system/logs${queryString ? `?${queryString}` : ''}`)
+    return apiClient.get(`/system/logs${queryString ? `?${queryString}` : ''}`)
   },
 
   // 匯出系統配置
@@ -238,7 +238,7 @@ export const systemApi = {
       responseTime: number;
     }>;
   }>> => {
-    return apiClient.get(`/api/system/stats${period ? `?period=${period}` : ''}`)
+    return apiClient.get(`/system/stats${period ? `?period=${period}` : ''}`)
   },
 
   // 更新 Webhook URL
@@ -246,7 +246,7 @@ export const systemApi = {
     platform: 'line' | 'facebook',
     url: string
   ): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/api/system/webhooks/${platform}`, { url })
+    return apiClient.put(`/system/webhooks/${platform}`, { url })
   },
 
   // 測試 Webhook
@@ -257,7 +257,7 @@ export const systemApi = {
     responseTime: number;
     error?: string;
   }>> => {
-    return apiClient.post(`/api/system/webhooks/${platform}/test`)
+    return apiClient.post(`/system/webhooks/${platform}/test`)
   },
 
   // 獲取系統事件日誌
@@ -285,7 +285,7 @@ export const systemApi = {
     if (params?.limit) {queryParams.append('limit', params.limit.toString())}
     
     const queryString = queryParams.toString()
-    return apiClient.get(`/api/system/events${queryString ? `?${queryString}` : ''}`)
+    return apiClient.get(`/system/events${queryString ? `?${queryString}` : ''}`)
   },
 
   // 系統維護模式

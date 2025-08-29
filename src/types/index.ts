@@ -112,36 +112,37 @@ export interface Customer {
 }
 
 export interface DbConversation {
-  id: number;
-  customer_id: number;
-  assigned_team_id?: number;
-  assigned_user_id?: number;
+  id: string; // Fixed: TEXT type from migration 0005
+  customerId: number;
+  assignedTeamId?: number;
+  assignedUserId?: string; // Fixed: TEXT type to match agents.id
   status: 'active' | 'closed' | 'pending';
-  last_message_at?: string;
-  created_at: string;
-  updated_at: string;
+  lastMessageAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DbMessage {
   id: string;
-  conversation_id: number;
-  sender_type: 'customer' | 'agent' | 'system';
-  sender_id?: number;
+  conversationId: string; // Fixed: TEXT type from migration 0005
+  senderType: 'customer' | 'agent' | 'system';
+  customerSenderId?: number; // For customer messages (INTEGER)
+  agentSenderId?: string; // For agent messages (TEXT)
   content: string;
-  message_type: 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker';
-  platform_message_id?: string;
-  is_recalled: boolean;
-  recall_deadline?: string;
-  recalled_at?: string;
-  is_sent: boolean;
-  sent_at?: string;
-  delivery_status: 'pending' | 'sent' | 'delivered' | 'failed';
-  reply_to_message_id?: string; // 回覆的目標訊息ID
-  thread_id?: string; // 訊息線程ID，用於關聯一組相關訊息
-  session_id?: string; // 對話會話ID，用於識別同一個對話session
-  session_sequence?: number; // 在會話中的順序號
-  metadata?: string; // JSON格式的額外資訊
-  created_at: string;
+  messageType: 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker';
+  platformMessageId?: string;
+  isRecalled: boolean;
+  recallDeadline?: string;
+  recalledAt?: string;
+  isSent: boolean;
+  sentAt?: string;
+  deliveryStatus: 'pending' | 'sent' | 'delivered' | 'failed';
+  replyToMessageId?: string;
+  threadId?: string;
+  sessionId?: string;
+  sessionSequence?: number;
+  metadata?: string;
+  createdAt: string;
 }
 
 // 對話會話類型定義
