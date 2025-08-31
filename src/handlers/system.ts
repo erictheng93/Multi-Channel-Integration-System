@@ -21,6 +21,9 @@ import {
   handleApiError 
 } from '../utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
+import { drizzle } from 'drizzle-orm/d1'
+import { sql, gte, count } from 'drizzle-orm'
+import { systemSettings, agents, conversations, messages } from '../db/schema'
 
 // 簡化的加密工具 (與 credentials.ts 相同)
 const decrypt = async (encryptedText: string, key: string): Promise<string> => {
@@ -194,7 +197,7 @@ interface SystemSettingsResponse {
 // 獲取系統資訊
 export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    // const db = c.env.DB
+    // const drizzleDb = drizzle(c.env.DB)
     
     // 獲取基本系統資訊
     const systemInfo = {
@@ -215,12 +218,15 @@ export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
 // 獲取系統設定
 export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     
     // 從資料庫獲取設定
-    const settingsResult = await db
-      .prepare('SELECT key, value FROM system_settings')
-      .all<{ key: string; value: string }>()
+    const settingsResult = await drizzleDb
+      .select({
+        key: systemSettings.key,
+        value: systemSettings.value
+      })
+      .from(systemSettings)
     
     const settings: SystemSettingsResponse = {
       general: {
@@ -251,7 +257,7 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // 覆蓋資料庫中的設定
-    settingsResult.results.forEach(row => {
+    settingsResult.forEach(row => {
       const keys = row.key.split('.')
       let current: any = settings
       
@@ -280,7 +286,7 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
 // 更新系統設定
 export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const settings = await c.req.json<SystemSettingsUpdate>()
     
     // 將設定扁平化並儲存到資料庫
@@ -310,19 +316,27 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
     }
     
     // 使用事務更新設定
-    await db.batch(
-      flatSettings.map(({ key, value }) =>
-        db.prepare(`
-          INSERT OR REPLACE INTO system_settings (key, value, updated_at)
-          VALUES (?, ?, datetime('now'))
-        `).bind(key, value)
-      )
-    )
+    for (const { key, value } of flatSettings) {
+      await drizzleDb
+        .insert(systemSettings)
+        .values({
+          key,
+          value,
+          updatedAt: new Date().toISOString()
+        })
+        .onConflictDoUpdate({
+          target: systemSettings.key,
+          set: {
+            value,
+            updatedAt: new Date().toISOString()
+          }
+        })
+    }
 
     // 記錄設定更新活動
     const payload = c.get('jwtPayload');
     if (payload) {
-      const activityService = new ActivityService(db);
+      const activityService = new ActivityService(c.env.DB);
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
@@ -583,19 +597,22 @@ async function testFacebookIntegration(config: any, env: Bindings) {
 // 獲取系統指標
 export const getMetrics = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     
     // 獲取統計數據
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    // const todayStart = new Date().toISOString().split('T')[0]; // Unused
+    
     const [activeUsers, totalConversations, messagesToday] = await Promise.all([
-      db.prepare('SELECT COUNT(*) as count FROM users WHERE last_active > datetime("now", "-1 hour")').first<{ count: number }>(),
-      db.prepare('SELECT COUNT(*) as count FROM conversations').first<{ count: number }>(),
-      db.prepare('SELECT COUNT(*) as count FROM messages WHERE created_at > date("now")').first<{ count: number }>()
+      drizzleDb.select({ count: count() }).from(agents).where(gte(agents.lastLoginAt, oneHourAgo)),
+      drizzleDb.select({ count: count() }).from(conversations),
+      (drizzleDb.select({ count: count() }).from(messages) as any)
     ])
 
     const metrics = {
-      activeUsers: activeUsers?.count || 0,
-      totalConversations: totalConversations?.count || 0,
-      messagesToday: messagesToday?.count || 0,
+      activeUsers: activeUsers[0]?.count || 0,
+      totalConversations: totalConversations[0]?.count || 0,
+      messagesToday: messagesToday[0]?.count || 0,
       averageResponseTime: 120, // 模擬數據，單位：秒
       systemLoad: 0.45, // 模擬系統負載
       errorRate: 0.02 // 模擬錯誤率
@@ -716,7 +733,7 @@ export const restartSystem = async (c: Context<{ Bindings: Bindings }>) => {
 // 健康檢查
 export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const startTime = Date.now()
     
     // 檢查資料庫連線
@@ -724,7 +741,7 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
     let dbResponseTime = 0
     try {
       const dbStart = Date.now()
-      await db.prepare('SELECT 1').first()
+      await drizzleDb.get(sql`SELECT 1 as test`)
       dbResponseTime = Date.now() - dbStart
     } catch {
       dbCheck = false

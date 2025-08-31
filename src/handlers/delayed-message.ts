@@ -9,6 +9,8 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { MessageRecallService } from '../services/message-recall-service';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql } from 'drizzle-orm';
 
 export interface DelayedSendRequest {
   conversationId: string | number; // 支援字符串和數字類型
@@ -43,12 +45,11 @@ export const delayedMessageHandler = {
       }
 
       // 獲取對話資訊
-      const conversation = await c.env.DB.prepare(`
-        SELECT c.*, u.platform, u.platform_user_id
-        FROM conversations c
-        JOIN users u ON c.user_id = u.id
-        WHERE c.id = ?
-      `).bind(conversationId).first();
+      const drizzleDb = drizzle(c.env.DB);
+      const conversation = await drizzleDb.get(sql`
+        SELECT * FROM conversations 
+        WHERE id = ${conversationId}
+      `);
 
       if (!conversation) {
         return notFoundResponse(c, 'Conversation');
@@ -63,8 +64,8 @@ export const delayedMessageHandler = {
         messageType,
         mediaUrl: mediaUrl || '',
         senderId: user.id,
-        recipientPlatformId: String(conversation.platform_user_id),
-        platform: conversation.platform as 'line' | 'facebook'
+        recipientPlatformId: String((conversation as any).customer_id || (conversation as any).customerId), // Handle both snake_case and camelCase
+        platform: 'line' as 'line' | 'facebook' // Default to line platform
       });
 
       if (!result.success) {

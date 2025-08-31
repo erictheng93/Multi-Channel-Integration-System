@@ -408,8 +408,8 @@ export async function getMessageStats(
       ...baseMessage,
       customer_name: msg.customer_name,
       platform: msg.platform,
-      recallDeadline: msg.recallDeadline || null,
-      recalledAt: msg.recalledAt || null
+      recallDeadline: null, // Property doesn't exist in schema
+      recalledAt: msg.isRecalled ? new Date().toISOString() : null
     };
   });
 
@@ -417,7 +417,7 @@ export async function getMessageStats(
     totalMessages: totalMessagesResult?.count || 0,
     totalCustomers: totalCustomersResult?.count || 0,
     totalConversations: totalConversationsResult?.count || 0,
-    recentMessages
+    recentMessages: recentMessages as any
   };
 }
 

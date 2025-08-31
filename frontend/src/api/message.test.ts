@@ -51,7 +51,7 @@ describe('Message API', () => {
 
       const result = await messageApi.list('conv-123')
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations/conv-123/messages')
+      expect(mockGet).toHaveBeenCalledWith('/conversations/conv-123/messages')
       expect(result.success).toBe(true)
       expect(result.data).toEqual(mockMessages)
     })
@@ -67,7 +67,7 @@ describe('Message API', () => {
       })
       
       expect(mockGet).toHaveBeenCalledWith(
-        '/api/conversations/conv-123/messages?page=1&pageSize=20&since=2024-01-01&messageType=text'
+        '/conversations/conv-123/messages?page=1&pageSize=20&since=2024-01-01&messageType=text'
       )
     })
   })
@@ -104,7 +104,7 @@ describe('Message API', () => {
       expect(result.success).toBe(true)
       expect(result.data).toEqual(mockMessage)
       expect(mockPost).toHaveBeenCalledWith(
-        '/api/conversations/conv-123/messages',
+        '/conversations/conv-123/messages',
         {
           content: 'Hello',
           messageType: 'text',
@@ -121,7 +121,7 @@ describe('Message API', () => {
       await messageApi.send('conv-123', { content: '  Hello  ' })
       
       expect(mockPost).toHaveBeenCalledWith(
-        '/api/conversations/conv-123/messages',
+        '/conversations/conv-123/messages',
         expect.objectContaining({ content: 'Hello' })
       )
     })
@@ -142,7 +142,7 @@ describe('Message API', () => {
       const result = await messageApi.markAsRead('conv-123')
       
       expect(result.success).toBe(true)
-      expect(mockPut).toHaveBeenCalledWith('/api/conversations/conv-123/messages/read')
+      expect(mockPut).toHaveBeenCalledWith('/conversations/conv-123/messages/read')
     })
 
     it('should mark specific message as read', async () => {
@@ -151,7 +151,7 @@ describe('Message API', () => {
       const result = await messageApi.markAsRead('conv-123', 'msg-456')
       
       expect(result.success).toBe(true)
-      expect(mockPut).toHaveBeenCalledWith('/api/conversations/conv-123/messages/msg-456/read')
+      expect(mockPut).toHaveBeenCalledWith('/conversations/conv-123/messages/msg-456/read')
     })
   })
 
@@ -172,7 +172,7 @@ describe('Message API', () => {
       
       expect(result.success).toBe(true)
       expect(result.data).toEqual(mockMessage)
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations/conv-123/messages/msg-456')
+      expect(mockGet).toHaveBeenCalledWith('/conversations/conv-123/messages/msg-456')
     })
   })
 
@@ -194,7 +194,7 @@ describe('Message API', () => {
       expect(result.success).toBe(true)
       expect(result.data).toEqual(mockResults)
       expect(mockGet).toHaveBeenCalledWith(
-        '/api/conversations/conv-123/messages/search?q=hello'
+        '/conversations/conv-123/messages/search?q=hello'
       )
     })
 
@@ -204,7 +204,7 @@ describe('Message API', () => {
       await messageApi.search('conv-123', 'hello', 'text')
       
       expect(mockGet).toHaveBeenCalledWith(
-        '/api/conversations/conv-123/messages/search?q=hello&messageType=text'
+        '/conversations/conv-123/messages/search?q=hello&messageType=text'
       )
     })
   })

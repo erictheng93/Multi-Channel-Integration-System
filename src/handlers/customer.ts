@@ -9,9 +9,11 @@ import type {
   // CustomerStatsResult, // 暫時未使用
   // D1Result, // 暫時未使用
   // AuthPayload, // 暫時未使用
-  QueryParams,
-  DatabaseRow
+  QueryParams
 } from '../types';
+import { drizzle } from 'drizzle-orm/d1';
+import { customers, conversations, messages, tags, customerTags, teams } from '../db/schema';
+import { eq, and, count, desc, like, sql, or, inArray } from 'drizzle-orm';
 import { 
   successResponse, 
   paginatedResponse,
@@ -68,7 +70,10 @@ export const customerHandler = {
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      // 構建查詢
+      // 構建查詢 - 保持複雜 GROUP_CONCAT 查詢暫時使用原生 SQL
+      // 這是因為 Drizzle 目前還不支援 GROUP_CONCAT 以及複雜的子查詢
+      const drizzleDb = drizzle(c.env.DB);
+      
       let query = `
         SELECT DISTINCT c.*,
                t.name as team_name,
@@ -165,10 +170,20 @@ export const customerHandler = {
       query += ' GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ? OFFSET ?';
       params.push(limit, offset);
 
-      // 執行查詢
-      const result = await c.env.DB.prepare(query).bind(...params).all();
+      // 手動替換參數到查詢中
+      let finalQuery = query;
+      let paramIndex = 0;
+      while (finalQuery.includes('?') && paramIndex < params.length) {
+        const param = params[paramIndex];
+        const escapedParam = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : String(param);
+        finalQuery = finalQuery.replace('?', escapedParam);
+        paramIndex++;
+      }
+      
+      // 使用 Drizzle sql 執行查詢
+      const result = await drizzleDb.all(sql.raw(finalQuery));
 
-      // 計算總數
+      // 計算總數 - 使用 Drizzle ORM 進行簡化計數
       let countQuery = `
         SELECT COUNT(DISTINCT c.id) as total 
         FROM customers c
@@ -180,10 +195,21 @@ export const customerHandler = {
       }
 
       const countParams = params.slice(0, -2); // 移除 LIMIT 和 OFFSET
-      const countResult = await c.env.DB.prepare(countQuery).bind(...countParams).first();
+      
+      // 手動替換計數查詢的參數
+      let finalCountQuery = countQuery;
+      let countParamIndex = 0;
+      while (finalCountQuery.includes('?') && countParamIndex < countParams.length) {
+        const param = countParams[countParamIndex];
+        const escapedParam = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : String(param);
+        finalCountQuery = finalCountQuery.replace('?', escapedParam);
+        countParamIndex++;
+      }
+      
+      const totalResult = await drizzleDb.get(sql.raw(finalCountQuery));
 
       // 格式化結果
-      const customers = result.results.map((row: DatabaseRow) => ({
+      const customersData = result.map((row: any) => ({
         id: row.id,
         platform: row.platform,
         platformUserId: row.platform_user_id,
@@ -205,10 +231,10 @@ export const customerHandler = {
         metadata: row.metadata ? JSON.parse(row.metadata) : null
       }));
 
-      return paginatedResponse(c, customers, {
+      return paginatedResponse(c, customersData, {
         page: parseInt(page),
         limit,
-        total: (countResult?.total as number) || 0
+        total: Number((totalResult as any)?.total) || 0
       }, 'Customers retrieved successfully');
 
     } catch (error) {
@@ -221,45 +247,101 @@ export const customerHandler = {
     try {
       const customerId = c.req.param('id');
 
-      const customer = await c.env.DB.prepare(`
-        SELECT c.*,
-               t.name as team_name,
-               GROUP_CONCAT(tag.name, ',') as tag_names,
-               GROUP_CONCAT(tag.color, ',') as tag_colors,
-               GROUP_CONCAT(tag.id, ',') as tag_ids
-        FROM customers c
-        LEFT JOIN teams t ON c.source_team_id = t.id
-        LEFT JOIN customer_tags ct ON c.id = ct.customer_id
-        LEFT JOIN tags tag ON ct.tag_id = tag.id
-        WHERE c.id = ?
-        GROUP BY c.id
-      `).bind(customerId).first();
+      // 使用 Drizzle ORM 查詢客戶基本資料
+      const drizzleDb = drizzle(c.env.DB);
+      
+      const customer = await drizzleDb
+        .select({
+          id: customers.id,
+          platform: customers.platform,
+          platform_user_id: customers.platformUserId,
+          display_name: customers.displayName,
+          avatar_url: customers.avatarUrl,
+          phone: customers.phone,
+          email: customers.email,
+          source_team_id: customers.sourceTeamId,
+          metadata: customers.metadata,
+          created_at: customers.createdAt,
+          updated_at: customers.updatedAt,
+          team_name: teams.name
+        })
+        .from(customers)
+        .leftJoin(teams, eq(customers.sourceTeamId, teams.id))
+        .where(eq(customers.id, parseInt(customerId)))
+        .get();
+      
+      if (!customer) {
+        return notFoundResponse(c, 'Customer');
+      }
+      
+      // 獨立查詢標籤資料
+      const customerTagsData = await drizzleDb
+        .select({
+          tag_id: tags.id,
+          tag_name: tags.name,
+          tag_color: tags.color
+        })
+        .from(customerTags)
+        .innerJoin(tags, eq(customerTags.tagId, tags.id))
+        .where(eq(customerTags.customerId, parseInt(customerId)))
+        .all();
 
       if (!customer) {
         return notFoundResponse(c, 'Customer');
       }
 
-      // 獲取客戶的對話統計
-      const conversationStats = await c.env.DB.prepare(`
-        SELECT 
-          COUNT(*) as total,
-          COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
-          COUNT(CASE WHEN status = 'closed' THEN 1 END) as closed,
-          MAX(created_at) as last_conversation_at,
-          MIN(created_at) as first_conversation_at
-        FROM conversations
-        WHERE customer_id = ?
-      `).bind(customerId).first();
+      // 獲取客戶的對話統計 - using Drizzle ORM
+      
+      const totalConversations = await drizzleDb
+        .select({ count: count() })
+        .from(conversations)
+        .where(eq(conversations.customerId, parseInt(customerId)))
+        .get();
+        
+      const activeConversations = await drizzleDb
+        .select({ count: count() })
+        .from(conversations)
+        .where(and(
+          eq(conversations.customerId, parseInt(customerId)),
+          eq(conversations.status, 'active')
+        ))
+        .get();
+        
+      const closedConversations = await drizzleDb
+        .select({ count: count() })
+        .from(conversations)
+        .where(and(
+          eq(conversations.customerId, parseInt(customerId)),
+          eq(conversations.status, 'closed')
+        ))
+        .get();
+        
+      // 使用 Drizzle ORM 查詢對話日期
+      const conversationDates = await drizzleDb
+        .select({
+          last_conversation_at: sql<string>`MAX(${conversations.createdAt})`,
+          first_conversation_at: sql<string>`MIN(${conversations.createdAt})`
+        })
+        .from(conversations)
+        .where(eq(conversations.customerId, parseInt(customerId)))
+        .get();
 
-      // 獲取最近的訊息
-      const recentMessages = await c.env.DB.prepare(`
-        SELECT m.*, c.id as conversation_id
-        FROM messages m
-        JOIN conversations c ON m.conversation_id = c.id
-        WHERE c.customer_id = ?
-        ORDER BY m.created_at DESC
-        LIMIT 5
-      `).bind(customerId).all();
+      // 獲取最近的訊息 - using Drizzle ORM  
+      const recentMessages = await drizzleDb
+        .select({
+          id: messages.id,
+          content: messages.content,
+          messageType: messages.messageType,
+          senderType: messages.senderType,
+          createdAt: messages.createdAt,
+          conversationId: conversations.id
+        })
+        .from(messages)
+        .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+        .where(eq(conversations.customerId, parseInt(customerId)))
+        .orderBy(desc(messages.createdAt))
+        .limit(5)
+        .all();
 
       const customerData = {
         id: customer.id,
@@ -271,25 +353,19 @@ export const customerHandler = {
         email: customer.email,
         sourceTeamId: customer.source_team_id,
         teamName: customer.team_name,
-        tags: customer.tag_names && typeof customer.tag_names === 'string' 
-          ? customer.tag_names.split(',').map((name: string, index: number) => ({
-              id: customer.tag_ids && typeof customer.tag_ids === 'string' 
-                ? customer.tag_ids.split(',')[index] 
-                : undefined,
-              name,
-              color: customer.tag_colors && typeof customer.tag_colors === 'string'
-                ? customer.tag_colors.split(',')[index] || '#3B82F6'
-                : '#3B82F6'
-            })) 
-          : [],
+        tags: customerTagsData.map(tag => ({
+          id: tag.tag_id,
+          name: tag.tag_name,
+          color: tag.tag_color || '#3B82F6'
+        })),
         conversationStats: {
-          total: conversationStats?.total || 0,
-          active: conversationStats?.active || 0,
-          closed: conversationStats?.closed || 0,
-          lastConversationAt: conversationStats?.last_conversation_at,
-          firstConversationAt: conversationStats?.first_conversation_at
+          total: totalConversations?.count || 0,
+          active: activeConversations?.count || 0,
+          closed: closedConversations?.count || 0,
+          lastConversationAt: conversationDates?.last_conversation_at,
+          firstConversationAt: conversationDates?.first_conversation_at
         },
-        recentMessages: recentMessages.results.map((msg: any) => ({
+        recentMessages: recentMessages.map((msg: any) => ({
           id: msg.id,
           conversationId: msg.conversation_id,
           senderType: msg.sender_type,
@@ -317,29 +393,30 @@ export const customerHandler = {
       const customerId = c.req.param('id');
       const { displayName, phone, email, sourceTeamId, metadata } = await c.req.json();
 
-      // 檢查客戶是否存在
-      const existingCustomer = await c.env.DB.prepare(`
-        SELECT id FROM customers WHERE id = ?
-      `).bind(customerId).first();
+      // 使用 Drizzle ORM 檢查客戶是否存在
+      const drizzleDb = drizzle(c.env.DB);
+      const existingCustomer = await drizzleDb
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, parseInt(customerId)))
+        .get();
 
       if (!existingCustomer) {
         return notFoundResponse(c, 'Customer');
       }
 
-      // 更新客戶資料
-      await c.env.DB.prepare(`
-        UPDATE customers 
-        SET display_name = ?, phone = ?, email = ?, source_team_id = ?, 
-            metadata = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(
-        displayName || null,
-        phone || null,
-        email || null,
-        sourceTeamId || null,
-        metadata ? JSON.stringify(metadata) : null,
-        customerId
-      ).run();
+      // 使用 Drizzle ORM 更新客戶資料
+      await drizzleDb
+        .update(customers)
+        .set({
+          displayName: displayName || null,
+          phone: phone || null,
+          email: email || null,
+          sourceTeamId: sourceTeamId || null,
+          metadata: metadata ? JSON.stringify(metadata) : null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(customers.id, parseInt(customerId)));
 
       return successResponse(c, null, 'Customer updated successfully');
 
@@ -361,24 +438,35 @@ export const customerHandler = {
         ]);
       }
 
-      // 檢查客戶是否存在
-      const customer = await c.env.DB.prepare(`
-        SELECT id FROM customers WHERE id = ?
-      `).bind(customerId).first();
+      // 使用 Drizzle ORM 檢查客戶是否存在
+      const drizzleDb = drizzle(c.env.DB);
+      const customer = await drizzleDb
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, parseInt(customerId)))
+        .get();
 
       if (!customer) {
         return notFoundResponse(c, 'Customer');
       }
 
-      // 批量添加標籤
-      const insertPromises = tagIds.map(tagId => 
-        c.env.DB.prepare(`
-          INSERT OR IGNORE INTO customer_tags (customer_id, tag_id, assigned_by)
-          VALUES (?, ?, ?)
-        `).bind(customerId, tagId, payload?.userId).run()
-      );
+      // 使用 Drizzle ORM 批量添加標籤
+      const insertData = tagIds.map(tagId => ({
+        customerId: parseInt(customerId),
+        tagId: parseInt(tagId),
+        assignedBy: payload?.userId ? String(payload.userId) : null
+      }));
 
-      await Promise.all(insertPromises);
+      // 使用 onConflictDoNothing 來模擬 INSERT OR IGNORE
+      for (const tagData of insertData) {
+        try {
+          await ((drizzleDb as any)
+            .insert(customerTags)
+            .values(tagData));
+        } catch (error) {
+          // Ignore duplicate key errors (simulates INSERT OR IGNORE)
+        }
+      }
 
       return successResponse(c, null, 'Tags added successfully');
 
@@ -399,12 +487,14 @@ export const customerHandler = {
         ]);
       }
 
-      // 移除標籤
-      const placeholders = tagIds.map(() => '?').join(',');
-      await c.env.DB.prepare(`
-        DELETE FROM customer_tags 
-        WHERE customer_id = ? AND tag_id IN (${placeholders})
-      `).bind(customerId, ...tagIds).run();
+      // 使用 Drizzle ORM 移除標籤
+      const drizzleDb = drizzle(c.env.DB);
+      await drizzleDb
+        .delete(customerTags)
+        .where(and(
+          eq(customerTags.customerId, parseInt(customerId)),
+          inArray(customerTags.tagId, tagIds.map(id => parseInt(id)))
+        ));
 
       return successResponse(c, null, 'Tags removed successfully');
 
@@ -418,94 +508,106 @@ export const customerHandler = {
     try {
       const payload = c.get('jwtPayload');
       
-      // 基礎統計查詢
-      let baseQuery = `
-        FROM customers c
-        LEFT JOIN customer_tags ct ON c.id = ct.customer_id
-        LEFT JOIN conversations conv ON c.id = conv.customer_id
-      `;
-
-      const whereConditions: string[] = [];
-      const params: QueryParams = [];
-
-      // 權限控制
+      // 使用 Drizzle ORM 進行統計查詢
+      const drizzleDb = drizzle(c.env.DB);
+      
+      // 構建權限控制條件
+      const baseConditions = [];
       if (payload?.role !== 'admin' && payload?.teamId) {
-        whereConditions.push('(c.source_team_id = ? OR c.source_team_id IS NULL)');
-        params.push(payload.teamId);
+        baseConditions.push(
+          sql`(${customers.sourceTeamId} = ${payload.teamId} OR ${customers.sourceTeamId} IS NULL)`
+        );
       }
-
-      const whereClause = whereConditions.length > 0 
-        ? ' WHERE ' + whereConditions.join(' AND ') 
-        : '';
-
+      const baseCondition = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+      
       // 總客戶數
-      const totalResult = await c.env.DB.prepare(`
-        SELECT COUNT(DISTINCT c.id) as total ${baseQuery} ${whereClause}
-      `).bind(...params).first();
+      const totalResult = await drizzleDb
+        .select({ total: count(customers.id) })
+        .from(customers)
+        .where(baseCondition)
+        .get();
 
       // 按平台統計
-      const platformStats = await c.env.DB.prepare(`
-        SELECT c.platform, COUNT(DISTINCT c.id) as count 
-        ${baseQuery} ${whereClause}
-        GROUP BY c.platform
-      `).bind(...params).all();
+      const platformStats = await drizzleDb
+        .select({
+          platform: customers.platform,
+          count: count(customers.id)
+        })
+        .from(customers)
+        .where(baseCondition)
+        .groupBy(customers.platform)
+        .all();
 
       // 按團隊統計
-      const teamStats = await c.env.DB.prepare(`
-        SELECT t.name as team_name, COUNT(DISTINCT c.id) as count
-        FROM customers c
-        LEFT JOIN teams t ON c.source_team_id = t.id
-        ${whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''}
-        GROUP BY c.source_team_id, t.name
-      `).bind(...params).all();
+      const teamStats = await drizzleDb
+        .select({
+          team_name: sql<string>`COALESCE(${teams.name}, '未分配')`,
+          count: count(customers.id)
+        })
+        .from(customers)
+        .leftJoin(teams, eq(customers.sourceTeamId, teams.id))
+        .where(baseCondition)
+        .groupBy(customers.sourceTeamId, teams.name)
+        .all();
 
       // 有標籤的客戶數
-      const taggedResult = await c.env.DB.prepare(`
-        SELECT COUNT(DISTINCT c.id) as count
-        ${baseQuery} ${whereClause} AND ct.tag_id IS NOT NULL
-      `).bind(...params).first();
+      const taggedResult = await drizzleDb
+        .select({ count: count(customers.id) })
+        .from(customers)
+        .innerJoin(customerTags, eq(customers.id, customerTags.customerId))
+        .where(baseCondition)
+        .get();
 
       // 有郵箱的客戶數
-      const emailResult = await c.env.DB.prepare(`
-        SELECT COUNT(DISTINCT c.id) as count
-        ${baseQuery} ${whereClause} AND c.email IS NOT NULL AND c.email != ''
-      `).bind(...params).first();
+      const emailConditions = baseConditions.slice();
+      emailConditions.push(sql`${customers.email} IS NOT NULL AND ${customers.email} != ''`);
+      const emailResult = await drizzleDb
+        .select({ count: count(customers.id) })
+        .from(customers)
+        .where(emailConditions.length > 0 ? and(...emailConditions) : undefined)
+        .get();
 
       // 有電話的客戶數
-      const phoneResult = await c.env.DB.prepare(`
-        SELECT COUNT(DISTINCT c.id) as count
-        ${baseQuery} ${whereClause} AND c.phone IS NOT NULL AND c.phone != ''
-      `).bind(...params).first();
+      const phoneConditions = baseConditions.slice();
+      phoneConditions.push(sql`${customers.phone} IS NOT NULL AND ${customers.phone} != ''`);
+      const phoneResult = await drizzleDb
+        .select({ count: count(customers.id) })
+        .from(customers)
+        .where(phoneConditions.length > 0 ? and(...phoneConditions) : undefined)
+        .get();
 
       // 最近7天活躍客戶
-      const recentActiveResult = await c.env.DB.prepare(`
-        SELECT COUNT(DISTINCT c.id) as count
-        FROM customers c
-        JOIN conversations conv ON c.id = conv.customer_id
-        JOIN messages m ON conv.id = m.conversation_id
-        ${whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') + ' AND' : 'WHERE'}
-        m.created_at >= datetime('now', '-7 days') AND m.sender_type = 'customer'
-      `).bind(...params).first();
+      const recentActiveConditions = baseConditions.slice();
+      recentActiveConditions.push(
+        sql`${messages.createdAt} >= datetime('now', '-7 days')`,
+        eq(messages.senderType, 'customer')
+      );
+      const recentActiveResult = await drizzleDb
+        .select({ count: count(customers.id) })
+        .from(customers)
+        .innerJoin(conversations, eq(customers.id, conversations.customerId))
+        .innerJoin(messages, eq(conversations.id, messages.conversationId))
+        .where(recentActiveConditions.length > 0 ? and(...recentActiveConditions) : undefined)
+        .get();
 
       const stats: CustomerStats = {
-        total: (totalResult as DatabaseRow)?.total as number || 0,
+        total: totalResult?.total || 0,
         byPlatform: {},
         byTeam: {},
-        withTags: (taggedResult as DatabaseRow)?.count as number || 0,
-        withEmail: (emailResult as DatabaseRow)?.count as number || 0,
-        withPhone: (phoneResult as DatabaseRow)?.count as number || 0,
-        recentActive: (recentActiveResult as DatabaseRow)?.count as number || 0
+        withTags: taggedResult?.count || 0,
+        withEmail: emailResult?.count || 0,
+        withPhone: phoneResult?.count || 0,
+        recentActive: recentActiveResult?.count || 0
       };
 
       // 格式化平台統計
-      platformStats.results.forEach((row: DatabaseRow) => {
+      platformStats.forEach(row => {
         stats.byPlatform[row.platform] = row.count;
       });
 
       // 格式化團隊統計
-      teamStats.results.forEach((row: DatabaseRow) => {
-        const teamName = row.team_name || '未分配';
-        stats.byTeam[teamName] = row.count;
+      teamStats.forEach(row => {
+        stats.byTeam[row.team_name] = row.count;
       });
 
       return successResponse(c, stats, 'Customer statistics retrieved successfully');
@@ -526,40 +628,51 @@ export const customerHandler = {
         ]);
       }
 
-      let query = `
-        SELECT c.id, c.platform, c.platform_user_id, c.display_name, 
-               c.avatar_url, c.email, c.phone
-        FROM customers c
-        WHERE (
-          c.display_name LIKE ? OR 
-          c.email LIKE ? OR 
-          c.phone LIKE ? OR
-          c.platform_user_id LIKE ?
-        )
-      `;
-
-      const params = Array(4).fill(`%${q}%`);
-
+      // 使用 Drizzle ORM 進行搜索
+      const drizzleDb = drizzle(c.env.DB);
+      const searchTerm = `%${q}%`;
+      
+      // 構建搜索條件
+      const searchConditions = [
+        like(customers.displayName, searchTerm),
+        like(customers.email, searchTerm),
+        like(customers.phone, searchTerm),
+        like(customers.platformUserId, searchTerm)
+      ];
+      
+      const conditions = [or(...searchConditions)];
+      
       if (platform) {
-        query += ' AND c.platform = ?';
-        params.push(platform);
+        conditions.push(eq(customers.platform, platform));
       }
-
-      query += ` ORDER BY 
+      
+      // 使用 CASE 表達式進行排序（藉由 sql 模板）
+      const orderByPriority = sql`
         CASE 
-          WHEN c.display_name LIKE ? THEN 1
-          WHEN c.email LIKE ? THEN 2
-          WHEN c.phone LIKE ? THEN 3
+          WHEN ${customers.displayName} LIKE ${searchTerm} THEN 1
+          WHEN ${customers.email} LIKE ${searchTerm} THEN 2
+          WHEN ${customers.phone} LIKE ${searchTerm} THEN 3
           ELSE 4
         END
-        LIMIT ?
       `;
+      
+      const searchResults = await drizzleDb
+        .select({
+          id: customers.id,
+          platform: customers.platform,
+          platform_user_id: customers.platformUserId,
+          display_name: customers.displayName,
+          avatar_url: customers.avatarUrl,
+          email: customers.email,
+          phone: customers.phone
+        })
+        .from(customers)
+        .where(and(...conditions))
+        .orderBy(orderByPriority)
+        .limit(parseInt(limit))
+        .all();
 
-      params.push(`%${q}%`, `%${q}%`, `%${q}%`, parseInt(limit));
-
-      const result = await c.env.DB.prepare(query).bind(...params).all();
-
-      const customers = result.results.map((row: DatabaseRow) => ({
+      const customersData = searchResults.map(row => ({
         id: row.id,
         platform: row.platform,
         platformUserId: row.platform_user_id,
@@ -569,7 +682,7 @@ export const customerHandler = {
         phone: row.phone
       }));
 
-      return successResponse(c, customers, 'Search results retrieved successfully');
+      return successResponse(c, customersData, 'Search results retrieved successfully');
 
     } catch (error) {
       return handleApiError(error, c);

@@ -6,6 +6,10 @@ import type {
   PendingMessage,
   // MessageDeliveryResult
 } from '../types/services';
+import { drizzle } from 'drizzle-orm/d1';
+import { delayedMessages, messageRecallLogs, conversations, messages, customers } from '../db/schema';
+import { eq, and, count, sql } from 'drizzle-orm';
+// 使用表的推斷類型而不是New*類型
 
 export interface DelayedMessageRequest {
   conversationId: string; // 統一使用 string 類型
@@ -48,27 +52,29 @@ export class MessageRecallService {
 
     try {
       // 1. 儲存到 D1 (持久化) 
-      await this.env.DB.prepare(`
-        INSERT INTO delayed_messages (
-          id, conversation_id, agent_id, content, message_type,
-          scheduled_at, status, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
-      `).bind(
-        messageId,
-        request.conversationId,
-        request.senderId,
-        request.content,
-        request.messageType || 'text',
-        scheduledSendTime.toISOString(),
-        JSON.stringify({
+      const drizzleDb = drizzle(this.env.DB);
+      
+      const newDelayedMessage: any = {
+        id: messageId,
+        conversationId: request.conversationId,
+        agentId: request.senderId,
+        content: request.content,
+        messageType: request.messageType || 'text',
+        scheduledAt: scheduledSendTime.toISOString(),
+        status: 'pending',
+        metadata: JSON.stringify({
           recipientPlatformId: request.recipientPlatformId,
           platform: request.platform,
           delaySeconds: request.delaySeconds,
           mediaUrl: request.mediaUrl,
           originalSendTime: now.toISOString(),
           recallDeadline: recallDeadline.toISOString()
-        })
-      ).run();
+        }),
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      };
+      
+      await drizzleDb.insert(delayedMessages).values(newDelayedMessage);
 
       // 2. KV 標記可撤回 (快速查詢)
       const kvKey = `recallable:${messageId}`;
@@ -190,9 +196,16 @@ export class MessageRecallService {
       }
 
       // 2. 從 D1 獲取待發送訊息
-      const pendingMessage = await this.env.DB.prepare(`
-        SELECT * FROM delayed_messages WHERE id = ? AND status = 'pending'
-      `).bind(messageId).first();
+      const drizzleDb = drizzle(this.env.DB);
+      
+      const pendingMessage = await drizzleDb
+        .select()
+        .from(delayedMessages)
+        .where(and(
+          eq(delayedMessages.id, messageId),
+          eq(delayedMessages.status, 'pending')
+        ))
+        .get();
 
       if (!pendingMessage) {
         return { success: false, error: 'Pending message not found' };
@@ -205,7 +218,7 @@ export class MessageRecallService {
       const now = new Date();
       const newStatus = sendSuccess ? 'sent' : 'failed';
 
-      await this.updateMessageStatus(messageId, newStatus, String(pendingMessage.agent_id), now, sendSuccess);
+      await this.updateMessageStatus(messageId, newStatus, String(pendingMessage.agentId), now, sendSuccess);
 
       // 5. 清理 KV 標記
       await this.cleanupKVMarkers(messageId);
@@ -244,33 +257,60 @@ export class MessageRecallService {
    */
   async getPendingMessages(userId: string, page = 1, pageSize = 20) {
     const offset = (page - 1) * pageSize;
+    const drizzleDb = drizzle(this.env.DB);
 
-    const messages = await this.env.DB.prepare(`
-      SELECT 
-        pm.*,
-        c.id as conversation_id,
-        cu.display_name as customer_name,
-        CASE 
-          WHEN pm.status = 'pending' AND datetime('now') < pm.scheduled_at THEN 1
-          ELSE 0
-        END as can_recall
-      FROM delayed_messages pm
-      JOIN conversations c ON pm.conversation_id = c.id
-      JOIN customers cu ON c.customer_id = cu.id
-      WHERE pm.agent_id = ? AND pm.status = 'pending'
-      ORDER BY pm.scheduled_at ASC
-      LIMIT ? OFFSET ?
-    `).bind(userId, pageSize, offset).all();
+    // 使用 Drizzle ORM 查詢待發送消息
+    const messagesResult = await drizzleDb
+      .select({
+        // delayed_messages fields
+        id: delayedMessages.id,
+        conversationId: delayedMessages.conversationId,
+        agentId: delayedMessages.agentId,
+        content: delayedMessages.content,
+        messageType: delayedMessages.messageType,
+        scheduledAt: delayedMessages.scheduledAt,
+        status: delayedMessages.status,
+        metadata: delayedMessages.metadata,
+        createdAt: delayedMessages.createdAt,
+        updatedAt: delayedMessages.updatedAt,
+        sentAt: delayedMessages.sentAt,
+        cancelledAt: delayedMessages.cancelledAt,
+        // joined fields
+        conversation_id: conversations.id,
+        customer_name: customers.displayName,
+        // calculated field using sql template
+        can_recall: sql<number>`
+          CASE 
+            WHEN ${delayedMessages.status} = 'pending' AND datetime('now') < ${delayedMessages.scheduledAt} THEN 1
+            ELSE 0
+          END
+        `
+      })
+      .from(delayedMessages)
+      .innerJoin(conversations, eq(delayedMessages.conversationId, conversations.id))
+      .innerJoin(customers, eq(conversations.customerId, customers.id))
+      .where(and(
+        eq(delayedMessages.agentId, userId),
+        eq(delayedMessages.status, 'pending')
+      ))
+      .orderBy(delayedMessages.scheduledAt)
+      .limit(pageSize)
+      .offset(offset)
+      .all();
 
-    const totalResult = await this.env.DB.prepare(`
-      SELECT COUNT(*) as total
-      FROM delayed_messages
-      WHERE agent_id = ? AND status = 'pending'
-    `).bind(userId).first();
+    // Use Drizzle for simple count query
+    const totalResult = await drizzleDb
+      .select({ total: count() })
+      .from(delayedMessages)
+      .where(and(
+        eq(delayedMessages.agentId, userId),
+        eq(delayedMessages.status, 'pending')
+      ))
+      .get();
 
     return {
-      items: messages.results,
-      total: Number(totalResult?.total) || 0,
+      items: messagesResult,
+      total: totalResult?.total || 0,
       page,
       pageSize
     };
@@ -296,56 +336,69 @@ export class MessageRecallService {
     timestamp: Date, 
     createMessageRecord = false
   ) {
+    const drizzleDb = drizzle(this.env.DB);
+    const timestampStr = timestamp.toISOString();
+    
     // 更新 delayed_messages 狀態
-    const updateField = status === 'sent' ? 'sent_at' : 
-                       status === 'cancelled' ? 'cancelled_at' : 'updated_at';
+    const updateData: Partial<typeof delayedMessages.$inferInsert> = {
+      status,
+      updatedAt: timestampStr
+    };
 
-    await this.env.DB.prepare(`
-      UPDATE delayed_messages 
-      SET status = ?, ${updateField} = ?, updated_at = ?
-      WHERE id = ?
-    `).bind(status, timestamp.toISOString(), timestamp.toISOString(), messageId).run();
+    if (status === 'sent') {
+      updateData.sentAt = timestampStr;
+    } else if (status === 'cancelled') {
+      updateData.cancelledAt = timestampStr;
+    }
+
+    await drizzleDb
+      .update(delayedMessages)
+      .set(updateData)
+      .where(eq(delayedMessages.id, messageId));
 
     // 如果發送成功，創建正式訊息記錄
     if (createMessageRecord && status === 'sent') {
-      const pendingMessage = await this.env.DB.prepare(`
-        SELECT * FROM delayed_messages WHERE id = ?
-      `).bind(messageId).first();
+      const pendingMessage = await drizzleDb
+        .select()
+        .from(delayedMessages)
+        .where(eq(delayedMessages.id, messageId))
+        .get();
 
       if (pendingMessage) {
-        await this.env.DB.prepare(`
-          INSERT INTO messages (
-            id, conversation_id, sender_type, agent_sender_id, content,
-            message_type, is_sent, delivery_status, sent_at, created_at
-          ) VALUES (?, ?, 'agent', ?, ?, ?, 1, 'sent', ?, ?)
-        `).bind(
-          messageId,
-          pendingMessage.conversation_id,
-          pendingMessage.agent_id,
-          pendingMessage.content,
-          pendingMessage.message_type,
-          timestamp.toISOString(),
-          timestamp.toISOString()
-        ).run();
+        // 使用 Drizzle ORM 插入消息記錄
+        await drizzleDb.insert(messages).values({
+          id: messageId,
+          conversationId: pendingMessage.conversationId,
+          senderType: 'agent',
+          agentSenderId: pendingMessage.agentId,
+          content: pendingMessage.content,
+          messageType: pendingMessage.messageType,
+          isSent: true,
+          deliveryStatus: 'sent',
+          sentAt: timestampStr,
+          createdAt: timestampStr
+        });
 
         // 更新對話最後訊息時間
-        await this.env.DB.prepare(`
-          UPDATE conversations 
-          SET last_message_at = ?, updated_at = ?
-          WHERE id = ?
-        `).bind(
-          timestamp.toISOString(), 
-          timestamp.toISOString(), 
-          pendingMessage.conversation_id
-        ).run();
+        await drizzleDb
+          .update(conversations)
+          .set({
+            lastMessageAt: timestampStr,
+            updatedAt: timestampStr
+          })
+          .where(eq(conversations.id, pendingMessage.conversationId));
       }
     }
 
-    // 記錄操作日誌
-    await this.env.DB.prepare(`
-      INSERT INTO message_recall_logs (message_id, user_id, action, created_at)
-      VALUES (?, ?, ?, ?)
-    `).bind(messageId, userId, status, timestamp.toISOString()).run();
+    // 記錄操作日誌 - using Drizzle
+    const logRecord: any = {
+      messageId,
+      userId,
+      action: status,
+      createdAt: timestampStr
+    };
+
+    await drizzleDb.insert(messageRecallLogs).values(logRecord);
   }
 
   private async cleanupKVMarkers(messageId: string) {

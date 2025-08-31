@@ -3,6 +3,8 @@
 
 import type { Context } from 'hono';
 import type { Bindings, QueryParams, DatabaseRow } from '../types';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql } from 'drizzle-orm';
 
 // 快取管理器
 export class CacheManager {
@@ -100,7 +102,7 @@ export class QueryOptimizer {
   async cachedQuery<T>(
     cacheKey: string,
     query: string,
-    params: QueryParams = [],
+    _params: QueryParams = [],
     ttl: number = 300
   ): Promise<T | null> {
     // 先檢查快取
@@ -111,7 +113,8 @@ export class QueryOptimizer {
 
     // 執行查詢
     try {
-      const result = await this.db.prepare(query).bind(...params).first();
+      const drizzleDb = drizzle(this.db);
+      const result = await drizzleDb.get(sql.raw(query));
       
       if (result) {
         // 存入快取
@@ -128,8 +131,9 @@ export class QueryOptimizer {
   // 批量查詢優化
   async batchQuery<T>(queries: Array<{ query: string; params: QueryParams }>): Promise<T[]> {
     try {
-      const promises = queries.map(({ query, params }) => 
-        this.db.prepare(query).bind(...params).first()
+      const drizzleDb = drizzle(this.db);
+      const promises = queries.map(({ query }) => 
+        drizzleDb.get(sql.raw(query))
       );
       
       const results = await Promise.all(promises);
@@ -162,12 +166,13 @@ export class QueryOptimizer {
       }
 
       // 並行執行資料查詢和計數查詢
+      const drizzleDb = drizzle(this.db);
       const [itemsResult, countResult] = await Promise.all([
-        this.db.prepare(`${baseQuery} LIMIT ? OFFSET ?`).bind(...params, pageSize, offset).all(),
-        this.db.prepare(countQuery).bind(...params).first()
+        drizzleDb.run(sql.raw(`${baseQuery} LIMIT ${pageSize} OFFSET ${offset}`)),
+        drizzleDb.get(sql.raw(countQuery))
       ]);
 
-      const items = itemsResult.results as T[];
+      const items = (itemsResult.results || []) as T[];
       const total = (countResult as DatabaseRow)?.total as number || 0;
 
       // 如果有快取前綴，存入快取

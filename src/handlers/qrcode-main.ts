@@ -5,6 +5,7 @@ import { ERROR_MESSAGES } from '../utils/error-messages';
 import { QRCodeService } from '../services/qrcode-service';
 import { getTeamByQRCode } from '../utils/team';
 import { jwtAuth } from '../middleware/auth';
+// Removed unused drizzle imports
 
 const qrcodeHandler = new Hono<{ Bindings: Bindings }>();
 

@@ -6,7 +6,8 @@
 import { Context } from 'hono';
 import { eq, and, ne } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { customers, conversations, messages } from '../db/schema';
+import { customers, conversations, messages, fileAttachments } from '../db/schema';
+// 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
 import type { 
   Bindings, 
@@ -405,7 +406,7 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
           throw new Error('Failed to retrieve created conversation');
         }
         
-        conversation = convertConversation(newConversation);
+        conversation = convertConversation(newConversation) as any;
         console.log(`✅ Created new conversation: ${conversationId}`);
       } catch (convError) {
         console.error('❌ Failed to create conversation:', convError);
@@ -442,7 +443,7 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
       .insert(messages)
       .values({
         id: messageId,
-        conversationId: conversation.id,
+        conversationId: conversation!.id,
         senderType: 'customer',
         customerSenderId: user.id,
         content: messageContent,
@@ -463,9 +464,9 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
         userRole: 'system',
         action: 'message_received',
         resourceType: 'conversation',
-        resourceId: String(conversation.id),
+        resourceId: String(conversation!.id),
         details: {
-          conversationId: conversation.id,
+          conversationId: conversation!.id,
           customerId: user.id,
           platform: 'line',
           messageType: messageType,
@@ -501,22 +502,20 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
         );
         
         if (mediaFile) {
-          // 將檔案資訊存儲到資料庫
-          await env.DB.prepare(`
-            INSERT INTO file_attachments (
-              id, message_id, filename, mime_type, file_size, 
-              file_url, original_url, platform, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-          `).bind(
-            mediaFile.id,
-            messageId,
-            mediaFile.filename,
-            mediaFile.mimeType,
-            mediaFile.size,
-            mediaFile.url,
-            mediaFile.originalUrl,
-            'line'
-          ).run();
+          // 將檔案資訊存儲到資料庫 - using Drizzle ORM
+          const drizzleDb = drizzle(env.DB);
+          const newFileAttachment: any = {
+            id: mediaFile.id,
+            messageId: messageId,
+            fileName: mediaFile.filename,
+            fileType: mediaFile.mimeType,
+            fileSize: mediaFile.size,
+            r2Key: mediaFile.url, // Using url as r2Key for now
+            url: mediaFile.originalUrl,
+            createdAt: new Date().toISOString()
+          };
+          
+          await drizzleDb.insert(fileAttachments).values(newFileAttachment);
           
           console.log(`LINE ${message.type} stored: ${mediaFile.filename}`);
         } else {
@@ -730,7 +729,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
           throw new Error('Failed to retrieve created conversation');
         }
         
-        conversation = convertConversation(newConversation);
+        conversation = convertConversation(newConversation) as any;
         console.log(`✅ Created new conversation: ${conversationId}`);
       } catch (convError) {
         console.error('❌ Failed to create conversation:', convError);
@@ -769,7 +768,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       .insert(messages)
       .values({
         id: messageId,
-        conversationId: conversation.id,
+        conversationId: conversation!.id,
         senderType: 'customer',
         customerSenderId: user.id,
         content: messageContent,
@@ -790,9 +789,9 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         userRole: 'system',
         action: 'message_received',
         resourceType: 'conversation',
-        resourceId: String(conversation.id),
+        resourceId: String(conversation!.id),
         details: {
-          conversationId: conversation.id,
+          conversationId: conversation!.id,
           customerId: user.id,
           platform: 'facebook',
           messageType: messageType,
@@ -829,22 +828,20 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         );
         
         if (mediaFile) {
-          // 將檔案資訊存儲到資料庫
-          await env.DB.prepare(`
-            INSERT INTO file_attachments (
-              id, message_id, filename, mime_type, file_size, 
-              file_url, original_url, platform, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-          `).bind(
-            mediaFile.id,
-            messageId,
-            mediaFile.filename,
-            mediaFile.mimeType,
-            mediaFile.size,
-            mediaFile.url,
-            mediaFile.originalUrl,
-            'facebook'
-          ).run();
+          // 將檔案資訊存儲到資料庫 - using Drizzle ORM
+          const drizzleDb = drizzle(env.DB);
+          const newFileAttachment: any = {
+            id: mediaFile.id,
+            messageId: messageId,
+            fileName: mediaFile.filename,
+            fileType: mediaFile.mimeType,
+            fileSize: mediaFile.size,
+            r2Key: mediaFile.url, // Using url as r2Key for now
+            url: mediaFile.originalUrl,
+            createdAt: new Date().toISOString()
+          };
+          
+          await drizzleDb.insert(fileAttachments).values(newFileAttachment);
           
           console.log(`Facebook ${messageType} stored: ${mediaFile.filename}`);
         } else {

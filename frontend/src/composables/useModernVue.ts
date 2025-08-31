@@ -150,7 +150,7 @@ export function useModernForm<T extends Record<string, unknown>>(initialData: T)
     
     for (const [field, validator] of Object.entries(validators.value)) {
       if (validator) {
-        const error = (validator as (value: any) => string | null)(formData.value[field as keyof T])
+        const error = (validator as (value: unknown) => string | null)(formData.value[field as keyof T])
         if (error) {
           newErrors[field as keyof T] = error
           hasErrors = true

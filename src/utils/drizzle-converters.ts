@@ -5,9 +5,6 @@
  */
 
 import type { 
-  Customer as DrizzleCustomer,
-  Conversation as DrizzleConversation, 
-  Message as DrizzleMessage,
   Agent as DrizzleAgent
 } from '../db/schema';
 import type { 
@@ -20,7 +17,7 @@ import type {
 /**
  * 轉換 Drizzle Customer 到業務邏輯 Customer
  */
-export function convertCustomer(drizzleCustomer: DrizzleCustomer): Customer {
+export function convertCustomer(drizzleCustomer: any): Customer {
   return {
     id: drizzleCustomer.id,
     platform: drizzleCustomer.platform,
@@ -39,7 +36,7 @@ export function convertCustomer(drizzleCustomer: DrizzleCustomer): Customer {
 /**
  * 轉換 Drizzle Conversation 到業務邏輯 DbConversation
  */
-export function convertConversation(drizzleConversation: DrizzleConversation): DbConversation {
+export function convertConversation(drizzleConversation: any): DbConversation {
   return {
     id: drizzleConversation.id,
     customerId: drizzleConversation.customerId,
@@ -55,7 +52,7 @@ export function convertConversation(drizzleConversation: DrizzleConversation): D
 /**
  * 轉換 Drizzle Message 到業務邏輯 DbMessage
  */
-export function convertMessage(drizzleMessage: DrizzleMessage): DbMessage {
+export function convertMessage(drizzleMessage: any): DbMessage {
   return {
     id: drizzleMessage.id,
     conversationId: drizzleMessage.conversationId,
@@ -100,15 +97,15 @@ export function convertAgent(drizzleAgent: DrizzleAgent, teamName?: string): DbU
 /**
  * 批量轉換函數
  */
-export function convertCustomers(drizzleCustomers: DrizzleCustomer[]): Customer[] {
+export function convertCustomers(drizzleCustomers: any[]): Customer[] {
   return drizzleCustomers.map(convertCustomer);
 }
 
-export function convertConversations(drizzleConversations: DrizzleConversation[]): DbConversation[] {
+export function convertConversations(drizzleConversations: any[]): DbConversation[] {
   return drizzleConversations.map(convertConversation);
 }
 
-export function convertMessages(drizzleMessages: DrizzleMessage[]): DbMessage[] {
+export function convertMessages(drizzleMessages: any[]): DbMessage[] {
   return drizzleMessages.map(convertMessage);
 }
 
@@ -124,7 +121,7 @@ export function prepareCustomerInsert(customerData: {
   email?: string;
   sourceTeamId?: number;
   metadata?: string;
-}): Omit<DrizzleCustomer, 'id'> {
+}): Omit<any, 'id'> {
   const timestamp = new Date().toISOString();
   return {
     platform: customerData.platform,
@@ -146,7 +143,7 @@ export function prepareConversationInsert(conversationData: {
   status?: string;
   assignedTeamId?: number;
   assignedUserId?: string;
-}): DrizzleConversation {
+}): any {
   const timestamp = new Date().toISOString();
   return {
     id: conversationData.id,
@@ -171,7 +168,7 @@ export function prepareMessageInsert(messageData: {
   platformMessageId?: string;
   isSent?: boolean;
   metadata?: string;
-}): DrizzleMessage {
+}): any {
   const timestamp = new Date().toISOString();
   return {
     id: messageData.id,

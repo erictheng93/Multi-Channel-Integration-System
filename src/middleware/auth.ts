@@ -1,6 +1,9 @@
 import { Context, Next } from 'hono';
 import type { Bindings, DbUser } from '../types';
 import { verifyJWT, getUserById, getSession } from '../utils/auth';
+import { drizzle } from 'drizzle-orm/d1';
+import { agents } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 // 擴展 Context 類型以包含用戶信息
 declare module 'hono' {
@@ -40,10 +43,12 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     // 更新用戶的最後活動時間（非阻塞）
     try {
       if (typeof user.id === 'string') {
-        // agents 表使用字符串 ID
-        c.env.DB.prepare(`
-          UPDATE agents SET last_active = ? WHERE id = ?
-        `).bind(Date.now(), user.id).run();
+        // agents 表使用字符串 ID - migrated to Drizzle ORM
+        const db = drizzle(c.env.DB);
+        await db.update(agents)
+          .set({ lastActive: new Date().toISOString() })
+          .where(eq(agents.id, user.id))
+          .run();
       }
     } catch (error) {
       // 靜默失敗，不影響請求處理

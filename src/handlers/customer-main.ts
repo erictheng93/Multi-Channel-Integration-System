@@ -1,6 +1,7 @@
 // 客戶管理處理器 - 主要實現
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
+// Removed unused drizzle imports
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 

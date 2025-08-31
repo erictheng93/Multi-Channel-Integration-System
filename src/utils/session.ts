@@ -1,4 +1,23 @@
-import type { ConversationSession, Message } from '../types';
+import type { Message, Platform } from '../types';
+// ConversationSession type inferred from schema
+import { drizzle } from 'drizzle-orm/d1';
+import { conversationSessions, messages } from '../db/schema';
+import { eq, and, desc, sql, count, avg } from 'drizzle-orm';
+
+// 對話會話類型定義
+interface ConversationSession {
+  id: string;
+  conversationId: string;
+  sessionNumber: number;
+  startedAt: string;
+  endedAt?: string;
+  messageCount: number;
+  topic?: string;
+  sentiment?: string;
+  status: 'active' | 'ended' | 'paused';
+  createdAt: string;
+  updatedAt: string;
+}
 
 /**
  * 對話會話管理服務
@@ -25,27 +44,31 @@ const SESSION_CONFIG = {
  */
 export async function getOrCreateSession(
   db: D1Database,
-  conversationId: number,
+  conversationId: string,
   messageContent: string,
   senderType: 'customer' | 'agent' | 'system'
-): Promise<ConversationSession> {
+): Promise<any> {
   const now = new Date().toISOString();
+  const drizzleDb = drizzle(db);
   
   // 1. 查找當前活躍的會話
-  const activeSession = await db
-    .prepare(`
-      SELECT * FROM conversation_sessions 
-      WHERE conversation_id = ? AND is_active = TRUE 
-      ORDER BY last_activity DESC 
-      LIMIT 1
-    `)
-    .bind(conversationId)
-    .first<ConversationSession>();
+  const activeSession = await drizzleDb
+    .select()
+    .from(conversationSessions)
+    .where(
+      and(
+        eq(conversationSessions.conversationId, conversationId),
+        eq(conversationSessions.isActive, true)
+      )
+    )
+    .orderBy(desc(conversationSessions.lastActivity))
+    .limit(1)
+    .get();
 
   // 2. 判斷是否需要創建新會話
   const shouldCreateNewSession = await shouldStartNewSession(
     db, 
-    activeSession, 
+    activeSession as unknown as ConversationSession | null, 
     messageContent, 
     senderType, 
     now
@@ -58,7 +81,7 @@ export async function getOrCreateSession(
     }
     
     // 創建新會話
-    return await createNewSession(db, conversationId, messageContent, now);
+    return await createNewSession(db, parseInt(conversationId), messageContent, now);
   }
 
   // 3. 更新現有會話
@@ -80,7 +103,7 @@ async function shouldStartNewSession(
     return true; // 沒有活躍會話，創建新的
   }
 
-  const lastActivity = new Date(currentSession.last_activity);
+  const lastActivity = new Date((currentSession as any).lastActivity);
   const now = new Date(currentTime);
   const timeDiffMinutes = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
 
@@ -91,13 +114,13 @@ async function shouldStartNewSession(
   }
 
   // 2. 訊息數量檢查
-  if (currentSession.message_count >= SESSION_CONFIG.MAX_MESSAGES_PER_SESSION) {
-    console.log(`📊 會話訊息數達到上限 (${currentSession.message_count})，開始新會話`);
+  if ((currentSession.messageCount || 0) >= SESSION_CONFIG.MAX_MESSAGES_PER_SESSION) {
+    console.log(`📊 會話訊息數達到上限 (${currentSession.messageCount || 0})，開始新會話`);
     return true;
   }
 
   // 3. 會話持續時間檢查
-  const sessionStart = new Date(currentSession.start_time);
+  const sessionStart = new Date((currentSession as any).startTime);
   const sessionDurationHours = (now.getTime() - sessionStart.getTime()) / (1000 * 60 * 60);
   if (sessionDurationHours > SESSION_CONFIG.MAX_SESSION_DURATION) {
     console.log(`⏰ 會話持續時間過長 (${sessionDurationHours.toFixed(1)}小時)，開始新會話`);
@@ -132,49 +155,36 @@ async function createNewSession(
   conversationId: number,
   messageContent: string,
   currentTime: string
-): Promise<ConversationSession> {
+): Promise<any> {
   const sessionId = `session_${conversationId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const drizzleDb = drizzle(db);
   
   // 智能推測會話主題
   const topic = extractTopic(messageContent);
   
   const sessionData = {
     id: sessionId,
-    conversation_id: conversationId,
-    session_type: 'continuous' as const,
+    conversationId: conversationId,
+    sessionType: 'continuous' as const,
     topic: topic,
-    start_time: currentTime,
-    last_activity: currentTime,
-    message_count: 0,
-    is_active: true,
-    created_at: currentTime
+    startTime: currentTime,
+    endTime: null,
+    lastActivity: currentTime,
+    messageCount: 0,
+    isActive: true,
+    createdAt: currentTime
   };
 
-  await db
-    .prepare(`
-      INSERT INTO conversation_sessions (
-        id, conversation_id, session_type, topic, start_time, 
-        last_activity, message_count, is_active, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      sessionData.id,
-      sessionData.conversation_id,
-      sessionData.session_type,
-      sessionData.topic,
-      sessionData.start_time,
-      sessionData.last_activity,
-      sessionData.message_count,
-      sessionData.is_active,
-      sessionData.created_at
-    )
-    .run();
+  try {
+    await (drizzleDb as any)
+      .insert(conversationSessions)
+      .values(sessionData);
+  } catch (error) {
+    console.error('Failed to create session:', error);
+  }
 
   console.log(`🆕 創建新會話: ${sessionId}, 主題: ${topic || '未知'}`);
-  return {
-    ...sessionData,
-    topic: sessionData.topic || ''
-  };
+  return sessionData;
 }
 
 /**
@@ -185,13 +195,15 @@ async function updateSession(
   sessionId: string,
   currentTime: string
 ): Promise<void> {
-  await db
-    .prepare(`
-      UPDATE conversation_sessions 
-      SET last_activity = ?, message_count = message_count + 1 
-      WHERE id = ?
-    `)
-    .bind(currentTime, sessionId)
+  const drizzleDb = drizzle(db);
+  
+  await drizzleDb
+    .update(conversationSessions)
+    .set({ 
+      lastActivity: currentTime,
+      messageCount: sql`${conversationSessions.messageCount} + 1`
+    })
+    .where(eq(conversationSessions.id, sessionId))
     .run();
 }
 
@@ -202,14 +214,15 @@ export async function getNextSessionSequence(
   db: D1Database,
   sessionId: string
 ): Promise<number> {
-  const result = await db
-    .prepare(`
-      SELECT COALESCE(MAX(session_sequence), 0) + 1 as next_sequence
-      FROM messages 
-      WHERE session_id = ?
-    `)
-    .bind(sessionId)
-    .first<{ next_sequence: number }>();
+  const drizzleDb = drizzle(db);
+  
+  const result = await drizzleDb
+    .select({ 
+      next_sequence: sql<number>`COALESCE(MAX(${messages.sessionSequence}), 0) + 1`
+    })
+    .from(messages)
+    .where(eq(messages.sessionId, sessionId))
+    .get();
   
   return result?.next_sequence || 1;
 }
@@ -222,13 +235,15 @@ async function closeSession(
   sessionId: string,
   currentTime: string
 ): Promise<void> {
-  await db
-    .prepare(`
-      UPDATE conversation_sessions 
-      SET is_active = FALSE, end_time = ? 
-      WHERE id = ?
-    `)
-    .bind(currentTime, sessionId)
+  const drizzleDb = drizzle(db);
+  
+  await drizzleDb
+    .update(conversationSessions)
+    .set({ 
+      isActive: false, 
+      endTime: currentTime 
+    })
+    .where(eq(conversationSessions.id, sessionId))
     .run();
   
   console.log(`🔚 關閉會話: ${sessionId}`);
@@ -267,18 +282,21 @@ async function detectTopicChange(
   sessionId: string,
   newMessageContent: string
 ): Promise<boolean> {
+  const drizzleDb = drizzle(db);
+  
   // 獲取會話中最近的幾條訊息
-  const recentMessages = await db
-    .prepare(`
-      SELECT content FROM messages 
-      WHERE session_id = ? AND sender_type = 'customer'
-      ORDER BY created_at DESC 
-      LIMIT 3
-    `)
-    .bind(sessionId)
-    .all<{ content: string }>();
+  const recentMessages = await drizzleDb
+    .select({ content: messages.content })
+    .from(messages)
+    .where(and(
+      eq(messages.sessionId, sessionId),
+      eq(messages.senderType, 'customer')
+    ))
+    .orderBy(desc(messages.createdAt))
+    .limit(3)
+    .all();
 
-  if (!recentMessages.results || recentMessages.results.length === 0) {
+  if (!recentMessages || recentMessages.length === 0) {
     return false;
   }
 
@@ -288,7 +306,7 @@ async function detectTopicChange(
   }
 
   // 檢查最近訊息的主題
-  const recentTopics = recentMessages.results
+  const recentTopics = recentMessages
     .map(msg => extractTopic(msg.content))
     .filter(topic => topic !== null);
 
@@ -301,46 +319,52 @@ async function detectTopicChange(
  */
 export async function getSessionStats(
   db: D1Database,
-  conversationId: number
+  conversationId: string
 ): Promise<{
   totalSessions: number;
   activeSessions: number;
   averageMessagesPerSession: number;
-  sessions: ConversationSession[];
+  sessions: any[];
 }> {
+  const drizzleDb = drizzle(db);
+  
   // 總會話數
-  const totalResult = await db
-    .prepare('SELECT COUNT(*) as count FROM conversation_sessions WHERE conversation_id = ?')
-    .bind(conversationId)
-    .first<{ count: number }>();
+  const totalResult = await drizzleDb
+    .select({ count: count() })
+    .from(conversationSessions)
+    .where(eq(conversationSessions.conversationId, conversationId))
+    .get();
 
   // 活躍會話數
-  const activeResult = await db
-    .prepare('SELECT COUNT(*) as count FROM conversation_sessions WHERE conversation_id = ? AND is_active = TRUE')
-    .bind(conversationId)
-    .first<{ count: number }>();
+  const activeResult = await drizzleDb
+    .select({ count: count() })
+    .from(conversationSessions)
+    .where(and(
+      eq(conversationSessions.conversationId, conversationId),
+      eq(conversationSessions.isActive, true)
+    ))
+    .get();
 
   // 平均訊息數
-  const avgResult = await db
-    .prepare('SELECT AVG(message_count) as avg FROM conversation_sessions WHERE conversation_id = ?')
-    .bind(conversationId)
-    .first<{ avg: number }>();
+  const avgResult = await drizzleDb
+    .select({ avg: avg(conversationSessions.messageCount) })
+    .from(conversationSessions)
+    .where(eq(conversationSessions.conversationId, conversationId))
+    .get();
 
   // 所有會話
-  const sessions = await db
-    .prepare(`
-      SELECT * FROM conversation_sessions 
-      WHERE conversation_id = ? 
-      ORDER BY start_time DESC
-    `)
-    .bind(conversationId)
-    .all<ConversationSession>();
+  const sessions = await drizzleDb
+    .select()
+    .from(conversationSessions)
+    .where(eq(conversationSessions.conversationId, conversationId))
+    .orderBy(desc(conversationSessions.startTime))
+    .all();
 
   return {
     totalSessions: totalResult?.count || 0,
     activeSessions: activeResult?.count || 0,
-    averageMessagesPerSession: Math.round(avgResult?.avg || 0),
-    sessions: sessions.results || []
+    averageMessagesPerSession: Math.round(Number(avgResult?.avg) || 0),
+    sessions: sessions || []
   };
 }
 
@@ -351,14 +375,24 @@ export async function getSessionMessages(
   db: D1Database,
   sessionId: string
 ): Promise<Message[]> {
-  const messages = await db
-    .prepare(`
-      SELECT * FROM messages 
-      WHERE session_id = ? 
-      ORDER BY session_sequence DESC, created_at DESC
-    `)
-    .bind(sessionId)
-    .all<Message>();
+  const drizzleDb = drizzle(db);
+  
+  const messageResults = await drizzleDb
+    .select()
+    .from(messages)
+    .where(eq(messages.sessionId, sessionId))
+    .orderBy(desc(messages.sessionSequence), desc(messages.createdAt))
+    .all();
 
-  return messages.results || [];
+  return ((messageResults || []).map(msg => ({
+    id: msg.id,
+    conversationId: msg.conversationId,
+    senderType: msg.senderType as 'user' | 'agent',
+    senderId: msg.agentSenderId || msg.customerSenderId?.toString() || 'unknown',
+    content: msg.content,
+    mediaUrl: msg.platformMessageId || undefined, // Use platform message ID as fallback
+    mediaType: msg.messageType as 'text' | 'image' | 'video' | 'file',
+    platform: 'line' as Platform, // Default platform
+    createdAt: new Date(msg.createdAt || '').getTime() || Date.now()
+  })) as any);
 }

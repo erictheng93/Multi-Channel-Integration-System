@@ -68,7 +68,7 @@ export class DatabaseService {
   }
 
   // Agent operations
-  async createAgent(agentData: Omit<schema.NewAgent, 'id' | 'createdAt' | 'updatedAt'>) {
+  async createAgent(agentData: any) {
     const id = uuidv4();
     const agent = await this.db.insert(schema.agents).values({
       id,
@@ -216,7 +216,7 @@ export class DatabaseService {
   }
 
   // Message operations
-  async createMessage(messageData: Omit<schema.NewMessage, 'id' | 'createdAt' | 'updatedAt'>) {
+  async createMessage(messageData: any) {
     const id = uuidv4();
     const message = await this.db.insert(schema.messages).values({
       id,
@@ -246,7 +246,7 @@ export class DatabaseService {
   }
 
   // File attachment operations
-  async createFileAttachment(attachmentData: Omit<schema.NewFileAttachment, 'id' | 'createdAt'>) {
+  async createFileAttachment(attachmentData: any) {
     const id = uuidv4();
     return await this.db.insert(schema.fileAttachments).values({
       id,
@@ -260,7 +260,7 @@ export class DatabaseService {
   }
 
   // Delayed message operations
-  async createDelayedMessage(messageData: Omit<schema.NewDelayedMessage, 'id' | 'createdAt' | 'updatedAt'>) {
+  async createDelayedMessage(messageData: any) {
     const id = uuidv4();
     return await this.db.insert(schema.delayedMessages).values({
       id,

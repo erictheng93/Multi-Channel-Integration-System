@@ -2,6 +2,9 @@
 import type { Context } from 'hono';
 import type { Bindings, LoginRequest, LoginResponse, Agent } from '../types';
 import { signJWT } from '../utils/auth';
+import { drizzle } from 'drizzle-orm/d1';
+import { eq, and } from 'drizzle-orm';
+import { agents } from '../db/schema';
 import { 
   successResponse, 
   // errorResponse, // 暫時未使用 
@@ -25,9 +28,10 @@ export const authHandler = {
       }
 
       // 驗證用戶（從 agents 表查找）
-      const agentRow = await c.env.DB.prepare(
-        'SELECT * FROM agents WHERE email = ? AND is_active = 1'
-      ).bind(email).first();
+      const db = drizzle(c.env.DB);
+      const agentRow = await db.select().from(agents)
+        .where(and(eq(agents.email, email), eq(agents.isActive, true)))
+        .get();
       
       if (!agentRow) {
         return unauthorizedResponse(c, 'Invalid email or password');
@@ -35,26 +39,26 @@ export const authHandler = {
 
       // 驗證密碼
       const bcrypt = await import('bcryptjs');
-      const isValidPassword = await bcrypt.compare(password, agentRow.password_hash as string);
+      const isValidPassword = await bcrypt.compare(password, agentRow.passwordHash);
       
       if (!isValidPassword) {
         return unauthorizedResponse(c, 'Invalid email or password');
       }
 
       // 檢查密碼政策
-      const passwordPolicy = agentRow.password_policy as string || 'changeable';
+      const passwordPolicy = agentRow.passwordPolicy || 'changeable';
       const mustChangePassword = passwordPolicy === 'must_change';
       
       console.log(`🔐 Auth Debug - User: ${email}, Policy: ${passwordPolicy}, Must Change: ${mustChangePassword}`);
 
       // 轉換為 Agent 格式
       const agent: Agent = {
-        id: agentRow.id as string,
-        email: agentRow.email as string,
-        name: agentRow.display_name as string,
+        id: agentRow.id,
+        email: agentRow.email,
+        name: agentRow.displayName,
         role: agentRow.role as 'admin' | 'agent',
-        isActive: Boolean(agentRow.is_active),
-        createdAt: agentRow.created_at as number
+        isActive: Boolean(agentRow.isActive),
+        createdAt: new Date(agentRow.createdAt || new Date()).getTime()
       };
 
       // 如果必須更改密碼，返回特殊響應
@@ -63,8 +67,8 @@ export const authHandler = {
         const tempToken = await signJWT(
           { 
             userId: typeof agentRow.id === 'string' ? parseInt(agentRow.id, 10) : Number(agentRow.id),
-            displayName: agentRow.display_name as string,
-            email: agentRow.email as string, 
+            displayName: agentRow.displayName,
+            email: agentRow.email, 
             role: agentRow.role as 'admin' | 'agent',
             type: 'temp_password_change'
           },
@@ -83,8 +87,8 @@ export const authHandler = {
       const token = await signJWT(
         { 
           userId: typeof agentRow.id === 'string' ? parseInt(agentRow.id, 10) : Number(agentRow.id),
-          displayName: agentRow.display_name as string,
-          email: agentRow.email as string, 
+          displayName: agentRow.displayName,
+          email: agentRow.email, 
           role: agentRow.role as 'admin' | 'agent',
           type: 'access'
         },
@@ -96,8 +100,8 @@ export const authHandler = {
       const refreshToken = await signJWT(
         { 
           userId: typeof agentRow.id === 'string' ? parseInt(agentRow.id, 10) : Number(agentRow.id),
-          displayName: agentRow.display_name as string,
-          email: agentRow.email as string, 
+          displayName: agentRow.displayName,
+          email: agentRow.email, 
           role: agentRow.role as 'admin' | 'agent',
           type: 'refresh'
         },
@@ -129,21 +133,22 @@ export const authHandler = {
       }
 
       // 從資料庫獲取最新的用戶資訊
-      const agentRow = await c.env.DB.prepare(
-        'SELECT * FROM agents WHERE id = ? AND is_active = 1'
-      ).bind(payload.userId).first();
+      const db = drizzle(c.env.DB);
+      const agentRow = await db.select().from(agents)
+        .where(and(eq(agents.id, payload.userId), eq(agents.isActive, true)))
+        .get();
 
       if (!agentRow) {
         return notFoundResponse(c, 'Agent');
       }
 
       const agent: Agent = {
-        id: agentRow.id as string,
-        email: agentRow.email as string,
-        name: agentRow.name as string,
+        id: agentRow.id,
+        email: agentRow.email,
+        name: agentRow.displayName,
         role: agentRow.role as 'admin' | 'agent',
-        isActive: Boolean(agentRow.is_active),
-        createdAt: agentRow.created_at as number
+        isActive: Boolean(agentRow.isActive),
+        createdAt: new Date(agentRow.createdAt || new Date()).getTime()
       };
 
       return successResponse(c, agent, 'User information retrieved successfully');
@@ -180,9 +185,10 @@ export const authHandler = {
       }
 
       // 驗證用戶是否仍然存在且活躍
-      const agentRow = await c.env.DB.prepare(
-        'SELECT * FROM agents WHERE id = ? AND is_active = 1'
-      ).bind(payload.userId).first();
+      const db = drizzle(c.env.DB);
+      const agentRow = await db.select().from(agents)
+        .where(and(eq(agents.id, payload.userId), eq(agents.isActive, true)))
+        .get();
 
       if (!agentRow) {
         return unauthorizedResponse(c, 'User not found or inactive');

@@ -117,8 +117,7 @@ export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 記錄活動
     if (payload) {
-      const db = c.env.DB
-      const activityService = new ActivityService(db)
+      const activityService = new ActivityService(c.env.DB)
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
@@ -274,8 +273,7 @@ export const clearPlatformCredentials = async (c: Context<{ Bindings: Bindings }
 
     // 記錄活動
     if (payload) {
-      const db = c.env.DB
-      const activityService = new ActivityService(db)
+      const activityService = new ActivityService(c.env.DB)
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',
@@ -334,8 +332,7 @@ export const backupCredentials = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 記錄備份活動
     if (payload) {
-      const db = c.env.DB
-      const activityService = new ActivityService(db)
+      const activityService = new ActivityService(c.env.DB)
       await activityService.logActivity({
         userId: payload.userId.toString(),
         userName: payload.username || 'Admin',

@@ -1,5 +1,5 @@
 // 活動記錄服務
-import { eq, and, gte, lte, desc, count } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, count, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { activities } from '../db/schema';
 
@@ -196,20 +196,17 @@ export class ActivityService {
 
     const totalActions = totalResult?.count || 0;
 
-    // 按操作類型統計 (由於 Drizzle 不支持 GROUP BY，使用原生 SQL)
-    const actionStats = await this.db
-      .prepare(`
+    // 按操作類型統計 (使用 Drizzle SQL helper)
+    const actionStats = await drizzleDb.run(sql`
         SELECT action, COUNT(*) as count 
         FROM activities 
-        WHERE user_id = ? AND created_at >= ?
+        WHERE user_id = ${userId} AND created_at >= ${startDateStr}
         GROUP BY action
         ORDER BY count DESC
-      `)
-      .bind(userId, startDateStr)
-      .all<{ action: string; count: number }>();
+      `);
 
     const actionsByType: Record<string, number> = {};
-    (actionStats.results || []).forEach(row => {
+    (actionStats.results || []).forEach((row: any) => {
       actionsByType[row.action] = row.count;
     });
 
@@ -235,13 +232,19 @@ export class ActivityService {
 
     const drizzleDb = drizzle(this.db);
     
-    // 由於 Drizzle 不支持 DELETE 返回影響的行數，使用原生 SQL
-    const result = await this.db
-      .prepare('DELETE FROM activities WHERE created_at < ?')
-      .bind(cutoffDateStr)
-      .run();
+    // 使用 Drizzle ORM 刪除舊記錄
+    // 先查詢要刪除的記錄數量
+    const toDeleteCount = await drizzleDb
+      .select({ count: count() })
+      .from(activities)
+      .where(lt(activities.createdAt, cutoffDateStr));
 
-    return result.meta.changes || 0;
+    // 執行刪除操作
+    await drizzleDb
+      .delete(activities)
+      .where(lt(activities.createdAt, cutoffDateStr));
+
+    return toDeleteCount[0]?.count || 0;
   }
 }
 
