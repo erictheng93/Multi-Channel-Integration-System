@@ -73,7 +73,8 @@
       "Bash(wrangler tail:*)",
       "Bash(npx wrangler dev:*)",
       "WebFetch(domain:multi-channel.imfinethankyouandyou.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

@@ -232,6 +232,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
       role: agent.role,
       teamId: agent.team_id,
       isActive: Boolean(agent.is_active),
+      lastActive: null,
       createdAt: agent.created_at,
       updatedAt: agent.updated_at,
       passwordHash: '', // Not needed for return
@@ -290,6 +291,7 @@ export async function authenticateUser(
     role: user.role,
     teamId: user.team_id,
     isActive: Boolean(user.is_active),
+    lastActive: null,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
     passwordHash: '', // Not needed for return
@@ -337,6 +339,7 @@ export async function authenticateUserByEmail(
         role: agent.role,
         teamId: agent.team_id,
         isActive: Boolean(agent.is_active),
+        lastActive: null,
         createdAt: agent.created_at,
         updatedAt: agent.updated_at,
         passwordHash: '', // Not needed for return

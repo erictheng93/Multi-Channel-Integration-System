@@ -18,6 +18,7 @@ import {
   requireManagerOrAdmin,
   requireAdmin
 } from '../middleware/auth';
+// Removed unused drizzle imports
 
 const teamHandler = new Hono<{ Bindings: Bindings }>();
 

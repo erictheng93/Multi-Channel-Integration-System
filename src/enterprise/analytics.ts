@@ -3,7 +3,9 @@ import type {
   AnalyticsFilter,
   TimeSeriesData
 } from '../types/enterprise';
-import type { DatabaseRow } from '../types';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql, eq, and, gte, lte, asc, count, avg, sum } from 'drizzle-orm';
+import { metrics, conversations, messages } from '../db/schema';
 
 // Legacy 分析指標接口 (保持向後相容)
 export interface AnalyticsMetric {
@@ -105,16 +107,15 @@ export class EnterpriseAnalyticsEngine {
   
   // 記錄指標
   async recordMetric(metric: AnalyticsMetric): Promise<void> {
-    // 寫入資料庫
-    await this.db.prepare(`
-      INSERT INTO metrics (metric_name, metric_value, timestamp, tags)
-      VALUES (?, ?, ?, ?)
-    `).bind(
-      metric.name,
-      metric.value,
-      metric.timestamp,
-      JSON.stringify(metric.tags)
-    ).run();
+    // 使用 Drizzle ORM 插入指標
+    const db = drizzle(this.db);
+    await db.insert(metrics).values({
+      metricName: metric.name,
+      metricValue: metric.value,
+      timestamp: metric.timestamp,
+      tags: JSON.stringify(metric.tags),
+      unit: metric.unit || null
+    });
     
     // 更新實時指標到 KV
     const key = `metric:${metric.name}:${this.generateTagKey(metric.tags)}`;
@@ -273,10 +274,10 @@ export class EnterpriseAnalyticsEngine {
     const result = await this.db.prepare(query).bind(...params).all();
     
     if (format === 'csv') {
-      return this.convertToCSV(result.results);
+      return this.convertToCSV(result.results || []);
     }
     
-    return result.results;
+    return result.results || [];
   }
   
   // 私有方法：獲取對話指標
@@ -284,36 +285,40 @@ export class EnterpriseAnalyticsEngine {
     agentId: number,
     period: { start: number; end: number }
   ) {
-    const result = await this.db.prepare(`
-      SELECT 
-        COUNT(*) as total_conversations,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_conversations,
-        COUNT(CASE WHEN status = 'closed' THEN 1 END) as closed_conversations,
-        AVG(
+    const db = drizzle(this.db);
+    const result = await db
+      .select({
+        totalConversations: count().as('total_conversations'),
+        activeConversations: sql`COUNT(CASE WHEN ${conversations.status} = 'active' THEN 1 END)`.as('active_conversations'),
+        closedConversations: sql`COUNT(CASE WHEN ${conversations.status} = 'closed' THEN 1 END)`.as('closed_conversations'),
+        avgFirstResponseTime: sql`AVG(
           CASE 
-            WHEN first_response_at IS NOT NULL 
-            THEN (first_response_at - created_at) / 1000 
+            WHEN ${conversations.firstResponseAt} IS NOT NULL 
+            THEN (${conversations.firstResponseAt} - ${conversations.createdAt}) / 1000 
           END
-        ) as avg_first_response_time,
-        AVG(
+        )`.as('avg_first_response_time'),
+        avgResolutionTime: sql`AVG(
           CASE 
-            WHEN closed_at IS NOT NULL 
-            THEN (closed_at - created_at) / 1000 
+            WHEN ${conversations.closedAt} IS NOT NULL 
+            THEN (${conversations.closedAt} - ${conversations.createdAt}) / 1000 
           END
-        ) as avg_resolution_time
-      FROM conversations 
-      WHERE assigned_user_id = ? 
-        AND created_at >= ? 
-        AND created_at <= ?
-    `).bind(agentId, period.start, period.end).first();
+        )`.as('avg_resolution_time')
+      })
+      .from(conversations)
+      .where(and(
+        eq(conversations.assignedUserId, agentId.toString()),
+        gte(conversations.createdAt, period.start.toString()),
+        lte(conversations.createdAt, period.end.toString())
+      ))
+      .get();
     
     return {
-      totalConversations: Number(result?.total_conversations) || 0,
-      activeConversations: Number(result?.active_conversations) || 0,
-      closedConversations: Number(result?.closed_conversations) || 0,
-      averageResponseTime: Number(result?.avg_response_time) || 0,
-      averageResolutionTime: Number(result?.avg_resolution_time) || 0,
-      firstResponseTime: Number(result?.avg_first_response_time) || 0
+      totalConversations: Number(result?.totalConversations) || 0,
+      activeConversations: Number(result?.activeConversations) || 0,
+      closedConversations: Number(result?.closedConversations) || 0,
+      averageResponseTime: 0, // This field seems to be missing from the query
+      averageResolutionTime: Number(result?.avgResolutionTime) || 0,
+      firstResponseTime: Number(result?.avgFirstResponseTime) || 0
     };
   }
   
@@ -322,27 +327,31 @@ export class EnterpriseAnalyticsEngine {
     agentId: number,
     period: { start: number; end: number }
   ) {
-    const result = await this.db.prepare(`
-      SELECT 
-        COUNT(*) as total_messages,
-        COUNT(CASE WHEN sender_type = 'agent' THEN 1 END) as messages_sent,
-        COUNT(CASE WHEN sender_type = 'customer' THEN 1 END) as messages_received,
-        COUNT(DISTINCT conversation_id) as unique_conversations
-      FROM messages m
-      JOIN conversations c ON m.conversation_id = c.id
-      WHERE c.assigned_user_id = ?
-        AND m.created_at >= ?
-        AND m.created_at <= ?
-    `).bind(agentId, period.start, period.end).first();
+    const db = drizzle(this.db);
+    const result = await db
+      .select({
+        totalMessages: count().as('total_messages'),
+        messagesSent: sql`COUNT(CASE WHEN ${messages.senderType} = 'agent' THEN 1 END)`.as('messages_sent'),
+        messagesReceived: sql`COUNT(CASE WHEN ${messages.senderType} = 'customer' THEN 1 END)`.as('messages_received'),
+        uniqueConversations: sql`COUNT(DISTINCT ${messages.conversationId})`.as('unique_conversations')
+      })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(
+        eq(conversations.assignedUserId, agentId.toString()),
+        gte(messages.createdAt, period.start.toString()),
+        lte(messages.createdAt, period.end.toString())
+      ))
+      .get();
     
-    const totalMessages = Number(result?.total_messages) || 0;
-    const uniqueConversations = Number(result?.unique_conversations) || 1;
+    const totalMessages = Number(result?.totalMessages) || 0;
+    const uniqueConversations = Number(result?.uniqueConversations) || 1;
     
     return {
       totalMessages,
       messagesPerConversation: totalMessages / uniqueConversations,
-      messagesSent: Number(result?.messages_sent) || 0,
-      messagesReceived: Number(result?.messages_received) || 0
+      messagesSent: Number(result?.messagesSent) || 0,
+      messagesReceived: Number(result?.messagesReceived) || 0
     };
   }
   
@@ -353,17 +362,21 @@ export class EnterpriseAnalyticsEngine {
   ) {
     // 這裡需要實現工作時間追蹤邏輯
     // 可以基於登入/登出記錄、活動狀態等
-    const result = await this.db.prepare(`
-      SELECT 
-        SUM(metric_value) as total_work_time
-      FROM metrics 
-      WHERE metric_name = 'agent_work_time'
-        AND JSON_EXTRACT(tags, '$.agent_id') = ?
-        AND timestamp >= ? 
-        AND timestamp <= ?
-    `).bind(agentId.toString(), period.start, period.end).first();
+    const db = drizzle(this.db);
+    const result = await db
+      .select({
+        totalWorkTime: sum(metrics.metricValue).as('total_work_time')
+      })
+      .from(metrics)
+      .where(and(
+        eq(metrics.metricName, 'agent_work_time'),
+        sql`JSON_EXTRACT(${metrics.tags}, '$.agent_id') = ${agentId.toString()}`,
+        gte(metrics.timestamp, period.start),
+        lte(metrics.timestamp, period.end)
+      ))
+      .get();
 
-    const totalWorkTime = Number(result?.total_work_time) || 0;
+    const totalWorkTime = Number(result?.totalWorkTime) || 0;
     
     return {
       totalWorkTime,
@@ -379,86 +392,108 @@ export class EnterpriseAnalyticsEngine {
     period: { start: number; end: number }
   ) {
     // 這裡需要實現客戶滿意度評分系統
-    const result = await this.db.prepare(`
-      SELECT 
-        AVG(metric_value) as avg_rating,
-        COUNT(*) as total_ratings,
-        COUNT(CASE WHEN metric_value >= 4 THEN 1 END) as positive_ratings,
-        COUNT(CASE WHEN metric_value < 3 THEN 1 END) as negative_ratings
-      FROM metrics 
-      WHERE metric_name = 'customer_satisfaction'
-        AND JSON_EXTRACT(tags, '$.agent_id') = ?
-        AND timestamp >= ? 
-        AND timestamp <= ?
-    `).bind(agentId.toString(), period.start, period.end).first();
+    const db = drizzle(this.db);
+    const result = await db
+      .select({
+        avgRating: avg(metrics.metricValue).as('avg_rating'),
+        totalRatings: count().as('total_ratings'),
+        positiveRatings: sql`COUNT(CASE WHEN ${metrics.metricValue} >= 4 THEN 1 END)`.as('positive_ratings'),
+        negativeRatings: sql`COUNT(CASE WHEN ${metrics.metricValue} < 3 THEN 1 END)`.as('negative_ratings')
+      })
+      .from(metrics)
+      .where(and(
+        eq(metrics.metricName, 'customer_satisfaction'),
+        sql`JSON_EXTRACT(${metrics.tags}, '$.agent_id') = ${agentId.toString()}`,
+        gte(metrics.timestamp, period.start),
+        lte(metrics.timestamp, period.end)
+      ))
+      .get();
 
-    const totalRatings = Number(result?.total_ratings) || 0;
-    const positiveRatings = Number(result?.positive_ratings) || 0;
+    const totalRatings = Number(result?.totalRatings) || 0;
+    const positiveRatings = Number(result?.positiveRatings) || 0;
     
     return {
-      averageRating: Number(result?.avg_rating) || 0,
+      averageRating: Number(result?.avgRating) || 0,
       totalRatings,
       positiveRatings,
-      negativeRatings: Number(result?.negative_ratings) || 0,
+      negativeRatings: Number(result?.negativeRatings) || 0,
       satisfactionRate: totalRatings > 0 ? (positiveRatings / totalRatings) * 100 : 0
     };
   }
 
   // 私有方法：獲取 API 指標
   private async getApiMetrics(period: { start: number; end: number }) {
-    const result = await this.db.prepare(`
-      SELECT 
-        COUNT(*) as total_requests,
-        AVG(metric_value) as avg_response_time,
-        COUNT(CASE WHEN JSON_EXTRACT(tags, '$.status') >= '400' THEN 1 END) * 100.0 / COUNT(*) as error_rate
-      FROM metrics 
-      WHERE metric_name = 'api_request_duration'
-        AND timestamp >= ? 
-        AND timestamp <= ?
-    `).bind(period.start, period.end).first();
+    const db = drizzle(this.db);
+    
+    const result = await db
+      .select({
+        totalRequests: count().as('total_requests'),
+        avgResponseTime: avg(metrics.metricValue).as('avg_response_time'),
+        errorRate: sql<number>`COUNT(CASE WHEN JSON_EXTRACT(${metrics.tags}, '$.status') >= '400' THEN 1 END) * 100.0 / COUNT(*)`.as('error_rate')
+      })
+      .from(metrics)
+      .where(
+        and(
+          eq(metrics.metricName, 'api_request_duration'),
+          gte(metrics.timestamp, period.start),
+          lte(metrics.timestamp, period.end)
+        )
+      )
+      .get();
 
-    const endpointResult = await this.db.prepare(`
-      SELECT 
-        JSON_EXTRACT(tags, '$.path') as endpoint,
-        COUNT(*) as request_count,
-        AVG(metric_value) as avg_response_time,
-        COUNT(CASE WHEN JSON_EXTRACT(tags, '$.status') >= '400' THEN 1 END) * 100.0 / COUNT(*) as error_rate
-      FROM metrics 
-      WHERE metric_name = 'api_request_duration'
-        AND timestamp >= ? 
-        AND timestamp <= ?
-      GROUP BY JSON_EXTRACT(tags, '$.path')
-    `).bind(period.start, period.end).all();
+    const endpointResults = await db
+      .select({
+        endpoint: sql<string>`JSON_EXTRACT(${metrics.tags}, '$.path')`.as('endpoint'),
+        requestCount: count().as('request_count'),
+        avgResponseTime: avg(metrics.metricValue).as('avg_response_time'),
+        errorRate: sql<number>`COUNT(CASE WHEN JSON_EXTRACT(${metrics.tags}, '$.status') >= '400' THEN 1 END) * 100.0 / COUNT(*)`.as('error_rate')
+      })
+      .from(metrics)
+      .where(
+        and(
+          eq(metrics.metricName, 'api_request_duration'),
+          gte(metrics.timestamp, period.start),
+          lte(metrics.timestamp, period.end)
+        )
+      )
+      .groupBy(sql`JSON_EXTRACT(${metrics.tags}, '$.path')`);
 
     return {
-      totalRequests: Number(result?.total_requests) || 0,
-      averageResponseTime: Number(result?.avg_response_time) || 0,
-      errorRate: Number(result?.error_rate) || 0,
-      throughput: (Number(result?.total_requests) || 0) / ((period.end - period.start) / 1000),
-      endpointPerformance: endpointResult.results?.map((row: DatabaseRow) => ({
+      totalRequests: Number(result?.totalRequests) || 0,
+      averageResponseTime: Number(result?.avgResponseTime) || 0,
+      errorRate: Number(result?.errorRate) || 0,
+      throughput: (Number(result?.totalRequests) || 0) / ((period.end - period.start) / 1000),
+      endpointPerformance: endpointResults.map((row) => ({
         endpoint: row.endpoint,
-        requestCount: Number(row.request_count),
-        averageResponseTime: Number(row.avg_response_time),
-        errorRate: Number(row.error_rate)
-      })) || []
+        requestCount: Number(row.requestCount),
+        averageResponseTime: Number(row.avgResponseTime),
+        errorRate: Number(row.errorRate)
+      }))
     };
   }
 
   // 私有方法：獲取資料庫指標
   private async getDatabaseMetrics(period: { start: number; end: number }) {
-    const result = await this.db.prepare(`
-      SELECT 
-        COUNT(*) as query_count,
-        AVG(metric_value) as avg_query_time
-      FROM metrics 
-      WHERE metric_name = 'database_query_duration'
-        AND timestamp >= ? 
-        AND timestamp <= ?
-    `).bind(period.start, period.end).first();
+    const db = drizzle(this.db);
+    
+    const result = await db
+      .select({
+        queryCount: count().as('query_count'),
+        avgQueryTime: avg(metrics.metricValue).as('avg_query_time')
+      })
+      .from(metrics)
+      .where(
+        and(
+          eq(metrics.metricName, 'database_query_duration'),
+          gte(metrics.timestamp, period.start),
+          lte(metrics.timestamp, period.end)
+        )
+      )
+      .get();
 
     return {
-      queryCount: Number(result?.query_count) || 0,
-      averageQueryTime: Number(result?.avg_query_time) || 0,
+      queryCount: Number(result?.queryCount) || 0,
+      averageQueryTime: Number(result?.avgQueryTime) || 0,
       slowQueries: [] // 需要實現慢查詢追蹤
     };
   }
@@ -484,12 +519,20 @@ export class EnterpriseAnalyticsEngine {
     const now = Date.now();
     const oneHourAgo = now - 60 * 60 * 1000;
 
-    const activeAgents = await this.db.prepare(`
-      SELECT COUNT(DISTINCT JSON_EXTRACT(tags, '$.agent_id')) as count
-      FROM metrics 
-      WHERE metric_name = 'agent_activity'
-        AND timestamp >= ?
-    `).bind(oneHourAgo).first();
+    const db = drizzle(this.db);
+    
+    const activeAgents = await db
+      .select({
+        count: sql<number>`COUNT(DISTINCT JSON_EXTRACT(${metrics.tags}, '$.agent_id'))`.as('count')
+      })
+      .from(metrics)
+      .where(
+        and(
+          eq(metrics.metricName, 'agent_activity'),
+          gte(metrics.timestamp, oneHourAgo)
+        )
+      )
+      .get();
 
     return {
       activeAgents: Number(activeAgents?.count) || 0,
@@ -504,18 +547,25 @@ export class EnterpriseAnalyticsEngine {
     const oneHourAgo = now - 60 * 60 * 1000;
 
     // 檢查 API 錯誤率
-    const errorRate = await this.db.prepare(`
-      SELECT 
-        COUNT(CASE WHEN JSON_EXTRACT(tags, '$.status') >= '400' THEN 1 END) * 100.0 / COUNT(*) as error_rate
-      FROM metrics 
-      WHERE metric_name = 'api_request_duration'
-        AND timestamp >= ?
-    `).bind(oneHourAgo).first();
+    const db = drizzle(this.db);
+    
+    const errorRate = await db
+      .select({
+        errorRate: sql<number>`COUNT(CASE WHEN JSON_EXTRACT(${metrics.tags}, '$.status') >= '400' THEN 1 END) * 100.0 / COUNT(*)`.as('error_rate')
+      })
+      .from(metrics)
+      .where(
+        and(
+          eq(metrics.metricName, 'api_request_duration'),
+          gte(metrics.timestamp, oneHourAgo)
+        )
+      )
+      .get();
 
-    if (Number(errorRate?.error_rate) > 5) {
+    if (Number(errorRate?.errorRate) > 5) {
       alerts.push({
         type: 'high_error_rate',
-        message: `API 錯誤率過高: ${Number(errorRate?.error_rate).toFixed(2)}%`,
+        message: `API 錯誤率過高: ${Number(errorRate?.errorRate).toFixed(2)}%`,
         severity: 'high' as const,
         timestamp: now
       });
@@ -526,26 +576,33 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取趨勢數據
   private async getTrendData(startTime: number, endTime: number) {
-    const result = await this.db.prepare(`
-      SELECT 
-        metric_name,
-        timestamp,
-        metric_value
-      FROM metrics 
-      WHERE timestamp >= ? AND timestamp <= ?
-      ORDER BY timestamp
-    `).bind(startTime, endTime).all();
+    const db = drizzle(this.db);
+    
+    const results = await db
+      .select({
+        metricName: metrics.metricName,
+        timestamp: metrics.timestamp,
+        metricValue: metrics.metricValue
+      })
+      .from(metrics)
+      .where(
+        and(
+          gte(metrics.timestamp, startTime),
+          lte(metrics.timestamp, endTime)
+        )
+      )
+      .orderBy(asc(metrics.timestamp));
 
     const trends: Record<string, Array<{ timestamp: number; value: number }>> = {};
     
-    result.results?.forEach((row: DatabaseRow) => {
-      const metricName = row.metric_name as string;
+    results.forEach((row) => {
+      const metricName = row.metricName;
       if (!trends[metricName]) {
         trends[metricName] = [];
       }
       trends[metricName].push({
-        timestamp: row.timestamp as number,
-        value: row.metric_value as number
+        timestamp: row.timestamp,
+        value: row.metricValue
       });
     });
 
@@ -554,25 +611,36 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取歷史數據
   private async getHistoricalData(period: { start: number; end: number }): Promise<TimeSeriesData[]> {
-    const result = await this.db.prepare(`
-      SELECT 
-        DATE(timestamp / 1000, 'unixepoch') as date,
-        COUNT(*) as message_count,
-        AVG(metric_value) as avg_value
-      FROM metrics 
-      WHERE timestamp >= ? AND timestamp <= ?
-      GROUP BY DATE(timestamp / 1000, 'unixepoch')
-      ORDER BY date
-    `).bind(period.start, period.end).all();
+    const db = drizzle(this.db);
+    
+    const results = await db
+      .select({
+        date: sql<string>`DATE(${metrics.timestamp} / 1000, 'unixepoch')`.as('date'),
+        messageCount: count().as('message_count'),
+        avgValue: avg(metrics.metricValue).as('avg_value')
+      })
+      .from(metrics)
+      .where(
+        and(
+          gte(metrics.timestamp, period.start),
+          lte(metrics.timestamp, period.end)
+        )
+      )
+      .groupBy(sql`DATE(${metrics.timestamp} / 1000, 'unixepoch')`)
+      .orderBy(sql`date`);
 
-    return result.results?.map((row: DatabaseRow) => ({
-      timestamp: new Date(row.date as string).toISOString(),
-      value: Number(row.avg_value) || 0,
+    if (!results || results.length === 0) {
+      return [];
+    }
+    
+    return results.map((row) => ({
+      timestamp: new Date(row.date).toISOString(),
+      value: Number(row.avgValue) || 0,
       metadata: {
-        messageCount: Number(row.message_count) || 0,
-        date: row.date as string
+        messageCount: Number(row.messageCount) || 0,
+        date: row.date
       }
-    })) || [];
+    }));
   }
 
   // 私有方法：預測資源需求
@@ -699,11 +767,18 @@ export class EnterpriseAnalyticsEngine {
   
   // 私有方法：獲取客服名稱
   private async getAgentName(agentId: number): Promise<string> {
-    const agent = await this.db.prepare(`
-      SELECT display_name FROM users WHERE id = ?
-    `).bind(agentId).first();
+    const db = drizzle(this.db);
+    const { agents } = await import('../db/schema');
     
-    return agent?.display_name as string || `Agent ${agentId}`;
+    const agent = await db
+      .select({
+        displayName: agents.displayName
+      })
+      .from(agents)
+      .where(eq(agents.id, String(agentId)))
+      .get();
+    
+    return agent?.displayName || `Agent ${agentId}`;
   }
   
   // 私有方法：預測訊息量

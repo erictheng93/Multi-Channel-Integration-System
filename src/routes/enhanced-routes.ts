@@ -4,6 +4,23 @@
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { jwtAuth, requireRole /*, requireTeamAccess*/ } from '../middleware/auth';
+import { drizzle } from 'drizzle-orm/d1';
+import { 
+  customers, 
+  conversations, 
+  messages, 
+  teams, 
+  notifications 
+} from '../db/schema';
+import { 
+  count, 
+  sql, 
+  eq, 
+  and, 
+  or, 
+  isNull, 
+  desc 
+} from 'drizzle-orm';
 
 // 引入所有處理器
 import { customerHandler } from '../handlers/customer';
@@ -130,86 +147,119 @@ export function setupEnhancedRoutes(app: Hono<{ Bindings: Bindings }>) {
     try {
       const payload = c.get('jwtPayload');
       const today = new Date().toISOString().split('T')[0];
+      const db = drizzle(c.env.DB);
+      
+      // Build conditions for team-based access control
+      const isAdmin = payload?.role === 'admin';
+      const teamCondition = isAdmin 
+        ? undefined 
+        : payload?.teamId 
+          ? or(eq(conversations.assignedTeamId, payload.teamId), isNull(conversations.assignedTeamId))
+          : isNull(conversations.assignedTeamId);
       
       // 並行獲取各種統計數據
       const [
-        totalCustomers,
-        totalConversations,
-        activeConversations,
-        unreadNotifications,
-        todayMessages,
-        recentActivity
+        totalCustomersResult,
+        totalConversationsResult,
+        activeConversationsResult,
+        unreadNotificationsResult,
+        todayMessagesResult,
+        recentActivityResults
       ] = await Promise.all([
-        // 總客戶數
-        c.env.DB.prepare(`
-          SELECT COUNT(DISTINCT c.id) as total
-          FROM customers c
-          LEFT JOIN conversations conv ON c.id = conv.customer_id
-          LEFT JOIN teams t ON conv.assigned_team_id = t.id
-          WHERE ${payload?.role !== 'admin' ? 'conv.assigned_team_id = ? OR conv.assigned_team_id IS NULL' : '1=1'}
-        `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).first(),
+        // 總客戶數 - count distinct customers with team access control
+        db.select({ 
+          total: sql<number>`COUNT(DISTINCT ${customers.id})` 
+        })
+        .from(customers)
+        .leftJoin(conversations, eq(customers.id, conversations.customerId))
+        .where(teamCondition)
+        .get(),
 
         // 總對話數
-        c.env.DB.prepare(`
-          SELECT COUNT(*) as total
-          FROM conversations c
-          WHERE ${payload?.role !== 'admin' ? 'c.assigned_team_id = ? OR c.assigned_team_id IS NULL' : '1=1'}
-        `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).first(),
+        db.select({ 
+          total: count() 
+        })
+        .from(conversations)
+        .where(teamCondition)
+        .get(),
 
         // 活躍對話數
-        c.env.DB.prepare(`
-          SELECT COUNT(*) as total
-          FROM conversations c
-          WHERE c.status = 'active' 
-          AND ${payload?.role !== 'admin' ? 'c.assigned_team_id = ? OR c.assigned_team_id IS NULL' : '1=1'}
-        `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).first(),
+        db.select({ 
+          total: count() 
+        })
+        .from(conversations)
+        .where(
+          teamCondition 
+            ? and(eq(conversations.status, 'active'), teamCondition)
+            : eq(conversations.status, 'active')
+        )
+        .get(),
 
         // 未讀通知數
-        c.env.DB.prepare(`
-          SELECT COUNT(*) as total
-          FROM notifications
-          WHERE user_id = ? AND is_read = FALSE
-          AND (expires_at IS NULL OR expires_at > datetime('now'))
-        `).bind(payload?.userId).first(),
+        db.select({ 
+          total: count() 
+        })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, payload?.userId || ''),
+            eq(notifications.isRead, false),
+            or(
+              isNull(notifications.expiresAt),
+              sql`${notifications.expiresAt} > datetime('now')`
+            )
+          )
+        )
+        .get(),
 
         // 今日訊息數
-        c.env.DB.prepare(`
-          SELECT COUNT(*) as total
-          FROM messages m
-          JOIN conversations c ON m.conversation_id = c.id
-          WHERE DATE(m.created_at) = ?
-          AND ${payload?.role !== 'admin' ? 'c.assigned_team_id = ? OR c.assigned_team_id IS NULL' : '1=1'}
-        `).bind(today, ...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).first(),
+        db.select({ 
+          total: count() 
+        })
+        .from(messages)
+        .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+        .where(
+          teamCondition 
+            ? and(sql`DATE(${messages.createdAt}) = ${today}`, teamCondition)
+            : sql`DATE(${messages.createdAt}) = ${today}`
+        )
+        .get(),
 
         // 最近活動
-        c.env.DB.prepare(`
-          SELECT m.*, c.id as conversation_id, cu.display_name as customer_name
-          FROM messages m
-          JOIN conversations c ON m.conversation_id = c.id
-          JOIN customers cu ON c.customer_id = cu.id
-          WHERE ${payload?.role !== 'admin' ? 'c.assigned_team_id = ? OR c.assigned_team_id IS NULL' : '1=1'}
-          ORDER BY m.created_at DESC
-          LIMIT 10
-        `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).all()
+        db.select({
+          id: messages.id,
+          conversationId: conversations.id,
+          customerName: customers.displayName,
+          content: messages.content,
+          senderType: messages.senderType,
+          createdAt: messages.createdAt
+        })
+        .from(messages)
+        .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+        .innerJoin(customers, eq(conversations.customerId, customers.id))
+        .where(teamCondition)
+        .orderBy(desc(messages.createdAt))
+        .limit(10)
+        .all()
       ]);
 
       return c.json({
         success: true,
         data: {
           stats: {
-            totalCustomers: totalCustomers?.total || 0,
-            totalConversations: totalConversations?.total || 0,
-            activeConversations: activeConversations?.total || 0,
-            unreadNotifications: unreadNotifications?.total || 0,
-            todayMessages: todayMessages?.total || 0
+            totalCustomers: totalCustomersResult?.total || 0,
+            totalConversations: totalConversationsResult?.total || 0,
+            activeConversations: activeConversationsResult?.total || 0,
+            unreadNotifications: unreadNotificationsResult?.total || 0,
+            todayMessages: todayMessagesResult?.total || 0
           },
-          recentActivity: recentActivity.results.map((row: any) => ({
+          recentActivity: recentActivityResults.map((row) => ({
             id: row.id,
-            conversationId: row.conversation_id,
-            customerName: row.customer_name,
+            conversationId: row.conversationId,
+            customerName: row.customerName,
             content: row.content.substring(0, 100),
-            senderType: row.sender_type,
-            createdAt: row.created_at
+            senderType: row.senderType,
+            createdAt: row.createdAt
           }))
         },
         timestamp: new Date().toISOString()
@@ -228,47 +278,66 @@ export function setupEnhancedRoutes(app: Hono<{ Bindings: Bindings }>) {
   app.get('/api/dashboard/workload', jwtAuth, async (c) => {
     try {
       const payload = c.get('jwtPayload');
+      const db = drizzle(c.env.DB);
       
-      // 團隊工作負載統計
-      const teamWorkload = await c.env.DB.prepare(`
-        SELECT 
-          t.name as team_name,
-          COUNT(CASE WHEN c.status = 'active' THEN 1 END) as active_conversations,
-          COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as pending_conversations,
-          COUNT(CASE WHEN c.status = 'closed' THEN 1 END) as closed_conversations,
-          COUNT(DISTINCT c.assigned_user_id) as active_agents
-        FROM teams t
-        LEFT JOIN conversations c ON t.id = c.assigned_team_id
-        WHERE t.is_active = TRUE
-        ${payload?.role !== 'admin' ? 'AND t.id = ?' : ''}
-        GROUP BY t.id, t.name
-        ORDER BY active_conversations DESC
-      `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).all();
+      
+      // 團隊工作負載統計 - Using complex aggregation with raw SQL for now
+      const teamWorkloadQuery = payload?.role !== 'admin' && payload?.teamId
+        ? sql`
+          SELECT 
+            ${teams.name} as team_name,
+            COUNT(CASE WHEN ${conversations.status} = 'active' THEN 1 END) as active_conversations,
+            COUNT(CASE WHEN ${conversations.status} = 'pending' THEN 1 END) as pending_conversations,
+            COUNT(CASE WHEN ${conversations.status} = 'closed' THEN 1 END) as closed_conversations,
+            COUNT(DISTINCT ${conversations.assignedUserId}) as active_agents
+          FROM ${teams} t
+          LEFT JOIN ${conversations} c ON ${teams.id} = ${conversations.assignedTeamId}
+          WHERE ${teams.isActive} = TRUE AND ${teams.id} = ${payload.teamId}
+          GROUP BY ${teams.id}, ${teams.name}
+          ORDER BY active_conversations DESC
+        `
+        : sql`
+          SELECT 
+            ${teams.name} as team_name,
+            COUNT(CASE WHEN ${conversations.status} = 'active' THEN 1 END) as active_conversations,
+            COUNT(CASE WHEN ${conversations.status} = 'pending' THEN 1 END) as pending_conversations,
+            COUNT(CASE WHEN ${conversations.status} = 'closed' THEN 1 END) as closed_conversations,
+            COUNT(DISTINCT ${conversations.assignedUserId}) as active_agents
+          FROM ${teams} t
+          LEFT JOIN ${conversations} c ON ${teams.id} = ${conversations.assignedTeamId}
+          WHERE ${teams.isActive} = TRUE
+          GROUP BY ${teams.id}, ${teams.name}
+          ORDER BY active_conversations DESC
+        `;
+
+      const teamWorkloadResults = await db.run(teamWorkloadQuery);
 
       // 個人工作負載（如果是客服）
       let personalWorkload = null;
       if (payload?.role === 'agent') {
-        personalWorkload = await c.env.DB.prepare(`
+        const personalWorkloadResult = await db.run(sql`
           SELECT 
-            COUNT(CASE WHEN status = 'active' THEN 1 END) as active_conversations,
-            COUNT(CASE WHEN status = 'assigned' THEN 1 END) as assigned_conversations,
-            COUNT(CASE WHEN status = 'closed' AND DATE(updated_at) = DATE('now') THEN 1 END) as closed_today,
+            COUNT(CASE WHEN ${conversations.status} = 'active' THEN 1 END) as active_conversations,
+            COUNT(CASE WHEN ${conversations.status} = 'assigned' THEN 1 END) as assigned_conversations,
+            COUNT(CASE WHEN ${conversations.status} = 'closed' AND DATE(${conversations.updatedAt}) = DATE('now') THEN 1 END) as closed_today,
             AVG(
               CASE 
-                WHEN status = 'closed' THEN 
-                  (julianday(updated_at) - julianday(created_at)) * 24 * 60
+                WHEN ${conversations.status} = 'closed' THEN 
+                  (julianday(${conversations.updatedAt}) - julianday(${conversations.createdAt})) * 24 * 60
                 ELSE NULL 
               END
             ) as avg_resolution_time_minutes
-          FROM conversations
-          WHERE assigned_user_id = ?
-        `).bind(payload.userId).first();
+          FROM ${conversations}
+          WHERE ${conversations.assignedUserId} = ${payload.userId}
+        `);
+        
+        personalWorkload = personalWorkloadResult.results || []?.[0] || null;
       }
 
       return c.json({
         success: true,
         data: {
-          teamWorkload: teamWorkload.results,
+          teamWorkload: teamWorkloadResults.results || [],
           personalWorkload
         },
         timestamp: new Date().toISOString()
@@ -287,41 +356,78 @@ export function setupEnhancedRoutes(app: Hono<{ Bindings: Bindings }>) {
   app.get('/api/dashboard/platforms', jwtAuth, async (c) => {
     try {
       const payload = c.get('jwtPayload');
+      const db = drizzle(c.env.DB);
+      
+      // Build team access condition
+      const teamCondition = payload?.role === 'admin' 
+        ? undefined 
+        : payload?.teamId 
+          ? or(eq(conversations.assignedTeamId, payload.teamId), isNull(conversations.assignedTeamId))
+          : isNull(conversations.assignedTeamId);
 
-      // 按平台統計客戶數
-      const platformStats = await c.env.DB.prepare(`
-        SELECT 
-          cu.platform,
-          COUNT(DISTINCT cu.id) as customer_count,
-          COUNT(DISTINCT c.id) as conversation_count,
-          COUNT(DISTINCT CASE WHEN c.status = 'active' THEN c.id END) as active_conversations
-        FROM customers cu
-        LEFT JOIN conversations c ON cu.id = c.customer_id
-        WHERE ${payload?.role !== 'admin' ? 'c.assigned_team_id = ? OR c.assigned_team_id IS NULL' : '1=1'}
-        GROUP BY cu.platform
-        ORDER BY customer_count DESC
-      `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).all();
+      // 按平台統計客戶數 - Complex aggregation using raw SQL
+      const platformStatsQuery = teamCondition 
+        ? sql`
+          SELECT 
+            ${customers.platform} as platform,
+            COUNT(DISTINCT ${customers.id}) as customer_count,
+            COUNT(DISTINCT ${conversations.id}) as conversation_count,
+            COUNT(DISTINCT CASE WHEN ${conversations.status} = 'active' THEN ${conversations.id} END) as active_conversations
+          FROM ${customers} cu
+          LEFT JOIN ${conversations} c ON ${customers.id} = ${conversations.customerId}
+          WHERE (${conversations.assignedTeamId} = ${payload?.teamId} OR ${conversations.assignedTeamId} IS NULL)
+          GROUP BY ${customers.platform}
+          ORDER BY customer_count DESC
+        `
+        : sql`
+          SELECT 
+            ${customers.platform} as platform,
+            COUNT(DISTINCT ${customers.id}) as customer_count,
+            COUNT(DISTINCT ${conversations.id}) as conversation_count,
+            COUNT(DISTINCT CASE WHEN ${conversations.status} = 'active' THEN ${conversations.id} END) as active_conversations
+          FROM ${customers} cu
+          LEFT JOIN ${conversations} c ON ${customers.id} = ${conversations.customerId}
+          GROUP BY ${customers.platform}
+          ORDER BY customer_count DESC
+        `;
+      
+      const platformStatsResults = await db.run(platformStatsQuery);
 
       // 平台消息量趨勢（最近7天）
-      const messageTrends = await c.env.DB.prepare(`
-        SELECT 
-          cu.platform,
-          DATE(m.created_at) as date,
-          COUNT(*) as message_count
-        FROM messages m
-        JOIN conversations c ON m.conversation_id = c.id
-        JOIN customers cu ON c.customer_id = cu.id
-        WHERE m.created_at >= date('now', '-7 days')
-        AND ${payload?.role !== 'admin' ? 'c.assigned_team_id = ? OR c.assigned_team_id IS NULL' : '1=1'}
-        GROUP BY cu.platform, DATE(m.created_at)
-        ORDER BY date DESC, cu.platform
-      `).bind(...(payload?.role !== 'admin' && payload?.teamId ? [payload.teamId] : [])).all();
+      const messageTrendsQuery = teamCondition 
+        ? sql`
+          SELECT 
+            ${customers.platform} as platform,
+            DATE(${messages.createdAt}) as date,
+            COUNT(*) as message_count
+          FROM ${messages} m
+          JOIN ${conversations} c ON ${messages.conversationId} = ${conversations.id}
+          JOIN ${customers} cu ON ${conversations.customerId} = ${customers.id}
+          WHERE ${messages.createdAt} >= date('now', '-7 days')
+          AND (${conversations.assignedTeamId} = ${payload?.teamId} OR ${conversations.assignedTeamId} IS NULL)
+          GROUP BY ${customers.platform}, DATE(${messages.createdAt})
+          ORDER BY date DESC, ${customers.platform}
+        `
+        : sql`
+          SELECT 
+            ${customers.platform} as platform,
+            DATE(${messages.createdAt}) as date,
+            COUNT(*) as message_count
+          FROM ${messages} m
+          JOIN ${conversations} c ON ${messages.conversationId} = ${conversations.id}
+          JOIN ${customers} cu ON ${conversations.customerId} = ${customers.id}
+          WHERE ${messages.createdAt} >= date('now', '-7 days')
+          GROUP BY ${customers.platform}, DATE(${messages.createdAt})
+          ORDER BY date DESC, ${customers.platform}
+        `;
+      
+      const messageTrendsResults = await db.run(messageTrendsQuery);
 
       return c.json({
         success: true,
         data: {
-          platformStats: platformStats.results,
-          messageTrends: messageTrends.results
+          platformStats: platformStatsResults.results || [],
+          messageTrends: messageTrendsResults.results || []
         },
         timestamp: new Date().toISOString()
       });

@@ -101,7 +101,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (response.success && response.data) {
         // Handle both response formats: array directly or paginated object
         let conversationList: Conversation[]
-        let paginationData: any
+        let paginationData: Omit<PaginatedResponse<unknown>, 'items'>
 
         if (Array.isArray(response.data)) {
           // Direct array format from backend

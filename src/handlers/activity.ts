@@ -8,6 +8,9 @@ import {
   errorResponse,
   validationErrorResponse
 } from '../utils/api-response'
+import { drizzle } from 'drizzle-orm/d1'
+import { sql, gte, count } from 'drizzle-orm'
+import { activities } from '../db/schema'
 
 export const activityHandler = {
   // 獲取活動記錄列表
@@ -133,61 +136,57 @@ export const activityHandler = {
       startDate.setDate(startDate.getDate() - days)
       const startDateStr = startDate.toISOString()
 
-      const db = c.env.DB
+      const drizzleDb = drizzle(c.env.DB)
 
       // 總活動數
-      const totalResult = await db
-        .prepare('SELECT COUNT(*) as count FROM activities WHERE created_at >= ?')
-        .bind(startDateStr)
-        .first<{ count: number }>()
+      const totalResult = await drizzleDb
+        .select({ count: count() })
+        .from(activities)
+        .where(gte(activities.createdAt, startDateStr))
 
       // 按操作類型統計
-      const actionStats = await db
-        .prepare(`
-          SELECT action, COUNT(*) as count 
-          FROM activities 
-          WHERE created_at >= ?
-          GROUP BY action
-          ORDER BY count DESC
-        `)
-        .bind(startDateStr)
-        .all<{ action: string; count: number }>()
+      const actionStats = await drizzleDb
+        .select({
+          action: activities.action,
+          count: count().as('count')
+        })
+        .from(activities)
+        .where(gte(activities.createdAt, startDateStr))
+        .groupBy(activities.action)
+        .orderBy(sql`count DESC`)
 
       // 按用戶統計
-      const userStats = await db
-        .prepare(`
-          SELECT user_name, user_role, COUNT(*) as count 
-          FROM activities 
-          WHERE created_at >= ?
-          GROUP BY user_id, user_name, user_role
-          ORDER BY count DESC
-          LIMIT 10
-        `)
-        .bind(startDateStr)
-        .all<{ user_name: string; user_role: string; count: number }>()
+      const userStats = await drizzleDb
+        .select({
+          userName: activities.userName,
+          userRole: activities.userRole,
+          count: count().as('count')
+        })
+        .from(activities)
+        .where(gte(activities.createdAt, startDateStr))
+        .groupBy(activities.userId, activities.userName, activities.userRole)
+        .orderBy(sql`count DESC`)
+        .limit(10)
 
       // 按日期統計
-      const dailyStats = await db
-        .prepare(`
-          SELECT 
-            DATE(created_at) as date,
-            COUNT(*) as count
-          FROM activities 
-          WHERE created_at >= ?
-          GROUP BY DATE(created_at)
-          ORDER BY date DESC
-        `)
-        .bind(startDateStr)
-        .all<{ date: string; count: number }>()
+      const dailyStats = await drizzleDb
+        .select({
+          date: sql`DATE(${activities.createdAt})`.as('date'),
+          count: count().as('count')
+        })
+        .from(activities)
+        .where(gte(activities.createdAt, startDateStr))
+        .groupBy(sql`DATE(${activities.createdAt})`)
+        .orderBy(sql`date DESC`)
 
       const overview = {
-        totalActivities: totalResult?.count || 0,
-        actionStats: actionStats.results.reduce((acc, row) => {
+        totalActivities: totalResult[0]?.count || 0,
+        actionStats: actionStats.reduce((acc: Record<string, number>, row: any) => {
           acc[row.action] = row.count
           return acc
         }, {} as Record<string, number>),
-        topUsers: userStats.results,
-        dailyStats: dailyStats.results,
+        topUsers: userStats,
+        dailyStats: dailyStats,
         period: {
           days,
           startDate: startDateStr,

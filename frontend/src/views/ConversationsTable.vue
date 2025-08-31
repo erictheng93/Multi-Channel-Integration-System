@@ -71,12 +71,24 @@
               <table class="conversations-table">
                 <thead>
                   <tr>
-                    <th class="customer-col">客戶</th>
-                    <th class="platform-col">平台</th>
-                    <th class="status-col">狀態</th>
-                    <th class="message-col">最後訊息</th>
-                    <th class="agent-col">負責人</th>
-                    <th class="time-col">更新時間</th>
+                    <th class="customer-col">
+                      客戶
+                    </th>
+                    <th class="platform-col">
+                      平台
+                    </th>
+                    <th class="status-col">
+                      狀態
+                    </th>
+                    <th class="message-col">
+                      最後訊息
+                    </th>
+                    <th class="agent-col">
+                      負責人
+                    </th>
+                    <th class="time-col">
+                      更新時間
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -145,7 +157,9 @@
                     <div class="customer-name">
                       {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
                     </div>
-                    <div class="customer-id">ID: {{ conversation.userId }}</div>
+                    <div class="customer-id">
+                      ID: {{ conversation.userId }}
+                    </div>
                   </div>
                   <div class="badges">
                     <div

@@ -31,7 +31,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.getConversations()
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations')
+      expect(mockGet).toHaveBeenCalledWith('/conversations')
       expect(result).toEqual(mockResponse)
     })
 
@@ -42,7 +42,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.getConversations(filters)
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations?status=open&platform=line')
+      expect(mockGet).toHaveBeenCalledWith('/conversations?status=open&platform=line')
       expect(result).toEqual(mockResponse)
     })
 
@@ -61,7 +61,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.list(params)
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations?page=1&pageSize=20&status=assigned')
+      expect(mockGet).toHaveBeenCalledWith('/conversations?page=1&pageSize=20&status=assigned')
       expect(result).toEqual(mockResponse)
     })
 
@@ -78,7 +78,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.getStats()
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations/stats')
+      expect(mockGet).toHaveBeenCalledWith('/conversations/stats')
       expect(result).toEqual(mockResponse)
     })
   })
@@ -86,14 +86,33 @@ describe('Conversations API', () => {
   describe('Individual Conversation Operations', () => {
     it('should get single conversation', async () => {
       const conversationId = 'conv-123'
-      const mockConversation = { id: conversationId, status: 'open' }
+      const mockConversation = {
+        id: conversationId,
+        customer_id: 1,
+        assigned_team_id: null,
+        assigned_user_id: null,
+        status: 'active' as const,
+        last_message_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        customer_name: 'Test Customer',
+        platform: 'line' as const,
+        platform_user_id: 'user123',
+        last_message_content: 'Hello',
+        unread_count: 0
+      }
       const mockResponse = { success: true, data: mockConversation }
       mockGet.mockResolvedValue(mockResponse)
       
       const result = await conversationApi.getConversation(conversationId)
       
-      expect(mockGet).toHaveBeenCalledWith(`/api/conversations/${conversationId}`)
-      expect(result).toEqual(mockResponse)
+      expect(mockGet).toHaveBeenCalledWith(`/conversations/${conversationId}`)
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
+      if (result.success && result.data) {
+        expect(result.data.id).toBe(conversationId)
+        expect(result.data.status).toBe('open') // 'active' gets mapped to 'open'
+      }
     })
 
     it('should reject empty conversation ID', async () => {
@@ -112,13 +131,32 @@ describe('Conversations API', () => {
 
     it('should use alias method get', async () => {
       const conversationId = 'conv-123'
-      const mockResponse = { success: true, data: {} }
+      const mockConversation = {
+        id: conversationId,
+        customer_id: 1,
+        assigned_team_id: null,
+        assigned_user_id: null,
+        status: 'active' as const,
+        last_message_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        customer_name: 'Test Customer',
+        platform: 'line' as const,
+        platform_user_id: 'user123',
+        last_message_content: 'Hello',
+        unread_count: 0
+      }
+      const mockResponse = { success: true, data: mockConversation }
       mockGet.mockResolvedValue(mockResponse)
       
       const result = await conversationApi.get(conversationId)
       
-      expect(mockGet).toHaveBeenCalledWith(`/api/conversations/${conversationId}`)
-      expect(result).toEqual(mockResponse)
+      expect(mockGet).toHaveBeenCalledWith(`/conversations/${conversationId}`)
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
+      if (result.success && result.data) {
+        expect(result.data.id).toBe(conversationId)
+      }
     })
   })
 
@@ -130,7 +168,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.getMessages(conversationId)
       
-      expect(mockGet).toHaveBeenCalledWith(`/api/conversations/${conversationId}/messages`)
+      expect(mockGet).toHaveBeenCalledWith(`/conversations/${conversationId}/messages`)
       expect(result).toEqual(mockResponse)
     })
 
@@ -143,7 +181,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.getMessages(conversationId, params)
       
       expect(mockGet).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/messages?page=1&pageSize=50&since=2024-01-01`
+        `/conversations/${conversationId}/messages?page=1&pageSize=50&since=2024-01-01`
       )
       expect(result).toEqual(mockResponse)
     })
@@ -165,7 +203,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.sendMessage(conversationId, request)
       
       expect(mockPost).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/messages`,
+        `/conversations/${conversationId}/messages`,
         { content: 'Hello world', messageType: 'text', platform: undefined }
       )
       expect(result).toEqual(mockResponse)
@@ -180,7 +218,7 @@ describe('Conversations API', () => {
       await conversationApi.sendMessage(conversationId, request)
       
       expect(mockPost).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/messages`,
+        `/conversations/${conversationId}/messages`,
         { content: 'Hello world', messageType: 'text', platform: undefined }
       )
     })
@@ -216,7 +254,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.assignConversation(conversationId, agentId)
       
       expect(mockPut).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/assign`,
+        `/conversations/${conversationId}/assign`,
         { agentId }
       )
       expect(result).toEqual(mockResponse)
@@ -240,7 +278,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.assign(conversationId, agentId)
       
       expect(mockPut).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/assign`,
+        `/conversations/${conversationId}/assign`,
         { agentId }
       )
       expect(result).toEqual(mockResponse)
@@ -255,7 +293,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.closeConversation(conversationId, reason)
       
       expect(mockPut).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/close`,
+        `/conversations/${conversationId}/close`,
         { reason }
       )
       expect(result).toEqual(mockResponse)
@@ -269,7 +307,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.closeConversation(conversationId)
       
       expect(mockPut).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/close`,
+        `/conversations/${conversationId}/close`,
         undefined
       )
       expect(result).toEqual(mockResponse)
@@ -283,7 +321,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.close(conversationId)
       
       expect(mockPut).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/close`,
+        `/conversations/${conversationId}/close`,
         undefined
       )
       expect(result).toEqual(mockResponse)
@@ -296,7 +334,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.reopenConversation(conversationId)
       
-      expect(mockPut).toHaveBeenCalledWith(`/api/conversations/${conversationId}/reopen`)
+      expect(mockPut).toHaveBeenCalledWith(`/conversations/${conversationId}/reopen`)
       expect(result).toEqual(mockResponse)
     })
 
@@ -307,7 +345,7 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.markAsRead(conversationId)
       
-      expect(mockPut).toHaveBeenCalledWith(`/api/conversations/${conversationId}/read`)
+      expect(mockPut).toHaveBeenCalledWith(`/conversations/${conversationId}/read`)
       expect(result).toEqual(mockResponse)
     })
 
@@ -320,7 +358,7 @@ describe('Conversations API', () => {
       const result = await conversationApi.setTags(conversationId, tags)
       
       expect(mockPut).toHaveBeenCalledWith(
-        `/api/conversations/${conversationId}/tags`,
+        `/conversations/${conversationId}/tags`,
         { tags }
       )
       expect(result).toEqual(mockResponse)
@@ -330,10 +368,25 @@ describe('Conversations API', () => {
   describe('Search Operations', () => {
     it('should search conversations', async () => {
       const query = 'test search'
+      const mockConversation = {
+        id: 'conv-123',
+        customer_id: 1,
+        assigned_team_id: null,
+        assigned_user_id: null,
+        status: 'active' as const,
+        last_message_at: '2024-01-01T00:00:00Z',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        customer_name: 'Test Customer',
+        platform: 'line' as const,
+        platform_user_id: 'user123',
+        last_message_content: 'Hello',
+        unread_count: 0
+      }
       const mockResponse = { 
         success: true, 
         data: { 
-          items: [{ id: 'conv-123', status: 'open' }],
+          items: [mockConversation],
           total: 1 
         } 
       }
@@ -341,11 +394,14 @@ describe('Conversations API', () => {
       
       const result = await conversationApi.search(query)
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations?search=test+search')
-      expect(result).toEqual({ 
-        success: true, 
-        data: [{ id: 'conv-123', status: 'open' }] 
-      })
+      expect(mockGet).toHaveBeenCalledWith('/conversations?search=test+search')
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
+      if (result.success && result.data && Array.isArray(result.data)) {
+        expect(result.data).toHaveLength(1)
+        expect(result.data[0].id).toBe('conv-123')
+        expect(result.data[0].status).toBe('open') // 'active' maps to 'open'
+      }
     })
 
     it('should search with filters', async () => {
@@ -363,7 +419,7 @@ describe('Conversations API', () => {
       await conversationApi.search(query, filters)
       
       expect(mockGet).toHaveBeenCalledWith(
-        '/api/conversations?status=open&platform=line&search=urgent'
+        '/conversations?status=open&platform=line&search=urgent'
       )
     })
 
@@ -381,7 +437,7 @@ describe('Conversations API', () => {
       
       await conversationApi.search(query)
       
-      expect(mockGet).toHaveBeenCalledWith('/api/conversations?search=test')
+      expect(mockGet).toHaveBeenCalledWith('/conversations?search=test')
     })
 
     it('should handle search API error', async () => {

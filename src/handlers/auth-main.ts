@@ -14,6 +14,9 @@ import {
   rateLimit
 } from '../middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service';
+import { drizzle } from 'drizzle-orm/d1';
+import { agents } from '../db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -36,9 +39,17 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     let errorMessage = '';
     
     // 檢查用戶是否存在，同時獲取 password_policy
-    userRow = await c.env.DB.prepare(`
-      SELECT id, email, is_active, password_policy FROM agents WHERE email = ?
-    `).bind(cleanEmail).first();
+    const drizzleDb = drizzle(c.env.DB);
+    userRow = await drizzleDb
+      .select({
+        id: agents.id,
+        email: agents.email,
+        is_active: agents.isActive,
+        password_policy: agents.passwordPolicy
+      })
+      .from(agents)
+      .where(eq(agents.email, cleanEmail))
+      .get();
     
     if (!userRow) {
       errorMessage = 'User not found';
@@ -96,9 +107,12 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
 
     // 更新用戶的最後活動時間
     try {
-      await c.env.DB.prepare(`
-        UPDATE agents SET last_login_at = ? WHERE id = ?
-      `).bind(new Date().toISOString(), user.id).run();
+      await drizzleDb
+        .update(agents)
+        .set({ 
+          lastLoginAt: new Date().toISOString() 
+        })
+        .where(eq(agents.id, String(user.id)));
     } catch (error) {
       console.warn('Failed to update last_login_at:', error);
       // 不影響登入流程
@@ -206,9 +220,12 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
     }
 
     // 檢查 email 是否已存在
-    const existingUser = await c.env.DB.prepare(
-      'SELECT id FROM agents WHERE email = ?'
-    ).bind(email).first();
+    const drizzleDb = drizzle(c.env.DB);
+    const existingUser = await drizzleDb
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.email, email))
+      .get();
 
     if (existingUser) {
       return c.json({ error: 'Email already exists' }, 409);
@@ -413,16 +430,30 @@ authHandler.post('/refresh', async (c) => {
     }
 
     // 驗證用戶是否仍然存在且活躍
-    // 首先嘗試 agents 表（新的用戶表）
-    let userRow = await c.env.DB.prepare(
-      'SELECT * FROM agents WHERE id = ? AND is_active = 1'
-    ).bind(payload.userId).first();
+    const drizzleDb = drizzle(c.env.DB);
     
-    // 如果在 agents 表中沒找到，嘗試 users 表（舊的用戶表）
+    // 首先嘗試 agents 表（新的用戶表）
+    let userRow = await drizzleDb
+      .select()
+      .from(agents)
+      .where(and(
+        eq(agents.id, payload.userId),
+        eq(agents.isActive, true)
+      ))
+      .get();
+    
+    // 如果在 agents 表中沒找到，使用 Drizzle ORM 查詢 users 表（舊的用戶表）
     if (!userRow) {
-      userRow = await c.env.DB.prepare(
-        'SELECT * FROM users WHERE id = ? AND is_active = 1'
-      ).bind(payload.userId).first();
+      try {
+        // 嘗試查詢舊的 users 表
+        const fallbackResult = await drizzleDb.all(
+          sql`SELECT * FROM users WHERE id = ${payload.userId} AND is_active = 1`
+        );
+        userRow = (fallbackResult && fallbackResult.length > 0) ? fallbackResult[0] as any : undefined;
+      } catch (error) {
+        console.warn('Legacy users table not found or query failed:', error);
+        userRow = undefined;
+      }
     }
 
     if (!userRow) {
@@ -437,7 +468,7 @@ authHandler.post('/refresh', async (c) => {
     const newToken = await signJWT(
       { 
         userId: payload.userId,
-        displayName: payload.displayName || userRow.display_name || userRow.displayName,
+        displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: payload.role,
         teamId: payload.teamId,
@@ -451,7 +482,7 @@ authHandler.post('/refresh', async (c) => {
     const newRefreshToken = await signJWT(
       { 
         userId: payload.userId,
-        displayName: payload.displayName || userRow.display_name || userRow.displayName,
+        displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: payload.role,
         teamId: payload.teamId,

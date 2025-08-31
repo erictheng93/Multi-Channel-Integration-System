@@ -3,14 +3,18 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { jwtAuth } from '../middleware/auth';
+import { drizzle } from 'drizzle-orm/d1';
+import { customers, conversations, messages } from '../db/schema';
+import { count, sql } from 'drizzle-orm';
 
 const systemHandler = new Hono<{ Bindings: Bindings }>();
 
 // 健康檢查端點
 systemHandler.get('/health', async (c) => {
   try {
-    // 檢查資料庫連接
-    const dbCheck = await c.env.DB.prepare('SELECT 1 as test').first();
+    // 檢查資料庫連接 - using Drizzle ORM
+    const drizzleDb = drizzle(c.env.DB);
+    const dbCheck = await drizzleDb.get(sql`SELECT 1 as test`);
     
     return c.json({
       status: 'healthy',
@@ -75,8 +79,9 @@ systemHandler.get('/api', (c) => {
 // 系統狀態端點 (詳細狀態)
 systemHandler.get('/system/status', async (c) => {
   try {
-    // 檢查資料庫連接
-    const dbCheck = await c.env.DB.prepare('SELECT 1 as test').first();
+    // 檢查資料庫連接 - using Drizzle ORM
+    const drizzleDb = drizzle(c.env.DB);
+    const dbCheck = await drizzleDb.get(sql`SELECT 1 as test`);
     
     // 檢查各個資源
     const status = {
@@ -129,28 +134,30 @@ systemHandler.get('/stats', async (c) => {
 
     try {
       // 檢查表是否存在並獲取統計
-      const tablesCheck = await c.env.DB.prepare(`
-        SELECT name FROM sqlite_master 
-        WHERE type='table' AND name IN ('messages', 'customers', 'conversations')
-      `).all();
+      const drizzleDb = drizzle(c.env.DB);
+      const tablesResult = await drizzleDb.all(
+        sql`SELECT name FROM sqlite_master 
+            WHERE type='table' AND name IN ('messages', 'customers', 'conversations')`
+      );
 
-      if (tablesCheck?.results && tablesCheck.results.length > 0) {
+      const tablesCheck = tablesResult || [];
+      if (tablesCheck.length > 0) {
         // 只查詢存在的表
-        const tableNames = tablesCheck.results.map((t: any) => t.name);
+        const tableNames = tablesCheck.map((t: any) => t.name);
         
         if (tableNames.includes('messages')) {
-          const messagesResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM messages').first();
-          stats.totalMessages = (messagesResult as any)?.count || 0;
+          const messagesResult = await drizzleDb.select({ count: count() }).from(messages).get();
+          stats.totalMessages = messagesResult?.count || 0;
         }
         
         if (tableNames.includes('customers')) {
-          const customersResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM customers').first();
-          stats.totalCustomers = (customersResult as any)?.count || 0;
+          const customersResult = await drizzleDb.select({ count: count() }).from(customers).get();
+          stats.totalCustomers = customersResult?.count || 0;
         }
         
         if (tableNames.includes('conversations')) {
-          const conversationsResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM conversations').first();
-          stats.totalConversations = (conversationsResult as any)?.count || 0;
+          const conversationsResult = await drizzleDb.select({ count: count() }).from(conversations).get();
+          stats.totalConversations = conversationsResult?.count || 0;
         }
       }
     } catch (dbError) {
@@ -201,7 +208,7 @@ systemHandler.get('/messages/:messageId/replies', async (c) => {
 // 對話訊息樹狀結構端點
 systemHandler.get('/conversations/:conversationId/message-tree', async (c) => {
   try {
-    const conversationId = parseInt(c.req.param('conversationId'));
+    const conversationId = c.req.param('conversationId');
     const { getConversationMessageTree } = await import('../utils/database');
     const tree = await getConversationMessageTree(c.env.DB, conversationId);
     
@@ -234,7 +241,7 @@ systemHandler.get('/conversations/:conversationId/message-tree', async (c) => {
 // 會話統計端點
 systemHandler.get('/conversations/:conversationId/sessions', async (c) => {
   try {
-    const conversationId = parseInt(c.req.param('conversationId'));
+    const conversationId = c.req.param('conversationId');
     const { getSessionStats } = await import('../utils/session');
     const stats = await getSessionStats(c.env.DB, conversationId);
     

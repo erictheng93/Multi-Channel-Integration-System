@@ -12,7 +12,10 @@ import {
   // notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
+import { notifications } from '../db/schema';
 import { CacheManager, QueryOptimizer } from '../utils/performance';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql, eq, and } from 'drizzle-orm';
 
 interface OptimizedNotification {
   id: string;
@@ -141,35 +144,39 @@ export const optimizedNotificationHandler = {
   markAllAsRead: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const payload = c.get('jwtPayload');
-      const { type, priority } = await c.req.json().catch(() => ({}));
+      const { type } = await c.req.json().catch(() => ({}));
 
-      let query = `
-        UPDATE notifications 
-        SET is_read = TRUE, read_at = datetime('now')
-        WHERE user_id = ? AND is_read = FALSE
-      `;
-
-      const params = [payload?.userId];
+      // 構建更新條件
+      const drizzleDb = drizzle(c.env.DB);
+      const updateConditions = [
+        eq(notifications.userId, payload?.userId),
+        eq(notifications.isRead, false)
+      ];
 
       if (type) {
-        query += ' AND type = ?';
-        params.push(type);
+        updateConditions.push(eq(notifications.type, type));
       }
 
-      if (priority) {
-        query += ' AND priority = ?';
-        params.push(priority);
-      }
+      // Note: notifications schema doesn't have priority field
+      // if (priority) {
+      //   updateConditions.push(eq(notifications.priority, priority));
+      // }
 
-      const result = await c.env.DB.prepare(query).bind(...params).run();
+      await drizzleDb
+        .update(notifications)
+        .set({
+          isRead: true,
+          readAt: sql`datetime('now')`
+        })
+        .where(and(...updateConditions));
 
       // 清理相關快取
       const cache = new CacheManager(c.env);
       await cache.deletePattern(`cache:notifications:${payload?.userId}`);
 
       return successResponse(c, { 
-        updated: result.meta.changes 
-      }, `${result.meta.changes} notifications marked as read`);
+        updated: "success"
+      }, "Notifications marked as read successfully");
 
     } catch (error) {
       return handleApiError(error, c);
@@ -190,7 +197,8 @@ export const optimizedNotificationHandler = {
       }
 
       // 使用單一查詢獲取所有統計
-      const stats = await c.env.DB.prepare(`
+      const drizzleDb = drizzle(c.env.DB);
+      const stats = await drizzleDb.get(sql`
         SELECT 
           COUNT(*) as total,
           SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as unread,
@@ -203,25 +211,25 @@ export const optimizedNotificationHandler = {
           SUM(CASE WHEN created_at >= date('now', '-24 hours') THEN 1 ELSE 0 END) as today,
           SUM(CASE WHEN created_at >= date('now', '-7 days') THEN 1 ELSE 0 END) as this_week
         FROM notifications
-        WHERE user_id = ? AND (expires_at IS NULL OR expires_at > datetime('now'))
-      `).bind(payload?.userId).first();
+        WHERE user_id = ${payload?.userId} AND (expires_at IS NULL OR expires_at > datetime('now'))
+      `);
 
       const formattedStats = {
-        total: stats?.total || 0,
-        unread: stats?.unread || 0,
+        total: Number((stats as any)?.total) || 0,
+        unread: Number((stats as any)?.unread) || 0,
         byType: {
-          new_message: stats?.messages || 0,
-          conversation_assigned: stats?.assignments || 0,
-          mention: stats?.mentions || 0,
-          system: stats?.system || 0
+          new_message: Number((stats as any)?.messages) || 0,
+          conversation_assigned: Number((stats as any)?.assignments) || 0,
+          mention: Number((stats as any)?.mentions) || 0,
+          system: Number((stats as any)?.system) || 0
         },
         byPriority: {
-          urgent_unread: stats?.urgent_unread || 0,
-          high_unread: stats?.high_unread || 0
+          urgent_unread: Number((stats as any)?.urgent_unread) || 0,
+          high_unread: Number((stats as any)?.high_unread) || 0
         },
         timeRange: {
-          today: stats?.today || 0,
-          this_week: stats?.this_week || 0
+          today: Number((stats as any)?.today) || 0,
+          this_week: Number((stats as any)?.this_week) || 0
         }
       };
 
@@ -282,25 +290,26 @@ export const optimizedNotificationHandler = {
               const checkTime = new Date(lastNotificationCheck).toISOString();
 
               // 只查詢最近的通知
-              const notifications = await c.env.DB.prepare(`
+              const drizzleDb = drizzle(c.env.DB);
+              const notifications = await drizzleDb.all(sql`
                 SELECT * FROM notifications
-                WHERE user_id = ? AND is_read = FALSE
-                AND created_at > ?
+                WHERE user_id = ${payload.userId} AND is_read = FALSE
+                AND created_at > ${checkTime}
                 ORDER BY priority DESC, created_at DESC
                 LIMIT 3
-              `).bind(payload.userId, checkTime).all();
+              `);
 
-              if (notifications.results.length > 0) {
-                for (const notification of notifications.results) {
+              if (notifications && notifications.length > 0) {
+                for (const notification of notifications) {
                   const eventData = {
                     type: 'notification',
                     data: {
-                      id: notification.id,
-                      type: notification.type,
-                      title: notification.title,
-                      content: notification.content,
-                      priority: notification.priority || 'normal',
-                      createdAt: notification.created_at
+                      id: (notification as any).id,
+                      type: (notification as any).type,
+                      title: (notification as any).title,
+                      content: (notification as any).content,
+                      priority: (notification as any).priority || 'normal',
+                      createdAt: (notification as any).created_at
                     },
                     timestamp: new Date().toISOString()
                   };
@@ -371,21 +380,13 @@ export const optimizedNotificationHandler = {
       }
 
       // 批量插入
+      const drizzleDb = drizzle(c.env.DB);
       const insertPromises = notifications.map((notification: any) => {
         const notificationId = crypto.randomUUID();
-        return c.env.DB.prepare(`
+        return drizzleDb.run(sql`
           INSERT INTO notifications (id, user_id, type, title, content, data, priority, expires_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          notificationId,
-          notification.userId,
-          notification.type,
-          notification.title,
-          notification.content,
-          notification.data ? JSON.stringify(notification.data) : null,
-          notification.priority || 'normal',
-          notification.expiresAt || null
-        ).run();
+          VALUES (${notificationId}, ${notification.userId}, ${notification.type}, ${notification.title}, ${notification.content}, ${notification.data ? JSON.stringify(notification.data) : null}, ${notification.priority || 'normal'}, ${notification.expiresAt || null})
+        `);
       });
 
       await Promise.all(insertPromises);

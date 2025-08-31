@@ -13,8 +13,11 @@ import {
   notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, inArray, like, count, or, lte, gte, aliasedTable } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql } from 'drizzle-orm';
+import { messages, conversations, customers, agents, teams } from '../db/schema';
 
 export const messageHandler = {
     // 獲取對話訊息列表 - 使用 Drizzle ORM 獲得類型安全
@@ -226,30 +229,28 @@ export const messageHandler = {
                     // 處理附件 - Facebook 發送
                     if (hasAttachments && sendResult) {
                         // 獲取附件資訊
-                        const attachments = await c.env.DB.prepare(`
-                            SELECT * FROM file_attachments 
-                            WHERE id IN (${attachmentIds.map(() => '?').join(',')})
-                        `).bind(...attachmentIds).all();
+                        const attachments = await db.select()
+                            .from(schema.fileAttachments)
+                            .where(inArray(schema.fileAttachments.id, attachmentIds));
 
-                        for (const attachment of attachments.results) {
-                            const att = attachment as any;
-                            const fileUrl = att.file_url || att.url;
+                        for (const attachment of attachments) {
+                            const fileUrl = attachment.fileUrl;
                             
                             if (fileUrl) {
                                 let attachmentResult = false;
                                 
-                                if (att.mime_type?.startsWith('image/')) {
+                                if (attachment.mimeType?.startsWith('image/')) {
                                     attachmentResult = await facebookAdapter.sendImageMessage(String(conversationWithCustomer.platformUserId), fileUrl);
-                                } else if (att.mime_type?.startsWith('video/')) {
+                                } else if (attachment.mimeType?.startsWith('video/')) {
                                     attachmentResult = await facebookAdapter.sendVideoMessage(String(conversationWithCustomer.platformUserId), fileUrl);
-                                } else if (att.mime_type?.startsWith('audio/')) {
+                                } else if (attachment.mimeType?.startsWith('audio/')) {
                                     attachmentResult = await facebookAdapter.sendAudioMessage(String(conversationWithCustomer.platformUserId), fileUrl);
                                 } else {
-                                    attachmentResult = await facebookAdapter.sendFileMessage(String(conversationWithCustomer.platformUserId), fileUrl, att.filename || 'File');
+                                    attachmentResult = await facebookAdapter.sendFileMessage(String(conversationWithCustomer.platformUserId), fileUrl, attachment.filename || 'File');
                                 }
                                 
                                 if (!attachmentResult) {
-                                    console.error('Failed to send Facebook attachment:', att.filename);
+                                    console.error('Failed to send Facebook attachment:', attachment.filename);
                                 }
                             }
                         }
@@ -305,7 +306,7 @@ export const messageHandler = {
                     
                     // 🚨 關鍵：觸發 SSE 推送
                     const { broadcastActivity } = await import('./activity-stream');
-                    await broadcastActivity(c.env, activity);
+                    await broadcastActivity(c.env as any, activity);
                     
                     console.log('📢 [Agent Message] SSE broadcast triggered successfully');
                 } else {
@@ -360,99 +361,96 @@ export const messageHandler = {
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
             const limit = parseInt(pageSize);
 
-            // 構建搜索查詢
-            let query = `
-                SELECT DISTINCT m.*,
-                       c.id as conversation_id,
-                       cu.display_name as customer_name,
-                       cu.platform,
-                       cu.platform_user_id,
-                       cu.avatar_url,
-                       u.display_name as agent_name,
-                       u.email as agent_email,
-                       t.name as team_name
-                FROM messages m
-                JOIN conversations c ON m.conversation_id = c.id
-                LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN users u ON m.sender_type = 'agent' AND m.agent_sender_id = u.id
-                LEFT JOIN teams t ON c.assigned_team_id = t.id
-            `;
-
-            const whereConditions: string[] = [];
-            const params: any[] = [];
+            // 使用 Drizzle ORM 構建搜索查詢
+            const db = drizzle(c.env.DB);
+            
+            // 構建 WHERE 條件
+            const whereConditions = [];
 
             // 權限控制：非管理員只能搜索自己團隊的對話
             if (payload?.role !== 'admin' && payload?.teamId) {
-                whereConditions.push('(c.assigned_team_id = ? OR c.assigned_team_id IS NULL)');
-                params.push(payload.teamId);
+                whereConditions.push(
+                    or(
+                        eq(conversations.assignedTeamId, payload.teamId),
+                        sql`${conversations.assignedTeamId} IS NULL`
+                    )
+                );
             }
 
             // 全文搜索
-            whereConditions.push('m.content LIKE ?');
-            params.push(`%${q}%`);
+            whereConditions.push(like(messages.content, `%${q}%`));
 
             // 特定對話
             if (conversationId) {
-                whereConditions.push('m.conversation_id = ?');
-                params.push(parseInt(conversationId));
+                whereConditions.push(eq(messages.conversationId, conversationId));
             }
 
             // 發送者類型
             if (senderType) {
-                whereConditions.push('m.sender_type = ?');
-                params.push(senderType);
+                whereConditions.push(eq(messages.senderType, senderType));
             }
 
             // 訊息類型
             if (messageType) {
-                whereConditions.push('m.message_type = ?');
-                params.push(messageType);
+                whereConditions.push(eq(messages.messageType, messageType));
             }
 
             // 日期範圍
             if (dateFrom) {
-                whereConditions.push('m.created_at >= ?');
-                params.push(dateFrom);
+                whereConditions.push(gte(messages.createdAt, dateFrom));
             }
             if (dateTo) {
-                whereConditions.push('m.created_at <= ?');
-                params.push(dateTo);
+                whereConditions.push(lte(messages.createdAt, dateTo));
             }
 
             // 平台篩選
             if (platform) {
-                whereConditions.push('cu.platform = ?');
-                params.push(platform);
+                whereConditions.push(eq(customers.platform, platform));
             }
 
-            if (whereConditions.length > 0) {
-                query += ' WHERE ' + whereConditions.join(' AND ');
-            }
-
-            query += ' ORDER BY m.created_at DESC LIMIT ? OFFSET ?';
-            params.push(limit, offset);
-
-            // 執行搜索
-            const result = await c.env.DB.prepare(query).bind(...params).all();
+            // 執行搜索查詢
+            const result = await db
+                .select({
+                    id: messages.id,
+                    conversationId: messages.conversationId,
+                    senderType: messages.senderType,
+                    customerSenderId: messages.customerSenderId,
+                    agentSenderId: messages.agentSenderId,
+                    content: messages.content,
+                    messageType: messages.messageType,
+                    createdAt: messages.createdAt,
+                    customerName: customers.displayName,
+                    platform: customers.platform,
+                    platformUserId: customers.platformUserId,
+                    avatarUrl: customers.avatarUrl,
+                    agentName: agents.displayName,
+                    agentEmail: agents.email,
+                    teamName: teams.name
+                })
+                .from(messages)
+                .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+                .leftJoin(customers, eq(conversations.customerId, customers.id))
+                .leftJoin(agents, and(
+                    eq(messages.senderType, 'agent'),
+                    eq(messages.agentSenderId, agents.id)
+                ))
+                .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+                .where(and(...whereConditions))
+                .orderBy(desc(messages.createdAt))
+                .limit(limit)
+                .offset(offset);
 
             // 計算總數
-            let countQuery = `
-                SELECT COUNT(DISTINCT m.id) as total
-                FROM messages m
-                JOIN conversations c ON m.conversation_id = c.id
-                LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN teams t ON c.assigned_team_id = t.id
-            `;
-
-            if (whereConditions.length > 0) {
-                countQuery += ' WHERE ' + whereConditions.join(' AND ');
-            }
-
-            const countParams = params.slice(0, -2); // 移除 LIMIT 和 OFFSET
-            const countResult = await c.env.DB.prepare(countQuery).bind(...countParams).first();
+            const countResult = await db
+                .select({ total: count(messages.id) })
+                .from(messages)
+                .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+                .leftJoin(customers, eq(conversations.customerId, customers.id))
+                .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+                .where(and(...whereConditions));
 
             // 格式化結果並高亮顯示
-            const messages = result.results.map((row: any) => {
+            const searchMessages = result.map((row: any) => {
                 let highlightedContent = row.content;
                 
                 if (highlight === 'true') {
@@ -490,12 +488,12 @@ export const messageHandler = {
             });
 
             // 按相關性排序
-            const sortedMessages = messages.sort((a, b) => b.relevanceScore - a.relevanceScore);
+            const sortedMessages = searchMessages.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
             const paginationMeta: ExtendedPaginationMeta = {
                 page: parseInt(page),
                 limit,
-                total: (countResult?.total as number) || 0,
+                total: countResult[0]?.total || 0,
                 searchQuery: q
             };
 
@@ -516,23 +514,28 @@ export const messageHandler = {
             }
 
             // 獲取常見搜索詞（基於訊息內容）
-            const suggestions = await c.env.DB.prepare(`
-                SELECT DISTINCT 
-                    CASE 
-                        WHEN LENGTH(content) > 50 THEN SUBSTR(content, 1, 50) || '...'
-                        ELSE content
-                    END as suggestion,
-                    COUNT(*) as frequency
-                FROM messages 
-                WHERE content LIKE ? 
-                    AND LENGTH(content) > 5
-                    AND LENGTH(content) < 100
-                GROUP BY suggestion
-                ORDER BY frequency DESC, suggestion ASC
-                LIMIT ?
-            `).bind(`%${q}%`, parseInt(limit)).all();
+            const db = drizzle(c.env.DB);
+            
+            const suggestions = await db
+                .select({
+                    suggestion: sql`CASE 
+                        WHEN LENGTH(${messages.content}) > 50 
+                        THEN SUBSTR(${messages.content}, 1, 50) || '...'
+                        ELSE ${messages.content}
+                    END`,
+                    frequency: count().as('frequency')
+                })
+                .from(messages)
+                .where(and(
+                    like(messages.content, `%${q}%`),
+                    sql`LENGTH(${messages.content}) > 5`,
+                    sql`LENGTH(${messages.content}) < 100`
+                ))
+                .groupBy(sql`suggestion`)
+                .orderBy(sql`frequency DESC`, sql`suggestion ASC`)
+                .limit(parseInt(limit));
 
-            const formattedSuggestions = suggestions.results.map((row: any) => ({
+            const formattedSuggestions = suggestions.map((row: any) => ({
                 text: row.suggestion,
                 frequency: row.frequency,
                 type: 'content'
@@ -601,144 +604,157 @@ export const messageHandler = {
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
             const limit = parseInt(pageSize);
 
-            let query = `
-                SELECT DISTINCT m.*,
-                       c.id as conversation_id,
-                       c.priority,
-                       cu.display_name as customer_name,
-                       cu.platform,
-                       u.display_name as agent_name,
-                       GROUP_CONCAT(tag.name, ',') as tag_names
-                FROM messages m
-                JOIN conversations c ON m.conversation_id = c.id
-                LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN users u ON m.sender_type = 'agent' AND m.agent_sender_id = u.id
-                LEFT JOIN conversation_tags ct ON c.id = ct.conversation_id
-                LEFT JOIN tags tag ON ct.tag_id = tag.id AND tag.is_active = TRUE
-            `;
+            // 使用 Drizzle ORM 進行高級搜索
+            const db = drizzle(c.env.DB);
+            
+            // 定義表別名用於 JOIN
+            const ct = aliasedTable(schema.conversationTags, 'ct');
+            const tag = aliasedTable(schema.tags, 'tag');
+            const cu = aliasedTable(customers, 'cu');
+            const u = aliasedTable(agents, 'u');
+            const conv = aliasedTable(conversations, 'conv');
 
-            const whereConditions: string[] = [];
-            const params: any[] = [];
+            // 構建 WHERE 條件
+            const whereConditions = [];
 
             // 權限控制
             if (payload?.role !== 'admin' && payload?.teamId) {
-                whereConditions.push('(c.assigned_team_id = ? OR c.assigned_team_id IS NULL)');
-                params.push(payload.teamId);
+                whereConditions.push(
+                    or(
+                        eq(conv.assignedTeamId, payload.teamId),
+                        sql`${conv.assignedTeamId} IS NULL`
+                    )
+                );
             }
 
             // 搜索查詢
             if (searchQuery) {
                 if (exact === 'true') {
-                    whereConditions.push('m.content = ?');
-                    params.push(searchQuery);
+                    whereConditions.push(eq(messages.content, searchQuery));
                 } else {
-                    whereConditions.push('m.content LIKE ?');
-                    params.push(`%${searchQuery}%`);
+                    whereConditions.push(like(messages.content, `%${searchQuery}%`));
                 }
             }
 
             // 排除詞
             if (exclude) {
-                whereConditions.push('m.content NOT LIKE ?');
-                params.push(`%${exclude}%`);
+                whereConditions.push(sql`${messages.content} NOT LIKE ${'%' + exclude + '%'}`);
             }
 
             // 客戶名稱
             if (customerName) {
-                whereConditions.push('cu.display_name LIKE ?');
-                params.push(`%${customerName}%`);
+                whereConditions.push(like(cu.displayName, `%${customerName}%`));
             }
 
             // 客服名稱
             if (agentName) {
-                whereConditions.push('u.display_name LIKE ?');
-                params.push(`%${agentName}%`);
+                whereConditions.push(like(u.displayName, `%${agentName}%`));
             }
 
             // 包含附件
             if (hasAttachments === 'true') {
-                whereConditions.push('m.message_type != ?');
-                params.push('text');
+                whereConditions.push(sql`${messages.messageType} != 'text'`);
             } else if (hasAttachments === 'false') {
-                whereConditions.push('m.message_type = ?');
-                params.push('text');
+                whereConditions.push(eq(messages.messageType, 'text'));
             }
 
             // 已撤回訊息
             if (isRecalled === 'true') {
-                whereConditions.push('m.is_recalled = TRUE');
+                whereConditions.push(eq(messages.isRecalled, true));
             } else if (isRecalled === 'false') {
-                whereConditions.push('m.is_recalled = FALSE');
+                whereConditions.push(eq(messages.isRecalled, false));
             }
 
             // 會話ID
             if (sessionId) {
-                whereConditions.push('m.session_id = ?');
-                params.push(sessionId);
+                whereConditions.push(eq(messages.sessionId, sessionId));
             }
 
             // 對話優先級
             if (priority) {
-                whereConditions.push('c.priority = ?');
-                params.push(priority);
+                whereConditions.push(eq(conv.priority, priority));
             }
 
             // 標籤
             if (tags && Array.isArray(tags) && tags.length > 0) {
-                const tagPlaceholders = tags.map(() => '?').join(',');
-                whereConditions.push(`tag.id IN (${tagPlaceholders})`);
-                params.push(...tags);
+                whereConditions.push(inArray(tag.id, tags));
             }
 
-            if (whereConditions.length > 0) {
-                query += ' WHERE ' + whereConditions.join(' AND ');
-            }
-
-            query += ' GROUP BY m.id ORDER BY m.created_at DESC LIMIT ? OFFSET ?';
-            params.push(limit, offset);
-
-            const result = await c.env.DB.prepare(query).bind(...params).all();
+            // 執行查詢
+            const result = await db
+                .select({
+                    id: messages.id,
+                    conversationId: messages.conversationId,
+                    senderType: messages.senderType,
+                    agentSenderId: messages.agentSenderId,
+                    content: messages.content,
+                    messageType: messages.messageType,
+                    isRecalled: messages.isRecalled,
+                    sessionId: messages.sessionId,
+                    createdAt: messages.createdAt,
+                    priority: conv.priority,
+                    customerName: cu.displayName,
+                    platform: cu.platform,
+                    agentName: u.displayName,
+                    tagNames: sql`GROUP_CONCAT(${tag.name}, ',')`.as('tag_names')
+                })
+                .from(messages)
+                .innerJoin(conv, eq(messages.conversationId, conv.id))
+                .leftJoin(cu, eq(conv.customerId, cu.id))
+                .leftJoin(u, and(
+                    eq(messages.senderType, 'agent'),
+                    eq(messages.agentSenderId, u.id)
+                ))
+                .leftJoin(ct, eq(conv.id, ct.conversationId))
+                .leftJoin(tag, and(
+                    eq(ct.tagId, tag.id),
+                    eq(tag.isActive, true)
+                ))
+                .where(and(...whereConditions))
+                .groupBy(messages.id)
+                .orderBy(desc(messages.createdAt))
+                .limit(limit)
+                .offset(offset);
 
             // 計算總數
-            let countQuery = `
-                SELECT COUNT(DISTINCT m.id) as total
-                FROM messages m
-                JOIN conversations c ON m.conversation_id = c.id
-                LEFT JOIN customers cu ON c.customer_id = cu.id
-                LEFT JOIN users u ON m.sender_type = 'agent' AND m.agent_sender_id = u.id
-                LEFT JOIN conversation_tags ct ON c.id = ct.conversation_id
-                LEFT JOIN tags tag ON ct.tag_id = tag.id AND tag.is_active = TRUE
-            `;
+            const countResult = await db
+                .select({ total: count(messages.id) })
+                .from(messages)
+                .innerJoin(conv, eq(messages.conversationId, conv.id))
+                .leftJoin(cu, eq(conv.customerId, cu.id))
+                .leftJoin(u, and(
+                    eq(messages.senderType, 'agent'),
+                    eq(messages.agentSenderId, u.id)
+                ))
+                .leftJoin(ct, eq(conv.id, ct.conversationId))
+                .leftJoin(tag, and(
+                    eq(ct.tagId, tag.id),
+                    eq(tag.isActive, true)
+                ))
+                .where(and(...whereConditions));
 
-            if (whereConditions.length > 0) {
-                countQuery += ' WHERE ' + whereConditions.join(' AND ');
-            }
-
-            const countParams = params.slice(0, -2);
-            const countResult = await c.env.DB.prepare(countQuery).bind(...countParams).first();
-
-            const messages = result.results.map((row: any) => ({
+            const searchResults = result.map((row: any) => ({
                 id: row.id,
-                conversationId: row.conversation_id,
+                conversationId: row.conversationId,
                 conversation: {
                     priority: row.priority,
-                    tags: row.tag_names ? row.tag_names.split(',') : []
+                    tags: row.tagNames ? row.tagNames.split(',') : []
                 },
-                senderType: row.sender_type,
-                senderName: row.sender_type === 'customer' ? row.customer_name : 
-                           row.sender_type === 'agent' ? row.agent_name : 'System',
+                senderType: row.senderType,
+                senderName: row.senderType === 'customer' ? row.customerName : 
+                           row.senderType === 'agent' ? row.agentName : 'System',
                 content: row.content,
-                messageType: row.message_type,
-                isRecalled: Boolean(row.is_recalled),
-                sessionId: row.session_id,
-                createdAt: row.created_at,
+                messageType: row.messageType,
+                isRecalled: Boolean(row.isRecalled),
+                sessionId: row.sessionId,
+                createdAt: row.createdAt,
                 platform: row.platform
             }));
 
             const paginationMeta: ExtendedPaginationMeta = {
                 page: parseInt(page),
                 limit,
-                total: (countResult?.total as number) || 0,
+                total: countResult[0]?.total || 0,
                 searchCriteria: {
                     ...(conversationId && { conversationId: parseInt(conversationId) }),
                     ...(senderType && { senderType }),
@@ -752,7 +768,7 @@ export const messageHandler = {
                 }
             };
 
-            return paginatedResponse(c, messages, paginationMeta);
+            return paginatedResponse(c, searchResults, paginationMeta);
 
         } catch (error) {
             return handleApiError(error, c);

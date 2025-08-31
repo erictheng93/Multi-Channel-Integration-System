@@ -9,6 +9,8 @@ import {
   unauthorizedResponse,
   handleApiError 
 } from '../utils/api-response';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql } from 'drizzle-orm';
 
 interface RealtimeEvent {
   type: 'message' | 'typing' | 'agent_joined' | 'agent_left' | 'assignment_changed' | 'status_changed';
@@ -92,40 +94,41 @@ export const realtimeHandler = {
             if (connectionClosed) return;
 
             try {
+              const drizzleDb = drizzle(c.env.DB);
               // 檢查新通知
-              const notifications = await c.env.DB.prepare(`
+              const notifications = await drizzleDb.run(sql`
                 SELECT * FROM notifications
-                WHERE user_id = ? AND is_read = FALSE
+                WHERE user_id = ${payload.userId} AND is_read = FALSE
                 AND created_at > datetime('now', '-30 seconds')
                 ORDER BY created_at DESC
                 LIMIT 5
-              `).bind(payload.userId).all();
+              `);
 
               // 檢查對話狀態變更
               let conversationUpdates = null;
               if (conversationId) {
-                conversationUpdates = await c.env.DB.prepare(`
+                conversationUpdates = await drizzleDb.get(sql`
                   SELECT c.*, cu.display_name as customer_name
                   FROM conversations c
                   JOIN customers cu ON c.customer_id = cu.id
-                  WHERE c.id = ? AND c.updated_at > datetime('now', '-30 seconds')
-                `).bind(conversationId).first();
+                  WHERE c.id = ${conversationId} AND c.updated_at > datetime('now', '-30 seconds')
+                `);
               }
 
               // 檢查打字狀態
               const typingStatuses = await realtimeHandler.getTypingStatuses(c.env, conversationId ? parseInt(conversationId) : null);
 
               // 發送通知
-              if (notifications.results.length > 0) {
-                for (const notification of notifications.results) {
+              if (notifications.results || [].length > 0) {
+                for (const notification of notifications.results || []) {
                   const eventData = {
                     type: 'notification',
                     data: {
-                      id: notification.id,
-                      type: notification.type,
-                      title: notification.title,
-                      content: notification.content,
-                      createdAt: notification.created_at
+                      id: (notification as any).id,
+                      type: (notification as any).type,
+                      title: (notification as any).title,
+                      content: (notification as any).content,
+                      createdAt: (notification as any).created_at
                     },
                     timestamp: new Date().toISOString()
                   };
@@ -139,12 +142,12 @@ export const realtimeHandler = {
                 const eventData = {
                   type: 'conversation_updated',
                   data: {
-                    conversationId: conversationUpdates.id,
-                    status: conversationUpdates.status,
-                    assignedUserId: conversationUpdates.assigned_user_id,
-                    assignedTeamId: conversationUpdates.assigned_team_id,
-                    customerName: conversationUpdates.customer_name,
-                    updatedAt: conversationUpdates.updated_at
+                    conversationId: (conversationUpdates as any).id,
+                    status: (conversationUpdates as any).status,
+                    assignedUserId: (conversationUpdates as any).assigned_user_id,
+                    assignedTeamId: (conversationUpdates as any).assigned_team_id,
+                    customerName: (conversationUpdates as any).customer_name,
+                    updatedAt: (conversationUpdates as any).updated_at
                   },
                   timestamp: new Date().toISOString()
                 };
@@ -292,7 +295,8 @@ export const realtimeHandler = {
       // const payload = c.get('jwtPayload');
 
       // 使用單一查詢獲取所有需要的資訊
-      const result = await c.env.DB.prepare(`
+      const drizzleDb = drizzle(c.env.DB);
+      const result = await drizzleDb.get(sql`
         SELECT 
           c.*,
           cu.display_name as customer_name,
@@ -307,8 +311,8 @@ export const realtimeHandler = {
         JOIN customers cu ON c.customer_id = cu.id
         LEFT JOIN teams t ON c.assigned_team_id = t.id
         LEFT JOIN users u ON c.assigned_user_id = u.id
-        WHERE c.id = ?
-      `).bind(conversationId).first();
+        WHERE c.id = ${conversationId}
+      `);
 
       if (!result) {
         return errorResponse(c, 'Conversation not found', 404);
@@ -323,37 +327,37 @@ export const realtimeHandler = {
       const onlineAgents = onlineAgentsData ? JSON.parse(onlineAgentsData) : [];
 
       const conversationStatus = {
-        id: result.id,
-        status: result.status,
-        priority: result.priority,
+        id: (result as any).id,
+        status: (result as any).status,
+        priority: (result as any).priority,
         customer: {
-          name: result.customer_name,
-          platform: result.platform,
-          avatarUrl: result.avatar_url
+          name: (result as any).customer_name,
+          platform: (result as any).platform,
+          avatarUrl: (result as any).avatar_url
         },
         assignment: {
-          teamId: result.assigned_team_id,
-          teamName: result.team_name,
-          userId: result.assigned_user_id,
-          userName: result.agent_name
+          teamId: (result as any).assigned_team_id,
+          teamName: (result as any).team_name,
+          userId: (result as any).assigned_user_id,
+          userName: (result as any).agent_name
         },
         activity: {
-          unreadCount: result.unread_count,
-          lastMessage: result.last_message,
-          lastMessageAt: result.last_message_at,
+          unreadCount: (result as any).unread_count,
+          lastMessage: (result as any).last_message,
+          lastMessageAt: (result as any).last_message_at,
           typingUsers: typingStatuses,
           onlineAgents: onlineAgents.length
         },
         timestamps: {
-          createdAt: result.created_at,
-          updatedAt: result.updated_at,
-          lastMessageAt: result.last_message_at
+          createdAt: (result as any).created_at,
+          updatedAt: (result as any).updated_at,
+          lastMessageAt: (result as any).last_message_at
         }
       };
 
       // 設置快取標頭 (5 秒)
       c.header('Cache-Control', 'public, max-age=5');
-      c.header('ETag', `"${result.updated_at}"`);
+      c.header('ETag', `"${(result as any).updated_at}"`);
 
       return successResponse(c, conversationStatus, 'Conversation status retrieved');
 

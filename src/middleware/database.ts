@@ -87,7 +87,7 @@ export const authMiddleware = createMiddleware<HonoContext>(async (c, next): Pro
     // Get complete agent info from database
     const db = c.get('db');
     const dbService = new DatabaseService(db, kv);
-    const agent = await dbService.getAgentById(session.agentId);
+    const agent = await dbService.getAgentById(session.userId);
     
     if (!agent) {
       await kv.deleteSession(token);
@@ -119,7 +119,7 @@ export const optionalAuthMiddleware = createMiddleware<HonoContext>(async (c, ne
         const db = c.get('db');
         const kv = c.get('kv');
         const dbService = new DatabaseService(db, kv);
-        const agent = await dbService.getAgentById(session.agentId);
+        const agent = await dbService.getAgentById(session.userId);
         
         if (agent) {
           c.set('agent', agent);

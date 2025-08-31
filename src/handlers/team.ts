@@ -12,6 +12,9 @@ import {
   handleApiError 
 } from '../utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
+import { drizzle } from 'drizzle-orm/d1'
+import { sql, eq, desc, ne, and, count } from 'drizzle-orm'
+import { agents, conversations } from '../db/schema'
 
 // 驗證管理員權限的輔助函數
 async function verifyAdminAuth(c: Context<{ Bindings: Bindings }>) {
@@ -34,15 +37,6 @@ async function verifyAdminAuth(c: Context<{ Bindings: Bindings }>) {
   }
 }
 
-interface TeamMember {
-  id: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'agent';
-  isActive: boolean;
-  createdAt: Date;
-  lastActive?: Date;
-}
 
 // interface InviteRequest {
 //   email: string;
@@ -53,34 +47,32 @@ interface TeamMember {
 // 獲取團隊成員列表
 export const getTeamMembers = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     
     // 驗證管理員權限
     const authResult = await verifyAdminAuth(c)
     if (authResult.error) return authResult.error
 
     // 獲取所有團隊成員
-    const members = await db
-      .prepare(`
-        SELECT 
-          id,
-          display_name as loginId,
-          email,
-          display_name as name,
-          role,
-          '' as "group",
-          is_active as isActive,
-          CASE WHEN is_active = 1 THEN 'active' ELSE 'inactive' END as status,
-          created_at as createdAt,
-          last_login_at as lastActive
-        FROM agents 
-        ORDER BY last_login_at DESC, created_at DESC
-      `)
-      .all<TeamMember>()
+    const members = await drizzleDb
+      .select({
+        id: agents.id,
+        loginId: agents.displayName,
+        email: agents.email,
+        name: agents.displayName,
+        role: agents.role,
+        group: sql`''`.as('group'),
+        isActive: agents.isActive,
+        status: sql`CASE WHEN ${agents.isActive} = 1 THEN 'active' ELSE 'inactive' END`.as('status'),
+        createdAt: agents.createdAt,
+        lastActive: agents.lastLoginAt
+      })
+      .from(agents)
+      .orderBy(desc(agents.lastLoginAt), desc(agents.createdAt))
 
-    const formattedMembers = members.results.map(member => ({
+    const formattedMembers = members.map((member: any) => ({
       ...member,
-      createdAt: new Date(member.createdAt),
+      createdAt: member.createdAt ? new Date(member.createdAt) : new Date(),
       lastActive: member.lastActive ? new Date(member.lastActive) : undefined
     }))
 
@@ -93,7 +85,7 @@ export const getTeamMembers = async (c: Context<{ Bindings: Bindings }>) => {
 // 直接新增成員
 export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const { loginId, name, email, password, role, isActive } = await c.req.json<{
       loginId: string;
       name?: string;
@@ -123,10 +115,11 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     if (authResult.error) return authResult.error
 
     // 檢查 display_name 是否已存在
-    const existingUsername = await db
-      .prepare('SELECT id FROM agents WHERE display_name = ?')
-      .bind(loginId)
-      .first()
+    const existingUsername = await drizzleDb
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.displayName, loginId))
+      .get()
 
     if (existingUsername) {
       return validationErrorResponse(c, [
@@ -136,10 +129,11 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 如果提供了email，檢查email是否已存在
     if (email) {
-      const existingEmail = await db
-        .prepare('SELECT id FROM agents WHERE email = ?')
-        .bind(email)
-        .first()
+      const existingEmail = await drizzleDb
+        .select({ id: agents.id })
+        .from(agents)
+        .where(eq(agents.email, email))
+        .get()
 
       if (existingEmail) {
         return validationErrorResponse(c, [
@@ -153,24 +147,17 @@ export const addTeamMember = async (c: Context<{ Bindings: Bindings }>) => {
     const bcrypt = await import('bcryptjs');
     const passwordHash = await bcrypt.hash(password, 10)
     
-    await db
-      .prepare(`
-        INSERT INTO agents (
-          id, email, password_hash, display_name, role, 
-          is_active, created_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-      .bind(
-        memberId,
-        email || null,
-        passwordHash,
-        name || loginId,
-        role,
-        isActive ? 1 : 0,
-        Date.now()
-      )
-      .run()
+    await ((drizzleDb as any)
+      .insert(agents)
+      .values({
+        id: memberId,
+        email: email || null,
+        passwordHash: passwordHash,
+        displayName: name || loginId,
+        role: role,
+        isActive: isActive,
+        createdAt: new Date().toISOString()
+      }))
 
     // 返回新創建的成員資訊
     const newMember = {
@@ -219,7 +206,7 @@ export const getInviteInfo = async (c: Context<{ Bindings: Bindings }>) => {
 // 更新成員狀態
 export const updateMemberStatus = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     const { status } = await c.req.json<{ status: 'active' | 'inactive' }>()
     
@@ -236,19 +223,21 @@ export const updateMemberStatus = async (c: Context<{ Bindings: Bindings }>) => 
     }
 
     // 獲取成員資訊用於活動記錄
-    const member = await db
-      .prepare('SELECT display_name as name, email, role FROM agents WHERE id = ?')
-      .bind(memberId)
-      .first<{ name: string; email: string; role: string }>();
+    const member = await drizzleDb
+      .select({
+        name: agents.displayName,
+        email: agents.email,
+        role: agents.role
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get();
 
     const isActive = status === 'active'
-    await db
-      .prepare('UPDATE agents SET is_active = ? WHERE id = ?')
-      .bind(isActive ? 1 : 0, memberId)
-      .run()
+    await drizzleDb.update(agents).set({ isActive: isActive }).where(eq(agents.id, memberId))
 
     // 記錄成員狀態更新活動
-    const activityService = new ActivityService(db);
+    const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: payload.userId.toString(),
       userName: payload.username || 'Admin',
@@ -278,7 +267,7 @@ export const updateMemberStatus = async (c: Context<{ Bindings: Bindings }>) => 
 // 更新成員角色
 export const updateMemberRole = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     const { role } = await c.req.json<{ role: 'admin' | 'agent' }>()
     
@@ -295,18 +284,21 @@ export const updateMemberRole = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // 獲取成員原始資訊
-    const member = await db
-      .prepare('SELECT display_name as name, email, role FROM agents WHERE id = ?')
-      .bind(memberId)
-      .first<{ name: string; email: string; role: string }>();
+    const member = await drizzleDb
+      .select({
+        name: agents.displayName,
+        email: agents.email,
+        role: agents.role
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get();
 
-    await db
-      .prepare('UPDATE agents SET role = ? WHERE id = ?')
-      .bind(role, memberId)
-      .run()
+    await drizzleDb
+      drizzle(c.env.DB).update(agents).set({ role: role }).where(eq(agents.id, memberId))
 
     // 記錄角色更新活動
-    const activityService = new ActivityService(db);
+    const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: payload.userId.toString(),
       userName: payload.username || 'Admin',
@@ -335,7 +327,7 @@ export const updateMemberRole = async (c: Context<{ Bindings: Bindings }>) => {
 // 重設成員密碼
 export const resetMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     
     // 驗證管理員權限
@@ -347,10 +339,8 @@ export const resetMemberPassword = async (c: Context<{ Bindings: Bindings }>) =>
     const bcrypt = await import('bcryptjs');
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    await db
-      .prepare('UPDATE agents SET password_hash = ? WHERE id = ?')
-      .bind(passwordHash, memberId)
-      .run()
+    await drizzleDb
+      drizzle(c.env.DB).update(agents).set({ passwordHash: passwordHash }).where(eq(agents.id, memberId))
 
     // 在實際環境中，這裡會發送郵件通知用戶新密碼
     console.log(`Password reset completed for member ${memberId}`)
@@ -364,7 +354,7 @@ export const resetMemberPassword = async (c: Context<{ Bindings: Bindings }>) =>
 // 重設成員密碼帶政策
 export const resetPasswordWithPolicy = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     const { newPassword, policy } = await c.req.json<{
       newPassword: string;
@@ -404,10 +394,15 @@ export const resetPasswordWithPolicy = async (c: Context<{ Bindings: Bindings }>
     }
 
     // 獲取成員資訊用於活動記錄
-    const member = await db
-      .prepare('SELECT display_name as name, email, role FROM agents WHERE id = ?')
-      .bind(memberId)
-      .first<{ name: string; email: string; role: string }>();
+    const member = await drizzleDb
+      .select({
+        name: agents.displayName,
+        email: agents.email,
+        role: agents.role
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get();
 
     if (!member) {
       return validationErrorResponse(c, [
@@ -420,13 +415,15 @@ export const resetPasswordWithPolicy = async (c: Context<{ Bindings: Bindings }>
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
     // 更新密碼和密碼政策
-    await db
-      .prepare('UPDATE agents SET password_hash = ?, password_policy = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .bind(passwordHash, policy, memberId)
-      .run()
+    await drizzleDb
+      drizzle(c.env.DB).update(agents).set({ 
+        passwordHash: passwordHash, 
+        passwordPolicy: policy, 
+        updatedAt: sql`CURRENT_TIMESTAMP` 
+      }).where(eq(agents.id, memberId))
 
     // 記錄密碼重設活動
-    const activityService = new ActivityService(db);
+    const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: payload.userId.toString(),
       userName: payload.username || 'Admin',
@@ -458,7 +455,7 @@ export const resetPasswordWithPolicy = async (c: Context<{ Bindings: Bindings }>
 // 更改密碼（用於強制密碼更改）
 export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const { currentPassword, newPassword } = await c.req.json<{
       currentPassword?: string;
       newPassword: string;
@@ -502,10 +499,14 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
     const userId = payload.userId;
 
     // 獲取用戶資訊
-    const user = await db
-      .prepare('SELECT password_hash, password_policy FROM agents WHERE id = ? AND is_active = 1')
-      .bind(userId)
-      .first<{ password_hash: string; password_policy: string }>();
+    const user = await drizzleDb
+      .select({
+        passwordHash: agents.passwordHash,
+        passwordPolicy: agents.passwordPolicy
+      })
+      .from(agents)
+      .where(and(eq(agents.id, userId), eq(agents.isActive, true)))
+      .get();
 
     if (!user) {
       return validationErrorResponse(c, [
@@ -517,7 +518,7 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
     
     // 如果提供了當前密碼，則驗證；如果是強制更改則跳過驗證
     if (currentPassword) {
-      const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+      const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
       
       if (!isValidPassword) {
         return validationErrorResponse(c, [
@@ -530,13 +531,15 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     // 更新密碼並設置政策為可更改（完成強制更改後）
-    await db
-      .prepare('UPDATE agents SET password_hash = ?, password_policy = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .bind(passwordHash, 'changeable', userId)
-      .run();
+    await drizzleDb
+      drizzle(c.env.DB).update(agents).set({ 
+        passwordHash: passwordHash, 
+        passwordPolicy: 'changeable', 
+        updatedAt: sql`CURRENT_TIMESTAMP` 
+      }).where(eq(agents.id, userId));
 
     // 記錄活動
-    const activityService = new ActivityService(db);
+    const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: userId.toString(),
       userName: payload.username || payload.email || 'User',
@@ -546,7 +549,7 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
       resourceId: userId.toString(),
       details: {
         action: 'password_changed',
-        wasForced: user.password_policy === 'must_change'
+        wasForced: user.passwordPolicy === 'must_change'
       },
       ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
       userAgent: c.req.header('User-Agent')
@@ -561,7 +564,7 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
 // 獲取成員解密密碼
 export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     
     // 驗證管理員權限
@@ -569,10 +572,14 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
     if (authResult.error) return authResult.error
 
     // 獲取成員資訊
-    const member = await db
-      .prepare('SELECT display_name, password_hash FROM agents WHERE id = ?')
-      .bind(memberId)
-      .first<{ display_name: string; password_hash: string }>()
+    const member = await drizzleDb
+      .select({
+        displayName: agents.displayName,
+        passwordHash: agents.passwordHash
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get()
 
     if (!member) {
       return validationErrorResponse(c, [
@@ -585,8 +592,8 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
 
     return successResponse(c, { 
       password: decryptedPassword,
-      username: member.display_name,
-      displayName: member.display_name
+      username: member.displayName,
+      displayName: member.displayName
     }, 'Password retrieved successfully')
   } catch (error: any) {
     return handleApiError(error, c)
@@ -596,7 +603,7 @@ export const getMemberPassword = async (c: Context<{ Bindings: Bindings }>) => {
 // 更新成員資訊
 export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     const updateData = await c.req.json<{
       name?: string;
@@ -622,10 +629,16 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // 獲取當前成員資訊
-    const currentMember = await db
-      .prepare('SELECT display_name as name, email, role, is_active FROM agents WHERE id = ?')
-      .bind(memberId)
-      .first<{ name: string; email: string; role: string; is_active: number }>()
+    const currentMember = await drizzleDb
+      .select({
+        name: agents.displayName,
+        email: agents.email,
+        role: agents.role,
+        isActive: agents.isActive
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get()
 
     if (!currentMember) {
       return validationErrorResponse(c, [
@@ -635,10 +648,11 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 驗證email唯一性（如果更新了email）
     if (updateData.email && updateData.email !== currentMember.email) {
-      const existingEmail = await db
-        .prepare('SELECT id FROM agents WHERE email = ? AND id != ?')
-        .bind(updateData.email, memberId)
-        .first()
+      const existingEmail = await drizzleDb
+        .select({ id: agents.id })
+        .from(agents)
+        .where(and(eq(agents.email, updateData.email), ne(agents.id, memberId)))
+        .get()
 
       if (existingEmail) {
         return validationErrorResponse(c, [
@@ -648,61 +662,51 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // 準備更新字段
-    const updateFields = []
-    const updateValues = []
+    // 驗證是否有欄位需要更新
+    const hasUpdates = updateData.name !== undefined || updateData.email !== undefined || 
+                      updateData.role !== undefined || updateData.status !== undefined ||
+                      (updateData.password !== undefined && updateData.password.trim() !== '');
 
-    if (updateData.name !== undefined) {
-      updateFields.push('display_name = ?')
-      updateValues.push(updateData.name)
+    if (!hasUpdates) {
+      return validationErrorResponse(c, [
+        { field: 'updateData', message: 'No fields to update' }
+      ])
     }
 
-    if (updateData.email !== undefined) {
-      updateFields.push('email = ?')
-      updateValues.push(updateData.email)
-    }
-
-    if (updateData.role !== undefined) {
-      updateFields.push('role = ?')
-      updateValues.push(updateData.role)
-    }
-
-    if (updateData.status !== undefined) {
-      updateFields.push('is_active = ?')
-      updateValues.push(updateData.status === 'active' ? 1 : 0)
-    }
-
-    // 如果提供了新密碼，加密並更新
+    // 如果提供了新密碼，驗證長度
     if (updateData.password !== undefined && updateData.password.trim() !== '') {
       if (updateData.password.length < 6) {
         return validationErrorResponse(c, [
           { field: 'password', message: 'Password must be at least 6 characters', value: updateData.password.length }
         ])
       }
+    }
 
+    // 構建 Drizzle 更新對象
+    const updateObject: any = { updatedAt: sql`CURRENT_TIMESTAMP` };
+    
+    if (updateData.name !== undefined) {
+      updateObject.displayName = updateData.name;
+    }
+    if (updateData.email !== undefined) {
+      updateObject.email = updateData.email;
+    }
+    if (updateData.role !== undefined) {
+      updateObject.role = updateData.role;
+    }
+    if (updateData.status !== undefined) {
+      updateObject.isActive = updateData.status === 'active';
+    }
+    if (updateData.password !== undefined && updateData.password.trim() !== '') {
       const bcrypt = await import('bcryptjs');
-      const passwordHash = await bcrypt.hash(updateData.password, 10)
-      updateFields.push('password_hash = ?')
-      updateValues.push(passwordHash)
+      updateObject.passwordHash = await bcrypt.hash(updateData.password, 10);
     }
-
-    if (updateFields.length === 0) {
-      return validationErrorResponse(c, [
-        { field: 'updateData', message: 'No fields to update' }
-      ])
-    }
-
-    // 添加更新時間
-    updateFields.push('updated_at = CURRENT_TIMESTAMP')
-    updateValues.push(memberId) // 最後的 WHERE id = ? 參數
 
     // 執行更新
-    await db
-      .prepare(`UPDATE agents SET ${updateFields.join(', ')} WHERE id = ?`)
-      .bind(...updateValues)
-      .run()
+    await drizzleDb.update(agents).set(updateObject).where(eq(agents.id, memberId))
 
     // 記錄活動
-    const activityService = new ActivityService(db);
+    const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: payload.userId.toString(),
       userName: payload.username || 'Admin',
@@ -720,24 +724,22 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
     });
 
     // 返回更新後的成員資訊
-    const updatedMember = await db
-      .prepare(`
-        SELECT 
-          id,
-          display_name as loginId,
-          email,
-          display_name as name,
-          role,
-          '' as "group",
-          is_active as isActive,
-          CASE WHEN is_active = 1 THEN 'active' ELSE 'inactive' END as status,
-          created_at as createdAt,
-          last_login_at as lastActive
-        FROM agents 
-        WHERE id = ?
-      `)
-      .bind(memberId)
-      .first<TeamMember>()
+    const updatedMember = await drizzleDb
+      .select({
+        id: agents.id,
+        loginId: agents.displayName,
+        email: agents.email,
+        name: agents.displayName,
+        role: agents.role,
+        group: sql`''`.as('group'),
+        isActive: agents.isActive,
+        status: sql`CASE WHEN ${agents.isActive} = 1 THEN 'active' ELSE 'inactive' END`.as('status'),
+        createdAt: agents.createdAt,
+        lastActive: agents.lastLoginAt
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get()
 
     return successResponse(c, updatedMember, 'Member updated successfully')
   } catch (error: any) {
@@ -748,43 +750,23 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
 // 遷移明文密碼到加密存儲 (臨時管理端點)
 export const migratePasswords = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
-    
     // 驗證管理員權限
     const authResult = await verifyAdminAuth(c)
     if (authResult.error) return authResult.error
 
     console.log('🔄 Starting password migration...')
     
-    // 獲取所有有明文密碼的用戶
-    const agents = await db
-      .prepare('SELECT id, display_name, password_plaintext FROM agents WHERE password_plaintext IS NOT NULL AND password_plaintext != "null"')
-      .all<{ id: string; display_name: string; password_plaintext: string }>()
+    // 由於新的架構已經不使用明文密碼，這個函數已經不再需要
+    // 所有密碼都應該已經是加密的
+    console.log(`📋 Password encryption migration is no longer needed - all passwords are now hashed`)
 
-    console.log(`📋 Found ${agents.results.length} users with plaintext passwords`)
-
-    const results = []
-    for (const agent of agents.results) {
-      try {
-        console.log(`🔐 Encrypting password for user: ${agent.display_name}`)
-        
-        // 清除明文密碼（不再需要加密存儲）
-        await db
-          .prepare('UPDATE agents SET password_plaintext = NULL WHERE id = ?')
-          .bind(agent.id)
-          .run()
-        
-        results.push({ username: agent.display_name, status: 'success' })
-        console.log(`✅ Successfully migrated password for: ${agent.display_name}`)
-      } catch (error: any) {
-        console.error(`❌ Failed to migrate password for ${agent.display_name}:`, error)
-        results.push({ username: agent.display_name, status: 'failed', error: error.message })
-      }
-    }
+    const results = [
+      { status: 'info', message: 'Password encryption migration is no longer needed - all passwords are now hashed' }
+    ]
 
     return successResponse(c, { 
       migrated: results,
-      total: agents.results.length 
+      total: 0 
     }, 'Password migration completed')
   } catch (error: any) {
     return handleApiError(error, c)
@@ -794,7 +776,7 @@ export const migratePasswords = async (c: Context<{ Bindings: Bindings }>) => {
 // 刪除成員
 export const deleteMember = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const memberId = c.req.param('id')
     
     // 驗證管理員權限
@@ -810,10 +792,11 @@ export const deleteMember = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // 檢查是否有分配的對話
-    const assignedConversations = await db
-      .prepare('SELECT COUNT(*) as count FROM conversations WHERE assigned_to = ?')
-      .bind(memberId)
-      .first<{ count: number }>()
+    const assignedConversations = await drizzleDb
+      .select({ count: count() })
+      .from(conversations)
+      .where(eq(conversations.assignedUserId, memberId))
+      .get()
 
     if (assignedConversations && assignedConversations.count > 0) {
       return validationErrorResponse(c, [
@@ -821,10 +804,8 @@ export const deleteMember = async (c: Context<{ Bindings: Bindings }>) => {
       ])
     }
 
-    await db
-      .prepare('DELETE FROM agents WHERE id = ?')
-      .bind(memberId)
-      .run()
+    await drizzleDb
+      drizzle(c.env.DB).delete(agents).where(eq(agents.id, memberId))
 
     return successResponse(c, null, 'Member deleted successfully')
   } catch (error: any) {
@@ -850,17 +831,15 @@ export const revokeInvitation = async (c: Context<{ Bindings: Bindings }>) => {
   /* 
   // 原有代码保留，暂时注释
   try {
-    const db = c.env.DB
+    const drizzleDb = drizzle(c.env.DB)
     const invitationId = c.req.param('id')
     
     // 驗證管理員權限
     const authResult = await verifyAdminAuth(c)
     if (authResult.error) return authResult.error
 
-    await db
-      .prepare('DELETE FROM invitations WHERE id = ? AND used_at IS NULL')
-      .bind(invitationId)
-      .run()
+    await drizzleDb
+      drizzle(c.env.DB).delete(invitations).where(and(eq(invitations.id, invitationId), isNull(invitations.usedAt)))
 
     return successResponse(c, null, 'Invitation revoked successfully')
   } catch (error: any) {

@@ -2,8 +2,10 @@
 import { Hono } from 'hono';
 import { eq, inArray, desc, and } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { conversations, customers, messages, agents } from '../db/schema';
+import { sql } from 'drizzle-orm';
+import { conversations, customers, messages, agents, conversationTransfers } from '../db/schema';
 import type { Bindings } from '../types';
+import type { NewConversationTransfer } from '../db/schema';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { PermissionService } from '../services/permission-service';
 import { jwtAuth } from '../middleware/auth';
@@ -41,13 +43,18 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       })
       .where(eq(conversations.id, conversationId));
 
-    // 記錄轉移歷史 (使用原生 SQL，因為 conversation_transfers 表未在 schema 中定義)
+    // 記錄轉移歷史 (使用 Drizzle ORM)
     if (reason) {
-      await c.env.DB.prepare(`
-        INSERT INTO conversation_transfers 
-        (conversation_id, to_team_id, to_user_id, transfer_reason, transferred_by)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(conversationId, teamId, userId, reason, user.id).run();
+      const transferRecord: NewConversationTransfer = {
+        conversationId,
+        toTeamId: teamId || null,
+        toUserId: userId || null,
+        transferReason: reason,
+        transferredBy: String(user.id),
+        createdAt: timestamp
+      };
+      
+      await drizzleDb.insert(conversationTransfers).values(transferRecord);
     }
     
     return c.json({
@@ -98,12 +105,19 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       })
       .where(eq(conversations.id, conversationId));
 
-    // 記錄轉移歷史 (使用原生 SQL，因為 conversation_transfers 表未在 schema 中定義)
-    await c.env.DB.prepare(`
-      INSERT INTO conversation_transfers 
-      (conversation_id, from_team_id, to_team_id, from_user_id, to_user_id, transfer_reason, transferred_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(conversationId, fromTeamId, toTeamId, fromUserId, toUserId, reason, user.id).run();
+    // 記錄轉移歷史 (使用 Drizzle ORM)
+    const transferRecord: NewConversationTransfer = {
+      conversationId,
+      fromTeamId: fromTeamId || null,
+      toTeamId: toTeamId || null,
+      fromUserId: fromUserId || null,
+      toUserId: toUserId || null,
+      transferReason: reason,
+      transferredBy: String(user.id),
+      createdAt: timestamp
+    };
+    
+    await drizzleDb.insert(conversationTransfers).values(transferRecord);
     
     return c.json({
       success: true,
@@ -170,28 +184,39 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       
     console.log('📊 [Conversation Handler] Retrieved conversation data:', conversationData);
 
-    // 獲取最新消息內容 (由於 Drizzle 不支持複雜子查詢，使用原生 SQL)
+    // 獲取最新消息內容 - 使用 Drizzle ORM 窗口函數查詢
+    // 分步驟查詢來替代複雜的窗口函數
     const conversationIds = conversationData.map(c => c.id);
     let lastMessages: any[] = [];
     
     if (conversationIds.length > 0) {
-      const placeholders = conversationIds.map(() => '?').join(',');
-      const lastMessageQuery = `
-        SELECT 
-          m1.conversation_id,
-          m1.content as last_message_content,
-          m1.created_at as last_message_at_actual
-        FROM messages m1
-        INNER JOIN (
-          SELECT conversation_id, MAX(created_at) as max_created_at
-          FROM messages
-          WHERE conversation_id IN (${placeholders})
-          GROUP BY conversation_id
-        ) m2 ON m1.conversation_id = m2.conversation_id AND m1.created_at = m2.max_created_at
-      `;
+      // 使用 Drizzle ORM 子查詢獲取最新消息
+      const lastMessageSubquery = drizzleDb
+        .select({
+          conversation_id: messages.conversationId,
+          max_created_at: sql<string>`MAX(${messages.createdAt})`
+        })
+        .from(messages)
+        .where(inArray(messages.conversationId, conversationIds))
+        .groupBy(messages.conversationId)
+        .as('latest_messages');
       
-      const result = await c.env.DB.prepare(lastMessageQuery).bind(...conversationIds).all();
-      lastMessages = result.results || [];
+      const lastMessagesQuery = await drizzleDb
+        .select({
+          conversation_id: messages.conversationId,
+          last_message_content: messages.content,
+          last_message_at_actual: messages.createdAt
+        })
+        .from(messages)
+        .innerJoin(lastMessageSubquery, 
+          and(
+            eq(messages.conversationId, lastMessageSubquery.conversation_id),
+            eq(messages.createdAt, lastMessageSubquery.max_created_at)
+          )
+        )
+        .all();
+      
+      lastMessages = lastMessagesQuery;
     }
     
     // 結合數據
@@ -232,7 +257,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
       'conversation', 
       'read',
       { 
-        userId: user.id,
+        userId: Number(user.id),
         role: user.role,
         resourceId: conversationId 
       }
@@ -316,7 +341,7 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       'conversation', 
       'send_message',
       { 
-        userId: user.id, // ✅ 保持一致的字符串ID
+        userId: Number(user.id), // ✅ 保持一致的字符串ID
         role: user.role,
         resourceId: conversationId 
       },
@@ -487,7 +512,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       'conversation', 
       'read',
       { 
-        userId: user.id,
+        userId: Number(user.id),
         role: user.role,
         resourceId: conversationId 
       }

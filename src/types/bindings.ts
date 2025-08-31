@@ -129,18 +129,14 @@ export interface AuditContext {
 }
 
 // Export commonly used types from schema
+// 注意：使用表名而不是類型名
 export type { 
-  Agent, 
-  NewAgent, 
-  Conversation, 
-  NewConversation, 
-  Message, 
-  NewMessage,
-  FileAttachment,
-  NewFileAttachment,
-  DelayedMessage,
-  NewDelayedMessage,
+  agents, 
+  conversations, 
+  messages,
+  fileAttachments,
+  delayedMessages,
   SessionData,
-  Team,
+  teams,
   NewTeam
 } from '../db/schema';

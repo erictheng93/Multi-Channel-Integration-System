@@ -167,7 +167,20 @@ describe('Conversations Store', () => {
   describe('Conversation Actions', () => {
     it('should assign conversation successfully', async () => {
       const mockResponse = { success: true }
+      const mockConversationData = {
+        success: true,
+        data: {
+          id: 'conv-1',
+          userId: '1',
+          status: 'assigned' as const,
+          assignedAgentId: 'agent-2',
+          platform: 'line' as const,
+          createdAt: Date.now(),
+          lastMessageAt: Date.now()
+        }
+      }
       mockConversationApi.assignConversation.mockResolvedValue(mockResponse)
+      mockConversationApi.getConversation.mockResolvedValue(mockConversationData)
       
       const { useConversationsStore } = await import('./conversations')
       const store = useConversationsStore()
@@ -176,6 +189,7 @@ describe('Conversations Store', () => {
       
       expect(result).toBe(true)
       expect(mockConversationApi.assignConversation).toHaveBeenCalledWith('conv-1', 'agent-2')
+      expect(mockConversationApi.getConversation).toHaveBeenCalledWith('conv-1')
     })
 
     it('should close conversation successfully', async () => {

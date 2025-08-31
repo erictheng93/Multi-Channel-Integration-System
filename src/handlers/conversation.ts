@@ -11,6 +11,9 @@ import {
   notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql, eq, and, desc, inArray, count, aliasedTable } from 'drizzle-orm';
+import { conversations as conversationTable, agents, conversationTransfers, teams, conversationTags } from '../db/schema';
 
 const conversations = new Hono<HonoContext>();
 
@@ -297,6 +300,7 @@ conversations.post('/:id/mark-read', async (c) => {
 const handlerMethods = {
   // 設定對話優先級
   async setPriority(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { priority } = await c.req.json();
@@ -308,11 +312,12 @@ const handlerMethods = {
         ]);
       }
 
-      await c.env.DB.prepare(`
-        UPDATE conversations 
-        SET priority = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(priority, conversationId).run();
+      await drizzleDb.update(conversationTable)
+        .set({ 
+          priority: priority,
+          updatedAt: sql`datetime('now')`
+        })
+        .where(eq(conversationTable.id, conversationId));
 
       return successResponse(c, null, 'Conversation priority updated successfully');
 
@@ -323,6 +328,7 @@ const handlerMethods = {
 
   // 轉移對話
   async transfer(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { 
@@ -334,38 +340,37 @@ const handlerMethods = {
       const payload = c.get('jwtPayload');
 
       // 獲取當前對話資訊
-      const conversation = await c.env.DB.prepare(`
-        SELECT * FROM conversations WHERE id = ?
-      `).bind(conversationId).first();
+      const conversation = await drizzleDb.select()
+        .from(conversationTable)
+        .where(eq(conversationTable.id, conversationId))
+        .get();
 
       if (!conversation) {
         return notFoundResponse(c, 'Conversation');
       }
 
       // 記錄轉移歷史
-      await c.env.DB.prepare(`
-        INSERT INTO conversation_transfers 
-        (conversation_id, from_team_id, to_team_id, from_user_id, to_user_id, 
-         transfer_reason, transferred_by, transfer_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        conversationId,
-        conversation.assigned_team_id,
-        toTeamId || null,
-        conversation.assigned_user_id,
-        toUserId || null,
-        reason || null,
-        payload?.userId,
-        transferType
-      ).run();
+      await drizzleDb.insert(conversationTransfers)
+        .values({
+          conversationId: conversationId,
+          fromTeamId: conversation.assignedTeamId,
+          toTeamId: toTeamId || null,
+          fromUserId: conversation.assignedUserId,
+          toUserId: toUserId || null,
+          transferReason: reason || null,
+          transferredBy: payload?.userId,
+          transferType: transferType
+        });
 
       // 更新對話指派
-      await c.env.DB.prepare(`
-        UPDATE conversations 
-        SET assigned_team_id = ?, assigned_user_id = ?, 
-            status = 'transferred', updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(toTeamId || null, toUserId || null, conversationId).run();
+      await drizzleDb.update(conversationTable)
+        .set({
+          assignedTeamId: toTeamId || null,
+          assignedUserId: toUserId || null,
+          status: 'transferred',
+          updatedAt: sql`datetime('now')`
+        })
+        .where(eq(conversationTable.id, conversationId));
 
       return successResponse(c, null, 'Conversation transferred successfully');
 
@@ -376,6 +381,7 @@ const handlerMethods = {
 
   // 為對話添加標籤
   async addTags(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { tagIds } = await c.req.json();
@@ -388,9 +394,10 @@ const handlerMethods = {
       }
 
       // 檢查對話是否存在
-      const conversation = await c.env.DB.prepare(`
-        SELECT id FROM conversations WHERE id = ?
-      `).bind(conversationId).first();
+      const conversation = await drizzleDb.select({ id: conversationTable.id })
+        .from(conversationTable)
+        .where(eq(conversationTable.id, conversationId))
+        .get();
 
       if (!conversation) {
         return notFoundResponse(c, 'Conversation');
@@ -398,10 +405,13 @@ const handlerMethods = {
 
       // 批量添加標籤
       const insertPromises = tagIds.map(tagId => 
-        c.env.DB.prepare(`
-          INSERT OR IGNORE INTO conversation_tags (conversation_id, tag_id, assigned_by)
-          VALUES (?, ?, ?)
-        `).bind(conversationId, tagId, payload?.userId).run()
+        drizzleDb.insert(conversationTags)
+          .values({
+            conversationId: conversationId,
+            tagId: tagId,
+            assignedBy: payload?.userId
+          })
+          .onConflictDoNothing()
       );
 
       await Promise.all(insertPromises);
@@ -415,6 +425,7 @@ const handlerMethods = {
 
   // 移除對話標籤
   async removeTags(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { tagIds } = await c.req.json();
@@ -425,11 +436,11 @@ const handlerMethods = {
         ]);
       }
 
-      const placeholders = tagIds.map(() => '?').join(',');
-      await c.env.DB.prepare(`
-        DELETE FROM conversation_tags 
-        WHERE conversation_id = ? AND tag_id IN (${placeholders})
-      `).bind(conversationId, ...tagIds).run();
+      await drizzleDb.delete(conversationTags)
+        .where(and(
+          eq(conversationTags.conversationId, conversationId),
+          inArray(conversationTags.tagId, tagIds)
+        ));
 
       return successResponse(c, null, 'Tags removed successfully');
 
@@ -440,15 +451,17 @@ const handlerMethods = {
 
   // 設定內部備註
   async setNotes(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { notes } = await c.req.json();
 
-      await c.env.DB.prepare(`
-        UPDATE conversations 
-        SET internal_notes = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(notes || null, conversationId).run();
+      await drizzleDb.update(conversationTable)
+        .set({
+          internalNotes: notes || null,
+          updatedAt: sql`datetime('now')`
+        })
+        .where(eq(conversationTable.id, conversationId));
 
       return successResponse(c, null, 'Internal notes updated successfully');
 
@@ -459,52 +472,69 @@ const handlerMethods = {
 
   // 獲取對話轉移歷史
   async getTransferHistory(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const conversationId = c.req.param('id');
 
-      const transfers = await c.env.DB.prepare(`
-        SELECT ct.*, 
-               ft.name as from_team_name, 
-               tt.name as to_team_name,
-               fu.display_name as from_user_name, 
-               tu.display_name as to_user_name,
-               bu.display_name as transferred_by_name
-        FROM conversation_transfers ct
-        LEFT JOIN teams ft ON ct.from_team_id = ft.id
-        LEFT JOIN teams tt ON ct.to_team_id = tt.id
-        LEFT JOIN users fu ON ct.from_user_id = fu.id
-        LEFT JOIN users tu ON ct.to_user_id = tu.id
-        LEFT JOIN users bu ON ct.transferred_by = bu.id
-        WHERE ct.conversation_id = ?
-        ORDER BY ct.created_at DESC
-      `).bind(conversationId).all();
+      const ft = aliasedTable(teams, 'ft');
+      const tt = aliasedTable(teams, 'tt');
+      const fu = aliasedTable(agents, 'fu');
+      const tu = aliasedTable(agents, 'tu');
+      const bu = aliasedTable(agents, 'bu');
+      
+      const transfers = await drizzleDb
+        .select({
+          id: conversationTransfers.id,
+          conversationId: conversationTransfers.conversationId,
+          fromTeamId: conversationTransfers.fromTeamId,
+          toTeamId: conversationTransfers.toTeamId,
+          fromUserId: conversationTransfers.fromUserId,
+          toUserId: conversationTransfers.toUserId,
+          transferReason: conversationTransfers.transferReason,
+          transferredBy: conversationTransfers.transferredBy,
+          transferType: conversationTransfers.transferType,
+          createdAt: conversationTransfers.createdAt,
+          fromTeamName: ft.name,
+          toTeamName: tt.name,
+          fromUserName: fu.displayName,
+          toUserName: tu.displayName,
+          transferredByName: bu.displayName
+        })
+        .from(conversationTransfers)
+        .leftJoin(ft, eq(conversationTransfers.fromTeamId, ft.id))
+        .leftJoin(tt, eq(conversationTransfers.toTeamId, tt.id))
+        .leftJoin(fu, eq(conversationTransfers.fromUserId, fu.id))
+        .leftJoin(tu, eq(conversationTransfers.toUserId, tu.id))
+        .leftJoin(bu, eq(conversationTransfers.transferredBy, bu.id))
+        .where(eq(conversationTransfers.conversationId, conversationId))
+        .orderBy(desc(conversationTransfers.createdAt));
 
-      const transferHistory = transfers?.results ? transfers.results.map((transfer: any) => ({
+      const transferHistory = transfers.map((transfer: any) => ({
         id: transfer.id,
-        fromTeam: transfer.from_team_id ? {
-          id: transfer.from_team_id,
-          name: transfer.from_team_name
+        fromTeam: transfer.fromTeamId ? {
+          id: transfer.fromTeamId,
+          name: transfer.fromTeamName
         } : null,
-        toTeam: transfer.to_team_id ? {
-          id: transfer.to_team_id,
-          name: transfer.to_team_name
+        toTeam: transfer.toTeamId ? {
+          id: transfer.toTeamId,
+          name: transfer.toTeamName
         } : null,
-        fromUser: transfer.from_user_id ? {
-          id: transfer.from_user_id,
-          name: transfer.from_user_name
+        fromUser: transfer.fromUserId ? {
+          id: transfer.fromUserId,
+          name: transfer.fromUserName
         } : null,
-        toUser: transfer.to_user_id ? {
-          id: transfer.to_user_id,
-          name: transfer.to_user_name
+        toUser: transfer.toUserId ? {
+          id: transfer.toUserId,
+          name: transfer.toUserName
         } : null,
-        reason: transfer.transfer_reason,
+        reason: transfer.transferReason,
         transferredBy: {
-          id: transfer.transferred_by,
-          name: transfer.transferred_by_name
+          id: transfer.transferredBy,
+          name: transfer.transferredByName
         },
-        transferType: transfer.transfer_type,
-        createdAt: transfer.created_at
-      })) : [];
+        transferType: transfer.transferType,
+        createdAt: transfer.createdAt
+      }));
 
       return successResponse(c, transferHistory, 'Transfer history retrieved successfully');
 
@@ -515,6 +545,7 @@ const handlerMethods = {
 
   // 批量操作對話  
   async bulkOperation(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const { operation, conversationIds, data } = await c.req.json();
       const payload = c.get('jwtPayload');
@@ -525,7 +556,7 @@ const handlerMethods = {
         ]);
       }
 
-      const placeholders = conversationIds.map(() => '?').join(',');
+      const conversationIdsArray = conversationIds;
 
       switch (operation) {
         case 'assign':
@@ -534,28 +565,32 @@ const handlerMethods = {
               { field: 'data', message: 'User ID or Team ID is required for assignment' }
             ]);
           }
-          await c.env.DB.prepare(`
-            UPDATE conversations 
-            SET assigned_user_id = ?, assigned_team_id = ?, 
-                status = 'assigned', updated_at = datetime('now')
-            WHERE id IN (${placeholders})
-          `).bind(data.userId || null, data.teamId || null, ...conversationIds).run();
+          await drizzleDb.update(conversationTable)
+            .set({
+              assignedUserId: data.userId || null,
+              assignedTeamId: data.teamId || null,
+              status: 'assigned',
+              updatedAt: sql`datetime('now')`
+            })
+            .where(inArray(conversationTable.id, conversationIdsArray));
           break;
 
         case 'close':
-          await c.env.DB.prepare(`
-            UPDATE conversations 
-            SET status = 'closed', updated_at = datetime('now')
-            WHERE id IN (${placeholders})
-          `).bind(...conversationIds).run();
+          await drizzleDb.update(conversationTable)
+            .set({
+              status: 'closed',
+              updatedAt: sql`datetime('now')`
+            })
+            .where(inArray(conversationTable.id, conversationIdsArray));
           break;
 
         case 'reopen':
-          await c.env.DB.prepare(`
-            UPDATE conversations 
-            SET status = 'active', updated_at = datetime('now')
-            WHERE id IN (${placeholders})
-          `).bind(...conversationIds).run();
+          await drizzleDb.update(conversationTable)
+            .set({
+              status: 'active',
+              updatedAt: sql`datetime('now')`
+            })
+            .where(inArray(conversationTable.id, conversationIdsArray));
           break;
 
         case 'set_priority':
@@ -564,11 +599,12 @@ const handlerMethods = {
               { field: 'data.priority', message: 'Priority is required' }
             ]);
           }
-          await c.env.DB.prepare(`
-            UPDATE conversations 
-            SET priority = ?, updated_at = datetime('now')
-            WHERE id IN (${placeholders})
-          `).bind(data.priority, ...conversationIds).run();
+          await drizzleDb.update(conversationTable)
+            .set({
+              priority: data.priority,
+              updatedAt: sql`datetime('now')`
+            })
+            .where(inArray(conversationTable.id, conversationIdsArray));
           break;
 
         case 'add_tags':
@@ -582,10 +618,13 @@ const handlerMethods = {
           for (const convId of conversationIds) {
             for (const tagId of data.tagIds) {
               tagInsertPromises.push(
-                c.env.DB.prepare(`
-                  INSERT OR IGNORE INTO conversation_tags (conversation_id, tag_id, assigned_by)
-                  VALUES (?, ?, ?)
-                `).bind(convId, tagId, payload?.userId).run()
+                drizzleDb.insert(conversationTags)
+                  .values({
+                    conversationId: convId, // 保持字符串
+                    tagId: parseInt(tagId),
+                    assignedBy: payload?.userId
+                  })
+                  .onConflictDoNothing()
               );
             }
           }
@@ -607,62 +646,88 @@ const handlerMethods = {
 
   // 自動分配邏輯
   async autoAssign(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const { strategy = 'round_robin', teamId } = await c.req.json();
 
-      // 獲取未分配的對話
-      const unassignedConversations = await c.env.DB.prepare(`
-        SELECT id FROM conversations 
-        WHERE status = 'active' AND assigned_user_id IS NULL
-        ${teamId ? 'AND (assigned_team_id = ? OR assigned_team_id IS NULL)' : ''}
-        ORDER BY created_at ASC
-        LIMIT 50
-      `).bind(...(teamId ? [teamId] : [])).all();
+      // 獲取未分配的對話 - 使用 Drizzle ORM
+      const baseConditions = [
+        eq(conversationTable.status, 'active'),
+        sql`${conversationTable.assignedUserId} IS NULL`
+      ];
+      
+      if (teamId) {
+        baseConditions.push(
+          sql`(${conversationTable.assignedTeamId} = ${teamId} OR ${conversationTable.assignedTeamId} IS NULL)`
+        );
+      }
+      
+      const unassignedConversations = await drizzleDb
+        .select({ id: conversationTable.id })
+        .from(conversationTable)
+        .where(and(...baseConditions))
+        .orderBy(conversationTable.createdAt)
+        .limit(50);
 
-      if (!unassignedConversations?.results || unassignedConversations.results.length === 0) {
+      if (!unassignedConversations || unassignedConversations.length === 0) {
         return successResponse(c, { assigned: 0 }, 'No unassigned conversations found');
       }
 
       let assignedCount = 0;
 
       if (strategy === 'round_robin') {
-        // 輪詢分配：找到工作量最少的客服
-        const availableAgents = await c.env.DB.prepare(`
-          SELECT u.id, COUNT(c.id) as workload
-          FROM users u
-          LEFT JOIN conversations c ON u.id = c.assigned_user_id AND c.status IN ('active', 'assigned')
-          WHERE u.is_active = TRUE AND u.role = 'agent'
-          ${teamId ? 'AND u.team_id = ?' : ''}
-          GROUP BY u.id
-          ORDER BY workload ASC, u.id ASC
-        `).bind(...(teamId ? [teamId] : [])).all();
+        // 輪詢分配：找到工作量最少的客服 - 使用 Drizzle ORM
+        const agentConditions = [
+          eq(agents.isActive, true),
+          eq(agents.role, 'agent')
+        ];
+        
+        if (teamId) {
+          agentConditions.push(eq(agents.teamId, teamId));
+        }
+        
+        const availableAgents = await drizzleDb
+          .select({
+            id: agents.id,
+            workload: count(conversationTable.id).as('workload')
+          })
+          .from(agents)
+          .leftJoin(conversationTable, and(
+            eq(agents.id, conversationTable.assignedUserId),
+            inArray(conversationTable.status, ['active', 'assigned'])
+          ))
+          .where(and(...agentConditions))
+          .groupBy(agents.id)
+          .orderBy(sql`workload ASC`, agents.id);
 
-        if (!availableAgents?.results || availableAgents.results.length === 0) {
+        if (!availableAgents || availableAgents.length === 0) {
           return errorResponse(c, 'No available agents found', 400);
         }
 
         // 依序分配給工作量最少的客服
-        const agents = availableAgents.results;
+        const agentsData = availableAgents;
         let agentIndex = 0;
 
-        for (const conv of unassignedConversations.results) {
-          const agentId = agents[agentIndex]?.id;
+        for (const conv of unassignedConversations) {
+          const agentId = agentsData[agentIndex]?.id;
           
-          await c.env.DB.prepare(`
-            UPDATE conversations 
-            SET assigned_user_id = ?, status = 'assigned', updated_at = datetime('now')
-            WHERE id = ?
-          `).bind(agentId, conv.id).run();
+          await drizzleDb.update(conversationTable)
+            .set({
+              assignedUserId: agentId,
+              status: 'assigned',
+              updatedAt: sql`datetime('now')`
+            })
+            .where(eq(conversationTable.id, conv.id));
 
           assignedCount++;
-          agentIndex = (agentIndex + 1) % agents.length;
+          agentIndex = (agentIndex + 1) % agentsData.length;
         }
       }
 
       return successResponse(c, { 
         assigned: assignedCount,
         strategy,
-        total: unassignedConversations?.results?.length || 0 
+        total: unassignedConversations.length
       }, `Auto assignment completed`);
 
     } catch (error) {

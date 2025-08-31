@@ -8,6 +8,7 @@ import type {
   // NotificationData,
   // D1Result
 } from '../types';
+import { notifications } from '../db/schema';
 import { hasChanges } from '../types';
 import { 
   successResponse, 
@@ -18,6 +19,8 @@ import {
   notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
+import { drizzle } from 'drizzle-orm/d1';
+import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
 
 interface Notification {
   id: string;
@@ -45,6 +48,7 @@ interface LocalNotificationSettings {
 export const notificationHandler = {
   // 獲取用戶通知列表
   async list(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { 
@@ -59,79 +63,63 @@ export const notificationHandler = {
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      let query = `
-        SELECT * FROM notifications
-        WHERE user_id = ?
-      `;
-
-      const params: any[] = [payload?.userId];
-      const whereConditions: string[] = [];
+      // 使用 Drizzle ORM 構建查詢
+      const whereConditions = [eq(notifications.userId, payload?.userId)];
 
       // 通知類型篩選
       if (type) {
-        whereConditions.push('type = ?');
-        params.push(type);
+        whereConditions.push(eq(notifications.type, type));
       }
 
       // 已讀狀態篩選
       if (isRead !== undefined) {
-        whereConditions.push('is_read = ?');
-        params.push(isRead === 'true');
+        whereConditions.push(eq(notifications.isRead, isRead === 'true'));
       }
 
       // 日期範圍篩選
       if (dateFrom) {
-        whereConditions.push('created_at >= ?');
-        params.push(dateFrom);
+        whereConditions.push(gte(notifications.createdAt, dateFrom));
       }
       if (dateTo) {
-        whereConditions.push('created_at <= ?');
-        params.push(dateTo);
+        whereConditions.push(lte(notifications.createdAt, dateTo));
       }
 
       // 排除過期通知
-      whereConditions.push('(expires_at IS NULL OR expires_at > datetime(\'now\'))');
+      const expiredCondition1 = sql`expires_at IS NULL`;
+      const expiredCondition2 = sql`expires_at > datetime('now')`;
+      whereConditions.push((or as any)(expiredCondition1, expiredCondition2));
 
-      if (whereConditions.length > 0) {
-        query += ' AND ' + whereConditions.join(' AND ');
-      }
+      const result = await drizzleDb
+        .select()
+        .from(notifications)
+        .where(and(...whereConditions))
+        .orderBy(desc(notifications.createdAt))
+        .limit(limit)
+        .offset(offset);
 
-      query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-      params.push(limit, offset);
+      // 計算總數 - 使用相同的條件
+      const countResult = await drizzleDb
+        .select({ total: count() })
+        .from(notifications)
+        .where(and(...whereConditions));
 
-      const result = await c.env.DB.prepare(query).bind(...params).all();
-
-      // 計算總數
-      let countQuery = `
-        SELECT COUNT(*) as total FROM notifications
-        WHERE user_id = ? AND (expires_at IS NULL OR expires_at > datetime('now'))
-      `;
-      
-      const countParams = [payload?.userId];
-      if (whereConditions.slice(0, -1).length > 0) { // 排除過期條件
-        countQuery += ' AND ' + whereConditions.slice(0, -1).join(' AND ');
-        countParams.push(...params.slice(1, -2)); // 排除 limit, offset 和過期條件的參數
-      }
-
-      const countResult = await c.env.DB.prepare(countQuery).bind(...countParams).first();
-
-      const notifications: Notification[] = result.results.map((row: any) => ({
+      const notificationList: Notification[] = result.map((row: any) => ({
         id: row.id,
-        userId: row.user_id,
+        userId: row.userId,
         type: row.type,
         title: row.title,
         content: row.content,
         data: row.data ? JSON.parse(row.data) : null,
-        isRead: Boolean(row.is_read),
-        readAt: row.read_at,
-        expiresAt: row.expires_at,
-        createdAt: row.created_at
+        isRead: Boolean(row.isRead),
+        readAt: row.readAt,
+        expiresAt: row.expiresAt,
+        createdAt: row.createdAt
       }));
 
-      return paginatedResponse(c, notifications, {
+      return paginatedResponse(c, notificationList, {
         page: parseInt(page),
         limit,
-        total: (countResult?.total as number) || 0
+        total: countResult[0]?.total || 0
       }, 'Notifications retrieved successfully');
 
     } catch (error) {
@@ -141,25 +129,26 @@ export const notificationHandler = {
 
   // 標記通知為已讀
   async markAsRead(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const notificationId = c.req.param('id');
       const payload = c.get('jwtPayload');
 
       // 檢查通知是否存在且屬於當前用戶
-      const notification = await c.env.DB.prepare(`
-        SELECT * FROM notifications WHERE id = ? AND user_id = ?
-      `).bind(notificationId, payload?.userId).first();
+      const notification = await drizzleDb.get(sql`
+        SELECT * FROM notifications WHERE id = ${notificationId} AND user_id = ${payload?.userId}
+      `).catch(() => null);
 
       if (!notification) {
         return notFoundResponse(c, 'Notification');
       }
 
       // 標記為已讀
-      await c.env.DB.prepare(`
+      await drizzleDb.run(sql`
         UPDATE notifications 
         SET is_read = TRUE, read_at = datetime('now')
-        WHERE id = ?
-      `).bind(notificationId).run();
+        WHERE id = ${notificationId}
+      `);
 
       return successResponse(c, null, 'Notification marked as read');
 
@@ -170,24 +159,28 @@ export const notificationHandler = {
 
   // 批量標記通知為已讀
   async markAllAsRead(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { type } = await c.req.json().catch(() => ({}));
 
-      let query = `
-        UPDATE notifications 
-        SET is_read = TRUE, read_at = datetime('now')
-        WHERE user_id = ? AND is_read = FALSE
-      `;
-
-      const params = [payload?.userId];
+      // 構建更新條件
+      const updateConditions = [
+        eq(notifications.userId, payload?.userId),
+        eq(notifications.isRead, false)
+      ];
 
       if (type) {
-        query += ' AND type = ?';
-        params.push(type);
+        updateConditions.push(eq(notifications.type, type));
       }
 
-      const result = await c.env.DB.prepare(query).bind(...params).run();
+      const result = await drizzleDb
+        .update(notifications)
+        .set({
+          isRead: true,
+          readAt: sql`datetime('now')`
+        })
+        .where(and(...updateConditions));
 
       const changes = hasChanges(result) ? result.changes : 0;
 
@@ -202,23 +195,24 @@ export const notificationHandler = {
 
   // 刪除通知
   async delete(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const notificationId = c.req.param('id');
       const payload = c.get('jwtPayload');
 
       // 檢查通知是否存在且屬於當前用戶
-      const notification = await c.env.DB.prepare(`
-        SELECT * FROM notifications WHERE id = ? AND user_id = ?
-      `).bind(notificationId, payload?.userId).first();
+      const notification = await drizzleDb.get(sql`
+        SELECT * FROM notifications WHERE id = ${notificationId} AND user_id = ${payload?.userId}
+      `).catch(() => null);
 
       if (!notification) {
         return notFoundResponse(c, 'Notification');
       }
 
       // 刪除通知
-      await c.env.DB.prepare(`
-        DELETE FROM notifications WHERE id = ?
-      `).bind(notificationId).run();
+      await drizzleDb.run(sql`
+        DELETE FROM notifications WHERE id = ${notificationId}
+      `);
 
       return successResponse(c, null, 'Notification deleted successfully');
 
@@ -229,6 +223,7 @@ export const notificationHandler = {
 
   // 清理過期通知
   async cleanup(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
 
@@ -237,10 +232,10 @@ export const notificationHandler = {
         return unauthorizedResponse(c, 'Only administrators can cleanup notifications');
       }
 
-      const result = await c.env.DB.prepare(`
+      const result = await drizzleDb.run(sql`
         DELETE FROM notifications 
         WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')
-      `).run();
+      `);
 
       const changes = hasChanges(result) ? result.changes : 0;
 
@@ -255,52 +250,53 @@ export const notificationHandler = {
 
   // 獲取通知統計
   async getStats(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
 
       // 總通知數
-      const totalResult = await c.env.DB.prepare(`
+      const totalResult = await drizzleDb.get(sql`
         SELECT COUNT(*) as total FROM notifications
-        WHERE user_id = ? AND (expires_at IS NULL OR expires_at > datetime('now'))
-      `).bind(payload?.userId).first();
+        WHERE user_id = ${payload?.userId} AND (expires_at IS NULL OR expires_at > datetime('now'))
+      `);
 
       // 未讀通知數
-      const unreadResult = await c.env.DB.prepare(`
+      const unreadResult = await drizzleDb.get(sql`
         SELECT COUNT(*) as unread FROM notifications
-        WHERE user_id = ? AND is_read = FALSE 
+        WHERE user_id = ${payload?.userId} AND is_read = FALSE 
         AND (expires_at IS NULL OR expires_at > datetime('now'))
-      `).bind(payload?.userId).first();
+      `);
 
       // 按類型統計
-      const typeStats = await c.env.DB.prepare(`
+      const typeStats = await drizzleDb.run(sql`
         SELECT type, COUNT(*) as count, 
                SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as unread_count
         FROM notifications
-        WHERE user_id = ? AND (expires_at IS NULL OR expires_at > datetime('now'))
+        WHERE user_id = ${payload?.userId} AND (expires_at IS NULL OR expires_at > datetime('now'))
         GROUP BY type
-      `).bind(payload?.userId).all();
+      `); // parameter inlined
 
       // 最近7天的通知趨勢
-      const trendStats = await c.env.DB.prepare(`
+      const trendStats = await drizzleDb.run(sql`
         SELECT DATE(created_at) as date, COUNT(*) as count
         FROM notifications
-        WHERE user_id = ? AND created_at >= date('now', '-7 days')
+        WHERE user_id = ${payload?.userId} AND created_at >= date('now', '-7 days')
         GROUP BY DATE(created_at)
         ORDER BY date DESC
-      `).bind(payload?.userId).all();
+      `); // parameter inlined
 
       const stats = {
-        total: totalResult?.total || 0,
-        unread: unreadResult?.unread || 0,
+        total: Number((totalResult as any)?.total) || 0,
+        unread: Number((unreadResult as any)?.unread) || 0,
         byType: {},
-        trend: trendStats.results.map((row: any) => ({
+        trend: trendStats.results || [].map((row: any) => ({
           date: row.date,
           count: row.count
         }))
       };
 
       // 格式化類型統計
-      typeStats.results.forEach((row: any) => {
+      typeStats.results || [].forEach((row: any) => {
         (stats.byType as any)[row.type] = {
           total: row.count,
           unread: row.unread_count
@@ -316,21 +312,22 @@ export const notificationHandler = {
 
   // 獲取通知設定
   async getSettings(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
 
-      const settings = await c.env.DB.prepare(`
-        SELECT * FROM notification_settings WHERE user_id = ?
-      `).bind(payload?.userId).first();
+      const settings = await drizzleDb.get(sql`
+        SELECT * FROM notification_settings WHERE user_id = ${payload?.userId}
+      `); // parameter inlined
 
       if (!settings) {
         // 創建預設設定
-        await c.env.DB.prepare(`
+        await drizzleDb.run(sql`
           INSERT INTO notification_settings 
           (user_id, email_enabled, push_enabled, sound_enabled, 
            mention_enabled, assignment_enabled, message_enabled)
-          VALUES (?, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)
-        `).bind(payload?.userId).run();
+          VALUES (${payload?.userId}, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)
+        `); // parameter inlined
 
         return successResponse(c, {
           userId: payload?.userId,
@@ -344,13 +341,13 @@ export const notificationHandler = {
       }
 
       const notificationSettings: LocalNotificationSettings = {
-        userId: Number(settings.user_id),
-        emailEnabled: Boolean(settings.email_enabled),
-        pushEnabled: Boolean(settings.push_enabled),
-        soundEnabled: Boolean(settings.sound_enabled),
-        mentionEnabled: Boolean(settings.mention_enabled),
-        assignmentEnabled: Boolean(settings.assignment_enabled),
-        messageEnabled: Boolean(settings.message_enabled)
+        userId: Number((settings as any).user_id),
+        emailEnabled: Boolean((settings as any).email_enabled),
+        pushEnabled: Boolean((settings as any).push_enabled),
+        soundEnabled: Boolean((settings as any).sound_enabled),
+        mentionEnabled: Boolean((settings as any).mention_enabled),
+        assignmentEnabled: Boolean((settings as any).assignment_enabled),
+        messageEnabled: Boolean((settings as any).message_enabled)
       };
 
       return successResponse(c, notificationSettings, 'Notification settings retrieved successfully');
@@ -362,6 +359,7 @@ export const notificationHandler = {
 
   // 更新通知設定
   async updateSettings(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const {
@@ -374,20 +372,12 @@ export const notificationHandler = {
       } = await c.req.json();
 
       // 更新設定
-      await c.env.DB.prepare(`
+      await drizzleDb.run(sql`
         INSERT OR REPLACE INTO notification_settings 
         (user_id, email_enabled, push_enabled, sound_enabled, 
          mention_enabled, assignment_enabled, message_enabled, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      `).bind(
-        payload?.userId,
-        emailEnabled !== undefined ? emailEnabled : true,
-        pushEnabled !== undefined ? pushEnabled : true,
-        soundEnabled !== undefined ? soundEnabled : true,
-        mentionEnabled !== undefined ? mentionEnabled : true,
-        assignmentEnabled !== undefined ? assignmentEnabled : true,
-        messageEnabled !== undefined ? messageEnabled : true
-      ).run();
+        VALUES (${payload?.userId}, ${emailEnabled !== undefined ? emailEnabled : true}, ${pushEnabled !== undefined ? pushEnabled : true}, ${soundEnabled !== undefined ? soundEnabled : true}, ${mentionEnabled !== undefined ? mentionEnabled : true}, ${assignmentEnabled !== undefined ? assignmentEnabled : true}, ${messageEnabled !== undefined ? messageEnabled : true}, datetime('now'))
+      `);
 
       return successResponse(c, null, 'Notification settings updated successfully');
 
@@ -451,28 +441,29 @@ export const notificationHandler = {
 
           // 檢查新通知的循環（簡化實現）
           const checkNotifications = async () => {
+      const notifDbConnection = drizzle(c.env.DB);
             if (connectionClosed) return;
 
             try {
               // 獲取最近的未讀通知
-              const notifications = await c.env.DB.prepare(`
+              const notifications = await notifDbConnection.run(sql`
                 SELECT * FROM notifications
-                WHERE user_id = ? AND is_read = FALSE
+                WHERE user_id = ${payload.userId} AND is_read = FALSE
                 AND created_at > datetime('now', '-1 minute')
                 ORDER BY created_at DESC
                 LIMIT 10
-              `).bind(payload.userId).all();
+              `);
 
-              if (notifications.results.length > 0) {
-                for (const notification of notifications.results) {
+              if (notifications.results || [].length > 0) {
+                for (const notification of notifications.results || []) {
                   const eventData = JSON.stringify({
                     type: 'notification',
                     data: {
-                      id: notification.id,
-                      type: notification.type,
-                      title: notification.title,
-                      content: notification.content,
-                      createdAt: notification.created_at
+                      id: (notification as any).id,
+                      type: (notification as any).type,
+                      title: (notification as any).title,
+                      content: (notification as any).content,
+                      createdAt: (notification as any).created_at
                     },
                     timestamp: new Date().toISOString()
                   });
@@ -512,7 +503,7 @@ export const notificationHandler = {
 // 通知創建工具函數
 export class NotificationService {
   static async createNotification(
-    db: any,
+    drizzleDb: any,
     userId: number,
     type: Notification['type'],
     title: string,
@@ -520,20 +511,18 @@ export class NotificationService {
     data?: any,
     expiresAt?: Date
   ): Promise<string> {
+    // drizzleDb不需要在靜態方法中聲明
     const notificationId = crypto.randomUUID();
 
-    await db.prepare(`
-      INSERT INTO notifications (id, user_id, type, title, content, data, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      notificationId,
-      userId,
-      type,
-      title,
-      content,
-      data ? JSON.stringify(data) : null,
-      expiresAt ? expiresAt.toISOString() : null
-    ).run();
+    await drizzleDb.insert(notifications).values({
+      id: notificationId,
+      userId: userId,
+      type: type,
+      title: title,
+      content: content,
+      data: data ? JSON.stringify(data) : null,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null
+    });
 
     return notificationId;
   }
@@ -546,6 +535,7 @@ export class NotificationService {
     content: string,
     assignedUserId?: number
   ): Promise<void> {
+    // drizzleDb不需要在靜態方法中聲明
     if (!assignedUserId) return;
 
     await this.createNotification(
@@ -567,6 +557,7 @@ export class NotificationService {
     customerName: string,
     assignedBy: string
   ): Promise<void> {
+    // drizzleDb不需要在靜態方法中聲明
     await this.createNotification(
       db,
       userId,
@@ -587,6 +578,7 @@ export class NotificationService {
     fromUser: string,
     reason?: string
   ): Promise<void> {
+    // drizzleDb不需要在靜態方法中聲明
     await this.createNotification(
       db,
       userId,
@@ -607,6 +599,7 @@ export class NotificationService {
     newPriority: string,
     changedBy: string
   ): Promise<void> {
+    // drizzleDb不需要在靜態方法中聲明
     await this.createNotification(
       db,
       userId,
@@ -626,6 +619,7 @@ export class NotificationService {
     content: string,
     data?: any
   ): Promise<void> {
+    // drizzleDb不需要在靜態方法中聲明
     for (const userId of userIds) {
       await this.createNotification(
         db,

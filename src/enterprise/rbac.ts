@@ -1,9 +1,7 @@
 // 企業級權限控制系統實現
 import type { Context, Next } from 'hono';
 import type { Bindings, DbUser } from '../types';
-import type {
-  RBACContext
-} from '../types/enterprise';
+import type { RBACContext } from '../types/enterprise';
 
 // 權限定義
 export interface Permission {
@@ -17,15 +15,17 @@ export interface Role {
   id: string;
   name: string;
   displayName: string;
+  description: string;
   permissions: Permission[];
-  isSystem: boolean;
+  level: number; // 0=admin, 1=team, 2=agent
 }
 
 // 權限檢查結果
 export interface PermissionCheckResult {
-  allowed: boolean;
+  granted: boolean;
   reason?: string;
-  context?: RBACContext;
+  requiredRole?: string;
+  userRole?: string;
 }
 
 // 企業級權限管理器
@@ -38,334 +38,257 @@ export class EnterpriseRBACManager {
     this.kv = kv;
   }
   
-  // 檢查用戶權限
+  // 檢查權限
   async checkPermission(
-    userId: number,
+    user: DbUser,
     resource: string,
     action: string,
-    context: RBACContext = {} as RBACContext
+    context: Partial<RBACContext> = {}
   ): Promise<PermissionCheckResult> {
     try {
-      // 從緩存獲取用戶權限
-      const userPermissions = await this.getUserPermissions(userId);
-      
-      // 檢查直接權限
-      const directPermission = userPermissions.find(p => 
-        p.resource === resource && p.action === action
-      );
-      
-      if (directPermission) {
-        return { allowed: true };
+      // 快取權限檢查
+      const cacheKey = `permission:${user.id}:${resource}:${action}`;
+      const cached = await this.kv.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
       }
+
+      // 基本角色檢查
+      const result = this.checkBasicPermission(user, resource, action);
       
-      // 檢查通配符權限
-      const wildcardPermission = userPermissions.find(p => 
-        (p.resource === '*' || p.resource === resource) && 
-        (p.action === '*' || p.action === action)
-      );
-      
-      if (wildcardPermission) {
-        return { allowed: true };
+      // 資源特定檢查
+      if (result.granted && context.resourceId) {
+        const resourceCheck = await this.checkResourceAccess(user, resource, String(context.resourceId));
+        if (!resourceCheck.granted) {
+          result.granted = false;
+          result.reason = resourceCheck.reason || 'Access denied';
+        }
       }
+
+      // 快取結果 (30秒)
+      await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 30 });
       
-      // 檢查上下文相關權限
-      const contextResult = await this.checkContextualPermission(
-        userId, resource, action, context
-      );
-      
-      if (contextResult.allowed) {
-        return contextResult;
-      }
-      
-      return {
-        allowed: false,
-        reason: `User ${userId} does not have permission for ${resource}:${action}`
-      };
-      
+      return result;
     } catch (error) {
-      return {
-        allowed: false,
-        reason: `Permission check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
+      console.error('Permission check error:', error);
+      return { granted: false, reason: 'Permission check failed' };
     }
   }
-  
-  // 獲取用戶所有權限
-  private async getUserPermissions(userId: number): Promise<Permission[]> {
-    const cacheKey = `user_permissions:${userId}`;
+
+  // 基本權限檢查
+  private checkBasicPermission(user: DbUser, resource: string, action: string): PermissionCheckResult {
+    const userRole = user.role?.toLowerCase() || 'agent';
     
-    // 嘗試從緩存獲取
-    const cached = await this.kv.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
+    // Admin 有所有權限
+    if (userRole === 'admin') {
+      return { granted: true, userRole };
     }
     
-    // 從資料庫查詢
-    const permissions = await this.db.prepare(`
-      SELECT DISTINCT p.id, p.resource, p.action, p.description
-      FROM permissions p
-      JOIN role_permissions rp ON p.id = rp.permission_id
-      JOIN user_roles ur ON rp.role_id = ur.role_id
-      WHERE ur.user_id = ? 
-        AND ur.is_active = 1 
-        AND (ur.expires_at IS NULL OR ur.expires_at > datetime('now'))
-        AND rp.granted = 1
-    `).bind(userId).all();
-    
-    const permissionList = permissions.results.map(p => ({
-      id: p.id as string,
-      resource: p.resource as string,
-      action: p.action as string,
-      description: p.description as string
-    }));
-    
-    // 緩存結果（5分鐘）
-    await this.kv.put(cacheKey, JSON.stringify(permissionList), {
-      expirationTtl: 5 * 60
-    });
-    
-    return permissionList;
-  }
-  
-  // 檢查上下文相關權限
-  private async checkContextualPermission(
-    userId: number,
-    resource: string,
-    _action: string,
-    context: any
-  ): Promise<PermissionCheckResult> {
-    // 檢查資源所有權
-    if (resource === 'conversation' && context.conversationId) {
-      const conversation = await this.db.prepare(`
-        SELECT assigned_user_id, assigned_team_id 
-        FROM conversations 
-        WHERE id = ?
-      `).bind(context.conversationId).first();
+    // Team 角色權限
+    if (userRole === 'team') {
+      const teamPermissions = [
+        'conversation:view', 'conversation:assign', 'conversation:transfer',
+        'customer:view', 'customer:edit',
+        'team:view', 'team:manage_agents',
+        'message:send', 'message:recall',
+        'analytics:view_team'
+      ];
       
-      if (conversation?.assigned_user_id === userId) {
-        return { allowed: true, reason: 'Resource owner' };
-      }
-      
-      // 檢查團隊權限
-      const user = await this.db.prepare(`
-        SELECT team_id, role FROM users WHERE id = ?
-      `).bind(userId).first();
-      
-      if (user?.team_id === conversation?.assigned_team_id) {
-        return { allowed: true, reason: 'Team member' };
+      const permission = `${resource}:${action}`;
+      if (teamPermissions.includes(permission)) {
+        return { granted: true, userRole };
       }
     }
     
-    // 檢查時間限制
-    if (context.timeRestriction) {
-      const currentHour = new Date().getHours();
-      if (currentHour < context.timeRestriction.start || 
-          currentHour > context.timeRestriction.end) {
-        return { 
-          allowed: false, 
-          reason: 'Outside allowed time window' 
-        };
+    // Agent 基本權限
+    if (userRole === 'agent') {
+      const agentPermissions = [
+        'conversation:view', 'conversation:respond',
+        'customer:view',
+        'message:send', 'message:recall'
+      ];
+      
+      const permission = `${resource}:${action}`;
+      if (agentPermissions.includes(permission)) {
+        return { granted: true, userRole };
       }
     }
     
-    return { allowed: false };
-  }
-  
-  // 分配角色給用戶
-  async assignRole(
-    userId: number,
-    roleId: string,
-    grantedBy: number,
-    expiresAt?: Date
-  ): Promise<void> {
-    await this.db.prepare(`
-      INSERT OR REPLACE INTO user_roles 
-      (user_id, role_id, granted_by, granted_at, expires_at, is_active)
-      VALUES (?, ?, ?, datetime('now'), ?, 1)
-    `).bind(
-      userId,
-      roleId,
-      grantedBy,
-      expiresAt ? expiresAt.toISOString() : null
-    ).run();
-    
-    // 清除用戶權限緩存
-    await this.kv.delete(`user_permissions:${userId}`);
-  }
-  
-  // 撤銷用戶角色
-  async revokeRole(userId: number, roleId: string): Promise<void> {
-    await this.db.prepare(`
-      UPDATE user_roles 
-      SET is_active = 0 
-      WHERE user_id = ? AND role_id = ?
-    `).bind(userId, roleId).run();
-    
-    // 清除用戶權限緩存
-    await this.kv.delete(`user_permissions:${userId}`);
-  }
-  
-  // 創建自定義角色
-  async createRole(
-    roleData: {
-      name: string;
-      displayName: string;
-      permissions: string[];
-    },
-    _createdBy: number
-  ): Promise<Role> {
-    const roleId = crypto.randomUUID();
-    
-    // 創建角色
-    await this.db.prepare(`
-      INSERT INTO roles (id, name, display_name, is_system, created_at)
-      VALUES (?, ?, ?, 0, datetime('now'))
-    `).bind(roleId, roleData.name, roleData.displayName).run();
-    
-    // 分配權限
-    for (const permissionId of roleData.permissions) {
-      await this.db.prepare(`
-        INSERT INTO role_permissions (role_id, permission_id, granted)
-        VALUES (?, ?, 1)
-      `).bind(roleId, permissionId).run();
-    }
-    
-    return {
-      id: roleId,
-      name: roleData.name,
-      displayName: roleData.displayName,
-      permissions: await this.getRolePermissions(roleId),
-      isSystem: false
+    return { 
+      granted: false, 
+      reason: `Role '${userRole}' does not have permission '${resource}:${action}'`,
+      userRole,
+      requiredRole: this.getRequiredRole(resource, action)
     };
   }
-  
-  // 獲取角色權限
-  private async getRolePermissions(roleId: string): Promise<Permission[]> {
-    const permissions = await this.db.prepare(`
-      SELECT p.id, p.resource, p.action, p.description
-      FROM permissions p
-      JOIN role_permissions rp ON p.id = rp.permission_id
-      WHERE rp.role_id = ? AND rp.granted = 1
-    `).bind(roleId).all();
+
+  // 資源存取檢查
+  private async checkResourceAccess(user: DbUser, resource: string, resourceId: string): Promise<PermissionCheckResult> {
+    const userRole = user.role?.toLowerCase() || 'agent';
     
-    return permissions.results.map(p => ({
-      id: p.id as string,
-      resource: p.resource as string,
-      action: p.action as string,
-      description: p.description as string
-    }));
+    // Admin 可存取所有資源
+    if (userRole === 'admin') {
+      return { granted: true };
+    }
+    
+    // 對話資源檢查
+    if (resource === 'conversation') {
+      try {
+        const { drizzle } = await import('drizzle-orm/d1');
+        const { eq } = await import('drizzle-orm');
+        const { conversations } = await import('../db/schema');
+        const db = drizzle(this.db);
+        
+        const conversation = await db
+          .select({
+            assignedUserId: conversations.assignedUserId,
+            assignedTeamId: conversations.assignedTeamId
+          })
+          .from(conversations)
+          .where(eq(conversations.id, resourceId))
+          .get();
+        
+        if (!conversation) {
+          return { granted: false, reason: 'Conversation not found' };
+        }
+        
+        // Team 可存取同團隊的對話
+        if (userRole === 'team' && user.teamId && 
+            conversation.assignedTeamId === user.teamId) {
+          return { granted: true };
+        }
+        
+        // Agent 只能存取指派給自己的對話
+        if (userRole === 'agent' && conversation.assignedUserId === String(user.id)) {
+          return { granted: true };
+        }
+        
+        return { granted: false, reason: 'No access to this conversation' };
+      } catch (error) {
+        console.error('Resource access check error:', error);
+        return { granted: false, reason: 'Resource access check failed' };
+      }
+    }
+    
+    return { granted: true }; // 預設允許
+  }
+
+  // 取得所需角色
+  private getRequiredRole(resource: string, action: string): string {
+    const adminActions = ['system:*', 'user:create', 'user:delete', 'team:create', 'team:delete'];
+    const teamActions = ['team:manage', 'analytics:view_team', 'conversation:assign'];
+    
+    const permission = `${resource}:${action}`;
+    
+    if (adminActions.some(p => p === permission || p.endsWith(':*'))) {
+      return 'admin';
+    }
+    
+    if (teamActions.includes(permission)) {
+      return 'team';
+    }
+    
+    return 'agent';
+  }
+
+  // 角色管理
+  async getUserRoles(userId: string): Promise<Role[]> {
+    try {
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { eq } = await import('drizzle-orm');
+      const { agents } = await import('../db/schema');
+      const db = drizzle(this.db);
+      
+      const user = await db
+        .select({
+          role: agents.role,
+          teamId: agents.teamId
+        })
+        .from(agents)
+        .where(eq(agents.id, userId))
+        .get();
+      
+      if (!user) return [];
+      
+      const roleMap: Record<string, Role> = {
+        admin: {
+          id: 'admin',
+          name: 'admin',
+          displayName: 'Administrator',
+          description: 'Full system access',
+          permissions: [],
+          level: 0
+        },
+        team: {
+          id: 'team',
+          name: 'team',
+          displayName: 'Team Leader',
+          description: 'Team management access',
+          permissions: [],
+          level: 1
+        },
+        agent: {
+          id: 'agent',
+          name: 'agent',
+          displayName: 'Agent',
+          description: 'Basic agent access',
+          permissions: [],
+          level: 2
+        }
+      };
+      
+      const role = user.role ? roleMap[user.role as string] : undefined;
+      return role ? [role] : [];
+    } catch (error) {
+      console.error('Get user roles error:', error);
+      return [];
+    }
+  }
+
+  // 權限列表
+  async getAvailablePermissions(): Promise<Permission[]> {
+    return [
+      { id: '1', resource: 'conversation', action: 'view', description: 'View conversations' },
+      { id: '2', resource: 'conversation', action: 'assign', description: 'Assign conversations' },
+      { id: '3', resource: 'conversation', action: 'transfer', description: 'Transfer conversations' },
+      { id: '4', resource: 'customer', action: 'view', description: 'View customers' },
+      { id: '5', resource: 'customer', action: 'edit', description: 'Edit customers' },
+      { id: '6', resource: 'message', action: 'send', description: 'Send messages' },
+      { id: '7', resource: 'message', action: 'recall', description: 'Recall messages' },
+      { id: '8', resource: 'team', action: 'view', description: 'View teams' },
+      { id: '9', resource: 'team', action: 'manage', description: 'Manage teams' },
+      { id: '10', resource: 'analytics', action: 'view', description: 'View analytics' }
+    ];
   }
 }
 
-// 權限中間件
-export function requirePermission(resource: string, action: string) {
-  return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
+// RBAC 中間件
+export function rbacMiddleware(resource: string, action: string) {
+  return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
     const user = c.get('user') as DbUser;
-    
     if (!user) {
-      return c.json({ error: 'Authentication required' }, 401);
+      return c.json({ error: 'Unauthorized' }, 401);
     }
-    
+
     const rbac = new EnterpriseRBACManager(c.env.DB, c.env.KV);
-    const result = await rbac.checkPermission(
-      typeof user.id === 'string' ? parseInt(user.id, 10) : user.id,
-      resource,
-      action,
-      {
-        userId: typeof user.id === 'string' ? parseInt(user.id, 10) : user.id,
-        action,
-        resource,
-        conversationId: parseInt(c.req.param('id') || '0'),
-        metadata: {
-          clientIP: c.req.header('CF-Connecting-IP'),
-          userAgent: c.req.header('User-Agent')
-        }
-      }
-    );
-    
-    if (!result.allowed) {
-      return c.json({
-        error: 'Insufficient permissions',
+    const result = await rbac.checkPermission(user, resource, action, {
+      resourceId: c.req.param('id')
+    });
+
+    if (!result.granted) {
+      return c.json({ 
+        error: 'Forbidden', 
         reason: result.reason,
-        required: `${resource}:${action}`
+        requiredRole: result.requiredRole,
+        userRole: result.userRole
       }, 403);
     }
-    
-    await next();
+
+    return await next();
   };
 }
 
-// 預定義權限
-export const PERMISSIONS = {
-  // 用戶管理
-  USER_CREATE: { resource: 'user', action: 'create' },
-  USER_READ: { resource: 'user', action: 'read' },
-  USER_UPDATE: { resource: 'user', action: 'update' },
-  USER_DELETE: { resource: 'user', action: 'delete' },
-  
-  // 對話管理
-  CONVERSATION_VIEW_ALL: { resource: 'conversation', action: 'view_all' },
-  CONVERSATION_VIEW_TEAM: { resource: 'conversation', action: 'view_team' },
-  CONVERSATION_VIEW_OWN: { resource: 'conversation', action: 'view_own' },
-  CONVERSATION_ASSIGN: { resource: 'conversation', action: 'assign' },
-  CONVERSATION_TRANSFER: { resource: 'conversation', action: 'transfer' },
-  CONVERSATION_CLOSE: { resource: 'conversation', action: 'close' },
-  
-  // 訊息管理
-  MESSAGE_SEND: { resource: 'message', action: 'send' },
-  MESSAGE_EDIT: { resource: 'message', action: 'edit' },
-  MESSAGE_DELETE: { resource: 'message', action: 'delete' },
-  MESSAGE_RECALL: { resource: 'message', action: 'recall' },
-  
-  // 系統管理
-  SYSTEM_SETTINGS: { resource: 'system', action: 'settings' },
-  SYSTEM_LOGS: { resource: 'system', action: 'logs' },
-  SYSTEM_ANALYTICS: { resource: 'system', action: 'analytics' },
-  
-  // 超級權限
-  ALL: { resource: '*', action: '*' }
-} as const;
-
-// 預定義角色
-export const ROLES = {
-  SUPER_ADMIN: {
-    name: 'super_admin',
-    displayName: '超級管理員',
-    permissions: [PERMISSIONS.ALL]
-  },
-  ADMIN: {
-    name: 'admin',
-    displayName: '管理員',
-    permissions: [
-      PERMISSIONS.USER_CREATE,
-      PERMISSIONS.USER_READ,
-      PERMISSIONS.USER_UPDATE,
-      PERMISSIONS.CONVERSATION_VIEW_ALL,
-      PERMISSIONS.CONVERSATION_ASSIGN,
-      PERMISSIONS.CONVERSATION_TRANSFER,
-      PERMISSIONS.SYSTEM_SETTINGS,
-      PERMISSIONS.SYSTEM_ANALYTICS
-    ]
-  },
-  TEAM_LEAD: {
-    name: 'team_lead',
-    displayName: '團隊主管',
-    permissions: [
-      PERMISSIONS.USER_READ,
-      PERMISSIONS.CONVERSATION_VIEW_TEAM,
-      PERMISSIONS.CONVERSATION_ASSIGN,
-      PERMISSIONS.MESSAGE_SEND,
-      PERMISSIONS.MESSAGE_EDIT
-    ]
-  },
-  AGENT: {
-    name: 'agent',
-    displayName: '客服人員',
-    permissions: [
-      PERMISSIONS.CONVERSATION_VIEW_OWN,
-      PERMISSIONS.CONVERSATION_CLOSE,
-      PERMISSIONS.MESSAGE_SEND,
-      PERMISSIONS.MESSAGE_EDIT
-    ]
-  }
-} as const;
+// 權限檢查裝飾器
+export function requirePermission(resource: string, action: string) {
+  return rbacMiddleware(resource, action);
+}

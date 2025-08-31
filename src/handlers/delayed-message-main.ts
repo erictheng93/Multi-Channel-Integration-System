@@ -28,7 +28,7 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       'message', 
       'send', 
       { 
-        userId: user.id, // ✅ 保持一致的字符串ID
+        userId: Number(user.id), // 轉換為數字以符合 PermissionContext
         role: user.role,
         resourceId: conversationId 
       }
