@@ -30,9 +30,9 @@ export interface AppState {
 }
 
 export interface ConversationFilters {
-  status?: 'open' | 'assigned' | 'closed' | undefined;
+  status?: 'open' | 'assigned' | 'closed' | '' | undefined;
   assignedTo?: string | undefined;
-  platform?: Platform | undefined;
+  platform?: Platform | '' | undefined;
 }
 
 // Extended interface for API calls that allows undefined

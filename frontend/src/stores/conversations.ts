@@ -463,6 +463,10 @@ export const useConversationsStore = defineStore('conversations', () => {
     optimisticMessages.value = []
   }
 
+  const setConversations = (newConversations: Conversation[]) => {
+    conversations.value = newConversations
+  }
+
   // Add missing methods for tests
   const loadConversations = fetchConversations
   const loadMessages = fetchMessages
@@ -525,6 +529,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loadMore,
     refresh,
     clearMessages,
+    setConversations,
     clearError,
 
     // Test compatibility methods

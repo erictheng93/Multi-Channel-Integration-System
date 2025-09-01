@@ -14,12 +14,24 @@
           </div>
           
           <div class="header-actions">
+            <!-- 混合同步狀態指示器 -->
+            <div v-if="syncStatus !== 'disconnected'" class="sync-status-indicator" :class="`status-${syncStatus}`">
+              <div class="sync-dot" :class="{ 'syncing': isAutoRefreshing }"></div>
+              <span class="sync-text">
+                <template v-if="syncStatus === 'connected'">SSE連線</template>
+                <template v-else-if="syncStatus === 'polling'">輪詢模式</template>
+                <template v-else-if="syncStatus === 'connecting'">連線中</template>
+                <template v-else-if="isAutoRefreshing">更新中</template>
+                <template v-else>{{ syncStatus }}</template>
+              </span>
+            </div>
+            
             <button
               class="btn btn-secondary"
               :disabled="loading"
               @click="refreshConversations"
             >
-              <RefreshIcon :spinning="loading" />
+              <RefreshIcon :spinning="loading || isAutoRefreshing" />
               重新整理
             </button>
           </div>
@@ -36,16 +48,16 @@
                 @change="loadConversations"
               >
                 <option value="">
-                  全部狀態
+                  所有狀態
                 </option>
                 <option value="open">
                   待處理
                 </option>
                 <option value="assigned">
-                  處理中
+                  已指派
                 </option>
                 <option value="closed">
-                  已結束
+                  已關閉
                 </option>
               </select>
             </div>
@@ -58,7 +70,7 @@
                 @change="loadConversations"
               >
                 <option value="">
-                  全部平台
+                  所有平台
                 </option>
                 <option value="line">
                   LINE
@@ -190,12 +202,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth, useConversations } from '@/composables'
 import type { Conversation, ConversationFilters } from '@/types'
-// import { conversationApi } from '@/api/conversations' // 暫時註解，未使用
 import { useConversationsStore } from '@/stores/conversations'
+import { conversationSync } from '@/services/conversationSync'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -223,8 +235,8 @@ const pageSize = ref(20)
 const total = ref(0)
 const selectedConversationId = ref<string | null>(null)
 const filters = ref<ConversationFilters>({
-  status: undefined,
-  platform: undefined,
+  status: '', // 設定為空字串以顯示「所有狀態」
+  platform: '', // 設定為空字串以顯示「所有平台」
   assignedTo: undefined
 })
 
@@ -266,19 +278,58 @@ function changePage(page: number) {
   loadConversations()
 }
 
-function refreshConversations() {
-  currentPage.value = 1
-  loadConversations()
-}
 
 function clearFilters() {
   filters.value = {
-    status: undefined,
-    platform: undefined,
+    status: '',
+    platform: '',
     assignedTo: undefined
   }
   currentPage.value = 1
   loadConversations()
+}
+
+// 混合同步相關狀態
+const syncStatus = ref<'disconnected' | 'connecting' | 'connected' | 'polling' | 'error'>('disconnected')
+const isAutoRefreshing = ref(false)
+// Sync error and last update are handled by the sync service itself
+
+// 設置同步服務回調
+conversationSync.onData((data: Conversation[]) => {
+  console.log('📥 [ConversationList] Received data from sync service:', data.length)
+  // Note: conversations is readonly from useConversations, so we refresh the store instead
+  conversationsStore.setConversations(data)
+  total.value = data.length
+  isAutoRefreshing.value = false
+})
+
+conversationSync.onStatus((status) => {
+  console.log('📊 [ConversationList] Sync status changed:', status)
+  syncStatus.value = status
+  
+  // 更新刷新狀態指示器
+  if (status === 'connecting') {
+    isAutoRefreshing.value = true
+  } else if (status === 'connected' || status === 'polling') {
+    isAutoRefreshing.value = false
+  }
+})
+
+// 手動刷新
+async function refreshConversations() {
+  console.log('🔄 [ConversationList] Manual refresh triggered')
+  currentPage.value = 1
+  isAutoRefreshing.value = true
+  
+  try {
+    await conversationSync.refresh()
+  } catch (error) {
+    console.error('Manual refresh failed:', error)
+    // 回退到原始方法
+    await loadConversations()
+  } finally {
+    isAutoRefreshing.value = false
+  }
 }
 
 // Watch for filter changes
@@ -287,8 +338,19 @@ watch(filters, () => {
 }, { deep: true })
 
 // Lifecycle
-onMounted(() => {
-  loadConversations()
+onMounted(async () => {
+  console.log('🚀 [ConversationList] Component mounted, starting sync service')
+  
+  // 初始加載數據
+  await loadConversations()
+  
+  // 啟動混合同步服務
+  await conversationSync.start()
+})
+
+onUnmounted(() => {
+  console.log('🛑 [ConversationList] Component unmounted, stopping sync service')
+  conversationSync.stop()
 })
 </script>
 
@@ -327,7 +389,79 @@ onMounted(() => {
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-3);
+}
+
+.sync-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sync-status-indicator.status-connected {
+  background-color: var(--green-50);
+  border-color: var(--green-200);
+  color: var(--green-700);
+}
+
+.sync-status-indicator.status-polling {
+  background-color: var(--yellow-50);
+  border-color: var(--yellow-200);
+  color: var(--yellow-700);
+}
+
+.sync-status-indicator.status-connecting {
+  background-color: var(--blue-50);
+  border-color: var(--blue-200);
+  color: var(--blue-700);
+}
+
+.sync-status-indicator.status-error {
+  background-color: var(--red-50);
+  border-color: var(--red-200);
+  color: var(--red-700);
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-connected .sync-dot {
+  background-color: var(--green-500);
+}
+
+.status-polling .sync-dot {
+  background-color: var(--yellow-500);
+}
+
+.status-connecting .sync-dot, .sync-dot.syncing {
+  background-color: var(--blue-500);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-error .sync-dot {
+  background-color: var(--red-500);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
 }
 
 .filters-section {

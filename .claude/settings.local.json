@@ -74,7 +74,8 @@
       "Bash(npx wrangler dev:*)",
       "WebFetch(domain:multi-channel.imfinethankyouandyou.com)",
       "WebSearch",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(NODE_ENV=production npm run deploy:pages)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

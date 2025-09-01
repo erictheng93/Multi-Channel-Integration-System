@@ -215,8 +215,8 @@ const conversationsStore = useConversationsStore()
 const activityStreamData = useActivityStream()
 
 const filters = ref<ConversationFilters>({
-  status: undefined,
-  platform: undefined
+  status: '', // 預設為空字串以顯示「所有狀態」
+  platform: '' // 預設為空字串以顯示「所有平台」
 })
 
 // 直接使用 Store 數據，避免 useAsyncData 的複雜性
