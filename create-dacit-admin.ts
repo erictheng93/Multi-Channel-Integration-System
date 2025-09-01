@@ -1,18 +1,25 @@
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/d1';
+import { eq } from 'drizzle-orm';
+import { agents } from './src/db/schema';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import Database from 'better-sqlite3';
 
 async function createDacitAdmin() {
   // Connect to the local development database
   const dbPath = path.join('.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject', 'dc23354e195c301b4778615a1d18f9e116936b7ddbf1fa5ed62c6ac8bb6640a8.sqlite');
   
-  const db = new Database(dbPath, { readonly: false });
+  const sqliteDb = new Database(dbPath, { readonly: false });
+  const db = drizzle(sqliteDb as any); // Cast to D1Database type for compatibility
   console.log(`Connected to LOCAL DEV database`);
   console.log('=' .repeat(80));
   
   try {
     // Check if admin@dacit.net already exists
-    const existing = db.prepare('SELECT id FROM agents WHERE email = ?').get('admin@dacit.net');
+    const existing = await db.select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.email, 'admin@dacit.net'))
+      .get();
     
     if (existing) {
       console.log('Admin user admin@dacit.net already exists. Updating...');
@@ -21,17 +28,17 @@ async function createDacitAdmin() {
       const passwordHash = await bcrypt.hash('16011587DaC', 12);
       
       // Update existing user
-      const updateResult = db.prepare(`
-        UPDATE agents 
-        SET password_hash = ?, 
-            display_name = ?,
-            is_active = 1,
-            updated_at = ?
-        WHERE email = ?
-      `).run(passwordHash, 'System Administrator', new Date().toISOString(), 'admin@dacit.net');
+      const updateResult = await db.update(agents)
+        .set({
+          passwordHash,
+          displayName: 'System Administrator',
+          isActive: true,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(agents.email, 'admin@dacit.net'));
       
       console.log(`✅ Updated admin user with new password`);
-      console.log(`   Rows affected: ${updateResult.changes}`);
+      console.log(`   Update completed successfully`);
     } else {
       console.log('Creating new admin user admin@dacit.net...');
       
@@ -41,50 +48,41 @@ async function createDacitAdmin() {
       const now = new Date().toISOString();
       
       // Insert new admin user
-      const insertResult = db.prepare(`
-        INSERT INTO agents (
-          id, 
-          email, 
-          password_hash, 
-          display_name, 
-          role, 
-          is_active,
-          password_policy,
-          created_at, 
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        userId,
-        'admin@dacit.net',
+      await db.insert(agents).values({
+        id: userId,
+        email: 'admin@dacit.net',
         passwordHash,
-        'System Administrator',
-        'admin',
-        1,
-        'changeable',
-        now,
-        now
-      );
+        displayName: 'System Administrator',
+        role: 'admin',
+        isActive: true,
+        passwordPolicy: 'changeable',
+        createdAt: now,
+        updatedAt: now
+      });
       
       console.log(`✅ Created new admin user`);
       console.log(`   ID: ${userId}`);
-      console.log(`   Rows affected: ${insertResult.changes}`);
+      console.log(`   Insert completed successfully`);
     }
     
     // Verify the user can be found and password works
     console.log('\n' + '='.repeat(80));
     console.log('Verifying admin@dacit.net:');
     
-    const adminUser = db.prepare('SELECT * FROM agents WHERE email = ?').get('admin@dacit.net');
+    const adminUser = await db.select()
+      .from(agents)
+      .where(eq(agents.email, 'admin@dacit.net'))
+      .get();
     if (adminUser) {
       console.log(`✅ User found:`);
       console.log(`   ID: ${adminUser.id}`);
       console.log(`   Email: ${adminUser.email}`);
-      console.log(`   Display Name: ${adminUser.display_name}`);
+      console.log(`   Display Name: ${adminUser.displayName}`);
       console.log(`   Role: ${adminUser.role}`);
-      console.log(`   Active: ${adminUser.is_active}`);
+      console.log(`   Active: ${adminUser.isActive}`);
       
       // Test password
-      const passwordValid = await bcrypt.compare('16011587DaC', adminUser.password_hash);
+      const passwordValid = await bcrypt.compare('16011587DaC', adminUser.passwordHash);
       console.log(`   Password test: ${passwordValid ? '✅ VALID' : '❌ INVALID'}`);
     } else {
       console.log('❌ Failed to create/find user');
@@ -93,7 +91,7 @@ async function createDacitAdmin() {
   } catch (error) {
     console.error('Error:', error);
   } finally {
-    db.close();
+    sqliteDb.close();
     console.log('\n✅ Database operation completed');
   }
 }
