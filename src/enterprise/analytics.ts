@@ -4,7 +4,7 @@ import type {
   TimeSeriesData
 } from '../types/enterprise';
 import { drizzle } from 'drizzle-orm/d1';
-import { sql, eq, and, gte, lte, asc, count, avg, sum } from 'drizzle-orm';
+import { sql, eq, and, gte, lte, asc, desc, count, avg, sum } from 'drizzle-orm';
 import { metrics, conversations, messages } from '../db/schema';
 
 // Legacy 分析指標接口 (保持向後相容)
@@ -239,45 +239,66 @@ export class EnterpriseAnalyticsEngine {
       format: 'json' | 'csv';
     }
   ): Promise<Record<string, unknown>[] | string> {
-    const { metrics, filters, groupBy, period, format } = reportConfig;
+    const { metrics: metricNames, filters, groupBy, period, format } = reportConfig;
     
-    // 構建查詢
-    let query = `
-      SELECT ${this.buildSelectClause(metrics, groupBy)}
-      FROM metrics m
-      LEFT JOIN conversations c ON m.tags LIKE '%conversation_id%'
-      LEFT JOIN users u ON m.tags LIKE '%user_id%'
-      WHERE m.timestamp >= ? AND m.timestamp <= ?
-    `;
+    const db = drizzle(this.db);
     
-    const params = [period.start, period.end];
+    // Build dynamic select clause using Drizzle ORM
+    const selectFields = this.buildDrizzleSelectFields(metricNames, groupBy);
     
-    // 添加過濾條件
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined) {
-        query += ` AND ${key} = ?`;
-        if (typeof value === 'number') {
-          params.push(value);
-        } else {
-          // params.push(String(value));
-        }
-      }
+    // Build all filter conditions
+    const whereConditions = [
+      gte(metrics.timestamp, period.start),
+      lte(metrics.timestamp, period.end)
+    ];
+    
+    // Add additional filters dynamically
+    if (filters.teamId !== undefined) {
+      whereConditions.push(sql`JSON_EXTRACT(${metrics.tags}, '$.team_id') = ${filters.teamId}`);
     }
     
-    // 添加分組
+    if (filters.platform !== undefined) {
+      whereConditions.push(sql`JSON_EXTRACT(${metrics.tags}, '$.platform') = ${filters.platform}`);
+    }
+    
+    // Build the complete query conditionally to avoid TypeScript issues
+    let result;
+    
     if (groupBy.length > 0) {
-      query += ` GROUP BY ${groupBy.join(', ')}`;
+      const groupByFields = groupBy.map(field => {
+        switch (field) {
+          case 'team_id':
+            return sql`JSON_EXTRACT(${metrics.tags}, '$.team_id')`;
+          case 'platform':
+            return sql`JSON_EXTRACT(${metrics.tags}, '$.platform')`;
+          case 'metric_name':
+            return metrics.metricName;
+          default:
+            return sql.raw(field);
+        }
+      });
+      
+      result = await db
+        .select(selectFields)
+        .from(metrics)
+        .leftJoin(conversations, sql`JSON_EXTRACT(${metrics.tags}, '$.conversation_id') = ${conversations.id}`)
+        .where(and(...whereConditions))
+        .groupBy(...groupByFields)
+        .orderBy(desc(metrics.timestamp));
+    } else {
+      result = await db
+        .select(selectFields)
+        .from(metrics)
+        .leftJoin(conversations, sql`JSON_EXTRACT(${metrics.tags}, '$.conversation_id') = ${conversations.id}`)
+        .where(and(...whereConditions))
+        .orderBy(desc(metrics.timestamp));
     }
-    
-    query += ` ORDER BY m.timestamp DESC`;
-    
-    const result = await this.db.prepare(query).bind(...params).all();
     
     if (format === 'csv') {
-      return this.convertToCSV(result.results || []);
+      return this.convertToCSV(result);
     }
     
-    return result.results || [];
+    return result;
   }
   
   // 私有方法：獲取對話指標
@@ -701,32 +722,74 @@ export class EnterpriseAnalyticsEngine {
     };
   }
 
-  // 私有方法：構建選擇子句
-  private buildSelectClause(metrics: string[], groupBy: string[]): string {
-    const selectParts = [];
+  // 私有方法：構建 Drizzle 選擇欄位
+  private buildDrizzleSelectFields(metricNames: string[], groupBy: string[]) {
+    const selectFields: Record<string, any> = {};
     
-    for (const metric of metrics) {
-      switch (metric) {
+    // Add metric fields
+    for (const metricName of metricNames) {
+      switch (metricName) {
         case 'count':
-          selectParts.push('COUNT(*) as count');
+          selectFields.count = count().as('count');
           break;
         case 'avg_value':
-          selectParts.push('AVG(metric_value) as avg_value');
+          selectFields.avgValue = avg(metrics.metricValue).as('avg_value');
           break;
         case 'sum_value':
-          selectParts.push('SUM(metric_value) as sum_value');
+          selectFields.sumValue = sum(metrics.metricValue).as('sum_value');
+          break;
+        case 'metric_name':
+          selectFields.metricName = metrics.metricName;
+          break;
+        case 'metric_value':
+          selectFields.metricValue = metrics.metricValue;
+          break;
+        case 'timestamp':
+          selectFields.timestamp = metrics.timestamp;
           break;
         default:
-          selectParts.push(`${metric}`);
+          // Handle dynamic fields from tags
+          if (metricName.startsWith('tag_')) {
+            const tagName = metricName.substring(4);
+            selectFields[metricName] = sql`JSON_EXTRACT(${metrics.tags}, '$.${tagName}')`.as(metricName);
+          }
+          break;
       }
     }
-
-    if (groupBy.length > 0) {
-      selectParts.push(...groupBy);
+    
+    // Add group by fields
+    for (const groupField of groupBy) {
+      switch (groupField) {
+        case 'team_id':
+          selectFields.teamId = sql`JSON_EXTRACT(${metrics.tags}, '$.team_id')`.as('team_id');
+          break;
+        case 'platform':
+          selectFields.platform = sql`JSON_EXTRACT(${metrics.tags}, '$.platform')`.as('platform');
+          break;
+        case 'metric_name':
+          selectFields.metricName = metrics.metricName;
+          break;
+        default:
+          // Handle other group by fields
+          selectFields[groupField] = sql.raw(groupField).as(groupField);
+          break;
+      }
     }
-
-    return selectParts.join(', ');
+    
+    // If no specific fields selected, return all basic fields
+    if (Object.keys(selectFields).length === 0) {
+      return {
+        metricName: metrics.metricName,
+        metricValue: metrics.metricValue,
+        timestamp: metrics.timestamp,
+        tags: metrics.tags
+      };
+    }
+    
+    return selectFields;
   }
+  
+  // 保留舊方法以維持向後相容性（已棄用）
   
   // 私有方法：更新時間序列數據
   private async updateTimeSeriesData(metric: AnalyticsMetric): Promise<void> {
