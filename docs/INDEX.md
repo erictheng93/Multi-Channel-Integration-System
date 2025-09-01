@@ -18,6 +18,12 @@
 - [API 端點文檔](api/api-endpoints.md) - 完整 API 端點說明
 - [用戶場景文檔更新](api/USER_SCENARIO_DOCUMENTATION_UPDATE.md) - 用戶場景文檔
 
+## 📊 監控文檔 (`monitoring/`)
+
+- [API 監控演示](monitoring/API_MONITOR_DEMO.md) - API 監控系統演示
+- [API 監控改進](monitoring/API_MONITOR_IMPROVEMENTS.md) - 監控系統改進計劃
+- [API 監控最終更新](monitoring/API_MONITOR_FINAL_UPDATES.md) - 監控系統最終更新
+
 ## 🚀 功能文檔 (`features/`)
 
 - [活動記錄功能](features/activity-log.md) - 活動記錄系統說明 ⭐
@@ -48,6 +54,18 @@
 - [遷移計劃](guides/MIGRATION_PLAN.md) - 系統遷移規劃
 - [系統健康報告](guides/SYSTEM_HEALTH_REPORT.md) - 系統狀態監控
 - [資源重命名指南](guides/RESOURCE_RENAMING_GUIDE.md) - 資源管理
+
+## 🔧 故障排除 (`troubleshooting/`)
+
+- [LINE Webhook 除錯](troubleshooting/debug-line-webhook.md) - LINE Webhook 問題診斷
+
+## 📦 部署文檔 (`deployment/`)
+
+- [環境清理報告](deployment/ENVIRONMENT_CLEANUP_REPORT.md) - 環境清理作業記錄
+
+## 🔄 遷移文檔 (`migration/`)
+
+- [Drizzle 遷移檢查清單](migration/DRIZZLE_MIGRATION_CHECKLIST.md) - 資料庫遷移檢查清單
 
 ## 🛠️ 實作文檔 (`implementation/`)
 
