@@ -47,9 +47,10 @@ watch(() => route.path, (newPath, oldPath) => {
 onMounted(() => {
   console.log('🚀 App.vue mounted')
   
-  // Initialize auth state on app start
-  if (authStore.token && !authStore.currentAgent) {
-    authStore.fetchCurrentAgent()
+  // ✅ 優化：智能初始化認證狀態
+  if (authStore.token) {
+    // 使用統一的會話初始化邏輯，避免重複 API 請求
+    authStore.initializeSession()
   }
   
   // Start activity tracking for session extension

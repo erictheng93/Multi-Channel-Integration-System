@@ -193,9 +193,9 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       for (const conversationId of conversationIds) {
         const latestMessage = await drizzleDb
           .select({
-            conversation_id: messages.conversationId,
-            last_message_content: messages.content,
-            last_message_at_actual: messages.createdAt
+            conversationId: messages.conversationId,
+            lastMessageContent: messages.content,
+            lastMessageAtActual: messages.createdAt
           })
           .from(messages)
           .where(eq(messages.conversationId, conversationId))
@@ -209,13 +209,13 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       }
     }
     
-    // 結合數據
+    // 結合數據并統一為camelCase格式
     const combinedData = conversationData.map(conv => {
-      const lastMsg = lastMessages.find((msg: any) => msg.conversation_id === conv.id);
+      const lastMsg = lastMessages.find((msg: any) => msg.conversationId === conv.id);
       return {
         ...conv,
-        last_message_content: lastMsg?.last_message_content || null,
-        last_message_at_actual: lastMsg?.last_message_at_actual || null
+        lastMessageContent: lastMsg?.lastMessageContent || null,
+        lastMessageAtActual: lastMsg?.lastMessageAtActual || null
       };
     });
 
@@ -270,9 +270,9 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
         createdAt: conversations.createdAt,
         updatedAt: conversations.updatedAt,
         // 客戶資料
-        customer_name: customers.displayName,
+        customerName: customers.displayName,
         platform: customers.platform,
-        platform_user_id: customers.platformUserId
+        platformUserId: customers.platformUserId
       })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -377,9 +377,9 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
 
     console.log(`💬 [Agent Message] Creating message: ${messageId} for conversation: ${conversationId}`);
 
-    // 儲存訊息到資料庫
+    // 並行執行：儲存訊息到資料庫
     const timestamp = new Date().toISOString();
-    await drizzleDb
+    const messageInsertPromise = drizzleDb
       .insert(messages)
       .values({
         id: messageId,
@@ -395,76 +395,107 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
         createdAt: timestamp
       });
 
+    // 並行執行：準備活動記錄服務
+    const activityServicePromise = import('../services/activity-service');
+
+    // 等待資料庫插入完成
+    await messageInsertPromise;
     console.log(`✅ [Agent Message] Stored in database: ${messageId}`);
 
-    // 發送到平台 (LINE/Facebook)
-    let sendResult = false;
+    // 並行執行：發送到平台 & 準備更新操作
     const conversationData = conversation as any;
+    let sendResult = false;
 
-    try {
-      if (conversationData.platform === 'line') {
-        const { pushLineMessage, createTextMessage } = await import('../utils/line');
-        
-        if (content) {
-          const messages = [createTextMessage(content)];
-          sendResult = await pushLineMessage(
-            c.env.LINE_CHANNEL_ACCESS_TOKEN, 
-            String(conversationData.platform_user_id), 
-            messages
-          );
+    const [platformResult, activityServiceModule] = await Promise.allSettled([
+      // 發送到平台 (LINE/Facebook)
+      (async () => {
+        try {
+          if (conversationData.platform === 'line') {
+            const { pushLineMessage, createTextMessage } = await import('../utils/line');
+            
+            if (content) {
+              const messages = [createTextMessage(content)];
+              return await pushLineMessage(
+                c.env.LINE_CHANNEL_ACCESS_TOKEN, 
+                String(conversationData.platform_user_id), 
+                messages
+              );
+            }
+          }
+          // TODO: 添加 Facebook 支援
+          return false;
+        } catch (error) {
+          console.error(`❌ [Agent Message] Failed to send to platform:`, error);
+          return false;
         }
-      }
-      // TODO: 添加 Facebook 支援
-      
-      console.log(`📤 [Agent Message] Platform send result: ${sendResult}`);
-    } catch (error) {
-      console.error(`❌ [Agent Message] Failed to send to platform:`, error);
-      sendResult = false;
-    }
+      })(),
+      // 載入活動記錄服務
+      activityServicePromise
+    ]);
 
-    // 更新訊息發送狀態
+    // 取得平台發送結果
+    if (platformResult.status === 'fulfilled') {
+      sendResult = platformResult.value;
+    }
+    console.log(`📤 [Agent Message] Platform send result: ${sendResult}`);
+
+    // 並行執行：更新訊息狀態、對話時間、記錄活動
     const updateTimestamp = new Date().toISOString();
-    await drizzleDb
-      .update(messages)
-      .set({
-        isSent: sendResult,
-        deliveryStatus: sendResult ? 'sent' : 'failed',
-        sentAt: updateTimestamp
-      })
-      .where(eq(messages.id, messageId));
+    
+    const parallelOperations = [
+      // 更新訊息發送狀態
+      drizzleDb
+        .update(messages)
+        .set({
+          isSent: sendResult,
+          deliveryStatus: sendResult ? 'sent' : 'failed',
+          sentAt: updateTimestamp
+        })
+        .where(eq(messages.id, messageId)),
+      
+      // 更新對話最後訊息時間
+      drizzleDb
+        .update(conversations)
+        .set({
+          lastMessageAt: updateTimestamp,
+          updatedAt: updateTimestamp
+        })
+        .where(eq(conversations.id, conversationId))
+    ];
 
-    // 更新對話最後訊息時間
-    await drizzleDb
-      .update(conversations)
-      .set({
-        lastMessageAt: updateTimestamp,
-        updatedAt: updateTimestamp
-      })
-      .where(eq(conversations.id, conversationId));
-
-    // 記錄活動
-    try {
-      const { ActivityService } = await import('../services/activity-service');
-      const activityService = new ActivityService(c.env.DB);
-      await activityService.logActivity({
-        userId: String(user.id), // ✅ 確保為字串類型
-        userName: user.displayName || 'Agent',
-        userRole: user.role || 'agent',
-        action: 'message_send',
-        resourceType: 'conversation',
-        resourceId: conversationId,
-        details: {
-          conversationId: conversationId,
-          messageId: messageId,
-          platform: conversationData.platform,
-          messageType: mediaType || 'text',
-          contentLength: content?.length || 0,
-          sendResult: sendResult
+    // 並行記錄活動（不阻塞主流程）
+    if (activityServiceModule.status === 'fulfilled') {
+      const logActivityPromise = (async () => {
+        try {
+          const { ActivityService } = activityServiceModule.value;
+          const activityService = new ActivityService(c.env.DB);
+          await activityService.logActivity({
+            userId: String(user.id), // ✅ 確保為字串類型
+            userName: user.displayName || 'Agent',
+            userRole: user.role || 'agent',
+            action: 'message_send',
+            resourceType: 'conversation',
+            resourceId: conversationId,
+            details: {
+              conversationId: conversationId,
+              messageId: messageId,
+              platform: conversationData.platform,
+              messageType: mediaType || 'text',
+              contentLength: content?.length || 0,
+              sendResult: sendResult
+            }
+          });
+        } catch (activityError) {
+          console.warn('Failed to record activity:', activityError);
         }
-      });
-    } catch (activityError) {
-      console.warn('Failed to record activity:', activityError);
+      })();
+      
+      // 不等待活動記錄完成，讓它在背景執行
+      logActivityPromise.catch(() => {}); // 靜默處理錯誤
     }
+
+    // 等待關鍵更新操作完成
+    await Promise.all(parallelOperations);
 
     return c.json({
       success: true,

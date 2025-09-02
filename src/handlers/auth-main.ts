@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { 
   signJWT, 
-  authenticateUserByEmail,
+  authenticateUser,
   createUser, 
   createSession
 } from '../utils/auth';
@@ -33,42 +33,35 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       return c.json({ error: 'Email and password are required' }, 400);
     }
 
-    // 驗證用戶 - 使用 email
-    let user = null;
-    let userRow = null;
+    // ✅ 優化：使用單次查詢進行完整認證
+    const authResult = await authenticateUser(c.env.DB, cleanEmail, cleanPassword);
+    const { user, passwordPolicy, accountStatus } = authResult;
+    
+    // 根據認證結果設定錯誤訊息
     let errorMessage = '';
-    
-    // 檢查用戶是否存在，同時獲取 password_policy
-    const drizzleDb = drizzle(c.env.DB);
-    userRow = await drizzleDb
-      .select({
-        id: agents.id,
-        email: agents.email,
-        is_active: agents.isActive,
-        password_policy: agents.passwordPolicy
-      })
-      .from(agents)
-      .where(eq(agents.email, cleanEmail))
-      .get();
-    
-    if (!userRow) {
-      errorMessage = 'User not found';
-    } else if (!userRow.is_active) {
-      errorMessage = 'Account disabled';
-    } else {
-      // 用戶存在且活躍，檢查密碼
-      user = await authenticateUserByEmail(c.env.DB, cleanEmail, cleanPassword);
-      if (!user) {
+    switch (accountStatus) {
+      case 'not_found':
+        errorMessage = 'User not found';
+        break;
+      case 'disabled':
+        errorMessage = 'Account disabled';
+        break;
+      case 'wrong_password':
         errorMessage = 'Wrong password';
-      }
+        break;
+      case 'authenticated':
+        // 認證成功，繼續處理
+        break;
+      default:
+        errorMessage = 'Invalid email or password';
     }
     
     if (!user) {
-      return c.json({ error: errorMessage || 'Invalid email or password' }, 401);
+      return c.json({ error: errorMessage }, 401);
     }
 
-    // 檢查密碼政策
-    if (userRow && userRow.password_policy === 'must_change') {
+    // ✅ 優化：使用統一獲取的密碼政策
+    if (passwordPolicy === 'must_change') {
       console.log(`🔐 Password policy check - User: ${cleanEmail}, Policy: must_change, redirecting to change password`);
       
       // 生成臨時token用於密碼更改
@@ -107,6 +100,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
 
     // 更新用戶的最後活動時間
     try {
+      const drizzleDb = drizzle(c.env.DB);
       await drizzleDb
         .update(agents)
         .set({ 

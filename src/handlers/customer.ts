@@ -3,13 +3,7 @@
 
 import { Context } from 'hono';
 import type { 
-  Bindings, 
-  // Customer, // 暫時未使用
-  // CustomerDbRecord, // 暫時未使用
-  // CustomerStatsResult, // 暫時未使用
-  // D1Result, // 暫時未使用
-  // AuthPayload, // 暫時未使用
-  QueryParams
+  Bindings
 } from '../types';
 import { drizzle } from 'drizzle-orm/d1';
 import { customers, conversations, messages, tags, customerTags, teams } from '../db/schema';
@@ -64,177 +58,138 @@ export const customerHandler = {
         hasPhone,
         dateFrom,
         dateTo,
-        // status = 'active' // 暫時未使用
       } = c.req.query();
 
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      // 構建查詢 - 保持複雜 GROUP_CONCAT 查詢暫時使用原生 SQL
-      // 這是因為 Drizzle 目前還不支援 GROUP_CONCAT 以及複雜的子查詢
       const drizzleDb = drizzle(c.env.DB);
       
-      let query = `
-        SELECT DISTINCT c.*,
-               t.name as team_name,
-               GROUP_CONCAT(tag.name, ',') as tag_names,
-               GROUP_CONCAT(tag.color, ',') as tag_colors,
-               conv_count.total_conversations,
-               conv_count.active_conversations,
-               last_conv.last_conversation_at
-        FROM customers c
-        LEFT JOIN teams t ON c.source_team_id = t.id
-        LEFT JOIN customer_tags ct ON c.id = ct.customer_id
-        LEFT JOIN tags tag ON ct.tag_id = tag.id
-        LEFT JOIN (
-          SELECT customer_id, 
-                 COUNT(*) as total_conversations,
-                 COUNT(CASE WHEN status = 'active' THEN 1 END) as active_conversations
-          FROM conversations 
-          GROUP BY customer_id
-        ) conv_count ON c.id = conv_count.customer_id
-        LEFT JOIN (
-          SELECT customer_id, MAX(created_at) as last_conversation_at
-          FROM conversations 
-          GROUP BY customer_id
-        ) last_conv ON c.id = last_conv.customer_id
-      `;
-
-      const whereConditions: string[] = [];
-      const params: QueryParams = [];
-
-      // 權限控制：非管理員只能看到自己團隊的客戶
+      const conditions = [];
       if (payload?.role !== 'admin' && payload?.teamId) {
-        whereConditions.push('(c.source_team_id = ? OR c.source_team_id IS NULL)');
-        params.push(payload.teamId);
+        conditions.push(sql`(${customers.sourceTeamId} = ${payload.teamId} OR ${customers.sourceTeamId} IS NULL)`);
       }
-
-      // 平台篩選
       if (platform) {
-        whereConditions.push('c.platform = ?');
-        params.push(platform);
+        conditions.push(eq(customers.platform, platform));
       }
-
-      // 團隊篩選
       if (teamId) {
-        whereConditions.push('c.source_team_id = ?');
-        params.push(parseInt(teamId));
+        conditions.push(eq(customers.sourceTeamId, parseInt(teamId)));
       }
-
-      // 標籤篩選
       if (tagId) {
-        whereConditions.push('ct.tag_id = ?');
-        params.push(parseInt(tagId));
+        conditions.push(eq(customerTags.tagId, parseInt(tagId)));
       }
-
-      // 搜索（姓名、郵箱、電話）
       if (search) {
-        whereConditions.push(`(
-          c.display_name LIKE ? OR 
-          c.email LIKE ? OR 
-          c.phone LIKE ? OR
-          c.platform_user_id LIKE ?
-        )`);
         const searchTerm = `%${search}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+        conditions.push(or(
+          like(customers.displayName, searchTerm),
+          like(customers.email, searchTerm),
+          like(customers.phone, searchTerm),
+          like(customers.platformUserId, searchTerm)
+        ));
       }
-
-      // 郵箱篩選
       if (hasEmail === 'true') {
-        whereConditions.push('c.email IS NOT NULL AND c.email != ""');
+        conditions.push(sql`${customers.email} IS NOT NULL AND ${customers.email} != ''`);
       } else if (hasEmail === 'false') {
-        whereConditions.push('(c.email IS NULL OR c.email = "")');
+        conditions.push(sql`(${customers.email} IS NULL OR ${customers.email} = '')`);
       }
-
-      // 電話篩選
       if (hasPhone === 'true') {
-        whereConditions.push('c.phone IS NOT NULL AND c.phone != ""');
+        conditions.push(sql`${customers.phone} IS NOT NULL AND ${customers.phone} != ''`);
       } else if (hasPhone === 'false') {
-        whereConditions.push('(c.phone IS NULL OR c.phone = "")');
+        conditions.push(sql`(${customers.phone} IS NULL OR ${customers.phone} = '')`);
       }
-
-      // 日期範圍篩選
       if (dateFrom) {
-        whereConditions.push('c.created_at >= ?');
-        params.push(dateFrom);
+        conditions.push(sql`${customers.createdAt} >= ${dateFrom}`);
       }
       if (dateTo) {
-        whereConditions.push('c.created_at <= ?');
-        params.push(dateTo);
+        conditions.push(sql`${customers.createdAt} <= ${dateTo}`);
       }
 
-      if (whereConditions.length > 0) {
-        query += ' WHERE ' + whereConditions.join(' AND ');
-      }
+      const convCountSubquery = drizzleDb
+        .select({
+          customerId: conversations.customerId,
+          totalConversations: sql<number>`COUNT(*)`.as('total_conversations'),
+          activeConversations: sql<number>`COUNT(CASE WHEN ${conversations.status} = 'active' THEN 1 END)`.as('active_conversations'),
+        })
+        .from(conversations)
+        .groupBy(conversations.customerId)
+        .as('conv_count');
 
-      query += ' GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ? OFFSET ?';
-      params.push(limit, offset);
+      const lastConvSubquery = drizzleDb
+        .select({
+          customerId: conversations.customerId,
+          lastConversationAt: sql<string>`MAX(${conversations.createdAt})`.as('last_conversation_at'),
+        })
+        .from(conversations)
+        .groupBy(conversations.customerId)
+        .as('last_conv');
 
-      // 手動替換參數到查詢中
-      let finalQuery = query;
-      let paramIndex = 0;
-      while (finalQuery.includes('?') && paramIndex < params.length) {
-        const param = params[paramIndex];
-        const escapedParam = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : String(param);
-        finalQuery = finalQuery.replace('?', escapedParam);
-        paramIndex++;
-      }
+      const query = drizzleDb.select({
+        id: customers.id,
+        platform: customers.platform,
+        platformUserId: customers.platformUserId,
+        displayName: customers.displayName,
+        avatarUrl: customers.avatarUrl,
+        phone: customers.phone,
+        email: customers.email,
+        sourceTeamId: customers.sourceTeamId,
+        teamName: teams.name,
+        tagNames: sql<string>`GROUP_CONCAT(${tags.name}, ',')`.as('tag_names'),
+        tagColors: sql<string>`GROUP_CONCAT(${tags.color}, ',')`.as('tag_colors'),
+        totalConversations: convCountSubquery.totalConversations,
+        activeConversations: convCountSubquery.activeConversations,
+        lastConversationAt: lastConvSubquery.lastConversationAt,
+        createdAt: customers.createdAt,
+        updatedAt: customers.updatedAt,
+        metadata: customers.metadata,
+      })
+      .from(customers)
+      .leftJoin(teams, eq(customers.sourceTeamId, teams.id))
+      .leftJoin(customerTags, eq(customers.id, customerTags.customerId))
+      .leftJoin(tags, eq(customerTags.tagId, tags.id))
+      .leftJoin(convCountSubquery, eq(customers.id, convCountSubquery.customerId))
+      .leftJoin(lastConvSubquery, eq(customers.id, lastConvSubquery.customerId))
+      .where(and(...conditions))
+      .groupBy(customers.id)
+      .orderBy(desc(customers.updatedAt))
+      .limit(limit)
+      .offset(offset);
+
+      const result = await query.all();
+
+      const countQuery = drizzleDb
+        .select({ total: sql<number>`COUNT(DISTINCT ${customers.id})` })
+        .from(customers)
+        .leftJoin(customerTags, eq(customers.id, customerTags.customerId))
+        .where(and(...conditions));
       
-      // 使用 Drizzle sql 執行查詢
-      const result = await drizzleDb.all(sql.raw(finalQuery));
+      const totalResult = await countQuery.get();
 
-      // 計算總數 - 使用 Drizzle ORM 進行簡化計數
-      let countQuery = `
-        SELECT COUNT(DISTINCT c.id) as total 
-        FROM customers c
-        LEFT JOIN customer_tags ct ON c.id = ct.customer_id
-      `;
-      
-      if (whereConditions.length > 0) {
-        countQuery += ' WHERE ' + whereConditions.join(' AND ');
-      }
-
-      const countParams = params.slice(0, -2); // 移除 LIMIT 和 OFFSET
-      
-      // 手動替換計數查詢的參數
-      let finalCountQuery = countQuery;
-      let countParamIndex = 0;
-      while (finalCountQuery.includes('?') && countParamIndex < countParams.length) {
-        const param = countParams[countParamIndex];
-        const escapedParam = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : String(param);
-        finalCountQuery = finalCountQuery.replace('?', escapedParam);
-        countParamIndex++;
-      }
-      
-      const totalResult = await drizzleDb.get(sql.raw(finalCountQuery));
-
-      // 格式化結果
       const customersData = result.map((row: any) => ({
         id: row.id,
         platform: row.platform,
-        platformUserId: row.platform_user_id,
-        displayName: row.display_name,
-        avatarUrl: row.avatar_url,
+        platformUserId: row.platformUserId,
+        displayName: row.displayName,
+        avatarUrl: row.avatarUrl,
         phone: row.phone,
         email: row.email,
-        sourceTeamId: row.source_team_id,
-        teamName: row.team_name,
-        tags: row.tag_names ? row.tag_names.split(',').map((name: string, index: number) => ({
+        sourceTeamId: row.sourceTeamId,
+        teamName: row.teamName,
+        tags: row.tagNames ? row.tagNames.split(',').map((name: string, index: number) => ({
           name,
-          color: row.tag_colors?.split(',')[index] || '#3B82F6'
+          color: row.tagColors?.split(',')[index] || '#3B82F6'
         })) : [],
-        totalConversations: row.total_conversations || 0,
-        activeConversations: row.active_conversations || 0,
-        lastConversationAt: row.last_conversation_at,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+        totalConversations: row.totalConversations || 0,
+        activeConversations: row.activeConversations || 0,
+        lastConversationAt: row.lastConversationAt,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
         metadata: row.metadata ? JSON.parse(row.metadata) : null
       }));
 
       return paginatedResponse(c, customersData, {
         page: parseInt(page),
         limit,
-        total: Number((totalResult as any)?.total) || 0
+        total: totalResult?.total || 0
       }, 'Customers retrieved successfully');
 
     } catch (error) {
@@ -508,10 +463,8 @@ export const customerHandler = {
     try {
       const payload = c.get('jwtPayload');
       
-      // 使用 Drizzle ORM 進行統計查詢
       const drizzleDb = drizzle(c.env.DB);
       
-      // 構建權限控制條件
       const baseConditions = [];
       if (payload?.role !== 'admin' && payload?.teamId) {
         baseConditions.push(
@@ -520,14 +473,12 @@ export const customerHandler = {
       }
       const baseCondition = baseConditions.length > 0 ? and(...baseConditions) : undefined;
       
-      // 總客戶數
       const totalResult = await drizzleDb
         .select({ total: count(customers.id) })
         .from(customers)
         .where(baseCondition)
         .get();
 
-      // 按平台統計
       const platformStats = await drizzleDb
         .select({
           platform: customers.platform,
@@ -538,7 +489,6 @@ export const customerHandler = {
         .groupBy(customers.platform)
         .all();
 
-      // 按團隊統計
       const teamStats = await drizzleDb
         .select({
           team_name: sql<string>`COALESCE(${teams.name}, '未分配')`,
@@ -550,7 +500,6 @@ export const customerHandler = {
         .groupBy(customers.sourceTeamId, teams.name)
         .all();
 
-      // 有標籤的客戶數
       const taggedResult = await drizzleDb
         .select({ count: count(customers.id) })
         .from(customers)
@@ -558,36 +507,33 @@ export const customerHandler = {
         .where(baseCondition)
         .get();
 
-      // 有郵箱的客戶數
       const emailConditions = baseConditions.slice();
       emailConditions.push(sql`${customers.email} IS NOT NULL AND ${customers.email} != ''`);
       const emailResult = await drizzleDb
         .select({ count: count(customers.id) })
         .from(customers)
-        .where(emailConditions.length > 0 ? and(...emailConditions) : undefined)
+        .where(and(...emailConditions))
         .get();
 
-      // 有電話的客戶數
       const phoneConditions = baseConditions.slice();
       phoneConditions.push(sql`${customers.phone} IS NOT NULL AND ${customers.phone} != ''`);
       const phoneResult = await drizzleDb
         .select({ count: count(customers.id) })
         .from(customers)
-        .where(phoneConditions.length > 0 ? and(...phoneConditions) : undefined)
+        .where(and(...phoneConditions))
         .get();
 
-      // 最近7天活躍客戶
       const recentActiveConditions = baseConditions.slice();
       recentActiveConditions.push(
         sql`${messages.createdAt} >= datetime('now', '-7 days')`,
         eq(messages.senderType, 'customer')
       );
       const recentActiveResult = await drizzleDb
-        .select({ count: count(customers.id) })
+        .select({ count: sql<number>`COUNT(DISTINCT ${customers.id})` })
         .from(customers)
         .innerJoin(conversations, eq(customers.id, conversations.customerId))
         .innerJoin(messages, eq(conversations.id, messages.conversationId))
-        .where(recentActiveConditions.length > 0 ? and(...recentActiveConditions) : undefined)
+        .where(and(...recentActiveConditions))
         .get();
 
       const stats: CustomerStats = {
@@ -600,12 +546,10 @@ export const customerHandler = {
         recentActive: recentActiveResult?.count || 0
       };
 
-      // 格式化平台統計
       platformStats.forEach(row => {
         stats.byPlatform[row.platform] = row.count;
       });
 
-      // 格式化團隊統計
       teamStats.forEach(row => {
         stats.byTeam[row.team_name] = row.count;
       });

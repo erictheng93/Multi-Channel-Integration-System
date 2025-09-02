@@ -22,6 +22,20 @@ function clearAuthStorage() {
   }
 }
 
+// 工具函數：驗證 agent 資料的有效性
+function isValidAgent(agent: Agent | null): boolean {
+  if (!agent) return false;
+  
+  // 檢查必要欄位是否存在
+  return !!(
+    agent.id &&
+    agent.email &&
+    agent.displayName &&
+    agent.role &&
+    ['admin', 'team', 'agent'].includes(agent.role)
+  );
+}
+
 
 export const useAuthStore = defineStore('auth', () => {
   // 狀態
@@ -198,13 +212,30 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function fetchCurrentAgent() {
+  // 智能獲取當前用戶 - 優先使用快取
+  async function fetchCurrentAgent(forceRefresh = false) {
     if (!token.value) {return;}
 
+    // ✅ 優化：如果已有有效資料且非強制刷新，直接返回
+    if (!forceRefresh && currentAgent.value && isValidAgent(currentAgent.value)) {
+      if (import.meta.env.DEV) {
+        console.log('✅ Agent data already cached, skipping API request');
+      }
+      return;
+    }
+
     try {
+      if (import.meta.env.DEV) {
+        console.log('🔄 Fetching agent data from server...');
+      }
+      
       const response = await authApi.me();
       if (response.success && response.data) {
         currentAgent.value = response.data;
+        // 同步更新 localStorage
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('currentAgent', JSON.stringify(response.data));
+        }
       } else if (response.status === 401) {
         await logout(false);
       }
@@ -272,7 +303,7 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStatus.value = status;
   }
 
-  // 會話恢復 - 統一的初始化邏輯
+  // 會話恢復 - 智能初始化邏輯（避免額外API請求）
   async function initializeSession(): Promise<void> {
     setSessionStatus('pending');
     
@@ -288,10 +319,28 @@ export const useAuthStore = defineStore('auth', () => {
         return;
       }
       
+      // ✅ 優化：如果已有有效的 currentAgent，直接使用快取
+      if (currentAgent.value && isValidAgent(currentAgent.value)) {
+        setSessionStatus('authenticated');
+        if (import.meta.env.DEV) {
+          console.log('✅ Using cached agent data, skipping /auth/me request');
+        }
+        return;
+      }
+      
+      // 只有在沒有有效 currentAgent 時才發送 API 請求
+      if (import.meta.env.DEV) {
+        console.log('🔄 No cached agent data, fetching from server...');
+      }
+      
       const response = await authApi.me();
       
       if (response.success && response.data) {
         currentAgent.value = response.data;
+        // 同步更新 localStorage
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('currentAgent', JSON.stringify(response.data));
+        }
         setSessionStatus('authenticated');
       } else if (response.status === 401) {
         await logout(false);

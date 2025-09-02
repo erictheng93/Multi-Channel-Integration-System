@@ -12,21 +12,22 @@ import type {
   Platform 
 } from '@/types'
 
-// API 返回的原始對話數據格式 (snake_case)
+// API 返回的原始對話數據格式 (標準 camelCase 格式)
 interface RawConversationData {
   id: string
-  customer_id: number
-  assigned_team_id: number | null
-  assigned_user_id: string | null
+  customerId: number
+  assignedTeamId: number | null
+  assignedUserId: string | null
   status: 'active' | 'assigned' | 'closed'
-  last_message_at: string
-  created_at: string
-  updated_at: string
-  customer_name?: string
+  lastMessageAt: string
+  createdAt: string
+  updatedAt: string
+  customerName?: string
   platform: Platform
-  platform_user_id: string
-  last_message_content?: string
-  unread_count?: number
+  platformUserId: string
+  lastMessageContent?: string
+  lastMessageAtActual?: string
+  unreadCount?: number
 }
 
 // 數據轉換適配器
@@ -40,40 +41,40 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
 
   return {
     id: rawData.id,
-    userId: rawData.customer_id.toString(),
-    user: rawData.customer_name ? {
-      id: rawData.customer_id.toString(),
-      name: rawData.customer_name,
+    userId: rawData.customerId.toString(),
+    user: rawData.customerName ? {
+      id: rawData.customerId.toString(),
+      name: rawData.customerName,
       platform: rawData.platform,
-      platformUserId: rawData.platform_user_id,
-      createdAt: new Date(rawData.created_at).getTime()
+      platformUserId: rawData.platformUserId,
+      createdAt: new Date(rawData.createdAt).getTime()
     } : undefined,
-    customer: rawData.customer_name ? {
-      id: rawData.customer_id.toString(),
-      name: rawData.customer_name,
+    customer: rawData.customerName ? {
+      id: rawData.customerId.toString(),
+      name: rawData.customerName,
       platform: rawData.platform,
-      platformUserId: rawData.platform_user_id,
-      createdAt: new Date(rawData.created_at).getTime()
+      platformUserId: rawData.platformUserId,
+      createdAt: new Date(rawData.createdAt).getTime()
     } : undefined,
-    assignedTo: rawData.assigned_user_id || undefined,
-    assignedAgentId: rawData.assigned_user_id || undefined,
+    assignedTo: rawData.assignedUserId || undefined,
+    assignedAgentId: rawData.assignedUserId || undefined,
     status: statusMap[rawData.status] || 'open',
     platform: rawData.platform,
-    lastMessageAt: new Date(rawData.last_message_at).getTime(),
-    lastMessage: rawData.last_message_content ? {
+    lastMessageAt: new Date(rawData.lastMessageAt).getTime(),
+    lastMessage: rawData.lastMessageContent ? {
       id: `last-${rawData.id}`,
       conversationId: rawData.id,
-      senderId: rawData.customer_id.toString(),
+      senderId: rawData.customerId.toString(),
       senderType: 'customer' as const,
-      content: rawData.last_message_content,
+      content: rawData.lastMessageContent,
       messageType: 'text' as const,
       platform: rawData.platform,
-      timestamp: new Date(rawData.last_message_at).getTime(),
-      createdAt: new Date(rawData.last_message_at).getTime()
+      timestamp: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime(),
+      createdAt: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime()
     } : undefined,
-    unreadCount: rawData.unread_count || 0,
-    createdAt: new Date(rawData.created_at).getTime(),
-    updatedAt: new Date(rawData.updated_at).getTime()
+    unreadCount: rawData.unreadCount || 0,
+    createdAt: new Date(rawData.createdAt).getTime(),
+    updatedAt: new Date(rawData.updatedAt).getTime()
   }
 }
 

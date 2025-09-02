@@ -94,22 +94,33 @@ export class DatabaseService {
       .returning();
   }
 
-  // Conversation operations
+  // Conversation operations - 並行化優化
   async createConversation(conversationData: Omit<schema.NewConversation, 'id' | 'createdAt' | 'updatedAt'>) {
     const id = uuidv4();
+    
+    // 並行執行：資料庫插入
     const conversation = await this.db.insert(schema.conversations).values({
       id,
       ...conversationData,
     }).returning();
 
-    // Multi-layer caching
-    await Promise.all([
-      conversation[0] ? this.kv.setCache(`conversation:${conversation[0].id}`, conversation[0], 3600) : Promise.resolve(),
-      // Cache by customer for quick lookup
-      this.kv.setCache(`customer_conversations:${conversationData.customerId}`, null, 0), // Invalidate customer's conversation list
-      // Cache conversation count for dashboard
-      this.incrementConversationCount(conversationData.status || 'active')
-    ]);
+    // 並行執行：多層快取操作與統計更新
+    if (conversation[0]) {
+      const parallelCacheOperations = [
+        // 快取對話資料
+        this.kv.setCache(`conversation:${conversation[0].id}`, conversation[0], 3600),
+        // 清除客戶對話列表快取（觸發重新載入）
+        this.kv.setCache(`customer_conversations:${conversationData.customerId}`, null, 0),
+        // 更新對話統計數量（背景執行）
+        this.incrementConversationCount(conversationData.status || 'active')
+      ];
+
+      // 並行執行所有快取操作，不阻塞回應
+      Promise.all(parallelCacheOperations).catch((error) => {
+        console.warn('Cache operations partially failed:', error);
+        // 快取失敗不影響主要業務邏輯
+      });
+    }
     
     return conversation[0];
   }
@@ -215,17 +226,26 @@ export class DatabaseService {
     return conversation[0];
   }
 
-  // Message operations
+  // Message operations - 並行化優化
   async createMessage(messageData: any) {
     const id = uuidv4();
-    const message = await this.db.insert(schema.messages).values({
-      id,
-      ...messageData,
-    }).returning();
+    const timestamp = new Date().toISOString();
+    
+    // 並行執行：訊息插入 & 對話更新
+    const [message] = await Promise.all([
+      this.db.insert(schema.messages).values({
+        id,
+        ...messageData,
+      }).returning(),
+      // 並行更新對話最後訊息時間
+      this.updateConversation(messageData.conversationId, {
+        lastMessageAt: timestamp,
+      })
+    ]);
 
-    // Update conversation last message time
-    await this.updateConversation(messageData.conversationId, {
-      lastMessageAt: new Date().toISOString(),
+    // 背景清除訊息快取（不阻塞回應）
+    this.invalidateMessageCache(messageData.conversationId).catch((error) => {
+      console.warn('Message cache invalidation failed:', error);
     });
 
     return message[0];
