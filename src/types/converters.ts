@@ -18,10 +18,10 @@ export function customerToUser(customer: Customer): User {
   return {
     id: customer.id.toString(),
     platform: customer.platform as Platform,
-    platformUserId: customer.platform_user_id,
-    name: customer.display_name || 'Unknown User',
-    avatarUrl: customer.avatar_url || '',
-    createdAt: new Date(customer.created_at).getTime()
+    platformUserId: customer.platformUserId,
+    name: customer.displayName || 'Unknown User',
+    avatarUrl: customer.avatarUrl || '',
+    createdAt: new Date(customer.createdAt).getTime()
   };
 }
 
@@ -86,10 +86,10 @@ export function dbUserToAgent(dbUser: DbUser): Agent {
 export function userToCustomer(user: User): Partial<Customer> {
   return {
     platform: user.platform,
-    platform_user_id: user.platformUserId,
-    display_name: user.name,
-    avatar_url: user.avatarUrl || '',
-    created_at: new Date(user.createdAt).toISOString(),
-    updated_at: new Date().toISOString()
+    platformUserId: user.platformUserId,
+    displayName: user.name,
+    avatarUrl: user.avatarUrl || '',
+    createdAt: new Date(user.createdAt).toISOString(),
+    updatedAt: new Date().toISOString()
   };
 }

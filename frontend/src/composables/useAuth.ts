@@ -64,10 +64,19 @@ export function useAuth() {
     return agentPermissions.includes(permission)
   }
 
-  // 刷新用戶信息
-  const refreshAgent = async () => {
+  // 智能刷新用戶信息 - 優先使用快取
+  const refreshAgent = async (forceRefresh = false) => {
     try {
-      await authStore.fetchCurrentAgent()
+      await authStore.fetchCurrentAgent(forceRefresh)
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
+  // 強制刷新用戶信息 - 忽略快取
+  const forceRefreshAgent = async () => {
+    try {
+      await authStore.fetchCurrentAgent(true)
     } catch (err) {
       handleError(err)
     }
@@ -87,6 +96,7 @@ export function useAuth() {
     logout,
     hasPermission,
     refreshAgent,
+    forceRefreshAgent,
     clearError: () => authStore.clearError()
   }
 }

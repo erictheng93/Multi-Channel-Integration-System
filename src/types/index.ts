@@ -96,19 +96,19 @@ export interface LineWebhookBody {
   events: LineEvent[];
 }
 
-// 資料庫相關類型定義（向後相容）
+// 資料庫相關類型定義（統一 camelCase 格式）
 export interface Customer {
   id: number;
   platform: string;
-  platform_user_id: string;
-  display_name?: string;
-  avatar_url?: string;
+  platformUserId: string;
+  displayName?: string;
+  avatarUrl?: string;
   phone?: string;
   email?: string;
-  source_team_id?: number;
+  sourceTeamId?: number;
   metadata?: string;  // JSON string
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DbConversation {

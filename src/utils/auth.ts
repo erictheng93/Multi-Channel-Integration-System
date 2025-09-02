@@ -247,13 +247,15 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
 
 // getUserByUsername function removed - using email for authentication instead
 
+// ✅ 優化：單次查詢完整認證（包含密碼策略檢查）
 export async function authenticateUser(
   db: D1Database,
   email: string,
   password: string
-): Promise<DbUser | null> {
+): Promise<{ user: DbUser | null; passwordPolicy?: string; accountStatus?: string }> {
   const drizzleDb = drizzle(db);
   
+  // 🚀 單次查詢獲取所有必要資料
   const user = await drizzleDb
     .select({
       id: agents.id,
@@ -264,27 +266,33 @@ export async function authenticateUser(
       team_id: agents.teamId,
       team_name: teams.name,
       is_active: agents.isActive,
+      password_policy: agents.passwordPolicy,  // ✅ 同時獲取密碼策略
       created_at: agents.createdAt,
       updated_at: agents.updatedAt
     })
     .from(agents)
     .leftJoin(teams, eq(agents.teamId, teams.id))
-    .where(and(
-      eq(agents.email, email),
-      eq(agents.isActive, true)
-    ))
+    .where(eq(agents.email, email))  // ✅ 移除 isActive 條件，統一在邏輯中處理
     .get();
 
+  // 用戶不存在
   if (!user) {
-    return null;
+    return { user: null, accountStatus: 'not_found' };
   }
 
+  // 帳戶未激活
+  if (!user.is_active) {
+    return { user: null, accountStatus: 'disabled', passwordPolicy: user.password_policy || 'changeable' };
+  }
+
+  // 驗證密碼
   const isValidPassword = await verifyPassword(password, user.password_hash);
   if (!isValidPassword) {
-    return null;
+    return { user: null, accountStatus: 'wrong_password', passwordPolicy: user.password_policy || 'changeable' };
   }
 
-  return convertAgent({
+  // 認證成功，返回用戶資訊
+  const authenticatedUser = convertAgent({
     id: user.id,
     email: user.email,
     displayName: user.display_name,
@@ -295,62 +303,25 @@ export async function authenticateUser(
     createdAt: user.created_at,
     updatedAt: user.updated_at,
     passwordHash: '', // Not needed for return
-    passwordPolicy: 'changeable',
+    passwordPolicy: user.password_policy || 'changeable',
     lastLoginAt: null
   }, user.team_name || undefined);
+
+  return { 
+    user: authenticatedUser, 
+    passwordPolicy: user.password_policy || 'changeable',
+    accountStatus: 'authenticated'
+  };
 }
 
+// ✅ 重構：使用優化後的 authenticateUser 函數（向後兼容）
 export async function authenticateUserByEmail(
   db: D1Database,
   email: string,
   password: string
 ): Promise<DbUser | null> {
-  const drizzleDb = drizzle(db);
-  
-  // 檢查 agents 表
-  const agent = await drizzleDb
-    .select({
-      id: agents.id,
-      email: agents.email,
-      password_hash: agents.passwordHash,
-      display_name: agents.displayName,
-      role: agents.role,
-      team_id: agents.teamId,
-      team_name: teams.name,
-      is_active: agents.isActive,
-      created_at: agents.createdAt,
-      updated_at: agents.updatedAt
-    })
-    .from(agents)
-    .leftJoin(teams, eq(agents.teamId, teams.id))
-    .where(and(
-      eq(agents.email, email),
-      eq(agents.isActive, true)
-    ))
-    .get();
-
-  if (agent) {
-    const isValidPassword = await verifyPassword(password, agent.password_hash);
-    if (isValidPassword) {
-      return convertAgent({
-        id: agent.id,
-        email: agent.email,
-        displayName: agent.display_name,
-        role: agent.role,
-        teamId: agent.team_id,
-        isActive: Boolean(agent.is_active),
-        lastActive: null,
-        createdAt: agent.created_at,
-        updatedAt: agent.updated_at,
-        passwordHash: '', // Not needed for return
-        passwordPolicy: 'changeable',
-        lastLoginAt: null
-      }, agent.team_name || undefined);
-    }
-  }
-
-  // 未找到用戶
-  return null;
+  const result = await authenticateUser(db, email, password);
+  return result.user;
 }
 
 // 權限檢查

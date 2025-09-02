@@ -15,21 +15,21 @@ import type {
 } from '../types';
 
 /**
- * 轉換 Drizzle Customer 到業務邏輯 Customer
+ * 轉換 Drizzle Customer 到業務邏輯 Customer (camelCase 格式)
  */
 export function convertCustomer(drizzleCustomer: any): Customer {
   return {
     id: drizzleCustomer.id,
     platform: drizzleCustomer.platform,
-    platform_user_id: drizzleCustomer.platformUserId || '',
-    display_name: drizzleCustomer.displayName || '',
-    avatar_url: drizzleCustomer.avatarUrl || '',
+    platformUserId: drizzleCustomer.platformUserId || '',
+    displayName: drizzleCustomer.displayName || '',
+    avatarUrl: drizzleCustomer.avatarUrl || '',
     phone: drizzleCustomer.phone || '',
     email: drizzleCustomer.email || '',
-    source_team_id: drizzleCustomer.sourceTeamId || 0,
+    sourceTeamId: drizzleCustomer.sourceTeamId || 0,
     metadata: drizzleCustomer.metadata || '',
-    created_at: drizzleCustomer.createdAt || new Date().toISOString(),
-    updated_at: drizzleCustomer.updatedAt || new Date().toISOString()
+    createdAt: drizzleCustomer.createdAt || new Date().toISOString(),
+    updatedAt: drizzleCustomer.updatedAt || new Date().toISOString()
   };
 }
 

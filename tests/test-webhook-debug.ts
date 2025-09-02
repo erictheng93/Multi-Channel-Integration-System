@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 
-const CHANNEL_SECRET = 'cf4f7c62a6b376f2ac59f8672aedcaa3';
+// WARNING: This is a mock secret for testing purposes only. Do not use this in production.
+// Replace with a real channel secret for actual testing.
+const CHANNEL_SECRET = 'test-channel-secret';
 const WEBHOOK_URL = 'https://multi-channel-dev.imfinethankyouandyou.com/api/webhook';
 
 async function testWebhookDebug() {
