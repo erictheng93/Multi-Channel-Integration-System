@@ -15,8 +15,15 @@
           
           <div class="header-actions">
             <!-- 混合同步狀態指示器 -->
-            <div v-if="syncStatus !== 'disconnected'" class="sync-status-indicator" :class="`status-${syncStatus}`">
-              <div class="sync-dot" :class="{ 'syncing': isAutoRefreshing }"></div>
+            <div
+              v-if="syncStatus !== 'disconnected'"
+              class="sync-status-indicator"
+              :class="`status-${syncStatus}`"
+            >
+              <div
+                class="sync-dot"
+                :class="{ 'syncing': isAutoRefreshing }"
+              />
               <span class="sync-text">
                 <template v-if="syncStatus === 'connected'">SSE連線</template>
                 <template v-else-if="syncStatus === 'polling'">輪詢模式</template>

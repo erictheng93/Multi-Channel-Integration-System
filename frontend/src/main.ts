@@ -27,6 +27,11 @@ const startApp = async () => {
     app.use(router)
     app.use(i18n)
 
+    // Performance monitoring enabled in development
+    if (import.meta.env.DEV) {
+      console.log('🚀 Performance monitoring enabled')
+    }
+
     // 🔧 CRITICAL FIX: 使用統一的會話初始化 - 解決競爭條件
     const authStore = useAuthStore()
     

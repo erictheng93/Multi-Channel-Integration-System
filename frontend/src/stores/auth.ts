@@ -199,7 +199,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchCurrentAgent() {
-    if (!token.value) return;
+    if (!token.value) {return;}
 
     try {
       const response = await authApi.me();
@@ -215,8 +215,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 驗證會話是否有效
   function validateSession(): boolean {
-    if (!token.value) return false;
-    if (!sessionExpiry.value) return true;
+    if (!token.value) {return false;}
+    if (!sessionExpiry.value) {return true;}
     return Date.now() < sessionExpiry.value;
   }
 
@@ -371,7 +371,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 自動清除過時錯誤
       if (result && error.value) {
         setTimeout(() => {
-          if (error.value) error.value = null;
+          if (error.value) {error.value = null;}
         }, 0);
       }
       
