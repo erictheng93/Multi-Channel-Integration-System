@@ -295,7 +295,7 @@ export const updateMemberRole = async (c: Context<{ Bindings: Bindings }>) => {
       .get();
 
     await drizzleDb
-      drizzle(c.env.DB).update(agents).set({ role: role }).where(eq(agents.id, memberId))
+      .update(agents).set({ role: role }).where(eq(agents.id, memberId))
 
     // 記錄角色更新活動
     const activityService = new ActivityService(c.env.DB);
@@ -340,7 +340,7 @@ export const resetMemberPassword = async (c: Context<{ Bindings: Bindings }>) =>
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
     await drizzleDb
-      drizzle(c.env.DB).update(agents).set({ passwordHash: passwordHash }).where(eq(agents.id, memberId))
+      .update(agents).set({ passwordHash: passwordHash }).where(eq(agents.id, memberId))
 
     // 在實際環境中，這裡會發送郵件通知用戶新密碼
     console.log(`Password reset completed for member ${memberId}`)
@@ -416,7 +416,7 @@ export const resetPasswordWithPolicy = async (c: Context<{ Bindings: Bindings }>
 
     // 更新密碼和密碼政策
     await drizzleDb
-      drizzle(c.env.DB).update(agents).set({ 
+      .update(agents).set({ 
         passwordHash: passwordHash, 
         passwordPolicy: policy, 
         updatedAt: sql`CURRENT_TIMESTAMP` 
@@ -532,7 +532,7 @@ export const changePassword = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 更新密碼並設置政策為可更改（完成強制更改後）
     await drizzleDb
-      drizzle(c.env.DB).update(agents).set({ 
+      .update(agents).set({ 
         passwordHash: passwordHash, 
         passwordPolicy: 'changeable', 
         updatedAt: sql`CURRENT_TIMESTAMP` 
@@ -612,6 +612,7 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
       role?: 'admin' | 'agent';
       group?: string;
       status?: 'active' | 'inactive';
+      teamId?: number;
     }>()
     
     // 驗證管理員權限
@@ -696,6 +697,9 @@ export const updateMember = async (c: Context<{ Bindings: Bindings }>) => {
     }
     if (updateData.status !== undefined) {
       updateObject.isActive = updateData.status === 'active';
+    }
+    if (updateData.teamId !== undefined) {
+      updateObject.teamId = updateData.teamId;
     }
     if (updateData.password !== undefined && updateData.password.trim() !== '') {
       const bcrypt = await import('bcryptjs');
@@ -805,7 +809,7 @@ export const deleteMember = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     await drizzleDb
-      drizzle(c.env.DB).delete(agents).where(eq(agents.id, memberId))
+      .delete(agents).where(eq(agents.id, memberId))
 
     return successResponse(c, null, 'Member deleted successfully')
   } catch (error: any) {

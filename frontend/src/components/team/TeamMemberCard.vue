@@ -137,27 +137,19 @@
             </div>
             <div class="form-group">
               <label for="editPassword">密碼</label>
-              <div class="password-input-wrapper">
-                <input
-                  id="editPassword"
-                  v-model="editForm.password"
-                  :type="showPassword ? 'text' : 'password'"
-                  placeholder="請輸入新密碼"
-                  autocomplete="new-password"
-                  :readonly="!showPassword && !isPasswordLoaded"
-                  :disabled="passwordLoading"
-                >
-                <button
-                  type="button"
-                  class="password-toggle-btn"
-                  :title="passwordLoading ? '加載中...' : (showPassword ? '隱藏密碼' : '顯示密碼')"
-                  :disabled="passwordLoading"
-                  @click="togglePasswordVisibility"
-                >
-                  {{ passwordLoading ? '⏳' : (showPassword ? '🙈' : '👁️') }}
-                </button>
-              </div>
-              <small class="form-help-text">管理員可以查看和修改成員密碼</small>
+              <input
+                id="editPassword"
+                v-model="editForm.password"
+                type="password"
+                placeholder="留空則不更改密碼，或輸入新密碼進行重設"
+                autocomplete="new-password"
+              >
+              <small 
+                class="form-help-text password-status"
+                :class="`status-${passwordFieldStatus.type}`"
+              >
+                {{ passwordFieldStatus.message }}
+              </small>
             </div>
             <div class="form-group">
               <label for="editRole">角色</label>
@@ -221,7 +213,9 @@
 <script setup lang="ts">
 import { computed, ref, reactive, watch, nextTick, onUnmounted } from 'vue'
 import type { TeamMember } from '@/types'
-import { teamApi } from '@/api/team'
+// import { teamApi } from '@/api/team'
+import { useTeamStore } from '@/stores/team'
+import { useToast } from '@/composables/useToast'
 
 interface Props {
   member: TeamMember
@@ -239,16 +233,26 @@ const emit = defineEmits<{
   toggleStatus: [member: TeamMember]
   resetPassword: [member: TeamMember]
   removeMember: [member: TeamMember]
-  editMember: [memberId: string, data: Partial<TeamMember>]
 }>()
+
+// Ensure emit is recognized as used (TypeScript doesn't detect template usage)
+if (typeof emit !== 'undefined') { /* noop */ }
+
+// 組合式函數
+const teamStore = useTeamStore()
+const { showSuccess, showError } = useToast()
 
 // Modal state
 const showEditModal = ref(false)
 const editLoading = ref(false)
-const showPassword = ref(false)
-const actualPassword = ref('')
-const isPasswordLoaded = ref(false)
-const passwordLoading = ref(false)
+
+// 計算密碼欄位狀態
+const passwordFieldStatus = computed(() => {
+  if (editForm.password && editForm.password.trim() !== '') {
+    return { type: 'changing', message: '⚠️ 將重設為新密碼' }
+  }
+  return { type: 'empty', message: '留空則不更改密碼' }
+})
 
 // Edit form data
 const editForm = reactive({
@@ -265,14 +269,10 @@ watch(() => showEditModal.value, (newVal) => {
   if (newVal) {
     editForm.name = props.member.name || ''
     editForm.email = props.member.email || ''
-    editForm.password = '••••••••' // 顯示偽密碼
+    editForm.password = '' // 初始化為空
     editForm.role = props.member.role
     editForm.group = props.member.group || ''
     editForm.isActive = props.member.status === 'active'
-    showPassword.value = false
-    actualPassword.value = '' // 重置實際密碼
-    isPasswordLoaded.value = false // 確保每次都重新加載
-    passwordLoading.value = false
   }
 })
 
@@ -339,23 +339,26 @@ const submitEdit = async () => {
       status: editForm.isActive ? 'active' as const : 'inactive' as const
     }
     
-    // 只有當密碼已加載且與原始密碼不同時才包含密碼更新
-    if (isPasswordLoaded.value && editForm.password !== actualPassword.value && editForm.password !== '••••••••') {
+    // 只有當密碼欄位有值時才包含密碼更新
+    if (editForm.password && editForm.password.trim() !== '') {
       updateData.password = editForm.password
     }
     
-    const response = await teamApi.updateMember(props.member.id, updateData)
+    // 使用teamStore統一處理，避免雙重調用
+    await teamStore.updateMember(props.member.id, updateData)
     
-    if (response.success) {
-      emit('editMember', props.member.id, updateData)
-      closeEditModal()
-    } else {
-      console.error('更新成員失敗:', response.message)
-      // 可以在這裡添加用戶友好的錯誤提示
-    }
+    // 顯示成功訊息
+    showSuccess(
+      '更新成功',
+      `已成功更新 ${props.member.name || props.member.loginId} 的資訊`
+    )
+    
+    closeEditModal()
   } catch (error) {
     console.error('更新成員失敗:', error)
-    // 可以在這裡添加用戶友好的錯誤提示
+    // 顯示錯誤訊息給用戶
+    const errorMessage = error instanceof Error ? error.message : '更新成員失敗，請稍後重試'
+    showError('更新失敗', errorMessage)
   } finally {
     editLoading.value = false
   }
@@ -387,61 +390,28 @@ const formatDate = (date: string | Date) => {
   return new Date(date).toLocaleString('zh-TW')
 }
 
-// Password visibility toggle
-const togglePasswordVisibility = async () => {
-  if (!showPassword.value) {
-    // 當要顯示密碼時，從API加載真實密碼
-    if (!isPasswordLoaded.value && !passwordLoading.value) {
-      passwordLoading.value = true
-      
-      try {
-        const response = await teamApi.getMemberPassword(props.member.id)
-        
-        if (response.success && response.data) {
-          actualPassword.value = response.data.password
-          editForm.password = actualPassword.value
-          isPasswordLoaded.value = true
-          showPassword.value = true
-        } else {
-          console.error('Failed to load password:', response.message)
-          editForm.password = '••••••••'
-        }
-      } catch (error) {
-        console.error('Error loading password:', error)
-        editForm.password = '••••••••'
-      } finally {
-        passwordLoading.value = false
-      }
-    } else if (isPasswordLoaded.value) {
-      // 如果已經加載過，直接顯示
-      editForm.password = actualPassword.value
-      showPassword.value = true
-    }
-  } else {
-    // 隱藏時回到偽密碼
-    showPassword.value = false
-    editForm.password = '••••••••'
-  }
-}
 </script>
 
 <style scoped>
 .member-card {
-  background: white;
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  border: 1px solid var(--gray-100);
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: all var(--transition-fast);
+  transition: all 0.3s ease;
   position: relative;
+  min-height: 120px;
 }
 
 .member-card:hover:not(.modal-open) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .member-card.modal-open {
@@ -453,29 +423,32 @@ const togglePasswordVisibility = async () => {
 .member-info {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: 16px;
   flex: 1;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2);
-  margin: calc(-1 * var(--space-2));
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  padding: 8px;
+  margin: -8px;
 }
 
 .member-info:hover:not(.member-card.modal-open .member-info) {
-  background-color: var(--gray-50);
+  background-color: rgba(255, 255, 255, 0.7);
+  transform: scale(1.01);
 }
 
 .member-card.modal-open .member-info:hover {
   background-color: transparent;
+  transform: none;
 }
 
 .member-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-full);
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .member-avatar img {
@@ -487,26 +460,27 @@ const togglePasswordVisibility = async () => {
 .avatar-placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 1.125rem;
+  font-weight: 700;
+  font-size: 1.375rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .member-details h3 {
-  margin: 0 0 var(--space-1) 0;
-  color: var(--gray-900);
-  font-size: 1rem;
-  font-weight: 600;
+  margin: 0 0 6px 0;
+  color: #1e293b;
+  font-size: 1.375rem;
+  font-weight: 700;
 }
 
 .member-details .email {
-  margin: 0 0 var(--space-2) 0;
-  color: var(--gray-600);
-  font-size: 0.875rem;
+  margin: 0 0 12px 0;
+  color: #64748b;
+  font-size: 1rem;
 }
 
 .member-meta {
@@ -518,45 +492,56 @@ const togglePasswordVisibility = async () => {
 
 .role,
 .status {
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .role.admin {
   background: #fef3c7;
   color: #92400e;
+  border: 1px solid #fbbf24;
 }
 
 .role.team {
   background: #f3e8ff;
   color: #7c3aed;
+  border: 1px solid #c4b5fd;
 }
 
 .role.agent {
   background: #dbeafe;
   color: #1e40af;
+  border: 1px solid #93c5fd;
 }
 
 .status.active {
-  background: #d1fae5;
-  color: #065f46;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
 }
 
 .status.inactive {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .status.pending {
   background: #fef3c7;
   color: #92400e;
+  border: 1px solid #fbbf24;
 }
 
 .last-login {
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: 0.875rem;
+  color: #64748b;
+  padding: 6px 12px;
+  background: #e2e8f0;
+  border-radius: 12px;
 }
 
 .member-actions {
@@ -567,78 +552,106 @@ const togglePasswordVisibility = async () => {
 }
 
 .role-select {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
   background: white;
-  min-width: 120px;
+  min-width: 140px;
+  color: #475569;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.role-select:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .role-select:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
+  background: #f1f5f9;
+  color: #64748b;
   cursor: not-allowed;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  gap: 6px;
+  padding: 16px 24px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   text-decoration: none;
+  min-width: 120px;
+  justify-content: center;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn-sm {
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 14px 20px;
+  font-size: 1rem;
 }
 
 .btn-secondary {
-  background: #6b7280;
-  color: white;
+  background: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #4b5563;
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
 }
 
 .btn-success {
-  background: #10b981;
-  color: white;
+  background: #dcfce7;
+  color: #166534;
+  border-color: #16a34a;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #059669;
+  background: #bbf7d0;
+  border-color: #15803d;
+  transform: translateY(-1px);
 }
 
 .btn-warning {
-  background: #f59e0b;
-  color: white;
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fbbf24;
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: #d97706;
+  background: #fde68a;
+  border-color: #f59e0b;
+  transform: translateY(-1px);
 }
 
 .btn-danger {
-  background: #ef4444;
-  color: white;
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #ef4444;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #dc2626;
+  background: #fecaca;
+  border-color: #dc2626;
+  transform: translateY(-1px);
 }
 
 /* Modal Styles */
@@ -668,10 +681,11 @@ const togglePasswordVisibility = async () => {
 }
 
 .modal {
-  background: white;
-  border-radius: var(--radius-2xl);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 500px;
+  max-width: 600px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -694,35 +708,44 @@ const togglePasswordVisibility = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-6);
-  border-bottom: 1px solid var(--gray-200);
+  padding: 28px;
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: var(--gray-900);
-  font-size: 1.25rem;
-  font-weight: 600;
+  color: #1e293b;
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .close-btn {
-  background: none;
-  border: none;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   font-size: 1.5rem;
-  color: var(--gray-500);
+  color: #64748b;
   cursor: pointer;
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .close-btn:hover {
-  color: var(--gray-700);
-  background-color: var(--gray-100);
+  color: #475569;
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
 }
 
 .modal-body {
-  padding: var(--space-6);
+  padding: 28px;
+  background: #f8fafc;
 }
 
 .form-group {
@@ -731,27 +754,35 @@ const togglePasswordVisibility = async () => {
 
 .form-group label {
   display: block;
-  margin-bottom: var(--space-2);
-  color: var(--gray-700);
-  font-size: 0.875rem;
-  font-weight: 500;
+  margin-bottom: 8px;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  transition: all var(--transition-fast);
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+  color: #475569;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: #fefeff;
+}
+
+.form-group input:hover,
+.form-group select:hover {
+  border-color: #94a3b8;
 }
 
 .checkbox-label {
@@ -766,46 +797,6 @@ const togglePasswordVisibility = async () => {
   width: auto;
 }
 
-/* Password Input Styling */
-.password-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.password-input-wrapper input {
-  padding-right: 3rem;
-}
-
-.password-toggle-btn {
-  position: absolute;
-  right: var(--space-3);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--gray-500);
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 28px;
-}
-
-.password-toggle-btn:hover {
-  background-color: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.password-toggle-btn:focus {
-  outline: none;
-  background-color: var(--gray-100);
-  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.2);
-}
 
 /* Form help text styling */
 .form-help-text {
@@ -814,6 +805,32 @@ const togglePasswordVisibility = async () => {
   color: var(--gray-500);
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+/* Password status styling */
+.password-status {
+  font-weight: 500;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+}
+
+.password-status.status-changing {
+  color: #ea580c;
+  background-color: #fff7ed;
+  border-left: 3px solid #ea580c;
+  font-weight: 600;
+}
+
+.password-status.status-empty {
+  color: var(--gray-500);
+  background-color: var(--gray-25);
+  border-left: 3px solid var(--gray-200);
+}
+
+.form-instructions {
+  opacity: 0.8;
+  font-size: 0.7rem;
 }
 
 .modal-actions {

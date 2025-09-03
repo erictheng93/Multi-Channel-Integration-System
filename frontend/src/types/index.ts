@@ -58,6 +58,7 @@ export interface TeamMember {
   role: 'admin' | 'team' | 'agent';
   status: 'active' | 'inactive' | 'pending';
   group?: string;
+  teamId?: number;
   avatar?: string;
   createdAt: Date | string;
   updatedAt: Date | string;

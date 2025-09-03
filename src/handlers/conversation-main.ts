@@ -245,12 +245,13 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
     const hasPermission = await PermissionService.checkPermission(
       user.id, 
       'conversation', 
-      'read',
+      'view',
       { 
         userId: Number(user.id),
         role: user.role,
         resourceId: conversationId 
-      }
+      },
+      c.env.DB
     );
     
     if (!hasPermission) {
@@ -328,8 +329,8 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
     console.log(`🔒 [Agent Message] Checking permissions for user: ${user.id}, role: ${user.role}`);
     const hasPermission = await PermissionService.checkPermission(
       user.id, // ✅ agents表ID是TEXT類型，保持字符串
-      'conversation', 
-      'send_message',
+      'message', 
+      'send',
       { 
         userId: Number(user.id), // ✅ 保持一致的字符串ID
         role: user.role,
@@ -342,9 +343,16 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
     
     if (!hasPermission) {
       console.log(`❌ [Agent Message] Permission denied for user ${user.id}`);
+      
+      // 根據用戶角色提供更明確的錯誤訊息
+      let errorMessage = 'Permission denied';
+      if (user.role === 'agent') {
+        errorMessage = '權限不足，您無權對此訊息進行任何操作。只有指派給您的對話或團隊負責人能夠回覆未指派的對話。';
+      }
+      
       return c.json({ 
         success: false,
-        error: 'Permission denied',
+        error: errorMessage,
         timestamp: new Date().toISOString()
       }, 403);
     }
@@ -531,12 +539,13 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
     const hasPermission = await PermissionService.checkPermission(
       user.id, 
       'conversation', 
-      'read',
+      'view',
       { 
         userId: Number(user.id),
         role: user.role,
         resourceId: conversationId 
-      }
+      },
+      c.env.DB
     );
     
     if (!hasPermission) {

@@ -1,0 +1,240 @@
+/* 筆電專用響應式設計系統 */
+
+/* 基礎容器尺寸變數 */
+:root {
+  /* 筆電特定的容器最大寬度 */
+  --container-sm-laptop: 1200px;  /* 13吋筆電 */
+  --container-md-laptop: 1350px;  /* 14吋筆電 */
+  --container-lg-laptop: 1500px;  /* 15.6吋筆電 */
+  --container-xl-laptop: 1650px;  /* 17吋筆電 */
+  
+  /* 流體字體比例 */
+  --fluid-text-ratio: clamp(0.875rem, 0.8rem + 0.5vw, 1.125rem);
+  --fluid-title-ratio: clamp(1.5rem, 1.2rem + 1.5vw, 2.5rem);
+  
+  /* 動態間距 */
+  --fluid-space-xs: clamp(0.25rem, 0.2rem + 0.25vw, 0.5rem);
+  --fluid-space-sm: clamp(0.5rem, 0.4rem + 0.5vw, 1rem);
+  --fluid-space-md: clamp(1rem, 0.8rem + 1vw, 2rem);
+  --fluid-space-lg: clamp(2rem, 1.5rem + 2vw, 4rem);
+}
+
+/* 筆電尺寸斷點系統 */
+
+/* 低解析度筆電 (1080x720等) - 1025px to 1119px */
+@media (min-width: 1025px) and (max-width: 1119px) {
+  .laptop-container {
+    max-width: 1000px;
+    padding: var(--fluid-space-sm);
+  }
+  
+  .laptop-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--fluid-space-xs);
+  }
+  
+  .laptop-title {
+    font-size: clamp(1.5rem, 1.2rem + 0.8vw, 1.8rem);
+  }
+  
+  .laptop-card {
+    padding: var(--fluid-space-xs) var(--fluid-space-sm);
+  }
+  
+  /* 高度優化的緊湊佈局 */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .content-grid {
+    grid-template-columns: 1fr; /* 單列佈局 */
+  }
+  
+  /* 減少垂直間距 */
+  .welcome-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem 0;
+  }
+  
+  .performance-section {
+    margin-top: 2rem;
+  }
+}
+
+/* 小筆電 (13吋) - 1120px to 1279px */
+@media (min-width: 1120px) and (max-width: 1279px) {
+  .laptop-container {
+    max-width: var(--container-sm-laptop);
+    padding: var(--fluid-space-md) var(--fluid-space-sm);
+  }
+  
+  .laptop-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--fluid-space-sm);
+  }
+  
+  .laptop-title {
+    font-size: clamp(1.75rem, 1.5rem + 1vw, 2rem);
+  }
+  
+  .laptop-card {
+    padding: var(--fluid-space-sm);
+  }
+  
+  /* 內容密度調整 - 更緊湊 */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 中筆電 (14吋) - 1280px to 1439px */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .laptop-container {
+    max-width: var(--container-md-laptop);
+    padding: var(--fluid-space-md);
+  }
+  
+  .laptop-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--fluid-space-md);
+  }
+  
+  .laptop-title {
+    font-size: clamp(2rem, 1.7rem + 1.2vw, 2.2rem);
+  }
+  
+  .laptop-card {
+    padding: var(--fluid-space-md);
+  }
+  
+  /* 平衡的內容密度 */
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 大筆電 (15.6吋) - 1440px to 1679px */
+@media (min-width: 1440px) and (max-width: 1679px) {
+  .laptop-container {
+    max-width: var(--container-lg-laptop);
+    padding: var(--fluid-space-lg) var(--fluid-space-md);
+  }
+  
+  .laptop-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--fluid-space-md);
+  }
+  
+  .laptop-title {
+    font-size: clamp(2.2rem, 1.9rem + 1.5vw, 2.4rem);
+  }
+  
+  .laptop-card {
+    padding: var(--fluid-space-md) var(--fluid-space-lg);
+  }
+  
+  /* 標準內容密度 */
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 超大筆電 (17吋+) - 1680px+ */
+@media (min-width: 1680px) {
+  .laptop-container {
+    max-width: var(--container-xl-laptop);
+    padding: var(--fluid-space-lg);
+  }
+  
+  .laptop-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--fluid-space-lg);
+  }
+  
+  .laptop-title {
+    font-size: clamp(2.4rem, 2rem + 1.8vw, 2.6rem);
+  }
+  
+  .laptop-card {
+    padding: var(--fluid-space-lg);
+  }
+  
+  /* 寬鬆的內容密度 */
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  /* 避免內容過於分散 */
+  .content-grid {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}
+
+/* 流體排版系統 */
+.fluid-text {
+  font-size: var(--fluid-text-ratio);
+  line-height: 1.6;
+}
+
+.fluid-title {
+  font-size: var(--fluid-title-ratio);
+  line-height: 1.2;
+}
+
+/* 動態間距類別 */
+.fluid-padding {
+  padding: var(--fluid-space-md);
+}
+
+.fluid-margin {
+  margin: var(--fluid-space-md) 0;
+}
+
+.fluid-gap {
+  gap: var(--fluid-space-md);
+}
+
+/* 筆電特定的組件調整 */
+@media (min-width: 1025px) {
+  /* 側邊欄根據螢幕寸調整 */
+  .sidebar {
+    width: clamp(250px, 15vw, 300px);
+  }
+  
+  /* 表格根據可用空間調整列寬 */
+  .responsive-table {
+    table-layout: auto;
+  }
+  
+  .responsive-table th,
+  .responsive-table td {
+    padding: clamp(8px, 0.5vw, 16px);
+  }
+  
+  /* 模態框根據螢幕尺寸調整 */
+  .modal {
+    width: clamp(400px, 40vw, 600px);
+    max-width: 90vw;
+  }
+}
+
+/* 容器查詢支援 (現代瀏覽器) */
+@container (min-width: 1200px) {
+  .container-responsive {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--fluid-space-lg);
+  }
+}
+
+@container (max-width: 1199px) {
+  .container-responsive {
+    display: block;
+  }
+  
+  .container-responsive > * + * {
+    margin-top: var(--fluid-space-md);
+  }
+}

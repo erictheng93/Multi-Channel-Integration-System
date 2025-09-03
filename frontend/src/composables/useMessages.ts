@@ -1,7 +1,6 @@
 // 現代化訊息管理 Composable
 import { ref, computed } from 'vue'
 import { useMessagesStore } from '@/stores/messages'
-import { useAsyncData } from './useAsyncData'
 import { useError } from './useError'
 import type { Message } from '@/types'
 
@@ -14,23 +13,21 @@ export function useMessages(conversationId?: string) {
   const isTyping = ref(false)
   const typingTimeout = ref<NodeJS.Timeout | null>(null)
 
-  // 異步數據
-  const {
-    data: messages,
-    pending: loading,
-    execute: fetchMessages,
-    refresh: refreshMessages
-  } = useAsyncData(
-    `messages-${currentConversationId.value}`,
-    async () => {
-      if (!currentConversationId.value) {return}
-      await messagesStore.fetchMessages(currentConversationId.value)
-    },
-    {
-      immediate: !!currentConversationId.value,
-      transform: () => messagesStore.messagesByConversation(currentConversationId.value || '')
-    }
-  )
+  // 直接使用 messagesStore 的數據
+  const messages = computed(() => {
+    if (!currentConversationId.value) {return []}
+    return messagesStore.messagesByConversation(currentConversationId.value)
+  })
+  
+  const loading = computed(() => messagesStore.loading)
+
+  // 獲取消息的函數
+  const fetchMessages = async () => {
+    if (!currentConversationId.value) {return}
+    await messagesStore.fetchMessages(currentConversationId.value)
+  }
+
+  const refreshMessages = fetchMessages
 
   // 計算屬性
   const sortedMessages = computed(() => {
@@ -53,9 +50,11 @@ export function useMessages(conversationId?: string) {
   })
 
   // 方法
-  const setConversationId = (id: string) => {
+  const setConversationId = async (id: string) => {
     currentConversationId.value = id
-    fetchMessages()
+    if (id) {
+      await fetchMessages()
+    }
   }
 
   const sendMessage = async (content: string, _mediaUrl?: string, _mediaType?: string) => {

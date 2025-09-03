@@ -14,15 +14,24 @@
         />
         
         <div class="input-actions">
-          <button
-            class="action-btn"
-            type="button"
-            :disabled="disabled || false"
-            title="Emoji"
-            @click="toggleEmojiPicker"
-          >
-            <SmileIcon />
-          </button>
+          <div class="emoji-picker-container">
+            <button
+              class="action-btn"
+              type="button"
+              :disabled="disabled || false"
+              title="Emoji"
+              @click="toggleEmojiPicker"
+            >
+              <SmileIcon />
+            </button>
+            
+            <div
+              v-if="showEmojiPicker"
+              class="emoji-picker-popup"
+            >
+              <EmojiPicker @emoji-select="insertEmoji" />
+            </div>
+          </div>
           
           <button
             class="action-btn"
@@ -90,13 +99,33 @@
       v-if="error"
       class="error-message"
     >
-      {{ error }}
+      <div class="error-content">
+        <XCircleIcon class="error-icon" />
+        <span>{{ error }}</span>
+      </div>
+      <button
+        class="error-close"
+        @click="error = ''"
+      >
+        <XIcon />
+      </button>
+    </div>
+    
+    <!-- Success message -->
+    <div
+      v-if="successMessage"
+      class="success-message"
+    >
+      <div class="success-content">
+        <CheckCircleIcon class="success-icon" />
+        <span>{{ successMessage }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { messageApi } from '@/api/message'
 import { 
   SendIcon, 
@@ -104,8 +133,11 @@ import {
   PaperclipIcon, 
   FileIcon, 
   XIcon,
-  LoadingIcon 
+  LoadingIcon,
+  XCircleIcon,
+  CheckCircleIcon
 } from '@/components/icons'
+import EmojiPicker from '@/components/ui/EmojiPicker.vue'
 
 interface Props {
   conversationId: string
@@ -125,6 +157,8 @@ const emit = defineEmits<{
   'attachment-upload': [attachment: Attachment]
 }>()
 
+// defineExpose moved to end of script section
+
 // Refs
 const textareaRef = ref<HTMLTextAreaElement>()
 const fileInputRef = ref<HTMLInputElement>()
@@ -134,6 +168,8 @@ const messageText = ref('')
 const attachments = ref<Attachment[]>([])
 const sending = ref(false)
 const error = ref('')
+const successMessage = ref('')
+const showEmojiPicker = ref(false)
 
 // Computed
 const canSend = computed(() => {
@@ -154,9 +190,57 @@ const autoResize = () => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
+  // Esc 鍵 - 清空輸入或關閉表情選擇器
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    if (showEmojiPicker.value) {
+      showEmojiPicker.value = false
+    } else if (messageText.value.trim()) {
+      messageText.value = ''
+      autoResize()
+    }
+    return
+  }
+
+  // Enter 鍵處理
+  if (event.key === 'Enter') {
+    // Shift+Enter - 換行
+    if (event.shiftKey) {
+      // 允許默認行為（換行）
+      return
+    }
+    
+    // Ctrl+Enter 或 Cmd+Enter - 發送消息
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      sendMessage()
+      return
+    }
+    
+    // 普通 Enter - 發送消息
     event.preventDefault()
     sendMessage()
+    return
+  }
+
+  // Ctrl/Cmd + A - 全選文本
+  if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+    // 允許默認行為
+    return
+  }
+
+  // Ctrl/Cmd + Z - 撤銷
+  if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+    // 允許默認行為
+    return
+  }
+
+  // 上/下箭頭 - 瀏覽消息歷史（如果輸入框為空）
+  if (!messageText.value.trim() && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+    event.preventDefault()
+    // TODO: 實現消息歷史瀏覽功能
+    console.log(`Message history navigation: ${event.key}`)
+    return
   }
 }
 
@@ -170,6 +254,7 @@ const sendMessage = async () => {
   
   sending.value = true
   error.value = ''
+  successMessage.value = ''
   
   try {
     const attachmentIds: string[] = []
@@ -213,17 +298,37 @@ const sendMessage = async () => {
       await nextTick()
       autoResize()
       
+      // Show success message
+      successMessage.value = '訊息發送成功'
+      setTimeout(() => {
+        successMessage.value = ''
+      }, 3000)
+      
       // Emit success event
       emit('message-sent', {
         content,
         attachments: currentAttachments
       })
     } else {
-      error.value = (response.error as { message?: string })?.message || 'Send failed'
+      const errorMsg = (response.error as { message?: string })?.message || '發送失敗'
+      error.value = errorMsg
+      
+      // 提供重試建議
+      if (errorMsg.includes('網路')) {
+        error.value += ' - 請檢查網路連接後重試'
+      }
     }
   } catch (err) {
     console.error('Send message error:', err)
-    error.value = 'Network error, please try again'
+    
+    // 根據錯誤類型提供不同的提示
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      error.value = '網路連接失敗，請檢查網路後重試'
+    } else if (err instanceof Error) {
+      error.value = `發送失敗：${err.message}`
+    } else {
+      error.value = '發送失敗，請重試'
+    }
   } finally {
     sending.value = false
   }
@@ -279,11 +384,48 @@ const formatFileSize = (bytes: number): string => {
 }
 
 const toggleEmojiPicker = () => {
-  // TODO: Implement emoji picker
-  error.value = 'Emoji function not implemented yet'
-  setTimeout(() => {
-    error.value = ''
-  }, 3000)
+  showEmojiPicker.value = !showEmojiPicker.value
+}
+
+const insertEmoji = (emoji: string) => {
+  const textarea = textareaRef.value
+  if (!textarea) {return}
+
+  const startPos = textarea.selectionStart
+  const endPos = textarea.selectionEnd
+  const textBefore = messageText.value.substring(0, startPos)
+  const textAfter = messageText.value.substring(endPos)
+
+  messageText.value = textBefore + emoji + textAfter
+
+  // 關閉表情選擇器
+  showEmojiPicker.value = false
+
+  // 將光標定位到插入的表情符號後面
+  nextTick(() => {
+    if (textarea) {
+      const newPos = startPos + emoji.length
+      textarea.setSelectionRange(newPos, newPos)
+      textarea.focus()
+      autoResize()
+    }
+  })
+}
+
+// 外部調用的快速發送消息方法
+const sendQuickMessage = async (quickText: string) => {
+  if (!quickText.trim() || sending.value) {return false}
+  
+  // 設置消息內容
+  messageText.value = quickText.trim()
+  
+  // 等待下一幀更新完成
+  await nextTick()
+  
+  // 發送消息
+  await sendMessage()
+  
+  return true
 }
 
 // Watch for prop changes
@@ -298,9 +440,28 @@ watch(() => props.conversationId, () => {
   })
 })
 
-// Auto-resize on mount
-nextTick(() => {
+// 點擊外部關閉表情選擇器
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Element
+  if (showEmojiPicker.value && !target.closest('.emoji-picker-container')) {
+    showEmojiPicker.value = false
+  }
+}
+
+// 生命周期管理
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
   autoResize()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+// 暴露方法給父組件調用
+defineExpose({
+  sendQuickMessage,
+  focus: () => textareaRef.value?.focus()
 })
 </script>
 
@@ -355,6 +516,18 @@ nextTick(() => {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.emoji-picker-container {
+  position: relative;
+}
+
+.emoji-picker-popup {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: var(--space-2);
+  z-index: 1000;
 }
 
 .action-btn {
@@ -498,12 +671,87 @@ nextTick(() => {
 
 .error-message {
   margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   background: var(--red-50);
   border: 1px solid var(--red-200);
   border-radius: var(--radius-md);
-  color: var(--red-700);
   font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--red-700);
+}
+
+.error-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.error-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--red-500);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.error-close:hover {
+  background: var(--red-100);
+  color: var(--red-700);
+}
+
+.error-close svg {
+  width: 12px;
+  height: 12px;
+}
+
+.success-message {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--green-50);
+  border: 1px solid var(--green-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  animation: slideIn 0.3s ease-out;
+}
+
+.success-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--green-700);
+}
+
+.success-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-spin {
@@ -519,9 +767,29 @@ nextTick(() => {
   }
 }
 
+/* 平板設備優化 */
+@media (max-width: 1024px) {
+  .message-input {
+    max-width: none;
+    margin: 0;
+  }
+
+  .emoji-picker-popup {
+    right: auto;
+    left: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .input-container {
     padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .message-textarea {
+    font-size: 1rem; /* iOS 防縮放 */
+    min-height: 22px;
+    padding: var(--space-2) 0;
   }
   
   .send-button {
@@ -542,6 +810,102 @@ nextTick(() => {
   .action-btn svg {
     width: 16px;
     height: 16px;
+  }
+
+  .emoji-picker-popup {
+    position: fixed;
+    bottom: 60px;
+    left: var(--space-2);
+    right: var(--space-2);
+    margin-bottom: 0;
+    z-index: 9999;
+  }
+
+  .attachments-preview {
+    margin-top: var(--space-2);
+  }
+
+  .attachment-item {
+    padding: var(--space-2);
+  }
+
+  .attachment-name {
+    font-size: 0.75rem;
+  }
+
+  .attachment-size {
+    font-size: 0.625rem;
+  }
+
+  .error-message,
+  .success-message {
+    padding: var(--space-2);
+    font-size: 0.75rem;
+  }
+}
+
+/* 小屏設備進一步優化 */
+@media (max-width: 480px) {
+  .input-container {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .input-actions {
+    gap: 2px;
+  }
+
+  .action-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  .action-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .send-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .send-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* 確保表情選擇器不會被虛擬鍵盤遮蓋 */
+  .emoji-picker-popup {
+    bottom: 50px;
+    left: var(--space-1);
+    right: var(--space-1);
+  }
+}
+
+/* 觸摸設備優化 */
+@media (pointer: coarse) {
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .send-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .quick-reply-btn {
+    min-height: 44px;
+  }
+
+  .remove-attachment {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .error-close {
+    min-width: 28px;
+    min-height: 28px;
   }
 }
 </style>

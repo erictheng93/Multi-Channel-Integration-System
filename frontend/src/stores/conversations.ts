@@ -5,6 +5,7 @@ import { conversationApi } from '@/api/conversations'
 import { messageApi } from '@/api/message'
 import { useAuthStore } from './auth'
 import { translateError } from '@/utils/error-handler'
+import { conversationCache, cacheManager } from '@/services/cacheManager'
 
 // Interface removed as it's not used
 
@@ -13,11 +14,21 @@ export const useConversationsStore = defineStore('conversations', () => {
   const conversations = ref<Conversation[]>([])
   const currentConversation = ref<Conversation | null>(null)
   const messages = ref<Message[]>([])
-  const loading = ref(false)
+  
+  // Enhanced loading states for smooth UX
+  const loading = ref(false) // Initial load
+  const refreshing = ref(false) // User refresh
+  const updating = ref(false) // Background updates
+  const loadingMore = ref(false) // Pagination
+  
   const error = ref<string | null>(null)
   const messagesLoading = ref(false)
   const sendingMessage = ref(false)
   const optimisticMessages = ref<Message[]>([])
+  
+  // Performance tracking
+  const lastUpdateTime = ref<Date | null>(null)
+  const updateCount = ref(0)
 
   // Filters and Pagination
   const filters = ref<ConversationFilters>({
@@ -56,6 +67,14 @@ export const useConversationsStore = defineStore('conversations', () => {
     const authStore = useAuthStore()
     return conversations.value.filter(c => c.assignedAgentId === authStore.currentAgent?.id)
   })
+  
+  // Enhanced computed properties for loading states
+  const isLoading = computed(() => loading.value || refreshing.value || updating.value)
+  const showSkeleton = computed(() => loading.value && conversations.value.length === 0)
+  const showShimmer = computed(() => (refreshing.value || updating.value) && conversations.value.length > 0)
+  const canLoadMore = computed(() => 
+    pagination.value.page < pagination.value.totalPages && !loadingMore.value
+  )
 
   // Utility functions
   const clearError = () => {
@@ -69,10 +88,242 @@ export const useConversationsStore = defineStore('conversations', () => {
     setTimeout(clearError, 5000) // Auto clear error after 5 seconds
   }
 
+  // Conversation comparison for change detection
+  const hasConversationChanged = (existing: Conversation, updated: Conversation): boolean => {
+    if (!existing || !updated) {return true}
+    
+    // Compare key fields that would affect UI rendering
+    const keyFields = [
+      'id', 'status', 'unreadCount', 'lastMessageAt', 'lastMessage', 'priority',
+      'assignedAgentId', 'assignedTeamId', 'customerName', 'platform'
+    ] as const
+    
+    return keyFields.some(field => {
+      const existingValue = existing[field as keyof Conversation]
+      const updatedValue = updated[field as keyof Conversation]
+      return JSON.stringify(existingValue) !== JSON.stringify(updatedValue)
+    })
+  }
+  
+  // Smart merge function to update only changed conversations
+  const updateConversationsIncrementally = (newConversations: Conversation[], logChanges = false) => {
+    const startTime = performance.now()
+    const existingMap = new Map(conversations.value.map(c => [c.id, c]))
+    
+    let changedCount = 0
+    let addedCount = 0
+    let removedCount = 0
+    
+    // Create updated list with minimal changes
+    const updatedList = newConversations.map(newConv => {
+      const existing = existingMap.get(newConv.id)
+      
+      if (!existing) {
+        addedCount++
+        return newConv
+      } else if (!hasConversationChanged(existing, newConv)) {
+        // No change, keep existing object reference to avoid re-render
+        return existing
+      } else {
+        changedCount++
+        return newConv
+      }
+    })
+    
+    // Check for removed conversations
+    removedCount = conversations.value.length - newConversations.length
+    
+    // Update conversations array
+    conversations.value = updatedList
+    
+    // Update tracking
+    lastUpdateTime.value = new Date()
+    updateCount.value++
+    
+    if (logChanges) {
+      const duration = performance.now() - startTime
+      console.log(`📊 [ConversationsStore] Incremental update completed:`, {
+        total: updatedList.length,
+        changed: changedCount,
+        added: addedCount,
+        removed: removedCount,
+        duration: `${duration.toFixed(2)}ms`,
+        updateCount: updateCount.value
+      })
+    }
+  }
+  
+  // Legacy method for backward compatibility
   const updateConversationInList = (updatedConversation: Conversation) => {
     const index = conversations.value.findIndex(c => c.id === updatedConversation.id)
     if (index !== -1) {
       conversations.value[index] = updatedConversation
+    }
+  }
+
+  // 樂觀更新方法 - 立即更新UI，背景同步API
+  const optimisticUpdateConversation = async (
+    id: string, 
+    updates: Partial<Conversation>,
+    apiCall?: () => Promise<{ data?: Conversation }>
+  ) => {
+    console.log(`⚡ [ConversationsStore] Optimistic update for conversation ${id}:`, updates)
+    
+    // 1. 立即更新本地狀態
+    const index = conversations.value.findIndex(c => c.id === id)
+    if (index !== -1) {
+      const originalConversation = { ...conversations.value[index] }
+      conversations.value[index] = { ...originalConversation, ...updates } as Conversation
+      
+      // 2. 更新快取
+      conversationCache.setConversation(conversations.value[index])
+      
+      // 3. 背景執行API調用
+      if (apiCall) {
+        try {
+          const result = await apiCall()
+          console.log(`✅ [ConversationsStore] API sync completed for ${id}`)
+          
+          // 4. 用API結果更新（如果有差異）
+          if (result?.data && hasConversationChanged(conversations.value[index], result.data)) {
+            conversations.value[index] = result.data
+            conversationCache.setConversation(result.data)
+          }
+          
+          return { success: true, data: conversations.value[index] }
+        } catch (error) {
+          console.error(`❌ [ConversationsStore] API sync failed for ${id}, rolling back:`, error)
+          
+          // 5. 錯誤時回滾到原始狀態
+          conversations.value[index] = originalConversation as Conversation
+          conversationCache.setConversation(originalConversation as Conversation)
+          
+          handleError(error, '更新對話失敗')
+          return { success: false, error, rollback: true }
+        }
+      }
+      
+      return { success: true, data: conversations.value[index] }
+    }
+    
+    console.warn(`⚠️ [ConversationsStore] Conversation ${id} not found for optimistic update`)
+    return { success: false, error: 'Conversation not found', rollback: false }
+  }
+
+  // 智能快取載入 - 先從快取載入，再背景更新
+  const loadWithCache = async (filters: ConversationFilters = {}, page = 1) => {
+    console.log(`🧠 [ConversationsStore] Smart cache loading with filters:`, filters)
+    
+    // 1. 立即從快取載入
+    const cached = conversationCache.getConversationList(filters)
+    if (cached.data) {
+      console.log(`⚡ [ConversationsStore] Cache hit, showing ${cached.data.length} cached conversations`)
+      conversations.value = cached.data
+      
+      // 如果快取不需要更新，直接返回
+      if (!cached.needsUpdate) {
+        console.log(`✨ [ConversationsStore] Cache is fresh, no API call needed`)
+        return { fromCache: true, fresh: true }
+      }
+    }
+    
+    // 2. 背景更新（即使有快取）
+    const wasFromCache = !!cached.data
+    if (wasFromCache) {
+      updating.value = true // 使用背景更新狀態
+    } else {
+      loading.value = true  // 首次載入狀態
+    }
+    
+    try {
+      console.log(`🌐 [ConversationsStore] ${wasFromCache ? 'Background' : 'Initial'} API call`)
+      
+      const cleanFilters: Record<string, unknown> = {}
+      if (filters.status) {cleanFilters.status = filters.status}
+      if (filters.platform) {cleanFilters.platform = filters.platform}
+      if (filters.assignedTo) {cleanFilters.assignedTo = filters.assignedTo}
+
+      const response = await conversationApi.list({
+        page,
+        pageSize: pagination.value.pageSize,
+        ...cleanFilters
+      })
+
+      if (response.success && response.data) {
+        let conversationList: Conversation[]
+        let paginationData: Omit<PaginatedResponse<unknown>, 'items'>
+
+        if (Array.isArray(response.data)) {
+          conversationList = response.data as Conversation[]
+          paginationData = {
+            page: typeof page === 'string' ? parseInt(page) : page,
+            pageSize: pagination.value.pageSize,
+            total: conversationList.length,
+            totalPages: Math.ceil(conversationList.length / pagination.value.pageSize)
+          }
+        } else {
+          const data = response.data as PaginatedResponse<Conversation>
+          conversationList = data.items || []
+          paginationData = {
+            page: data.page,
+            pageSize: data.pageSize,
+            total: data.total,
+            totalPages: data.totalPages
+          }
+        }
+
+        // 3. 智能更新 - 只有真正變化時才更新UI
+        if (wasFromCache) {
+          updateConversationsIncrementally(conversationList, true)
+        } else {
+          conversations.value = conversationList
+        }
+        
+        // 4. 更新快取
+        conversationCache.setConversationList(conversationList, filters)
+        pagination.value = paginationData
+        
+        console.log(`✅ [ConversationsStore] ${wasFromCache ? 'Background update' : 'Initial load'} completed`)
+        return { fromCache: wasFromCache, fresh: true, count: conversationList.length }
+      }
+      
+    } catch (err) {
+      console.error(`❌ [ConversationsStore] Smart cache loading failed:`, err)
+      if (!wasFromCache) {
+        handleError(err, '載入對話失敗')
+      }
+      return { fromCache: wasFromCache, fresh: false, error: err }
+    } finally {
+      loading.value = false
+      updating.value = false
+    }
+    
+    // 默認返回值 - 應該不會到達這裡
+    return { fromCache: false, fresh: false }
+  }
+
+  // 預載入下一頁
+  const preloadNextPage = async () => {
+    const nextPage = pagination.value.page + 1
+    if (nextPage > pagination.value.totalPages) {return}
+
+    console.log(`🔮 [ConversationsStore] Preloading page ${nextPage}`)
+    
+    try {
+      await cacheManager.prefetch(`conversations:page:${nextPage}`, async () => {
+        const cleanFilters = Object.fromEntries(
+          Object.entries(filters.value).filter(([_, v]) => v && v !== '')
+        )
+        const response = await conversationApi.list({
+          page: nextPage,
+          pageSize: pagination.value.pageSize,
+          ...cleanFilters
+        })
+        
+        return response.data
+      })
+    } catch (error) {
+      console.warn(`⚠️ [ConversationsStore] Preload failed for page ${nextPage}:`, error)
     }
   }
 
@@ -125,9 +376,17 @@ export const useConversationsStore = defineStore('conversations', () => {
         }
 
         if (append) {
-          conversations.value = [...conversations.value, ...conversationList]
+          // For pagination: merge without duplicates
+          const existingIds = new Set(conversations.value.map(c => c.id))
+          const newConversations = conversationList.filter(c => !existingIds.has(c.id))
+          conversations.value = [...conversations.value, ...newConversations]
+          
+          if (newConversations.length > 0) {
+            console.log(`📄 [ConversationsStore] Loaded ${newConversations.length} more conversations`)
+          }
         } else {
-          conversations.value = conversationList
+          // Use incremental update for better performance
+          updateConversationsIncrementally(conversationList, import.meta.env.DEV)
         }
 
         pagination.value = paginationData
@@ -156,14 +415,35 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (import.meta.env.DEV && !append && !import.meta.env.VITEST) {
         try {
           const { generateMockConversations } = await import('@/utils/mockData')
-          conversations.value = generateMockConversations(20)
+          updateConversationsIncrementally(generateMockConversations(20))
         } catch (mockError) {
           console.error('Failed to load mock data:', mockError)
         }
       }
     } finally {
+      // Reset all loading states
       loading.value = false
+      refreshing.value = false
+      updating.value = false
+      loadingMore.value = false
     }
+  }
+  
+  // New methods for different loading scenarios
+  const refreshConversations = async () => {
+    console.log('🔄 [ConversationsStore] User refresh triggered')
+    await fetchConversations(undefined, 1, false)
+  }
+  
+  const loadMoreConversations = async () => {
+    const nextPage = pagination.value.page + 1
+    console.log(`📄 [ConversationsStore] Loading page ${nextPage}`)
+    await fetchConversations(undefined, nextPage, true)
+  }
+  
+  const silentRefresh = async () => {
+    console.log('🔕 [ConversationsStore] Silent background refresh')
+    await fetchConversations(undefined, 1, false)
   }
 
   const fetchConversation = async (id: string) => {
@@ -505,6 +785,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     currentConversation,
     messages,
     loading,
+    loadingMore,
     error,
     messagesLoading,
     sendingMessage,
@@ -517,6 +798,10 @@ export const useConversationsStore = defineStore('conversations', () => {
     allMessages,
     unreadConversations,
     assignedToMeConversations,
+    isLoading,
+    showSkeleton,
+    showShimmer,
+    canLoadMore,
 
     // Actions
     fetchConversations,
@@ -527,10 +812,18 @@ export const useConversationsStore = defineStore('conversations', () => {
     closeConversation,
     markAsRead,
     loadMore,
+    loadMoreConversations,
     refresh,
+    refreshConversations,
+    silentRefresh,
     clearMessages,
     setConversations,
     clearError,
+
+    // Optimistic updates and cache strategies
+    optimisticUpdateConversation,
+    loadWithCache,
+    preloadNextPage,
 
     // Test compatibility methods
     loadConversations,

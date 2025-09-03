@@ -979,8 +979,6 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-
-
   .activity-item {
     flex-direction: column;
     gap: var(--space-3);
@@ -993,6 +991,143 @@ onMounted(() => {
   .pagination-container {
     flex-direction: column;
     gap: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .activity-log {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: var(--space-4);
+    text-align: center;
+  }
+
+  .header-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .filters-grid {
+    gap: var(--space-3);
+  }
+
+  .activity-item {
+    padding: var(--space-3);
+  }
+
+  .activity-icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .activity-log {
+    padding: var(--space-3) var(--space-1);
+  }
+
+  .page-title {
+    font-size: var(--text-lg);
+  }
+
+  .filters-section {
+    padding: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .filters-grid {
+    gap: var(--space-2);
+  }
+
+  .filter-group {
+    gap: var(--space-1);
+  }
+
+  .date-range-inputs {
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+  }
+
+  .activity-item {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .activity-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 320px) {
+  .activity-log {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .page-title {
+    font-size: var(--text-base);
+    line-height: 1.3;
+  }
+
+  .filters-section {
+    padding: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .activity-item {
+    padding: var(--space-2);
+    gap: var(--space-1);
+  }
+
+  .activity-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .btn {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .activity-item,
+  .btn,
+  .form-select,
+  .form-input {
+    transition: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+
+  @keyframes spin {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
   }
 }
 </style>

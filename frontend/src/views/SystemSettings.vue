@@ -1650,5 +1650,174 @@ onMounted(() => {
   }
 }
 
+@media (max-width: 640px) {
+  .system-settings {
+    padding: 12px;
+  }
+
+  .settings-panel {
+    padding: 20px 12px;
+  }
+
+  .nav-tab {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    font-size: 14px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .management-actions {
+    gap: 12px;
+  }
+
+  .backup-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .system-settings {
+    padding: 8px;
+  }
+
+  .settings-panel {
+    padding: 16px 8px;
+  }
+
+  .settings-nav {
+    padding: 8px;
+  }
+
+  .nav-tab {
+    margin-right: 4px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .backup-item {
+    padding: 12px;
+  }
+
+  .backup-info h4 {
+    font-size: 14px;
+  }
+
+  .backup-info p {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 320px) {
+  .system-settings {
+    padding: 4px;
+  }
+
+  .settings-panel {
+    padding: 12px 4px;
+  }
+
+  .settings-nav {
+    padding: 4px;
+  }
+
+  .nav-tab {
+    margin-right: 2px;
+    padding: 8px 10px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    padding: 8px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .backup-item {
+    padding: 8px;
+  }
+
+  .backup-info h4 {
+    font-size: 13px;
+  }
+
+  .backup-info p {
+    font-size: 11px;
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .nav-tab,
+  .btn,
+  .form-input,
+  .form-textarea,
+  .form-select,
+  .backup-item {
+    transition: none;
+  }
+
+  .slide-in {
+    animation: none;
+  }
+
+  @keyframes slide-in {
+    from, to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+}
+
 /* 已移除所有測試按鈕樣式 */
 </style>

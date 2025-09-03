@@ -151,5 +151,95 @@ export const teamApi = {
     total: number;
   }>> => {
     return apiClient.post('/team/migrate-passwords')
+  },
+
+  // 團隊管理 API
+  // 獲取所有團隊
+  getTeams: async (includeInactive?: boolean): Promise<ApiResponse<Array<{
+    id: number;
+    name: string;
+    description?: string;
+    qrCode?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    memberCount?: number;
+  }>>> => {
+    const params = includeInactive ? '?includeInactive=true' : '';
+    return apiClient.get(`/teams${params}`)
+  },
+
+  // 創建團隊
+  createTeam: async (data: {
+    name: string;
+    description?: string;
+  }): Promise<ApiResponse<{
+    id: number;
+    name: string;
+    description?: string;
+    qrCode?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    return apiClient.post('/teams', data)
+  },
+
+  // 更新團隊
+  updateTeam: async (teamId: number, data: {
+    name?: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<{
+    id: number;
+    name: string;
+    description?: string;
+    qrCode?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>> => {
+    return apiClient.put(`/teams/${teamId}`, data)
+  },
+
+  // 刪除團隊
+  deleteTeam: async (teamId: number): Promise<ApiResponse<void>> => {
+    return apiClient.delete(`/teams/${teamId}`)
+  },
+
+  // 獲取團隊詳情
+  getTeamDetail: async (teamId: number): Promise<ApiResponse<{
+    id: number;
+    name: string;
+    description?: string;
+    qrCode?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    memberCount?: number;
+  }>> => {
+    return apiClient.get(`/teams/${teamId}`)
+  },
+
+  // 獲取團隊成員（特定團隊）
+  getTeamMembersByTeam: async (teamId: number): Promise<ApiResponse<TeamMember[]>> => {
+    return apiClient.get(`/teams/${teamId}/members`)
+  },
+
+  // 獲取團隊統計（特定團隊）
+  getTeamStatsByTeam: async (teamId: number): Promise<ApiResponse<{
+    totalMembers: number;
+    activeMembers: number;
+    pendingInvitations: number;
+    adminCount: number;
+  }>> => {
+    return apiClient.get(`/teams/${teamId}/stats`)
+  },
+
+  // 生成團隊 QR 碼
+  generateTeamQR: async (teamId: number): Promise<ApiResponse<{
+    qrCode: string;
+  }>> => {
+    return apiClient.post(`/teams/${teamId}/qr-code`)
   }
 }

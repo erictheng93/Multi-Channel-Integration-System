@@ -1872,4 +1872,36 @@ onUnmounted(() => {
     padding: 1rem;
   }
 }
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .api-card,
+  .stat-card,
+  .btn,
+  .btn-refresh,
+  .btn-clear,
+  .modal,
+  .form-select,
+  .form-input,
+  .auto-refresh-controls,
+  .spinner {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .api-card:hover {
+    transform: none !important;
+  }
+
+  .loading-spinner {
+    animation: none !important;
+  }
+
+  @keyframes spin {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+  }
+}
 </style>
