@@ -40,6 +40,20 @@ export interface ConversationApiFilters extends Omit<ConversationFilters, 'assig
   assignedTo?: string | undefined;
 }
 
+// QR碼相關型別
+export interface QRCode {
+  id: string;
+  qrCode: string;
+  lineUrl: string;
+  token: string;
+  campaignName: string;
+  usageCount: number;
+  maxUses?: number;
+  isActive: boolean;
+  expiresAt?: Date;
+  createdAt: Date;
+}
+
 // 分頁響應型別（保留向後兼容）
 export interface PaginatedResponse<T> {
   items: T[];

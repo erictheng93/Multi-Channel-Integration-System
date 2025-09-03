@@ -9,9 +9,9 @@ import type {
 export interface QRCodeConfig {
   teamId: number;
   campaignName?: string;
-  expiresAt?: Date;
-  maxUses?: number;
-  metadata?: QRCodeMetadata;
+  expiresAt?: Date | undefined;
+  maxUses?: number | undefined;
+  metadata?: QRCodeMetadata | undefined;
 }
 
 export interface QRCodeInfo {
@@ -20,11 +20,11 @@ export interface QRCodeInfo {
   token: string;
   lineUrl: string;
   qrCodeImageUrl: string;
-  campaignName?: string;
+  campaignName?: string | undefined;
   usageCount: number;
-  maxUses?: number;
+  maxUses?: number | undefined;
   isActive: boolean;
-  expiresAt?: Date;
+  expiresAt?: Date | undefined;
   createdAt: Date;
 }
 

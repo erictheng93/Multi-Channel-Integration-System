@@ -2,10 +2,10 @@
   <div 
     class="member-card"
     :class="{ 'modal-open': showEditModal }"
+    @click="openEditModal"
   >
     <div 
       class="member-info"
-      @click="openEditModal"
     >
       <div class="member-avatar">
         <img 
@@ -47,7 +47,10 @@
         </div>
       </div>
     </div>
-    <div class="member-actions">
+    <div
+      class="member-actions"
+      @click.stop
+    >
       <select 
         :value="member.role"
         :disabled="isCurrentUser || loading"
@@ -405,6 +408,7 @@ const formatDate = (date: string | Date) => {
   transition: all 0.3s ease;
   position: relative;
   min-height: 120px;
+  cursor: pointer;
 }
 
 .member-card:hover:not(.modal-open) {
@@ -425,22 +429,11 @@ const formatDate = (date: string | Date) => {
   align-items: center;
   gap: 16px;
   flex: 1;
-  cursor: pointer;
-  transition: all 0.3s ease;
   border-radius: 12px;
   padding: 8px;
   margin: -8px;
 }
 
-.member-info:hover:not(.member-card.modal-open .member-info) {
-  background-color: rgba(255, 255, 255, 0.7);
-  transform: scale(1.01);
-}
-
-.member-card.modal-open .member-info:hover {
-  background-color: transparent;
-  transform: none;
-}
 
 .member-avatar {
   width: 60px;

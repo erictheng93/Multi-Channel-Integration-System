@@ -45,6 +45,48 @@ export const customers = sqliteTable('customers', {
   platformUserUnique: unique().on(table.platform, table.platformUserId),
 }));
 
+// QR Codes table - QR碼管理
+export const qrCodes = sqliteTable('qr_codes', {
+  id: text('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id),
+  token: text('token').notNull().unique(),
+  lineUrl: text('line_url').notNull(),
+  qrCodeImageUrl: text('qr_code_image_url').notNull(),
+  campaignName: text('campaign_name'),
+  description: text('description'),
+  usageCount: integer('usage_count').default(0),
+  maxUses: integer('max_uses'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  expiresAt: text('expires_at'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// QR Code Scans table - 掃描記錄
+export const qrCodeScans = sqliteTable('qr_code_scans', {
+  id: text('id').primaryKey(),
+  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id),
+  customerId: integer('customer_id').references(() => customers.id),
+  platform: text('platform').notNull(),
+  platformUserId: text('platform_user_id'),
+  scanMetadata: text('scan_metadata'),
+  scannedAt: text('scanned_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// QR Code Analytics table - 分析統計
+export const qrCodeAnalytics = sqliteTable('qr_code_analytics', {
+  id: integer('id').primaryKey(),
+  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id),
+  date: text('date').notNull(),
+  totalScans: integer('total_scans').default(0),
+  uniqueScans: integer('unique_scans').default(0),
+  newCustomers: integer('new_customers').default(0),
+  returningCustomers: integer('returning_customers').default(0),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  qrCodeDateUnique: unique().on(table.qrCodeId, table.date),
+}));
+
 // Conversations table - 對話
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),

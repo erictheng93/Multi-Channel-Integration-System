@@ -47,6 +47,12 @@ vi.mock('@/components/icons', () => ({
   XIcon: {
     template: '<svg data-testid="x-icon"><path d="M18 6 6 18M6 6l12 12"/></svg>'
   },
+  XCircleIcon: {
+    template: '<svg data-testid="x-circle-icon"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/></svg>'
+  },
+  CheckCircleIcon: {
+    template: '<svg data-testid="check-circle-icon"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>'
+  },
   LoadingIcon: {
     template: '<svg data-testid="loading-icon" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'
   }
@@ -296,7 +302,7 @@ describe('MessageInput Component', () => {
       await sendButton.trigger('click')
       await nextTick()
 
-      expect(wrapper.find('.error-message').text()).toBe('Send failed')
+      expect(wrapper.find('.error-message').text()).toBe('發送失敗')
     })
 
     it('should show loading state while sending', async () => {
@@ -519,31 +525,29 @@ describe('MessageInput Component', () => {
   })
 
   describe('Emoji Picker', () => {
-    it('should show not implemented message when emoji button is clicked', async () => {
+    it('should show emoji picker when emoji button is clicked', async () => {
       const wrapper = createWrapper()
+
+      expect(wrapper.find('.emoji-picker-popup').exists()).toBe(false)
 
       await wrapper.find('button[title="Emoji"]').trigger('click')
       await nextTick()
 
-      expect(wrapper.find('.error-message').text()).toBe('Emoji function not implemented yet')
+      expect(wrapper.find('.emoji-picker-popup').exists()).toBe(true)
     })
 
-    it('should clear emoji error message after timeout', async () => {
-      vi.useFakeTimers()
-      
+    it('should hide emoji picker when clicked again', async () => {
       const wrapper = createWrapper()
 
+      // Show picker
       await wrapper.find('button[title="Emoji"]').trigger('click')
       await nextTick()
+      expect(wrapper.find('.emoji-picker-popup').exists()).toBe(true)
 
-      expect(wrapper.find('.error-message').exists()).toBe(true)
-
-      vi.advanceTimersByTime(3000)
+      // Hide picker
+      await wrapper.find('button[title="Emoji"]').trigger('click')
       await nextTick()
-
-      expect(wrapper.find('.error-message').exists()).toBe(false)
-
-      vi.useRealTimers()
+      expect(wrapper.find('.emoji-picker-popup').exists()).toBe(false)
     })
   })
 
@@ -621,7 +625,7 @@ describe('MessageInput Component', () => {
       await sendButton.trigger('click')
       await nextTick()
 
-      expect(wrapper.find('.error-message').text()).toBe('Network error, please try again')
+      expect(wrapper.find('.error-message').text()).toBe('發送失敗：Network error')
     })
 
     it('should clear error when typing', async () => {

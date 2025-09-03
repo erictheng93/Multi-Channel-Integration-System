@@ -28,28 +28,33 @@ binding = "DB"
 database_name = "multi-channel-platform"
 database_id = "08ae6790-2494-40a8-a07a-df3920783159"
 migrations_dir = "migrations"
+experimental_remote = true
 
 # 生產環境 KV Namespaces
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "ace3f7202e6a4dd8b98c50e9b91b2431"
 preview_id = "ace3f7202e6a4dd8b98c50e9b91b2431"
+experimental_remote = true
 
 [[kv_namespaces]]
 binding = "CACHE"
 id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
 preview_id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
+experimental_remote = true
 
 # 生產環境 R2 存儲
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "multi-channel-platform-attachments"
 preview_bucket_name = "multi-channel-platform-attachments"
+experimental_remote = true
 
 # 生產環境 Queue
 [[queues.producers]]
 binding = "MESSAGE_QUEUE"
 queue = "message-queue"
+experimental_remote = true
 
 [[queues.consumers]]
 queue = "message-queue"

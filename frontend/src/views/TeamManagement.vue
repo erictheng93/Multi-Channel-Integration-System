@@ -680,6 +680,7 @@
       <div
         v-if="showQRModal"
         class="modal-overlay"
+        @click="closeQRModal"
       >
         <div
           class="modal qr-modal"
@@ -1314,9 +1315,21 @@ const generateTeamQR = async (team: Team) => {
   showQRModal.value = true
   
   try {
-    const response = await teamApi.generateTeamQR(team.id)
+    console.log(`正在為團隊 ${team.id} 生成 QR 碼...`);
+    const response = await teamApi.generateTeamQR(team.id, {
+      campaignName: `${team.name} 專用 QR 碼`,
+      description: `團隊 ${team.name} 的客服 QR 碼`,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    });
+    
+    console.log('API 回應:', response);
+    
     if (response.success && response.data) {
       currentQRCode.value = response.data.qrCode
+      console.log('QR 碼生成成功:', response.data)
+    } else {
+      console.error('QR 碼生成失敗 - API 回應:', response)
+      showError('QR 碼生成失敗', response.error || '未知錯誤')
     }
   } catch (error) {
     console.error('生成 QR 碼失敗:', error)
