@@ -4,7 +4,8 @@ import type {
   TeamMember, 
   Invitation, 
   InvitationRequest,
-  ApiResponse 
+  ApiResponse,
+  QRCode
 } from '@/types'
 
 export const teamApi = {
@@ -237,9 +238,49 @@ export const teamApi = {
   },
 
   // 生成團隊 QR 碼
-  generateTeamQR: async (teamId: number): Promise<ApiResponse<{
+  generateTeamQR: async (teamId: number, data?: {
+    campaignName?: string;
+    description?: string;
+    expiresAt?: string;
+    maxUses?: number;
+  }): Promise<ApiResponse<{
+    id: string;
     qrCode: string;
+    lineUrl: string;
+    token: string;
+    campaignName?: string;
+    usageCount: number;
+    maxUses?: number;
+    expiresAt?: Date;
   }>> => {
-    return apiClient.post(`/teams/${teamId}/qr-code`)
+    return apiClient.post(`/teams/${teamId}/qr-code`, data || {})
+  },
+  
+  // 獲取團隊 QR 碼列表
+  getTeamQRCodes: async (teamId: number): Promise<ApiResponse<QRCode[]>> => {
+    return apiClient.get(`/teams/${teamId}/qr-codes`)
+  },
+  
+  // 停用 QR 碼
+  deactivateQRCode: async (teamId: number, qrCodeId: string): Promise<ApiResponse<void>> => {
+    return apiClient.put(`/teams/${teamId}/qr-codes/${qrCodeId}/deactivate`)
+  },
+  
+  // 獲取 QR 碼統計
+  getTeamQRStats: async (teamId: number, dateRange?: { start: Date; end: Date }): Promise<ApiResponse<{
+    totalScans: number;
+    newCustomers: number;
+    conversionRate: number;
+    activeQRCodes: number;
+  }>> => {
+    let url = `/teams/${teamId}/qr-stats`
+    if (dateRange) {
+      const searchParams = new URLSearchParams({
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString()
+      })
+      url += `?${searchParams.toString()}`
+    }
+    return apiClient.get(url)
   }
 }

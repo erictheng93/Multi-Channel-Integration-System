@@ -78,7 +78,8 @@
       "Bash(NODE_ENV=production npm run deploy:pages)",
       "Bash(npx wrangler d1 export:*)",
       "Bash(npx wrangler pages deploy:*)",
-      "WebFetch(domain:e26a7706.multi-channel-platform-frontend.pages.dev)"
+      "WebFetch(domain:e26a7706.multi-channel-platform-frontend.pages.dev)",
+      "Bash(npx wrangler:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

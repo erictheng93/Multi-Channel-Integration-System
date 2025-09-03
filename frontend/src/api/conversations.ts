@@ -16,6 +16,7 @@ import type {
 interface RawConversationData {
   id: string
   customerId: number
+  customer_id?: number
   assignedTeamId: number | null
   assignedUserId: string | null
   status: 'active' | 'assigned' | 'closed'
@@ -39,18 +40,19 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
     'closed': 'closed'
   }
 
+  const customerId = rawData.customerId || rawData.customer_id
   return {
     id: rawData.id,
-    userId: rawData.customerId.toString(),
+    userId: customerId ? customerId.toString() : '',
     user: rawData.customerName ? {
-      id: rawData.customerId.toString(),
+      id: customerId ? customerId.toString() : '',
       name: rawData.customerName,
       platform: rawData.platform,
       platformUserId: rawData.platformUserId,
       createdAt: new Date(rawData.createdAt).getTime()
     } : undefined,
     customer: rawData.customerName ? {
-      id: rawData.customerId.toString(),
+      id: customerId ? customerId.toString() : '',
       name: rawData.customerName,
       platform: rawData.platform,
       platformUserId: rawData.platformUserId,
@@ -64,7 +66,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
     lastMessage: rawData.lastMessageContent ? {
       id: `last-${rawData.id}`,
       conversationId: rawData.id,
-      senderId: rawData.customerId.toString(),
+      senderId: customerId ? customerId.toString() : '',
       senderType: 'customer' as const,
       content: rawData.lastMessageContent,
       messageType: 'text' as const,
