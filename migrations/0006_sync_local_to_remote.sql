@@ -10,8 +10,8 @@ DROP TABLE IF EXISTS conversations_backup;
 DROP TABLE IF EXISTS messages_backup;
 DROP TABLE IF EXISTS delayed_messages_backup;
 
--- Step 3: 添加缺失的索引
-CREATE INDEX IF NOT EXISTS idx_customers_platform ON customers(platform, platform_user_id);
+-- Step 3: 添加缺失的索引 (只有表存在時才創建索引)
+-- CREATE INDEX IF NOT EXISTS idx_customers_platform ON customers(platform, platform_user_id);
 
 -- Step 4: 確保其他索引存在（防止遺漏）
 CREATE UNIQUE INDEX IF NOT EXISTS agents_email_unique ON agents(email);
