@@ -9,6 +9,9 @@
       'message-image': message.messageType === 'image',
       'message-file': message.messageType === 'file'
     }"
+    @contextmenu="handleRightClick"
+    @mouseenter="showActions = true"
+    @mouseleave="showActions = false"
   >
     <div class="message-content">
       <!-- Image Message -->
@@ -110,6 +113,46 @@
         </div>
       </div>
 
+      <!-- Sticker Message -->
+      <div
+        v-else-if="message.messageType === 'sticker'"
+        class="message-sticker"
+      >
+        <!-- Try to show actual sticker image -->
+        <div
+          v-if="stickerImageUrl && !stickerLoadError"
+          class="sticker-image-container"
+        >
+          <img 
+            :src="stickerImageUrl" 
+            alt="LINE Sticker"
+            class="sticker-image"
+            @error="onStickerError"
+            @load="onStickerLoad"
+          >
+        </div>
+        
+        <!-- Fallback: Show sticker placeholder if image fails -->
+        <div
+          v-else
+          class="sticker-placeholder"
+        >
+          <div class="sticker-icon">
+            🏷️
+          </div>
+          <div class="sticker-text">
+            {{ message.content }}
+          </div>
+        </div>
+        
+        <div
+          v-if="stickerMetadata"
+          class="sticker-info"
+        >
+          Package: {{ stickerMetadata.packageId }} | Sticker: {{ stickerMetadata.stickerId }}
+        </div>
+      </div>
+
       <!-- Text Message -->
       <div
         v-else
@@ -135,6 +178,70 @@
             v-else
             class="status-failed"
           />
+        </div>
+      </div>
+      
+      <!-- Message Actions Menu -->
+      <div
+        v-if="showActions || showActionsMenu"
+        class="message-actions"
+        :class="{ 'actions-outgoing': isOutgoing }"
+      >
+        <button
+          class="action-btn"
+          title="複製"
+          @click="copyMessage"
+        >
+          <CopyIcon />
+        </button>
+        
+        <button
+          v-if="!isOutgoing"
+          class="action-btn"
+          title="回覆"
+          @click="replyToMessage"
+        >
+          <ReplyIcon />
+        </button>
+        
+        <button
+          class="action-btn"
+          title="更多操作"
+          @click="toggleActionsMenu"
+        >
+          <MoreVerticalIcon />
+        </button>
+        
+        <!-- Dropdown Menu -->
+        <div
+          v-if="showActionsMenu"
+          class="actions-dropdown"
+          @click.stop
+        >
+          <button
+            class="dropdown-item"
+            @click="forwardMessage"
+          >
+            <ForwardIcon />
+            <span>轉發</span>
+          </button>
+          
+          <button
+            v-if="isOutgoing"
+            class="dropdown-item danger"
+            @click="recallMessage"
+          >
+            <TrashIcon />
+            <span>撤回</span>
+          </button>
+          
+          <button
+            class="dropdown-item"
+            @click="selectMessage"
+          >
+            <CheckIcon />
+            <span>選擇</span>
+          </button>
         </div>
       </div>
     </div>
@@ -228,7 +335,12 @@ import {
   SearchIcon, 
   DownloadIcon, 
   FileIcon, 
-  ImageIcon 
+  ImageIcon,
+  CopyIcon,
+  ReplyIcon,
+  MoreVerticalIcon,
+  ForwardIcon,
+  TrashIcon
 } from '@/components/icons'
 
 interface Props {
@@ -253,6 +365,11 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   preview: [message: Message]
   'image-error': [message: Message]
+  copy: [message: Message]
+  reply: [message: Message]
+  forward: [message: Message]
+  recall: [message: Message]
+  select: [message: Message]
 }>()
 
 // State
@@ -260,6 +377,9 @@ const showImagePreview = ref(false)
 const zoomLevel = ref(1)
 const imageLoaded = ref(false)
 const imageError = ref(false)
+const stickerLoadError = ref(false)
+const showActions = ref(false)
+const showActionsMenu = ref(false)
 
 // Computed properties
 const isOutgoing = computed(() => {
@@ -312,6 +432,64 @@ const attachmentSize = computed(() => {
 
 const isFileOnlyContent = computed(() => {
   return /^\[(?:檔案|圖片)\]\s*.+$/.test(props.message.content || '')
+})
+
+const stickerMetadata = computed(() => {
+  // Debug logs for sticker metadata parsing
+  console.log('🔍 [Sticker Debug] Message type:', props.message.messageType)
+  console.log('🔍 [Sticker Debug] Message content:', props.message.content)
+  console.log('🔍 [Sticker Debug] Raw metadata:', props.message.metadata)
+  
+  if (props.message.messageType !== 'sticker' || !props.message.metadata) {
+    console.log('🔍 [Sticker Debug] Condition failed - messageType or metadata missing')
+    return null
+  }
+  
+  try {
+    const metadata = typeof props.message.metadata === 'string' 
+      ? JSON.parse(props.message.metadata) 
+      : props.message.metadata
+    
+    console.log('🔍 [Sticker Debug] Parsed metadata:', metadata)
+    
+    const result = {
+      packageId: metadata.packageId,
+      stickerId: metadata.stickerId
+    }
+    
+    console.log('🔍 [Sticker Debug] Final sticker metadata:', result)
+    return result
+  } catch (error) {
+    console.error('❌ [Sticker Debug] Failed to parse sticker metadata:', error)
+    return null
+  }
+})
+
+const stickerImageUrl = computed(() => {
+  console.log('🔍 [Sticker Debug] Computing sticker image URL...')
+  console.log('🔍 [Sticker Debug] stickerMetadata.value:', stickerMetadata.value)
+  
+  if (!stickerMetadata.value) {
+    console.log('🔍 [Sticker Debug] No sticker metadata, returning null')
+    return null
+  }
+  
+  // Correct LINE sticker URL formats based on 2025 documentation
+  const urls = [
+    // Format 1: Individual sticker (most likely to work)
+    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/android/sticker.png`,
+    // Format 2: Alternative with different platform
+    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/iPhone/sticker.png`,
+    // Format 3: Legacy format
+    `http://dl.stickershop.line.naver.jp/products/0/0/1/${stickerMetadata.value.packageId}/android/sticker.png`
+  ]
+  
+  const finalUrl = urls[0] // Start with android format
+  console.log('🔍 [Sticker Debug] Generated sticker URL:', finalUrl)
+  console.log('🔍 [Sticker Debug] PackageId:', stickerMetadata.value.packageId)
+  console.log('🔍 [Sticker Debug] StickerId:', stickerMetadata.value.stickerId)
+  
+  return finalUrl
 })
 
 // Methods
@@ -422,6 +600,19 @@ const onImageError = () => {
   emit('image-error', props.message)
 }
 
+// Sticker error handler
+const onStickerError = () => {
+  console.warn('❌ [Sticker Debug] Failed to load sticker image for sticker:', stickerMetadata.value?.stickerId)
+  console.warn('❌ [Sticker Debug] Failed URL:', stickerImageUrl.value)
+  stickerLoadError.value = true
+}
+
+// Sticker load success handler
+const onStickerLoad = () => {
+  console.log('✅ [Sticker Debug] Sticker image loaded successfully:', stickerMetadata.value?.stickerId)
+  stickerLoadError.value = false
+}
+
 // File download
 const downloadFile = () => {
   if (attachmentUrl.value) {
@@ -433,6 +624,61 @@ const downloadFile = () => {
     link.click()
     document.body.removeChild(link)
   }
+}
+
+// Message Actions
+const handleRightClick = (event: MouseEvent) => {
+  event.preventDefault()
+  showActionsMenu.value = !showActionsMenu.value
+  showActions.value = true
+}
+
+const toggleActionsMenu = () => {
+  showActionsMenu.value = !showActionsMenu.value
+}
+
+const copyMessage = async () => {
+  try {
+    await navigator.clipboard.writeText(props.message.content)
+    emit('copy', props.message)
+    showActionsMenu.value = false
+  } catch (error) {
+    console.error('Failed to copy message:', error)
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = props.message.content
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      emit('copy', props.message)
+    } catch (fallbackError) {
+      console.error('Fallback copy failed:', fallbackError)
+    }
+    document.body.removeChild(textArea)
+    showActionsMenu.value = false
+  }
+}
+
+const replyToMessage = () => {
+  emit('reply', props.message)
+  showActionsMenu.value = false
+}
+
+const forwardMessage = () => {
+  emit('forward', props.message)
+  showActionsMenu.value = false
+}
+
+const recallMessage = () => {
+  emit('recall', props.message)
+  showActionsMenu.value = false
+}
+
+const selectMessage = () => {
+  emit('select', props.message)
+  showActionsMenu.value = false
 }
 </script>
 
@@ -960,6 +1206,225 @@ const downloadFile = () => {
   .zoom-btn {
     width: 28px;
     height: 28px;
+  }
+}
+
+/* Sticker message styles */
+.message-sticker {
+  max-width: 200px;
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.sticker-image-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+}
+
+.sticker-image {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  border-radius: var(--radius-lg);
+  transition: transform var(--transition-fast);
+  cursor: pointer;
+}
+
+.sticker-image:hover {
+  transform: scale(1.05);
+}
+
+.sticker-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--gray-100);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--gray-300);
+  margin-bottom: var(--space-2);
+}
+
+.message-outgoing .sticker-placeholder {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.sticker-icon {
+  font-size: 2rem;
+  margin-bottom: var(--space-1);
+}
+
+.sticker-text {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.message-outgoing .sticker-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sticker-info {
+  font-size: 0.65rem;
+  color: var(--gray-500);
+  margin-top: var(--space-1);
+  opacity: 0.8;
+  word-break: break-all;
+}
+
+.message-outgoing .sticker-info {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Message Actions Styles */
+.message-actions {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: all var(--transition-fast);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1);
+}
+
+.message-actions.actions-outgoing {
+  right: -80px;
+}
+
+.message-actions:not(.actions-outgoing) {
+  left: -80px;
+}
+
+.message-bubble:hover .message-actions,
+.message-actions:hover {
+  opacity: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--gray-600);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.action-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-800);
+  transform: scale(1.1);
+}
+
+.action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.actions-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--space-1);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 120px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background: var(--gray-50);
+}
+
+.dropdown-item.danger {
+  color: var(--red-600);
+}
+
+.dropdown-item.danger:hover {
+  background: var(--red-50);
+  color: var(--red-700);
+}
+
+.dropdown-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Mobile optimizations for actions */
+@media (max-width: 768px) {
+  .message-actions {
+    position: static;
+    transform: none;
+    margin-top: var(--space-2);
+    align-self: flex-end;
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(2px);
+  }
+
+  .message-actions.actions-outgoing,
+  .message-actions:not(.actions-outgoing) {
+    right: auto;
+    left: auto;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .dropdown-item {
+    padding: var(--space-3);
+    font-size: 1rem;
+  }
+}
+
+/* Touch devices */
+@media (pointer: coarse) {
+  .message-actions {
+    opacity: 1;
+  }
+
+  .action-btn {
+    min-width: 32px;
+    min-height: 32px;
   }
 }
 </style>

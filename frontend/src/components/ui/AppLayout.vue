@@ -1,9 +1,33 @@
 <template>
   <div class="app-layout">
+    <!-- Mobile Menu Button -->
+    <button
+      v-if="isMobile"
+      class="mobile-menu-btn"
+      @click="toggleSidebar"
+    >
+      <div class="hamburger-menu">
+        <span class="hamburger-line" />
+        <span class="hamburger-line" />
+        <span class="hamburger-line" />
+      </div>
+    </button>
+
+    <!-- Mobile Overlay -->
+    <div
+      v-if="isMobile && showMobileMenu"
+      class="mobile-overlay"
+      @click="showMobileMenu = false"
+    />
+
     <!-- Sidebar -->
     <aside
       class="sidebar"
-      :class="{ 'sidebar-collapsed': sidebarCollapsed }"
+      :class="{ 
+        'sidebar-collapsed': sidebarCollapsed && !isMobile,
+        'sidebar-mobile': isMobile,
+        'sidebar-mobile-open': isMobile && showMobileMenu
+      }"
     >
       <div class="sidebar-header">
         <div
@@ -16,6 +40,7 @@
           <span class="logo-text">多渠道客服整合</span>
         </div>
         <button
+          v-if="!isMobile"
           class="sidebar-toggle"
           :class="{ 'collapsed': sidebarCollapsed }"
           @click="toggleSidebar"
@@ -42,6 +67,24 @@
             <path d="m9 18 6-6-6-6" />
           </svg>
         </button>
+        <!-- Mobile close button -->
+        <button
+          v-if="isMobile"
+          class="mobile-close-btn"
+          @click="showMobileMenu = false"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="m18 6-12 12" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
       </div>
 
       <nav class="sidebar-nav">
@@ -57,7 +100,7 @@
             class="nav-icon"
           />
           <span
-            v-if="!sidebarCollapsed"
+            v-if="!sidebarCollapsed || isMobile"
             class="nav-text"
           >{{ item.label }}</span>
         </router-link>
@@ -73,7 +116,7 @@
             {{ userInitials }}
           </div>
           <div
-            v-if="!sidebarCollapsed"
+            v-if="!sidebarCollapsed || isMobile"
             class="user-info"
           >
             <div class="user-name">
@@ -84,7 +127,7 @@
             </div>
           </div>
           <button
-            v-if="!sidebarCollapsed"
+            v-if="(!sidebarCollapsed || isMobile) && !isMobile"
             class="user-menu-btn"
             title="用戶菜單"
             @click.stop="toggleUserMenu()"
@@ -95,7 +138,7 @@
 
         <!-- User Dropdown Menu -->
         <div
-          v-if="showUserMenu && !sidebarCollapsed"
+          v-if="showUserMenu && (!sidebarCollapsed || isMobile) && !isMobile"
           class="user-menu modern-menu"
         >
           <div
@@ -268,8 +311,11 @@ const { showError } = useToast()
 const { confirmInfo } = useConfirm()
 
 const sidebarCollapsed = ref(false)
+const isAutoCollapsed = ref(false)
+const showMobileMenu = ref(false)
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
+const isMobile = ref(false)
 const notifications = ref([
   {
     id: '1',
@@ -323,7 +369,43 @@ const unreadCount = computed(() => {
 })
 
 const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
+  if (isMobile.value) {
+    showMobileMenu.value = !showMobileMenu.value
+  } else {
+    sidebarCollapsed.value = !sidebarCollapsed.value
+    isAutoCollapsed.value = false // 手動操作時清除自動摺疊狀態
+  }
+}
+
+const handleResize = () => {
+  const width = window.innerWidth
+  const wasMobile = isMobile.value
+  
+  isMobile.value = width <= 768
+  
+  if (width >= 1025) {
+    // 大屏幕 - 恢復展開狀態（除非用戶手動摺疊）
+    if (isAutoCollapsed.value) {
+      sidebarCollapsed.value = false
+      isAutoCollapsed.value = false
+    }
+    showMobileMenu.value = false
+  } else if (width >= 769 && width <= 1024) {
+    // 中等屏幕 - 自動摺疊
+    if (!sidebarCollapsed.value || isAutoCollapsed.value) {
+      sidebarCollapsed.value = true
+      isAutoCollapsed.value = true
+    }
+    showMobileMenu.value = false
+  } else {
+    // 小屏幕 - 隱藏側邊欄
+    showMobileMenu.value = false
+  }
+  
+  // 移動端切換時關閉菜單
+  if (wasMobile !== isMobile.value) {
+    showMobileMenu.value = false
+  }
 }
 
 const handleUserProfileClick = () => {
@@ -385,6 +467,9 @@ const handleClickOutside = (event: Event) => {
   if (!target.closest('.notification-btn') && !target.closest('.notification-panel')) {
     showNotifications.value = false
   }
+  if (!target.closest('.sidebar') && !target.closest('.mobile-menu-btn') && isMobile.value) {
+    showMobileMenu.value = false
+  }
 }
 
 // 監聽路由變化，確保組件正確更新
@@ -405,10 +490,13 @@ watch(() => route.path, (newPath, oldPath) => {
 onMounted(() => {
   // Load notifications or other initialization
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', handleResize)
+  handleResize() // 初始化時檢查屏幕尺寸
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -639,6 +727,15 @@ onUnmounted(() => {
 }
 
 .user-profile.collapsed:hover {
+  background-color: var(--gray-50);
+}
+
+/* Mobile user profile - always show info when mobile menu is open */
+.sidebar-mobile .user-profile {
+  cursor: default;
+}
+
+.sidebar-mobile .user-profile:hover {
   background-color: var(--gray-50);
 }
 
@@ -1071,25 +1168,173 @@ onUnmounted(() => {
   color: var(--gray-500);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Mobile Menu Button */
+.mobile-menu-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 25;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mobile-menu-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-menu-btn .hamburger-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 20px;
+  height: 16px;
+}
+
+.mobile-menu-btn .hamburger-line {
+  width: 100%;
+  height: 2px;
+  background-color: var(--gray-700);
+  border-radius: 1px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile Close Button */
+.mobile-close-btn {
+  padding: var(--space-2);
+  border: none;
+  background: none;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.mobile-close-btn:hover {
+  background-color: var(--gray-100);
+  color: var(--gray-700);
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 15;
+  backdrop-filter: blur(4px);
+}
+
+/* Responsive Breakpoints */
+
+/* Large screens - Full sidebar */
+@media (min-width: 1025px) {
   .sidebar {
-    position: fixed;
-    left: -280px;
-    z-index: 20;
-    transition: left var(--transition-normal);
+    width: 280px;
   }
-
-  .sidebar.open {
-    left: 0;
+  
+  .sidebar-collapsed {
+    width: 80px;
   }
+  
+  .mobile-menu-btn {
+    display: none;
+  }
+}
 
+/* Medium screens - Auto-collapsed sidebar */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 80px;
+  }
+  
+  .sidebar-collapsed {
+    width: 80px;
+  }
+  
+  .mobile-menu-btn {
+    display: none;
+  }
+  
+  /* Ensure nav text is hidden on medium screens */
+  .nav-text {
+    opacity: 0;
+  }
+  
+  .user-info {
+    display: none;
+  }
+  
+  .user-menu-btn {
+    display: none;
+  }
+}
+
+/* Small screens - Mobile sidebar with overlay */
+@media (max-width: 768px) {
   .main-content {
     margin-left: 0;
+    padding-top: 80px; /* Account for mobile menu button */
   }
-
+  
+  .page-content {
+    padding: var(--space-4);
+  }
+  
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    bottom: 0;
+    width: 280px;
+    z-index: 20;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  
+  .sidebar-mobile-open {
+    left: 0;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Mobile sidebar shows full content */
+  .sidebar-mobile .nav-text,
+  .sidebar-mobile .user-info {
+    opacity: 1;
+    display: block;
+  }
+  
+  .sidebar-mobile .sidebar-header {
+    justify-content: space-between;
+    padding: var(--space-6);
+  }
+  
+  .sidebar-mobile .logo {
+    opacity: 1;
+  }
+  
   .notification-content {
     width: 100%;
+  }
+  
+  .top-bar {
+    padding-left: 80px; /* Account for mobile menu button */
   }
 }
 </style>

@@ -60,9 +60,9 @@ export class PermissionService {
         { resource: 'customer', action: 'edit', conditions: { teamScope: true } },
         { resource: 'customer', action: 'tag', conditions: { teamScope: true } },
         
-        // Message management for team conversations
+        // Message management for team conversations  
         { resource: 'message', action: 'view', conditions: { teamScope: true } },
-        { resource: 'message', action: 'send' },
+        { resource: 'message', action: 'send' }, // Team Leader 可以發送訊息到任何對話
         { resource: 'message', action: 'recall', conditions: { teamScope: true } },
         
         // Tag management for team
@@ -80,9 +80,12 @@ export class PermissionService {
       id: 'agent',
       name: '客服人員',
       permissions: [
-        { resource: 'conversation', action: 'view', conditions: { assigned: true } },
-        { resource: 'conversation', action: 'reply' },
-        { resource: 'message', action: 'send' },
+        // 普通 Agent 能查看所有對話（包括未指派的）
+        { resource: 'conversation', action: 'view' },
+        // 但只能回覆指派給自己的對話
+        { resource: 'conversation', action: 'reply', conditions: { assigned: true } },
+        // 只能在指派給自己的對話中發送訊息
+        { resource: 'message', action: 'send', conditions: { assigned: true } },
         { resource: 'message', action: 'recall', conditions: { own: true } },
         { resource: 'tag', action: 'add', conditions: { teamScope: true } }
       ]
@@ -129,7 +132,7 @@ export class PermissionService {
 
       // 檢查條件限制
       if (permission.conditions) {
-        return this.checkConditions(permission.conditions, user, context);
+        return await this.checkConditions(permission.conditions, user, context, resource, db);
       }
 
       return true;
@@ -138,11 +141,13 @@ export class PermissionService {
     }
   }
 
-  private static checkConditions(
+  private static async checkConditions(
     conditions: Record<string, unknown>,
     user: UserPermissionData,
-    context?: PermissionContext
-  ): boolean {
+    context?: PermissionContext,
+    resource?: string,
+    db?: D1Database
+  ): Promise<boolean> {
     if (!context) {
       // If conditions require context but none provided, fail
       return false;
@@ -154,8 +159,35 @@ export class PermissionService {
     }
 
     // 只能操作指派給自己的對話
-    if (conditions.assigned && (context as any).assignedUserId !== user.id) {
-      return false;
+    if (conditions.assigned) {
+      if (resource === 'conversation' && context && (context as any).resourceId && db) {
+        // 查詢對話的assignedUserId
+        try {
+          const drizzleDb = drizzle(db);
+          const conversation = await drizzleDb
+            .select({ assignedUserId: conversations.assignedUserId })
+            .from(conversations)
+            .where(eq(conversations.id, (context as any).resourceId))
+            .get();
+          
+          console.log(`🔍 Conversation assignment check - ConversationId: ${(context as any).resourceId}, AssignedUserId: ${conversation?.assignedUserId}, UserId: ${user.id}`);
+          
+          // 如果對話未指派給任何人，允許訪問
+          if (!conversation || !conversation.assignedUserId) {
+            return true;
+          }
+          
+          // 檢查是否指派給當前用戶
+          const userIdStr = typeof user.id === 'string' ? user.id : user.id.toString();
+          return conversation.assignedUserId === userIdStr;
+        } catch (error) {
+          console.error('Failed to check conversation assignment:', error);
+          return false;
+        }
+      } else {
+        // 對於非對話資源，直接檢查assignedUserId
+        return (context as any).assignedUserId === user.id;
+      }
     }
 
     // 只能操作自己的資源

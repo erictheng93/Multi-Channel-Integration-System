@@ -683,9 +683,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .dashboard {
-  max-width: 1400px;
+  /* 動態容器尺寸，根據筆電螢幕調整 */
+  max-width: clamp(1200px, 85vw, 1650px);
   margin: 0 auto;
-  padding: var(--space-6) var(--space-4);
+  padding: clamp(1rem, 2vw, 2rem) clamp(0.5rem, 2vw, 1.5rem);
 }
 
 .welcome-section {
@@ -705,7 +706,8 @@ onBeforeUnmount(() => {
 }
 
 .welcome-title {
-  font-size: 2.5rem;
+  /* 流體字體，根據螢幕尺寸調整 */
+  font-size: clamp(1.75rem, 1.5rem + 2vw, 2.8rem);
   font-weight: 800;
   color: var(--gray-900);
   margin-bottom: var(--space-2);
@@ -730,8 +732,9 @@ onBeforeUnmount(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-6);
+  /* 根據螢幕寬度動態調整列數和最小寬度 */
+  grid-template-columns: repeat(auto-fit, minmax(clamp(240px, 20vw, 300px), 1fr));
+  gap: clamp(1rem, 2vw, 2rem);
 }
 
 .stat-card {
@@ -1126,6 +1129,104 @@ onBeforeUnmount(() => {
   animation: spin 1s linear infinite;
 }
 
+/* 低解析度筆電特殊優化 (1080x720等) */
+@media (min-width: 1025px) and (max-width: 1119px) {
+  .dashboard {
+    max-width: 1000px;
+    padding: 1rem 0.75rem;
+  }
+
+  .welcome-title {
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 1.8rem);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .welcome-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem 0;
+  }
+
+  .performance-section {
+    margin-top: 2rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-number {
+    font-size: 2rem;
+  }
+
+  .card-header {
+    padding: 1rem;
+  }
+
+  .card-body {
+    padding: 0 1rem 1rem 1rem;
+  }
+}
+
+/* 標準筆電斷點 */
+@media (min-width: 1120px) and (max-width: 1279px) {
+  .dashboard {
+    max-width: 1200px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .welcome-title {
+    font-size: clamp(1.75rem, 1.5rem + 1.2vw, 2rem);
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .dashboard {
+    max-width: 1350px;
+  }
+
+  .welcome-title {
+    font-size: clamp(2rem, 1.7rem + 1.5vw, 2.3rem);
+  }
+}
+
+@media (min-width: 1440px) and (max-width: 1679px) {
+  .dashboard {
+    max-width: 1500px;
+  }
+
+  .welcome-title {
+    font-size: clamp(2.2rem, 1.9rem + 1.8vw, 2.5rem);
+  }
+}
+
+@media (min-width: 1680px) {
+  .dashboard {
+    max-width: 1650px;
+  }
+
+  .welcome-title {
+    font-size: clamp(2.4rem, 2rem + 2vw, 2.8rem);
+  }
+
+  /* 防止內容過於分散 */
+  .content-grid {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .dashboard {
@@ -1237,6 +1338,81 @@ onBeforeUnmount(() => {
     width: 32px;
     height: 32px;
     font-size: 14px;
+  }
+}
+
+@media (max-width: 320px) {
+  .dashboard {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .welcome-title {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  .stat-number {
+    font-size: 1.75rem;
+  }
+
+  .stat-card {
+    padding: var(--space-4);
+  }
+
+  .card-header {
+    padding: var(--space-4);
+  }
+
+  .card-body {
+    padding: 0 var(--space-4) var(--space-4) var(--space-4);
+  }
+
+  .performance-value {
+    font-size: 1.5rem;
+  }
+
+  .performance-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .activity-item {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .activity-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .main-card,
+  .side-card,
+  .performance-card,
+  .activity-item,
+  .view-all-link,
+  .welcome-actions *,
+  .btn {
+    transition: none !important;
+  }
+
+  .activity-priority {
+    animation: none !important;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+  }
+
+  .animate-spin {
+    animation: none !important;
   }
 }
 </style>

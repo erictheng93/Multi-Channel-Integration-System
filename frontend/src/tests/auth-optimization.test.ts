@@ -122,7 +122,15 @@ describe('前端狀態管理優化測試', () => {
     it('當 agent 資料無效時，應該發送 /auth/me 請求', async () => {
       // 設定無效的 agent 資料
       authStore.token = 'existing-token'
-      authStore.currentAgent = { id: '', email: '', name: '', displayName: '', role: 'agent', isActive: false, createdAt: 0 } as any
+      authStore.currentAgent = { 
+        id: '', 
+        email: '', 
+        name: '', 
+        displayName: '', 
+        role: 'agent' as const, 
+        isActive: false, 
+        createdAt: 0 
+      }
       authStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
 
       vi.mocked(authApi.me).mockResolvedValue({

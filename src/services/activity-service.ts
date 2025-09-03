@@ -271,6 +271,9 @@ export const ACTIVITY_ACTIONS = {
   SETTINGS_UPDATE: 'settings_update',
   
   // 團隊管理
+  TEAM_CREATE: 'team_create',
+  TEAM_UPDATE: 'team_update', 
+  TEAM_DELETE: 'team_delete',
   TEAM_INVITE: 'team_invite',
   TEAM_MEMBER_UPDATE: 'team_member_update',
   TEAM_MEMBER_REMOVE: 'team_member_remove'

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>離線模式 - 多通道客服系統</title>
+  
+  <!-- 基本樣式 -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+    }
+    
+    .offline-container {
+      background: white;
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .offline-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+      background-size: 200% 100%;
+      animation: gradient 3s ease infinite;
+    }
+    
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .offline-icon {
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      opacity: 0.8;
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .offline-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #1a202c;
+    }
+    
+    .offline-message {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #4a5568;
+      margin-bottom: 2rem;
+    }
+    
+    .offline-features {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      text-align: left;
+    }
+    
+    .offline-features h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .offline-features ul {
+      list-style: none;
+    }
+    
+    .offline-features li {
+      padding: 0.5rem 0;
+      color: #4a5568;
+      position: relative;
+      padding-left: 1.5rem;
+    }
+    
+    .offline-features li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+    }
+    
+    .offline-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+      border: 1px solid #cbd5e0;
+    }
+    
+    .btn-secondary:hover {
+      background: #edf2f7;
+      border-color: #a0aec0;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: #fef2f2;
+      color: #dc2626;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+    
+    .status-indicator.online {
+      background: #f0fdf4;
+      color: #16a34a;
+    }
+    
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .cache-info {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    @media (max-width: 480px) {
+      .offline-container {
+        padding: 2rem 1.5rem;
+        margin: 1rem;
+      }
+      
+      .offline-title {
+        font-size: 1.5rem;
+      }
+      
+      .offline-message {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">📡</div>
+    
+    <h1 class="offline-title">目前離線中</h1>
+    
+    <p class="offline-message">
+      無法連接到伺服器，但您仍然可以查看已快取的內容和執行部分功能。
+    </p>
+    
+    <div id="status-indicator" class="status-indicator">
+      <div class="connection-dot"></div>
+      <span>正在嘗試重新連線...</span>
+    </div>
+    
+    <div class="offline-features">
+      <h3>📋 離線可用功能</h3>
+      <ul>
+        <li>查看已快取的對話記錄</li>
+        <li>瀏覽離線存儲的訊息</li>
+        <li>查看客戶資料（已快取）</li>
+        <li>離線操作將在恢復連線後自動同步</li>
+      </ul>
+    </div>
+    
+    <div class="offline-actions">
+      <button onclick="attemptReconnection()" class="btn btn-primary">
+        🔄 重新嘗試連線
+      </button>
+      
+      <a href="/" class="btn btn-secondary">
+        🏠 返回主頁
+      </a>
+    </div>
+    
+    <div class="cache-info">
+      💾 此頁面由 Service Worker 提供離線支援
+    </div>
+  </div>
+
+  <script>
+    // 連線狀態監控
+    let reconnectAttempts = 0
+    const maxReconnectAttempts = 5
+    
+    function updateConnectionStatus(isOnline) {
+      const statusIndicator = document.getElementById('status-indicator')
+      const statusText = statusIndicator.querySelector('span')
+      
+      if (isOnline) {
+        statusIndicator.className = 'status-indicator online'
+        statusText.textContent = '連線已恢復，正在重新載入...'
+        
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1000)
+      } else {
+        statusIndicator.className = 'status-indicator'
+        statusText.textContent = `正在嘗試重新連線... (${reconnectAttempts}/${maxReconnectAttempts})`
+      }
+    }
+    
+    function attemptReconnection() {
+      if (reconnectAttempts >= maxReconnectAttempts) {
+        alert('已達到最大重連次數，請檢查您的網路連線')
+        return
+      }
+      
+      reconnectAttempts++
+      updateConnectionStatus(false)
+      
+      // 檢測網路連線
+      fetch('/', { 
+        method: 'HEAD',
+        cache: 'no-cache',
+        mode: 'no-cors'
+      }).then(() => {
+        updateConnectionStatus(true)
+      }).catch(() => {
+        setTimeout(() => {
+          if (reconnectAttempts < maxReconnectAttempts) {
+            attemptReconnection()
+          }
+        }, 2000 * reconnectAttempts)
+      })
+    }
+    
+    // 監聽線上/離線狀態變化
+    window.addEventListener('online', () => {
+      updateConnectionStatus(true)
+    })
+    
+    window.addEventListener('offline', () => {
+      updateConnectionStatus(false)
+    })
+    
+    // 自動重連機制
+    if (navigator.onLine) {
+      attemptReconnection()
+    } else {
+      updateConnectionStatus(false)
+    }
+    
+    // Service Worker 訊息監聽
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data.type === 'ONLINE_STATUS_CHANGED') {
+          updateConnectionStatus(event.data.isOnline)
+        }
+      })
+    }
+  </script>
+</body>
+</html>

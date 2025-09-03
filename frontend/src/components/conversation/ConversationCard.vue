@@ -9,6 +9,7 @@
     @click="handleSelect"
     @keydown.enter="handleSelect"
     @keydown.space.prevent="handleSelect"
+    @mouseenter="handleHover"
   >
     <div class="card-header">
       <div class="customer-info">
@@ -68,6 +69,7 @@ import type { Conversation } from '@/types'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { UserIcon } from '@/components/icons'
+import { usePrefetch } from '@/composables/usePrefetch'
 
 interface Props {
   conversation: Conversation
@@ -79,6 +81,9 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   select: [conversation: Conversation]
 }>()
+
+// 第五階段：簡單預載入
+const { prefetchApiData } = usePrefetch()
 
 const hasUnreadMessages = computed(() => 
   Boolean(props.conversation.unreadCount && props.conversation.unreadCount > 0)
@@ -94,6 +99,12 @@ const conversationAriaLabel = computed(() => {
 
 const handleSelect = () => {
   emit('select', props.conversation)
+}
+
+// 第五階段：簡單懸浮預載入
+const handleHover = () => {
+  // 預載入對話詳細資料
+  prefetchApiData(`/api/conversations/${props.conversation.id}/messages`)
 }
 
 const customerInitials = computed(() => {
@@ -159,11 +170,17 @@ const formatTime = (date: Date | string | number) => {
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
+  /* 第五階段：GPU 加速 */
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
 }
 
 .conversation-card:hover {
   border-color: var(--primary-300);
   box-shadow: var(--shadow-md);
+  /* 簡單平滑的懸浮效果 */
+  transform: translateY(-2px) translateZ(0);
 }
 
 .conversation-card.selected {
@@ -202,6 +219,12 @@ const formatTime = (date: Date | string | number) => {
   font-weight: 600;
   font-size: 0.875rem;
   flex-shrink: 0;
+  /* 第五階段：簡單的縮放動畫 */
+  transition: transform 0.2s ease;
+}
+
+.conversation-card:hover .customer-avatar {
+  transform: scale(1.05) translateZ(0);
 }
 
 .customer-details {
@@ -249,6 +272,19 @@ const formatTime = (date: Date | string | number) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 第五階段：微妙的脈動效果 */
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% {
+    transform: scale(1) translateZ(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05) translateZ(0);
+    opacity: 0.9;
+  }
 }
 
 .card-body {
@@ -311,6 +347,24 @@ const formatTime = (date: Date | string | number) => {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-1);
+  }
+}
+
+/* 第五階段：尊重用戶的動畫偏好設置 */
+@media (prefers-reduced-motion: reduce) {
+  .conversation-card,
+  .customer-avatar,
+  .unread-badge {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .conversation-card:hover {
+    transform: none !important;
+  }
+  
+  .conversation-card:hover .customer-avatar {
+    transform: none !important;
   }
 }
 </style>

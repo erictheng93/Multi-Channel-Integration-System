@@ -10,6 +10,9 @@ import { i18n } from './plugins/i18n'
 // 初始化安全配置
 import { initializeSecurity } from '@/utils/securityInit'
 
+// Service Worker 和 PWA 支援
+import { swManager } from '@/services/serviceWorkerManager'
+
 const startApp = async () => {
   try {
     // 首先嘗試初始化安全配置，但不讓它阻止應用啟動
@@ -47,6 +50,9 @@ const startApp = async () => {
     app.mount('#app')
     console.log('✅ Application started successfully')
     
+    // 🚀 初始化 PWA 功能（在應用掛載後）
+    await initializePWAFeatures()
+    
   } catch (error) {
     console.error('❌ Failed to start application:', error)
     
@@ -77,6 +83,67 @@ const startApp = async () => {
         </div>
       </div>
     `
+  }
+}
+
+// PWA功能初始化
+async function initializePWAFeatures() {
+  try {
+    console.log('🚀 [PWA] Initializing PWA features...')
+    
+    // 註冊 Service Worker
+    const swRegistered = await swManager.register()
+    
+    if (swRegistered) {
+      console.log('✅ [PWA] Service Worker registered successfully')
+      
+      // 檢查更新
+      setTimeout(() => {
+        swManager.update()
+      }, 30000) // 30秒後檢查更新
+      
+      // 設置快取統計監控
+      setInterval(async () => {
+        try {
+          await swManager.getCacheStats()
+        } catch (error) {
+          // 靜默處理快取統計錯誤
+        }
+      }, 5 * 60 * 1000) // 每5分鐘更新一次
+      
+    } else {
+      console.warn('⚠️ [PWA] Service Worker registration failed')
+    }
+    
+    // 監聽 PWA 安裝提示
+    if (swManager.installPromptEvent.value) {
+      console.log('📱 [PWA] Install prompt is available')
+    }
+    
+    // 離線功能初始化
+    if (!navigator.onLine) {
+      console.log('📡 [PWA] Starting in offline mode')
+      // 可以在這裡顯示離線通知
+    }
+    
+    // 設置推送通知（如果需要）
+    if (import.meta.env.VITE_ENABLE_PUSH_NOTIFICATIONS === 'true') {
+      try {
+        const permission = await swManager.requestNotificationPermission()
+        if (permission === 'granted') {
+          console.log('🔔 [PWA] Push notifications enabled')
+          // 可以在這裡訂閱推送
+        }
+      } catch (error) {
+        console.warn('⚠️ [PWA] Push notifications setup failed:', error)
+      }
+    }
+    
+    console.log('🎉 [PWA] PWA features initialized successfully')
+    
+  } catch (error) {
+    console.error('❌ [PWA] PWA initialization failed:', error)
+    // PWA功能失敗不應該影響主應用運行
   }
 }
 

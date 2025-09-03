@@ -9,7 +9,7 @@
               團隊管理
             </h1>
             <p class="page-subtitle">
-              管理團隊成員，控制系統存取權限
+              管理系統人員與團隊設置，控制存取權限
             </p>
           </div>
           <div class="header-actions">
@@ -21,7 +21,7 @@
             />
             <RefreshButton
               :loading="loading"
-              @refresh="loadData"
+              @refresh="() => loadData(true)"
             />
           </div>
         </div>
@@ -81,7 +81,7 @@
         <div class="content-header">
           <h2 class="content-title">
             <UsersIcon />
-            團隊成員 ({{ teamMembers.length }})
+            人員管理 Staff Management ({{ teamMembers.length }})
           </h2>
         </div>
 
@@ -95,7 +95,7 @@
 
           <EmptyState
             v-else-if="teamMembers.length === 0"
-            title="尚無團隊成員"
+            title="尚無系統人員"
             description="新增第一位成員到您的團隊"
           >
             <template #icon>
@@ -125,7 +125,67 @@
               @toggle-status="toggleMemberStatus"
               @reset-password="resetMemberPassword"
               @remove-member="confirmRemoveMember"
-              @edit-member="editMember"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Teams Section -->
+      <div class="content-section">
+        <div class="content-header">
+          <h2 class="content-title">
+            <TeamsIcon />
+            團隊設置 Team Settings ({{ teams.length }})
+          </h2>
+          <div class="header-actions">
+            <PrimaryActionButton
+              text="新增團隊"
+              :icon="PlusIcon"
+              :loading="loading"
+              @click="showAddTeamModal = true"
+            />
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content-body">
+          <LoadingSpinner
+            v-if="loading"
+            size="lg"
+            text="載入團隊中..."
+          />
+
+          <EmptyState
+            v-else-if="teams.length === 0"
+            title="尚無團隊"
+            description="建立第一個團隊來管理客服人員"
+          >
+            <template #icon>
+              <TeamsIcon />
+            </template>
+            <template #actions>
+              <button
+                class="btn btn-primary"
+                @click="showAddTeamModal = true"
+              >
+                新增團隊
+              </button>
+            </template>
+          </EmptyState>
+
+          <div
+            v-else
+            class="teams-list"
+          >
+            <TeamCard
+              v-for="team in teams"
+              :key="team.id"
+              :team="team"
+              :loading="loading"
+              @edit-team="editTeam"
+              @toggle-status="toggleTeamStatus"
+              @generate-qr="generateTeamQR"
+              @remove-team="confirmRemoveTeam"
             />
           </div>
         </div>
@@ -141,7 +201,7 @@
           @click.stop
         >
           <div class="modal-header">
-            <h2>新增團隊成員</h2>
+            <h2>新增系統人員</h2>
             <button
               class="close-btn"
               @click="closeAddMemberModal"
@@ -434,6 +494,236 @@
         </div>
       </div>
 
+      <!-- 新增團隊模態框 -->
+      <div
+        v-if="showAddTeamModal"
+        class="modal-overlay"
+      >
+        <div
+          class="modal"
+          @click.stop
+        >
+          <div class="modal-header">
+            <h2>新增團隊</h2>
+            <button
+              class="close-btn"
+              @click="closeAddTeamModal"
+            >
+              &times;
+            </button>
+          </div>
+          <form
+            class="modal-body"
+            @submit.prevent="submitAddTeam"
+          >
+            <div class="form-group">
+              <label for="teamName">團隊名稱 *</label>
+              <input
+                id="teamName"
+                v-model="addTeamForm.name"
+                type="text"
+                required
+                placeholder="請輸入團隊名稱"
+              >
+            </div>
+            <div class="form-group">
+              <label for="teamDescription">團隊描述</label>
+              <textarea
+                id="teamDescription"
+                v-model="addTeamForm.description"
+                rows="3"
+                placeholder="請輸入團隊描述（可選）"
+              />
+            </div>
+            <div class="form-group">
+              <label>團隊成員 (可選)</label>
+              <div class="member-selection">
+                <div class="member-selection-header">
+                  <span class="selection-count">{{ addTeamForm.selectedMembers.length }} / {{ availableMembers.length }} 已選擇</span>
+                  <button
+                    type="button"
+                    class="btn-link"
+                    @click="toggleSelectAllMembers"
+                  >
+                    {{ isAllMembersSelected ? '取消全選' : '全選' }}
+                  </button>
+                </div>
+                <div class="member-grid">
+                  <div
+                    v-for="member in availableMembers"
+                    :key="member.id"
+                    class="member-card"
+                    :class="{ 'selected': addTeamForm.selectedMembers.includes(member.id) }"
+                    @click="toggleMemberSelection(member.id)"
+                  >
+                    <div class="member-avatar">
+                      <div class="avatar-circle">
+                        {{ getInitials(member.name || member.loginId) }}
+                      </div>
+                      <div class="selection-indicator">
+                        <CheckIcon />
+                      </div>
+                    </div>
+                    
+                    <div class="member-details">
+                      <div class="member-name">
+                        {{ member.name || member.loginId }}
+                      </div>
+                      <div
+                        class="member-role-badge"
+                        :class="`role-${member.role}`"
+                      >
+                        {{ getRoleDisplayName(member.role) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-if="availableMembers.length === 0"
+                  class="no-members"
+                >
+                  無可用成員
+                </div>
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="closeAddTeamModal"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="addTeamLoading"
+              >
+                {{ addTeamLoading ? '新增中...' : '新增團隊' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 編輯團隊模態框 -->
+      <div
+        v-if="showEditTeamModal"
+        class="modal-overlay"
+      >
+        <div
+          class="modal"
+          @click.stop
+        >
+          <div class="modal-header">
+            <h2>編輯團隊</h2>
+            <button
+              class="close-btn"
+              @click="closeEditTeamModal"
+            >
+              &times;
+            </button>
+          </div>
+          <form
+            class="modal-body"
+            @submit.prevent="submitEditTeam"
+          >
+            <div class="form-group">
+              <label for="editTeamName">團隊名稱 *</label>
+              <input
+                id="editTeamName"
+                v-model="editTeamForm.name"
+                type="text"
+                required
+                placeholder="請輸入團隊名稱"
+              >
+            </div>
+            <div class="form-group">
+              <label for="editTeamDescription">團隊描述</label>
+              <textarea
+                id="editTeamDescription"
+                v-model="editTeamForm.description"
+                rows="3"
+                placeholder="請輸入團隊描述（可選）"
+              />
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input
+                  v-model="editTeamForm.isActive"
+                  type="checkbox"
+                >
+                啟用團隊
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="closeEditTeamModal"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="editTeamLoading"
+              >
+                {{ editTeamLoading ? '更新中...' : '更新團隊' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- QR 碼顯示模態框 -->
+      <div
+        v-if="showQRModal"
+        class="modal-overlay"
+      >
+        <div
+          class="modal qr-modal"
+          @click.stop
+        >
+          <div class="modal-header">
+            <h2>團隊 QR 碼</h2>
+            <button
+              class="close-btn"
+              @click="closeQRModal"
+            >
+              &times;
+            </button>
+          </div>
+          <div class="modal-body qr-content">
+            <div class="qr-display">
+              <img
+                v-if="currentQRCode"
+                :src="currentQRCode"
+                alt="Team QR Code"
+                class="qr-image"
+              >
+              <LoadingSpinner
+                v-else
+                size="md"
+                text="生成 QR 碼中..."
+              />
+            </div>
+            <p class="qr-description">
+              掃描此 QR 碼可快速加入團隊 {{ currentTeam?.name }}
+            </p>
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="btn btn-primary"
+                @click="closeQRModal"
+              >
+                關閉
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 其他確認操作模態框 -->
       <div
         v-if="showConfirmModal"
@@ -506,6 +796,7 @@ import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables'
 import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
+import { teamApi } from '@/api/team'
 
 const route = useRoute()
 import type { TeamMember } from '@/types'
@@ -513,6 +804,7 @@ import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
+import TeamCard from '@/components/team/TeamCard.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 
@@ -536,6 +828,17 @@ const ShieldIcon = {
   template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
 }
 
+const TeamsIcon = {
+  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 21-3-3m0 0a2 2 0 0 0-3-3 2 2 0 0 0-3 3 2 2 0 0 0 3 3 2 2 0 0 0 3-3Z"/></svg>`
+}
+
+const CheckIcon = {
+  template: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="11" fill="#000000" stroke="none"/>
+    <path d="M7 12l3.5 3.5L17 8.5" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`
+}
+
 // 組合式函數
 const { currentAgent } = useAuth()
 const { showSuccess, showError } = useToast()
@@ -549,6 +852,28 @@ const { showSuccess, showError } = useToast()
 // 響應式數據
 const addMemberLoading = ref(false)
 const showAddPassword = ref(false)
+
+// Team interface
+interface Team {
+  id: number
+  name: string
+  description?: string
+  qrCode?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  memberCount?: number
+}
+
+// 團隊管理相關狀態
+const teams = ref<Team[]>([])
+const addTeamLoading = ref(false)
+const editTeamLoading = ref(false)
+const showAddTeamModal = ref(false)
+const showEditTeamModal = ref(false)
+const showQRModal = ref(false)
+const currentQRCode = ref('')
+const currentTeam = ref<Team | null>(null)
 
 // 從 store 獲取數據
 const teamStore = useTeamStore()
@@ -604,6 +929,20 @@ const passwordResetForm = reactive({
   policy: 'changeable' as 'changeable' | 'unchangeable' | 'must_change'
 })
 
+// 團隊表單數據
+const addTeamForm = reactive({
+  name: '',
+  description: '',
+  selectedMembers: [] as string[] // 所選的成員 ID 列表
+})
+
+const editTeamForm = reactive({
+  id: 0,
+  name: '',
+  description: '',
+  isActive: true
+})
+
 // 確認操作
 const confirmMessage = ref('')
 const confirmCallback = ref<(() => void) | null>(null)
@@ -622,9 +961,97 @@ const isPasswordFormValid = computed(() => {
          passwordResetForm.policy
 })
 
-// 載入數據
-const loadData = async () => {
-  await teamStore.loadMembers()
+// 可用成員列表 (不包括已有團隊的成員)
+const availableMembers = computed(() => {
+  return teamMembers.value.filter(member => 
+    // 不包括管理員和已有團隊的成員
+    member.role !== 'admin' && !member.teamId
+  )
+})
+
+// 是否全選所有成員
+const isAllMembersSelected = computed(() => {
+  return availableMembers.value.length > 0 && 
+         addTeamForm.selectedMembers.length === availableMembers.value.length
+})
+
+// 切換全選狀態
+const toggleSelectAllMembers = () => {
+  if (isAllMembersSelected.value) {
+    addTeamForm.selectedMembers = []
+  } else {
+    addTeamForm.selectedMembers = availableMembers.value.map(member => member.id)
+  }
+}
+
+// 切換單個成員選擇狀態
+const toggleMemberSelection = (memberId: string) => {
+  const index = addTeamForm.selectedMembers.indexOf(memberId)
+  if (index > -1) {
+    addTeamForm.selectedMembers.splice(index, 1)
+  } else {
+    addTeamForm.selectedMembers.push(memberId)
+  }
+}
+
+// 取得姓名首字母
+const getInitials = (name: string): string => {
+  if (!name) {
+    return '?'
+  }
+  const names = name.split(' ').filter(n => n.trim())
+  if (names.length === 0) {
+    return '?'
+  }
+  if (names.length === 1) {
+    const firstName = names[0]
+    return firstName ? firstName.charAt(0).toUpperCase() : '?'
+  }
+  const firstName = names[0]
+  const lastName = names[names.length - 1]
+  return firstName && lastName ? (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() : '?'
+}
+
+// 取得角色顯示名稱
+const getRoleDisplayName = (role: string): string => {
+  const roleMap: Record<string, string> = {
+    admin: '管理員',
+    team: '組長',
+    agent: '客服'
+  }
+  return roleMap[role] || role
+}
+
+// 載入數據 - 添加快取機制避免不必要的重載
+const lastLoadTime = ref<number>(0)
+const CACHE_DURATION = 30 * 1000 // 30秒快取
+
+const loadData = async (force = false) => {
+  const now = Date.now()
+  // 如果非強制刷新且在快取時間內，跳過載入
+  if (!force && now - lastLoadTime.value < CACHE_DURATION) {
+    console.log('📋 Using cached data, skipping reload')
+    return
+  }
+  
+  lastLoadTime.value = now
+  await Promise.all([
+    teamStore.loadMembers(),
+    loadTeams()
+  ])
+}
+
+// 載入團隊數據
+const loadTeams = async () => {
+  try {
+    const response = await teamApi.getTeams(true) // Include inactive teams
+    if (response.success && response.data) {
+      teams.value = response.data
+    }
+  } catch (error) {
+    console.error('載入團隊失敗:', error)
+    showError('載入團隊失敗', '請檢查網路連線或稍後重試')
+  }
 }
 
 // 新增成員
@@ -639,7 +1066,7 @@ const submitAddMember = async () => {
     await teamStore.addMember(memberData)
 
     // 成功提示
-    showSuccess('新增成員成功', '已成功新增團隊成員')
+    showSuccess('新增成員成功', '已成功新增系統人員')
 
     // 重置表單
     Object.assign(addMemberForm, {
@@ -768,14 +1195,8 @@ const confirmRemoveMember = (member: TeamMember) => {
   showConfirmModal.value = true
 }
 
-// 編輯成員
-const editMember = async (memberId: string, data: Partial<TeamMember>) => {
-  try {
-    await teamStore.updateMember(memberId, data)
-  } catch (error) {
-    console.error('編輯成員失敗:', error)
-  }
-}
+// 編輯成員 - 現在由TeamMemberCard組件直接處理
+// 這個函數已經不再需要，因為TeamMemberCard使用teamStore統一處理
 
 // 模態框控制
 
@@ -791,13 +1212,149 @@ const confirmAction = () => {
   closeConfirmModal()
 }
 
-// 監聽路由變化，確保TeamManagement頁面正確重新渲染
-watch(() => route.path, (newPath, oldPath) => {
-  console.log('🔄 TeamManagement: Route changed from', oldPath, 'to', newPath)
+// 團隊管理函數
+// 新增團隊
+const submitAddTeam = async () => {
+  addTeamLoading.value = true
+  try {
+    // 先建立團隊
+    const response = await teamApi.createTeam({
+      name: addTeamForm.name,
+      description: addTeamForm.description
+    })
+    
+    if (response.success && response.data) {
+      const newTeamId = response.data.id
+      
+      // 如果有選擇成員，將他們加入團隊
+      if (addTeamForm.selectedMembers.length > 0) {
+        for (const memberId of addTeamForm.selectedMembers) {
+          try {
+            await teamStore.updateMember(memberId, { teamId: newTeamId })
+          } catch (memberError) {
+            console.error(`新增成員 ${memberId} 到團隊失敗:`, memberError)
+          }
+        }
+      }
+      
+      showSuccess('新增團隊成功', `已成功建立團隊並加入 ${addTeamForm.selectedMembers.length} 位成員`)
+      Object.assign(addTeamForm, { name: '', description: '', selectedMembers: [] })
+      closeAddTeamModal()
+      await Promise.all([loadTeams(), teamStore.loadMembers()])
+    }
+  } catch (error) {
+    console.error('新增團隊失敗:', error)
+    showError('新增團隊失敗', error instanceof Error ? error.message : '請稍後重試')
+  } finally {
+    addTeamLoading.value = false
+  }
+}
+
+// 關閉新增團隊模態框
+const closeAddTeamModal = () => {
+  showAddTeamModal.value = false
+  Object.assign(addTeamForm, { name: '', description: '', selectedMembers: [] })
+}
+
+// 編輯團隊
+const editTeam = (team: Team) => {
+  Object.assign(editTeamForm, {
+    id: team.id,
+    name: team.name,
+    description: team.description || '',
+    isActive: team.isActive
+  })
+  showEditTeamModal.value = true
+}
+
+// 提交編輯團隊
+const submitEditTeam = async () => {
+  editTeamLoading.value = true
+  try {
+    const { id, ...updateData } = editTeamForm
+    const response = await teamApi.updateTeam(id, updateData)
+    if (response.success) {
+      showSuccess('更新團隊成功', '已成功更新團隊資訊')
+      closeEditTeamModal()
+      await loadTeams()
+    }
+  } catch (error) {
+    console.error('更新團隊失敗:', error)
+    showError('更新團隊失敗', error instanceof Error ? error.message : '請稍後重試')
+  } finally {
+    editTeamLoading.value = false
+  }
+}
+
+// 關閉編輯團隊模態框
+const closeEditTeamModal = () => {
+  showEditTeamModal.value = false
+  Object.assign(editTeamForm, { id: 0, name: '', description: '', isActive: true })
+}
+
+// 切換團隊狀態
+const toggleTeamStatus = async (team: Team) => {
+  try {
+    const newStatus = !team.isActive
+    const response = await teamApi.updateTeam(team.id, { isActive: newStatus })
+    if (response.success) {
+      showSuccess('團隊狀態更新成功', `已${newStatus ? '啟用' : '停用'}團隊`)
+      await loadTeams()
+    }
+  } catch (error) {
+    console.error('更新團隊狀態失敗:', error)
+    showError('更新團隊狀態失敗', '請稍後重試')
+  }
+}
+
+// 生成團隊 QR 碼
+const generateTeamQR = async (team: Team) => {
+  currentTeam.value = team
+  currentQRCode.value = ''
+  showQRModal.value = true
   
-  // 如果路由到達TeamManagement頁面，確保數據刷新
-  if (newPath === '/team') {
-    console.log('🔄 TeamManagement: Refreshing data due to route change')
+  try {
+    const response = await teamApi.generateTeamQR(team.id)
+    if (response.success && response.data) {
+      currentQRCode.value = response.data.qrCode
+    }
+  } catch (error) {
+    console.error('生成 QR 碼失敗:', error)
+    showError('生成 QR 碼失敗', '請稍後重試')
+    closeQRModal()
+  }
+}
+
+// 關閉 QR 碼模態框
+const closeQRModal = () => {
+  showQRModal.value = false
+  currentQRCode.value = ''
+  currentTeam.value = null
+}
+
+// 確認刪除團隊
+const confirmRemoveTeam = (team: Team) => {
+  confirmMessage.value = `確定要刪除團隊 ${team.name} 嗎？此操作無法撤銷。`
+  confirmCallback.value = async () => {
+    try {
+      const response = await teamApi.deleteTeam(team.id)
+      if (response.success) {
+        showSuccess('刪除團隊成功', '已成功刪除團隊')
+        await loadTeams()
+      }
+    } catch (error) {
+      console.error('刪除團隊失敗:', error)
+      showError('刪除團隊失敗', '請稍後重試')
+    }
+  }
+  showConfirmModal.value = true
+}
+
+// 監聽路由變化，只在真正需要時刷新數據
+watch(() => route.path, (newPath, oldPath) => {
+  // 只在從其他頁面首次進入團隊管理頁面時才刷新資料
+  if (newPath === '/team' && oldPath && oldPath !== '/team') {
+    console.log('🔄 TeamManagement: Entering from external page, refreshing data')
     loadData()
   }
 }, { immediate: false })
@@ -969,6 +1526,12 @@ onMounted(() => {
 
 /* Lists */
 .members-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.teams-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -1404,6 +1967,205 @@ onMounted(() => {
   margin: 0;
 }
 
+/* Member Selection Styles */
+.member-selection {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.member-selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.selection-count {
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  font-weight: 600;
+}
+
+.btn-link {
+  background: var(--gray-900);
+  border: none;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.btn-link:hover {
+  background: black;
+  color: white;
+}
+
+/* Modern Member Grid Design */
+.member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.member-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: none;
+}
+
+.member-card:hover {
+  border-color: var(--gray-500);
+  background: var(--gray-50);
+  transform: none;
+  box-shadow: none;
+}
+
+.member-card.selected {
+  border-color: var(--gray-900);
+  background: var(--gray-50);
+  box-shadow: 0 0 0 1px var(--gray-900);
+}
+
+.member-avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--gray-200);
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.025em;
+}
+
+.selection-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.member-card.selected .selection-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.selection-indicator svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 極簡邊框增強 */
+.member-card.selected .selection-indicator svg circle {
+  stroke: var(--gray-100);
+  stroke-width: 1;
+}
+
+.member-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-name {
+  font-weight: 700;
+  color: black;
+  font-size: 0.875rem;
+  margin-bottom: var(--space-1);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.member-role-badge.role-admin {
+  background: black;
+  color: white;
+  border: 1px solid black;
+}
+
+.member-role-badge.role-team {
+  background: var(--gray-700);
+  color: white;
+  border: 1px solid var(--gray-700);
+}
+
+.member-role-badge.role-agent {
+  background: var(--gray-200);
+  color: var(--gray-800);
+  border: 1px solid var(--gray-400);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .member-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  
+  .member-card {
+    padding: var(--space-3);
+  }
+  
+  .avatar-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 0.875rem;
+  }
+}
+
+.no-members {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 0.875rem;
+}
+
 .confirm-actions {
   display: flex;
   gap: var(--space-3);
@@ -1576,6 +2338,88 @@ onMounted(() => {
 
   .radio-text small {
     font-size: 0.7rem;
+  }
+}
+
+/* QR Modal Styles */
+.qr-modal {
+  max-width: 400px;
+  text-align: center;
+}
+
+.qr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.qr-display {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius-xl);
+  background: var(--gray-25);
+}
+
+.qr-image {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-md);
+}
+
+.qr-description {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Team section header actions */
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.content-header .header-actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .content-section,
+  .btn,
+  .btn-modern,
+  .btn-primary,
+  .btn-confirm,
+  .btn-cancel,
+  .modal,
+  .team-card,
+  .member-card {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
+  }
+
+  .slide-in-from-right {
+    animation: none !important;
+  }
+
+  @keyframes spin {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
   }
 }
 </style>

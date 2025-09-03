@@ -18,6 +18,7 @@ import {
   requireManagerOrAdmin,
   requireAdmin
 } from '../middleware/auth';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service';
 // Removed unused drizzle imports
 
 const teamHandler = new Hono<{ Bindings: Bindings }>();
@@ -69,6 +70,22 @@ teamHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       name,
       description,
       isActive: true
+    });
+
+    // 記錄創建團隊活動
+    const user = c.get('user');
+    const activityService = new ActivityService(c.env.DB);
+    await activityService.logActivity({
+      userId: user.id.toString(),
+      userName: user.displayName || user.email,
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.TEAM_CREATE,
+      resourceType: RESOURCE_TYPES.TEAM,
+      resourceId: team.id.toString(),
+      details: {
+        teamName: team.name,
+        description: team.description
+      }
     });
 
     return c.json({
@@ -127,6 +144,21 @@ teamHandler.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
     
     const team = await updateTeam(c.env.DB, teamId, updates);
     
+    // 記錄更新團隊活動
+    const activityService = new ActivityService(c.env.DB);
+    await activityService.logActivity({
+      userId: user.id.toString(),
+      userName: user.displayName || user.email,
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.TEAM_UPDATE,
+      resourceType: RESOURCE_TYPES.TEAM,
+      resourceId: teamId.toString(),
+      details: {
+        teamName: team.name,
+        updates: updates
+      }
+    });
+    
     return c.json({
       success: true,
       data: team,
@@ -147,7 +179,26 @@ teamHandler.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
 teamHandler.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
+    
+    // 先獲取團隊信息以便記錄
+    const teamInfo = await getTeamById(c.env.DB, teamId);
+    
     await deleteTeam(c.env.DB, teamId);
+    
+    // 記錄刪除團隊活動
+    const user = c.get('user');
+    const activityService = new ActivityService(c.env.DB);
+    await activityService.logActivity({
+      userId: user.id.toString(),
+      userName: user.displayName || user.email,
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.TEAM_DELETE,
+      resourceType: RESOURCE_TYPES.TEAM,
+      resourceId: teamId.toString(),
+      details: {
+        teamName: teamInfo.name
+      }
+    });
     
     return c.json({
       success: true,

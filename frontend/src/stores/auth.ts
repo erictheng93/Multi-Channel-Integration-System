@@ -24,7 +24,7 @@ function clearAuthStorage() {
 
 // 工具函數：驗證 agent 資料的有效性
 function isValidAgent(agent: Agent | null): boolean {
-  if (!agent) return false;
+  if (!agent) {return false;}
   
   // 檢查必要欄位是否存在
   return !!(

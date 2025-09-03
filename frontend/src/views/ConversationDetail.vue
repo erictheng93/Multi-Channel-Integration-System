@@ -68,6 +68,14 @@
         </div>
       </div>
 
+      <!-- Message Search -->
+      <MessageSearch
+        ref="messageSearchRef"
+        :messages="messages"
+        @search-results="handleSearchResults"
+        @search-clear="handleSearchClear"
+      />
+
       <!-- Messages Container -->
       <div
         ref="messagesContainer"
@@ -80,9 +88,9 @@
         />
 
         <EmptyState
-          v-else-if="messages.length === 0"
-          title="暫無訊息"
-          description="這個對話還沒有任何訊息"
+          v-else-if="displayedMessages.length === 0"
+          :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
+          :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
         >
           <template #icon>
             <MessageCircleIcon />
@@ -93,17 +101,39 @@
           v-else
           class="messages"
         >
+          <!-- Search Results Header -->
+          <div
+            v-if="isSearchActive"
+            class="search-results-header"
+          >
+            <span>搜索結果 ({{ displayedMessages.length }})</span>
+            <button
+              class="clear-search-btn"
+              @click="handleSearchClear"
+            >
+              清除搜索
+            </button>
+          </div>
+
           <!-- Date Separator -->
-          <div class="date-separator">
+          <div
+            v-if="!isSearchActive"
+            class="date-separator"
+          >
             <span class="date-text">{{ formatDate(new Date()) }}</span>
           </div>
 
           <!-- Messages -->
           <MessageBubble
-            v-for="message in messages"
+            v-for="message in displayedMessages"
             :key="message.id"
             :message="message"
             :delivered="true"
+            @copy="handleMessageCopy"
+            @reply="handleMessageReply"
+            @forward="handleMessageForward"
+            @recall="handleMessageRecall"
+            @select="handleMessageSelect"
           />
 
           <!-- Typing Indicator -->
@@ -127,8 +157,9 @@
         class="input-section"
       >
         <MessageInput
+          ref="messageInputRef"
           :conversation-id="conversationId"
-          :disabled="loading"
+          :disabled="conversation?.status === 'closed'"
           @message-sent="handleMessageSent"
           @attachment-upload="handleAttachmentUpload"
         />
@@ -160,6 +191,9 @@
         </div>
       </div>
     </div>
+
+    <!-- 鍵盤快捷鍵幫助 -->
+    <KeyboardShortcuts ref="keyboardShortcutsRef" />
   </AppLayout>
 </template>
 
@@ -168,15 +202,17 @@ import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth, useConversations, useMessages } from '@/composables'
 import { conversationApi } from '@/api/conversations'
-import { messageApi } from '@/api/message'
 import { useConfirm } from '@/composables/useConfirm'
+import type { Message } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
+import MessageSearch from '@/components/conversation/MessageSearch.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
+import KeyboardShortcuts from '@/components/ui/KeyboardShortcuts.vue'
 import {
   ArrowLeftIcon,
   UserPlusIcon,
@@ -191,16 +227,26 @@ const { currentAgent } = useAuth()
 const { getConversationById } = useConversations()
 const { 
   messages, 
-  loading: loadingMessages
+  loading: loadingMessages,
+  fetchMessages,
+  refreshMessages,
+  setConversationId
 } = useMessages()
 
 // State
 const conversation = computed(() => getConversationById(conversationId.value))
-const loading = ref(false)
 const assigning = ref(false)
+
 const closing = ref(false)
 const isTyping = ref(false)
 const messagesContainer = ref<HTMLElement>()
+const messageInputRef = ref()
+const keyboardShortcutsRef = ref()
+const messageSearchRef = ref()
+
+// 搜索狀態
+const searchResults = ref<Message[]>([])
+const isSearchActive = ref(false)
 
 // Quick replies
 const quickReplies = ref([
@@ -216,6 +262,10 @@ const conversationId = computed(() => route.params.id as string)
 const customerInitials = computed(() => {
   const name = conversation.value?.customer?.name || 'U'
   return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+})
+
+const displayedMessages = computed(() => {
+  return isSearchActive.value ? searchResults.value : messages.value
 })
 
 // Message handlers
@@ -247,6 +297,7 @@ const typingTimeout = ref<NodeJS.Timeout | null>(null)
 const pollingDelay = ref(3000) // Start with 3 seconds
 const lastMessageCount = ref(0)
 const isPageVisible = ref(true)
+const hasPermissionError = ref(false)
 
 // Methods
 async function loadConversation() {
@@ -265,40 +316,50 @@ async function loadConversation() {
 }
 
 async function loadMessages() {
-  // loadingMessages.value = true // Read-only computed property
   try {
-    const response = await messageApi.list(conversationId.value)
-    if (response.success && response.data) {
-      const newMessageCount = response.data.length
-      const hasNewMessages = newMessageCount > lastMessageCount.value
+    const previousMessageCount = messages.value.length
+    await fetchMessages()
+    
+    // Reset permission error flag on successful fetch
+    hasPermissionError.value = false
+    
+    const newMessageCount = messages.value.length
+    const hasNewMessages = newMessageCount > previousMessageCount
+    lastMessageCount.value = newMessageCount
 
-      // messages.value = response.data // Will be handled by useMessages composable
-      lastMessageCount.value = newMessageCount
+    // Adjust polling frequency based on activity
+    if (hasNewMessages) {
+      pollingDelay.value = Math.max(2000, pollingDelay.value * 0.8) // Speed up if active
+    } else {
+      pollingDelay.value = Math.min(10000, pollingDelay.value * 1.2) // Slow down if inactive
+    }
 
-      // Adjust polling frequency based on activity
-      if (hasNewMessages) {
-        pollingDelay.value = Math.max(2000, pollingDelay.value * 0.8) // Speed up if active
-      } else {
-        pollingDelay.value = Math.min(10000, pollingDelay.value * 1.2) // Slow down if inactive
-      }
-
-      await nextTick()
-      if (hasNewMessages) {
-        scrollToBottom()
-      }
+    await nextTick()
+    if (hasNewMessages) {
+      scrollToBottom()
     }
   } catch (error) {
     console.error('載入訊息失敗:', error)
-    // Slow down polling on error
+    
+    // Check if it's a permission error (403) and stop polling
+    if (error && typeof error === 'object' && 'message' in error) {
+      const errorMessage = (error as { message: string }).message
+      if (errorMessage.includes('Permission denied') || errorMessage.includes('403')) {
+        hasPermissionError.value = true
+        console.warn('Permission error detected, stopping message polling')
+        if (pollingInterval.value) {
+          clearTimeout(pollingInterval.value)
+          pollingInterval.value = null
+        }
+        return
+      }
+    }
+    
+    // Slow down polling on other errors
     pollingDelay.value = Math.min(15000, pollingDelay.value * 1.5)
-  } finally {
-    // loadingMessages.value = false // Read-only computed property
   }
 }
 
-async function refreshMessages() {
-  await loadMessages()
-}
 
 
 async function assignToMe() {
@@ -351,10 +412,83 @@ function scrollToBottom() {
   }
 }
 
-function useQuickReply(text: string) {
-  // Trigger message send through the MessageInput component
-  // This would need to be implemented via a ref to MessageInput
-  console.log('Quick reply:', text)
+async function useQuickReply(text: string) {
+  if (!messageInputRef.value || !text.trim()) {return}
+  
+  try {
+    const success = await messageInputRef.value.sendQuickMessage(text)
+    if (!success) {
+      console.error('Failed to send quick reply')
+    }
+  } catch (error) {
+    console.error('Quick reply error:', error)
+  }
+}
+
+// 搜索處理函數
+const handleSearchResults = (results: Message[]) => {
+  searchResults.value = results
+  isSearchActive.value = results.length > 0
+  
+  // 滾動到第一個搜索結果
+  if (results.length > 0) {
+    nextTick(() => {
+      scrollToBottom()
+    })
+  }
+}
+
+const handleSearchClear = () => {
+  searchResults.value = []
+  isSearchActive.value = false
+}
+
+// 消息操作處理函數
+const handleMessageCopy = (message: Message) => {
+  console.log('Message copied:', message.content)
+  // TODO: 可以添加成功提示
+}
+
+const handleMessageReply = (message: Message) => {
+  console.log('Reply to message:', message.content)
+  // 設置回覆的訊息內容到輸入框
+  if (messageInputRef.value) {
+    const replyText = `回覆: ${message.content}\n\n`
+    messageInputRef.value.sendQuickMessage(replyText)
+  }
+}
+
+const handleMessageForward = (message: Message) => {
+  console.log('Forward message:', message.content)
+  // TODO: 實現轉發功能 - 可能需要打開對話選擇器
+}
+
+const handleMessageRecall = async (message: Message) => {
+  console.log('Recall message:', message.id)
+  
+  const confirmed = await useConfirm().confirmWarning(
+    '撤回訊息',
+    '確定要撤回這條訊息嗎？撤回後對方將無法看到。',
+    '撤回'
+  )
+  
+  if (!confirmed) {
+    return
+  }
+  
+  try {
+    // TODO: 調用撤回 API
+    // await messageApi.recallMessage(conversationId.value, { messageId: message.id })
+    console.log('Message recalled successfully')
+    await refreshMessages()
+  } catch (error) {
+    console.error('Recall message failed:', error)
+  }
+}
+
+const handleMessageSelect = (message: Message) => {
+  console.log('Select message:', message.id)
+  // TODO: 實現多選功能
 }
 
 function formatDate(date: Date) {
@@ -376,10 +510,12 @@ function startPolling() {
   }
 
   const poll = () => {
-    if (isPageVisible.value && conversation.value?.status !== 'closed') {
+    if (isPageVisible.value && conversation.value?.status !== 'closed' && !hasPermissionError.value) {
       loadMessages()
     }
-    pollingInterval.value = setTimeout(poll, pollingDelay.value)
+    if (!hasPermissionError.value) {
+      pollingInterval.value = setTimeout(poll, pollingDelay.value)
+    }
   }
 
   pollingInterval.value = setTimeout(poll, pollingDelay.value)
@@ -388,7 +524,7 @@ function startPolling() {
 // Page visibility handling for better performance
 function handleVisibilityChange() {
   isPageVisible.value = !document.hidden
-  if (isPageVisible.value && conversation.value?.status !== 'closed') {
+  if (isPageVisible.value && conversation.value?.status !== 'closed' && !hasPermissionError.value) {
     // Refresh immediately when page becomes visible
     loadMessages()
     startPolling()
@@ -398,16 +534,80 @@ function handleVisibilityChange() {
   }
 }
 
+// 全局鍵盤快捷鍵處理
+function handleGlobalKeydown(event: KeyboardEvent) {
+  // 忽略在輸入框內的快捷鍵
+  const target = event.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
+    return
+  }
+
+  switch (event.key) {
+    case '/':
+      // 焦點到輸入框
+      event.preventDefault()
+      messageInputRef.value?.focus()
+      break
+      
+    case 'r':
+      // 刷新消息
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        refreshMessages()
+      }
+      break
+      
+    case 'Escape':
+      // 返回列表
+      event.preventDefault()
+      goBack()
+      break
+      
+    case 'Home':
+      // 滾動到頂部
+      if (messagesContainer.value) {
+        event.preventDefault()
+        messagesContainer.value.scrollTop = 0
+      }
+      break
+      
+    case 'End':
+      // 滾動到底部
+      if (messagesContainer.value) {
+        event.preventDefault()
+        scrollToBottom()
+      }
+      break
+      
+    case '?':
+      // 顯示快捷鍵幫助
+      event.preventDefault()
+      keyboardShortcutsRef.value?.showShortcuts()
+      break
+      
+    case 'f':
+      // 搜索消息
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        messageSearchRef.value?.focus()
+      }
+      break
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Set conversation ID first
+  await setConversationId(conversationId.value)
   await loadConversation()
   await loadMessages()
 
   // Start optimized polling
   startPolling()
 
-  // Listen for page visibility changes
+  // Listen for page visibility changes and global keyboard shortcuts
   document.addEventListener('visibilitychange', handleVisibilityChange)
+  document.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onUnmounted(() => {
@@ -420,7 +620,10 @@ onUnmounted(() => {
     clearTimeout(typingTimeout.value)
     typingTimeout.value = null
   }
+  
+  // Remove event listeners
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 // Watch route changes
@@ -436,7 +639,8 @@ watch(() => route.params.id, async (newId, oldId) => {
     pollingDelay.value = 3000
     lastMessageCount.value = 0
 
-    // Reload data
+    // Set new conversation ID and reload data
+    await setConversationId(newId as string)
     await loadConversation()
     await loadMessages()
 
@@ -674,40 +878,118 @@ watch(() => route.params.id, async (newId, oldId) => {
   animation: spin 1s linear infinite;
 }
 
+.search-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-200);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: 0.875rem;
+  color: var(--blue-700);
+}
+
+.clear-search-btn {
+  padding: var(--space-1) var(--space-2);
+  background: var(--blue-100);
+  border: 1px solid var(--blue-300);
+  border-radius: var(--radius-sm);
+  color: var(--blue-600);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.clear-search-btn:hover {
+  background: var(--blue-200);
+  border-color: var(--blue-400);
+}
+
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .conversation-header {
-    padding: var(--space-4);
-  }
-
-  .header-left {
-    gap: var(--space-4);
-  }
-
-  .customer-name {
-    font-size: 1.25rem;
-  }
-
-  .customer-avatar {
-    width: 40px;
-    height: 40px;
-  }
-
-  .header-actions {
-    flex-direction: column;
-    gap: var(--space-2);
+    padding: var(--space-4) var(--space-3);
   }
 
   .messages-container {
-    padding: var(--space-4);
+    padding: var(--space-4) var(--space-3);
   }
 
   .input-section {
-    padding: var(--space-4);
+    padding: var(--space-4) var(--space-3);
+  }
+}
+
+@media (max-width: 768px) {
+  .conversation-header {
+    padding: var(--space-3) var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .header-left {
+    gap: var(--space-3);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .back-button {
+    padding: var(--space-2);
+    font-size: 0.875rem;
+  }
+
+  .customer-name {
+    font-size: 1.125rem;
+    line-height: 1.3;
+  }
+
+  .customer-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.875rem;
+  }
+
+  .header-actions {
+    flex-direction: row;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .header-actions .btn {
+    font-size: 0.75rem;
+    padding: var(--space-2) var(--space-3);
+    white-space: nowrap;
+  }
+
+  .messages-container {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .messages {
+    max-width: none;
+  }
+
+  .input-section {
+    padding: var(--space-3) var(--space-2);
   }
 
   .quick-replies {
     margin-top: var(--space-3);
+    gap: var(--space-1);
+  }
+
+  .quick-reply-btn {
+    font-size: 0.75rem;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  /* 改善消息容器滾動 */
+  .messages-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
 }
 

@@ -126,7 +126,31 @@ export const PhoneIcon = createIcon('M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 
 export const CheckIcon = createIcon('M20 6 9 17l-5-5')
 export const CheckCircleIcon = createIcon('M22 11.08V12a10 10 0 1 1-5.93-9.14')
 export const XIcon = createIcon('M18 6 6 18M6 6l12 12')
-export const XCircleIcon = createIcon('M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM15 9l-6 6M9 9l6 6')
+export const XCircleIcon = defineComponent<IconProps>({
+  name: 'XCircleIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('circle', { cx: '12', cy: '12', r: '10' }),
+      h('line', { x1: '15', x2: '9', y1: '9', y2: '15' }),
+      h('line', { x1: '9', x2: '15', y1: '9', y2: '15' })
+    ])
+  }
+})
 export const AlertCircleIcon = createIcon('M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8v4M12 16h.01')
 export const InfoIcon = createIcon('M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 16v-4M12 8h.01')
 
@@ -394,3 +418,9 @@ export const EyeIcon = defineComponent<IconProps>({
     ])
   }
 })
+
+// Message Action Icons
+export const CopyIcon = createIcon('M20 9H11a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zM5 3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2M9 5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9')
+export const ReplyIcon = createIcon('M9 17l-6-6 6-6M3 11h18')
+export const ForwardIcon = createIcon('M15 17l6-6-6-6M21 11H3')
+export const TrashIcon = createIcon('m3 6 3 14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l3-14M8 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M10 11v6M14 11v6')
