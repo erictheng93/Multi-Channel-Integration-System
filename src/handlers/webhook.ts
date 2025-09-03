@@ -347,9 +347,16 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
     } 
     
     if (!user) {
-      console.error('Failed to find or create user after insert');
+      console.error('❌ [LINE Webhook] Failed to find or create user after insert');
+      console.error('❌ [LINE Webhook] User ID:', userId.substring(0, 10) + '...');
       return;
     }
+    
+    console.log('✅ [LINE Webhook] User found/created successfully:', {
+      userId: user.id,
+      platformUserId: user.platformUserId?.substring(0, 10) + '...',
+      displayName: user.displayName
+    });
     
     if (user.id) {
       // 檢查是否需要更新用戶資料
@@ -370,6 +377,7 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
     }
 
     // 查詢或建立對話
+    console.log('🔍 [LINE Webhook] Searching for existing conversation for customer:', user.id);
     let conversation = await drizzleDb
       .select()
       .from(conversations)
@@ -378,24 +386,43 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
         ne(conversations.status, 'closed')
       ))
       .get();
+      
+    console.log('🔍 [LINE Webhook] Existing conversation found:', conversation ? conversation.id : 'None');
 
     if (!conversation) {
       // 建立新對話（使用 UUID）
       const conversationId = uuidv4();
       const timestamp = new Date().toISOString();
+      
+      console.log('🔄 [LINE Webhook] Creating new conversation...', {
+        conversationId,
+        customerId: user.id,
+        timestamp
+      });
+      
       try {
-        await drizzleDb
+        // 插入新對話
+        const insertResult = await drizzleDb
           .insert(conversations)
           .values({
             id: conversationId,
             customerId: user.id,
+            assignedTeamId: null,
+            assignedUserId: null,
             status: 'active',
+            priority: 'normal',
+            firstResponseAt: null,
+            closedAt: null,
+            internalNotes: null,
             lastMessageAt: timestamp,
             createdAt: timestamp,
             updatedAt: timestamp
           });
+          
+        console.log('✅ [LINE Webhook] Conversation insert completed:', { conversationId, insertResult });
 
         // Re-query the created conversation to get full object
+        console.log('🔍 [LINE Webhook] Re-querying created conversation...');
         const newConversation = await drizzleDb
           .select()
           .from(conversations)
@@ -403,18 +430,51 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
           .get();
         
         if (!newConversation) {
-          throw new Error('Failed to retrieve created conversation');
+          console.error('❌ [LINE Webhook] Failed to retrieve created conversation with ID:', conversationId);
+          console.error('❌ [LINE Webhook] Customer ID:', user.id);
+          console.error('❌ [LINE Webhook] Timestamp:', timestamp);
+          
+          // 嘗試查詢是否有任何該用戶的對話
+          const anyUserConversations = await drizzleDb
+            .select()
+            .from(conversations)
+            .where(eq(conversations.customerId, user.id))
+            .all();
+            
+          console.error('❌ [LINE Webhook] All conversations for customer:', anyUserConversations);
+          
+          // 檢查數據庫連接狀態
+          const dbTest = await drizzleDb.select().from(customers).where(eq(customers.id, user.id)).get();
+          console.error('❌ [LINE Webhook] Database connection test (customer query):', dbTest ? 'OK' : 'FAILED');
+          
+          throw new Error('Failed to retrieve created conversation after successful insert');
         }
         
         conversation = convertConversation(newConversation) as any;
-        console.log(`✅ Created new conversation: ${conversationId}`);
+        console.log('✅ [LINE Webhook] New conversation created and retrieved successfully:', {
+          id: conversationId,
+          customerId: user.id,
+          status: conversation?.status
+        });
       } catch (convError) {
-        console.error('❌ Failed to create conversation:', convError);
+        console.error('❌ [LINE Webhook] Failed to create conversation:', {
+          error: convError instanceof Error ? convError.message : 'Unknown error',
+          conversationId,
+          customerId: user.id,
+          timestamp,
+          stack: convError instanceof Error ? convError.stack : undefined
+        });
         throw new Error(`Failed to create conversation: ${convError}`);
       }
     } else {
       // 更新對話
       const timestamp = new Date().toISOString();
+      console.log('🔄 [LINE Webhook] Updating existing conversation:', {
+        conversationId: conversation.id,
+        customerId: user.id,
+        timestamp
+      });
+      
       await drizzleDb
         .update(conversations)
         .set({
@@ -422,9 +482,12 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
           updatedAt: timestamp
         })
         .where(eq(conversations.id, conversation.id));
+        
+      console.log('✅ [LINE Webhook] Existing conversation updated successfully');
     }
 
     // 🚨 冪等性檢查：檢查是否已存在相同的 platformMessageId
+    console.log('🔍 [LINE Webhook] Checking for duplicate messages with platformMessageId:', message.id);
     const existingMessage = await drizzleDb
       .select()
       .from(messages)
@@ -435,25 +498,57 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
       console.log(`⚠️ [LINE Webhook] Message already exists with platformMessageId: ${message.id}, skipping duplicate processing`);
       return; // 直接返回，不重複處理
     }
+    
+    console.log('✅ [LINE Webhook] No duplicate message found, proceeding with message creation');
 
     // 儲存訊息（使用 UUID 作為訊息 ID）
     const messageId = uuidv4();
     const timestamp = new Date().toISOString();
-    await drizzleDb
-      .insert(messages)
-      .values({
-        id: messageId,
-        conversationId: conversation!.id,
-        senderType: 'customer',
-        customerSenderId: user.id,
-        content: messageContent,
-        messageType: messageType,
-        platformMessageId: message.id,
-        isSent: true,
-        deliveryStatus: 'delivered',
-        metadata: mediaData ? JSON.stringify(mediaData) : null,
-        createdAt: timestamp
-      });
+    
+    console.log('💾 [LINE Webhook] Creating message...', {
+      messageId,
+      conversationId: conversation!.id,
+      customerId: user.id,
+      messageType: messageType,
+      contentLength: messageContent.length,
+      platformMessageId: message.id
+    });
+    
+    try {
+      await drizzleDb
+        .insert(messages)
+        .values({
+          id: messageId,
+          conversationId: conversation!.id,
+          senderType: 'customer',
+          customerSenderId: user.id,
+          content: messageContent,
+          messageType: messageType,
+          platformMessageId: message.id,
+          isSent: true,
+          deliveryStatus: 'delivered',
+          metadata: mediaData ? JSON.stringify(mediaData) : null,
+          createdAt: timestamp
+        });
+        
+        console.log('✅ [LINE Webhook] Message created successfully:', {
+          messageId,
+          conversationId: conversation!.id,
+          customerId: user.id,
+          platformMessageId: message.id
+        });
+        
+      } catch (messageError) {
+        console.error('❌ [LINE Webhook] Failed to create message:', {
+          error: messageError instanceof Error ? messageError.message : 'Unknown error',
+          messageId,
+          conversationId: conversation!.id,
+          customerId: user.id,
+          platformMessageId: message.id,
+          stack: messageError instanceof Error ? messageError.stack : undefined
+        });
+        throw new Error(`Failed to create message: ${messageError}`);
+      }
 
     // 記錄活動以觸發 SSE 更新
     try {
@@ -712,7 +807,13 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
           .values({
             id: conversationId,
             customerId: user.id,
+            assignedTeamId: null,
+            assignedUserId: null,
             status: 'active',
+            priority: 'normal',
+            firstResponseAt: null,
+            closedAt: null,
+            internalNotes: null,
             lastMessageAt: timestamp,
             createdAt: timestamp,
             updatedAt: timestamp
