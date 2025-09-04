@@ -24,7 +24,7 @@
                 <div class="customer-badges">
                   <PlatformBadge
                     v-if="conversation"
-                    :platform="conversation.platform"
+                    :platform="conversation.platform || 'unknown'"
                     show-icon
                   />
                   <StatusBadge
@@ -50,12 +50,12 @@
 
           <button
             v-if="conversation?.status !== 'closed'"
-            class="btn btn-danger"
+            class="close-conversation-btn"
             :disabled="closing"
             @click="closeConversation"
           >
             <XCircleIcon />
-            {{ closing ? '結束中...' : '結束對話' }}
+            <span>{{ closing ? '結束中...' : '結束對話' }}</span>
           </button>
 
           <button
@@ -159,7 +159,7 @@
         <MessageInput
           ref="messageInputRef"
           :conversation-id="conversationId"
-          :disabled="conversation?.status === 'closed'"
+          :disabled="false"
           @message-sent="handleMessageSent"
           @attachment-upload="handleAttachmentUpload"
         />
@@ -200,8 +200,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuth, useConversations, useMessages } from '@/composables'
-import { conversationApi } from '@/api/conversations'
+import { useAuth, useMessages } from '@/composables'
+import { useConversationsStore } from '@/stores/conversations'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Message } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -224,7 +224,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const { currentAgent } = useAuth()
-const { getConversationById } = useConversations()
+const conversationsStore = useConversationsStore()
 const { 
   messages, 
   loading: loadingMessages,
@@ -234,7 +234,7 @@ const {
 } = useMessages()
 
 // State
-const conversation = computed(() => getConversationById(conversationId.value))
+const conversation = computed(() => conversationsStore.currentConversation)
 const assigning = ref(false)
 
 const closing = ref(false)
@@ -302,16 +302,20 @@ const hasPermissionError = ref(false)
 // Methods
 async function loadConversation() {
   try {
-    const response = await conversationApi.get(conversationId.value)
-    if (response.success && response.data) {
-      // conversation.value = response.data // Read-only computed property
+    console.log('🔄 [ConversationDetail] Loading conversation:', conversationId.value)
+    await conversationsStore.fetchConversation(conversationId.value)
+    
+    if (conversation.value) {
+      console.log('✅ [ConversationDetail] Conversation loaded:', conversation.value.customer?.name || 'Unknown')
       // Mark as read if there are unread messages
-      if (response.data.unreadCount && response.data.unreadCount > 0) {
+      if (conversation.value.unreadCount && conversation.value.unreadCount > 0) {
         await markAsRead()
       }
+    } else {
+      console.warn('⚠️ [ConversationDetail] No conversation data received')
     }
   } catch (error) {
-    console.error('載入對話失敗:', error)
+    console.error('❌ [ConversationDetail] Failed to load conversation:', error)
   }
 }
 
@@ -367,10 +371,11 @@ async function assignToMe() {
 
   assigning.value = true
   try {
-    await conversationApi.assign(conversationId.value, currentAgent.value.id)
-    await loadConversation()
+    console.log('🔄 [ConversationDetail] Assigning conversation to me:', currentAgent.value.id)
+    await conversationsStore.assignConversation(conversationId.value, currentAgent.value.id)
+    console.log('✅ [ConversationDetail] Conversation assigned successfully')
   } catch (error) {
-    console.error('指派失敗:', error)
+    console.error('❌ [ConversationDetail] Assignment failed:', error)
   } finally {
     assigning.value = false
   }
@@ -388,10 +393,14 @@ async function closeConversation() {
 
   closing.value = true
   try {
-    await conversationApi.close(conversationId.value)
-    router.push('/conversations')
+    console.log('🔄 [ConversationDetail] Closing conversation:', conversationId.value)
+    const success = await conversationsStore.closeConversation(conversationId.value)
+    if (success) {
+      console.log('✅ [ConversationDetail] Conversation closed successfully')
+      router.push('/conversations')
+    }
   } catch (error) {
-    console.error('關閉對話失敗:', error)
+    console.error('❌ [ConversationDetail] Failed to close conversation:', error)
   } finally {
     closing.value = false
   }
@@ -399,10 +408,11 @@ async function closeConversation() {
 
 async function markAsRead() {
   try {
-    await conversationApi.markAsRead(conversationId.value)
-    // conversation.value.unreadCount = 0 // Read-only computed property
+    console.log('🔄 [ConversationDetail] Marking conversation as read:', conversationId.value)
+    await conversationsStore.markAsRead(conversationId.value)
+    console.log('✅ [ConversationDetail] Conversation marked as read')
   } catch (error) {
-    console.error('標記已讀失敗:', error)
+    console.error('❌ [ConversationDetail] Failed to mark as read:', error)
   }
 }
 
@@ -1009,5 +1019,107 @@ watch(() => route.params.id, async (newId, oldId) => {
     padding: var(--space-2) var(--space-3);
   }
 
+}
+
+/* Modern Minimalist Close Button */
+.close-conversation-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--gray-700);
+  background-color: transparent;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.close-conversation-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.close-conversation-btn:hover::before {
+  left: 100%;
+}
+
+.close-conversation-btn:hover {
+  color: var(--danger-600);
+  border-color: var(--danger-200);
+  background-color: var(--danger-50);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.close-conversation-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);
+}
+
+.close-conversation-btn:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.close-conversation-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.close-conversation-btn:disabled:hover {
+  color: var(--gray-700);
+  border-color: var(--gray-200);
+  background-color: transparent;
+  transform: none;
+  box-shadow: none;
+}
+
+.close-conversation-btn svg {
+  width: 18px;
+  height: 18px;
+  transition: transform var(--transition-fast);
+}
+
+.close-conversation-btn:hover svg {
+  transform: rotate(90deg);
+}
+
+.close-conversation-btn span {
+  transition: opacity var(--transition-fast);
+}
+
+/* Loading state animation */
+.close-conversation-btn:disabled span {
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .close-conversation-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.8125rem;
+  }
+  
+  .close-conversation-btn svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 </style>
