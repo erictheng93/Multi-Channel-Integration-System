@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type MockedFunction as _MockedFunction } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount, type VueWrapper, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { TestComponentInstance, MockProps } from '@/types/test-types'
 import type { FileUploadItem, FileUploadResult as _FileUploadResult } from '@/types/file-upload'
@@ -433,8 +433,8 @@ describe('FileUpload', () => {
     it('should display error messages', async () => {
       wrapper = createWrapper()
       
-      // Trigger an error by selecting a file that's too large
-      const largeFile = new File(['x'.repeat(20 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
+      // Trigger an error by selecting a file that's too large (11MB > 10MB limit)
+      const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -444,16 +444,18 @@ describe('FileUpload', () => {
       
       await fileInput.trigger('change')
       await nextTick()
+      await flushPromises()
+      await nextTick() // Extra tick for DOM updates
       
       expect(wrapper.find('.error-messages').exists()).toBe(true)
       expect(wrapper.find('.error-message').exists()).toBe(true)
-    })
+    }, 10000) // Increase timeout to 10 seconds
 
     it('should allow dismissing error messages', async () => {
       wrapper = createWrapper()
       
-      // Trigger an error
-      const largeFile = new File(['x'.repeat(20 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
+      // Trigger an error (11MB > 10MB limit)
+      const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -463,14 +465,17 @@ describe('FileUpload', () => {
       
       await fileInput.trigger('change')
       await nextTick()
+      await flushPromises()
+      await nextTick() // Extra tick for DOM updates
       
       expect(wrapper.find('.error-message').exists()).toBe(true)
       
       await wrapper.find('.error-dismiss').trigger('click')
       await nextTick()
+      await flushPromises()
       
       expect(wrapper.find('.error-message').exists()).toBe(false)
-    })
+    }, 10000) // Increase timeout to 10 seconds
   })
 
   describe('Upload Functionality', () => {

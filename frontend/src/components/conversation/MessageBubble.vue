@@ -118,49 +118,57 @@
         v-else-if="message.messageType === 'sticker'"
         class="message-sticker"
       >
-        <!-- Try to show actual sticker image -->
-        <div
-          v-if="stickerImageUrl && !stickerLoadError"
-          class="sticker-image-container"
-        >
-          <img 
-            :src="stickerImageUrl" 
-            alt="LINE Sticker"
-            class="sticker-image"
-            @error="onStickerError"
-            @load="onStickerLoad"
+        <!-- Comprehensive Sticker Renderer (Primary) -->
+        <SafeHtmlRenderer
+          v-if="processedMessageContent && processedMessageContent !== message.content"
+          :html="processedMessageContent"
+          class="sticker-rendered-content"
+        />
+        
+        <!-- Fallback: Original sticker display logic -->
+        <template v-else>
+          <!-- Try to show actual sticker image -->
+          <div
+            v-if="stickerImageUrl && !stickerLoadError"
+            class="sticker-image-container"
           >
-        </div>
-        
-        <!-- Fallback: Show sticker placeholder if image fails -->
-        <div
-          v-else
-          class="sticker-placeholder"
-        >
-          <div class="sticker-icon">
-            🏷️
+            <img 
+              :src="stickerImageUrl" 
+              alt="LINE Sticker"
+              class="sticker-image"
+              @error="onStickerError"
+              @load="onStickerLoad"
+            >
           </div>
-          <div class="sticker-text">
-            {{ message.content }}
+          
+          <!-- Fallback: Show sticker placeholder if image fails -->
+          <div
+            v-else
+            class="sticker-placeholder"
+          >
+            <div class="sticker-icon">
+              🏷️
+            </div>
+            <div class="sticker-text">
+              {{ message.content }}
+            </div>
           </div>
-        </div>
-        
-        <div
-          v-if="stickerMetadata"
-          class="sticker-info"
-        >
-          Package: {{ stickerMetadata.packageId }} | Sticker: {{ stickerMetadata.stickerId }}
-        </div>
+          
+          <div
+            v-if="stickerMetadata"
+            class="sticker-info"
+          >
+            Package: {{ stickerMetadata.packageId }} | Sticker: {{ stickerMetadata.stickerId }}
+          </div>
+        </template>
       </div>
 
       <!-- Text Message -->
-      <div
+      <SafeHtmlRenderer
         v-else
+        :html="processedMessageContent"
         class="message-text"
-      >
-        {{ message.content }}
-      </div>
-      
+      />
       <div class="message-meta">
         <time class="message-time">
           {{ formatTime(message.timestamp || message.createdAt) }}
@@ -327,8 +335,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Message } from '@/types'
+import { renderForVue, renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
+import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'
 import { 
   CheckIcon, 
   XIcon, 
@@ -491,6 +501,49 @@ const stickerImageUrl = computed(() => {
   
   return finalUrl
 })
+
+// 处理消息内容，使用智能emoji渲染器
+const processedMessageContent = ref('')
+
+// 异步处理消息内容
+const processMessageContent = async () => {
+  if (!props.message.content) {
+    processedMessageContent.value = ''
+    return
+  }
+  
+  try {
+    // 如果是贴图消息，使用完整的数据库消息渲染器（包含贴图处理）
+    if (props.message.messageType === 'sticker' && props.message.metadata) {
+      const metadataString = typeof props.message.metadata === 'string' 
+        ? props.message.metadata 
+        : JSON.stringify(props.message.metadata)
+      
+      processedMessageContent.value = await renderDatabaseMessageForVue(
+        props.message.content,
+        props.message.messageType,
+        metadataString
+      )
+    } else {
+      // 其他消息类型使用基础emoji渲染器
+      processedMessageContent.value = await renderForVue(props.message.content)
+    }
+  } catch (error) {
+    console.error('处理消息内容时出错:', error)
+    // 如果处理失败，使用原始内容（转义HTML）
+    processedMessageContent.value = escapeHtml(props.message.content)
+  }
+}
+
+// HTML转义函数
+const escapeHtml = (text: string): string => {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+// 当消息内容改变时重新处理
+watch(() => props.message.content, processMessageContent, { immediate: true })
 
 // Methods
 const formatTime = (date: Date | string | number) => {
@@ -1216,6 +1269,56 @@ const selectMessage = () => {
   margin-bottom: var(--space-2);
 }
 
+/* Comprehensive sticker renderer content */
+.sticker-rendered-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+/* Sticker container styles from comprehensive renderer */
+.sticker-rendered-content :deep(.sticker-container) {
+  display: inline-block;
+  margin: var(--space-1);
+  text-align: center;
+}
+
+.sticker-rendered-content :deep(.sticker-image) {
+  border-radius: var(--radius-lg);
+  transition: transform var(--transition-fast);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sticker-rendered-content :deep(.sticker-image[style*="opacity: 1"]) {
+  opacity: 1;
+}
+
+.sticker-rendered-content :deep(.sticker-image:hover) {
+  transform: scale(1.05);
+}
+
+/* Fallback sticker display from comprehensive renderer */
+.sticker-rendered-content :deep(.sticker-fallback) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--gray-100);
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.message-outgoing .sticker-rendered-content :deep(.sticker-fallback) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .sticker-image-container {
   display: flex;
   justify-content: center;
@@ -1426,5 +1529,63 @@ const selectMessage = () => {
     min-width: 32px;
     min-height: 32px;
   }
+}
+
+/* Emoji and Sticker Styles */
+.message-text :deep(.emoji) {
+  font-size: 1.2em;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.message-text :deep(.emoji-image) {
+  width: 1.2em;
+  height: 1.2em;
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  margin: 0 1px;
+}
+
+.message-text :deep(.line-sticker) {
+  max-width: 100px;
+  max-height: 100px;
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  margin: 2px;
+  border-radius: var(--radius-md);
+}
+
+.message-text :deep(.custom-emoji) {
+  width: 1.2em;
+  height: 1.2em;
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  margin: 0 1px;
+}
+
+/* 确保emoji在不同背景下的可读性 */
+.message-outgoing .message-text :deep(.emoji-image),
+.message-outgoing .message-text :deep(.custom-emoji) {
+  filter: brightness(1.1);
+}
+
+/* 贴图悬停效果 */
+.message-text :deep(.line-sticker:hover) {
+  transform: scale(1.05);
+  transition: transform var(--transition-fast);
+  cursor: pointer;
+}
+
+/* 加载失败时的样式 */
+.message-text :deep(.emoji-fallback) {
+  background-color: var(--gray-100);
+  color: var(--gray-600);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8em;
+  font-family: monospace;
 }
 </style>
