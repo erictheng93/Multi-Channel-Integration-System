@@ -808,37 +808,14 @@ import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
 import TeamCard from '@/components/team/TeamCard.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
+import PlusIcon from '@/components/icons/PlusIcon.vue'
+import UsersIcon from '@/components/icons/UsersIcon.vue'
+import UserCheckIcon from '@/components/icons/UserCheckIcon.vue'
+import ShieldIcon from '@/components/icons/ShieldIcon.vue'
+import TeamsIcon from '@/components/icons/TeamsIcon.vue'
+import CheckIcon from '@/components/icons/CheckIcon.vue'
 
-// Icons
-const PlusIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>`
-}
-
-
-const UsersIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 21-3-3m0 0a2 2 0 0 0-3-3 2 2 0 0 0-3 3 2 2 0 0 0 3 3 2 2 0 0 0 3-3Z"/></svg>`
-}
-
-const UserCheckIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16,11 18,13 22,9"/></svg>`
-}
-
-
-
-const ShieldIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
-}
-
-const TeamsIcon = {
-  template: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 21-3-3m0 0a2 2 0 0 0-3-3 2 2 0 0 0-3 3 2 2 0 0 0 3 3 2 2 0 0 0 3-3Z"/></svg>`
-}
-
-const CheckIcon = {
-  template: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="11" fill="#000000" stroke="none"/>
-    <path d="M7 12l3.5 3.5L17 8.5" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`
-}
+// Icons are now imported from separate .vue files
 
 // 組合式函數
 const { currentAgent } = useAuth()
