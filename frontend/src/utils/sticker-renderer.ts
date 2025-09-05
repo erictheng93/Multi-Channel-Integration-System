@@ -73,16 +73,27 @@ export class ComprehensiveStickerRenderer {
     size: keyof typeof STICKER_SIZES = 'medium'
   ): Promise<StickerRenderResult | null> {
     
+    console.log('🔍 [StickerRenderer] processStickerMetadata called')
+    console.log('🔍 [StickerRenderer] metadata:', metadata)
+    console.log('🔍 [StickerRenderer] messageType:', messageType)
+    console.log('🔍 [StickerRenderer] size:', size)
+    
     if (!metadata || messageType !== 'sticker') {
+      console.log('❌ [StickerRenderer] Invalid metadata or messageType, returning null')
       return null;
     }
 
     try {
       const parsedMetadata = JSON.parse(metadata);
-      return this.renderSticker(parsedMetadata, size);
+      console.log('🔍 [StickerRenderer] Parsed metadata:', parsedMetadata)
+      const result = await this.renderSticker(parsedMetadata, size);
+      console.log('🔍 [StickerRenderer] Render result:', result)
+      return result;
     } catch (error) {
-      console.warn('無法解析貼圖元數據:', error);
-      return this.createFallbackResult('貼圖', size);
+      console.warn('❌ [StickerRenderer] 無法解析貼圖元數據:', error);
+      const fallback = this.createFallbackResult('貼圖', size);
+      console.log('🔍 [StickerRenderer] Created fallback result:', fallback)
+      return fallback;
     }
   }
 
@@ -133,37 +144,52 @@ export class ComprehensiveStickerRenderer {
     size: keyof typeof STICKER_SIZES
   ): Promise<StickerRenderResult> {
     
+    console.log('🔍 [StickerRenderer] renderLineSticker called with:', metadata)
+    
     const { packageId, stickerId } = metadata;
     if (!packageId || !stickerId) {
+      console.log('❌ [StickerRenderer] Missing packageId or stickerId')
       return this.createFallbackResult('LINE 貼圖', size);
     }
+
+    console.log('🔍 [StickerRenderer] Package ID:', packageId, 'Sticker ID:', stickerId)
 
     const cacheKey = `line_${packageId}_${stickerId}_${size}`;
     
     // 檢查緩存
     const cached = this.stickerCache.get(cacheKey);
     if (cached) {
+      console.log('🔍 [StickerRenderer] Found cached result for:', cacheKey)
       return cached;
     }
 
     // 生成LINE貼圖URL
     const stickerUrls = this.generateLineStickerUrls(packageId, stickerId);
+    console.log('🔍 [StickerRenderer] Generated URLs:', stickerUrls)
     
     // 測試URL可用性
-    for (const url of stickerUrls) {
+    for (let i = 0; i < stickerUrls.length; i++) {
+      const url = stickerUrls[i];
+      console.log(`🔍 [StickerRenderer] Trying URL ${i + 1}/${stickerUrls.length}: ${url}`)
+      
       if (!this.errorCache.has(url)) {
+        console.log('🔍 [StickerRenderer] URL not in error cache, creating image result')
         const result = await this.createImageResult(url, `LINE 貼圖 ${stickerId}`, size, {
           'data-sticker-package': packageId,
           'data-sticker-id': stickerId,
           'data-sticker-type': 'line'
         });
         
+        console.log('✅ [StickerRenderer] Created image result for URL:', url)
         this.stickerCache.set(cacheKey, result);
         return result;
+      } else {
+        console.log('❌ [StickerRenderer] URL is in error cache, skipping:', url)
       }
     }
 
     // 所有URL都失敗，返回後備方案
+    console.log('❌ [StickerRenderer] All URLs failed, creating fallback result')
     const fallback = this.createFallbackResult('LINE 貼圖', size);
     this.stickerCache.set(cacheKey, fallback);
     return fallback;
@@ -255,24 +281,40 @@ export class ComprehensiveStickerRenderer {
     dataAttributes: Record<string, string> = {}
   ): Promise<StickerRenderResult> {
     
+    console.log('🔍 [StickerRenderer] createImageResult called with:', { url, alt, size, dataAttributes })
+    
     const sizeStyle = STICKER_SIZES[size];
     const dataAttrs = Object.entries(dataAttributes)
       .map(([key, value]) => `${key}="${value}"`)
       .join(' ');
     
-    return {
-      type: 'image',
-      content: `<img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs} style="object-fit: contain; border-radius: 8px;" onload="this.style.opacity=1" onerror="this.style.display='none'; this.nextElementSibling?.style.display='block';" />`,
+    const content = `
+      <img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs} 
+           style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;" 
+           onload="this.style.opacity=1; console.log('✅ Sticker loaded:', '${url}')" 
+           onerror="console.log('❌ Sticker failed to load:', '${url}'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
+      <div class="sticker-fallback" style="display: none; text-align: center; padding: 8px; background: #f0f0f0; border: 1px dashed #ccc; border-radius: 8px; font-size: 12px; color: #666;">
+        <span style="font-size: 16px;">🖼️</span><br>
+        [${alt}]
+      </div>
+    `.trim();
+    
+    const result = {
+      type: 'image' as const,
+      content,
       alt,
       className: 'sticker-container',
       style: {
         display: 'inline-block',
         ...sizeStyle,
-        margin: '4px',
-        opacity: '0',
-        transition: 'opacity 0.3s ease'
+        margin: '4px'
       }
     };
+    
+    console.log('🔍 [StickerRenderer] Created image result:', result)
+    console.log('🔍 [StickerRenderer] Image HTML content:', content)
+    
+    return result;
   }
 
   /**
@@ -283,26 +325,27 @@ export class ComprehensiveStickerRenderer {
     size: keyof typeof STICKER_SIZES
   ): StickerRenderResult {
     
+    console.log('🔍 [StickerRenderer] createFallbackResult called with:', { label, size })
+    
     const sizeStyle = STICKER_SIZES[size];
     
-    return {
-      type: 'fallback',
-      content: `<div class="sticker-fallback" style="display: none;"><span class="sticker-icon">🖼️</span><span class="sticker-label">[${label}]</span></div>`,
+    const result = {
+      type: 'fallback' as const,
+      content: `<div class="sticker-fallback" style="display: inline-flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 8px; background: #f0f0f0; border: 1px dashed #ccc; border-radius: 8px; font-size: 12px; color: #666; ${Object.entries(sizeStyle).map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`).join('; ')}">
+        <span style="font-size: 16px; margin-bottom: 4px;">🖼️</span>
+        <span>[${label}]</span>
+      </div>`,
       alt: label,
       className: 'sticker-container sticker-fallback-container',
       style: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...sizeStyle,
-        backgroundColor: '#f0f0f0',
-        border: '1px dashed #ccc',
-        borderRadius: '8px',
-        margin: '4px',
-        fontSize: '12px',
-        color: '#666'
+        display: 'inline-block',
+        margin: '4px'
       }
     };
+    
+    console.log('🔍 [StickerRenderer] Created fallback result:', result)
+    
+    return result;
   }
 
   /**

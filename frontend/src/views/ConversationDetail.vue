@@ -115,26 +115,41 @@
             </button>
           </div>
 
-          <!-- Date Separator -->
-          <div
-            v-if="!isSearchActive"
-            class="date-separator"
-          >
-            <span class="date-text">{{ formatDate(new Date()) }}</span>
-          </div>
+          <!-- Messages with Date Separators -->
+          <template v-if="!isSearchActive">
+            <template
+              v-for="group in groupedMessages"
+              :key="group.date"
+            >
+              <DateSeparator :date="group.date" />
+              <MessageBubble
+                v-for="message in group.messages"
+                :key="message.id"
+                :message="message"
+                :delivered="true"
+                @copy="handleMessageCopy"
+                @reply="handleMessageReply"
+                @forward="handleMessageForward"
+                @recall="handleMessageRecall"
+                @select="handleMessageSelect"
+              />
+            </template>
+          </template>
 
-          <!-- Messages -->
-          <MessageBubble
-            v-for="message in displayedMessages"
-            :key="message.id"
-            :message="message"
-            :delivered="true"
-            @copy="handleMessageCopy"
-            @reply="handleMessageReply"
-            @forward="handleMessageForward"
-            @recall="handleMessageRecall"
-            @select="handleMessageSelect"
-          />
+          <!-- Search Results (no date grouping) -->
+          <template v-else>
+            <MessageBubble
+              v-for="message in displayedMessages"
+              :key="message.id"
+              :message="message"
+              :delivered="true"
+              @copy="handleMessageCopy"
+              @reply="handleMessageReply"
+              @forward="handleMessageForward"
+              @recall="handleMessageRecall"
+              @select="handleMessageSelect"
+            />
+          </template>
 
           <!-- Typing Indicator -->
           <div
@@ -210,6 +225,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import MessageSearch from '@/components/conversation/MessageSearch.vue'
+import DateSeparator from '@/components/conversation/DateSeparator.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import KeyboardShortcuts from '@/components/ui/KeyboardShortcuts.vue'
@@ -267,6 +283,42 @@ const customerInitials = computed(() => {
 const displayedMessages = computed(() => {
   return isSearchActive.value ? searchResults.value : messages.value
 })
+
+// Group messages by date
+const groupedMessages = computed(() => {
+  if (messages.value.length === 0) return []
+  
+  const groups: Array<{ date: string; messages: Message[] }> = []
+  let currentGroup: { date: string; messages: Message[] } | null = null
+  
+  messages.value.forEach(message => {
+    const messageDate = getMessageDate(message)
+    const dateKey = formatDateKey(messageDate)
+    
+    if (!currentGroup || currentGroup.date !== dateKey) {
+      currentGroup = {
+        date: dateKey,
+        messages: []
+      }
+      groups.push(currentGroup)
+    }
+    
+    currentGroup.messages.push(message)
+  })
+  
+  return groups
+})
+
+// Helper functions for date grouping
+function getMessageDate(message: Message): Date {
+  const timestamp = message.timestamp || message.createdAt || new Date()
+  return typeof timestamp === 'number' ? new Date(timestamp) : 
+         typeof timestamp === 'string' ? new Date(timestamp) : timestamp
+}
+
+function formatDateKey(date: Date): string {
+  return date.toDateString() // Returns format like "Mon Jan 15 2024"
+}
 
 // Message handlers
 const handleMessageSent = async (_data: { content: string; attachments: unknown[] }) => {
@@ -501,13 +553,7 @@ const handleMessageSelect = (message: Message) => {
   // TODO: 實現多選功能
 }
 
-function formatDate(date: Date) {
-  return date.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
+// formatDate function removed as it's no longer used
 
 function goBack() {
   router.push('/conversations')
