@@ -1,11 +1,33 @@
 <template>
   <div class="message-input">
+    <!-- Reply Reference -->
+    <div
+      v-if="replyToMessage"
+      class="reply-reference"
+    >
+      <div class="reply-content">
+        <div class="reply-header">
+          <span class="reply-label">回覆</span>
+          <span class="reply-sender">{{ replyToMessage.senderName }}</span>
+        </div>
+        <div class="reply-text">
+          {{ replyToMessage.content }}
+        </div>
+      </div>
+      <button
+        class="reply-close"
+        @click="clearReply"
+      >
+        <XIcon />
+      </button>
+    </div>
+
     <div class="input-container">
       <div class="input-wrapper">
         <textarea
           ref="textareaRef"
           v-model="messageText"
-          placeholder="Type a message..."
+          placeholder="輸入訊息..."
           class="message-textarea"
           :disabled="disabled || sending"
           rows="1"
@@ -46,15 +68,15 @@
       </div>
       
       <button
-        :disabled="!canSend || sending"
         class="send-button"
         :class="{ 'sending': sending }"
         @click="sendMessage"
       >
-        <SendIcon v-if="!sending" />
+        <SendIcon />
+        <span v-if="!sending">送出</span>
         <LoadingIcon
           v-else
-          class="animate-spin"
+          class="animate-spin loading-icon"
         />
       </button>
     </div>
@@ -125,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { messageApi } from '@/api/message'
 import { 
   SendIcon, 
@@ -170,11 +192,9 @@ const sending = ref(false)
 const error = ref('')
 const successMessage = ref('')
 const showEmojiPicker = ref(false)
+const replyToMessage = ref<{ content: string; senderName: string } | null>(null)
 
-// Computed
-const canSend = computed(() => {
-  return (messageText.value.trim().length > 0 || attachments.value.length > 0) && !props.disabled
-})
+// Computed - 移除 canSend 邏輯，按鈕始終可用（除了 sending 狀態）
 
 // Methods
 const handleInput = () => {
@@ -190,11 +210,13 @@ const autoResize = () => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  // Esc 鍵 - 清空輸入或關閉表情選擇器
+  // Esc 鍵 - 清空輸入或關閉表情選擇器或清除回復引用
   if (event.key === 'Escape') {
     event.preventDefault()
     if (showEmojiPicker.value) {
       showEmojiPicker.value = false
+    } else if (replyToMessage.value) {
+      replyToMessage.value = null
     } else if (messageText.value.trim()) {
       messageText.value = ''
       autoResize()
@@ -245,7 +267,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 }
 
 const sendMessage = async () => {
-  if (!canSend.value || sending.value) {return}
+  if (sending.value) {return}
   
   const content = messageText.value.trim()
   const currentAttachments = [...attachments.value]
@@ -293,6 +315,7 @@ const sendMessage = async () => {
       // Clear input
       messageText.value = ''
       attachments.value = []
+      replyToMessage.value = null
       
       // Reset textarea height
       await nextTick()
@@ -428,11 +451,43 @@ const sendQuickMessage = async (quickText: string) => {
   return true
 }
 
+// 外部調用的設置文本方法（不發送消息）
+const setMessageText = (text: string) => {
+  if (!text.trim()) {return false}
+  
+  messageText.value = text.trim()
+  
+  // 自動調整高度
+  nextTick(() => {
+    autoResize()
+    // 聚焦到輸入框
+    textareaRef.value?.focus()
+  })
+  
+  return true
+}
+
+// 設置回復引用的方法
+const setReplyTo = (content: string, senderName: string) => {
+  replyToMessage.value = { content, senderName }
+  
+  // 聚焦到輸入框
+  nextTick(() => {
+    textareaRef.value?.focus()
+  })
+}
+
+// 清除回復引用
+const clearReply = () => {
+  replyToMessage.value = null
+}
+
 // Watch for prop changes
 watch(() => props.conversationId, () => {
   // Clear input when conversation changes
   messageText.value = ''
   attachments.value = []
+  replyToMessage.value = null
   error.value = ''
   
   nextTick(() => {
@@ -461,6 +516,9 @@ onUnmounted(() => {
 // 暴露方法給父組件調用
 defineExpose({
   sendQuickMessage,
+  setMessageText,
+  setReplyTo,
+  clearReply,
   focus: () => textareaRef.value?.focus()
 })
 </script>
@@ -471,9 +529,116 @@ defineExpose({
   margin: 0 auto;
 }
 
+.reply-reference {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(59, 130, 246, 0.05));
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 20px;
+  margin-bottom: -1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.reply-reference::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #6366f1, #3b82f6);
+  border-radius: 0 2px 2px 0;
+}
+
+.reply-content {
+  flex: 1;
+  min-width: 0;
+  padding-left: 12px;
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.reply-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 2px 8px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.reply-sender {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4338ca;
+  opacity: 0.9;
+}
+
+.reply-text {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.5;
+  max-height: 42px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.reply-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(71, 85, 105, 0.05);
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 12px;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+}
+
+.reply-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  transform: scale(1.05);
+}
+
+.reply-close:active {
+  transform: scale(0.95);
+}
+
+.reply-close svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.reply-close:hover svg {
+  transform: rotate(90deg);
+}
+
 .input-container {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-3);
   background: white;
   border: 1px solid var(--gray-300);
@@ -485,7 +650,7 @@ defineExpose({
 .input-wrapper {
   flex: 1;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -494,17 +659,19 @@ defineExpose({
   border: none;
   outline: none;
   resize: none;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  padding: var(--space-2) 0;
+  font-size: 1rem;
+  line-height: 1.4;
+  padding: 0.6em 0;
   background: transparent;
   color: var(--gray-900);
-  min-height: 20px;
+  min-height: 24px;
   max-height: 120px;
+  vertical-align: middle;
 }
 
 .message-textarea::placeholder {
   color: var(--gray-400);
+  font-size: 1rem;
 }
 
 .message-textarea:disabled {
@@ -560,38 +727,99 @@ defineExpose({
 }
 
 .send-button {
+  --bezier: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --edge-light: hsla(0, 0%, 50%, 0.8);
+  --text-light: rgba(255, 255, 255, 0.4);
+  --back-color: 140, 70%; /* Green theme: 140° hue, 70% saturation - 更鮮豔 */
+
+  cursor: pointer;
+  padding: 1em 2em;
+  border-radius: 0.7em;
+  min-height: 3.5em;
+  min-width: 7em;
   display: flex;
   align-items: center;
+  gap: 0.7em;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--primary-500);
-  color: white;
-  border: none;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: all var(--transition-fast);
   flex-shrink: 0;
+
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  font-weight: 600;
+
+  background: linear-gradient(
+    140deg,
+    hsla(var(--back-color), 60%, 1) min(2em, 20%),
+    hsla(var(--back-color), 55%, 0.6) min(8em, 100%)
+  );
+  color: #000;
+  border: 0;
+  box-shadow: inset 0.4px 1px 4px var(--edge-light);
+
+  transition: all 0.1s var(--bezier);
 }
 
-.send-button:hover:not(:disabled) {
-  background: var(--primary-600);
-  transform: scale(1.05);
+.send-button:hover {
+  --edge-light: hsla(0, 0%, 50%, 1);
+  text-shadow: 0px 0px 10px var(--text-light);
+  box-shadow: inset 0.4px 1px 4px var(--edge-light),
+    2px 4px 8px hsla(0, 0%, 0%, 0.295);
+  transform: scale(1.1);
 }
 
-.send-button:disabled {
-  background: var(--gray-300);
-  cursor: not-allowed;
-  transform: none;
+.send-button:active {
+  --text-light: rgba(255, 255, 255, 1);
+
+  background: linear-gradient(
+    140deg,
+    hsla(var(--back-color), 60%, 1) min(2em, 20%),
+    hsla(var(--back-color), 55%, 0.6) min(8em, 100%)
+  );
+  box-shadow: inset 0.4px 1px 8px var(--edge-light),
+    0px 0px 8px hsla(var(--back-color), 50%, 0.6);
+  text-shadow: 0px 0px 20px var(--text-light);
+  color: #000;
+  letter-spacing: 0.1em;
+  transform: scale(1);
 }
 
 .send-button.sending {
-  background: var(--primary-400);
+  --back-color: 140, 60%;
+  animation: pulse-green 2s infinite;
 }
 
 .send-button svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.send-button span {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.send-button .loading-icon {
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    background: linear-gradient(
+      140deg,
+      hsla(140, 60%, 60%, 1) min(2em, 20%),
+      hsla(140, 60%, 55%, 0.6) min(8em, 100%)
+    );
+  }
+  50% {
+    background: linear-gradient(
+      140deg,
+      hsla(140, 80%, 70%, 1) min(2em, 20%),
+      hsla(140, 80%, 65%, 0.6) min(8em, 100%)
+    );
+  }
 }
 
 .file-input {
@@ -781,35 +1009,87 @@ defineExpose({
 }
 
 @media (max-width: 768px) {
+  .reply-reference {
+    padding: 12px 16px;
+    border-radius: 14px 14px 0 0;
+  }
+  
+  .reply-content {
+    padding-left: 8px;
+  }
+  
+  .reply-header {
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  
+  .reply-label {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  
+  .reply-sender {
+    font-size: 13px;
+  }
+  
+  .reply-text {
+    font-size: 13px;
+    max-height: 36px;
+  }
+  
+  .reply-close {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    margin-left: 8px;
+  }
+  
+  .reply-close svg {
+    width: 14px;
+    height: 14px;
+  }
+
   .input-container {
-    padding: var(--space-2);
-    gap: var(--space-2);
+    padding: 12px 16px;
+    gap: 10px;
+    border-radius: 18px;
   }
 
   .message-textarea {
     font-size: 1rem; /* iOS 防縮放 */
-    min-height: 22px;
-    padding: var(--space-2) 0;
+    min-height: 24px;
+    padding: 0.6em 0;
+    line-height: 1.4;
   }
   
   .send-button {
-    width: 36px;
-    height: 36px;
+    min-width: 5.5em;
+    min-height: 3em;
+    padding: 0.8em 1.5em;
+    font-size: 16px;
+    gap: 0.6em;
   }
   
   .send-button svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+  }
+  
+  .send-button .loading-icon {
+    width: 18px;
+    height: 18px;
   }
   
   .action-btn {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
   }
   
   .action-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .emoji-picker-popup {
@@ -865,13 +1145,21 @@ defineExpose({
   }
 
   .send-button {
-    width: 32px;
-    height: 32px;
+    min-width: 4.5em;
+    min-height: 2.5em;
+    padding: 0.6em 1em;
+    font-size: 14px;
+    gap: 0.5em;
   }
 
   .send-button svg {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
+  }
+  
+  .send-button .loading-icon {
+    width: 16px;
+    height: 16px;
   }
 
   /* 確保表情選擇器不會被虛擬鍵盤遮蓋 */

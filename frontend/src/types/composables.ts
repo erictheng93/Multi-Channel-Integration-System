@@ -47,26 +47,6 @@ export interface FormOperations<T extends Record<string, unknown>> extends FormS
   clearFieldError: <K extends keyof T>(field: K) => void
 }
 
-// WebSocket 狀態類型
-export interface WebSocketState {
-  ws: ComputedRef<WebSocket | null>
-  status: ComputedRef<string>
-  data: ComputedRef<unknown>
-  lastMessage: ComputedRef<MessageEvent | null>
-  error: Ref<string | null>
-  isConnected: ComputedRef<boolean>
-  isConnecting: ComputedRef<boolean>
-  isReconnecting: ComputedRef<boolean>
-}
-
-// WebSocket 操作類型
-export interface WebSocketOperations extends WebSocketState {
-  connect: () => void
-  disconnect: () => void
-  reconnect: () => void
-  send: (message: string | object) => void
-  sendSafe: (message: string | object) => boolean
-}
 
 // LocalStorage 操作類型
 export interface LocalStorageOperations<T> {

@@ -189,8 +189,8 @@
             <span class="refresh-text">更新中...</span>
           </div>
           
-          <!-- Virtual scrolling list for performance -->
-          <VirtualScrollList
+          <!-- Enhanced Smart Virtual scrolling list for performance -->
+          <SmartVirtualScrollList
             :items="conversations"
             :item-height="120"
             :container-height="600"
@@ -198,10 +198,15 @@
             :loading-more="loadingMore"
             :reached-end="reachedEnd"
             :preload-pages="2"
+            :enable-smart-preload="true"
+            :predictive-load-threshold="0.8"
+            :intersection-threshold="0.5"
+            :root-margin="'200px'"
             :get-item-key="(item) => (item as Conversation).id"
-            class="virtual-conversations"
+            class="smart-virtual-conversations"
             @reach-bottom="handleLoadMore"
             @visible-range-change="handleVisibleRangeChange"
+            @predictive-load="handlePredictiveLoad"
           >
             <template #default="{ item }">
               <div 
@@ -230,7 +235,7 @@
                 </div>
               </div>
             </template>
-          </VirtualScrollList>
+          </SmartVirtualScrollList>
         </div>
       </div>
 
@@ -267,17 +272,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth, useConversations } from '@/composables'
 import type { Conversation, ConversationFilters } from '@/types'
 import { useConversationsStore } from '@/stores/conversations'
 import { conversationSync } from '@/services/conversationSync'
 import { cacheManager } from '@/services/cacheManager'
+import { updateConversationsWithAnimation } from '@/services/incrementalUpdateManager'
+import { webWorkerManager } from '@/services/webWorkerManager'
+import { predictiveLoader } from '@/services/predictiveLoader'
+import { idleTimeProcessor, TaskPriority } from '@/services/idleTimeProcessor'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
-import VirtualScrollList from '@/components/ui/VirtualScrollList.vue'
+import SmartVirtualScrollList from '@/components/ui/SmartVirtualScrollList.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
 
@@ -331,9 +340,9 @@ const unreadCount = computed(() =>
   conversations.value.filter((c: Conversation) => c.unreadCount && c.unreadCount > 0).length
 )
 
-// Methods - Using smart cache loading
+// Methods - Using smart cache loading with all optimizations
 async function loadConversations() {
-  console.log('🚀 [ConversationList] Loading conversations with smart cache')
+  console.log('🚀 [ConversationList] Loading conversations with advanced optimizations')
   
   try {
     // 準備篩選條件
@@ -346,20 +355,59 @@ async function loadConversations() {
       delete apiFilters.assignedTo
     }
 
-    // 使用智能快取載入 - 先顯示快取，再背景更新
-    const result = await loadWithCache(apiFilters as ConversationFilters, currentPage.value)
-    total.value = conversationsStore.pagination.total
+    // 記錄篩選行為用於預測
+    predictiveLoader.recordFilterChange(apiFilters as ConversationFilters)
+
+    // 首先檢查預測性預載入的數據
+    const preloadedData = predictiveLoader.getPreloadedData(apiFilters as ConversationFilters)
     
-    // 預載入下一頁
-    if (result?.fresh && !result?.error) {
-      nextTick(() => {
-        preloadNextPage()
-      })
+    if (preloadedData && preloadedData.length > 0) {
+      console.log('🎯 [ConversationList] Using preloaded data!')
+      
+      // 使用預載入的數據進行增量更新動畫
+      await updateConversationsWithAnimation(preloadedData)
+      conversationsStore.setConversations(preloadedData)
+      total.value = preloadedData.length
+      
+      // 背景驗證數據是否最新
+      idleTimeProcessor.scheduleTask(async () => {
+        const result = await loadWithCache(apiFilters as ConversationFilters, currentPage.value)
+        if (result && 'count' in result && result.fresh) {
+          // 獲取最新的對話數據進行比較
+          const latestData = conversations.value
+          if (JSON.stringify(latestData) !== JSON.stringify(preloadedData)) {
+            // 如果數據不同，進行平滑更新
+            await updateConversationsWithAnimation(latestData)
+          }
+        }
+      }, TaskPriority.LOW)
+      
+    } else {
+      // 使用智能快取載入 - 先顯示快取，再背景更新
+      const result = await loadWithCache(apiFilters as ConversationFilters, currentPage.value)
+      
+      if (result && result.fresh) {
+        // 使用增量更新動畫更新對話列表
+        await updateConversationsWithAnimation(conversations.value)
+        total.value = conversationsStore.pagination.total
+      }
+      
+      // 預載入下一頁
+      if (result?.fresh && !result?.error) {
+        idleTimeProcessor.scheduleTask(() => {
+          preloadNextPage()
+        }, TaskPriority.LOW)
+      }
+      
+      if (result?.fromCache && result?.fresh) {
+        console.log('✨ [ConversationList] Zero-wait experience achieved!')
+      }
     }
-    
-    if (result?.fromCache && result?.fresh) {
-      console.log('✨ [ConversationList] Zero-wait experience achieved!')
-    }
+
+    // 在空閒時間進行預測性預載入
+    idleTimeProcessor.scheduleTask(() => {
+      predictiveLoader.predictAndPreload()
+    }, TaskPriority.LOW)
     
   } catch (error) {
     console.error('載入對話失敗:', error)
@@ -463,6 +511,28 @@ async function handleLoadMore() {
   }
 }
 
+// 預測性載入事件處理
+function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: number) {
+  console.log(`🔮 [ConversationList] Predictive load triggered: ${direction}, distance: ${estimatedDistance}`)
+  
+  // 記錄滾動行為用於預測
+  predictiveLoader.recordBehavior({
+    type: 'scroll',
+    timestamp: Date.now(),
+    data: { direction, estimatedDistance }
+  })
+  
+  // 在空閒時間執行預測性載入
+  idleTimeProcessor.scheduleTask(() => {
+    predictiveLoader.predictAndPreload()
+  }, TaskPriority.LOW)
+  
+  // 如果用戶接近數據底部，提前載入更多
+  if (direction === 'down' && estimatedDistance < 5 && conversationsStore.canLoadMore) {
+    handleLoadMore()
+  }
+}
+
 function handleVisibleRangeChange(startIndex: number, endIndex: number) {
   visibleRange.value = { startIndex, endIndex }
   
@@ -494,13 +564,34 @@ watch(filters, () => {
 
 // Lifecycle
 onMounted(async () => {
-  console.log('🚀 [ConversationList] Component mounted, starting optimized loading')
+  console.log('🚀 [ConversationList] Component mounted, initializing advanced loading system')
+  
+  // 初始化 Web Worker
+  await new Promise((resolve) => {
+    const checkWorkerReady = () => {
+      if (webWorkerManager.isReady.value) {
+        console.log('✅ [ConversationList] Web Worker ready')
+        resolve(true)
+      } else {
+        setTimeout(checkWorkerReady, 100)
+      }
+    }
+    checkWorkerReady()
+  })
+  
+  // 啟用預測性載入系統
+  predictiveLoader.setEnabled(true)
   
   // 優化的初始加載：不會有突兀的loading狀態
   await loadConversations()
   
   // 啟動混合同步服務（背景運行）
   await conversationSync.start()
+  
+  // 在空閒時間進行初始預測分析
+  idleTimeProcessor.scheduleTask(() => {
+    predictiveLoader.predictAndPreload()
+  }, TaskPriority.LOW)
   
   // 監聽滾動事件實現無限滾動
   const handleScroll = () => {
@@ -521,8 +612,14 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  console.log('🛑 [ConversationList] Component unmounted, stopping sync service')
+  console.log('🛑 [ConversationList] Component unmounted, cleaning up services')
+  
+  // 停止所有服務
   conversationSync.stop()
+  predictiveLoader.setEnabled(false)
+  idleTimeProcessor.cancelAllTasks()
+  
+  console.log('✨ [ConversationList] All services cleaned up')
 })
 </script>
 
