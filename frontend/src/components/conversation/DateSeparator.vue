@@ -1,10 +1,10 @@
 <template>
   <div class="date-separator">
-    <div class="separator-line"></div>
+    <div class="separator-line" />
     <div class="separator-label">
       {{ formattedDate }}
     </div>
-    <div class="separator-line"></div>
+    <div class="separator-line" />
   </div>
 </template>
 

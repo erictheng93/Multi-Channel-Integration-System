@@ -203,11 +203,11 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useActivityStream } from '@/composables/useActivityStream'
-import type { ConversationFilters } from '@/types'
+import type { ConversationFilters, Conversation } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
-import { convertEmojiDescriptions } from '@/utils/emoji-utils'
+import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
@@ -272,9 +272,9 @@ const goToConversation = (id: string) => {
   router.push(`/conversations/${id}`)
 }
 
-const getLastMessageText = (conversation: any) => {
-  const content = conversation.lastMessage?.content || conversation.last_message_content || '暫無訊息'
-  return convertEmojiDescriptions(content)
+const getLastMessageText = (conversation: Conversation) => {
+  const content = conversation.lastMessage?.content || '暫無訊息'
+  return convertEmojiForConversationList(content)
 }
 
 const applyFilters = () => {

@@ -152,9 +152,13 @@ export class ComprehensiveStickerRenderer {
       return this.createFallbackResult('LINE 貼圖', size);
     }
 
-    console.log('🔍 [StickerRenderer] Package ID:', packageId, 'Sticker ID:', stickerId)
+    // TypeScript type narrowing - we know these are strings now
+    const validPackageId: string = packageId;
+    const validStickerId: string = stickerId;
 
-    const cacheKey = `line_${packageId}_${stickerId}_${size}`;
+    console.log('🔍 [StickerRenderer] Package ID:', validPackageId, 'Sticker ID:', validStickerId)
+
+    const cacheKey = `line_${validPackageId}_${validStickerId}_${size}`;
     
     // 檢查緩存
     const cached = this.stickerCache.get(cacheKey);
@@ -164,19 +168,21 @@ export class ComprehensiveStickerRenderer {
     }
 
     // 生成LINE貼圖URL
-    const stickerUrls = this.generateLineStickerUrls(packageId, stickerId);
+    const stickerUrls = this.generateLineStickerUrls(validPackageId, validStickerId);
     console.log('🔍 [StickerRenderer] Generated URLs:', stickerUrls)
     
     // 測試URL可用性
     for (let i = 0; i < stickerUrls.length; i++) {
       const url = stickerUrls[i];
+      if (!url) {continue;} // Skip undefined URLs
+      
       console.log(`🔍 [StickerRenderer] Trying URL ${i + 1}/${stickerUrls.length}: ${url}`)
       
       if (!this.errorCache.has(url)) {
         console.log('🔍 [StickerRenderer] URL not in error cache, creating image result')
-        const result = await this.createImageResult(url, `LINE 貼圖 ${stickerId}`, size, {
-          'data-sticker-package': packageId,
-          'data-sticker-id': stickerId,
+        const result = await this.createImageResult(url, `LINE 貼圖 ${validStickerId}`, size, {
+          'data-sticker-package': validPackageId,
+          'data-sticker-id': validStickerId,
           'data-sticker-type': 'line'
         });
         

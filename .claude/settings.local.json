@@ -79,7 +79,10 @@
       "Bash(npx wrangler d1 export:*)",
       "Bash(npx wrangler pages deploy:*)",
       "WebFetch(domain:e26a7706.multi-channel-platform-frontend.pages.dev)",
-      "Bash(npx wrangler:*)"
+      "Bash(npx wrangler:*)",
+      "Bash(claude doctor)",
+      "Bash(npm:*)",
+      "WebFetch(domain:developers.line.biz)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
