@@ -320,6 +320,12 @@ const navigationItems = computed(() => {
 
 const currentPageTitle = computed(() => {
   const item = navigationItems.value.find(item => item.path === route.path)
+  
+  // 特殊处理对话详情页面
+  if (route.path.startsWith('/conversations/') && route.params.id) {
+    return '對話'
+  }
+  
   return item?.label || '頁面'
 })
 

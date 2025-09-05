@@ -513,23 +513,37 @@ const processMessageContent = async () => {
   }
   
   try {
+    console.log('🔍 [MessageBubble] Processing message content:', props.message.content)
+    console.log('🔍 [MessageBubble] Message type:', props.message.messageType)
+    console.log('🔍 [MessageBubble] Raw metadata:', props.message.metadata)
+    
     // 如果是贴图消息，使用完整的数据库消息渲染器（包含贴图处理）
     if (props.message.messageType === 'sticker' && props.message.metadata) {
       const metadataString = typeof props.message.metadata === 'string' 
         ? props.message.metadata 
         : JSON.stringify(props.message.metadata)
       
-      processedMessageContent.value = await renderDatabaseMessageForVue(
+      console.log('🔍 [MessageBubble] Processing sticker with metadata:', metadataString)
+      
+      const result = await renderDatabaseMessageForVue(
         props.message.content,
         props.message.messageType,
         metadataString
       )
+      
+      console.log('🔍 [MessageBubble] Rendered sticker HTML:', result)
+      console.log('🔍 [MessageBubble] Rendered sticker HTML length:', result?.length)
+      
+      processedMessageContent.value = result
     } else {
       // 其他消息类型使用基础emoji渲染器
       processedMessageContent.value = await renderForVue(props.message.content)
     }
+    
+    console.log('🔍 [MessageBubble] Final processed content:', processedMessageContent.value)
   } catch (error) {
-    console.error('处理消息内容时出错:', error)
+    console.error('❌ [MessageBubble] 处理消息内容时出错:', error)
+    console.error('❌ [MessageBubble] Error stack:', error.stack)
     // 如果处理失败，使用原始内容（转义HTML）
     processedMessageContent.value = escapeHtml(props.message.content)
   }

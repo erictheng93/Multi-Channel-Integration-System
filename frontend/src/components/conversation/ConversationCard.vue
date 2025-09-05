@@ -70,6 +70,7 @@ import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { UserIcon } from '@/components/icons'
 import { usePrefetch } from '@/composables/usePrefetch'
+import { convertEmojiDescriptions } from '@/utils/emoji-utils'
 
 interface Props {
   conversation: Conversation
@@ -116,7 +117,8 @@ const lastMessageText = computed(() => {
   if (!props.conversation.lastMessage) {return '暫無訊息'}
   
   const content = props.conversation.lastMessage.content
-  return content.length > 50 ? `${content.substring(0, 50)  }...` : content
+  const convertedContent = convertEmojiDescriptions(content)
+  return convertedContent.length > 50 ? `${convertedContent.substring(0, 50)}...` : convertedContent
 })
 
 const formatTime = (date: Date | string | number) => {

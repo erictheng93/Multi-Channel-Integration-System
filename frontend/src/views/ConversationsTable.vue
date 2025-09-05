@@ -126,7 +126,7 @@
                     </td>
                     <td class="message-cell">
                       <div class="last-message">
-                        {{ conversation.lastMessage?.content || (conversation as any).last_message_content || '暫無訊息' }}
+                        {{ getLastMessageText(conversation) }}
                       </div>
                     </td>
                     <td class="agent-cell">
@@ -178,7 +178,7 @@
                 </div>
                 <div class="card-body">
                   <div class="last-message">
-                    {{ conversation.lastMessage?.content || (conversation as any).last_message_content || '暫無訊息' }}
+                    {{ getLastMessageText(conversation) }}
                   </div>
                 </div>
                 <div class="card-footer">
@@ -207,6 +207,7 @@ import type { ConversationFilters } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
+import { convertEmojiDescriptions } from '@/utils/emoji-utils'
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
@@ -269,6 +270,11 @@ const formatTime = (date: Date | number) => {
 
 const goToConversation = (id: string) => {
   router.push(`/conversations/${id}`)
+}
+
+const getLastMessageText = (conversation: any) => {
+  const content = conversation.lastMessage?.content || conversation.last_message_content || '暫無訊息'
+  return convertEmojiDescriptions(content)
 }
 
 const applyFilters = () => {

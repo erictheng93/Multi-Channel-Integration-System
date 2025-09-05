@@ -64,28 +64,48 @@ export class EnhancedMessageRenderer {
     messageType: string, 
     metadata: string | null = null
   ): Promise<string> {
-    if (!message) {return '';}
+    console.log('🔍 [EnhancedMessageRenderer] renderMessageWithMetadata called:', { message, messageType, metadata })
+    
+    if (!message) {
+      console.log('🔍 [EnhancedMessageRenderer] Empty message, returning empty string')
+      return '';
+    }
 
     // 首先处理文本内容中的emoji描述
     let html = await this.processEmojiDescriptions(message);
+    console.log('🔍 [EnhancedMessageRenderer] After emoji processing:', html)
     
     // 处理贴图（基于数据库元数据）
     if (this.options.enableStickers && messageType === 'sticker' && metadata) {
+      console.log('🔍 [EnhancedMessageRenderer] Processing sticker with options:', this.options)
+      
       const stickerResult = await comprehensiveStickerRenderer.processStickerMetadata(
         metadata, 
         messageType, 
         this.options.stickerSize || 'medium'
       );
       
+      console.log('🔍 [EnhancedMessageRenderer] Sticker result:', stickerResult)
+      
       if (stickerResult) {
         // 如果是贴图消息，替换整个文本内容为贴图HTML
         const stickerHTML = this.createStickerHTML(stickerResult);
+        console.log('🔍 [EnhancedMessageRenderer] Generated sticker HTML:', stickerHTML)
         html = stickerHTML;
+      } else {
+        console.log('❌ [EnhancedMessageRenderer] No sticker result returned')
       }
+    } else {
+      console.log('🔍 [EnhancedMessageRenderer] Skipping sticker processing:', { 
+        enableStickers: this.options.enableStickers, 
+        messageType, 
+        hasMetadata: !!metadata 
+      })
     }
     
     // 处理自定义表情
     html = await this.processCustomEmojis(html);
+    console.log('🔍 [EnhancedMessageRenderer] Final HTML:', html)
     
     return html;
   }
@@ -95,12 +115,16 @@ export class EnhancedMessageRenderer {
    */
   private createStickerHTML(stickerResult: StickerRenderResult): string {
     const styleString = stickerResult.style 
-      ? Object.entries(stickerResult.style).map(([key, value]) => `${key}: ${value}`).join('; ')
+      ? Object.entries(stickerResult.style).map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`).join('; ')
       : '';
       
     const className = stickerResult.className || 'sticker-container';
     
-    return `<div class="${className}" style="${styleString}">${stickerResult.content}</div>`;
+    const html = `<div class="${className}" style="${styleString}">${stickerResult.content}</div>`;
+    
+    console.log('🔍 [EnhancedMessageRenderer] createStickerHTML result:', html)
+    
+    return html;
   }
 
   /**
