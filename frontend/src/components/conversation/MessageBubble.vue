@@ -335,7 +335,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import type { Message } from '@/types'
 import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
 import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
@@ -507,47 +507,83 @@ const stickerImageUrl = computed(() => {
 const processedMessageContent = ref('')
 
 // 异步处理消息内容
+// 缓存处理结果，避免重复处理
+const contentCache = new Map<string, string>()
+let debounceTimer: number | null = null
+
 const processMessageContent = async () => {
   if (!props.message.content) {
     processedMessageContent.value = ''
     return
   }
-  
-  try {
-    console.log('🔍 [MessageBubble] Processing message content:', props.message.content)
-    console.log('🔍 [MessageBubble] Message type:', props.message.messageType)
-    console.log('🔍 [MessageBubble] Raw metadata:', props.message.metadata)
-    
-    // 如果是贴图消息，使用完整的数据库消息渲染器（包含贴图处理）
-    if (props.message.messageType === 'sticker' && props.message.metadata) {
-      const metadataString = typeof props.message.metadata === 'string' 
-        ? props.message.metadata 
-        : JSON.stringify(props.message.metadata)
+
+  // 清除之前的防抖计时器
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+
+  // 防抖处理，避免频繁调用
+  debounceTimer = window.setTimeout(async () => {
+    try {
+      // 创建内容标识符，包含内容、类型和metadata
+      const messageType = props.message.messageType || 'text' // 提供fallback
+      const contentIdentifier = `${props.message.content}|${messageType}|${JSON.stringify(props.message.metadata || {})}`
       
-      console.log('🔍 [MessageBubble] Processing sticker with metadata:', metadataString)
+      // 检查缓存
+      if (contentCache.has(contentIdentifier)) {
+        const cachedContent = contentCache.get(contentIdentifier)
+        if (cachedContent) {
+          processedMessageContent.value = cachedContent
+          return
+        }
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('🔍 [MessageBubble] Processing message:', {
+          content: `${props.message.content.substring(0, 50)  }...`,
+          type: messageType,
+          hasMetadata: !!props.message.metadata
+        })
+      }
       
-      const result = await renderDatabaseMessageForVue(
-        props.message.content,
-        props.message.messageType,
-        metadataString
-      )
+      let result: string
       
-      console.log('🔍 [MessageBubble] Rendered sticker HTML:', result)
-      console.log('🔍 [MessageBubble] Rendered sticker HTML length:', result?.length)
+      // 如果是贴图消息，使用完整的数据库消息渲染器（包含贴图处理）
+      if (messageType === 'sticker' && props.message.metadata) {
+        const metadataString = typeof props.message.metadata === 'string' 
+          ? props.message.metadata 
+          : JSON.stringify(props.message.metadata)
+        
+        result = await renderDatabaseMessageForVue(
+          props.message.content,
+          messageType,
+          metadataString
+        )
+      } else {
+        // 其他消息类型使用分层emoji处理器 (Layer 1 + Layer 2)
+        result = await convertEmojiForMessageDetail(props.message.content)
+      }
+      
+      // 缓存结果（限制缓存大小，避免内存泄漏）
+      if (contentCache.size > 100) {
+        const firstKey = contentCache.keys().next().value
+        if (firstKey) {
+          contentCache.delete(firstKey)
+        }
+      }
+      contentCache.set(contentIdentifier, result)
       
       processedMessageContent.value = result
-    } else {
-      // 其他消息类型使用分层emoji处理器 (Layer 1 + Layer 2)
-      processedMessageContent.value = await convertEmojiForMessageDetail(props.message.content)
+      
+      if (import.meta.env.DEV) {
+        console.log('🔍 [MessageBubble] Content processed successfully')
+      }
+    } catch (error) {
+      console.error('❌ [MessageBubble] 处理消息内容时出错:', error)
+      // 如果处理失败，使用原始内容（转义HTML）
+      processedMessageContent.value = escapeHtml(props.message.content)
     }
-    
-    console.log('🔍 [MessageBubble] Final processed content:', processedMessageContent.value)
-  } catch (error) {
-    console.error('❌ [MessageBubble] 处理消息内容时出错:', error)
-    console.error('❌ [MessageBubble] Error stack:', error instanceof Error ? error.stack : 'Unknown error')
-    // 如果处理失败，使用原始内容（转义HTML）
-    processedMessageContent.value = escapeHtml(props.message.content)
-  }
+  }, 100) // 100ms防抖
 }
 
 // HTML转义函数
@@ -557,8 +593,32 @@ const escapeHtml = (text: string): string => {
   return div.innerHTML
 }
 
-// 当消息内容改变时重新处理
-watch(() => props.message.content, processMessageContent, { immediate: true })
+// 智能监听消息变化，包含内容、类型和metadata的变更
+watch(
+  () => ({
+    content: props.message.content,
+    messageType: props.message.messageType,
+    metadata: props.message.metadata
+  }),
+  (newValue, oldValue) => {
+    // 只有在实际内容发生变化时才重新处理
+    if (!oldValue || 
+        newValue.content !== oldValue.content ||
+        newValue.messageType !== oldValue.messageType ||
+        JSON.stringify(newValue.metadata) !== JSON.stringify(oldValue.metadata)) {
+      processMessageContent()
+    }
+  },
+  { immediate: true, deep: true }
+)
+
+// 組件清理
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+  contentCache.clear()
+})
 
 // Methods
 const formatTime = (date: Date | string | number) => {

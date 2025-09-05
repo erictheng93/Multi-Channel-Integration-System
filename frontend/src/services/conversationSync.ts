@@ -22,7 +22,7 @@ interface SyncConfig {
 // 默認配置
 const DEFAULT_CONFIG: SyncConfig = {
   sseUrl: '/api/conversations/stream',
-  pollbackupInterval: 120000,   // 2分鐘備份輪詢
+  pollbackupInterval: 300000,   // 5分鐘備份輪詢（減少頻率）
   heartbeatTimeout: 45000,      // 45秒心跳超時
   reconnectDelay: 5000,         // 5秒重連延遲
   maxReconnectAttempts: 3       // 最多重連3次
@@ -238,9 +238,16 @@ export class ConversationSyncService {
       const shouldPoll = this.status.value === 'polling' || 
                         timeSinceSSEUpdate > this.config.pollbackupInterval;
 
-      if (shouldPoll) {
-        console.log('🔄 [Sync Service] Backup polling triggered');
+      // 添加頁面檢測：只在對話列表頁面進行輪詢，避免在對話詳情頁面造成干擾
+      const currentPath = window.location.pathname;
+      const isConversationListPage = currentPath === '/conversations' || currentPath === '/';
+      const isConversationDetailPage = currentPath.startsWith('/conversations/');
+
+      if (shouldPoll && isConversationListPage && !isConversationDetailPage) {
+        console.log('🔄 [Sync Service] Backup polling triggered for conversation list');
         this.pollConversations();
+      } else if (shouldPoll && isConversationDetailPage) {
+        console.log('🚫 [Sync Service] Skipping polling on conversation detail page');
       }
     }, this.config.pollbackupInterval);
   }

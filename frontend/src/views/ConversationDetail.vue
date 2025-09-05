@@ -80,6 +80,7 @@
       <div
         ref="messagesContainer"
         class="messages-container"
+        :class="{ 'initial-load': isInitialLoad }"
       >
         <LoadingSpinner
           v-if="loadingMessages && messages.length === 0"
@@ -100,6 +101,7 @@
         <div
           v-else
           class="messages"
+          :class="{ 'messages-initial': isInitialLoad }"
         >
           <!-- Search Results Header -->
           <div
@@ -259,6 +261,7 @@ const messagesContainer = ref<HTMLElement>()
 const messageInputRef = ref()
 const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
+const isInitialLoad = ref(true)
 
 // 搜索狀態
 const searchResults = ref<Message[]>([])
@@ -390,10 +393,9 @@ async function loadMessages() {
       pollingDelay.value = Math.min(10000, pollingDelay.value * 1.2) // Slow down if inactive
     }
 
+    // Always scroll to bottom after loading messages to ensure latest messages are visible
     await nextTick()
-    if (hasNewMessages) {
-      scrollToBottom()
-    }
+    scrollToBottom()
   } catch (error) {
     console.error('載入訊息失敗:', error)
     
@@ -470,17 +472,22 @@ async function markAsRead() {
 
 function scrollToBottom() {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+      if (messagesContainer.value) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      }
+    })
   }
 }
 
-async function useQuickReply(text: string) {
+function useQuickReply(text: string) {
   if (!messageInputRef.value || !text.trim()) {return}
   
   try {
-    const success = await messageInputRef.value.sendQuickMessage(text)
+    const success = messageInputRef.value.setMessageText(text)
     if (!success) {
-      console.error('Failed to send quick reply')
+      console.error('Failed to set quick reply text')
     }
   } catch (error) {
     console.error('Quick reply error:', error)
@@ -513,10 +520,10 @@ const handleMessageCopy = (message: Message) => {
 
 const handleMessageReply = (message: Message) => {
   console.log('Reply to message:', message.content)
-  // 設置回覆的訊息內容到輸入框
+  // 設置回覆引用到輸入框（不發送）
   if (messageInputRef.value) {
-    const replyText = `回覆: ${message.content}\n\n`
-    messageInputRef.value.sendQuickMessage(replyText)
+    const senderName = message.senderType === 'customer' ? '客戶' : '客服'
+    messageInputRef.value.setReplyTo(message.content, senderName)
   }
 }
 
@@ -656,7 +663,16 @@ onMounted(async () => {
   // Set conversation ID first
   await setConversationId(conversationId.value)
   await loadConversation()
+  
   await loadMessages()
+
+  // Mark initial load as complete after messages are loaded and DOM is updated
+  await nextTick()
+  isInitialLoad.value = false
+  
+  // Final scroll to ensure we're at the bottom after layout stabilizes
+  await nextTick()
+  scrollToBottom()
 
   // Start optimized polling
   startPolling()
@@ -691,6 +707,9 @@ watch(() => route.params.id, async (newId, oldId) => {
       pollingInterval.value = null
     }
 
+    // Reset to initial load state
+    isInitialLoad.value = true
+
     // Reset polling state
     pollingDelay.value = 3000
     lastMessageCount.value = 0
@@ -698,7 +717,16 @@ watch(() => route.params.id, async (newId, oldId) => {
     // Set new conversation ID and reload data
     await setConversationId(newId as string)
     await loadConversation()
+    
     await loadMessages()
+
+    // Mark initial load as complete after messages are loaded and DOM is updated
+    await nextTick()
+    isInitialLoad.value = false
+    
+    // Final scroll to ensure we're at the bottom after layout stabilizes
+    await nextTick()
+    scrollToBottom()
 
     // Input reset will be handled by MessageInput component
 
@@ -802,6 +830,20 @@ watch(() => route.params.id, async (newId, oldId) => {
   overflow-y: auto;
   padding: var(--space-6);
   background: linear-gradient(to bottom, var(--gray-50), var(--gray-100));
+  /* Ensure smooth scrolling */
+  scroll-behavior: auto;
+}
+
+.messages-container.initial-load {
+  /* Prevent scroll jumping during initial load */
+  overflow-anchor: none;
+}
+
+.messages-container.initial-load .messages {
+  /* Use same layout as normal to prevent jumping */
+  display: flex;
+  flex-direction: column;
+  /* Remove justify-content: flex-end to prevent layout shift */
 }
 
 .messages {
@@ -810,6 +852,12 @@ watch(() => route.params.id, async (newId, oldId) => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.messages-initial {
+  /* 初始載入時確保從底部開始 */
+  justify-content: flex-end;
+  min-height: 100%;
 }
 
 .date-separator {
@@ -883,35 +931,75 @@ watch(() => route.params.id, async (newId, oldId) => {
 }
 
 .input-section {
-  background-color: white;
-  border-top: 1px solid var(--gray-200);
-  padding: var(--space-6);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.95));
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  padding: 24px;
+  position: relative;
+}
+
+.input-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
 }
 
 
 .quick-replies {
   max-width: 800px;
-  margin: var(--space-4) auto 0;
+  margin: 20px auto 0;
   display: flex;
-  gap: var(--space-2);
+  gap: 12px;
   flex-wrap: wrap;
+  padding: 0 4px;
 }
 
 .quick-reply-btn {
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--gray-100);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-full);
-  font-size: 0.875rem;
-  color: var(--gray-700);
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 28px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  letter-spacing: 0.2px;
+}
+
+.quick-reply-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(59, 130, 246, 0.05));
+  border-radius: 28px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .quick-reply-btn:hover {
-  background-color: var(--primary-50);
-  border-color: var(--primary-300);
-  color: var(--primary-700);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #6366f1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
+}
+
+.quick-reply-btn:hover::before {
+  opacity: 1;
+}
+
+.quick-reply-btn:active {
+  transform: translateY(0) scale(0.98);
+  transition: transform 0.1s ease;
 }
 
 .closed-state {
@@ -1029,17 +1117,20 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 
   .input-section {
-    padding: var(--space-3) var(--space-2);
+    padding: 18px 16px;
   }
 
   .quick-replies {
-    margin-top: var(--space-3);
-    gap: var(--space-1);
+    margin-top: 16px;
+    gap: 8px;
+    padding: 0 2px;
   }
 
   .quick-reply-btn {
-    font-size: 0.75rem;
-    padding: var(--space-1) var(--space-2);
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 24px;
+    letter-spacing: 0.1px;
   }
 
   /* 改善消息容器滾動 */
