@@ -337,7 +337,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Message } from '@/types'
-import { renderForVue, renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
+import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
+import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
 import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'
 import { 
   CheckIcon, 
@@ -536,14 +537,14 @@ const processMessageContent = async () => {
       
       processedMessageContent.value = result
     } else {
-      // 其他消息类型使用基础emoji渲染器
-      processedMessageContent.value = await renderForVue(props.message.content)
+      // 其他消息类型使用分层emoji处理器 (Layer 1 + Layer 2)
+      processedMessageContent.value = await convertEmojiForMessageDetail(props.message.content)
     }
     
     console.log('🔍 [MessageBubble] Final processed content:', processedMessageContent.value)
   } catch (error) {
     console.error('❌ [MessageBubble] 处理消息内容时出错:', error)
-    console.error('❌ [MessageBubble] Error stack:', error.stack)
+    console.error('❌ [MessageBubble] Error stack:', error instanceof Error ? error.stack : 'Unknown error')
     // 如果处理失败，使用原始内容（转义HTML）
     processedMessageContent.value = escapeHtml(props.message.content)
   }

@@ -214,6 +214,12 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       const lastMsg = lastMessages.find((msg: any) => msg.conversationId === conv.id);
       return {
         ...conv,
+        // 構建lastMessage對象以匹配前端期望的結構
+        lastMessage: lastMsg?.lastMessageContent ? {
+          content: lastMsg.lastMessageContent,
+          createdAt: lastMsg.lastMessageAtActual
+        } : null,
+        // 保留原有字段以確保向後兼容
         lastMessageContent: lastMsg?.lastMessageContent || null,
         lastMessageAtActual: lastMsg?.lastMessageAtActual || null
       };
@@ -786,6 +792,12 @@ conversationHandler.get('/stream', async (c) => {
               const lastMsg = lastMessages.find((msg: any) => msg.conversation_id === conv.id);
               return {
                 ...conv,
+                // 構建lastMessage對象以匹配前端期望的結構
+                lastMessage: lastMsg?.last_message_content ? {
+                  content: lastMsg.last_message_content,
+                  createdAt: lastMsg.last_message_at_actual
+                } : null,
+                // 保留原有字段以確保向後兼容
                 last_message_content: lastMsg?.last_message_content || null,
                 last_message_at_actual: lastMsg?.last_message_at_actual || null
               };

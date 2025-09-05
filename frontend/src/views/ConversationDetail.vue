@@ -286,7 +286,7 @@ const displayedMessages = computed(() => {
 
 // Group messages by date
 const groupedMessages = computed(() => {
-  if (messages.value.length === 0) return []
+  if (messages.value.length === 0) {return []}
   
   const groups: Array<{ date: string; messages: Message[] }> = []
   let currentGroup: { date: string; messages: Message[] } | null = null
