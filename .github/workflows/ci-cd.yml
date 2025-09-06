@@ -1,0 +1,217 @@
+name: CI/CD - Multi-Channel Integration System
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # =================================================================
+  #  Continuous Integration - Run on all pushes and pull requests
+  # =================================================================
+  ci:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-type: [frontend, backend, security]
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 3. Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: 4. Install root dependencies
+        run: npm ci
+
+      - name: 5. Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: 6. Run Linting and Type Checking
+        run: npm run lint:check
+
+      - name: 7. Run Security Audit
+        if: matrix.test-type == 'security'
+        run: |
+          npm audit --audit-level=moderate
+          npm audit --prefix frontend --audit-level=moderate
+
+      - name: 8. Run Frontend Tests with Coverage
+        if: matrix.test-type == 'frontend'
+        run: |
+          npm test --prefix frontend -- --run --coverage
+          
+      - name: 9. Run Backend Test Suite
+        if: matrix.test-type == 'backend'
+        run: |
+          npm run test:handlers:main
+          npm run test:api
+          npm run test:recall:coverage
+
+      - name: 10. Build Frontend for Verification
+        run: npm run build --prefix frontend
+
+      - name: 11. Upload test coverage
+        if: matrix.test-type == 'frontend'
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./frontend/coverage
+
+  # =================================================================
+  #  Staging Deployment - Deploy to staging on develop branch
+  # =================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 3. Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 4. Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix frontend
+
+      - name: 5. Build Frontend
+        run: npm run build --prefix frontend
+
+      - name: 6. Deploy to Cloudflare Staging
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env staging --minify
+
+      - name: 7. Deploy Frontend to Staging Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name multi-channel-staging
+
+  # =================================================================
+  #  Production Deployment - Deploy to production on main branch
+  # =================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 3. Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 4. Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix frontend
+
+      - name: 5. Build Frontend
+        run: npm run build --prefix frontend
+
+      - name: 6. Install Wrangler CLI
+        run: npm install -g wrangler
+
+      - name: 7. Record current deployment for rollback
+        run: |
+          echo "PREVIOUS_DEPLOYMENT=$(wrangler deployments list --name multi-channel-platform --limit 1 --json | jq -r '.[0].id' || echo 'none')" >> $GITHUB_ENV
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: 8. Deploy to Cloudflare Production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --minify
+
+      - name: 9. Deploy Frontend to Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name multi-channel-platform-frontend
+
+      - name: 10. Run Database Migrations
+        run: npm run db:migrate:prod
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: 11. Verify deployment health
+        run: |
+          # Wait for deployment to be ready
+          sleep 30
+          # Health check (replace with your actual health check endpoint)
+          curl -f https://multi-channel.imfinethankyouandyou.com/api/health || exit 1
+
+      - name: 12. Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment successful! Previous version: ${{ env.PREVIOUS_DEPLOYMENT }}"
+
+      - name: 13. Rollback on failure
+        if: failure()
+        run: |
+          if [ "${{ env.PREVIOUS_DEPLOYMENT }}" != "none" ]; then
+            echo "🔄 Rolling back to previous deployment: ${{ env.PREVIOUS_DEPLOYMENT }}"
+            wrangler rollback --name multi-channel-platform --version-id ${{ env.PREVIOUS_DEPLOYMENT }}
+          fi

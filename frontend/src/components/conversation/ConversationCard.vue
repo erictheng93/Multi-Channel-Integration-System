@@ -60,6 +60,14 @@
         <span>{{ conversation.assignedAgent.name }}</span>
       </div>
     </div>
+    
+    <!-- 快速指派操作區域 -->
+    <QuickAssignActions
+      :conversation="conversation"
+      compact-mode
+      @assigned="handleAssigned"
+      @error="handleAssignError"
+    />
   </div>
 </template>
 
@@ -71,6 +79,7 @@ import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { UserIcon } from '@/components/icons'
 import { usePrefetch } from '@/composables/usePrefetch'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
+import QuickAssignActions from './QuickAssignActions.vue'
 
 interface Props {
   conversation: Conversation
@@ -81,6 +90,8 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   select: [conversation: Conversation]
+  assigned: [conversation: Conversation, assignedTo: string]
+  assignError: [error: string]
 }>()
 
 // 第五階段：簡單預載入
@@ -106,6 +117,15 @@ const handleSelect = () => {
 const handleHover = () => {
   // 預載入對話詳細資料
   prefetchApiData(`/api/conversations/${props.conversation.id}/messages`)
+}
+
+// 指派事件處理
+const handleAssigned = (conversation: Conversation, assignedTo: string) => {
+  emit('assigned', conversation, assignedTo)
+}
+
+const handleAssignError = (error: string) => {
+  emit('assignError', error)
 }
 
 const customerInitials = computed(() => {

@@ -98,7 +98,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const textarea = wrapper.find('.message-textarea')
 
-      expect(textarea.attributes('placeholder')).toBe('Type a message...')
+      expect(textarea.attributes('placeholder')).toBe('輸入訊息...')
     })
 
     it('should disable input when disabled prop is true', () => {
@@ -129,8 +129,8 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
       const sendButton = wrapper.find('.send-button')
 
-      // Initially disabled
-      expect(sendButton.attributes('disabled')).toBeDefined()
+      // Initially enabled (按鈕始終可用除了發送時)
+      expect(sendButton.attributes('disabled')).toBeUndefined()
 
       // Enable after typing
       await textarea.setValue('Test message')

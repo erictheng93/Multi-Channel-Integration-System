@@ -282,5 +282,72 @@ export const teamApi = {
       url += `?${searchParams.toString()}`
     }
     return apiClient.get(url)
+  },
+
+  // 獲取團隊成員（用於指派功能）
+  getTeamMembers: async (teamId?: number): Promise<ApiResponse<TeamMember[]>> => {
+    try {
+      const url = teamId ? `/teams/${teamId}/members` : '/team/members'
+      const response = await apiClient.get<TeamMember[]>(url)
+      
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data
+        }
+      }
+      
+      return { success: false, error: response.error || '獲取團隊成員失敗' }
+    } catch (error) {
+      console.error('Get team members failed:', error)
+      return { success: false, error: '網路錯誤，無法載入團隊成員' }
+    }
+  },
+
+  // 獲取所有可用的指派對象（跨團隊，需要admin權限）
+  getAvailableAssignees: async (): Promise<ApiResponse<TeamMember[]>> => {
+    try {
+      const response = await apiClient.get<TeamMember[]>('/team/assignees')
+      
+      if (response.success && response.data) {
+        // 過濾出活躍的agent和team角色成員
+        const availableMembers = response.data.filter(member => 
+          member.status === 'active' && ['agent', 'team'].includes(member.role)
+        )
+        
+        return {
+          success: true,
+          data: availableMembers
+        }
+      }
+      
+      return { success: false, error: response.error || '獲取可指派成員失敗' }
+    } catch (error) {
+      console.error('Get available assignees failed:', error)
+      return { success: false, error: '網路錯誤，無法載入可指派成員' }
+    }
+  },
+
+  // 獲取特定成員詳情
+  getMember: async (memberId: string): Promise<ApiResponse<TeamMember>> => {
+    try {
+      if (!memberId?.trim()) {
+        return { success: false, error: '成員 ID 不能為空' }
+      }
+
+      const response = await apiClient.get<TeamMember>(`/team/members/${memberId}`)
+      
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data
+        }
+      }
+      
+      return { success: false, error: response.error || '獲取成員詳情失敗' }
+    } catch (error) {
+      console.error('Get member failed:', error)
+      return { success: false, error: '網路錯誤，無法載入成員詳情' }
+    }
   }
 }

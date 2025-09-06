@@ -38,15 +38,14 @@
         </div>
 
         <div class="header-actions">
-          <button
-            v-if="conversation?.status === 'open'"
-            class="btn btn-primary"
-            :disabled="assigning"
-            @click="assignToMe"
-          >
-            <UserPlusIcon />
-            {{ assigning ? '指派中...' : '指派給我' }}
-          </button>
+          <!-- 高級指派控制 -->
+          <AdvancedAssignActions
+            v-if="conversation"
+            :conversation="conversation"
+            @assigned="handleConversationAssigned"
+            @unassigned="handleConversationUnassigned"
+            @error="handleAssignError"
+          />
 
           <button
             v-if="conversation?.status !== 'closed'"
@@ -80,28 +79,35 @@
       <div
         ref="messagesContainer"
         class="messages-container"
-        :class="{ 'initial-load': isInitialLoad }"
+        @scroll="handleScroll"
       >
-        <LoadingSpinner
+        <div
           v-if="loadingMessages && messages.length === 0"
-          size="lg"
-          text="載入訊息中..."
-        />
-
-        <EmptyState
-          v-else-if="displayedMessages.length === 0"
-          :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
-          :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
+          class="loading-wrapper"
         >
-          <template #icon>
-            <MessageCircleIcon />
-          </template>
-        </EmptyState>
+          <LoadingSpinner
+            size="lg"
+            text="載入訊息中..."
+          />
+        </div>
+
+        <div
+          v-else-if="displayedMessages.length === 0"
+          class="empty-state-wrapper"
+        >
+          <EmptyState
+            :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
+            :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
+          >
+            <template #icon>
+              <MessageCircleIcon />
+            </template>
+          </EmptyState>
+        </div>
 
         <div
           v-else
           class="messages"
-          :class="{ 'messages-initial': isInitialLoad }"
         >
           <!-- Search Results Header -->
           <div
@@ -166,6 +172,31 @@
             <span class="typing-text">對方正在輸入...</span>
           </div>
         </div>
+
+        <!-- 新消息指示器 -->
+        <div
+          v-if="showNewMessageIndicator"
+          class="new-message-indicator"
+          @click="scrollToLatestMessages"
+        >
+          <div class="indicator-content">
+            <span class="message-count">{{ newMessageCount }}</span>
+            <span class="indicator-text">條新消息</span>
+            <svg
+              class="down-arrow"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M7 10L12 15L17 10"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <!-- Enhanced Message Input -->
@@ -217,10 +248,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuth, useMessages } from '@/composables'
+import { useMessages } from '@/composables'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConfirm } from '@/composables/useConfirm'
-import type { Message } from '@/types'
+import type { Message, Conversation } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -231,9 +262,9 @@ import DateSeparator from '@/components/conversation/DateSeparator.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import KeyboardShortcuts from '@/components/ui/KeyboardShortcuts.vue'
+import AdvancedAssignActions from '@/components/conversation/AdvancedAssignActions.vue'
 import {
   ArrowLeftIcon,
-  UserPlusIcon,
   XCircleIcon,
   RefreshIcon,
   MessageCircleIcon
@@ -241,7 +272,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const { currentAgent } = useAuth()
+// useAuth removed - not used in this component
 const conversationsStore = useConversationsStore()
 const { 
   messages, 
@@ -253,7 +284,6 @@ const {
 
 // State
 const conversation = computed(() => conversationsStore.currentConversation)
-const assigning = ref(false)
 
 const closing = ref(false)
 const isTyping = ref(false)
@@ -262,6 +292,11 @@ const messageInputRef = ref()
 const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
 const isInitialLoad = ref(true)
+
+// 新消息指示器狀態
+const showNewMessageIndicator = ref(false)
+const newMessageCount = ref(0)
+const userScrolledUp = ref(false)
 
 // 搜索狀態
 const searchResults = ref<Message[]>([])
@@ -374,28 +409,74 @@ async function loadConversation() {
   }
 }
 
+// 檢查用戶是否在底部（翻轉後邏輯）
+function isUserAtBottom(): boolean {
+  if (!messagesContainer.value) {return true}
+  const { scrollTop } = messagesContainer.value
+  const tolerance = 50 // 50px 容差
+  // 翻轉後：scrollTop = 0 表示看到最新消息（在視覺頂部）
+  return scrollTop <= tolerance
+}
+
+// 滾動事件處理
+function handleScroll() {
+  const atBottom = isUserAtBottom()
+  userScrolledUp.value = !atBottom
+  
+  // 如果用戶滾動到底部，隱藏新消息指示器
+  if (atBottom) {
+    showNewMessageIndicator.value = false
+    newMessageCount.value = 0
+  }
+}
+
+// 滾動到最新消息
+function scrollToLatestMessages() {
+  scrollToBottom()
+  showNewMessageIndicator.value = false
+  newMessageCount.value = 0
+}
+
 async function loadMessages() {
   try {
+    // 記錄載入前的狀態
     const previousMessageCount = messages.value.length
+    const wasAtBottom = isInitialLoad.value || isUserAtBottom()
+    
     await fetchMessages()
     
     // Reset permission error flag on successful fetch
     hasPermissionError.value = false
     
-    const newMessageCount = messages.value.length
-    const hasNewMessages = newMessageCount > previousMessageCount
-    lastMessageCount.value = newMessageCount
+    const currentMessageCount = messages.value.length
+    const hasNewMessages = currentMessageCount > previousMessageCount
+    lastMessageCount.value = currentMessageCount
 
     // Adjust polling frequency based on activity
     if (hasNewMessages) {
       pollingDelay.value = Math.max(2000, pollingDelay.value * 0.8) // Speed up if active
+      
+      const newMessagesCount = currentMessageCount - previousMessageCount
+      
+      // 智能滾動和新消息指示
+      if (!isInitialLoad.value) {
+        if (wasAtBottom) {
+          // 用戶在底部，自動滾動並重置計數器
+          await nextTick()
+          scrollToBottom()
+          newMessageCount.value = 0
+          showNewMessageIndicator.value = false
+        } else {
+          // 用戶向上滾動了，顯示新消息指示器
+          newMessageCount.value += newMessagesCount
+          showNewMessageIndicator.value = newMessageCount.value > 0
+        }
+      }
     } else {
       pollingDelay.value = Math.min(10000, pollingDelay.value * 1.2) // Slow down if inactive
     }
 
-    // Always scroll to bottom after loading messages to ensure latest messages are visible
-    await nextTick()
-    scrollToBottom()
+    // 初始載入時不需要滾動，CSS Grid 已經處理了底部對齊
   } catch (error) {
     console.error('載入訊息失敗:', error)
     
@@ -420,19 +501,20 @@ async function loadMessages() {
 
 
 
-async function assignToMe() {
-  if (!currentAgent.value || assigning.value) {return}
+// 指派事件處理函數
+const handleConversationAssigned = (conversation: Conversation, assignedTo: string) => {
+  console.log('✅ [ConversationDetail] Conversation assigned:', { conversationId: conversation.id, assignedTo })
+  // 對話已在store中更新，這裡可以添加額外的UI反饋
+}
 
-  assigning.value = true
-  try {
-    console.log('🔄 [ConversationDetail] Assigning conversation to me:', currentAgent.value.id)
-    await conversationsStore.assignConversation(conversationId.value, currentAgent.value.id)
-    console.log('✅ [ConversationDetail] Conversation assigned successfully')
-  } catch (error) {
-    console.error('❌ [ConversationDetail] Assignment failed:', error)
-  } finally {
-    assigning.value = false
-  }
+const handleConversationUnassigned = (conversation: Conversation) => {
+  console.log('🔄 [ConversationDetail] Conversation unassigned:', conversation.id)
+  // 對話已在store中更新，這裡可以添加額外的UI反饋
+}
+
+const handleAssignError = (error: string) => {
+  console.error('❌ [ConversationDetail] Assignment error:', error)
+  // TODO: 可以添加Toast通知或其他錯誤提示
 }
 
 async function closeConversation() {
@@ -472,14 +554,15 @@ async function markAsRead() {
 
 function scrollToBottom() {
   if (messagesContainer.value) {
-    // Use requestAnimationFrame to ensure DOM is fully rendered
-    requestAnimationFrame(() => {
-      if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-      }
+    // 翻轉後：滾動到頂部(scrollTop = 0)顯示最新消息
+    messagesContainer.value.scrollTo({
+      top: 0,
+      behavior: 'smooth'
     })
   }
 }
+
+// scrollToBottomInstantly function removed - not used
 
 function useQuickReply(text: string) {
   if (!messageInputRef.value || !text.trim()) {return}
@@ -666,13 +749,8 @@ onMounted(async () => {
   
   await loadMessages()
 
-  // Mark initial load as complete after messages are loaded and DOM is updated
-  await nextTick()
+  // Mark initial load as complete
   isInitialLoad.value = false
-  
-  // Final scroll to ensure we're at the bottom after layout stabilizes
-  await nextTick()
-  scrollToBottom()
 
   // Start optimized polling
   startPolling()
@@ -720,13 +798,8 @@ watch(() => route.params.id, async (newId, oldId) => {
     
     await loadMessages()
 
-    // Mark initial load as complete after messages are loaded and DOM is updated
-    await nextTick()
+    // Mark initial load as complete
     isInitialLoad.value = false
-    
-    // Final scroll to ensure we're at the bottom after layout stabilizes
-    await nextTick()
-    scrollToBottom()
 
     // Input reset will be handled by MessageInput component
 
@@ -752,6 +825,9 @@ watch(() => route.params.id, async (newId, oldId) => {
   background-color: white;
   border-bottom: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .header-left {
@@ -828,22 +904,23 @@ watch(() => route.params.id, async (newId, oldId) => {
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-6) 120px var(--space-6);
   background: linear-gradient(to bottom, var(--gray-50), var(--gray-100));
-  /* Ensure smooth scrolling */
-  scroll-behavior: auto;
+  
+  /* CSS翻轉方案：從底部開始顯示 */
+  display: grid;
+  align-content: start; /* 翻轉後改為start */
+  min-height: 100%;
+  transform: scaleY(-1); /* 翻轉整個容器 */
 }
 
-.messages-container.initial-load {
-  /* Prevent scroll jumping during initial load */
-  overflow-anchor: none;
-}
-
-.messages-container.initial-load .messages {
-  /* Use same layout as normal to prevent jumping */
+.loading-wrapper,
+.empty-state-wrapper {
+  transform: scaleY(-1); /* 翻轉回正常顯示 */
   display: flex;
-  flex-direction: column;
-  /* Remove justify-content: flex-end to prevent layout shift */
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
 }
 
 .messages {
@@ -852,12 +929,8 @@ watch(() => route.params.id, async (newId, oldId) => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.messages-initial {
-  /* 初始載入時確保從底部開始 */
-  justify-content: flex-end;
-  min-height: 100%;
+  width: 100%;
+  transform: scaleY(-1); /* 翻轉回正常顯示 */
 }
 
 .date-separator {
@@ -935,7 +1008,11 @@ watch(() => route.params.id, async (newId, oldId) => {
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(226, 232, 240, 0.6);
   padding: 24px;
-  position: relative;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
 }
 
 .input-section::before {
@@ -1058,7 +1135,7 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 
   .messages-container {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-4) var(--space-3) 100px var(--space-3);
   }
 
   .input-section {
@@ -1109,7 +1186,7 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 
   .messages-container {
-    padding: var(--space-3) var(--space-2);
+    padding: var(--space-3) var(--space-2) 90px var(--space-2);
   }
 
   .messages {
@@ -1156,6 +1233,94 @@ watch(() => route.params.id, async (newId, oldId) => {
     padding: var(--space-2) var(--space-3);
   }
 
+}
+
+/* 新消息指示器 */
+.new-message-indicator {
+  position: absolute;
+  top: 24px; /* 翻轉後頂部對應原來的底部 */
+  right: 50%;
+  transform: translateX(50%) scaleY(-1); /* 翻轉回正常顯示 */
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  border-radius: 28px;
+  padding: 12px 20px;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideDown 0.4s ease-out; /* 動畫方向調整 */
+}
+
+.new-message-indicator:hover {
+  transform: translateX(50%) translateY(-2px) scaleY(-1);
+  box-shadow: 0 12px 35px rgba(79, 70, 229, 0.4);
+  background: linear-gradient(135deg, #5b52e6, #8b46f0);
+}
+
+.new-message-indicator:active {
+  transform: translateX(50%) translateY(0px) scale(0.98) scaleY(-1);
+}
+
+.indicator-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.message-count {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+.down-arrow {
+  width: 16px;
+  height: 16px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(50%) translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(50%) translateY(-20px) scaleY(-1);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(50%) translateY(0) scaleY(-1);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
 }
 
 /* Modern Minimalist Close Button */

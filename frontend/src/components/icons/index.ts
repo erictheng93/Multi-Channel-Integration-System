@@ -117,6 +117,59 @@ export const UserPlusIcon = defineComponent<IconProps>({
 
 export const UsersIcon = createIcon('M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75')
 
+export const TeamIcon = defineComponent<IconProps>({
+  name: 'TeamIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }),
+      h('circle', { cx: '9', cy: '7', r: '4' }),
+      h('path', { d: 'M22 21v-2a4 4 0 0 0-3-3.87' }),
+      h('path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' })
+    ])
+  }
+})
+
+export const UserCheckIcon = defineComponent<IconProps>({
+  name: 'UserCheckIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }),
+      h('circle', { cx: '9', cy: '7', r: '4' }),
+      h('polyline', { points: '16,11 18,13 22,9' })
+    ])
+  }
+})
+
 // Communication Icons
 export const MessageCircleIcon = createIcon('M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z')
 export const ChatIcon = createIcon('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z')
