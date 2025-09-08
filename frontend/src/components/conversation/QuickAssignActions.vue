@@ -161,9 +161,9 @@ const agentToTeamMember = (agent: Agent): TeamMember | null => {
     group: undefined,
     teamId: agent.teamId,
     avatar: undefined,
-    createdAt: agent.createdAt,
+    createdAt: new Date(agent.createdAt),
     updatedAt: new Date(),
-    lastLoginAt: agent.lastActive
+    lastLoginAt: agent.lastActive ? new Date(agent.lastActive) : undefined
   }
 }
 

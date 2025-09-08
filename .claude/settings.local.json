@@ -82,7 +82,8 @@
       "Bash(npx wrangler:*)",
       "Bash(claude doctor)",
       "Bash(npm:*)",
-      "WebFetch(domain:developers.line.biz)"
+      "WebFetch(domain:developers.line.biz)",
+      "WebFetch(domain:localhost)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

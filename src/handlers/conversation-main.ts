@@ -1,6 +1,6 @@
 // 對話管理處理器 - 主要實現
 import { Hono } from 'hono';
-import { eq, inArray, desc, and } from 'drizzle-orm';
+import { eq, inArray, desc, and, count } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { conversations, customers, messages, agents, conversationTransfers } from '../db/schema';
 import type { Bindings } from '../types';
@@ -535,11 +535,18 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
   }
 });
 
-// 獲取對話的所有訊息
+// 獲取對話的訊息（支持分頁）
 conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
     const conversationId = c.req.param('id');
+    
+    // 獲取分頁參數
+    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(c.req.query('pageSize') || '30', 10)));
+    const offset = (page - 1) * pageSize;
+    
+    console.log(`📄 [Messages API] Getting messages for conversation ${conversationId}, page=${page}, pageSize=${pageSize}, offset=${offset}`);
     
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(
@@ -578,7 +585,17 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       }, 404);
     }
 
-    // 獲取對話中的所有訊息（包含發送者資訊）
+    // 獲取訊息總數
+    const totalResult = await drizzleDb
+      .select({ count: count() })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .get();
+    
+    const total = totalResult?.count || 0;
+    console.log(`📊 [Messages API] Total messages in conversation: ${total}`);
+
+    // 獲取分頁訊息（包含發送者資訊）
     const messageList = await drizzleDb
       .select({
         // Message fields
@@ -617,7 +634,11 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
         )
       )
       .where(eq(messages.conversationId, conversationId))
-      .orderBy(desc(messages.createdAt)); // ✅ 最新的消息在前面
+      .orderBy(desc(messages.createdAt)) // 最新的消息在前面
+      .limit(pageSize)
+      .offset(offset);
+
+    console.log(`📄 [Messages API] Retrieved ${messageList.length} messages for page ${page}`);
 
     // ✅ 轉換為前端期望的 Message 格式
     const formattedMessages = messageList.map(row => ({
@@ -644,9 +665,22 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       recalledAt: row.recalledAt
     }));
 
+    // ✅ 返回分頁響應格式
+    const totalPages = Math.ceil(total / pageSize);
+    const paginatedResponse = {
+      items: formattedMessages,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      hasMore: page < totalPages
+    };
+
+    console.log(`📊 [Messages API] Returning page ${page}/${totalPages}, ${formattedMessages.length} items, hasMore: ${paginatedResponse.hasMore}`);
+
     return c.json({
       success: true,
-      data: formattedMessages,
+      data: paginatedResponse,
       timestamp: new Date().toISOString()
     });
 

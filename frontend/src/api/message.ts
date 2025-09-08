@@ -57,7 +57,6 @@ export const messageApi = {
     }
     
     const queryParams = new URLSearchParams();
-    queryParams.append('paginated', 'true');
     if (params?.page !== undefined) {queryParams.append('page', params.page.toString());}
     if (params?.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString());}
     if (params?.since) {queryParams.append('since', params.since);}

@@ -264,3 +264,5 @@ This is a mature, well-tested system with enterprise-grade architecture featurin
 - **Comprehensive test suite** and TypeScript coverage ensure reliability
 - **Modern Vue 3 frontend** with role-based UI/UX
 - **Scalable architecture** supporting multi-team operations
+- 這個專案不使用本地API，全部都使用生產環境API。
+- 互動始終以思考模式進行。Always think hard.
