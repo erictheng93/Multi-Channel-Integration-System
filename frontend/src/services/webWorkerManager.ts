@@ -27,8 +27,8 @@ interface WorkerTask {
   id: string
   type: string
   payload: unknown
-  resolve: (result: unknown) => void
-  reject: (error: Error) => void
+  resolve: (_result: unknown) => void
+  reject: (_error: Error) => void
   timeout?: NodeJS.Timeout
 }
 
@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: WorkerPoolConfig = {
 }
 
 export class WebWorkerManager {
-  private workers: Worker[] = []
+  private workers: globalThis.Worker[] = []
   private workerQueue: WorkerTask[] = []
   private activeTasks = new Map<string, WorkerTask>()
   private config: WorkerPoolConfig
@@ -77,7 +77,7 @@ export class WebWorkerManager {
       const workerPromises = []
       
       for (let i = 0; i < this.config.maxWorkers; i++) {
-        const worker = new Worker(
+        const worker = new globalThis.Worker(
           new URL('../workers/dataProcessor.worker.ts', import.meta.url),
           { type: 'module' }
         )
@@ -98,13 +98,13 @@ export class WebWorkerManager {
   }
 
   // 初始化單個 Worker
-  private initializeWorker(worker: Worker, index: number): Promise<void> {
+  private initializeWorker(worker: globalThis.Worker, index: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error(`Worker ${index} initialization timeout`))
       }, 5000)
 
-      worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      worker.onmessage = (event: globalThis.MessageEvent<WorkerResponse>) => {
         const { id, type, result, error, performance } = event.data
         
         if (type === 'WORKER_READY') {
@@ -203,7 +203,7 @@ export class WebWorkerManager {
   }
 
   // 獲取可用的 Worker
-  private getAvailableWorker(): Worker | null {
+  private getAvailableWorker(): globalThis.Worker | null {
     if (this.workers.length === 0) {return null}
     
     // 簡單的輪詢策略
@@ -230,7 +230,7 @@ export class WebWorkerManager {
         id: this.generateTaskId(),
         type,
         payload,
-        resolve: resolve as (result: unknown) => void,
+        resolve: resolve as (_result: unknown) => void,
         reject
       }
 
@@ -331,7 +331,7 @@ export class WebWorkerManager {
     }
     
     try {
-      const worker = new Worker(
+      const worker = new globalThis.Worker(
         new URL('../workers/dataProcessor.worker.ts', import.meta.url),
         { type: 'module' }
       )

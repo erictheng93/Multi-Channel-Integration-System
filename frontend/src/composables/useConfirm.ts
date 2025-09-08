@@ -11,7 +11,7 @@ export interface ConfirmOptions {
   onCancel?: () => void
 }
 
-let activeApp: App<Element> | null = null
+let activeApp: App<globalThis.Element> | null = null
 let activeContainer: HTMLElement | null = null
 
 export function useConfirm() {

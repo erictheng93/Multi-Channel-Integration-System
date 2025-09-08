@@ -1,7 +1,6 @@
 // 專案名稱：Multi-Channel Support MVP
 // 檔案路徑：/frontend/src/components/conversation/MessageInput.test.ts
 // Created by: Component Test Developer
-
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -121,7 +120,7 @@ describe('MessageInput Component', () => {
       await textarea.setValue('Hello, World!')
 
       // Check the input value directly instead of component internal state
-      expect((textarea.element as HTMLTextAreaElement).value).toBe('Hello, World!')
+      expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('Hello, World!')
     })
 
     it('should enable send button when text is entered', async () => {
@@ -192,7 +191,7 @@ describe('MessageInput Component', () => {
       await textarea.setValue('Line 1\nLine 2\nLine 3')
       await textarea.trigger('input')
 
-      expect((textarea.element as HTMLTextAreaElement).style.height).toBe('60px')
+      expect((textarea.element as globalThis.HTMLTextAreaElement).style.height).toBe('60px')
     })
   })
 
@@ -284,7 +283,7 @@ describe('MessageInput Component', () => {
       await nextTick()
 
       // Check the input value directly
-      expect((textarea.element as HTMLTextAreaElement).value).toBe('')
+      expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('')
     })
 
     it('should show error message on send failure', async () => {
@@ -393,7 +392,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const fileInput = wrapper.find('.file-input')
 
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [mockFile],
         writable: false
@@ -411,7 +410,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const fileInput = wrapper.find('.file-input')
 
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [mockFile],
         writable: false
@@ -428,7 +427,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const fileInput = wrapper.find('.file-input')
 
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [mockFile],
         writable: false
@@ -449,7 +448,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const fileInput = wrapper.find('.file-input')
 
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [mockFile],
         writable: false
@@ -473,7 +472,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
       const fileInput = wrapper.find('.file-input')
 
-      const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
+      const largeFile = new globalThis.File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [largeFile],
         writable: false
@@ -494,7 +493,7 @@ describe('MessageInput Component', () => {
       const wrapper = createWrapper()
 
       // Test file size formatting by checking if the component has the method
-      const vm = wrapper.vm as { formatFileSize?: (size: number) => string }
+      const vm = wrapper.vm as { formatFileSize?: (_size: number) => string }
       if (vm.formatFileSize) {
         expect(vm.formatFileSize(0)).toBe('0 B')
         expect(vm.formatFileSize(1024)).toBe('1 KB')
@@ -511,7 +510,7 @@ describe('MessageInput Component', () => {
       const fileInput = wrapper.find('.file-input')
       const sendButton = wrapper.find('.send-button')
 
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [mockFile],
         writable: false
@@ -557,19 +556,19 @@ describe('MessageInput Component', () => {
       const textarea = wrapper.find('.message-textarea')
 
       await textarea.setValue('Test message')
-      expect((textarea.element as HTMLTextAreaElement).value).toBe('Test message')
+      expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('Test message')
 
       await wrapper.setProps({ conversationId: 'conv-2' })
       await nextTick()
 
-      expect((textarea.element as HTMLTextAreaElement).value).toBe('')
+      expect((textarea.element as globalThis.HTMLTextAreaElement).value).toBe('')
     })
 
     it('should clear attachments when conversation changes', async () => {
       const wrapper = createWrapper({ conversationId: 'conv-1' })
       const fileInput = wrapper.find('.file-input')
 
-      const mockFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+      const mockFile = new globalThis.File(['test content'], 'test.txt', { type: 'text/plain' })
       Object.defineProperty(fileInput.element, 'files', {
         value: [mockFile],
         writable: false

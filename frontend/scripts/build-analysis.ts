@@ -25,12 +25,12 @@ try {
     try {
       const result: string = execSync('du -sh dist/*', { encoding: 'utf8' })
       console.log(result)
-    } catch (error) {
+    } catch {
       // Fallback for Windows
       try {
-        const _result: string = execSync('dir dist /s', { encoding: 'utf8' })
+        execSync('dir dist /s', { encoding: 'utf8' })
         console.log('Build completed successfully')
-      } catch (winError) {
+      } catch {
         console.log('Build completed successfully')
       }
     }

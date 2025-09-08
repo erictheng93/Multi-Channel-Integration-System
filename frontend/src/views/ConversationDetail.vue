@@ -828,7 +828,7 @@ async function loadMessages() {
       
       // 使用 MutationObserver 確保消息都渲染完成再滾動
       if (messagesContainer.value && messages.value.length > 0) {
-        const observer = new MutationObserver((mutations, obs) => {
+        const observer = new window.MutationObserver((mutations, obs) => {
           // 檢查是否有新節點添加
           const hasNewNodes = mutations.some(mutation => mutation.addedNodes.length > 0)
           const scrollHeight = messagesContainer.value?.scrollHeight ?? 0

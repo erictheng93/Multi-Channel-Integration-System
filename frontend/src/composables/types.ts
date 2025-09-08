@@ -3,9 +3,9 @@ export interface UseAsyncDataOptions<T> {
   immediate?: boolean
   resetOnExecute?: boolean
   shallow?: boolean
-  onSuccess?: (data: T) => void
-  onError?: (error: Error | unknown) => void
-  transform?: (data: unknown) => T
+  onSuccess?: (_data: T) => void
+  onError?: (_error: Error | unknown) => void
+  transform?: (_data: unknown) => T
 }
 
 export interface UseWebSocketOptions {
@@ -17,17 +17,17 @@ export interface UseWebSocketOptions {
     message?: string | object
     interval?: number
   }
-  onConnected?: (ws: WebSocket) => void
-  onDisconnected?: (ws: WebSocket, event: CloseEvent) => void
-  onError?: (ws: WebSocket, event: Event) => void
-  onMessage?: (ws: WebSocket, event: MessageEvent) => void
+  onConnected?: (_socket: globalThis.WebSocket) => void
+  onDisconnected?: (_socket: globalThis.WebSocket, _event: globalThis.CloseEvent) => void
+  onError?: (_socket: globalThis.WebSocket, _event: globalThis.Event) => void
+  onMessage?: (_socket: globalThis.WebSocket, _event: globalThis.MessageEvent) => void
 }
 
 export enum WebSocketStatus {
-  CONNECTING = 'CONNECTING',
-  CONNECTED = 'CONNECTED',
-  DISCONNECTED = 'DISCONNECTED',
-  ERROR = 'ERROR'
+  // CONNECTING = 'CONNECTING',
+  // CONNECTED = 'CONNECTED',
+  // DISCONNECTED = 'DISCONNECTED',
+  // ERROR = 'ERROR'
 }
 
 export interface PaginationOptions {

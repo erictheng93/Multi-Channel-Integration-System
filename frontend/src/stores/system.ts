@@ -187,8 +187,8 @@ export const useSystemStore = defineStore('system', () => {
     await saveSettings({ notifications: newNotifications })
 
     // Request permission if enabling desktop notifications
-    if (newNotifications.desktop && Notification.permission === 'default') {
-      await Notification.requestPermission()
+    if (newNotifications.desktop && globalThis.Notification.permission === 'default') {
+      await globalThis.Notification.requestPermission()
     }
   }
 

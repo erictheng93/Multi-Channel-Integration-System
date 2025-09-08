@@ -71,7 +71,7 @@ for (const check of checks) {
     try {
       const version = execSync(check.command, { encoding: 'utf8' }).trim();
       console.log(`  ✅ Tool available: ${version}`);
-    } catch (error) {
+    } catch {
       console.log(`  ❌ Tool not available or not working`);
       allPassed = false;
     }

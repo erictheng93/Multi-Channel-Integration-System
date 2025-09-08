@@ -5,19 +5,19 @@ import { ref } from 'vue'
 
 // 任務優先級
 export enum TaskPriority {
-  LOW = 1,
-  NORMAL = 2,
-  HIGH = 3,
-  CRITICAL = 4
+  _LOW = 1,
+  _NORMAL = 2,
+  _HIGH = 3,
+  _CRITICAL = 4
 }
 
 // 空閒任務接口
 interface IdleTask {
   id: string
   priority: TaskPriority
-  task: (deadline: IdleDeadline) => Promise<unknown> | unknown
-  resolve: (result: unknown) => void
-  reject: (error: Error) => void
+  task: (_deadline: globalThis.IdleDeadline) => Promise<unknown> | unknown
+  resolve: (_result: unknown) => void
+  reject: (_error: Error) => void
   timeout?: number
   createdAt: number
 }
@@ -73,7 +73,7 @@ export class IdleTimeProcessor {
 
   // Polyfill for requestIdleCallback
   private requestIdleCallback(
-    callback: (deadline: ExtendedIdleDeadline) => void,
+    callback: (_deadline: ExtendedIdleDeadline) => void,
     options?: { timeout?: number }
   ): number {
     if (this.supportsRequestIdleCallback) {
@@ -200,9 +200,9 @@ export class IdleTimeProcessor {
 
   // 設置性能監控
   private setupPerformanceMonitoring(): void {
-    if (typeof window !== 'undefined' && 'PerformanceObserver' in window) {
+    if (typeof window !== 'undefined' && 'globalThis.PerformanceObserver' in window) {
       try {
-        const observer = new PerformanceObserver((list) => {
+        const observer = new globalThis.PerformanceObserver((list) => {
           const entries = list.getEntries()
           entries.forEach(entry => {
             if (entry.entryType === 'measure' && entry.name.includes('idle-task')) {
@@ -221,8 +221,8 @@ export class IdleTimeProcessor {
 
   // 調度任務
   scheduleTask<T>(
-    taskFn: (deadline: IdleDeadline) => Promise<T> | T,
-    priority: TaskPriority = TaskPriority.NORMAL,
+    taskFn: (_deadline: globalThis.IdleDeadline) => Promise<T> | T,
+    priority: TaskPriority = TaskPriority._NORMAL,
     timeout?: number
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -231,8 +231,8 @@ export class IdleTimeProcessor {
       const task: IdleTask = {
         id: taskId,
         priority,
-        task: taskFn as (deadline: IdleDeadline) => Promise<unknown> | unknown,
-        resolve: resolve as (result: unknown) => void,
+        task: taskFn as (_deadline: globalThis.IdleDeadline) => Promise<unknown> | unknown,
+        resolve: resolve as (_result: unknown) => void,
         reject,
         timeout,
         createdAt: Date.now()
@@ -252,7 +252,7 @@ export class IdleTimeProcessor {
   // 批次調度任務
   batchSchedule<T>(
     tasks: Array<{
-      taskFn: (deadline: IdleDeadline) => Promise<T> | T
+      taskFn: (_deadline: globalThis.IdleDeadline) => Promise<T> | T
       priority?: TaskPriority
       timeout?: number
     }>
@@ -270,30 +270,30 @@ export class IdleTimeProcessor {
   ): Promise<T> {
     return this.scheduleTask(
       () => taskFn(),
-      TaskPriority.CRITICAL,
+      TaskPriority._CRITICAL,
       100 // 100ms timeout
     )
   }
 
   // 預載入任務（低優先級）
   schedulePreload<T>(
-    taskFn: (deadline: IdleDeadline) => Promise<T> | T
+    taskFn: (_deadline: globalThis.IdleDeadline) => Promise<T> | T
   ): Promise<T> {
-    return this.scheduleTask(taskFn, TaskPriority.LOW)
+    return this.scheduleTask(taskFn, TaskPriority._LOW)
   }
 
   // 背景清理任務
   scheduleCleanup(
-    taskFn: (deadline: IdleDeadline) => Promise<void> | void
+    taskFn: (_deadline: globalThis.IdleDeadline) => Promise<void> | void
   ): Promise<void> {
-    return this.scheduleTask(taskFn, TaskPriority.LOW)
+    return this.scheduleTask(taskFn, TaskPriority._LOW)
   }
 
   // 數據預處理任務
   scheduleDataPreprocessing<T>(
-    taskFn: (deadline: IdleDeadline) => Promise<T> | T
+    taskFn: (_deadline: globalThis.IdleDeadline) => Promise<T> | T
   ): Promise<T> {
-    return this.scheduleTask(taskFn, TaskPriority.NORMAL)
+    return this.scheduleTask(taskFn, TaskPriority._NORMAL)
   }
 
   // 取消所有任務
@@ -357,20 +357,20 @@ export const idleTimeProcessor = new IdleTimeProcessor()
 
 // 便捷函數
 export const scheduleIdleTask = <T>(
-  taskFn: (deadline: IdleDeadline) => Promise<T> | T,
-  priority: TaskPriority = TaskPriority.NORMAL
+  taskFn: (_deadline: globalThis.IdleDeadline) => Promise<T> | T,
+  priority: TaskPriority = TaskPriority._NORMAL
 ): Promise<T> => {
   return idleTimeProcessor.scheduleTask(taskFn, priority)
 }
 
 export const schedulePreloadTask = <T>(
-  taskFn: (deadline: IdleDeadline) => Promise<T> | T
+  taskFn: (_deadline: globalThis.IdleDeadline) => Promise<T> | T
 ): Promise<T> => {
   return idleTimeProcessor.schedulePreload(taskFn)
 }
 
 export const scheduleCleanupTask = (
-  taskFn: (deadline: IdleDeadline) => Promise<void> | void
+  taskFn: (_deadline: globalThis.IdleDeadline) => Promise<void> | void
 ): Promise<void> => {
   return idleTimeProcessor.scheduleCleanup(taskFn)
 }

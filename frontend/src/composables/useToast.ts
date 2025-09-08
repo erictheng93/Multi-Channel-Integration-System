@@ -1,6 +1,18 @@
 import { ref, createApp, type App } from 'vue'
 import Toast from '@/components/ui/Toast.vue'
-import type { ToastProps } from '@/components/ui/Toast.vue'
+
+// Define ToastProps interface locally since Vue SFC type exports aren't directly importable
+interface ToastProps {
+  title: string
+  description?: string
+  type?: 'success' | 'error' | 'warning' | 'info'
+  duration?: number
+  showProgress?: boolean
+  showCloseButton?: boolean
+  actionText?: string
+  onAction?: () => void
+  onClose?: () => void
+}
 
 interface ToastInstance {
   id: string
@@ -46,7 +58,7 @@ class ToastManager {
       // 延遲移除DOM，讓退場動畫完成
       setTimeout(() => {
         if (toast?.app) {
-          (toast.app as App<Element>).unmount()
+          (toast.app as App<globalThis.Element>).unmount()
         }
         if (toast?.element?.parentNode) {
           toast.element.parentNode.removeChild(toast.element)

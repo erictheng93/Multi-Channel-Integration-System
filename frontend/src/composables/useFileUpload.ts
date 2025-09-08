@@ -55,7 +55,7 @@ export function useFileUpload() {
   }
 
   // 驗證檔案
-  const validateFile = (file: File, options: UploadOptions = defaultOptions): string | null => {
+  const validateFile = (file: globalThis.File, options: UploadOptions = defaultOptions): string | null => {
     // 檢查檔案類型
     if (options.allowedTypes && !options.allowedTypes.includes(file.type)) {
       return '不支援的檔案格式'
@@ -76,9 +76,9 @@ export function useFileUpload() {
 
   // 單檔案上傳
   const uploadSingleFile = async (
-    file: File,
+    file: globalThis.File,
     options: UploadOptions = {},
-    onProgress?: (progress: number) => void
+    onProgress?: (_progress: number) => void
   ): Promise<UploadResult> => {
     const mergedOptions = { ...defaultOptions, ...options }
     
@@ -93,7 +93,7 @@ export function useFileUpload() {
     }
 
     try {
-      const formData = new FormData()
+      const formData = new globalThis.FormData()
       formData.append('file', file)
       formData.append('generateThumbnail', String(mergedOptions.generateThumbnail))
       formData.append('compress', String(mergedOptions.compress))
@@ -140,9 +140,9 @@ export function useFileUpload() {
 
   // 多檔案上傳
   const uploadMultipleFiles = async (
-    fileList: File[],
+    fileList: globalThis.File[],
     options: UploadOptions = {},
-    onProgress?: (progress: number) => void
+    onProgress?: (_progress: number) => void
   ): Promise<UploadResult[]> => {
     uploading.value = true
     uploadProgress.value = 0
@@ -321,17 +321,17 @@ export function useFileUpload() {
     return `${Math.round(bytes / Math.pow(k, i) * 100) / 100  } ${  sizes[i]}`
   }
 
-  const isImageFile = (file: File | MediaFileInfo): boolean => {
+  const isImageFile = (file: globalThis.File | MediaFileInfo): boolean => {
     const mimeType = 'type' in file ? file.type : file.mimeType
     return mimeType.startsWith('image/')
   }
 
-  const isVideoFile = (file: File | MediaFileInfo): boolean => {
+  const isVideoFile = (file: globalThis.File | MediaFileInfo): boolean => {
     const mimeType = 'type' in file ? file.type : file.mimeType
     return mimeType.startsWith('video/')
   }
 
-  const isAudioFile = (file: File | MediaFileInfo): boolean => {
+  const isAudioFile = (file: globalThis.File | MediaFileInfo): boolean => {
     const mimeType = 'type' in file ? file.type : file.mimeType
     return mimeType.startsWith('audio/')
   }

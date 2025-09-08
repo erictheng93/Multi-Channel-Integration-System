@@ -64,10 +64,12 @@ interface Props {
   maxWidth?: string
 }
 
+/* eslint-disable no-unused-vars */
 interface Emits {
   (e: 'show'): void
   (e: 'hide'): void
 }
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(defineProps<Props>(), {
   content: '',

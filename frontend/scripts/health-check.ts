@@ -69,7 +69,7 @@ function runHealthCheck(): void {
     const npmVersion = execSync('npm --version', { encoding: 'utf8' }).trim();
     log(`  ✅ Node.js: ${nodeVersion}`);
     log(`  ✅ npm: ${npmVersion}`);
-  } catch (error) {
+  } catch {
     log(`  ❌ Failed to check Node.js/npm versions`);
   }
 
@@ -85,10 +85,10 @@ function runHealthCheck(): void {
     try {
       execSync('npm audit --audit-level=high', { stdio: 'pipe' });
       log(`  ✅ No high-severity security vulnerabilities`);
-    } catch (error) {
+    } catch {
       log(`  ⚠️  Security vulnerabilities detected - run 'npm audit' for details`);
     }
-  } catch (error) {
+  } catch {
     log(`  ❌ Failed to read package.json`);
   }
 
@@ -134,7 +134,7 @@ function runHealthCheck(): void {
     } else {
       log(`  ✅ Port 3000 is available`);
     }
-  } catch (error) {
+  } catch {
     log(`  ℹ️  Could not check port availability`);
   }
 
@@ -166,7 +166,7 @@ function runHealthCheck(): void {
     } else {
       log(`  ✅ Working directory clean`);
     }
-  } catch (error) {
+  } catch {
     log(`  ℹ️  Not a git repository or git not available`);
   }
 

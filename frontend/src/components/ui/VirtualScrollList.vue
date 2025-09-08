@@ -1,3 +1,4 @@
+<!-- eslint-disable no-unused-vars -->
 <template>
   <div
     ref="containerRef"
@@ -92,10 +93,10 @@ const emit = defineEmits<{
 }>()
 
 // 原生實現 throttle 和 debounce
-const throttle = <T extends (...args: Parameters<T>) => ReturnType<T>>(
+const throttle = <T extends (..._args: Parameters<T>) => ReturnType<T>>(
   func: T, 
   limit: number = 16
-): ((...args: Parameters<T>) => void) => {
+): ((..._args: Parameters<T>) => void) => {
   let inThrottle: boolean = false
   return function(this: ThisParameterType<T>, ...args: Parameters<T>) {
     if (!inThrottle) {
@@ -106,10 +107,10 @@ const throttle = <T extends (...args: Parameters<T>) => ReturnType<T>>(
   }
 }
 
-const debounce = <T extends (...args: Parameters<T>) => ReturnType<T>>(
+const debounce = <T extends (..._args: Parameters<T>) => ReturnType<T>>(
   func: T, 
   delay: number = 1000
-): ((...args: Parameters<T>) => void) => {
+): ((..._args: Parameters<T>) => void) => {
   let timeoutId: NodeJS.Timeout | undefined
   return function(this: ThisParameterType<T>, ...args: Parameters<T>) {
     clearTimeout(timeoutId)
@@ -130,8 +131,8 @@ interface Props {
   horizontal?: boolean        // 水平滾動（未實現）
   
   // 回調函數
-  getItemKey?: (item: T, index: number) => string | number
-  onScroll?: (scrollTop: number, scrollLeft: number) => void
+  getItemKey?: (_item: T, _index: number) => string | number
+  onScroll?: (_scrollTop: number, _scrollLeft: number) => void
   onReachBottom?: () => Promise<void> | void
   onReachTop?: () => Promise<void> | void
   

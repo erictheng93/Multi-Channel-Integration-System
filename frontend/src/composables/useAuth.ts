@@ -38,7 +38,7 @@ export function useAuth() {
       }
       
       return { success: false }
-    } catch (err) {
+    } catch (_err) {
       // authStore.login 已經處理了錯誤，不需要重複處理
       return { success: false }
     }
@@ -49,8 +49,8 @@ export function useAuth() {
     try {
       await authStore.logout()
       router.push('/login')
-    } catch (err) {
-      handleError(err)
+    } catch (_err) {
+      handleError(_err)
     }
   }
 
@@ -68,8 +68,8 @@ export function useAuth() {
   const refreshAgent = async (forceRefresh = false) => {
     try {
       await authStore.fetchCurrentAgent(forceRefresh)
-    } catch (err) {
-      handleError(err)
+    } catch (_err) {
+      handleError(_err)
     }
   }
 
@@ -77,8 +77,8 @@ export function useAuth() {
   const forceRefreshAgent = async () => {
     try {
       await authStore.fetchCurrentAgent(true)
-    } catch (err) {
-      handleError(err)
+    } catch (_err) {
+      handleError(_err)
     }
   }
 

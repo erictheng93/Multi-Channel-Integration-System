@@ -380,7 +380,7 @@ async function loadConversations() {
             await updateConversationsWithAnimation(latestData)
           }
         }
-      }, TaskPriority.LOW)
+      }, TaskPriority._LOW)
       
     } else {
       // 使用智能快取載入 - 先顯示快取，再背景更新
@@ -396,7 +396,7 @@ async function loadConversations() {
       if (result?.fresh && !result?.error) {
         idleTimeProcessor.scheduleTask(() => {
           preloadNextPage()
-        }, TaskPriority.LOW)
+        }, TaskPriority._LOW)
       }
       
       if (result?.fromCache && result?.fresh) {
@@ -407,7 +407,7 @@ async function loadConversations() {
     // 在空閒時間進行預測性預載入
     idleTimeProcessor.scheduleTask(() => {
       predictiveLoader.predictAndPreload()
-    }, TaskPriority.LOW)
+    }, TaskPriority._LOW)
     
   } catch (error) {
     console.error('載入對話失敗:', error)
@@ -525,7 +525,7 @@ function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: numbe
   // 在空閒時間執行預測性載入
   idleTimeProcessor.scheduleTask(() => {
     predictiveLoader.predictAndPreload()
-  }, TaskPriority.LOW)
+  }, TaskPriority._LOW)
   
   // 如果用戶接近數據底部，提前載入更多
   if (direction === 'down' && estimatedDistance < 5 && conversationsStore.canLoadMore) {
@@ -591,7 +591,7 @@ onMounted(async () => {
   // 在空閒時間進行初始預測分析
   idleTimeProcessor.scheduleTask(() => {
     predictiveLoader.predictAndPreload()
-  }, TaskPriority.LOW)
+  }, TaskPriority._LOW)
   
   // 監聽滾動事件實現無限滾動
   const handleScroll = () => {

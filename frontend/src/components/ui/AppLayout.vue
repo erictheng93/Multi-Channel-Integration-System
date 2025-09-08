@@ -433,7 +433,7 @@ const formatTime = (date: Date) => {
 
 // 點擊外部關閉菜單
 const handleClickOutside = (event: Event) => {
-  const target = event.target as Element
+  const target = event.target as globalThis.Element
   if (!target.closest('.user-profile') && !target.closest('.user-menu')) {
     showUserMenu.value = false
   }

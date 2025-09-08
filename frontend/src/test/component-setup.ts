@@ -35,7 +35,7 @@ beforeEach(() => {
       stopPropagation = vi.fn()
       stopImmediatePropagation = vi.fn()
       
-      constructor(type: string, options: EventInit = {}) {
+      constructor(type: string, options: globalThis.EventInit = {}) {
         this.type = type
         this.bubbles = options.bubbles ?? false
         this.cancelable = options.cancelable ?? false
@@ -56,7 +56,7 @@ beforeEach(() => {
       clientX: number = 0
       clientY: number = 0
       
-      constructor(type: string, options: MouseEventInit = {}) {
+      constructor(type: string, options: globalThis.MouseEventInit = {}) {
         super(type, options)
         this.button = options.button ?? 0
         this.buttons = options.buttons ?? 0
@@ -98,7 +98,7 @@ beforeEach(() => {
       altKey: boolean = false
       metaKey: boolean = false
       
-      constructor(type: string, options: KeyboardEventInit = {}) {
+      constructor(type: string, options: globalThis.KeyboardEventInit = {}) {
         super(type, options)
         this.key = options.key ?? ''
         this.code = options.code ?? ''
@@ -121,7 +121,7 @@ beforeEach(() => {
       data: string = ''
       inputType: string = ''
       
-      constructor(type: string, options: InputEventInit = {}) {
+      constructor(type: string, options: globalThis.InputEventInit = {}) {
         super(type, options)
         this.data = options.data ?? ''
         this.inputType = options.inputType ?? ''
@@ -143,7 +143,7 @@ beforeEach(() => {
   // Ensure proper DOM element behavior
   if (typeof global.document !== 'undefined' && global.document.documentElement) {
     // Fix classList.clear() if it doesn't exist
-    const classList = global.document.documentElement.classList as DOMTokenList & { clear?: () => void }
+    const classList = global.document.documentElement.classList as globalThis.DOMTokenList & { clear?: () => void }
     if (!classList.clear) {
       classList.clear = function() {
         while (this.length > 0) {

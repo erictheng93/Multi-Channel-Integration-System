@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, type MockedFunction as _MockedFunction } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, type VueWrapper, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { TestComponentInstance, MockProps } from '@/types/test-types'
-import type { FileUploadItem, FileUploadResult as _FileUploadResult } from '@/types/file-upload'
+import type { FileUploadItem } from '@/types/file-upload'
 import FileUpload from './FileUpload.vue'
 
 // Mock the icons
@@ -155,7 +155,7 @@ describe('FileUpload', () => {
     it('should emit file-select event when files are selected', async () => {
       wrapper = createWrapper()
       
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const file = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -195,7 +195,7 @@ describe('FileUpload', () => {
     it('should handle file drop', async () => {
       wrapper = createWrapper({ showDropZone: true })
       
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const file = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       
       // Simulate file selection by triggering the file input change event
       const fileInput = wrapper.find('input[type="file"]')
@@ -217,7 +217,7 @@ describe('FileUpload', () => {
     it('should validate file size', async () => {
       wrapper = createWrapper({ maxSize: 1024 }) // 1KB
       
-      const largeFile = new File(['x'.repeat(2048)], 'large.txt', { type: 'text/plain' })
+      const largeFile = new globalThis.File(['x'.repeat(2048)], 'large.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -235,7 +235,7 @@ describe('FileUpload', () => {
     it('should validate file type', async () => {
       wrapper = createWrapper({ acceptedTypes: '.jpg,.png' })
       
-      const invalidFile = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const invalidFile = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -254,9 +254,9 @@ describe('FileUpload', () => {
       wrapper = createWrapper({ maxFiles: 2, multiple: true })
       
       const files = [
-        new File(['1'], 'file1.txt', { type: 'text/plain' }),
-        new File(['2'], 'file2.txt', { type: 'text/plain' }),
-        new File(['3'], 'file3.txt', { type: 'text/plain' })
+        new globalThis.File(['1'], 'file1.txt', { type: 'text/plain' }),
+        new globalThis.File(['2'], 'file2.txt', { type: 'text/plain' }),
+        new globalThis.File(['3'], 'file3.txt', { type: 'text/plain' })
       ]
       
       const fileInput = wrapper.find('.file-input')
@@ -434,7 +434,7 @@ describe('FileUpload', () => {
       wrapper = createWrapper()
       
       // Trigger an error by selecting a file that's too large (11MB > 10MB limit)
-      const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
+      const largeFile = new globalThis.File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -455,7 +455,7 @@ describe('FileUpload', () => {
       wrapper = createWrapper()
       
       // Trigger an error (11MB > 10MB limit)
-      const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
+      const largeFile = new globalThis.File(['x'.repeat(11 * 1024 * 1024)], 'large.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {
@@ -487,7 +487,7 @@ describe('FileUpload', () => {
       
       wrapper = createWrapper({ uploadFunction: mockUploadFunction })
       
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const file = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       
       // Access the component instance to call uploadFile directly
       const component = wrapper.vm
@@ -514,7 +514,7 @@ describe('FileUpload', () => {
       
       wrapper = createWrapper({ uploadFunction: mockUploadFunction })
       
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const file = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       const component = wrapper.vm
       const fileItem: FileUploadItem = {
         id: '1',
@@ -536,7 +536,7 @@ describe('FileUpload', () => {
       
       wrapper = createWrapper({ uploadFunction: mockUploadFunction })
       
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const file = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       const component = wrapper.vm
       const fileItem: FileUploadItem = {
         id: '1',
@@ -613,7 +613,7 @@ describe('FileUpload', () => {
     it('should emit update:modelValue when files change', async () => {
       wrapper = createWrapper()
       
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' })
+      const file = new globalThis.File(['test'], 'test.txt', { type: 'text/plain' })
       const fileInput = wrapper.find('.file-input')
       
       Object.defineProperty(fileInput.element, 'files', {

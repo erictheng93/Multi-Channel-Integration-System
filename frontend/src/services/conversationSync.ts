@@ -1,6 +1,7 @@
 // 對話數據混合同步服務 - SSE + 智能輪詢備份
 // 專案名稱：Multi-Channel Support MVP
 // Created by: Hybrid Sync Service Developer
+/* eslint-disable no-unused-vars */
 
 import { ref, type Ref } from 'vue';
 import { conversationApi } from '@/api/conversations';
@@ -30,7 +31,7 @@ const DEFAULT_CONFIG: SyncConfig = {
 
 export class ConversationSyncService {
   // SSE連接
-  private eventSource: EventSource | null = null;
+  private eventSource: globalThis.EventSource | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   
@@ -123,7 +124,7 @@ export class ConversationSyncService {
 
       console.log('📡 [Sync Service] Connecting to SSE:', baseUrl);
 
-      this.eventSource = new EventSource(url, {
+      this.eventSource = new globalThis.EventSource(url, {
         withCredentials: false
       });
       

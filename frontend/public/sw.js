@@ -270,7 +270,7 @@ async function cacheFirst(request, cacheName, strategy) {
     }
     
     return networkResponse
-  } catch (error) {
+  } catch {
     console.log('💾 [SW] Serving from cache (network failed):', request.url)
     const cache = await caches.open(cacheName)
     return await cache.match(request) || createOfflineResponse(request)
@@ -295,7 +295,7 @@ async function networkFirst(request, cacheName, strategy) {
     }
     
     return networkResponse
-  } catch (error) {
+  } catch {
     console.log('💾 [SW] Network failed, serving from cache:', request.url)
     const cache = await caches.open(cacheName)
     const cachedResponse = await cache.match(request)

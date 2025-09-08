@@ -61,7 +61,7 @@ function setupEnhancedDOMEvents() {
       readonly AT_TARGET = 2
       readonly BUBBLING_PHASE = 3
 
-      constructor(type: string, eventInitDict: EventInit = {}) {
+      constructor(type: string, eventInitDict: globalThis.EventInit = {}) {
         this.type = type
         this.bubbles = eventInitDict.bubbles ?? false
         this.cancelable = eventInitDict.cancelable ?? false
@@ -199,9 +199,9 @@ beforeEach(() => {
             removeChild: ReturnType<typeof vi.fn>
             closest: ReturnType<typeof vi.fn>
             childElementCount: number
-            children: HTMLCollection
-            firstElementChild: Element | null
-            lastElementChild: Element | null
+            children: globalThis.HTMLCollection
+            firstElementChild: globalThis.Element | null
+            lastElementChild: globalThis.Element | null
           }
           
           const mockParentNode: MockParentNode = {
@@ -210,7 +210,7 @@ beforeEach(() => {
             removeChild: vi.fn(),
             closest: vi.fn(),
             childElementCount: 0,
-            children: [] as unknown as HTMLCollection,
+            children: [] as unknown as globalThis.HTMLCollection,
             firstElementChild: null,
             lastElementChild: null
           }

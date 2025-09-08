@@ -16,17 +16,17 @@ export function useThrottle<T>(value: Ref<T>, delay: number = 300) {
   return throttledValue
 }
 
-export function useThrottledFunction<T extends (...args: unknown[]) => unknown>(
+export function useThrottledFunction<T extends (..._args: unknown[]) => unknown>(
   fn: T,
   delay: number = 300
 ): T {
   let lastCall = 0
 
-  return ((...args: Parameters<T>) => {
+  return ((..._args: Parameters<T>) => {
     const now = Date.now()
     if (now - lastCall >= delay) {
       lastCall = now
-      return fn(...args)
+      return fn(..._args)
     }
     return undefined
   }) as T

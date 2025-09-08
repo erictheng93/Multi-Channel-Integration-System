@@ -187,7 +187,7 @@ export const activitiesApi = {
 
       const blob = await response.blob()
       return { success: true, data: blob }
-    } catch (error) {
+    } catch {
       return { 
         success: false, 
         error: 'Export request failed' // Generic error message

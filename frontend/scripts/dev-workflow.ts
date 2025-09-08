@@ -33,7 +33,7 @@ function runCommand(command: string, description: string): boolean {
     execSync(command, { stdio: 'inherit' });
     log(`${colors.green}✅ ${description} completed successfully${colors.reset}`);
     return true;
-  } catch (error) {
+  } catch {
     log(`${colors.red}❌ ${description} failed${colors.reset}`);
     return false;
   }

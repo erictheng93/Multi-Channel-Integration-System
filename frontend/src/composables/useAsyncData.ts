@@ -6,9 +6,9 @@ export interface UseAsyncDataOptions<T> {
   immediate?: boolean
   resetOnExecute?: boolean
   shallow?: boolean
-  onSuccess?: (data: T) => void
-  onError?: (error: Error | unknown) => void
-  transform?: (data: unknown) => T
+  onSuccess?: (_data: T) => void
+  onError?: (_error: Error | unknown) => void
+  transform?: (_data: unknown) => T
 }
 
 export function useAsyncData<T = unknown>(
@@ -124,7 +124,7 @@ export function useAsyncData<T = unknown>(
 // 專門用於 API 調用的 composable
 export function useApi<T = unknown>(
   endpoint: string,
-  fetcher: (endpoint: string) => Promise<T>,
+  fetcher: (_endpoint: string) => Promise<T>,
   options: UseAsyncDataOptions<T> = {}
 ) {
   return useAsyncData(

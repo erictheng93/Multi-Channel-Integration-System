@@ -6,6 +6,7 @@
 
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const component: DefineComponent<{}, {}, any>
   export default component
 }
@@ -29,7 +30,7 @@ declare global {
   }
   
   // Window with debug properties
-  interface WindowWithDebug extends Window {
+  interface WindowWithDebug extends globalThis.Window {
     _loginFailureTimestamp?: number
     _blockNavigation?: boolean
     _loginInProgress?: boolean

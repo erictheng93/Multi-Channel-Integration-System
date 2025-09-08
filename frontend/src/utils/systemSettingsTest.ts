@@ -302,7 +302,7 @@ export class SystemSettingsTestSuite {
       try {
         await systemApi.getSettings()
         readTimes.push(Date.now() - startTime)
-      } catch (error) {
+      } catch {
         // 忽略錯誤，只記錄時間
       }
     }
@@ -330,7 +330,7 @@ export class SystemSettingsTestSuite {
       try {
         setLocale(lang)
         switchTimes.push(Date.now() - startTime)
-      } catch (error) {
+      } catch {
         // 忽略錯誤
       }
     }

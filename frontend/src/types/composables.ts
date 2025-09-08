@@ -14,7 +14,7 @@ export interface AsyncState<T> {
 
 // 異步操作返回類型
 export interface AsyncOperation<T> extends AsyncState<T> {
-  execute: (throwOnError?: boolean) => Promise<T | null>
+  execute: (_throwOnError?: boolean) => Promise<T | null>
   refresh: () => Promise<T | null>
   reset: () => void
 }
@@ -38,37 +38,37 @@ export interface FormState<T extends Record<string, unknown>> {
 
 // 表單操作類型
 export interface FormOperations<T extends Record<string, unknown>> extends FormState<T> {
-  setValidator: <K extends keyof T>(field: K, validator: (value: T[K]) => string | null) => void
-  validateField: <K extends keyof T>(field: K) => boolean
+  setValidator: <K extends keyof T>(_field: K, _validator: (_value: T[K]) => string | null) => void
+  validateField: <K extends keyof T>(_field: K) => boolean
   validateForm: () => boolean
   resetForm: () => void
-  setFieldValue: <K extends keyof T>(field: K, value: T[K]) => void
-  setFieldError: <K extends keyof T>(field: K, error: string) => void
-  clearFieldError: <K extends keyof T>(field: K) => void
+  setFieldValue: <K extends keyof T>(_field: K, _value: T[K]) => void
+  setFieldError: <K extends keyof T>(_field: K, _error: string) => void
+  clearFieldError: <K extends keyof T>(_field: K) => void
 }
 
 
 // LocalStorage 操作類型
 export interface LocalStorageOperations<T> {
   data: Ref<T>
-  setData: (value: T) => void
+  setData: (_value: T) => void
   removeData: () => void
 }
 
 // 對象 LocalStorage 操作類型
 export interface LocalStorageObjectOperations<T extends Record<string, unknown>> 
   extends LocalStorageOperations<T> {
-  updateProperty: <K extends keyof T>(property: K, value: T[K]) => void
-  updateProperties: (updates: Partial<T>) => void
+  updateProperty: <K extends keyof T>(_property: K, _value: T[K]) => void
+  updateProperties: (_updates: Partial<T>) => void
   reset: () => void
 }
 
 // 數組 LocalStorage 操作類型
 export interface LocalStorageArrayOperations<T> extends LocalStorageOperations<T[]> {
-  addItem: (item: T) => void
-  removeItem: (index: number) => void
-  removeItemBy: (predicate: (item: T) => boolean) => void
-  updateItem: (index: number, item: T) => void
+  addItem: (_item: T) => void
+  removeItem: (_index: number) => void
+  removeItemBy: (_predicate: (_item: T) => boolean) => void
+  updateItem: (_index: number, _item: T) => void
   clear: () => void
 }
 
@@ -76,9 +76,9 @@ export interface LocalStorageArrayOperations<T> extends LocalStorageOperations<T
 export interface ErrorHandling {
   error: Ref<string | null>
   loading: Ref<boolean>
-  setError: (message: string) => void
+  setError: (_message: string) => void
   clearError: () => void
-  handleError: (err: Error | unknown) => void
+  handleError: (_err: Error | unknown) => void
 }
 
 // 主題類型
@@ -90,7 +90,7 @@ export interface ThemeState {
 }
 
 export interface ThemeOperations extends ThemeState {
-  setTheme: (theme: 'light' | 'dark' | 'auto') => void
+  setTheme: (_theme: 'light' | 'dark' | 'auto') => void
   toggleTheme: () => void
 }
 
@@ -104,15 +104,15 @@ export interface AuthState {
 }
 
 export interface AuthOperations extends AuthState {
-  login: (credentials: { email: string; password: string }) => Promise<boolean>
+  login: (_credentials: { email: string; password: string }) => Promise<boolean>
   logout: () => Promise<void>
-  hasPermission: (permission: string) => boolean
-  hasRole: (role: string) => boolean
+  hasPermission: (_permission: string) => boolean
+  hasRole: (_role: string) => boolean
   validateSession: () => boolean
   extendSession: () => void
 }
 
 // 通用 Composable 返回類型
 export interface ComposableReturn {
-  [key: string]: Ref<unknown> | ComputedRef<unknown> | ((...args: unknown[]) => unknown)
+  [key: string]: Ref<unknown> | ComputedRef<unknown> | ((..._args: unknown[]) => unknown)
 }

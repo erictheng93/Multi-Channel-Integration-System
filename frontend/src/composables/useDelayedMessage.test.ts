@@ -88,7 +88,7 @@ describe('useDelayedMessage', () => {
     })
 
     it('should set loading state during request', async () => {
-      let resolvePromise: (value: { success: boolean; data?: unknown }) => void = () => {}
+      let resolvePromise!: (_value: { success: boolean; data?: unknown }) => void
       const promise = new Promise<{ success: boolean; data?: unknown }>(resolve => {
         resolvePromise = resolve
       })

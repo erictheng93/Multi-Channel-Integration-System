@@ -242,6 +242,7 @@ interface Props {
   webhookStatus?: WebhookStatus;
 }
 
+/* eslint-disable no-unused-vars */
 interface Emits {
   (e: 'connect'): void;
   (e: 'disconnect'): void;
@@ -250,6 +251,7 @@ interface Emits {
   (e: 'settings'): void;
   (e: 'status-change', status: string): void;
 }
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(defineProps<Props>(), {
   showMetrics: true,

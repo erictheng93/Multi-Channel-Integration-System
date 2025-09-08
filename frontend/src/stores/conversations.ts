@@ -312,7 +312,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     try {
       await cacheManager.prefetch(`conversations:page:${nextPage}`, async () => {
         const cleanFilters = Object.fromEntries(
-          Object.entries(filters.value).filter(([_, v]) => v && v !== '')
+          Object.entries(filters.value).filter(([_key, v]) => v && v !== '')
         )
         const response = await conversationApi.list({
           page: nextPage,

@@ -5,12 +5,14 @@ import typescriptParser from '@typescript-eslint/parser'
 import vueParser from 'vue-eslint-parser'
 
 export default [
-  // Ignore patterns - equivalent to .eslintignore
+  // Ignore patterns - migrated from .eslintignore
   {
     ignores: [
       'dist/**/*',
       'node_modules/**/*',
       '*.d.ts',
+      '.eslintrc.cjs',
+      'vite.config.ts',
       'coverage/**/*',
       '.vite/**/*',
       '**/*.timestamp-*'
@@ -127,6 +129,11 @@ export default [
       // General rules
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
       'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+      'no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_', 
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_'
+      }],
       'prefer-const': 'error',
       'no-var': 'error',
       'object-shorthand': 'error',

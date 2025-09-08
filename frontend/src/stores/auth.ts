@@ -144,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
         
         return false;
       }
-    } catch (err) {
+    } catch (_err) {
       
       // 確保清理任何可能設置的認證狀態
       token.value = null;
@@ -160,10 +160,10 @@ export const useAuthStore = defineStore('auth', () => {
       }
       
       // 提取更詳細的錯誤訊息
-      if (err && typeof err === 'object' && 'message' in err) {
-        error.value = (err as Error).message;
-      } else if (typeof err === 'string') {
-        error.value = err;
+      if (_err && typeof _err === 'object' && 'message' in _err) {
+        error.value = (_err as Error).message;
+      } else if (typeof _err === 'string') {
+        error.value = _err;
       } else {
         error.value = '網路錯誤，請稍後再試';
       }
@@ -181,8 +181,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (callAPI && token.value) {
       try {
         await authApi.logout();
-      } catch (err) {
-        console.warn('Logout API call failed:', err);
+      } catch (_err) {
+        console.warn('Logout API call failed:', _err);
       }
     }
 
@@ -239,8 +239,8 @@ export const useAuthStore = defineStore('auth', () => {
       } else if (response.status === 401) {
         await logout(false);
       }
-    } catch (err) {
-      console.warn('fetchCurrentAgent failed:', err);
+    } catch (_err) {
+      console.warn('fetchCurrentAgent failed:', _err);
     }
   }
 
@@ -392,7 +392,7 @@ export const useAuthStore = defineStore('auth', () => {
         await logout(false);
         return { success: false, error: response.error || 'Token refresh failed' };
       }
-    } catch (err) {
+    } catch (_err) {
       await logout(false);
       return { success: false, error: 'Token refresh error' };
     }

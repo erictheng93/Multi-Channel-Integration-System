@@ -195,7 +195,7 @@ export class PredictiveLoader {
     // 立即分析新行為（低優先級）
     idleTimeProcessor.scheduleTask(
       () => this.analyzeRecentBehavior(event),
-      TaskPriority.LOW
+      TaskPriority._LOW
     )
   }
 
@@ -569,7 +569,7 @@ export class PredictiveLoader {
           }
           return []
         },
-        TaskPriority.LOW
+        TaskPriority._LOW
       ) as Conversation[]
       
       // 快取預載入的數據
@@ -636,7 +636,7 @@ export class PredictiveLoader {
       if (this.isEnabled.value && this.behaviorHistory.length > 10) {
         idleTimeProcessor.scheduleTask(
           () => this.predictAndPreload(),
-          TaskPriority.LOW
+          TaskPriority._LOW
         )
       }
     }, 5 * 60 * 1000)

@@ -106,7 +106,7 @@ async function initializePWAFeatures() {
       setInterval(async () => {
         try {
           await swManager.getCacheStats()
-        } catch (error) {
+        } catch (_error) {
           // 靜默處理快取統計錯誤
         }
       }, 5 * 60 * 1000) // 每5分鐘更新一次

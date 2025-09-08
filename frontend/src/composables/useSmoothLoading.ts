@@ -100,8 +100,8 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
     
     isUpdating.value = true
     
-    // 使用 requestAnimationFrame 確保DOM更新在下一幀執行
-    animationFrameId = requestAnimationFrame(async () => {
+    // 使用 globalThis.requestAnimationFrame 確保DOM更新在下一幀執行
+    animationFrameId = globalThis.requestAnimationFrame(async () => {
       await processUpdatesInOrder()
       isUpdating.value = false
       animationFrameId = null
@@ -294,7 +294,7 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
       updateTimer = null
     }
     if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId)
+      globalThis.cancelAnimationFrame(animationFrameId)
       animationFrameId = null
     }
     animatingItems.value.clear()

@@ -358,7 +358,7 @@ const handleUnassign = async () => {
   if (isAssigning.value) {return}
 
   // 簡單確認
-  if (!confirm('確定要取消對話指派嗎？')) {
+  if (!window.confirm('確定要取消對話指派嗎？')) {
     return
   }
 

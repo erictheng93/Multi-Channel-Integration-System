@@ -86,10 +86,12 @@ interface Props {
   isDivider?: boolean
 }
 
+/* eslint-disable no-unused-vars */
 interface Emits {
   (e: 'click', event: MouseEvent | KeyboardEvent, value?: unknown): void
   (e: 'select', value?: unknown): void
 }
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(defineProps<Props>(), {
   label: '',

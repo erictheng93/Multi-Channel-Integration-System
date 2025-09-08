@@ -1,5 +1,6 @@
 // 增量更新管理器 - 實現平滑的數據更新動畫
 // 提供零突兀感的用戶體驗
+/* eslint-disable no-unused-vars */
 
 import { ref, nextTick } from 'vue'
 import type { Conversation } from '@/types'
@@ -147,13 +148,13 @@ export class IncrementalUpdateManager<T = unknown> {
         container.scrollTo({
           top: this.scrollPosition.top,
           left: this.scrollPosition.left,
-          behavior: 'instant' as ScrollBehavior
+          behavior: 'instant' as globalThis.ScrollBehavior
         })
       } else if (typeof window !== 'undefined') {
         window.scrollTo({
           top: this.scrollPosition.top,
           left: this.scrollPosition.left,
-          behavior: 'instant' as ScrollBehavior
+          behavior: 'instant' as globalThis.ScrollBehavior
         })
       }
     })
@@ -223,7 +224,7 @@ export class IncrementalUpdateManager<T = unknown> {
         element.style.transition = `all ${this.config.duration}ms ${this.config.easing}`
 
         // 觸發動畫
-        requestAnimationFrame(() => {
+        globalThis.requestAnimationFrame(() => {
           element.style.opacity = '1'
           element.style.transform = 'translateX(0) scale(1)'
 

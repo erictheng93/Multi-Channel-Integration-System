@@ -13,7 +13,7 @@ export function usePrefetch() {
     
     prefetchQueue.add(url)
     
-    // 使用 requestIdleCallback 在瀏覽器空閒時預載入
+    // 使用 globalThis.requestIdleCallback 在瀏覽器空閒時預載入
     const prefetchFn = () => {
       if (prefetchedUrls.has(url)) {return}
       
@@ -33,8 +33,8 @@ export function usePrefetch() {
     }
     
     // 使用瀏覽器空閒時間或降級到 setTimeout
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(prefetchFn)
+    if ('globalThis.requestIdleCallback' in window) {
+      globalThis.requestIdleCallback(prefetchFn)
     } else {
       setTimeout(prefetchFn, 100)
     }
@@ -49,7 +49,7 @@ export function usePrefetch() {
     try {
       // 使用低優先級 fetch
       const response = await fetch(endpoint, {
-        priority: 'low' as RequestPriority,
+        priority: 'low' as globalThis.RequestPriority,
         cache: 'force-cache' // 利用瀏覽器快取
       })
       

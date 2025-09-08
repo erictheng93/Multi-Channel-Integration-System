@@ -1,3 +1,4 @@
+<!-- eslint-disable no-unused-vars -->
 <template>
   <div
     ref="containerRef"
@@ -90,11 +91,11 @@ interface Props {
   horizontal?: boolean
   
   // 回調函數
-  getItemKey?: (item: T, index: number) => string | number
-  onScroll?: (scrollTop: number, scrollLeft: number) => void
+  getItemKey?: (_item: T, _index: number) => string | number
+  onScroll?: (_scrollTop: number, _scrollLeft: number) => void
   onReachBottom?: () => Promise<void> | void
   onReachTop?: () => Promise<void> | void
-  onVisibleRangeChange?: (startIndex: number, endIndex: number) => void
+  onVisibleRangeChange?: (_startIndex: number, _endIndex: number) => void
   
   // 樣式相關
   itemClass?: string | string[] | Record<string, boolean>
@@ -159,8 +160,8 @@ const enteringItems = ref(new Set<number>())
 const isPreloading = ref(false)
 
 // Intersection Observer
-let intersectionObserver: IntersectionObserver | null = null
-let preloadObserver: IntersectionObserver | null = null
+let intersectionObserver: globalThis.IntersectionObserver | null = null
+let preloadObserver: globalThis.IntersectionObserver | null = null
 
 // 性能監控
 const performanceStats = ref({
@@ -171,10 +172,10 @@ const performanceStats = ref({
 })
 
 // 節流函數
-const throttle = <T extends (...args: Parameters<T>) => ReturnType<T>>(
+const throttle = <T extends (..._args: Parameters<T>) => ReturnType<T>>(
   func: T, 
   limit: number = 16
-): ((...args: Parameters<T>) => void) => {
+): ((..._args: Parameters<T>) => void) => {
   let inThrottle: boolean = false
   return function(this: ThisParameterType<T>, ...args: Parameters<T>) {
     if (!inThrottle) {
@@ -236,7 +237,7 @@ const visibleItems = computed(() => {
 })
 
 // 設置項目引用
-const setItemRef = (el: Element | ComponentPublicInstance | null, index: number) => {
+const setItemRef = (el: globalThis.Element | ComponentPublicInstance | null, index: number) => {
   if (el) {
     itemRefs.set(index, el as HTMLElement)
   } else {
@@ -249,7 +250,7 @@ const setupIntersectionObserver = () => {
   if (!props.enableSmartPreload || !containerRef.value) {return}
 
   // 主要觀察器 - 用於項目可見性檢測
-  intersectionObserver = new IntersectionObserver(
+  intersectionObserver = new globalThis.IntersectionObserver(
     (entries) => {
       entries.forEach(entry => {
         const index = parseInt((entry.target as HTMLElement).dataset.index || '0')
@@ -269,7 +270,7 @@ const setupIntersectionObserver = () => {
 
   // 預載入觀察器 - 用於預測性載入
   if (props.enableSmartPreload) {
-    preloadObserver = new IntersectionObserver(
+    preloadObserver = new globalThis.IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -287,7 +288,7 @@ const setupIntersectionObserver = () => {
 }
 
 // 處理項目可見
-const handleItemVisible = (index: number, entry: IntersectionObserverEntry) => {
+const handleItemVisible = (index: number, entry: globalThis.IntersectionObserverEntry) => {
   const ratio = entry.intersectionRatio
   
   // 預測性載入邏輯
@@ -305,7 +306,7 @@ const handleItemVisible = (index: number, entry: IntersectionObserverEntry) => {
 }
 
 // 處理預載入觸發
-const handlePreloadTrigger = (entry: IntersectionObserverEntry) => {
+const handlePreloadTrigger = (entry: globalThis.IntersectionObserverEntry) => {
   const target = entry.target as HTMLElement
   const index = parseInt(target.dataset.index || '0')
   
