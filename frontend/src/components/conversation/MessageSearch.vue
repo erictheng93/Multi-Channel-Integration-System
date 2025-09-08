@@ -277,39 +277,50 @@ defineExpose({
 
 <style scoped>
 .message-search {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
+  position: relative;
+  z-index: 10;
 }
 
 .search-trigger {
   display: flex;
   justify-content: center;
+  padding: var(--space-3) 0;
 }
 
 .search-button {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--gray-100);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   color: var(--gray-600);
   cursor: pointer;
   font-size: 0.875rem;
+  font-weight: 500;
   transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-button:hover {
-  background: var(--gray-200);
-  color: var(--gray-800);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--primary-600);
+  border-color: var(--primary-300);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .search-expanded {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg);
   padding: var(--space-4);
+  margin: var(--space-2) 0;
 }
 
 .search-input-row {
@@ -454,8 +465,31 @@ defineExpose({
 
 /* 響應式設計 */
 @media (max-width: 768px) {
+  .search-trigger {
+    padding: var(--space-2) 0;
+  }
+  
+  .search-button {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.8125rem;
+  }
+
   .search-expanded {
     padding: var(--space-3);
+    margin: var(--space-1) 0;
+  }
+
+  .search-input-row {
+    gap: var(--space-1);
+  }
+
+  .search-input {
+    font-size: 0.8125rem;
+  }
+
+  .close-search {
+    width: 28px;
+    height: 28px;
   }
 
   .search-filters {
@@ -463,23 +497,39 @@ defineExpose({
   }
 
   .filter-group {
-    min-width: 100px;
+    min-width: 80px;
   }
 
   .filter-select,
   .clear-filters {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
+    padding: var(--space-1);
   }
 }
 
 @media (max-width: 640px) {
+  .search-button {
+    font-size: 0.75rem;
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .search-expanded {
+    padding: var(--space-2);
+  }
+
   .search-filters {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--space-2);
   }
 
   .filter-group {
     min-width: auto;
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
   }
 }
 </style>
