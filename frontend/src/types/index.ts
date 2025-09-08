@@ -61,6 +61,7 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+  hasMore?: boolean;
 }
 
 // 團隊管理相關型別

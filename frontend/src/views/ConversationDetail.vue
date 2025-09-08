@@ -59,11 +59,24 @@
 
           <button
             class="btn btn-secondary"
-            :disabled="loadingMessages"
+            :disabled="loadingMessages || loadingHistory"
             @click="refreshMessages"
           >
-            <RefreshIcon :spinning="loadingMessages" />
+            <RefreshIcon :spinning="loadingMessages || loadingHistory" />
           </button>
+        </div>
+
+        <!-- 分頁資訊顯示 -->
+        <div
+          v-if="totalMessages > 0 && debugMode"
+          class="pagination-info"
+        >
+          <span class="message-count">{{ messages.length }}/{{ totalMessages }}</span>
+          <span
+            v-if="hasMore"
+            class="has-more-indicator"
+          >還有更多歷史訊息</span>
+          <span class="performance-indicator">⚙️ 分頁模式</span>
         </div>
       </div>
 
@@ -81,6 +94,29 @@
         class="messages-container"
         @scroll="handleScroll"
       >
+        <!-- 歷史消息載入指示器 -->
+        <div
+          v-if="false"
+          class="history-loading-wrapper"
+        >
+          <LoadingSpinner
+            size="sm"
+            text="載入歷史訊息..."
+          />
+        </div>
+        
+        <!-- 初始載入指示器 -->
+        <!-- 歷史消息載入指示器 -->
+        <div
+          v-if="loadingHistory && messages.length > 0"
+          class="history-loading-wrapper"
+        >
+          <LoadingSpinner
+            size="sm"
+            text="載入歷史訊息..."
+          />
+        </div>
+        
         <div
           v-if="loadingMessages && messages.length === 0"
           class="loading-wrapper"
@@ -277,10 +313,17 @@ const conversationsStore = useConversationsStore()
 const { 
   messages, 
   loading: loadingMessages,
+  hasMore,
+  loadingHistory,
+  totalMessages,
   fetchMessages,
   refreshMessages,
+  loadMoreMessages,
   setConversationId
-} = useMessages()
+} = useMessages(undefined, {
+  enablePagination: true,
+  pageSize: 50
+})
 
 // State
 const conversation = computed(() => conversationsStore.currentConversation)
@@ -301,6 +344,9 @@ const userScrolledUp = ref(false)
 // 搜索狀態
 const searchResults = ref<Message[]>([])
 const isSearchActive = ref(false)
+
+// 调试模式状态
+const debugMode = ref(false)
 
 // Quick replies
 const quickReplies = ref([
@@ -409,17 +455,19 @@ async function loadConversation() {
   }
 }
 
-// 檢查用戶是否在底部（翻轉後邏輯）
+// 檢查用戶是否在底部
 function isUserAtBottom(): boolean {
   if (!messagesContainer.value) {return true}
-  const { scrollTop } = messagesContainer.value
-  const tolerance = 50 // 50px 容差
-  // 翻轉後：scrollTop = 0 表示看到最新消息（在視覺頂部）
-  return scrollTop <= tolerance
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  const tolerance = 50
+  return scrollTop + clientHeight >= scrollHeight - tolerance
 }
 
-// 滾動事件處理
+// 滾動事件處理（支持無限滾動）
 function handleScroll() {
+  if (!messagesContainer.value) {return}
+  
+  const { scrollTop } = messagesContainer.value
   const atBottom = isUserAtBottom()
   userScrolledUp.value = !atBottom
   
@@ -427,6 +475,15 @@ function handleScroll() {
   if (atBottom) {
     showNewMessageIndicator.value = false
     newMessageCount.value = 0
+  }
+  
+  // 無限滾動邏輯 - 接近頂部時載入更多歷史訊息
+  const threshold = 100
+  const nearTop = scrollTop < threshold
+  
+  if (nearTop && hasMore.value && !loadingHistory.value) {
+    console.log('🔄 觸發無限滾動，載入更多歷史訊息')
+    loadMoreMessages()
   }
 }
 
@@ -443,7 +500,28 @@ async function loadMessages() {
     const previousMessageCount = messages.value.length
     const wasAtBottom = isInitialLoad.value || isUserAtBottom()
     
+    console.log(`🔄 [ConversationDetail] Loading messages, isInitialLoad: ${isInitialLoad.value}`)
+    
     await fetchMessages()
+    
+    // ✅ 優化初始載入體驗 - 確保用戶看到最新訊息
+    if (isInitialLoad.value && messages.value.length > 0) {
+      console.log(`📍 [ConversationDetail] Initial load complete, immediately scrolling to bottom with ${messages.value.length} messages`)
+      
+      // 使用多個nextTick確保DOM完全渲染，然後立即滾動到底部
+      await nextTick()
+      await nextTick()
+      
+      // 立即滾動到底部，不使用延遲
+      scrollToBottomInstantly()
+      console.log('✅ [ConversationDetail] Scrolled to bottom after initial load')
+      
+      // 再確保一次滾動（防止有些消息還在渲染）
+      setTimeout(() => {
+        scrollToBottomInstantly()
+        console.log('🔄 [ConversationDetail] Final scroll to bottom completed')
+      }, 50)
+    }
     
     // Reset permission error flag on successful fetch
     hasPermissionError.value = false
@@ -476,7 +554,6 @@ async function loadMessages() {
       pollingDelay.value = Math.min(10000, pollingDelay.value * 1.2) // Slow down if inactive
     }
 
-    // 初始載入時不需要滾動，CSS Grid 已經處理了底部對齊
   } catch (error) {
     console.error('載入訊息失敗:', error)
     
@@ -554,11 +631,16 @@ async function markAsRead() {
 
 function scrollToBottom() {
   if (messagesContainer.value) {
-    // 翻轉後：滾動到頂部(scrollTop = 0)顯示最新消息
     messagesContainer.value.scrollTo({
-      top: 0,
+      top: messagesContainer.value.scrollHeight,
       behavior: 'smooth'
     })
+  }
+}
+
+function scrollToBottomInstantly() {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
 }
 
@@ -738,16 +820,28 @@ function handleGlobalKeydown(event: KeyboardEvent) {
         messageSearchRef.value?.focus()
       }
       break
+      
+    case 'd':
+      // 切换调试模式
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        debugMode.value = !debugMode.value
+        console.log(`🐛 Debug mode ${debugMode.value ? 'enabled' : 'disabled'}`)
+      }
+      break
   }
 }
 
 // Lifecycle
 onMounted(async () => {
-  // Set conversation ID first
+  console.log('🚀 [ConversationDetail] Component mounted, starting initialization...')
+  
+  // Set conversation ID first (this will trigger message loading)
   await setConversationId(conversationId.value)
   await loadConversation()
   
-  await loadMessages()
+  // Don't call loadMessages() again since setConversationId already loaded them
+  console.log('✅ [ConversationDetail] Initialization complete, messages loaded')
 
   // Mark initial load as complete
   isInitialLoad.value = false
@@ -776,6 +870,17 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
 })
 
+// Watch messages length to trigger initial scroll
+watch(() => messages.value.length, async (newLength, oldLength) => {
+  if (isInitialLoad.value && newLength > 0 && oldLength === 0) {
+    console.log(`📍 [ConversationDetail] Messages loaded, triggering immediate scroll to bottom (${newLength} messages)`)
+    await nextTick()
+    await nextTick()
+    scrollToBottomInstantly()
+    console.log('✅ [ConversationDetail] Auto-scrolled to bottom after message load')
+  }
+}, { immediate: true })
+
 // Watch route changes
 watch(() => route.params.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
@@ -796,7 +901,8 @@ watch(() => route.params.id, async (newId, oldId) => {
     await setConversationId(newId as string)
     await loadConversation()
     
-    await loadMessages()
+    // Don't call loadMessages() again since setConversationId already loaded them
+    console.log('✅ [ConversationDetail] Route change complete, messages loaded')
 
     // Mark initial load as complete
     isInitialLoad.value = false
@@ -811,10 +917,13 @@ watch(() => route.params.id, async (newId, oldId) => {
 
 <style scoped>
 .conversation-detail {
-  height: 100%;
+  height: calc(100vh - 48px); /* 減去AppLayout的padding */
   display: flex;
   flex-direction: column;
   background-color: var(--gray-50);
+  overflow: hidden;
+  position: relative;
+  margin: -24px; /* 抵消AppLayout的padding */
 }
 
 .conversation-header {
@@ -825,9 +934,44 @@ watch(() => route.params.id, async (newId, oldId) => {
   background-color: white;
   border-bottom: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
-  position: sticky;
+  position: absolute;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  order: 3;
+  width: 100%;
+  justify-content: center;
+}
+
+.message-count {
+  font-weight: 600;
+  color: var(--primary-600);
+}
+
+.has-more-indicator {
+  color: var(--orange-600);
+  font-weight: 500;
+}
+
+.performance-indicator {
+  color: var(--green-600);
+  font-weight: 600;
 }
 
 .header-left {
@@ -902,26 +1046,38 @@ watch(() => route.params.id, async (newId, oldId) => {
 }
 
 .messages-container {
-  flex: 1;
+  position: absolute;
+  top: 100px; /* Header 高度 */
+  bottom: 180px; /* Input section 高度 */
+  left: 0;
+  right: 0;
   overflow-y: auto;
-  padding: var(--space-6) var(--space-6) 120px var(--space-6);
+  padding: var(--space-4) var(--space-6);
   background: linear-gradient(to bottom, var(--gray-50), var(--gray-100));
-  
-  /* CSS翻轉方案：從底部開始顯示 */
-  display: grid;
-  align-content: start; /* 翻轉後改為start */
-  min-height: 100%;
-  transform: scaleY(-1); /* 翻轉整個容器 */
+  display: flex;
+  flex-direction: column;
 }
 
 .loading-wrapper,
 .empty-state-wrapper {
-  transform: scaleY(-1); /* 翻轉回正常顯示 */
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 200px;
 }
+
+.history-loading-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-4) 0;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--gray-200);
+}
+
 
 .messages {
   max-width: 800px;
@@ -930,7 +1086,8 @@ watch(() => route.params.id, async (newId, oldId) => {
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  transform: scaleY(-1); /* 翻轉回正常顯示 */
+  min-height: min-content;
+  flex-shrink: 0;
 }
 
 .date-separator {
@@ -1008,11 +1165,13 @@ watch(() => route.params.id, async (newId, oldId) => {
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(226, 232, 240, 0.6);
   padding: 24px;
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 10;
+  z-index: 5;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .input-section::before {
@@ -1130,20 +1289,32 @@ watch(() => route.params.id, async (newId, oldId) => {
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+  .conversation-detail {
+    margin: -24px; /* AppLayout padding is same on tablet */
+  }
+
   .conversation-header {
     padding: var(--space-4) var(--space-3);
   }
+  
 
   .messages-container {
-    padding: var(--space-4) var(--space-3) 100px var(--space-3);
+    top: 80px; /* 平板版 header 高度 */
+    bottom: 140px; /* 平板版 input 高度 */
+    padding: var(--space-3);
   }
 
   .input-section {
     padding: var(--space-4) var(--space-3);
+    max-height: 160px;
   }
 }
 
 @media (max-width: 768px) {
+  .conversation-detail {
+    margin: -24px; /* Keep consistent margin */
+  }
+
   .conversation-header {
     padding: var(--space-3) var(--space-2);
     flex-wrap: wrap;
@@ -1186,7 +1357,9 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 
   .messages-container {
-    padding: var(--space-3) var(--space-2) 90px var(--space-2);
+    top: 70px; /* 手機版 header 高度 */
+    bottom: 120px; /* 手機版 input 高度 */
+    padding: var(--space-2);
   }
 
   .messages {
@@ -1195,6 +1368,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 
   .input-section {
     padding: 18px 16px;
+    max-height: 140px;
   }
 
   .quick-replies {
@@ -1215,6 +1389,12 @@ watch(() => route.params.id, async (newId, oldId) => {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
   }
+  
+  /* 移動設備上的新消息指示器位置調整 */
+  .new-message-indicator {
+    bottom: 180px;
+  }
+  
 }
 
 @media (max-width: 640px) {
@@ -1238,9 +1418,9 @@ watch(() => route.params.id, async (newId, oldId) => {
 /* 新消息指示器 */
 .new-message-indicator {
   position: absolute;
-  top: 24px; /* 翻轉後頂部對應原來的底部 */
-  right: 50%;
-  transform: translateX(50%) scaleY(-1); /* 翻轉回正常顯示 */
+  bottom: 200px; /* 相對於messages-container定位 */
+  left: 50%;
+  transform: translateX(-50%);
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
   color: white;
   border-radius: 28px;
@@ -1249,19 +1429,19 @@ watch(() => route.params.id, async (newId, oldId) => {
   box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  z-index: 1000;
+  z-index: 20;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: slideDown 0.4s ease-out; /* 動畫方向調整 */
+  animation: slideUp 0.4s ease-out;
 }
 
 .new-message-indicator:hover {
-  transform: translateX(50%) translateY(-2px) scaleY(-1);
+  transform: translateX(-50%) translateY(-2px);
   box-shadow: 0 12px 35px rgba(79, 70, 229, 0.4);
   background: linear-gradient(135deg, #5b52e6, #8b46f0);
 }
 
 .new-message-indicator:active {
-  transform: translateX(50%) translateY(0px) scale(0.98) scaleY(-1);
+  transform: translateX(-50%) translateY(0px) scale(0.98);
 }
 
 .indicator-content {
@@ -1292,22 +1472,11 @@ watch(() => route.params.id, async (newId, oldId) => {
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateX(50%) translateY(20px);
+    transform: translateX(-50%) translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateX(50%) translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateX(50%) translateY(-20px) scaleY(-1);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(50%) translateY(0) scaleY(-1);
+    transform: translateX(-50%) translateY(0);
   }
 }
 
