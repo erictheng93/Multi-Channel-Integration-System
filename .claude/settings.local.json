@@ -83,7 +83,9 @@
       "Bash(claude doctor)",
       "Bash(npm:*)",
       "WebFetch(domain:developers.line.biz)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:vitejs.dev)",
+      "WebFetch(domain:vite.dev)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
