@@ -1,0 +1,205 @@
+  11:21  error  '_' is defined but never used   no-unused-vars
+  19:42  error  '_1' is defined but never used  no-unused-vars
+  19:79  error  '_2' is defined but never used  no-unused-vars
+  497:52  error  'size' is defined but never used  no-unused-vars
+  513:16  error  '_' is defined but never used  no-unused-vars
+  205:21  error  '_' is defined but never used  no-unused-vars
+   93:17  error  '_1' is defined but never used  no-unused-vars
+   93:24  error  '_2' is defined but never used  no-unused-vars
+   94:15  error  '_1' is defined but never used  no-unused-vars
+   94:27  error  '_2' is defined but never used  no-unused-vars
+   97:27  error  '_1' is defined but never used  no-unused-vars
+   97:39  error  '_2' is defined but never used  no-unused-vars
+  174:33  error  '_' is defined but never used   no-unused-vars
+  177:9   error  '_' is defined but never used   no-unused-vars
+   95:33  error  '_' is defined but never used   no-unused-vars
+   98:9   error  '_' is defined but never used   no-unused-vars
+  109:33  error  '_' is defined but never used   no-unused-vars
+  112:9   error  '_' is defined but never used   no-unused-vars
+  133:17  error  '_1' is defined but never used  no-unused-vars
+  133:24  error  '_2' is defined but never used  no-unused-vars
+  134:15  error  '_1' is defined but never used  no-unused-vars
+  134:27  error  '_2' is defined but never used  no-unused-vars
+   6:16  error  '_' is defined but never used   no-unused-vars
+   7:14  error  '_' is defined but never used   no-unused-vars
+   8:16  error  '_' is defined but never used   no-unused-vars
+  20:18  error  '_1' is defined but never used  no-unused-vars
+  21:21  error  '_1' is defined but never used  no-unused-vars
+  21:47  error  '_2' is defined but never used  no-unused-vars
+  21:51  error  'CloseEvent' is not defined     no-undef
+  22:14  error  '_1' is defined but never used  no-unused-vars
+  22:40  error  '_2' is defined but never used  no-unused-vars
+  23:16  error  '_1' is defined but never used  no-unused-vars
+  23:42  error  '_2' is defined but never used  no-unused-vars
+    9:16  error  'data' is defined but never used      no-unused-vars
+   10:14  error  'error' is defined but never used     no-unused-vars
+   11:16  error  'data' is defined but never used      no-unused-vars
+  127:13  error  'endpoint' is defined but never used  no-unused-vars
+  41:14  error  'err' is defined but never used                                                 no-unused-vars
+  41:14  error  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  14:20  error  'Element' is not defined  no-undef
+  21:52  error  'args' is defined but never used  no-unused-vars
+  91:28  error  'value' is defined but never used  no-unused-vars
+   58:31  error  'File' is not defined                 no-undef
+   79:11  error  'File' is not defined                 no-undef
+   81:19  error  'progress' is defined but never used  no-unused-vars
+   96:28  error  'FormData' is not defined             no-undef
+  143:15  error  'File' is not defined                 no-undef
+  145:19  error  'progress' is defined but never used  no-unused-vars
+  324:30  error  'File' is not defined                 no-undef
+  329:30  error  'File' is not defined                 no-undef
+  334:30  error  'File' is not defined                 no-undef
+    7:12  error  'value' is defined but never used  no-unused-vars
+    8:13  error  'value' is defined but never used  no-unused-vars
+   10:14  error  'error' is defined but never used  no-unused-vars
+   30:14  error  'value' is defined but never used  no-unused-vars
+   84:37  error  'StorageEvent' is not defined      no-undef
+  181:37  error  'item' is defined but never used   no-unused-vars
+  252:47  error  '_mediaUrl' is defined but never used   no-unused-vars
+  252:67  error  '_mediaType' is defined but never used  no-unused-vars
+  333:32  error  '_messageId' is defined but never used  no-unused-vars
+   99:51  error  'value' is defined but never used  no-unused-vars
+  102:66  error  'value' is defined but never used  no-unused-vars
+  153:38  error  'value' is defined but never used  no-unused-vars
+  37:7   error  'requestIdleCallback' is not defined  no-undef
+  52:28  error  'RequestPriority' is not defined      no-undef
+  104:24  error  'requestAnimationFrame' is not defined  no-undef
+  297:7   error  'cancelAnimationFrame' is not defined   no-undef
+  19:52  error  'args' is defined but never used  no-unused-vars
+  61:29  error  'Element' is not defined  no-undef
+  109:18  error  'error' is defined but never used                                                 no-unused-vars
+  109:18  error  'error' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  196:47  error  'current' is defined but never used  no-unused-vars
+   33:24  error  'EventSource' is not defined               no-undef
+   52:27  error  'conversations' is defined but never used  no-unused-vars
+   53:29  error  'status' is defined but never used         no-unused-vars
+   61:21  error  'conversations' is defined but never used  no-unused-vars
+   66:23  error  'status' is defined but never used         no-unused-vars
+  126:30  error  'EventSource' is not defined               no-undef
+    8:3   error  'LOW' is defined but never used       no-unused-vars
+    9:3   error  'NORMAL' is defined but never used    no-unused-vars
+   10:3   error  'HIGH' is defined but never used      no-unused-vars
+   11:3   error  'CRITICAL' is defined but never used  no-unused-vars
+   18:10  error  'deadline' is defined but never used  no-unused-vars
+   18:20  error  'IdleDeadline' is not defined         no-undef
+   19:13  error  'result' is defined but never used    no-unused-vars
+   20:12  error  'error' is defined but never used     no-unused-vars
+   76:16  error  'deadline' is defined but never used  no-unused-vars
+  205:30  error  'PerformanceObserver' is not defined  no-undef
+  224:14  error  'deadline' is defined but never used  no-unused-vars
+  224:24  error  'IdleDeadline' is not defined         no-undef
+  234:26  error  'deadline' is defined but never used  no-unused-vars
+  234:36  error  'IdleDeadline' is not defined         no-undef
+  235:30  error  'result' is defined but never used    no-unused-vars
+  255:16  error  'deadline' is defined but never used  no-unused-vars
+  255:26  error  'IdleDeadline' is not defined         no-undef
+  280:14  error  'deadline' is defined but never used  no-unused-vars
+  280:24  error  'IdleDeadline' is not defined         no-undef
+  287:14  error  'deadline' is defined but never used  no-unused-vars
+  287:24  error  'IdleDeadline' is not defined         no-undef
+  294:14  error  'deadline' is defined but never used  no-unused-vars
+  294:24  error  'IdleDeadline' is not defined         no-undef
+  360:12  error  'deadline' is defined but never used  no-unused-vars
+  360:22  error  'IdleDeadline' is not defined         no-undef
+  367:12  error  'deadline' is defined but never used  no-unused-vars
+  367:22  error  'IdleDeadline' is not defined         no-undef
+  373:12  error  'deadline' is defined but never used  no-unused-vars
+  373:22  error  'IdleDeadline' is not defined         no-undef
+   62:62  error  'item' is defined but never used        no-unused-vars
+   62:71  error  'index' is defined but never used       no-unused-vars
+  150:34  error  'ScrollBehavior' is not defined         no-undef
+  156:34  error  'ScrollBehavior' is not defined         no-undef
+  163:75  error  '_container' is defined but never used  no-unused-vars
+  226:9   error  'requestAnimationFrame' is not defined  no-undef
+  342:14  error  'item' is defined but never used        no-unused-vars
+  342:23  error  'index' is defined but never used       no-unused-vars
+   6:3  error  'VIEW_ALL_CONVERSATIONS' is defined but never used       no-unused-vars
+   7:3  error  'VIEW_TEAM_CONVERSATIONS' is defined but never used      no-unused-vars
+   8:3  error  'VIEW_ASSIGNED_CONVERSATIONS' is defined but never used  no-unused-vars
+   9:3  error  'ASSIGN_CONVERSATIONS' is defined but never used         no-unused-vars
+  10:3  error  'ASSIGN_TEAM_CONVERSATIONS' is defined but never used    no-unused-vars
+  11:3  error  'ASSIGN_TO_SELF' is defined but never used               no-unused-vars
+  12:3  error  'UNASSIGN_CONVERSATIONS' is defined but never used       no-unused-vars
+  13:3  error  'CLOSE_CONVERSATIONS' is defined but never used          no-unused-vars
+  14:3  error  'REOPEN_CONVERSATIONS' is defined but never used         no-unused-vars
+  17:3  error  'MANAGE_TEAM_MEMBERS' is defined but never used          no-unused-vars
+  18:3  error  'VIEW_TEAM_MEMBERS' is defined but never used            no-unused-vars
+  19:3  error  'INVITE_TEAM_MEMBERS' is defined but never used          no-unused-vars
+  20:3  error  'REMOVE_TEAM_MEMBERS' is defined but never used          no-unused-vars
+  21:3  error  'CHANGE_MEMBER_ROLES' is defined but never used          no-unused-vars
+  24:3  error  'MANAGE_SYSTEM_SETTINGS' is defined but never used       no-unused-vars
+  25:3  error  'VIEW_SYSTEM_STATS' is defined but never used            no-unused-vars
+  26:3  error  'MANAGE_ALL_TEAMS' is defined but never used             no-unused-vars
+  29:3  error  'VIEW_TEAM_REPORTS' is defined but never used            no-unused-vars
+  30:3  error  'VIEW_SYSTEM_REPORTS' is defined but never used          no-unused-vars
+  31:3  error  'EXPORT_DATA' is defined but never used                  no-unused-vars
+  241:62  error  '_recentEvents' is defined but never used  no-unused-vars
+  276:56  error  '_recentEvents' is defined but never used  no-unused-vars
+  401:45  error  '_day' is defined but never used           no-unused-vars
+   20:16  error  'tag' is defined but never used             no-unused-vars
+   92:25  error  'ServiceWorkerRegistration' is not defined  no-undef
+  222:34  error  'MessageChannel' is not defined             no-undef
+  287:50  error  'NotificationPermission' is not defined     no-undef
+  294:32  error  'Notification' is not defined               no-undef
+  304:36  error  'PushSubscription' is not defined           no-undef
+   30:13  error  'result' is defined but never used            no-unused-vars
+   31:12  error  'error' is defined but never used             no-unused-vars
+   51:20  error  'Worker' is not defined                       no-undef
+   80:28  error  'Worker' is not defined                       no-undef
+  101:36  error  'Worker' is not defined                       no-undef
+  206:33  error  'Worker' is not defined                       no-undef
+  233:30  error  'result' is defined but never used            no-unused-vars
+  313:17  error  '_taskId' is assigned a value but never used  no-unused-vars
+  334:26  error  'Worker' is not defined                       no-undef
+  395:14  error  'err' is defined but never used                                                 no-unused-vars
+  395:14  error  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  315:50  error  '_' is defined but never used  no-unused-vars
+  190:37  error  'Notification' is not defined  no-undef
+  191:13  error  'Notification' is not defined  no-undef
+   38:42  error  'EventInit' is not defined          no-undef
+   59:42  error  'MouseEventInit' is not defined     no-undef
+  101:42  error  'KeyboardEventInit' is not defined  no-undef
+  124:42  error  'InputEventInit' is not defined     no-undef
+  146:68  error  'DOMTokenList' is not defined       no-undef
+   64:48  error  'EventInit' is not defined       no-undef
+  202:23  error  'HTMLCollection' is not defined  no-undef
+  203:32  error  'Element' is not defined         no-undef
+  204:31  error  'Element' is not defined         no-undef
+  213:40  error  'HTMLCollection' is not defined  no-undef
+   17:13  error  'throwOnError' is defined but never used  no-unused-vars
+   41:37  error  'field' is defined but never used         no-unused-vars
+   41:47  error  'validator' is defined but never used     no-unused-vars
+   41:59  error  'value' is defined but never used         no-unused-vars
+   42:38  error  'field' is defined but never used         no-unused-vars
+   45:38  error  'field' is defined but never used         no-unused-vars
+   45:48  error  'value' is defined but never used         no-unused-vars
+   46:38  error  'field' is defined but never used         no-unused-vars
+   46:48  error  'error' is defined but never used         no-unused-vars
+   47:40  error  'field' is defined but never used         no-unused-vars
+   54:13  error  'value' is defined but never used         no-unused-vars
+   61:39  error  'property' is defined but never used      no-unused-vars
+   61:52  error  'value' is defined but never used         no-unused-vars
+   62:22  error  'updates' is defined but never used       no-unused-vars
+   68:13  error  'item' is defined but never used          no-unused-vars
+   69:16  error  'index' is defined but never used         no-unused-vars
+   70:18  error  'predicate' is defined but never used     no-unused-vars
+   70:30  error  'item' is defined but never used          no-unused-vars
+   71:16  error  'index' is defined but never used         no-unused-vars
+   71:31  error  'item' is defined but never used          no-unused-vars
+   79:14  error  'message' is defined but never used       no-unused-vars
+   81:17  error  'err' is defined but never used           no-unused-vars
+   93:14  error  'theme' is defined but never used         no-unused-vars
+  107:11  error  'credentials' is defined but never used   no-unused-vars
+  109:19  error  'permission' is defined but never used    no-unused-vars
+  110:13  error  'role' is defined but never used          no-unused-vars
+  117:61  error  'args' is defined but never used          no-unused-vars
+  26:21  error  '_' is defined but never used  no-unused-vars
+   11:21  error  '_' is defined but never used  no-unused-vars
+   12:23  error  '_' is defined but never used  no-unused-vars
+   13:23  error  '_' is defined but never used  no-unused-vars
+   22:26  error  '_' is defined but never used  no-unused-vars
+   23:19  error  '_' is defined but never used  no-unused-vars
+   28:17  error  '_' is defined but never used  no-unused-vars
+  108:38  error  '_' is defined but never used  no-unused-vars
+  334:35  error  '_emojiName' is defined but never used  no-unused-vars
+✖ 206 problems (204 errors, 2 warnings)

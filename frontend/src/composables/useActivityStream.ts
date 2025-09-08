@@ -39,7 +39,7 @@ export function useActivityStream() {
   const maxRetries = 5
   
   // SSE 相關
-  let eventSource: EventSource | null = null
+  let eventSource: globalThis.EventSource | null = null
   let reconnectTimer: number | null = null
   let connectionCheckTimer: number | null = null
 
@@ -89,7 +89,7 @@ export function useActivityStream() {
       
       console.log('🌐 [SSE Client] Connecting to:', url.replace(/token=[^&]+/, 'token=***'))
       
-      eventSource = new EventSource(url, {
+      eventSource = new globalThis.EventSource(url, {
         withCredentials: false
       })
       
@@ -221,7 +221,7 @@ export function useActivityStream() {
     }
     
     connectionCheckTimer = window.setInterval(() => {
-      if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+      if (eventSource && eventSource.readyState === globalThis.EventSource.CLOSED) {
         console.log('🔍 Connection check: connection is closed, attempting reconnect')
         isConnected.value = false
         scheduleReconnect()

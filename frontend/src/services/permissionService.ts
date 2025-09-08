@@ -1,6 +1,7 @@
 import type { TeamMember, Conversation } from '@/types'
 
 // 權限枚舉
+/* eslint-disable no-unused-vars */
 export enum Permission {
   // 對話管理權限
   VIEW_ALL_CONVERSATIONS = 'view_all_conversations',
@@ -30,6 +31,7 @@ export enum Permission {
   VIEW_SYSTEM_REPORTS = 'view_system_reports',
   EXPORT_DATA = 'export_data'
 }
+/* eslint-enable no-unused-vars */
 
 // 角色權限矩陣
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {

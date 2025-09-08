@@ -23,7 +23,7 @@ export interface MessageListParams {
 }
 
 export interface UploadAttachmentRequest {
-  file: File;
+  file: globalThis.File;
   messageType: 'image' | 'file';
 }
 
@@ -108,7 +108,7 @@ export const messageApi = {
       return { success: false, error: '請選擇要上傳的檔案' };
     }
     
-    const formData = new FormData();
+    const formData = new globalThis.FormData();
     formData.append('file', request.file);
     formData.append('messageType', request.messageType);
     

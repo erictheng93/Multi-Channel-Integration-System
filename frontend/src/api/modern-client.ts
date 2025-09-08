@@ -70,7 +70,7 @@ class ModernApiClient {
     
     try {
       data = await response.json()
-    } catch (error) {
+    } catch {
       return {
         success: false,
         error: '響應格式錯誤',
@@ -96,7 +96,7 @@ class ModernApiClient {
     
     try {
       data = await response.json()
-    } catch (error) {
+    } catch {
       return {
         success: false,
         error: '響應格式錯誤',
@@ -137,14 +137,14 @@ class ModernApiClient {
     const { isPaginated = false, retryCount = 0, isFileUpload = false } = options
 
     try {
-      const controller = new AbortController()
+      const controller = new globalThis.AbortController()
       const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
       const headers = isFileUpload ? 
         (this.token ? { 'Authorization': `Bearer ${this.token}` } : {}) :
         this.getHeaders()
 
-      const body = isFileUpload ? (data as BodyInit) : (data ? JSON.stringify(data) : undefined)
+      const body = isFileUpload ? (data as globalThis.BodyInit) : (data ? JSON.stringify(data) : undefined)
 
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         method,
@@ -235,8 +235,8 @@ class ModernApiClient {
           return true
         }
       }
-    } catch (error) {
-      console.error('Token refresh failed:', error)
+    } catch (_error) {
+      console.error('Token refresh failed:', _error)
     }
 
     // 刷新失敗，清除認證信息
@@ -276,7 +276,7 @@ class ModernApiClient {
   }
 
   // 文件上傳
-  uploadFile<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+  uploadFile<T>(endpoint: string, formData: globalThis.FormData): Promise<ApiResponse<T>> {
     return this.makeRequest<T>('POST', endpoint, formData, { isFileUpload: true })
   }
 }

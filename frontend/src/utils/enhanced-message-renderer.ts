@@ -334,6 +334,7 @@ export class EnhancedMessageRenderer {
   private async getCustomEmojiUrl(_emojiName: string): Promise<string | null> {
     // 这里可以集成自定义表情API
     // 例如：Discord, Slack, 企业内部表情包等
+    // _emojiName 参数可用于查询特定的自定义表情
     return null;
   }
 

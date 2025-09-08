@@ -410,7 +410,7 @@ const copyLink = async () => {
   try {
     await navigator.clipboard.writeText(currentQRCode.value.lineUrl)
     showSuccess('已複製', 'LINE 連結已複製到剪貼簿')
-  } catch (error) {
+  } catch {
     showError('複製失敗', '無法複製連結')
   }
 }
@@ -422,7 +422,7 @@ const deactivateQRCode = async (qrCodeId: string) => {
       showSuccess('已停用', 'QR 碼已停用')
       await loadQRCodeHistory()
     }
-  } catch (error) {
+  } catch {
     showError('停用失敗', '無法停用 QR 碼')
   }
 }

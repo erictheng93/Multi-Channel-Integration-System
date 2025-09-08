@@ -18,7 +18,7 @@ export function useDebounce<T>(value: Ref<T>, delay: number = 300) {
   return debouncedValue
 }
 
-export function useDebouncedFunction<T extends (...args: unknown[]) => unknown>(
+export function useDebouncedFunction<T extends (..._args: unknown[]) => unknown>(
   fn: T,
   delay: number = 300
 ): T {

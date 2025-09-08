@@ -202,15 +202,17 @@ interface Props {
   disabled?: boolean;
   showDropZone?: boolean;
   buttonText?: string;
-  uploadFunction?: (file: File) => Promise<{ url: string; filename: string }>;
+  uploadFunction?: (_file: globalThis.File) => Promise<{ url: string; filename: string }>;
 }
 
+/* eslint-disable no-unused-vars */
 interface Emits {
   (e: 'update:modelValue', files: FileUploadItem[]): void;
   (e: 'upload-complete', file: FileUploadItem): void;
   (e: 'upload-error', file: FileUploadItem, error: string): void;
-  (e: 'file-select', files: File[]): void;
+  (e: 'file-select', files: globalThis.File[]): void;
 }
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => [],
@@ -281,7 +283,7 @@ const removeError = (index: number) => {
   errorMessages.value.splice(index, 1)
 }
 
-const validateFile = (file: File): string | null => {
+const validateFile = (file: globalThis.File): string | null => {
   // Check file size
   if (file.size > props.maxSize) {
     return `檔案過大，最大允許 ${maxSizeText.value}`
@@ -309,7 +311,7 @@ const validateFile = (file: File): string | null => {
   return null
 }
 
-const processFiles = (files: File[]) => {
+const processFiles = (files: globalThis.File[]) => {
   clearErrors()
 
   if (!props.multiple) {
@@ -365,7 +367,7 @@ const handleFileSelect = (event: Event) => {
   target.value = ''
 }
 
-const handleFileDrop = (event: DragEvent) => {
+const handleFileDrop = (event: globalThis.DragEvent) => {
   isDragActive.value = false
   
   const files = Array.from(event.dataTransfer?.files || [])

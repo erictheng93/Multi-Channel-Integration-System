@@ -17,7 +17,7 @@ interface BeforeInstallPromptEvent extends Event {
 declare global {
   interface ServiceWorkerRegistration {
     sync?: {
-      register(tag: string): Promise<void>
+      register(_tag: string): Promise<void>
       getTags(): Promise<string[]>
     }
   }
@@ -89,7 +89,7 @@ const DEFAULT_CONFIG: SWConfig = {
 
 export class ServiceWorkerManager {
   private config: SWConfig
-  private registration: ServiceWorkerRegistration | null = null
+  private registration: globalThis.ServiceWorkerRegistration | null = null
   private updateCheckTimer: NodeJS.Timeout | null = null
   private offlineActions: OfflineAction[] = []
   
@@ -219,7 +219,7 @@ export class ServiceWorkerManager {
     }
 
     return new Promise((resolve, reject) => {
-      const messageChannel = new MessageChannel()
+      const messageChannel = new globalThis.MessageChannel()
       
       messageChannel.port1.onmessage = (event) => {
         if (event.data.error) {
@@ -284,14 +284,14 @@ export class ServiceWorkerManager {
   }
 
   // 請求推送通知權限
-  async requestNotificationPermission(): Promise<NotificationPermission> {
+  async requestNotificationPermission(): Promise<globalThis.NotificationPermission> {
     if (!('Notification' in window)) {
       console.warn('⚠️ [SWManager] Notifications not supported')
       return 'denied'
     }
 
     try {
-      const permission = await Notification.requestPermission()
+      const permission = await globalThis.Notification.requestPermission()
       console.log(`🔔 [SWManager] Notification permission: ${permission}`)
       return permission
     } catch (error) {
@@ -301,7 +301,7 @@ export class ServiceWorkerManager {
   }
 
   // 訂閱推送通知
-  async subscribeToPush(): Promise<PushSubscription | null> {
+  async subscribeToPush(): Promise<globalThis.PushSubscription | null> {
     if (!this.registration || !this.config.enablePushNotifications) {
       return null
     }

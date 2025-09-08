@@ -4,33 +4,33 @@ import { ref, watch, type Ref } from 'vue'
 export interface UseLocalStorageOptions<T> {
   defaultValue?: T
   serializer?: {
-    read: (value: string) => T
-    write: (value: T) => string
+    read: (_value: string) => T
+    write: (_value: T) => string
   }
-  onError?: (error: Error) => void
+  onError?: (_error: Error) => void
   syncAcrossTabs?: boolean
 }
 
 // 默認序列化器
 const defaultSerializer = {
-  read: (value: string) => {
+  read: (_value: string) => {
     try {
-      return JSON.parse(value)
+      return JSON.parse(_value)
     } catch {
-      return value
+      return _value
     }
   },
-  write: (value: unknown) => JSON.stringify(value)
+  write: (_value: unknown) => JSON.stringify(_value)
 }
 
 export function useLocalStorage<T>(
   key: string,
   defaultValue?: T,
   options: UseLocalStorageOptions<T> = {}
-): [Ref<T>, (value: T) => void, () => void] {
+): [Ref<T>, (_value: T) => void, () => void] {
   const {
     serializer = defaultSerializer,
-    onError = (e) => console.error(e),
+    onError = (_e) => console.error(_e),
     syncAcrossTabs = true
   } = options
 
@@ -81,7 +81,7 @@ export function useLocalStorage<T>(
 
   // 跨標籤頁同步
   if (syncAcrossTabs && typeof window !== 'undefined') {
-    const handleStorageChange = (e: StorageEvent) => {
+    const handleStorageChange = (e: globalThis.StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
         try {
           storedValue.value = serializer.read(e.newValue)
@@ -174,11 +174,11 @@ export function useLocalStorageArray<T>(
 
   // 移除項目
   const removeItem = (index: number) => {
-    data.value = data.value.filter((_, i) => i !== index)
+    data.value = data.value.filter((_item, i) => i !== index)
   }
 
   // 根據條件移除項目
-  const removeItemBy = (predicate: (item: T) => boolean) => {
+  const removeItemBy = (predicate: (_item: T) => boolean) => {
     data.value = data.value.filter(item => !predicate(item))
   }
 

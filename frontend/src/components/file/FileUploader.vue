@@ -250,7 +250,7 @@ import {
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import { apiClient } from '@/api/base'
 
-interface FileWithPreview extends File {
+interface FileWithPreview extends globalThis.File {
   preview?: string
   error?: string
   uploading?: boolean
@@ -326,23 +326,23 @@ const triggerFileInput = () => {
   }
 }
 
-const handleDragEnter = (e: DragEvent) => {
+const handleDragEnter = (e: globalThis.DragEvent) => {
   e.preventDefault()
   isDragging.value = true
 }
 
-const handleDragOver = (e: DragEvent) => {
+const handleDragOver = (e: globalThis.DragEvent) => {
   e.preventDefault()
 }
 
-const handleDragLeave = (e: DragEvent) => {
+const handleDragLeave = (e: globalThis.DragEvent) => {
   e.preventDefault()
-  if (!e.relatedTarget || !(e.currentTarget as Element).contains(e.relatedTarget as Node)) {
+  if (!e.relatedTarget || !(e.currentTarget as globalThis.Element).contains(e.relatedTarget as globalThis.Node)) {
     isDragging.value = false
   }
 }
 
-const handleDrop = (e: DragEvent) => {
+const handleDrop = (e: globalThis.DragEvent) => {
   e.preventDefault()
   isDragging.value = false
   
@@ -356,7 +356,7 @@ const handleFileSelect = (e: Event) => {
   processFiles(files)
 }
 
-const processFiles = async (files: File[]) => {
+const processFiles = async (files: globalThis.File[]) => {
   if (uploading.value) {return}
   
   const processedFiles: FileWithPreview[] = []
@@ -385,7 +385,7 @@ const processFiles = async (files: File[]) => {
   selectedFiles.value = [...selectedFiles.value, ...processedFiles]
 }
 
-const validateFile = (file: File): string | null => {
+const validateFile = (file: globalThis.File): string | null => {
   // 檢查檔案類型
   if (!allowedTypes.includes(file.type)) {
     return '不支援的檔案格式'
@@ -404,20 +404,20 @@ const validateFile = (file: File): string | null => {
   return null
 }
 
-const generatePreview = (file: File): Promise<string> => {
+const generatePreview = (file: globalThis.File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
+    const reader = new globalThis.FileReader()
     reader.onload = (e) => resolve(e.target?.result as string)
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
 }
 
-const isImageFile = (file: File): boolean => {
+const isImageFile = (file: globalThis.File): boolean => {
   return file.type.startsWith('image/')
 }
 
-const getFileIcon = (file: File) => {
+const getFileIcon = (file: globalThis.File) => {
   if (file.type.startsWith('image/')) {return ImageIcon}
   if (file.type.startsWith('video/')) {return VideoIcon}
   if (file.type.startsWith('audio/')) {return MusicIcon}
@@ -509,10 +509,10 @@ const startUpload = async () => {
 }
 
 const uploadSingleFile = async (
-  file: File,
-  onProgress: (progress: number) => void
+  file: globalThis.File,
+  onProgress: (_progress: number) => void
 ): Promise<{ url: string; fileId: string }> => {
-  const formData = new FormData()
+  const formData = new globalThis.FormData()
   formData.append('file', file)
   formData.append('generateThumbnail', String(uploadOptions.value.generateThumbnail))
   formData.append('compress', String(uploadOptions.value.compress))

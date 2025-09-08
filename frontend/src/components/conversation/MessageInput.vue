@@ -169,7 +169,7 @@ interface Props {
 interface Attachment {
   name: string
   size: number
-  file: File
+  file: globalThis.File
 }
 
 const props = defineProps<Props>()
@@ -182,7 +182,7 @@ const emit = defineEmits<{
 // defineExpose moved to end of script section
 
 // Refs
-const textareaRef = ref<HTMLTextAreaElement>()
+const textareaRef = ref<globalThis.HTMLTextAreaElement>()
 const fileInputRef = ref<HTMLInputElement>()
 
 // State
@@ -497,7 +497,7 @@ watch(() => props.conversationId, () => {
 
 // 點擊外部關閉表情選擇器
 const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as Element
+  const target = event.target as globalThis.Element
   if (showEmojiPicker.value && !target.closest('.emoji-picker-container')) {
     showEmojiPicker.value = false
   }

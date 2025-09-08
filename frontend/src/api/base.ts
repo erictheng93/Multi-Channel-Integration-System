@@ -8,7 +8,7 @@ import type { ApiResponse } from '@/types';
 interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
-  retryCondition?: (error: unknown) => boolean;
+  retryCondition?: (_error: unknown) => boolean;
 }
 
 class ApiClient {
@@ -16,7 +16,7 @@ class ApiClient {
   private token: string | null = null;
   private refreshToken: string | null = null;
   private isRefreshing = false;
-  private failedQueue: Array<{ resolve: (value: string | null) => void; reject: (reason?: unknown) => void }> = [];
+  private failedQueue: Array<{ resolve: (_token: string | null) => void; reject: (_error?: unknown) => void }> = [];
   private defaultRetryConfig: RetryConfig = {
     maxRetries: 3,
     retryDelay: 1000,
@@ -169,7 +169,7 @@ class ApiClient {
       let result;
       try {
         result = await response.json();
-      } catch (parseError) {
+      } catch {
         // Handle non-JSON responses
         result = { error: '服務器響應格式錯誤' };
       }
@@ -214,7 +214,7 @@ class ApiClient {
       // 成功的請求 - 會話延長現在由 composables 層處理，避免循環依賴
 
       return result;
-    } catch (error) {
+    } catch {
       // Network or other errors
       const shouldRetry = retries < this.defaultRetryConfig.maxRetries;
       
@@ -273,7 +273,7 @@ class ApiClient {
   }
 
   // 專門處理檔案上傳的方法
-  async uploadFile<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+  async uploadFile<T>(endpoint: string, formData: globalThis.FormData): Promise<ApiResponse<T>> {
     try {
       const headers: Record<string, string> = {};
       
@@ -291,7 +291,7 @@ class ApiClient {
       let result;
       try {
         result = await response.json();
-      } catch (parseError) {
+      } catch {
         result = { error: '服務器響應格式錯誤' };
       }
 
@@ -314,7 +314,7 @@ class ApiClient {
       }
 
       return result;
-    } catch (error) {
+    } catch {
       return {
         success: false,
         error: '檔案上傳過程中發生網路錯誤',

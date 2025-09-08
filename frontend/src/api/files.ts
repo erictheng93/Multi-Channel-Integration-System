@@ -73,12 +73,12 @@ export interface FileStatsResponse {
 
 export const filesApi = {
   // 上傳檔案
-  uploadFile: async (formData: FormData): Promise<ApiResponse<FileUploadResponse>> => {
+  uploadFile: async (formData: globalThis.FormData): Promise<ApiResponse<FileUploadResponse>> => {
     return apiClient.uploadFile('/files/upload', formData)
   },
 
   // 上傳多個檔案
-  uploadMultipleFiles: async (formData: FormData): Promise<ApiResponse<FileUploadResponse[]>> => {
+  uploadMultipleFiles: async (formData: globalThis.FormData): Promise<ApiResponse<FileUploadResponse[]>> => {
     return apiClient.uploadFile('/files/upload-multiple', formData)
   },
 

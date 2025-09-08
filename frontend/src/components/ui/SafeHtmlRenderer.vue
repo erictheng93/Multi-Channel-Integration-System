@@ -9,7 +9,7 @@
 import { ref, watch, onMounted } from 'vue'
 
 interface Props {
-  html: string
+  html?: string
   allowedTags?: string[]
   allowedAttributes?: Record<string, string[]>
 }
@@ -36,14 +36,14 @@ const sanitizeHtml = (html: string): string => {
   temp.innerHTML = html
   
   // 递归处理所有节点
-  const processNode = (node: Node): Node | null => {
-    if (node.nodeType === Node.TEXT_NODE) {
+  const processNode = (node: globalThis.Node): globalThis.Node | null => {
+    if (node.nodeType === globalThis.Node.TEXT_NODE) {
       // 文本节点直接返回
       return node.cloneNode(true)
     }
     
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const element = node as Element
+    if (node.nodeType === globalThis.Node.ELEMENT_NODE) {
+      const element = node as globalThis.Element
       const tagName = element.tagName.toLowerCase()
       
       // 检查是否在允许的标签列表中

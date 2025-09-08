@@ -96,11 +96,11 @@ export function useModernForm<T extends Record<string, unknown>>(initialData: T)
   const touched = ref<Partial<Record<keyof T, boolean>>>({})
   
   // 驗證規則
-  const validators = ref<Partial<Record<keyof T, (value: T[keyof T]) => string | null>>>({})
+  const validators = ref<Partial<Record<keyof T, (_value: T[keyof T]) => string | null>>>({})
   
   // 設置驗證規則
-  function setValidator<K extends keyof T>(field: K, validator: (value: T[K]) => string | null) {
-    validators.value[field] = validator
+  function setValidator<K extends keyof T>(field: K, _validator: (_value: T[K]) => string | null) {
+    validators.value[field] = _validator
   }
   
   // 驗證單個字段
@@ -150,7 +150,7 @@ export function useModernForm<T extends Record<string, unknown>>(initialData: T)
     
     for (const [field, validator] of Object.entries(validators.value)) {
       if (validator) {
-        const error = (validator as (value: unknown) => string | null)(formData.value[field as keyof T])
+        const error = (validator as (_value: unknown) => string | null)(formData.value[field as keyof T])
         if (error) {
           newErrors[field as keyof T] = error
           hasErrors = true

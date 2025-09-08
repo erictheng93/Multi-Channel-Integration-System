@@ -193,7 +193,7 @@ export class CacheManager {
   }
 
   // 樂觀更新：立即返回預期結果，後台同步
-  optimisticUpdate<T>(key: string, updateFn: (current: T | null) => T): T {
+  optimisticUpdate<T>(key: string, updateFn: (_current: T | null) => T): T {
     const current = this.get<T>(key)
     const optimisticData = updateFn(current.data)
     

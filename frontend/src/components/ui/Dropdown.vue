@@ -90,11 +90,13 @@ interface Props {
   offset?: number
 }
 
+/* eslint-disable no-unused-vars */
 interface Emits {
   (e: 'open'): void
   (e: 'close'): void
   (e: 'select', value: unknown): void
 }
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(defineProps<Props>(), {
   label: 'Dropdown',
@@ -215,7 +217,7 @@ const calculatePosition = () => {
 }
 
 const handleClickOutside = (event: Event) => {
-  const target = event.target as Element
+  const target = event.target as globalThis.Element
   if (!dropdownRef.value?.contains(target) && !menuRef.value?.contains(target)) {
     close()
   }

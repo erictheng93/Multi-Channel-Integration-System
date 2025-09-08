@@ -25,8 +25,8 @@
             const exp = new Date(payload.exp * 1000);
             console.log('Token 過期時間:', exp);
             console.log('Token 已過期:', exp < new Date());
-        } catch (e) {
-            console.error('Token 解析失敗:', e);
+        } catch {
+            console.error('Token 解析失敗');
         }
     }
     
@@ -34,7 +34,7 @@
     if (currentAgent) {
         try {
             console.log('Current Agent:', JSON.parse(currentAgent));
-        } catch (e) {
+        } catch {
             console.log('Current Agent (raw):', currentAgent);
         }
     }
@@ -81,8 +81,8 @@
             } else {
                 console.log('Pinia 未找到: ❌');
             }
-        } catch (e) {
-            console.error('無法訪問 Pinia stores:', e);
+        } catch {
+            console.error('無法訪問 Pinia stores');
         }
         
         // 檢查路由
@@ -154,7 +154,7 @@
             if (exp < new Date()) {
                 issues.push('Token 已過期 - 需要重新登入');
             }
-        } catch (e) {
+        } catch {
             issues.push('Token 格式無效 - 需要重新登入');
         }
     }

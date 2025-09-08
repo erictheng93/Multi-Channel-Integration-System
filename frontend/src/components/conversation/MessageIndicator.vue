@@ -25,6 +25,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  oldestMessage: null,
+  latestMessage: null,
   totalMessages: 0
 })
 

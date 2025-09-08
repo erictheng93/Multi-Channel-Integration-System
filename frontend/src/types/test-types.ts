@@ -8,9 +8,9 @@ import type { FileUploadItem, FileUploadResult } from '@/types/file-upload'
 // Vue 組件實例的測試類型
 export interface TestComponentInstance extends ComponentPublicInstance {
   // MessageBubble 組件測試類型
-  formatFileSize?: (bytes: number) => string
-  getFileExtension?: (filename: string) => string
-  getFileTypeClass?: (filename: string) => string
+  formatFileSize?: (_size: number) => string
+  getFileExtension?: (_filename: string) => string
+  getFileTypeClass?: (_type: string) => string
   
   // MessageInput 組件測試類型
   messageContent?: string
@@ -19,18 +19,18 @@ export interface TestComponentInstance extends ComponentPublicInstance {
   // DelayedMessageSender 組件測試類型
   delaySeconds?: number
   customDelaySeconds?: number
-  formatScheduledTime?: (date: Date) => string
-  getCountdown?: (scheduledTime: string) => string
+  formatScheduledTime?: (_date: Date) => string
+  getCountdown?: (_messageId: string) => string
   countdownTimer?: NodeJS.Timeout | null
   recallingMessages?: Set<string>
   
   // FileUpload 組件測試類型
-  uploadFile?: (fileItem: FileUploadItem) => Promise<void>
+  uploadFile?: (_item: FileUploadItem) => Promise<void>
 }
 
 // 測試用的 FileItem 接口
 export interface FileItem {
-  file: File
+  file: globalThis.File
   id: string
   progress?: number
   status?: 'pending' | 'uploading' | 'completed' | 'failed'
@@ -56,6 +56,7 @@ export interface MockApiResponse<T = unknown> {
 }
 
 // Mock Message API
+/* eslint-disable no-unused-vars */
 export interface MockMessageApi {
   send: MockedFunction<(conversationId: string, data: Record<string, unknown>) => Promise<MockApiResponse<Message>>>
   list: MockedFunction<(conversationId: string, params?: Record<string, unknown>) => Promise<MockApiResponse<Message[]>>>
@@ -68,10 +69,12 @@ export interface MockMessageApi {
   canRecallMessage: MockedFunction<(messageId: string, userId: string) => Promise<MockApiResponse<{ canRecall: boolean }>>>
   getMessageDetails: MockedFunction<(messageId: string) => Promise<MockApiResponse<PendingMessage>>>
 }
+/* eslint-enable no-unused-vars */
 
 // Mock File API
+/* eslint-disable no-unused-vars */
 export interface MockFileApi {
-  upload: MockedFunction<(file: File) => Promise<FileUploadResult>>
+  upload: MockedFunction<(file: globalThis.File) => Promise<FileUploadResult>>
   getFiles: MockedFunction<(page: number, pageSize: number, platform?: string) => Promise<MockApiResponse<{ items: unknown[], total: number }>>>
   deleteFile: MockedFunction<(fileId: string) => Promise<MockApiResponse<boolean>>>
   deleteMultipleFiles: MockedFunction<(fileIds: string[]) => Promise<MockApiResponse<{ successful: string[], failed: string[] }>>>
@@ -79,6 +82,7 @@ export interface MockFileApi {
   searchFiles: MockedFunction<(params: Record<string, unknown>) => Promise<MockApiResponse<{ items: unknown[], total: number }>>>
   getFileStats: MockedFunction<(period: string) => Promise<MockApiResponse<Record<string, unknown>>>>
 }
+/* eslint-enable no-unused-vars */
 
 // 測試用的 Mock Props 類型
 export interface MockProps {
@@ -89,6 +93,7 @@ export interface MockProps {
 }
 
 // 測試用的 Event Emits 類型
+/* eslint-disable no-unused-vars */
 export interface TestEmits {
   'message-sent'?: (...args: unknown[]) => void
   'upload-complete'?: (...args: unknown[]) => void
@@ -97,9 +102,10 @@ export interface TestEmits {
   'view-pending'?: (...args: unknown[]) => void
   [key: string]: ((...args: unknown[]) => void) | undefined
 }
+/* eslint-enable no-unused-vars */
 
 // 測試工具函數類型
-export type CreateWrapperFunction = (props?: MockProps) => unknown
+export type CreateWrapperFunction = (_props?: MockProps) => unknown
 export type SetupTestFunction = () => void | Promise<void>
 export type CleanupTestFunction = () => void | Promise<void>
 

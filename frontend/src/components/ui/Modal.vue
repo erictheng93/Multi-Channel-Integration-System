@@ -63,10 +63,12 @@ interface Props {
   closeButtonLabel?: string
 }
 
+/* eslint-disable no-unused-vars */
 interface Emits {
   (e: 'close'): void
   (e: 'update:show', value: boolean): void
 }
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(defineProps<Props>(), {
   title: '',

@@ -1,15 +1,11 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 import viteCompression from 'vite-plugin-compression'
 
-export default defineConfig(({ mode }) => {
-  // 載入環境變數
-  const env = loadEnv(mode, process.cwd(), '')
-  
-  // 如果是開發模式且存在 pages 專用配置，則使用它
-  const isPagesDevBuild = mode === 'development' && process.env.VITE_BUILD_TYPE === 'pages'
+export default defineConfig(() => {
+  // Development environment is handled by the configuration below
   
   return {
   plugins: [
@@ -52,14 +48,14 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         secure: false, // 本地開發時設為 false，遠程時設為 true
         rewrite: (path) => path, // 保持路徑不變
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
             console.log('proxy error', err);
           });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
             console.log('Sending Request to the Target:', req.method, req.url);
           });
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
+          proxy.on('proxyRes', (proxyRes, req) => {
             console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
           });
         },

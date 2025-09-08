@@ -8,7 +8,7 @@ export interface FileUploadItem {
   name: string;
   size?: number;
   type?: string;
-  file?: File;
+  file?: globalThis.File;
   url?: string;
   progress?: number;
   uploading?: boolean;
@@ -23,18 +23,20 @@ export interface FileUploadProps {
   maxSize?: number; // in bytes
   maxFiles?: number;
   acceptedTypes?: string;
-  uploadFunction?: (file: File) => Promise<string>;
+  uploadFunction?: (_file: globalThis.File) => Promise<string>;
   disabled?: boolean;
   showDropZone?: boolean;
 }
 
+/* eslint-disable no-unused-vars */
 export interface FileUploadEmits {
   (e: 'update:modelValue', files: FileUploadItem[]): void;
   (e: 'upload-complete', file: FileUploadItem): void;
   (e: 'upload-error', file: FileUploadItem, error: string): void;
   (e: 'file-remove', file: FileUploadItem): void;
-  (e: 'file-select', files: File[]): void;
+  (e: 'file-select', files: globalThis.File[]): void;
 }
+/* eslint-enable no-unused-vars */
 
 export interface FileUploadResult {
   url: string;
