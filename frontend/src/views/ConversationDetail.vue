@@ -64,29 +64,28 @@
           >
             <RefreshIcon :spinning="loadingMessages || loadingHistory" />
           </button>
-        </div>
 
-        <!-- 分頁資訊顯示 -->
-        <div
-          v-if="totalMessages > 0 && debugMode"
-          class="pagination-info"
-        >
-          <span class="message-count">{{ messages.length }}/{{ totalMessages }}</span>
-          <span
-            v-if="hasMore"
-            class="has-more-indicator"
-          >還有更多歷史訊息</span>
-          <span class="performance-indicator">⚙️ 分頁模式</span>
+          <!-- Debug: Test New Message Indicator -->
+          <button
+            v-if="isDevelopment"
+            class="btn btn-outline"
+            title="測試新消息指示器"
+            @click="testNewMessageIndicator"
+          >
+            🔔 測試
+          </button>
         </div>
       </div>
 
       <!-- Message Search -->
-      <MessageSearch
-        ref="messageSearchRef"
-        :messages="messages"
-        @search-results="handleSearchResults"
-        @search-clear="handleSearchClear"
-      />
+      <div class="message-search-container">
+        <MessageSearch
+          ref="messageSearchRef"
+          :messages="messages"
+          @search-results="handleSearchResults"
+          @search-clear="handleSearchClear"
+        />
+      </div>
 
       <!-- Messages Container -->
       <div
@@ -208,30 +207,45 @@
             <span class="typing-text">對方正在輸入...</span>
           </div>
         </div>
+      </div>
 
-        <!-- 新消息指示器 -->
-        <div
-          v-if="showNewMessageIndicator"
-          class="new-message-indicator"
-          @click="scrollToLatestMessages"
-        >
-          <div class="indicator-content">
-            <span class="message-count">{{ newMessageCount }}</span>
-            <span class="indicator-text">條新消息</span>
+      <!-- 玻璃擬態化新消息提醒 (移到外層) -->
+      <div
+        v-if="showNewMessageModal"
+        class="glassmorphism-notification"
+        @click="viewNewMessages"
+      >
+        <div class="glass-content">
+          <div class="notification-pulse">
             <svg
-              class="down-arrow"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
-              fill="none"
+              fill="currentColor"
             >
-              <path
-                d="M7 10L12 15L17 10"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
             </svg>
           </div>
+          <div class="glass-text">
+            <span class="message-count">{{ newMessageCount }}</span>
+            <span class="message-label">新消息</span>
+          </div>
+          <button
+            class="glass-dismiss"
+            title="暫時忽略"
+            @click.stop="dismissNewMessageModal"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="m18 6-12 12" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -336,10 +350,13 @@ const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
 const isInitialLoad = ref(true)
 
-// 新消息指示器狀態
-const showNewMessageIndicator = ref(false)
+// 新消息提醒跳窗狀態
+const showNewMessageModal = ref(false)
 const newMessageCount = ref(0)
 const userScrolledUp = ref(false)
+const modalDismissedRecently = ref(false)
+
+// Computed properties for future enhancement
 
 // 搜索狀態
 const searchResults = ref<Message[]>([])
@@ -347,6 +364,7 @@ const isSearchActive = ref(false)
 
 // 调试模式状态
 const debugMode = ref(false)
+const isDevelopment = ref(import.meta.env.MODE === 'development')
 
 // Quick replies
 const quickReplies = ref([
@@ -432,6 +450,7 @@ const pollingInterval = ref<NodeJS.Timeout | null>(null)
 const typingTimeout = ref<NodeJS.Timeout | null>(null)
 const pollingDelay = ref(3000) // Start with 3 seconds
 const lastMessageCount = ref(0)
+const lastTotalMessageCount = ref(0) // 追蹤總消息數變化
 const isPageVisible = ref(true)
 const hasPermissionError = ref(false)
 
@@ -457,10 +476,15 @@ async function loadConversation() {
 
 // 檢查用戶是否在底部
 function isUserAtBottom(): boolean {
-  if (!messagesContainer.value) {return true}
+  if (!messagesContainer.value) {
+    console.log('🔍 [NewMessageIndicator] messagesContainer not found')
+    return true
+  }
   const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
   const tolerance = 50
-  return scrollTop + clientHeight >= scrollHeight - tolerance
+  const atBottom = scrollTop + clientHeight >= scrollHeight - tolerance
+  console.log(`🔍 [NewMessageIndicator] Scroll check: scrollTop=${scrollTop}, scrollHeight=${scrollHeight}, clientHeight=${clientHeight}, atBottom=${atBottom}`)
+  return atBottom
 }
 
 // 滾動事件處理（支持無限滾動）
@@ -471,10 +495,14 @@ function handleScroll() {
   const atBottom = isUserAtBottom()
   userScrolledUp.value = !atBottom
   
-  // 如果用戶滾動到底部，隱藏新消息指示器
+  // 如果用戶滾動到底部，隱藏新消息跳窗
   if (atBottom) {
-    showNewMessageIndicator.value = false
+    console.log('📍 [NewMessageModal] User scrolled to bottom, hiding modal')
+    showNewMessageModal.value = false
     newMessageCount.value = 0
+    modalDismissedRecently.value = false
+  } else {
+    console.log('📍 [NewMessageModal] User not at bottom, keeping modal if exists')
   }
   
   // 無限滾動邏輯 - 接近頂部時載入更多歷史訊息
@@ -487,12 +515,37 @@ function handleScroll() {
   }
 }
 
-// 滾動到最新消息
-function scrollToLatestMessages() {
-  scrollToBottom()
-  showNewMessageIndicator.value = false
-  newMessageCount.value = 0
+// 關閉新消息跳窗
+function dismissNewMessageModal() {
+  console.log('📍 [NewMessageModal] User dismissed modal')
+  showNewMessageModal.value = false
+  modalDismissedRecently.value = true
+  
+  // 10秒後重置dismissed狀態，允許再次顯示跳窗
+  setTimeout(() => {
+    modalDismissedRecently.value = false
+    console.log('📍 [NewMessageModal] Reset dismissed state')
+  }, 10000)
 }
+
+// 查看新消息
+async function viewNewMessages() {
+  console.log('📍 [NewMessageModal] User chose to view new messages')
+  showNewMessageModal.value = false
+  newMessageCount.value = 0
+  modalDismissedRecently.value = false
+  
+  // 確保滾動到底部
+  await nextTick()
+  scrollToBottom()
+  
+  // 再次確認滾動到底部（以防 DOM 還在更新）
+  setTimeout(() => {
+    scrollToBottom()
+  }, 100)
+}
+
+// Helper functions for message display (kept for potential future use)
 
 async function loadMessages() {
   try {
@@ -530,24 +583,86 @@ async function loadMessages() {
     const hasNewMessages = currentMessageCount > previousMessageCount
     lastMessageCount.value = currentMessageCount
 
+    // 詳細調試新消息檢測
+    console.log(`🔍 [DEBUG] Message count comparison:`, {
+      previous: previousMessageCount,
+      current: currentMessageCount,
+      hasNewMessages,
+      isInitialLoad: isInitialLoad.value
+    })
+
+    // 🔥 檢查總消息數的變化（針對分頁模式）
+    const currentTotalMessages = totalMessages?.value || currentMessageCount
+    const totalMessagesChanged = currentTotalMessages !== lastTotalMessageCount.value
+    
+    console.log(`🔍 [DEBUG] Total messages check:`, {
+      lastTotal: lastTotalMessageCount.value,
+      currentTotal: currentTotalMessages,
+      totalChanged: totalMessagesChanged
+    })
+    
+    lastTotalMessageCount.value = currentTotalMessages
+    
+    // 如果總數變化但當前頁沒變化，說明新消息在其他頁
+    if (totalMessagesChanged && !hasNewMessages && !isInitialLoad.value) {
+      console.log('🎯 [FOUND] New messages detected via total count change!')
+      // 觸發新消息邏輯，假設有1條新消息
+      await handleNewMessagesDetected(1)
+      return
+    }
+
     // Adjust polling frequency based on activity
     if (hasNewMessages) {
       pollingDelay.value = Math.max(2000, pollingDelay.value * 0.8) // Speed up if active
       
       const newMessagesCount = currentMessageCount - previousMessageCount
+      console.log(`🔍 [NewMessageIndicator] New messages detected: ${newMessagesCount}, isInitialLoad: ${isInitialLoad.value}`)
+      
+      // 只統計來自客戶的新消息
+      const newMessages = messages.value.slice(-newMessagesCount)
+      console.log('🔍 [DEBUG] New messages details:', newMessages.map(msg => ({
+        id: msg.id,
+        content: `${msg.content?.substring(0, 50)  }...`,
+        senderType: msg.senderType,
+        platform: msg.platform,
+        createdAt: msg.createdAt
+      })))
+      
+      const newCustomerMessagesCount = newMessages.filter(
+        (msg) => msg.senderType === 'customer'
+      ).length
+      console.log(`🔍 [NewMessageIndicator] Customer messages in new batch: ${newCustomerMessagesCount}/${newMessagesCount}`)
+      
+      // 檢查所有senderType值
+      const senderTypes = newMessages.map(msg => msg.senderType)
+      console.log(`🔍 [DEBUG] All senderTypes in new messages:`, senderTypes)
       
       // 智能滾動和新消息指示
       if (!isInitialLoad.value) {
-        if (wasAtBottom) {
-          // 用戶在底部，自動滾動並重置計數器
-          await nextTick()
-          scrollToBottom()
-          newMessageCount.value = 0
-          showNewMessageIndicator.value = false
+        console.log(`🔍 [NewMessageIndicator] wasAtBottom: ${wasAtBottom}`)
+        console.log(`🔍 [DEBUG] Scroll position details:`, {
+          scrollTop: messagesContainer.value?.scrollTop,
+          scrollHeight: messagesContainer.value?.scrollHeight,
+          clientHeight: messagesContainer.value?.clientHeight,
+          isAtBottom: wasAtBottom
+        })
+        
+        // 無論用戶在什麼位置，都不自動滾動，只顯示提醒（如果有客戶消息）
+        console.log(`📍 [NewMessageModal] Processing customer messages, no auto-scroll`)
+        
+        // 只統計客戶消息
+        if (newCustomerMessagesCount > 0) {
+          newMessageCount.value += newCustomerMessagesCount
+          
+          // 只在用戶最近沒有關閉跳窗的情況下顯示
+          if (!modalDismissedRecently.value && newMessageCount.value > 0) {
+            showNewMessageModal.value = true
+            console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages`)
+          } else {
+            console.log(`📍 [NewMessageModal] Modal dismissed recently, not showing`)
+          }
         } else {
-          // 用戶向上滾動了，顯示新消息指示器
-          newMessageCount.value += newMessagesCount
-          showNewMessageIndicator.value = newMessageCount.value > 0
+          console.log(`📍 [NewMessageModal] No new customer messages, not showing modal`)
         }
       }
     } else {
@@ -573,6 +688,43 @@ async function loadMessages() {
     
     // Slow down polling on other errors
     pollingDelay.value = Math.min(15000, pollingDelay.value * 1.5)
+  }
+}
+
+// 處理新消息檢測的統一函數
+async function handleNewMessagesDetected(newMessagesCount: number) {
+  console.log(`🔍 [NewMessageIndicator] Processing ${newMessagesCount} new messages`)
+  
+  // 獲取最新的消息來檢查發送者類型
+  // 由於分頁模式下新消息可能不在當前頁，我們需要特殊處理
+  // 暫時假設新消息是客戶消息（可以通過 API 調用最新消息來確認）
+  const assumeCustomerMessage = true // 暫時假設，之後可優化
+  
+  if (assumeCustomerMessage) {
+    console.log(`🔍 [DEBUG] Assuming new message is from customer`)
+    
+    const wasAtBottom = isUserAtBottom()
+    console.log(`🔍 [DEBUG] Scroll position details:`, {
+      scrollTop: messagesContainer.value?.scrollTop,
+      scrollHeight: messagesContainer.value?.scrollHeight,
+      clientHeight: messagesContainer.value?.clientHeight,
+      isAtBottom: wasAtBottom
+    })
+    
+    // 無論用戶在什麼位置，都不自動滾動，只顯示提醒（如果有客戶消息）
+    console.log(`📍 [NewMessageModal] Processing customer messages, no auto-scroll`)
+    
+    newMessageCount.value += newMessagesCount
+    
+    // 只在用戶最近沒有關閉跳窗的情況下顯示
+    if (!modalDismissedRecently.value && newMessageCount.value > 0) {
+      showNewMessageModal.value = true
+      console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages`)
+    } else {
+      console.log(`📍 [NewMessageModal] Modal dismissed recently, not showing`)
+    }
+  } else {
+    console.log(`📍 [NewMessageModal] No new customer messages, not showing modal`)
   }
 }
 
@@ -731,6 +883,24 @@ function goBack() {
   router.push('/conversations')
 }
 
+// 測試新消息跳窗（開發模式專用）
+function testNewMessageIndicator() {
+  console.log('🔔 [DEBUG] Testing new customer message modal')
+  console.log(`Current state: showModal=${showNewMessageModal.value}, count=${newMessageCount.value}`)
+  
+  if (showNewMessageModal.value) {
+    // 如果已經顯示，隱藏它
+    dismissNewMessageModal()
+    console.log('🔔 [DEBUG] Hidden customer message modal')
+  } else {
+    // 如果沒有顯示，顯示它並設定測試數量（模擬客戶消息）
+    newMessageCount.value = 3
+    showNewMessageModal.value = true
+    modalDismissedRecently.value = false
+    console.log('🔔 [DEBUG] Shown modal with 3 customer messages')
+  }
+}
+
 // Optimized polling function
 function startPolling() {
   if (pollingInterval.value) {
@@ -827,6 +997,14 @@ function handleGlobalKeydown(event: KeyboardEvent) {
         event.preventDefault()
         debugMode.value = !debugMode.value
         console.log(`🐛 Debug mode ${debugMode.value ? 'enabled' : 'disabled'}`)
+      }
+      break
+      
+    case 't':
+      // 测试新消息指示器（仅开发模式）
+      if ((event.ctrlKey || event.metaKey) && isDevelopment.value) {
+        event.preventDefault()
+        testNewMessageIndicator()
       }
       break
   }
@@ -944,35 +1122,6 @@ watch(() => route.params.id, async (newId, oldId) => {
   flex-shrink: 0;
 }
 
-.pagination-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  background: var(--gray-50);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--gray-200);
-  order: 3;
-  width: 100%;
-  justify-content: center;
-}
-
-.message-count {
-  font-weight: 600;
-  color: var(--primary-600);
-}
-
-.has-more-indicator {
-  color: var(--orange-600);
-  font-weight: 500;
-}
-
-.performance-indicator {
-  color: var(--green-600);
-  font-weight: 600;
-}
 
 .header-left {
   display: flex;
@@ -1045,9 +1194,20 @@ watch(() => route.params.id, async (newId, oldId) => {
   gap: var(--space-3);
 }
 
-.messages-container {
+.message-search-container {
   position: absolute;
   top: 100px; /* Header 高度 */
+  left: 0;
+  right: 0;
+  z-index: 9;
+  background-color: var(--gray-50);
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.messages-container {
+  position: absolute;
+  top: 140px; /* Header 高度 + MessageSearch 高度 */
   bottom: 180px; /* Input section 高度 */
   left: 0;
   right: 0;
@@ -1297,9 +1457,13 @@ watch(() => route.params.id, async (newId, oldId) => {
     padding: var(--space-4) var(--space-3);
   }
   
+  .message-search-container {
+    top: 80px; /* 平板版 header 高度 */
+    padding: 0 var(--space-3);
+  }
 
   .messages-container {
-    top: 80px; /* 平板版 header 高度 */
+    top: 120px; /* 平板版 header 高度 + MessageSearch 高度 */
     bottom: 140px; /* 平板版 input 高度 */
     padding: var(--space-3);
   }
@@ -1356,8 +1520,13 @@ watch(() => route.params.id, async (newId, oldId) => {
     white-space: nowrap;
   }
 
-  .messages-container {
+  .message-search-container {
     top: 70px; /* 手機版 header 高度 */
+    padding: 0 var(--space-2);
+  }
+
+  .messages-container {
+    top: 110px; /* 手機版 header 高度 + MessageSearch 高度 */
     bottom: 120px; /* 手機版 input 高度 */
     padding: var(--space-2);
   }
@@ -1415,80 +1584,178 @@ watch(() => route.params.id, async (newId, oldId) => {
 
 }
 
-/* 新消息指示器 */
-.new-message-indicator {
-  position: absolute;
-  bottom: 200px; /* 相對於messages-container定位 */
+/* Clean Modern Minimalist 新消息提醒 */
+.glassmorphism-notification {
+  position: fixed;
+  bottom: calc(180px + 60px); /* Input section高度 + 額外間距 */
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: white;
-  border-radius: 28px;
-  padding: 12px 20px;
+  z-index: 100;
+  animation: slideInFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
-  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  z-index: 20;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: slideUp 0.4s ease-out;
+  user-select: none;
 }
 
-.new-message-indicator:hover {
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 12px 35px rgba(79, 70, 229, 0.4);
-  background: linear-gradient(135deg, #5b52e6, #8b46f0);
-}
-
-.new-message-indicator:active {
-  transform: translateX(-50%) translateY(0px) scale(0.98);
-}
-
-.indicator-content {
+.glass-content {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  gap: 14px;
+  padding: 14px 20px;
+  
+  /* Clean Modern Glassmorphism */
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  
+  /* Minimalist Transitions */
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glassmorphism-notification:hover .glass-content {
+  background: rgba(255, 255, 255, 0.98);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.notification-pulse {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 50%;
+  color: white;
+  animation: gentlePulse 2.5s infinite ease-in-out;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.notification-pulse svg {
+  width: 18px;
+  height: 18px;
+}
+
+.glass-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 .message-count {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 700;
-  min-width: 20px;
-  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.01em;
 }
 
-.down-arrow {
-  width: 16px;
-  height: 16px;
-  animation: bounce 2s infinite;
+.message-label {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #6b7280;
+  letter-spacing: 0;
 }
 
-@keyframes slideUp {
+.glass-dismiss {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(107, 114, 128, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.glass-dismiss:hover {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+  transform: scale(1.05);
+}
+
+.glass-dismiss:active {
+  transform: scale(0.95);
+}
+
+.glass-dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Clean Modern Animations */
+@keyframes slideInFade {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(16px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
+@keyframes gentlePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
   }
-  40% {
-    transform: translateY(-4px);
+  50% {
+    transform: scale(1.02);
+    opacity: 0.9;
   }
-  60% {
-    transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .glassmorphism-notification {
+    bottom: calc(140px + 40px); /* 手機版input section高度 + 間距 */
+  }
+  
+  .glass-content {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  
+  .notification-pulse {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .notification-pulse svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .message-count {
+    font-size: 0.9375rem;
+  }
+  
+  .message-label {
+    font-size: 0.8125rem;
+  }
+  
+  .glass-dismiss {
+    width: 22px;
+    height: 22px;
+  }
+  
+  .glass-dismiss svg {
+    width: 12px;
+    height: 12px;
   }
 }
 
