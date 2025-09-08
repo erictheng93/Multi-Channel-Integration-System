@@ -176,6 +176,9 @@
         </div>
 
         <div class="top-bar-actions">
+          <!-- 統計資訊 Slot (用於對話詳情頁) -->
+          <slot name="top-bar-stats" />
+
           <!-- Notifications -->
           <button
             class="notification-btn"

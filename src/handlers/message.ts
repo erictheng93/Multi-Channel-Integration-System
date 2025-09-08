@@ -13,7 +13,7 @@ import {
   notFoundResponse,
   handleApiError 
 } from '../utils/api-response';
-import { eq, desc, and, inArray, like, count, or, lte, gte, aliasedTable } from 'drizzle-orm';
+import { eq, and, inArray, like, count, or, lte, gte, aliasedTable } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql } from 'drizzle-orm';
@@ -66,7 +66,7 @@ export const messageHandler = {
                 )
             )
             .where(eq(schema.messages.conversationId, conversationId))
-            .orderBy(desc(schema.messages.createdAt))
+            .orderBy(schema.messages.createdAt) // ASC: 舊消息在前，新消息在後
             .limit(pageSize)
             .offset(offset);
 
@@ -436,7 +436,7 @@ export const messageHandler = {
                 ))
                 .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
                 .where(and(...whereConditions))
-                .orderBy(desc(messages.createdAt))
+                .orderBy(messages.createdAt) // ASC: 保持一致的排序
                 .limit(limit)
                 .offset(offset);
 
@@ -712,7 +712,7 @@ export const messageHandler = {
                 ))
                 .where(and(...whereConditions))
                 .groupBy(messages.id)
-                .orderBy(desc(messages.createdAt))
+                .orderBy(messages.createdAt) // ASC: 保持一致的排序
                 .limit(limit)
                 .offset(offset);
 

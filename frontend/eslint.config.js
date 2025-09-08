@@ -1,0 +1,163 @@
+import js from '@eslint/js'
+import vue from 'eslint-plugin-vue'
+import typescript from '@typescript-eslint/eslint-plugin'
+import typescriptParser from '@typescript-eslint/parser'
+import vueParser from 'vue-eslint-parser'
+
+export default [
+  // Ignore patterns - equivalent to .eslintignore
+  {
+    ignores: [
+      'dist/**/*',
+      'node_modules/**/*',
+      '*.d.ts',
+      'coverage/**/*',
+      '.vite/**/*',
+      '**/*.timestamp-*'
+    ]
+  },
+  
+  js.configs.recommended,
+  ...vue.configs['flat/recommended'],
+  
+  {
+    languageOptions: {
+      parser: vueParser,
+      parserOptions: {
+        parser: typescriptParser,
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+        // Browser globals
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        location: 'readonly',
+        history: 'readonly',
+        fetch: 'readonly',
+        URLSearchParams: 'readonly',
+        URL: 'readonly',
+        Event: 'readonly',
+        CustomEvent: 'readonly',
+        MouseEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        InputEvent: 'readonly',
+        FocusEvent: 'readonly',
+        WheelEvent: 'readonly',
+        UIEvent: 'readonly',
+        EventTarget: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLFormElement: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLImageElement: 'readonly',
+        // Storage and utilities
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        crypto: 'readonly',
+        Blob: 'readonly',
+        // Web Workers
+        self: 'readonly',
+        importScripts: 'readonly',
+        MessageEvent: 'readonly',
+        // Service Worker
+        clients: 'readonly',
+        caches: 'readonly',
+        // Performance
+        performance: 'readonly',
+        // Node.js types (for type references)
+        NodeJS: 'readonly',
+        // Cloudflare Workers
+        EventContext: 'readonly',
+        Response: 'readonly',
+      }
+    },
+    
+    plugins: {
+      '@typescript-eslint': typescript,
+      vue,
+    },
+    
+    rules: {
+      // Vue specific rules
+      'vue/multi-word-component-names': 'off',
+      'vue/no-unused-vars': 'error',
+      'vue/component-definition-name-casing': ['error', 'PascalCase'],
+      'vue/component-name-in-template-casing': ['error', 'PascalCase'],
+      'vue/define-macros-order': ['error', {
+        order: ['defineOptions', 'defineProps', 'defineEmits', 'defineSlots']
+      }],
+      'vue/no-undef-components': ['warn', {
+        ignorePatterns: ['router-link', 'router-view']
+      }],
+      'vue/no-unused-components': 'error',
+      'vue/prefer-import-from-vue': 'error',
+      'vue/require-macro-variable-name': 'error',
+      
+      // TypeScript rules
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_', 
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_'
+      }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/prefer-nullish-coalescing': 'off',
+      '@typescript-eslint/prefer-optional-chain': 'off',
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      
+      // General rules
+      'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+      'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'object-shorthand': 'error',
+      'prefer-template': 'error',
+      'eqeqeq': ['error', 'always'],
+      'curly': ['error', 'all']
+    },
+  },
+  
+  // Vue files specific overrides
+  {
+    files: ['*.vue', '**/*.vue'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off' // Vue 模板中的變數使用由 vue/no-unused-vars 處理
+    }
+  },
+  
+  // Config files overrides
+  {
+    files: ['*.config.js', '*.config.ts', 'scripts/**/*', 'prettier.config.ts', 'vitest.setup.ts'],
+    rules: {
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+  
+  // Icons files overrides
+  {
+    files: ['src/components/icons/**/*.ts'],
+    rules: {
+      'vue/one-component-per-file': 'off'
+    }
+  }
+]
