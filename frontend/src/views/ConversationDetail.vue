@@ -1,5 +1,16 @@
 <template>
   <AppLayout>
+    <!-- 統計資訊放到頂部bar -->
+    <template #top-bar-stats>
+      <MessageIndicator
+        v-if="messages.length > 0"
+        :oldest-message="oldestMessage"
+        :latest-message="latestMessage"
+        :total-messages="totalMessages || messages.length"
+        class="message-indicator-topbar"
+      />
+    </template>
+
     <div class="conversation-detail">
       <!-- Header -->
       <div class="conversation-header">
@@ -64,16 +75,6 @@
           >
             <RefreshIcon :spinning="loadingMessages || loadingHistory" />
           </button>
-
-          <!-- Debug: Test New Message Indicator -->
-          <button
-            v-if="isDevelopment"
-            class="btn btn-outline"
-            title="測試新消息指示器"
-            @click="testNewMessageIndicator"
-          >
-            🔔 測試
-          </button>
         </div>
       </div>
 
@@ -91,40 +92,30 @@
       <div
         ref="messagesContainer"
         class="messages-container"
+        :class="{ updating: isUpdating }"
         @scroll="handleScroll"
       >
-        <!-- 歷史消息載入指示器 -->
-        <div
-          v-if="false"
-          class="history-loading-wrapper"
-        >
-          <LoadingSpinner
-            size="sm"
-            text="載入歷史訊息..."
-          />
-        </div>
-        
-        <!-- 初始載入指示器 -->
-        <!-- 歷史消息載入指示器 -->
+        <!-- 📜 歷史消息載入指示器 - 顯示在頂部 -->
         <div
           v-if="loadingHistory && messages.length > 0"
           class="history-loading-wrapper"
         >
-          <LoadingSpinner
-            size="sm"
-            text="載入歷史訊息..."
-          />
+          <div class="history-loading-content">
+            <LoadingSpinner
+              size="sm"
+              class="history-spinner"
+            />
+            <span class="history-loading-text">載入更多歷史訊息...</span>
+            <div class="loading-progress-bar" />
+          </div>
         </div>
         
-        <div
+        <!-- 使用骨架屏替代初始載入指示器 -->
+        <MessageSkeleton
           v-if="loadingMessages && messages.length === 0"
-          class="loading-wrapper"
-        >
-          <LoadingSpinner
-            size="lg"
-            text="載入訊息中..."
-          />
-        </div>
+          :count="5"
+          :animated="true"
+        />
 
         <div
           v-else-if="displayedMessages.length === 0"
@@ -168,6 +159,7 @@
               <MessageBubble
                 v-for="message in group.messages"
                 :key="message.id"
+                :class="getAnimationClasses(message.id)"
                 :message="message"
                 :delivered="true"
                 @copy="handleMessageCopy"
@@ -184,6 +176,7 @@
             <MessageBubble
               v-for="message in displayedMessages"
               :key="message.id"
+              :class="getAnimationClasses(message.id)"
               :message="message"
               :delivered="true"
               @copy="handleMessageCopy"
@@ -299,15 +292,18 @@
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessages } from '@/composables'
+import { useSmoothLoading } from '@/composables/useSmoothLoading'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Message, Conversation } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import MessageSkeleton from '@/components/ui/MessageSkeleton.vue'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import MessageSearch from '@/components/conversation/MessageSearch.vue'
+import MessageIndicator from '@/components/conversation/MessageIndicator.vue'
 import DateSeparator from '@/components/conversation/DateSeparator.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
@@ -325,7 +321,9 @@ const router = useRouter()
 // useAuth removed - not used in this component
 const conversationsStore = useConversationsStore()
 const { 
-  messages, 
+  messages: rawMessages, 
+  oldestMessage,
+  latestMessage,
   loading: loadingMessages,
   hasMore,
   loadingHistory,
@@ -336,7 +334,20 @@ const {
   setConversationId
 } = useMessages(undefined, {
   enablePagination: true,
-  pageSize: 50
+  pageSize: 20 // 改為20條消息
+})
+
+// 平滑載入系統
+const {
+  messages: smoothMessages,
+  isUpdating,
+  updateMessages,
+  setMessagesImmediate,
+  getAnimationClasses
+} = useSmoothLoading({
+  animationDuration: 300,
+  batchTimeout: 16,
+  enableVirtualScroll: false
 })
 
 // State
@@ -349,6 +360,10 @@ const messageInputRef = ref()
 const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
 const isInitialLoad = ref(true)
+
+// 🔒 防重入機制：確保不會重複載入相同對話
+const loadingConversationId = ref<string | null>(null)
+const conversationLoadPromise = ref<Promise<void> | null>(null)
 
 // 新消息提醒跳窗狀態
 const showNewMessageModal = ref(false)
@@ -364,7 +379,6 @@ const isSearchActive = ref(false)
 
 // 调试模式状态
 const debugMode = ref(false)
-const isDevelopment = ref(import.meta.env.MODE === 'development')
 
 // Quick replies
 const quickReplies = ref([
@@ -383,8 +397,12 @@ const customerInitials = computed(() => {
 })
 
 const displayedMessages = computed(() => {
-  return isSearchActive.value ? searchResults.value : messages.value
+  // 使用搜索結果或平滑載入的消息
+  return isSearchActive.value ? searchResults.value : smoothMessages.value
 })
+
+// 實際的消息數據（用於平滑載入系統）
+const messages = computed(() => smoothMessages.value)
 
 // Group messages by date
 const groupedMessages = computed(() => {
@@ -423,21 +441,27 @@ function formatDateKey(date: Date): string {
 }
 
 // Message handlers
-const handleMessageSent = async (_data: { content: string; attachments: unknown[] }) => {
+const handleMessageSent = async () => {
+  console.log('💬 [Message Sent] 客服發送了新消息，準備更新UI...')
+  
+  // 🎯 追蹤用戶發送消息活動
+  updateActivityState('interaction')
+  
   // Refresh messages to get the latest
   await loadMessages()
   
   // Update conversation's last message
   if (conversation.value) {
-    const lastMessage = messages.value[messages.value.length - 1]
-    if (lastMessage) {
-      conversation.value.lastMessage = lastMessage
+    // 使用簡化的最新消息邏輯
+    if (latestMessage.value) {
+      conversation.value.lastMessage = latestMessage.value
     }
   }
 
-  // Scroll to bottom
+  // 🎯 客服發送消息後，強制滾動到底部查看最新消息
   await nextTick()
-  scrollToBottom()
+  scrollToBottom(true) // force = true，確保顯示剛發送的消息
+  console.log('✅ [Message Sent] 消息發送完成，已滾動到最新位置')
 }
 
 const handleAttachmentUpload = (attachment: unknown) => {
@@ -445,14 +469,115 @@ const handleAttachmentUpload = (attachment: unknown) => {
   console.log('Attachment uploaded:', attachment)
 }
 
-// Optimized polling with exponential backoff - using ref for proper cleanup
+// 🎯 智能輪詢系統：根據用戶活動動態調整頻率
 const pollingInterval = ref<NodeJS.Timeout | null>(null)
 const typingTimeout = ref<NodeJS.Timeout | null>(null)
-const pollingDelay = ref(3000) // Start with 3 seconds
 const lastMessageCount = ref(0)
 const lastTotalMessageCount = ref(0) // 追蹤總消息數變化
 const isPageVisible = ref(true)
 const hasPermissionError = ref(false)
+
+// 🧠 智能頻率配置系統
+const pollingConfig = ref({
+  baseDelay: 15000,        // 15秒基礎間隔（符合行業標準）
+  activeDelay: 8000,       // 8秒活躍間隔（有新消息或用戶活動）
+  inactiveDelay: 45000,    // 45秒非活躍間隔（長時間無活動）
+  backgroundDelay: 120000, // 2分鐘背景間隔（頁面隱藏）
+  currentDelay: 15000      // 當前使用的延遲
+})
+
+// 🎯 活動狀態追蹤系統
+const activityState = ref({
+  lastUserActivity: Date.now(),    // 最後用戶活動時間
+  lastMessageReceived: Date.now(), // 最後收到消息時間
+  recentActivity: false,           // 最近是否有活動
+  conversationActive: false,       // 對話是否活躍
+  userInteracting: false           // 用戶是否正在互動
+})
+
+
+
+// 🧠 智能頻率計算函數
+function calculateSmartDelay(): number {
+  const now = Date.now()
+  const timeSinceUserActivity = now - activityState.value.lastUserActivity
+  const timeSinceMessage = now - activityState.value.lastMessageReceived
+  
+  console.log(`🎯 [Smart Polling] Activity analysis:`, {
+    timeSinceUserActivity: `${Math.round(timeSinceUserActivity / 1000)}s`,
+    timeSinceMessage: `${Math.round(timeSinceMessage / 1000)}s`,
+    isPageVisible: isPageVisible.value,
+    conversationActive: activityState.value.conversationActive,
+    userInteracting: activityState.value.userInteracting
+  })
+  
+  // 🎯 頁面隱藏時使用最長間隔
+  if (!isPageVisible.value) {
+    console.log(`🎯 [Smart Polling] Page hidden, using background delay: ${pollingConfig.value.backgroundDelay}ms`)
+    return pollingConfig.value.backgroundDelay
+  }
+  
+  // 🎯 用戶正在互動時使用最短間隔
+  if (activityState.value.userInteracting || timeSinceUserActivity < 30000) { // 30秒內有用戶活動
+    console.log(`🎯 [Smart Polling] User active, using active delay: ${pollingConfig.value.activeDelay}ms`)
+    activityState.value.recentActivity = true
+    return pollingConfig.value.activeDelay
+  }
+  
+  // 🎯 最近有新消息時使用中等間隔
+  if (activityState.value.conversationActive || timeSinceMessage < 120000) { // 2分鐘內有新消息
+    console.log(`🎯 [Smart Polling] Conversation active, using base delay: ${pollingConfig.value.baseDelay}ms`)
+    return pollingConfig.value.baseDelay
+  }
+  
+  // 🎯 長時間無活動時使用較長間隔
+  console.log(`🎯 [Smart Polling] Long inactive, using inactive delay: ${pollingConfig.value.inactiveDelay}ms`)
+  activityState.value.recentActivity = false
+  return pollingConfig.value.inactiveDelay
+}
+
+// 🎯 更新活動狀態追蹤
+function updateActivityState(type: 'user' | 'message' | 'interaction') {
+  const now = Date.now()
+  
+  switch (type) {
+    case 'user':
+      activityState.value.lastUserActivity = now
+      activityState.value.recentActivity = true
+      console.log(`🎯 [Activity] User activity detected`)
+      break
+      
+    case 'message':
+      activityState.value.lastMessageReceived = now
+      activityState.value.conversationActive = true
+      console.log(`🎯 [Activity] New message received`)
+      break
+      
+    case 'interaction':
+      activityState.value.userInteracting = true
+      activityState.value.lastUserActivity = now
+      console.log(`🎯 [Activity] User interaction detected`)
+      
+      // 3秒後重置互動狀態
+      setTimeout(() => {
+        activityState.value.userInteracting = false
+        console.log(`🎯 [Activity] User interaction reset`)
+      }, 3000)
+      break
+  }
+  
+  // 重新計算並更新當前延遲
+  const newDelay = calculateSmartDelay()
+  if (newDelay !== pollingConfig.value.currentDelay) {
+    pollingConfig.value.currentDelay = newDelay
+    console.log(`🎯 [Smart Polling] Delay updated: ${newDelay}ms`)
+    
+    // 重新啟動輪詢以應用新的延遲
+    if (pollingInterval.value) {
+      startPolling()
+    }
+  }
+}
 
 // Methods
 async function loadConversation() {
@@ -474,22 +599,36 @@ async function loadConversation() {
   }
 }
 
-// 檢查用戶是否在底部
+// 檢查用戶是否在底部 - 優化版本
 function isUserAtBottom(): boolean {
   if (!messagesContainer.value) {
     console.log('🔍 [NewMessageIndicator] messagesContainer not found')
     return true
   }
   const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  
+  // 固定容忍度：50px（約一條消息的高度）
+  // 這樣可以避免因為細微的滾動差異而誤判
   const tolerance = 50
   const atBottom = scrollTop + clientHeight >= scrollHeight - tolerance
-  console.log(`🔍 [NewMessageIndicator] Scroll check: scrollTop=${scrollTop}, scrollHeight=${scrollHeight}, clientHeight=${clientHeight}, atBottom=${atBottom}`)
+  
+  console.log(`🔍 [NewMessageIndicator] Scroll position check:`, {
+    scrollTop,
+    scrollHeight,
+    clientHeight,
+    tolerance,
+    atBottom,
+    diff: scrollHeight - (scrollTop + clientHeight)
+  })
   return atBottom
 }
 
 // 滾動事件處理（支持無限滾動）
 function handleScroll() {
   if (!messagesContainer.value) {return}
+  
+  // 🎯 追蹤用戶滾動活動
+  updateActivityState('user')
   
   const { scrollTop } = messagesContainer.value
   const atBottom = isUserAtBottom()
@@ -505,13 +644,31 @@ function handleScroll() {
     console.log('📍 [NewMessageModal] User not at bottom, keeping modal if exists')
   }
   
-  // 無限滾動邏輯 - 接近頂部時載入更多歷史訊息
-  const threshold = 100
+  // 🔄 無限滾動邏輯 - 防止初始載入時錯誤觸發
+  const threshold = 150
   const nearTop = scrollTop < threshold
   
-  if (nearTop && hasMore.value && !loadingHistory.value) {
-    console.log('🔄 觸發無限滾動，載入更多歷史訊息')
-    loadMoreMessages()
+  // 只在非初始載入且用戶有意向上滾動時觸發
+  if (nearTop && hasMore.value && !loadingHistory.value && !isInitialLoad.value && scrollTop > 0) {
+    console.log('📜 [Infinite Scroll] 用戶向上滑動查看歷史，載入更多訊息...')
+    console.log(`📊 [Infinite Scroll] 當前位置: scrollTop=${scrollTop}, 觸發閾值=${threshold}`)
+    
+    // 保存當前滾動位置，載入完成後恢復
+    const currentScrollHeight = messagesContainer.value?.scrollHeight || 0
+    
+    loadMoreMessages().then(() => {
+      // 載入完成後，調整滾動位置以保持用戶視角
+      nextTick(() => {
+        if (messagesContainer.value && !isInitialLoad.value) {
+          const newScrollHeight = messagesContainer.value.scrollHeight
+          const heightDiff = newScrollHeight - currentScrollHeight
+          const newScrollTop = scrollTop + heightDiff
+          
+          messagesContainer.value.scrollTop = newScrollTop
+          console.log(`📍 [Infinite Scroll] 歷史訊息載入完成，調整滾動位置: ${scrollTop} → ${newScrollTop}`)
+        }
+      })
+    })
   }
 }
 
@@ -531,6 +688,10 @@ function dismissNewMessageModal() {
 // 查看新消息
 async function viewNewMessages() {
   console.log('📍 [NewMessageModal] User chose to view new messages')
+  
+  // 🎯 追蹤用戶查看新消息的互動
+  updateActivityState('interaction')
+  
   showNewMessageModal.value = false
   newMessageCount.value = 0
   modalDismissedRecently.value = false
@@ -547,39 +708,157 @@ async function viewNewMessages() {
 
 // Helper functions for message display (kept for potential future use)
 
+// 🔒 統一且安全的對話載入函數：解決競態條件
+async function safeLoadConversation(targetId: string): Promise<void> {
+  console.log(`🔄 [SafeLoad] Request to load conversation: ${targetId}`)
+  
+  // 🚫 防重入檢查：如果正在載入相同對話，返回現有Promise
+  if (loadingConversationId.value === targetId && conversationLoadPromise.value) {
+    console.log(`🔒 [SafeLoad] Already loading conversation ${targetId}, returning existing promise`)
+    return conversationLoadPromise.value
+  }
+  
+  // 🚫 如果已經載入了相同對話且狀態正常，直接返回
+  if (conversation.value?.id === targetId && smoothMessages.value.length > 0) {
+    console.log(`✅ [SafeLoad] Conversation ${targetId} already loaded with ${smoothMessages.value.length} messages`)
+    return Promise.resolve()
+  }
+  
+  // 🔄 開始新的載入流程
+  loadingConversationId.value = targetId
+  
+  const loadPromise = (async (): Promise<void> => {
+    try {
+      console.log(`🔄 [SafeLoad] Starting to load conversation: ${targetId}`)
+      
+      // 1. 重置UI狀態，準備載入新數據
+      setMessagesImmediate([])
+      
+      // 2. 並行載入對話元數據和消息（提高效率）
+      console.log(`📡 [SafeLoad] Loading conversation metadata and messages in parallel...`)
+      
+      await Promise.all([
+        loadConversation(),
+        loadMessagesWithSync(targetId)
+      ])
+      
+      console.log(`✅ [SafeLoad] Successfully loaded conversation ${targetId} with ${smoothMessages.value.length} messages`)
+      
+    } catch (error) {
+      console.error(`❌ [SafeLoad] Failed to load conversation ${targetId}:`, error)
+      // 確保失敗時UI顯示正確的空狀態
+      setMessagesImmediate([])
+      throw error
+    } finally {
+      // 清理載入狀態
+      if (loadingConversationId.value === targetId) {
+        loadingConversationId.value = null
+        conversationLoadPromise.value = null
+      }
+    }
+  })()
+  
+  conversationLoadPromise.value = loadPromise
+  return loadPromise
+}
+
+// 🔧 修復競態條件：統一的消息載入和同步函數
+async function loadMessagesWithSync(targetId?: string): Promise<void> {
+  const actualId = targetId || conversationId.value
+  
+  try {
+    console.log(`🔄 [loadMessagesWithSync] Loading messages for conversation: ${actualId}`)
+    
+    // 1. 使用 setConversationId 來設置分頁狀態並載入數據
+    await setConversationId(actualId)
+    
+    // 2. 確保 rawMessages 已經載入完成
+    if (rawMessages.value.length > 0) {
+      console.log(`📍 [loadMessagesWithSync] Raw messages loaded: ${rawMessages.value.length} items`)
+      
+      // 3. 立即同步到平滑載入系統（初始載入不使用動畫）
+      setMessagesImmediate(rawMessages.value)
+      
+      console.log(`✅ [loadMessagesWithSync] Smooth messages synchronized: ${smoothMessages.value.length} items`)
+    } else {
+      console.log(`⚠️ [loadMessagesWithSync] No messages found for conversation: ${actualId}`)
+      
+      // 確保平滑載入系統也為空
+      setMessagesImmediate([])
+    }
+  } catch (error) {
+    console.error(`❌ [loadMessagesWithSync] Failed to load messages for ${actualId}:`, error)
+    // 失敗時確保UI顯示空狀態
+    setMessagesImmediate([])
+    throw error
+  }
+}
+
 async function loadMessages() {
   try {
     // 記錄載入前的狀態
-    const previousMessageCount = messages.value.length
+    const previousMessageCount = smoothMessages.value.length
     const wasAtBottom = isInitialLoad.value || isUserAtBottom()
     
     console.log(`🔄 [ConversationDetail] Loading messages, isInitialLoad: ${isInitialLoad.value}`)
     
+    // 獲取新數據
     await fetchMessages()
     
-    // ✅ 優化初始載入體驗 - 確保用戶看到最新訊息
-    if (isInitialLoad.value && messages.value.length > 0) {
-      console.log(`📍 [ConversationDetail] Initial load complete, immediately scrolling to bottom with ${messages.value.length} messages`)
+    // 使用平滑載入更新UI
+    if (rawMessages.value.length > 0) {
+      if (isInitialLoad.value) {
+        // 初始載入：立即設置，不使用動畫
+        setMessagesImmediate(rawMessages.value)
+        console.log(`📍 [SmoothLoading] Initial load complete with ${rawMessages.value.length} messages`)
+      } else {
+        // 後續更新：使用平滑動畫
+        const shouldAnimate = previousMessageCount > 0 && rawMessages.value.length > previousMessageCount
+        updateMessages(rawMessages.value, shouldAnimate)
+        console.log(`📍 [SmoothLoading] Updated messages with animation: ${shouldAnimate}`)
+      }
+    }
+    
+    // ✅ 統一初始載入滾動邏輯 - 使用 MutationObserver 確保 DOM 完全渲染
+    if (isInitialLoad.value && rawMessages.value.length > 0) {
+      console.log(`📍 [ConversationDetail] Initial load complete with ${rawMessages.value.length} raw messages`)
       
-      // 使用多個nextTick確保DOM完全渲染，然後立即滾動到底部
+      // 等待DOM更新完成
       await nextTick()
-      await nextTick()
       
-      // 立即滾動到底部，不使用延遲
-      scrollToBottomInstantly()
-      console.log('✅ [ConversationDetail] Scrolled to bottom after initial load')
-      
-      // 再確保一次滾動（防止有些消息還在渲染）
-      setTimeout(() => {
-        scrollToBottomInstantly()
-        console.log('🔄 [ConversationDetail] Final scroll to bottom completed')
-      }, 50)
+      // 使用 MutationObserver 確保消息都渲染完成再滾動
+      if (messagesContainer.value && messages.value.length > 0) {
+        const observer = new MutationObserver((mutations, obs) => {
+          // 檢查是否有新節點添加
+          const hasNewNodes = mutations.some(mutation => mutation.addedNodes.length > 0)
+          const scrollHeight = messagesContainer.value?.scrollHeight ?? 0
+          if (hasNewNodes || scrollHeight > 0) {
+            // DOM 已更新，執行滾動
+            scrollToBottomInstantly()
+            console.log('✅ [ConversationDetail] Initial scroll to bottom completed via MutationObserver')
+            obs.disconnect() // 斷開觀察器
+          }
+        })
+        
+        // 開始觀察消息容器的變化
+        observer.observe(messagesContainer.value, {
+          childList: true,
+          subtree: true
+        })
+        
+        // 設置超時保護，避免 Observer 永遠不觸發
+        setTimeout(() => {
+          observer.disconnect()
+          scrollToBottomInstantly()
+          console.log('✅ [ConversationDetail] Fallback scroll to bottom after timeout')
+        }, 300)
+      }
     }
     
     // Reset permission error flag on successful fetch
     hasPermissionError.value = false
     
-    const currentMessageCount = messages.value.length
+    const currentMessageCount = smoothMessages.value.length
     const hasNewMessages = currentMessageCount > previousMessageCount
     lastMessageCount.value = currentMessageCount
 
@@ -611,9 +890,10 @@ async function loadMessages() {
       return
     }
 
-    // Adjust polling frequency based on activity
+    // 🎯 智能活動狀態更新
     if (hasNewMessages) {
-      pollingDelay.value = Math.max(2000, pollingDelay.value * 0.8) // Speed up if active
+      // 更新消息接收活動狀態
+      updateActivityState('message')
       
       const newMessagesCount = currentMessageCount - previousMessageCount
       console.log(`🔍 [NewMessageIndicator] New messages detected: ${newMessagesCount}, isInitialLoad: ${isInitialLoad.value}`)
@@ -654,19 +934,26 @@ async function loadMessages() {
         if (newCustomerMessagesCount > 0) {
           newMessageCount.value += newCustomerMessagesCount
           
-          // 只在用戶最近沒有關閉跳窗的情況下顯示
-          if (!modalDismissedRecently.value && newMessageCount.value > 0) {
+          // 檢查用戶是否不在底部（新增條件）
+          const userNotAtBottom = !isUserAtBottom()
+          console.log(`📍 [NewMessageModal] User position check: notAtBottom=${userNotAtBottom}`)
+          
+          // 兩個條件都要滿足：1. 用戶不在底部 2. 最近沒關閉跳窗
+          if (userNotAtBottom && !modalDismissedRecently.value && newMessageCount.value > 0) {
             showNewMessageModal.value = true
-            console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages`)
-          } else {
+            console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages (user not at bottom)`)
+          } else if (!userNotAtBottom) {
             console.log(`📍 [NewMessageModal] Modal dismissed recently, not showing`)
+          } else {
+            console.log(`📍 [NewMessageModal] User at bottom, clearing modal`)
+            // 用戶在底部，清除新消息計數
+            newMessageCount.value = 0
+            showNewMessageModal.value = false
           }
         } else {
           console.log(`📍 [NewMessageModal] No new customer messages, not showing modal`)
         }
       }
-    } else {
-      pollingDelay.value = Math.min(10000, pollingDelay.value * 1.2) // Slow down if inactive
     }
 
   } catch (error) {
@@ -686,8 +973,9 @@ async function loadMessages() {
       }
     }
     
-    // Slow down polling on other errors
-    pollingDelay.value = Math.min(15000, pollingDelay.value * 1.5)
+    // 在錯誤情況下使用較長的輪詢間隔
+    console.log('⚠️ [Smart Polling] Error detected, using inactive delay')
+    pollingConfig.value.currentDelay = pollingConfig.value.inactiveDelay
   }
 }
 
@@ -703,25 +991,23 @@ async function handleNewMessagesDetected(newMessagesCount: number) {
   if (assumeCustomerMessage) {
     console.log(`🔍 [DEBUG] Assuming new message is from customer`)
     
-    const wasAtBottom = isUserAtBottom()
-    console.log(`🔍 [DEBUG] Scroll position details:`, {
-      scrollTop: messagesContainer.value?.scrollTop,
-      scrollHeight: messagesContainer.value?.scrollHeight,
-      clientHeight: messagesContainer.value?.clientHeight,
-      isAtBottom: wasAtBottom
-    })
-    
-    // 無論用戶在什麼位置，都不自動滾動，只顯示提醒（如果有客戶消息）
-    console.log(`📍 [NewMessageModal] Processing customer messages, no auto-scroll`)
+    // 檢查用戶位置
+    const userNotAtBottom = !isUserAtBottom()
+    console.log(`📍 [NewMessageModal] User position check: notAtBottom=${userNotAtBottom}`)
     
     newMessageCount.value += newMessagesCount
     
-    // 只在用戶最近沒有關閉跳窗的情況下顯示
-    if (!modalDismissedRecently.value && newMessageCount.value > 0) {
+    // 兩個條件都要滿足：1. 用戶不在底部 2. 最近沒關閉跳窗
+    if (userNotAtBottom && !modalDismissedRecently.value && newMessageCount.value > 0) {
       showNewMessageModal.value = true
-      console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages`)
-    } else {
+      console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages (user not at bottom)`)
+    } else if (!userNotAtBottom) {
       console.log(`📍 [NewMessageModal] Modal dismissed recently, not showing`)
+    } else {
+      console.log(`📍 [NewMessageModal] User at bottom, clearing modal`)
+      // 用戶在底部，清除新消息計數
+      newMessageCount.value = 0
+      showNewMessageModal.value = false
     }
   } else {
     console.log(`📍 [NewMessageModal] No new customer messages, not showing modal`)
@@ -781,22 +1067,44 @@ async function markAsRead() {
   }
 }
 
-function scrollToBottom() {
-  if (messagesContainer.value) {
+// 🎯 智能滾動到底部 - 根據用戶位置決定滾動行為
+function scrollToBottom(force = false) {
+  if (!messagesContainer.value) {return}
+  
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  const isNearBottom = (scrollHeight - scrollTop - clientHeight) < 200
+  
+  // 如果用戶在底部附近或強制滾動，就平滑滾動到底部
+  if (isNearBottom || force) {
     messagesContainer.value.scrollTo({
-      top: messagesContainer.value.scrollHeight,
+      top: scrollHeight,
       behavior: 'smooth'
     })
+    console.log('📍 [Smart Scroll] 平滑滾動到最新消息')
+  } else {
+    console.log('📍 [Smart Scroll] 用戶不在底部，保持當前位置')
   }
 }
 
+// 🚀 立即滾動到底部（初始加載用）- 增加穩定性檢查
 function scrollToBottomInstantly() {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    // 確保容器內容已完全載入
+    const container = messagesContainer.value
+    const targetScrollTop = container.scrollHeight - container.clientHeight
+    
+    // 避免負值滾動
+    if (targetScrollTop > 0) {
+      container.scrollTop = targetScrollTop
+      console.log(`⚡ [Instant Scroll] 立即滾動到底部: ${targetScrollTop}`)
+    } else {
+      container.scrollTop = 0
+      console.log('⚡ [Instant Scroll] 內容高度不足，保持頂部位置')
+    }
   }
 }
 
-// scrollToBottomInstantly function removed - not used
+// 📍 檢查用戶是否可以看到最新消息區域
 
 function useQuickReply(text: string) {
   if (!messageInputRef.value || !text.trim()) {return}
@@ -832,11 +1140,16 @@ const handleSearchClear = () => {
 // 消息操作處理函數
 const handleMessageCopy = (message: Message) => {
   console.log('Message copied:', message.content)
+  // 🎯 追蹤用戶複製消息的互動
+  updateActivityState('interaction')
   // TODO: 可以添加成功提示
 }
 
 const handleMessageReply = (message: Message) => {
   console.log('Reply to message:', message.content)
+  // 🎯 追蹤用戶回覆消息的互動
+  updateActivityState('interaction')
+  
   // 設置回覆引用到輸入框（不發送）
   if (messageInputRef.value) {
     const senderName = message.senderType === 'customer' ? '客戶' : '客服'
@@ -846,11 +1159,16 @@ const handleMessageReply = (message: Message) => {
 
 const handleMessageForward = (message: Message) => {
   console.log('Forward message:', message.content)
+  // 🎯 追蹤用戶轉發消息的互動
+  updateActivityState('interaction')
   // TODO: 實現轉發功能 - 可能需要打開對話選擇器
 }
 
 const handleMessageRecall = async (message: Message) => {
   console.log('Recall message:', message.id)
+  
+  // 🎯 追蹤用戶撤回消息的互動
+  updateActivityState('interaction')
   
   const confirmed = await useConfirm().confirmWarning(
     '撤回訊息',
@@ -874,6 +1192,8 @@ const handleMessageRecall = async (message: Message) => {
 
 const handleMessageSelect = (message: Message) => {
   console.log('Select message:', message.id)
+  // 🎯 追蹤用戶選擇消息的互動
+  updateActivityState('interaction')
   // TODO: 實現多選功能
 }
 
@@ -883,47 +1203,51 @@ function goBack() {
   router.push('/conversations')
 }
 
-// 測試新消息跳窗（開發模式專用）
-function testNewMessageIndicator() {
-  console.log('🔔 [DEBUG] Testing new customer message modal')
-  console.log(`Current state: showModal=${showNewMessageModal.value}, count=${newMessageCount.value}`)
-  
-  if (showNewMessageModal.value) {
-    // 如果已經顯示，隱藏它
-    dismissNewMessageModal()
-    console.log('🔔 [DEBUG] Hidden customer message modal')
-  } else {
-    // 如果沒有顯示，顯示它並設定測試數量（模擬客戶消息）
-    newMessageCount.value = 3
-    showNewMessageModal.value = true
-    modalDismissedRecently.value = false
-    console.log('🔔 [DEBUG] Shown modal with 3 customer messages')
-  }
-}
 
-// Optimized polling function
+// 🎯 智能輪詢函數
 function startPolling() {
   if (pollingInterval.value) {
     clearTimeout(pollingInterval.value)
   }
 
   const poll = () => {
-    if (isPageVisible.value && conversation.value?.status !== 'closed' && !hasPermissionError.value) {
+    // 檢查是否應該執行輪詢
+    const shouldPoll = isPageVisible.value && 
+                      conversation.value?.status !== 'closed' && 
+                      !hasPermissionError.value
+    
+    if (shouldPoll) {
       loadMessages()
     }
+    
+    // 如果沒有權限錯誤，繼續輪詢
     if (!hasPermissionError.value) {
-      pollingInterval.value = setTimeout(poll, pollingDelay.value)
+      // 重新計算當前的智能延遲
+      pollingConfig.value.currentDelay = calculateSmartDelay()
+      
+      console.log(`🎯 [Smart Polling] Next poll in ${pollingConfig.value.currentDelay}ms`)
+      pollingInterval.value = setTimeout(poll, pollingConfig.value.currentDelay)
+    } else {
+      console.log('🛑 [Smart Polling] Stopped due to permission error')
     }
   }
 
-  pollingInterval.value = setTimeout(poll, pollingDelay.value)
+  // 初始輪詢使用基礎延遲
+  pollingConfig.value.currentDelay = calculateSmartDelay()
+  console.log(`🎯 [Smart Polling] Starting with delay: ${pollingConfig.value.currentDelay}ms`)
+  pollingInterval.value = setTimeout(poll, pollingConfig.value.currentDelay)
 }
 
-// Page visibility handling for better performance
+// 🎯 頁面可見性處理與智能頻率調整
 function handleVisibilityChange() {
+  const wasVisible = isPageVisible.value
   isPageVisible.value = !document.hidden
+  
+  console.log(`👁️ [Smart Polling] Page visibility changed: ${wasVisible} → ${isPageVisible.value}`)
+  
   if (isPageVisible.value && conversation.value?.status !== 'closed' && !hasPermissionError.value) {
-    // Refresh immediately when page becomes visible
+    // 頁面變為可見時，更新活動狀態並立即刷新
+    updateActivityState('user')
     loadMessages()
     startPolling()
   } else if (pollingInterval.value) {
@@ -934,6 +1258,9 @@ function handleVisibilityChange() {
 
 // 全局鍵盤快捷鍵處理
 function handleGlobalKeydown(event: KeyboardEvent) {
+  // 🎯 追蹤鍵盤活動
+  updateActivityState('interaction')
+  
   // 忽略在輸入框內的快捷鍵
   const target = event.target as HTMLElement
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
@@ -1000,36 +1327,42 @@ function handleGlobalKeydown(event: KeyboardEvent) {
       }
       break
       
-    case 't':
-      // 测试新消息指示器（仅开发模式）
-      if ((event.ctrlKey || event.metaKey) && isDevelopment.value) {
-        event.preventDefault()
-        testNewMessageIndicator()
-      }
-      break
   }
 }
 
-// Lifecycle
-onMounted(async () => {
-  console.log('🚀 [ConversationDetail] Component mounted, starting initialization...')
+// 🎯 統一的初始化處理函數
+const initializeConversation = async (targetId: string) => {
+  console.log(`🚀 [Initialize] Starting conversation initialization: ${targetId}`)
   
-  // Set conversation ID first (this will trigger message loading)
-  await setConversationId(conversationId.value)
-  await loadConversation()
+  try {
+    // 重置初始載入標記
+    isInitialLoad.value = true
+    
+    // 使用安全載入函數（防重入、錯誤處理已內建）
+    await safeLoadConversation(targetId)
+    
+    console.log(`✅ [Initialize] Conversation ${targetId} initialized successfully`)
+    
+  } catch (error) {
+    console.error(`❌ [Initialize] Failed to initialize conversation ${targetId}:`, error)
+  } finally {
+    // 標記初始載入完成
+    isInitialLoad.value = false
+  }
+}
+
+// Lifecycle - 只處理副作用，不處理業務邏輯
+onMounted(() => {
+  console.log('🔧 [Lifecycle] Component mounted, setting up side effects...')
   
-  // Don't call loadMessages() again since setConversationId already loaded them
-  console.log('✅ [ConversationDetail] Initialization complete, messages loaded')
-
-  // Mark initial load as complete
-  isInitialLoad.value = false
-
-  // Start optimized polling
-  startPolling()
-
-  // Listen for page visibility changes and global keyboard shortcuts
+  // 只處理事件監聽等副作用
   document.addEventListener('visibilitychange', handleVisibilityChange)
   document.addEventListener('keydown', handleGlobalKeydown)
+  
+  // 啟動輪詢機制
+  startPolling()
+  
+  console.log('✅ [Lifecycle] Side effects initialized')
 })
 
 onUnmounted(() => {
@@ -1048,49 +1381,66 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
 })
 
-// Watch messages length to trigger initial scroll
-watch(() => messages.value.length, async (newLength, oldLength) => {
-  if (isInitialLoad.value && newLength > 0 && oldLength === 0) {
-    console.log(`📍 [ConversationDetail] Messages loaded, triggering immediate scroll to bottom (${newLength} messages)`)
-    await nextTick()
-    await nextTick()
-    scrollToBottomInstantly()
-    console.log('✅ [ConversationDetail] Auto-scrolled to bottom after message load')
-  }
-}, { immediate: true })
+// 移除重複的 watch 滾動邏輯，統一由 loadMessages 處理
+// 這個 watch 已經不需要，因為滾動邏輯已經在 loadMessages 中使用 MutationObserver 處理
 
-// Watch route changes
-watch(() => route.params.id, async (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    // Clear old polling interval
-    if (pollingInterval.value) {
-      clearTimeout(pollingInterval.value)
-      pollingInterval.value = null
+// 🎯 事件驅動的路由處理：所有數據載入的統一入口
+watch(
+  () => route.params.id,
+  async (newId, oldId) => {
+    // 確保有有效的對話ID
+    if (!newId || typeof newId !== 'string') {
+      console.warn('⚠️ [RouteWatch] Invalid conversation ID:', newId)
+      return
     }
-
-    // Reset to initial load state
-    isInitialLoad.value = true
-
-    // Reset polling state
-    pollingDelay.value = 3000
-    lastMessageCount.value = 0
-
-    // Set new conversation ID and reload data
-    await setConversationId(newId as string)
-    await loadConversation()
     
-    // Don't call loadMessages() again since setConversationId already loaded them
-    console.log('✅ [ConversationDetail] Route change complete, messages loaded')
-
-    // Mark initial load as complete
-    isInitialLoad.value = false
-
-    // Input reset will be handled by MessageInput component
-
-    // Setup new optimized polling
-    startPolling()
+    console.log(`🔄 [RouteWatch] Route change detected: ${oldId || 'none'} → ${newId}`)
+    
+    try {
+      // 如果是同一個對話，不需要重新載入
+      if (newId === oldId) {
+        console.log(`🔄 [RouteWatch] Same conversation, skipping reload: ${newId}`)
+        return
+      }
+      
+      // 清理舊的輪詢定時器（避免干擾）
+      if (pollingInterval.value) {
+        clearTimeout(pollingInterval.value)
+        pollingInterval.value = null
+        console.log('🛑 [RouteWatch] Cleared old polling interval')
+      }
+      
+      // 🎯 重置智能輪詢狀態
+      pollingConfig.value.currentDelay = pollingConfig.value.baseDelay
+      activityState.value = {
+        lastUserActivity: Date.now(),
+        lastMessageReceived: Date.now(), 
+        recentActivity: false,
+        conversationActive: false,
+        userInteracting: false
+      }
+      lastMessageCount.value = 0
+      
+      // ✨ 統一初始化：防重入、錯誤處理、狀態同步全部內建
+      await initializeConversation(newId)
+      
+      // 重新啟動輪詢（針對新對話）
+      startPolling()
+      console.log('🔄 [RouteWatch] Polling restarted for new conversation')
+      
+    } catch (error) {
+      console.error(`❌ [RouteWatch] Route change failed for conversation ${newId}:`, error)
+      
+      // 失敗時確保UI狀態正確
+      setMessagesImmediate([])
+      isInitialLoad.value = false
+    }
+  },
+  { 
+    immediate: true,  // 🚀 關鍵：組件掛載時也會觸發，無需onMounted處理業務邏輯
+    flush: 'post'     // 確保DOM更新後再執行
   }
-})
+)
 </script>
 
 <style scoped>
@@ -1100,7 +1450,6 @@ watch(() => route.params.id, async (newId, oldId) => {
   flex-direction: column;
   background-color: var(--gray-50);
   overflow: hidden;
-  position: relative;
   margin: -24px; /* 抵消AppLayout的padding */
 }
 
@@ -1112,14 +1461,9 @@ watch(() => route.params.id, async (newId, oldId) => {
   background-color: white;
   border-bottom: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
+  flex: 0 0 auto; /* 固定高度，不伸縮 */
   flex-wrap: wrap;
   gap: var(--space-4);
-  flex-shrink: 0;
 }
 
 
@@ -1195,27 +1539,58 @@ watch(() => route.params.id, async (newId, oldId) => {
 }
 
 .message-search-container {
-  position: absolute;
-  top: 100px; /* Header 高度 */
-  left: 0;
-  right: 0;
-  z-index: 9;
+  flex: 0 0 auto; /* 固定高度，不伸縮 */
   background-color: var(--gray-50);
   padding: 0 var(--space-6);
   border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 頂部bar中的統計資訊樣式 */
+.message-indicator-topbar {
+  margin-right: var(--space-4);
+}
+
+.message-indicator-topbar :deep(.message-stats) {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  gap: var(--space-4);
+}
+
+.message-indicator-topbar :deep(.stat-item) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.message-indicator-topbar :deep(.stat-label) {
+  font-size: 0.75rem;
+  color: var(--blue-600);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.message-indicator-topbar :deep(.stat-value) {
+  font-size: 0.875rem;
+  color: var(--blue-700);
+  font-weight: 600;
+  line-height: 1;
 }
 
 .messages-container {
-  position: absolute;
-  top: 140px; /* Header 高度 + MessageSearch 高度 */
-  bottom: 180px; /* Input section 高度 */
-  left: 0;
-  right: 0;
+  flex: 1; /* 占據所有剩餘空間 */
   overflow-y: auto;
   padding: var(--space-4) var(--space-6);
   background: linear-gradient(to bottom, var(--gray-50), var(--gray-100));
   display: flex;
   flex-direction: column;
+  min-height: 0; /* 重要：確保flex子項可以正確滾動 */
 }
 
 .loading-wrapper,
@@ -1226,16 +1601,79 @@ watch(() => route.params.id, async (newId, oldId) => {
   min-height: 200px;
 }
 
+/* 📜 優化的歷史消息載入指示器 */
 .history-loading-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: var(--space-4) 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(99, 102, 241, 0.05));
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--gray-200);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  animation: historyLoadingPulse 2s infinite ease-in-out;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.history-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.history-spinner {
+  color: var(--blue-600);
+}
+
+.history-loading-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--blue-700);
+  letter-spacing: 0.3px;
+}
+
+.loading-progress-bar {
+  width: 60px;
+  height: 2px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loading-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--blue-600), transparent);
+  animation: progressSlide 1.5s infinite;
+}
+
+@keyframes historyLoadingPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
+}
+
+@keyframes progressSlide {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 
@@ -1325,11 +1763,7 @@ watch(() => route.params.id, async (newId, oldId) => {
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(226, 232, 240, 0.6);
   padding: 24px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 5;
+  flex: 0 0 auto; /* 固定高度，不伸縮 */
   max-height: 200px;
   overflow-y: auto;
 }
@@ -1458,13 +1892,10 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
   
   .message-search-container {
-    top: 80px; /* 平板版 header 高度 */
     padding: 0 var(--space-3);
   }
 
   .messages-container {
-    top: 120px; /* 平板版 header 高度 + MessageSearch 高度 */
-    bottom: 140px; /* 平板版 input 高度 */
     padding: var(--space-3);
   }
 
@@ -1482,6 +1913,20 @@ watch(() => route.params.id, async (newId, oldId) => {
   .conversation-header {
     padding: var(--space-3) var(--space-2);
     flex-wrap: wrap;
+  }
+
+  /* 手機版頂部統計資訊樣式調整 */
+  .message-indicator-topbar :deep(.message-stats) {
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+  }
+  
+  .message-indicator-topbar :deep(.stat-label) {
+    font-size: 0.6875rem;
+  }
+  
+  .message-indicator-topbar :deep(.stat-value) {
+    font-size: 0.8125rem;
   }
 
   .header-left {
@@ -1521,13 +1966,10 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 
   .message-search-container {
-    top: 70px; /* 手機版 header 高度 */
     padding: 0 var(--space-2);
   }
 
   .messages-container {
-    top: 110px; /* 手機版 header 高度 + MessageSearch 高度 */
-    bottom: 120px; /* 手機版 input 高度 */
     padding: var(--space-2);
   }
 
@@ -1559,11 +2001,6 @@ watch(() => route.params.id, async (newId, oldId) => {
     scroll-behavior: smooth;
   }
   
-  /* 移動設備上的新消息指示器位置調整 */
-  .new-message-indicator {
-    bottom: 180px;
-  }
-  
 }
 
 @media (max-width: 640px) {
@@ -1587,7 +2024,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 /* Clean Modern Minimalist 新消息提醒 */
 .glassmorphism-notification {
   position: fixed;
-  bottom: calc(180px + 60px); /* Input section高度 + 額外間距 */
+  bottom: 200px; /* 固定距離底部的間距 */
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
@@ -1722,7 +2159,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 /* Responsive Design */
 @media (max-width: 768px) {
   .glassmorphism-notification {
-    bottom: calc(140px + 40px); /* 手機版input section高度 + 間距 */
+    bottom: 180px; /* 手機版固定間距 */
   }
   
   .glass-content {
@@ -1756,6 +2193,93 @@ watch(() => route.params.id, async (newId, oldId) => {
   .glass-dismiss svg {
     width: 12px;
     height: 12px;
+  }
+}
+
+/* 平滑載入動畫 */
+.message-enter {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.message-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.message-fade-in {
+  animation: messageFadeIn 0.4s ease-out forwards;
+}
+
+.message-leave {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.message-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.message-fade-out {
+  animation: messageFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes messageFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.98);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(5px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes messageFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
+/* 平滑更新過渡 */
+.messages-container.updating {
+  position: relative;
+}
+
+.messages-container.updating::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg, 
+    rgba(248, 250, 252, 0.3) 0%, 
+    transparent 20%, 
+    transparent 80%, 
+    rgba(248, 250, 252, 0.3) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  animation: updateGlow 0.6s ease-in-out;
+}
+
+@keyframes updateGlow {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
   }
 }
 

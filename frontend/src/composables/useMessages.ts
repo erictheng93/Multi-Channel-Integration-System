@@ -5,23 +5,38 @@ import { useError } from './useError'
 import { messageApi } from '@/api/message'
 import type { Message, PaginatedResponse } from '@/types'
 
-// 🔧 消息順序處理工具函數
+// 🔧 簡化消息處理工具函數 - 只分為最舊和最新兩種
 const messageOrderUtils = {
-  // 將後端降序消息轉為前端升序（最新在後）
-  toAscending: (messages: Message[]): Message[] => {
-    return [...messages].reverse()
-  },
-  
-  // 合併新載入的歷史消息（保持時間順序）
-  mergeHistoryMessages: (oldMessages: Message[], newMessages: Message[]): Message[] => {
-    // newMessages 已經是升序，直接加到前面
-    return [...newMessages, ...oldMessages]
-  },
-  
-  // 統一排序函數（兼容分頁和非分頁模式）
-  ensureAscendingOrder: (messages: Message[]): Message[] => {
+  // 確保消息按時間順序排列（最舊在前，最新在後）
+  ensureChronologicalOrder: (messages: Message[]): Message[] => {
     return [...messages].sort((a: Message, b: Message) => 
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+  },
+  
+  // 合併歷史消息（新載入的歷史消息放在前面）
+  mergeHistoryMessages: (existingMessages: Message[], newHistoryMessages: Message[]): Message[] => {
+    // 確保兩個數組都是按時間排序的
+    const sortedExisting = messageOrderUtils.ensureChronologicalOrder(existingMessages)
+    const sortedHistory = messageOrderUtils.ensureChronologicalOrder(newHistoryMessages)
+    
+    // 合併並重新排序（歷史消息應該更舊，放在前面）
+    return messageOrderUtils.ensureChronologicalOrder([...sortedHistory, ...sortedExisting])
+  },
+  
+  // 獲取最舊消息
+  getOldestMessage: (messages: Message[]): Message | null => {
+    if (messages.length === 0) {return null}
+    return messages.reduce((oldest, current) => 
+      new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest
+    )
+  },
+  
+  // 獲取最新消息  
+  getLatestMessage: (messages: Message[]): Message | null => {
+    if (messages.length === 0) {return null}
+    return messages.reduce((latest, current) => 
+      new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
     )
   }
 }
@@ -134,8 +149,8 @@ export function useMessages(conversationId?: string, options?: {
         
         console.log('📊 [useMessages] Processing messages array:', messagesArray.length, 'items')
         
-        // 🔄 使用工具函數處理消息順序
-        const orderedMessages = messageOrderUtils.toAscending(messagesArray)
+        // 🔄 確保消息按時間順序排列（最舊→最新）
+        const orderedMessages = messageOrderUtils.ensureChronologicalOrder(messagesArray)
         
         if (append && page > 1) {
           // 載入歷史消息時，使用專用合併函數
@@ -193,22 +208,22 @@ export function useMessages(conversationId?: string, options?: {
     return hasMore.value
   }
 
-  // 🎯 統一的消息排序邏輯
+  // 🎯 簡化的消息排序邏輯 - 只關注時間順序
   const sortedMessages = computed(() => {
     if (!messages.value || messages.value.length === 0) {return []}
     
-    // 分頁模式：消息已在載入時處理順序，直接返回
-    if (enablePagination) {
-      return messages.value
-    }
-    
-    // 非分頁模式：使用統一排序函數確保升序
-    return messageOrderUtils.ensureAscendingOrder(messages.value)
+    // 統一使用時間排序，確保最舊在前、最新在後
+    return messageOrderUtils.ensureChronologicalOrder(messages.value)
   })
 
+  // 最舊消息
+  const oldestMessage = computed(() => {
+    return messageOrderUtils.getOldestMessage(sortedMessages.value)
+  })
+
+  // 最新消息
   const latestMessage = computed(() => {
-    if (!sortedMessages.value.length) {return null}
-    return sortedMessages.value[sortedMessages.value.length - 1]
+    return messageOrderUtils.getLatestMessage(sortedMessages.value)
   })
 
   const unreadMessages = computed(() => {
@@ -356,8 +371,9 @@ export function useMessages(conversationId?: string, options?: {
   })
 
   return {
-    // 數據
+    // 數據 - 簡化為兩種關鍵狀態
     messages: sortedMessages,
+    oldestMessage,
     latestMessage,
     unreadMessages,
     loading,
@@ -384,6 +400,14 @@ export function useMessages(conversationId?: string, options?: {
     searchMessages,
     getMessagesByType,
     getMessagesInDateRange,
-    clearError
+    clearError,
+    
+    // 工具方法
+    messageUtils: {
+      getOldest: () => oldestMessage.value,
+      getLatest: () => latestMessage.value,
+      isOldest: (message: Message) => oldestMessage.value?.id === message.id,
+      isLatest: (message: Message) => latestMessage.value?.id === message.id
+    }
   }
 }
