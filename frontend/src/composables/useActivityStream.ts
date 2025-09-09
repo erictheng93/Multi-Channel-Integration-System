@@ -158,7 +158,7 @@ export function useActivityStream() {
         
         // 檢查是否為認證錯誤 (401) - EventSource doesn't expose HTTP status directly, 
         // but we can infer from connection failures with valid tokens
-        if (eventSource?.readyState === (window as any).EventSource.CLOSED && token.value && authStore.shouldRefreshToken()) {
+        if (eventSource?.readyState === window.EventSource.CLOSED && token.value && authStore.shouldRefreshToken()) {
           console.log('🔄 [SSE Client] Attempting token refresh before reconnect')
           try {
             const refreshResult = await authStore.refreshAuthToken()
