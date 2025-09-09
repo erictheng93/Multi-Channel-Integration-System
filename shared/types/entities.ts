@@ -90,8 +90,12 @@ export interface Message {
   platform: Platform
   timestamp: Timestamp | Date // 支援兩種格式
   createdAt: Timestamp | Date // 支援兩種格式
+  updatedAt?: Timestamp | Date // 支援兩種格式
   deliveryStatus?: DeliveryStatus
+  status?: DeliveryStatus // 別名，向後兼容
   metadata?: MessageMetadata
+  attachments?: MessageAttachment[] // 附件陣列
+  senderName?: string // 發送者名稱，用於 UI 顯示
 }
 
 // 檔案附件

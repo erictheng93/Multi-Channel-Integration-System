@@ -15,7 +15,10 @@
       <!-- Simplified Header -->
       <div class="conversation-header">
         <div class="header-left">
-          <button class="back-button" @click="goBack">
+          <button
+            class="back-button"
+            @click="goBack"
+          >
             <ArrowLeftIcon />
             返回列表
           </button>
@@ -142,7 +145,12 @@
       >
         <div class="glass-content">
           <div class="notification-pulse">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
               <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
               <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
             </svg>
@@ -156,7 +164,12 @@
             title="暫時忽略"
             @click.stop="dismissNewMessageModal"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
               <path d="m18 6-12 12" />
               <path d="m6 6 12 12" />
             </svg>
@@ -213,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch, onUnmounted, defineAsyncComponent, shallowRef } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessages } from '@/composables'
 import { useSmoothLoading } from '@/composables/useSmoothLoading'
@@ -265,7 +278,6 @@ const {
   oldestMessage,
   latestMessage,
   loading: loadingMessages,
-  hasMore,
   loadingHistory,
   totalMessages,
   fetchMessages,
@@ -281,7 +293,6 @@ const {
 const {
   messages: smoothMessages,
   isUpdating,
-  updateMessages,
   setMessagesImmediate,
   getAnimationClasses
 } = useSmoothLoading({
@@ -300,7 +311,7 @@ const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
 
 // Search state
-const searchResults = shallowRef<Message[]>([])
+const searchResults = ref<Message[]>([])
 const isSearchActive = ref(false)
 
 // New message notification
@@ -440,7 +451,7 @@ const handleAssignError = (error: string) => {
 
 // Simplified close conversation
 const closeConversation = async () => {
-  if (closing.value) return
+  if (closing.value) {return}
 
   const confirmed = await useConfirm().confirmWarning(
     '結束對話',
@@ -448,7 +459,7 @@ const closeConversation = async () => {
     '結束對話'
   )
   
-  if (!confirmed) return
+  if (!confirmed) {return}
 
   closing.value = true
   try {
@@ -483,7 +494,7 @@ const useQuickReply = (text: string) => {
 }
 
 // Virtual scroll handler with performance optimization
-const handleVirtualScroll = performanceUtils.throttle((event: Event) => {
+const handleVirtualScroll = performanceUtils.throttle(() => {
   // Simple scroll handling - virtual list manages most of the work
   // Reset polling delay on scroll (user activity)
   resetPollingDelay()
@@ -630,7 +641,7 @@ onUnmounted(() => {
 watch(
   () => route.params.id,
   async (newId) => {
-    if (!newId || typeof newId !== 'string') return
+    if (!newId || typeof newId !== 'string') {return}
     
     console.log(`🔄 Loading conversation: ${newId}`)
     mark('conversation-load-start')

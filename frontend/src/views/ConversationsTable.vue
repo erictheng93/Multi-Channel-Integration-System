@@ -43,28 +43,47 @@
               </option>
             </select>
             <RefreshButton
-              :loading="loading"
+              :loading="loading || isUpdating"
               @refresh="refreshConversations"
             />
           </div>
         </header>
 
+        <!-- SSE 更新指示器 -->
+        <div
+          v-if="isUpdating"
+          class="updating-indicator"
+        >
+          <div class="updating-content">
+            <div class="updating-spinner" />
+            <span>正在同步最新對話...</span>
+          </div>
+        </div>
+
         <div class="conversations-content">
           <div
-            v-if="loading"
-            class="loading"
+            v-if="loading && displayedConversations.length === 0"
+            class="loading-overlay"
           >
-            載入中...
+            <HamsterLoader message="載入對話列表中..." />
           </div>
           <div
-            v-else-if="conversations.length === 0"
+            v-else-if="displayedConversations.length === 0"
             class="no-data"
           >
-            暫無對話記錄
+            <div class="no-data-content">
+              <div class="no-data-icon">
+                💬
+              </div>
+              <div class="no-data-text">
+                暫無對話記錄
+              </div>
+            </div>
           </div>
           <div
             v-else
             class="conversations-table-container"
+            :class="{ updating: isUpdating }"
           >
             <!-- Desktop Table View -->
             <div class="desktop-table">
@@ -91,11 +110,16 @@
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <TransitionGroup
+                  name="conversation-list"
+                  tag="tbody"
+                  appear
+                >
                   <tr
-                    v-for="conversation in conversations"
+                    v-for="(conversation, index) in displayedConversations"
                     :key="conversation.id"
                     class="conversation-row"
+                    :style="{ animationDelay: `${index * 50}ms` }"
                     @click="goToConversation(conversation.id)"
                   >
                     <td class="customer-cell">
@@ -140,56 +164,62 @@
                       </div>
                     </td>
                   </tr>
-                </tbody>
+                </TransitionGroup>
               </table>
             </div>
 
             <!-- Mobile Card View -->
             <div class="mobile-cards">
-              <div
-                v-for="conversation in conversations"
-                :key="conversation.id"
-                class="conversation-card"
-                @click="goToConversation(conversation.id)"
+              <TransitionGroup
+                name="conversation-card"
+                appear
               >
-                <div class="card-header">
-                  <div class="customer-info">
-                    <div class="customer-name">
-                      {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+                <div
+                  v-for="(conversation, index) in displayedConversations"
+                  :key="conversation.id"
+                  class="conversation-card"
+                  :style="{ animationDelay: `${index * 50}ms` }"
+                  @click="goToConversation(conversation.id)"
+                >
+                  <div class="card-header">
+                    <div class="customer-info">
+                      <div class="customer-name">
+                        {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+                      </div>
+                      <div class="customer-id">
+                        ID: {{ conversation.userId }}
+                      </div>
                     </div>
-                    <div class="customer-id">
-                      ID: {{ conversation.userId }}
+                    <div class="badges">
+                      <div
+                        class="platform-badge"
+                        :class="conversation.platform || conversation.user?.platform"
+                      >
+                        {{ getPlatformText(conversation.platform || conversation.user?.platform || 'line') }}
+                      </div>
+                      <div
+                        class="status-badge"
+                        :class="conversation.status"
+                      >
+                        {{ getStatusText(conversation.status) }}
+                      </div>
                     </div>
                   </div>
-                  <div class="badges">
-                    <div
-                      class="platform-badge"
-                      :class="conversation.platform || conversation.user?.platform"
-                    >
-                      {{ getPlatformText(conversation.platform || conversation.user?.platform || 'line') }}
+                  <div class="card-body">
+                    <div class="last-message">
+                      {{ getLastMessageText(conversation) }}
                     </div>
-                    <div
-                      class="status-badge"
-                      :class="conversation.status"
-                    >
-                      {{ getStatusText(conversation.status) }}
+                  </div>
+                  <div class="card-footer">
+                    <div class="assigned-agent">
+                      負責人: {{ conversation.assignedAgent?.name || '未指派' }}
+                    </div>
+                    <div class="timestamp">
+                      {{ formatTime(conversation.updatedAt || (conversation as any).updated_at) }}
                     </div>
                   </div>
                 </div>
-                <div class="card-body">
-                  <div class="last-message">
-                    {{ getLastMessageText(conversation) }}
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <div class="assigned-agent">
-                    負責人: {{ conversation.assignedAgent?.name || '未指派' }}
-                  </div>
-                  <div class="timestamp">
-                    {{ formatTime(conversation.updatedAt || (conversation as any).updated_at) }}
-                  </div>
-                </div>
-              </div>
+              </TransitionGroup>
             </div>
           </div>
         </div>
@@ -199,7 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useActivityStream } from '@/composables/useActivityStream'
@@ -207,6 +237,7 @@ import type { ConversationFilters, Conversation } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 
 const router = useRouter()
@@ -220,9 +251,37 @@ const filters = ref<ConversationFilters>({
   platform: '' // 預設為空字串以顯示「所有平台」
 })
 
+// 🎯 平滑載入動畫系統
+const isUpdating = ref(false)
+const previousConversationIds = ref<string[]>([])
+const animationDelay = ref(0)
+
 // 直接使用 Store 數據，避免 useAsyncData 的複雜性
 const loading = computed(() => conversationsStore.loading)
 const conversations = computed(() => conversationsStore.conversations)
+
+// 🎯 平滑載入系統：顯示的對話列表
+const displayedConversations = computed(() => conversations.value)
+
+// 🎯 監聽對話變化並處理動畫邏輯
+watch(conversations, (currentConversations) => {
+  // 檢測新對話的邏輯
+  if (previousConversationIds.value.length > 0) {
+    const currentIds = new Set(currentConversations.map(conv => conv.id))
+    const previousIds = new Set(previousConversationIds.value)
+    
+    // 如果有新對話加入，觸發動畫
+    const hasNewConversations = currentConversations.some(conv => !previousIds.has(conv.id))
+    const hasRemovedConversations = previousConversationIds.value.some(id => !currentIds.has(id))
+    
+    if (hasNewConversations || hasRemovedConversations) {
+      animationDelay.value = Date.now()
+    }
+  }
+  
+  // 更新前一個狀態
+  previousConversationIds.value = currentConversations.map(conv => conv.id)
+}, { deep: true })
 
 console.log('🔍 [ConversationsTable] Initial state:', {
   loading: loading.value,
@@ -230,18 +289,41 @@ console.log('🔍 [ConversationsTable] Initial state:', {
   storeState: conversationsStore.$state
 })
 
-// 監聽 SSE 活動更新，自動刷新對話列表
+// 🎯 平滑更新函數
+const performSmoothUpdate = async () => {
+  if (isUpdating.value) {return} // 防止重複更新
+  
+  isUpdating.value = true
+  console.log('📢 [ConversationsTable] Starting smooth update...')
+  
+  try {
+    await conversationsStore.fetchConversations()
+    
+    // 短暫的視覺反饋
+    await nextTick()
+    setTimeout(() => {
+      isUpdating.value = false
+      console.log('✅ [ConversationsTable] Smooth update completed')
+    }, 800) // 800ms 的更新指示器顯示時間
+    
+  } catch (error) {
+    console.error('❌ [ConversationsTable] Update failed:', error)
+    isUpdating.value = false
+  }
+}
+
+// 監聽 SSE 活動更新，使用平滑更新
 watch(() => activityStreamData.activities.value, (newActivities, oldActivities) => {
   if (newActivities.length !== oldActivities?.length) {
-    console.log('📢 [ConversationsTable] Received SSE update, refreshing conversations...')
-    conversationsStore.fetchConversations()
+    console.log('📢 [ConversationsTable] Received SSE update, performing smooth refresh...')
+    performSmoothUpdate()
   }
 }, { deep: true })
 
 // 刷新對話列表的函數
 const refreshConversations = () => {
   console.log('🔄 [ConversationsTable] Manual refresh requested')
-  conversationsStore.fetchConversations()
+  performSmoothUpdate()
 }
 
 const getPlatformText = (platform: string) => {
@@ -289,10 +371,11 @@ const applyFilters = () => {
 
 onMounted(async () => {
   console.log('🚀 ConversationsTable mounted')
-  // 確保數據載入 - 添加更好的錯誤處理和防止白屏
+  // 確保數據載入 - 使用平滑更新系統
   try {
     // 檢查是否已經有數據（避免重複載入）
     if (conversationsStore.conversations.length === 0 && !conversationsStore.loading) {
+      // 初始載入不需要更新指示器
       await conversationsStore.fetchConversations()
     }
   } catch (error) {
@@ -307,6 +390,7 @@ onMounted(async () => {
 .conversations {
   background-color: #f8f9fa;
   min-height: calc(100vh - 120px);
+  position: relative;
 }
 
 .conversations-header {
@@ -333,12 +417,130 @@ onMounted(async () => {
   padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* 🎯 SSE 更新指示器 */
+.updating-indicator {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  padding: 0.75rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  animation: slideInFromTop 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.updating-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.updating-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .conversations-content {
   padding: 2rem;
   max-width: 100%;
   margin: 0 auto;
+  position: relative;
+}
+
+/* 🎯 載入覆蓋層 */
+.loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* 🎯 改進的空資料狀態 */
+.no-data {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 4rem 2rem;
+  text-align: center;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.no-data-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.no-data-icon {
+  font-size: 3rem;
+  opacity: 0.6;
+  animation: float 3s ease-in-out infinite;
+}
+
+.no-data-text {
+  font-size: 1.1rem;
+  color: #666;
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .conversations-table-container {
@@ -346,6 +548,44 @@ onMounted(async () => {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.conversations-table-container.updating {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(248, 250, 252, 0.98) 50%,
+    rgba(255, 255, 255, 0.95) 100%
+  );
+}
+
+.conversations-table-container.updating::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.1),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 /* Desktop Table Styles */
@@ -379,14 +619,80 @@ onMounted(async () => {
   vertical-align: top;
 }
 
+/* 🎯 TransitionGroup 動畫效果 */
+.conversation-list-enter-active,
+.conversation-list-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.conversation-list-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.conversation-list-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.conversation-list-move {
+  transition: transform 0.3s ease;
+}
+
+.conversation-card-enter-active,
+.conversation-card-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.conversation-card-enter-from {
+  opacity: 0;
+  transform: translateX(-30px) scale(0.98);
+}
+
+.conversation-card-leave-to {
+  opacity: 0;
+  transform: translateX(30px) scale(0.98);
+}
+
+.conversation-card-move {
+  transition: transform 0.3s ease;
+}
+
 .conversation-row {
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  animation: slideInFromBottom var(--animation-duration, 0.4s) cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 .conversation-row:hover {
   background-color: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
+
+.conversation-row:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 設置動畫延遲的 CSS 變量 */
+.conversation-row:nth-child(1) { --animation-duration: 0.3s; }
+.conversation-row:nth-child(2) { --animation-duration: 0.4s; }
+.conversation-row:nth-child(3) { --animation-duration: 0.5s; }
+.conversation-row:nth-child(4) { --animation-duration: 0.6s; }
+.conversation-row:nth-child(5) { --animation-duration: 0.7s; }
 
 /* Table Column Widths */
 .customer-col { width: 20%; }
@@ -491,12 +797,41 @@ onMounted(async () => {
   border-bottom: 1px solid #e9ecef;
   padding: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  animation: slideInFromLeft var(--animation-duration, 0.4s) cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 .conversation-card:hover {
   background-color: #f8f9fa;
+  transform: translateX(4px);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    -4px 0 0 rgba(59, 130, 246, 0.3);
 }
+
+.conversation-card:active {
+  transform: translateX(2px);
+  transition-duration: 0.1s;
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* 設置卡片動畫延遲 */
+.conversation-card:nth-child(1) { --animation-duration: 0.3s; }
+.conversation-card:nth-child(2) { --animation-duration: 0.4s; }
+.conversation-card:nth-child(3) { --animation-duration: 0.5s; }
+.conversation-card:nth-child(4) { --animation-duration: 0.6s; }
+.conversation-card:nth-child(5) { --animation-duration: 0.7s; }
 
 .conversation-card:last-child {
   border-bottom: none;
@@ -536,15 +871,38 @@ onMounted(async () => {
   color: #666;
 }
 
-.loading, .no-data {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-  font-size: 1.1rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* 🎯 性能優化 */
+.conversation-row,
+.conversation-card {
+  contain: layout style paint;
+  will-change: transform, opacity;
 }
+
+/* 減少動畫量的用戶偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .conversation-row,
+  .conversation-card {
+    animation: none;
+  }
+  
+  .updating-spinner {
+    animation: none;
+  }
+  
+  .no-data-icon {
+    animation: none;
+  }
+}
+
+/* 原有的 loading 和 no-data 樣式已被新的取代 */
 
 /* Responsive Design */
 @media (max-width: 1024px) {
@@ -591,6 +949,33 @@ onMounted(async () => {
   .conversations-table-container {
     box-shadow: none;
     border-radius: 0;
+  }
+  
+  /* 🎯 移動端動畫優化 */
+  .updating-indicator {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .updating-spinner {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .no-data {
+    padding: 3rem 1rem;
+  }
+  
+  .no-data-icon {
+    font-size: 2.5rem;
+  }
+  
+  /* 簡化移動端動畫以提升性能 */
+  .conversation-card:hover {
+    transform: translateX(2px);
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.06),
+      -2px 0 0 rgba(59, 130, 246, 0.2);
   }
 }
 

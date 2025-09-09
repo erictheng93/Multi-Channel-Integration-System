@@ -4,7 +4,7 @@
     This prevents unnecessary re-renders when scrolling through large message lists
   -->
   <div 
-    v-memo="[message.id, message.content, message.status, message.updatedAt, message.messageType, delivered]"
+    v-memo="[message.id, message.content, message.deliveryStatus, message.createdAt, message.messageType, delivered]"
     class="message-bubble"
     :class="messageBubbleClasses"
     @contextmenu="handleRightClick"
@@ -132,7 +132,7 @@
           <component 
             :is="statusIcon"
             v-if="statusIcon"
-            :class="{ 'animate-spin': message.status === 'sending' }"
+            :class="{ 'animate-spin': message.deliveryStatus === 'sending' }"
           />
         </div>
       </div>
@@ -178,19 +178,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, shallowRef, defineAsyncComponent } from 'vue'
+import { computed, ref, defineAsyncComponent } from 'vue'
 import type { Message } from '@/types'
-
-// Lazy load icons for better performance
-const SearchIcon = defineAsyncComponent(() => import('@/components/icons/SearchIcon.vue'))
-const DownloadIcon = defineAsyncComponent(() => import('@/components/icons/DownloadIcon.vue'))
-const CopyIcon = defineAsyncComponent(() => import('@/components/icons/CopyIcon.vue'))
-const ReplyIcon = defineAsyncComponent(() => import('@/components/icons/ReplyIcon.vue'))
-const UndoIcon = defineAsyncComponent(() => import('@/components/icons/UndoIcon.vue'))
-const ForwardIcon = defineAsyncComponent(() => import('@/components/icons/ForwardIcon.vue'))
-const CheckIcon = defineAsyncComponent(() => import('@/components/icons/CheckIcon.vue'))
-const ClockIcon = defineAsyncComponent(() => import('@/components/icons/ClockIcon.vue'))
-const AlertCircleIcon = defineAsyncComponent(() => import('@/components/icons/AlertCircleIcon.vue'))
 
 // Props interface
 interface Props {
@@ -207,15 +196,24 @@ const props = withDefaults(defineProps<Props>(), {
   canEdit: false,
   canDelete: false
 })
-
 // Emits
-const emit = defineEmits<{
+defineEmits<{
   copy: [message: Message]
   reply: [message: Message]
   forward: [message: Message]
   recall: [message: Message]
   select: [message: Message]
 }>()
+// Lazy load icons for better performance
+const SearchIcon = defineAsyncComponent(() => import('@/components/icons/SearchIcon.vue'))
+const DownloadIcon = defineAsyncComponent(() => import('@/components/icons/DownloadIcon.vue'))
+const CopyIcon = defineAsyncComponent(() => import('@/components/icons/CopyIcon.vue'))
+const ReplyIcon = defineAsyncComponent(() => import('@/components/icons/ReplyIcon.vue'))
+const UndoIcon = defineAsyncComponent(() => import('@/components/icons/UndoIcon.vue'))
+const ForwardIcon = defineAsyncComponent(() => import('@/components/icons/ForwardIcon.vue'))
+const CheckIcon = defineAsyncComponent(() => import('@/components/icons/CheckIcon.vue'))
+const ClockIcon = defineAsyncComponent(() => import('@/components/icons/ClockIcon.vue'))
+const AlertCircleIcon = defineAsyncComponent(() => import('@/components/icons/AlertCircleIcon.vue'))
 
 // Performance optimized refs
 const showActions = ref(false)
@@ -223,17 +221,17 @@ const showActions = ref(false)
 // Cached computed properties with memoization
 const isOutgoing = computed(() => props.message.senderType === 'agent')
 const senderName = computed(() => {
-  if (!props.showSender) return ''
-  return isOutgoing.value ? '客服' : props.message.senderName || '客戶'
+  if (!props.showSender) {return ''}
+  return isOutgoing.value ? '客服' : '客戶'
 })
 
 // File handling with caching
-const attachmentUrl = computed(() => props.message.attachments?.[0]?.url)
-const attachmentName = computed(() => props.message.attachments?.[0]?.name || 'unknown')
-const attachmentSize = computed(() => props.message.attachments?.[0]?.size)
+const attachmentUrl = computed(() => props.message.metadata?.attachment?.url)
+const attachmentName = computed(() => props.message.metadata?.attachment?.name || 'unknown')
+const attachmentSize = computed(() => props.message.metadata?.attachment?.size)
 
 const formattedFileSize = computed(() => {
-  if (!attachmentSize.value) return ''
+  if (!attachmentSize.value) {return ''}
   return formatFileSize(attachmentSize.value)
 })
 
@@ -245,21 +243,21 @@ const fileExtension = computed(() => {
 
 const fileTypeClass = computed(() => {
   const ext = fileExtension.value.toLowerCase()
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'file-type-image'
-  if (['pdf'].includes(ext)) return 'file-type-pdf'
-  if (['doc', 'docx'].includes(ext)) return 'file-type-doc'
-  if (['xls', 'xlsx'].includes(ext)) return 'file-type-excel'
-  if (['zip', 'rar', '7z'].includes(ext)) return 'file-type-archive'
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {return 'file-type-image'}
+  if (['pdf'].includes(ext)) {return 'file-type-pdf'}
+  if (['doc', 'docx'].includes(ext)) {return 'file-type-doc'}
+  if (['xls', 'xlsx'].includes(ext)) {return 'file-type-excel'}
+  if (['zip', 'rar', '7z'].includes(ext)) {return 'file-type-archive'}
   return 'file-type-generic'
 })
 
 const fileIconComponent = computed(() => {
   const ext = fileExtension.value.toLowerCase()
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'ImageIcon'
-  if (['pdf'].includes(ext)) return 'FileTextIcon'
-  if (['doc', 'docx'].includes(ext)) return 'FileTextIcon'
-  if (['xls', 'xlsx'].includes(ext)) return 'FileSpreadsheetIcon'
-  if (['zip', 'rar', '7z'].includes(ext)) return 'ArchiveIcon'
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {return 'ImageIcon'}
+  if (['pdf'].includes(ext)) {return 'FileTextIcon'}
+  if (['doc', 'docx'].includes(ext)) {return 'FileTextIcon'}
+  if (['xls', 'xlsx'].includes(ext)) {return 'FileSpreadsheetIcon'}
+  if (['zip', 'rar', '7z'].includes(ext)) {return 'ArchiveIcon'}
   return 'FileIcon'
 })
 
@@ -318,10 +316,10 @@ const formattedTime = computed(() => {
 
 // Message status
 const statusIcon = computed(() => {
-  if (!isOutgoing.value) return null
+  if (!isOutgoing.value) {return null}
   
-  switch (props.message.status) {
-    case 'sending':
+  switch (props.message.deliveryStatus) {
+    case 'pending':
       return ClockIcon
     case 'sent':
       return CheckIcon
@@ -335,7 +333,7 @@ const statusIcon = computed(() => {
 })
 
 const statusClass = computed(() => {
-  switch (props.message.status) {
+  switch (props.message.deliveryStatus) {
     case 'sent':
       return 'status-sent'
     case 'delivered':
@@ -348,13 +346,13 @@ const statusClass = computed(() => {
 })
 
 const canRecall = computed(() => {
-  if (!isOutgoing.value) return false
+  if (!isOutgoing.value) {return false}
   
   const messageTime = new Date(props.message.createdAt).getTime()
   const now = Date.now()
   const fiveMinutes = 5 * 60 * 1000
   
-  return (now - messageTime) < fiveMinutes && props.message.status !== 'failed'
+  return (now - messageTime) < fiveMinutes && props.message.deliveryStatus !== 'failed'
 })
 
 // Optimized CSS classes
@@ -410,7 +408,7 @@ const onImageError = () => {
 
 // Utility functions
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
+  if (bytes === 0) {return '0 B'}
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))

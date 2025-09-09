@@ -9,7 +9,7 @@ export type UserRole = 'admin' | 'team' | 'agent'
 export type ConversationStatus = 'open' | 'assigned' | 'closed'
 export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker'
 export type SenderType = 'user' | 'agent' | 'system' | 'customer' // 保留 customer 以支援現有代碼
-export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed'
+export type DeliveryStatus = 'pending' | 'sending' | 'sent' | 'delivered' | 'failed'
 
 // 時間戳類型
 export type Timestamp = number // Unix timestamp in milliseconds

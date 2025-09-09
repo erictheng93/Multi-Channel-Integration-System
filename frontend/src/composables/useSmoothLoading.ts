@@ -1,5 +1,5 @@
 // 簡化高性能載入 Composable - 專注於性能而非複雜動畫
-import { shallowRef, computed, nextTick, onUnmounted } from 'vue'
+import { shallowRef, computed, onUnmounted } from 'vue'
 import type { Message } from '@/types'
 
 interface SmoothLoadingOptions {
@@ -47,7 +47,7 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
     
     if (animate && config.enableAnimations) {
       // 簡單的動畫清理
-      if (animationTimer) clearTimeout(animationTimer)
+      if (animationTimer) {clearTimeout(animationTimer)}
       
       animationTimer = setTimeout(() => {
         animatingItems.value.clear()
@@ -89,7 +89,7 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
 
   // 添加新消息到末尾（高性能）
   const addMessages = (newMessages: Message[], animate = false) => {
-    if (newMessages.length === 0) return
+    if (newMessages.length === 0) {return}
     
     const combined = [...messages.value, ...newMessages]
     updateMessages(combined, animate)
@@ -102,7 +102,7 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
 
   // 簡化的動畫類獲取
   const getAnimationClasses = (messageId: string) => {
-    if (!config.enableAnimations) return {}
+    if (!config.enableAnimations) {return {}}
     
     return {
       'message-fade-in': animatingItems.value.has(messageId)
@@ -121,7 +121,7 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
   const sortMessagesByTime = (messagesToSort: Message[]): Message[] => {
     // 簡單的緩存檢查
     const currentTimestamp = messagesToSort.length > 0 ? 
-      messagesToSort[messagesToSort.length - 1]?.updatedAt || 0 : 0
+      new Date(messagesToSort[messagesToSort.length - 1]?.createdAt || 0).getTime() : 0
     
     if (messagesToSort === lastSortedMessages && currentTimestamp === lastSortedTimestamp) {
       return lastSortedMessages
