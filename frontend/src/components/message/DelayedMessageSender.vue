@@ -95,9 +95,9 @@
           class="btn btn-primary"
           :disabled="loading || !isValid"
         >
-          <LoadingSpinner
+          <HamsterLoader
             v-if="loading"
-            size="sm"
+            message="傳送中..."
           />
           <ClockIcon v-else />
           {{ loading ? '發送中...' : `延遲 ${formData.delaySeconds} 秒發送` }}
@@ -150,7 +150,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useConversations } from '@/composables'
 import { ClockIcon, CheckIcon, XCircleIcon } from '@/components/icons'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { apiClient } from '@/api/base'
 
 interface DelayedMessageForm {

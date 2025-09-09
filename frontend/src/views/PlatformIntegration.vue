@@ -361,9 +361,9 @@
               class="btn btn-outline"
               @click="testPlatformConfig"
             >
-              <LoadingSpinner
+              <HamsterLoader
                 v-if="testingConfig"
-                size="xs"
+                message="測試中..."
               />
               <TestIcon v-else />
               測試設定
@@ -373,10 +373,9 @@
               class="btn btn-primary"
               @click="savePlatformConfig"
             >
-              <LoadingSpinner
+              <HamsterLoader
                 v-if="savingConfig"
-                size="xs"
-                variant="white"
+                message="保存中..."
               />
               儲存設定
             </button>
@@ -392,7 +391,7 @@ import { ref, computed, onMounted } from 'vue'
 import { systemApi } from '@/api/system'
 import { useToast } from '@/composables/useToast'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import PlatformStatus from '@/components/platform/PlatformStatus.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import {

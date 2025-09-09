@@ -87,10 +87,9 @@
 
         <!-- Content -->
         <div class="content-body">
-          <LoadingSpinner
+          <HamsterLoader
             v-if="loading"
-            size="lg"
-            text="載入成員中..."
+            message="載入成員中..."
           />
 
           <EmptyState
@@ -149,10 +148,9 @@
 
         <!-- Content -->
         <div class="content-body">
-          <LoadingSpinner
+          <HamsterLoader
             v-if="loading"
-            size="lg"
-            text="載入團隊中..."
+            message="載入團隊中..."
           />
 
           <EmptyState
@@ -703,10 +701,9 @@
                 alt="Team QR Code"
                 class="qr-image"
               >
-              <LoadingSpinner
+              <HamsterLoader
                 v-else
-                size="md"
-                text="生成 QR 碼中..."
+                message="生成 QR 碼中..."
               />
             </div>
             <p class="qr-description">
@@ -802,7 +799,7 @@ import { teamApi } from '@/api/team'
 const route = useRoute()
 import type { TeamMember } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
 import TeamCard from '@/components/team/TeamCard.vue'

@@ -88,35 +88,15 @@
         />
       </div>
 
-      <!-- Messages Container -->
-      <div
-        ref="messagesContainer"
-        class="messages-container"
-        :class="{ updating: isUpdating }"
-        @scroll="handleScroll"
-      >
-        <!-- 📜 歷史消息載入指示器 - 顯示在頂部 -->
-        <div
-          v-if="loadingHistory && messages.length > 0"
-          class="history-loading-wrapper"
-        >
-          <div class="history-loading-content">
-            <LoadingSpinner
-              size="sm"
-              class="history-spinner"
-            />
-            <span class="history-loading-text">載入更多歷史訊息...</span>
-            <div class="loading-progress-bar" />
-          </div>
-        </div>
-        
-        <!-- 使用骨架屏替代初始載入指示器 -->
-        <MessageSkeleton
+      <!-- High Performance Virtual Message List -->
+      <div class="messages-container-wrapper">
+        <!-- Initial Loading State -->
+        <HamsterLoader
           v-if="loadingMessages && messages.length === 0"
-          :count="5"
-          :animated="true"
+          message="載入對話中..."
         />
 
+        <!-- Empty State -->
         <div
           v-else-if="displayedMessages.length === 0"
           class="empty-state-wrapper"
@@ -131,75 +111,26 @@
           </EmptyState>
         </div>
 
-        <div
+        <!-- Virtual Message List for Performance -->
+        <VirtualMessageList
           v-else
-          class="messages"
-        >
-          <!-- Search Results Header -->
-          <div
-            v-if="isSearchActive"
-            class="search-results-header"
-          >
-            <span>搜索結果 ({{ displayedMessages.length }})</span>
-            <button
-              class="clear-search-btn"
-              @click="handleSearchClear"
-            >
-              清除搜索
-            </button>
-          </div>
-
-          <!-- Messages with Date Separators -->
-          <template v-if="!isSearchActive">
-            <template
-              v-for="group in groupedMessages"
-              :key="group.date"
-            >
-              <DateSeparator :date="group.date" />
-              <MessageBubble
-                v-for="message in group.messages"
-                :key="message.id"
-                :class="getAnimationClasses(message.id)"
-                :message="message"
-                :delivered="true"
-                @copy="handleMessageCopy"
-                @reply="handleMessageReply"
-                @forward="handleMessageForward"
-                @recall="handleMessageRecall"
-                @select="handleMessageSelect"
-              />
-            </template>
-          </template>
-
-          <!-- Search Results (no date grouping) -->
-          <template v-else>
-            <MessageBubble
-              v-for="message in displayedMessages"
-              :key="message.id"
-              :class="getAnimationClasses(message.id)"
-              :message="message"
-              :delivered="true"
-              @copy="handleMessageCopy"
-              @reply="handleMessageReply"
-              @forward="handleMessageForward"
-              @recall="handleMessageRecall"
-              @select="handleMessageSelect"
-            />
-          </template>
-
-          <!-- Typing Indicator -->
-          <div
-            v-if="isTyping"
-            class="typing-indicator"
-          >
-            <div class="typing-dots">
-              <span />
-              <span />
-              <span />
-            </div>
-            <span class="typing-text">對方正在輸入...</span>
-          </div>
-        </div>
+          ref="virtualMessageListRef"
+          :messages="messages"
+          :displayed-messages="displayedMessages"
+          :is-search-active="isSearchActive"
+          :loading-history="loadingHistory"
+          :is-updating="isUpdating"
+          :is-typing="isTyping"
+          :animation-classes="animationClasses"
+          @message-copy="handleMessageCopy"
+          @message-reply="handleMessageReply"
+          @message-forward="handleMessageForward"
+          @message-recall="handleMessageRecall"
+          @message-select="handleMessageSelect"
+          @search-clear="handleSearchClear"
+          @load-more="loadMoreMessages"
+          @scroll="handleVirtualScroll"
+        />
       </div>
 
       <!-- 玻璃擬態化新消息提醒 (移到外層) -->
@@ -289,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessages } from '@/composables'
 import { useSmoothLoading } from '@/composables/useSmoothLoading'
@@ -297,18 +228,19 @@ import { useConversationsStore } from '@/stores/conversations'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Message, Conversation } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-import MessageSkeleton from '@/components/ui/MessageSkeleton.vue'
-import MessageBubble from '@/components/conversation/MessageBubble.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
-import MessageSearch from '@/components/conversation/MessageSearch.vue'
 import MessageIndicator from '@/components/conversation/MessageIndicator.vue'
-import DateSeparator from '@/components/conversation/DateSeparator.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
+
+// Lazy load non-critical components for better performance
+const MessageSearch = defineAsyncComponent(() => import('@/components/conversation/MessageSearch.vue'))
+const KeyboardShortcuts = defineAsyncComponent(() => import('@/components/ui/KeyboardShortcuts.vue'))
+const AdvancedAssignActions = defineAsyncComponent(() => import('@/components/conversation/AdvancedAssignActions.vue'))
+
 import StatusBadge from '@/components/ui/StatusBadge.vue'
-import KeyboardShortcuts from '@/components/ui/KeyboardShortcuts.vue'
-import AdvancedAssignActions from '@/components/conversation/AdvancedAssignActions.vue'
 import {
   ArrowLeftIcon,
   XCircleIcon,
@@ -334,7 +266,7 @@ const {
   setConversationId
 } = useMessages(undefined, {
   enablePagination: true,
-  pageSize: 20 // 改為20條消息
+  pageSize: 7 // 改為7條消息
 })
 
 // 平滑載入系統
@@ -355,11 +287,13 @@ const conversation = computed(() => conversationsStore.currentConversation)
 
 const closing = ref(false)
 const isTyping = ref(false)
-const messagesContainer = ref<HTMLElement>()
+const virtualMessageListRef = ref()
 const messageInputRef = ref()
 const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
-const isInitialLoad = ref(true)
+
+// Performance optimization refs
+const animationClasses = computed(() => getAnimationClasses || {})
 
 // 🔒 防重入機制：確保不會重複載入相同對話
 const loadingConversationId = ref<string | null>(null)
@@ -819,40 +753,15 @@ async function loadMessages() {
       }
     }
     
-    // ✅ 統一初始載入滾動邏輯 - 使用 MutationObserver 確保 DOM 完全渲染
+    // ✅ 使用改进的防抖滚动解决竞态条件
     if (isInitialLoad.value && rawMessages.value.length > 0) {
       console.log(`📍 [ConversationDetail] Initial load complete with ${rawMessages.value.length} raw messages`)
       
-      // 等待DOM更新完成
-      await nextTick()
+      // 使用新的防抖滚动函数
+      await performInitialScrollWithDebounce()
       
-      // 使用 MutationObserver 確保消息都渲染完成再滾動
-      if (messagesContainer.value && messages.value.length > 0) {
-        const observer = new window.MutationObserver((mutations, obs) => {
-          // 檢查是否有新節點添加
-          const hasNewNodes = mutations.some(mutation => mutation.addedNodes.length > 0)
-          const scrollHeight = messagesContainer.value?.scrollHeight ?? 0
-          if (hasNewNodes || scrollHeight > 0) {
-            // DOM 已更新，執行滾動
-            scrollToBottomInstantly()
-            console.log('✅ [ConversationDetail] Initial scroll to bottom completed via MutationObserver')
-            obs.disconnect() // 斷開觀察器
-          }
-        })
-        
-        // 開始觀察消息容器的變化
-        observer.observe(messagesContainer.value, {
-          childList: true,
-          subtree: true
-        })
-        
-        // 設置超時保護，避免 Observer 永遠不觸發
-        setTimeout(() => {
-          observer.disconnect()
-          scrollToBottomInstantly()
-          console.log('✅ [ConversationDetail] Fallback scroll to bottom after timeout')
-        }, 300)
-      }
+      // 标记初始加载完成
+      isInitialLoad.value = false
     }
     
     // Reset permission error flag on successful fetch
@@ -1086,22 +995,149 @@ function scrollToBottom(force = false) {
   }
 }
 
-// 🚀 立即滾動到底部（初始加載用）- 增加穩定性檢查
-function scrollToBottomInstantly() {
-  if (messagesContainer.value) {
-    // 確保容器內容已完全載入
-    const container = messagesContainer.value
-    const targetScrollTop = container.scrollHeight - container.clientHeight
-    
-    // 避免負值滾動
-    if (targetScrollTop > 0) {
-      container.scrollTop = targetScrollTop
-      console.log(`⚡ [Instant Scroll] 立即滾動到底部: ${targetScrollTop}`)
-    } else {
-      container.scrollTop = 0
-      console.log('⚡ [Instant Scroll] 內容高度不足，保持頂部位置')
-    }
+// 🚀 改进的立即滚动到底部函数 - 带多重验证
+function scrollToBottomInstantly(): boolean {
+  if (!messagesContainer.value) {
+    console.warn('⚠️ [Scroll] Container not found')
+    return false
   }
+  
+  const container = messagesContainer.value
+  const previousScrollTop = container.scrollTop
+  
+  // 尝试滚动到底部
+  const targetScrollTop = container.scrollHeight - container.clientHeight
+  if (targetScrollTop > 0) {
+    container.scrollTop = targetScrollTop
+  } else {
+    container.scrollTop = 0
+  }
+  
+  // 验证是否成功滚动
+  const scrolled = container.scrollTop > previousScrollTop
+  const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10
+  
+  console.log('📍 [Scroll] Scroll attempt:', {
+    previousScrollTop,
+    currentScrollTop: container.scrollTop,
+    scrollHeight: container.scrollHeight,
+    clientHeight: container.clientHeight,
+    scrolled,
+    isAtBottom
+  })
+  
+  return isAtBottom
+}
+
+// 🎯 核心防抖滚动函数 - 解决MutationObserver竞态条件
+async function performInitialScrollWithDebounce(): Promise<void> {
+  console.log('🎯 [InitialScroll] Starting debounced scroll sequence')
+  
+  // 等待 Vue 更新 DOM
+  await nextTick()
+  
+  if (!messagesContainer.value || smoothMessages.value.length === 0) {
+    console.warn('⚠️ [InitialScroll] No container or messages')
+    return
+  }
+  
+  let observerDisconnected = false
+  
+  // 创建 MutationObserver
+  // eslint-disable-next-line no-undef
+  const observer = new MutationObserver((_mutations) => {
+    // 每次 DOM 变动时，清除之前的计时器
+    if (mutationDebounceTimer.value) {
+      clearTimeout(mutationDebounceTimer.value)
+      console.log('⏱️ [MutationObserver] DOM changed, resetting timer')
+    }
+    
+    // 设置新的计时器
+    mutationDebounceTimer.value = setTimeout(() => {
+      // DOM 已经稳定了 50ms，现在可以安全滚动
+      console.log('✅ [MutationObserver] DOM stable for 50ms, performing scroll')
+      
+      const success = scrollToBottomInstantly()
+      
+      if (success) {
+        console.log('✅ [MutationObserver] Successfully scrolled to bottom')
+        // 🎯 滚动完成后隐藏loader显示消息
+        isPreparing.value = false
+        console.log('🎯 [UI] Hamster loader hidden, messages now visible')
+      } else {
+        console.warn('⚠️ [MutationObserver] Scroll failed, retrying...')
+        // 如果失败，再试一次
+        setTimeout(() => {
+          const retrySuccess = scrollToBottomInstantly()
+          if (retrySuccess) {
+            isPreparing.value = false
+            console.log('🎯 [UI] Retry scroll success, hamster loader hidden')
+          }
+        }, 100)
+      }
+      
+      // 断开观察器
+      if (!observerDisconnected) {
+        observer.disconnect()
+        observerDisconnected = true
+        console.log('🔌 [MutationObserver] Observer disconnected')
+      }
+      
+      // 清理计时器引用
+      mutationDebounceTimer.value = null
+      
+    }, MUTATION_DEBOUNCE_DELAY)
+  })
+  
+  // 开始观察 DOM 变化
+  observer.observe(messagesContainer.value, {
+    childList: true,
+    subtree: true,
+    characterData: true // 也观察文字内容变化
+  })
+  
+  // 设置1秒超时保护
+  setTimeout(() => {
+    if (!observerDisconnected) {
+      console.warn('⏰ [MutationObserver] Timeout reached, forcing scroll')
+      
+      // 清除 debounce 计时器
+      if (mutationDebounceTimer.value) {
+        clearTimeout(mutationDebounceTimer.value)
+        mutationDebounceTimer.value = null
+      }
+      
+      // 强制滚动
+      const timeoutSuccess = scrollToBottomInstantly()
+      if (timeoutSuccess) {
+        isPreparing.value = false
+        console.log('🎯 [UI] Timeout scroll success, hamster loader hidden')
+      }
+      
+      // 断开观察器
+      observer.disconnect()
+      observerDisconnected = true
+    }
+  }, 1000)
+  
+  // 立即尝试一次滚动（以防 DOM 已经渲染完成）
+  // eslint-disable-next-line no-undef
+  requestAnimationFrame(() => {
+    if (isInitialLoad.value && !observerDisconnected) {
+      const success = scrollToBottomInstantly()
+      if (success) {
+        console.log('🚀 [InitialScroll] Early scroll success, cleaning up observer')
+        isPreparing.value = false
+        console.log('🎯 [UI] Early scroll success, hamster loader hidden')
+        observer.disconnect()
+        observerDisconnected = true
+        if (mutationDebounceTimer.value) {
+          clearTimeout(mutationDebounceTimer.value)
+          mutationDebounceTimer.value = null
+        }
+      }
+    }
+  })
 }
 
 // 📍 檢查用戶是否可以看到最新消息區域
@@ -1338,6 +1374,15 @@ const initializeConversation = async (targetId: string) => {
     // 重置初始載入標記
     isInitialLoad.value = true
     
+    // 🎯 重置准备状态，显示loader
+    isPreparing.value = true
+    
+    // 清理之前的防抖计时器
+    if (mutationDebounceTimer.value) {
+      clearTimeout(mutationDebounceTimer.value)
+      mutationDebounceTimer.value = null
+    }
+    
     // 使用安全載入函數（防重入、錯誤處理已內建）
     await safeLoadConversation(targetId)
     
@@ -1345,9 +1390,9 @@ const initializeConversation = async (targetId: string) => {
     
   } catch (error) {
     console.error(`❌ [Initialize] Failed to initialize conversation ${targetId}:`, error)
-  } finally {
-    // 標記初始載入完成
+    // 错误时确保状态被重置
     isInitialLoad.value = false
+    isPreparing.value = false
   }
 }
 
@@ -1376,6 +1421,12 @@ onUnmounted(() => {
     typingTimeout.value = null
   }
   
+  // 清理防抖计时器
+  if (mutationDebounceTimer.value) {
+    clearTimeout(mutationDebounceTimer.value)
+    mutationDebounceTimer.value = null
+  }
+  
   // Remove event listeners
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   document.removeEventListener('keydown', handleGlobalKeydown)
@@ -1383,6 +1434,69 @@ onUnmounted(() => {
 
 // 移除重複的 watch 滾動邏輯，統一由 loadMessages 處理
 // 這個 watch 已經不需要，因為滾動邏輯已經在 loadMessages 中使用 MutationObserver 處理
+
+// 🛠️ TypeScript声明
+declare global {
+  // eslint-disable-next-line no-unused-vars
+  interface Window {
+    scrollDebug?: {
+      forceScroll: () => void
+      getScrollInfo: () => Record<string, unknown> | null
+      performScroll: () => Promise<void>
+    }
+  }
+}
+
+// 🛠️ 开发环境调试工具
+if (import.meta.env.DEV) {
+  // 强制滚动到底部（调试用）
+  const forceScrollToBottom = () => {
+    console.log('🔧 [ForceScroll] Forcing scroll to bottom')
+    
+    if (!messagesContainer.value) {
+      console.error('No container found')
+      return
+    }
+    
+    const container = messagesContainer.value
+    
+    // 方法1：直接设置
+    container.scrollTop = Number.MAX_SAFE_INTEGER
+    
+    // 方法2：使用实际高度
+    // eslint-disable-next-line no-undef
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight
+      
+      // 方法3：再次确认
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight
+        
+        const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10
+        console.log(`🔧 [ForceScroll] Result: ${isAtBottom ? 'SUCCESS' : 'FAILED'}`)
+      }, 100)
+    })
+  }
+
+  // 挂载到 window 供调试使用
+  window.scrollDebug = {
+    forceScroll: forceScrollToBottom,
+    getScrollInfo: () => {
+      if (!messagesContainer.value) {return null}
+      const container = messagesContainer.value
+      return {
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight,
+        isAtBottom: container.scrollTop + container.clientHeight >= container.scrollHeight - 10,
+        messages: smoothMessages.value.length,
+        isInitialLoad: isInitialLoad.value,
+        hasDebounceTimer: !!mutationDebounceTimer.value
+      }
+    },
+    performScroll: () => performInitialScrollWithDebounce()
+  }
+}
 
 // 🎯 事件驅動的路由處理：所有數據載入的統一入口
 watch(

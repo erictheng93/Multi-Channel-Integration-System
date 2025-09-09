@@ -108,9 +108,9 @@
             </router-link>
           </div>
           <div class="card-body">
-            <LoadingSpinner
+            <HamsterLoader
               v-if="loading || statsLoading"
-              text="載入中..."
+              message="載入中..."
             />
             <EmptyState
               v-else-if="recentConversations.length === 0"
@@ -169,9 +169,9 @@
             </div>
           </div>
           <div class="card-body">
-            <LoadingSpinner
+            <HamsterLoader
               v-if="loading"
-              text="載入中..."
+              message="載入中..."
             />
             <EmptyState
               v-else-if="importantActivities.length === 0" 
@@ -365,7 +365,7 @@ import { useTokenRefresh } from '@/composables/useTokenRefresh'
 import { useActivityTracker } from '@/composables/useActivityTracker'
 import { useActivityStream } from '@/composables/useActivityStream'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'

@@ -116,9 +116,8 @@
             v-if="loadingMembers" 
             class="loading-members"
           >
-            <LoadingSpinner
-              size="sm"
-              text="載入成員中..."
+            <HamsterLoader
+              message="載入成員中..."
             />
           </div>
           
@@ -166,7 +165,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 
 interface Team {
   id: number;

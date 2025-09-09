@@ -37,15 +37,6 @@ const router = createRouter({
       }
     },
     {
-      path: '/conversations-safe',
-      name: 'ConversationsSafe',
-      component: () => import('@/views/ConversationsSafe.vue'),
-      meta: { 
-        requiresAuth: true,
-        title: '對話管理 (安全版本)'
-      }
-    },
-    {
       path: '/conversations/:id',
       name: 'ConversationDetail',
       component: () => import('@/views/ConversationDetail.vue'),
