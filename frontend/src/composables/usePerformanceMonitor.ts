@@ -1,5 +1,6 @@
 // 高性能監控 Composable - 實時跟踪應用性能指標
-import { ref, onMounted, onUnmounted } from 'vue'
+/* eslint-disable no-undef */
+import { ref, onUnmounted } from 'vue'
 
 interface PerformanceMetrics {
   // Core Web Vitals
@@ -57,7 +58,7 @@ export function usePerformanceMonitor() {
   
   // Start monitoring
   const startMonitoring = () => {
-    if (isMonitoring.value || !window.performance) return
+    if (isMonitoring.value || !window.performance) {return}
     
     isMonitoring.value = true
     console.log('🚀 [Performance Monitor] Starting performance monitoring')
@@ -66,33 +67,35 @@ export function usePerformanceMonitor() {
     if ('PerformanceObserver' in window) {
       try {
         // LCP (Largest Contentful Paint)
-        const lcpObserver = new PerformanceObserver((list) => {
+        const lcpObserver = new window.PerformanceObserver((list) => {
           const entries = list.getEntries()
-          const lastEntry = entries[entries.length - 1] as any
+          const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
           if (lastEntry) {
             metrics.value.lcp = lastEntry.renderTime || lastEntry.loadTime
-            console.log(`📊 [Performance] LCP: ${metrics.value.lcp.toFixed(2)}ms`)
+            console.log(`📊 [Performance] LCP: ${metrics.value.lcp?.toFixed(2)}ms`)
           }
         })
         lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
         
         // FID (First Input Delay)
-        const fidObserver = new PerformanceObserver((list) => {
+        const fidObserver = new window.PerformanceObserver((list) => {
           const entries = list.getEntries()
-          entries.forEach((entry: any) => {
-            metrics.value.fid = entry.processingStart - entry.startTime
-            console.log(`📊 [Performance] FID: ${metrics.value.fid.toFixed(2)}ms`)
+          entries.forEach((entry: PerformanceEntry & { processingStart?: number }) => {
+            if (entry.processingStart !== undefined) {
+              metrics.value.fid = entry.processingStart - entry.startTime
+              console.log(`📊 [Performance] FID: ${metrics.value.fid.toFixed(2)}ms`)
+            }
           })
         })
         fidObserver.observe({ type: 'first-input', buffered: true })
         
         // CLS (Cumulative Layout Shift)
         let clsValue = 0
-        const clsObserver = new PerformanceObserver((list) => {
+        const clsObserver = new window.PerformanceObserver((list) => {
           const entries = list.getEntries()
-          entries.forEach((entry: any) => {
+          entries.forEach((entry: PerformanceEntry & { hadRecentInput?: boolean; value?: number }) => {
             if (!entry.hadRecentInput) {
-              clsValue += entry.value
+              clsValue += entry.value || 0
             }
           })
           metrics.value.cls = clsValue
@@ -121,18 +124,18 @@ export function usePerformanceMonitor() {
   
   // Stop monitoring
   const stopMonitoring = () => {
-    if (!isMonitoring.value) return
+    if (!isMonitoring.value) {return}
     
     isMonitoring.value = false
     console.log('⏹️ [Performance Monitor] Stopping performance monitoring')
     
     if (performanceObserver) {
-      performanceObserver.disconnect()
+      performanceObserver?.disconnect()
       performanceObserver = null
     }
     
     if (frameRateMonitor) {
-      cancelAnimationFrame(frameRateMonitor)
+      window.cancelAnimationFrame(frameRateMonitor)
       frameRateMonitor = null
     }
     
@@ -144,11 +147,11 @@ export function usePerformanceMonitor() {
   
   // FPS monitoring
   const startFpsMonitoring = () => {
-    let frameCount = 0
+    let _frameCount = 0
     let startTime = performance.now()
     
     const measureFrame = (timestamp: number) => {
-      frameCount++
+      _frameCount++
       
       const delta = timestamp - fpsData.lastTime
       if (fpsData.lastTime > 0) {
@@ -176,18 +179,18 @@ export function usePerformanceMonitor() {
         startTime = timestamp
       }
       
-      frameRateMonitor = requestAnimationFrame(measureFrame)
+      frameRateMonitor = window.requestAnimationFrame(measureFrame)
     }
     
-    frameRateMonitor = requestAnimationFrame(measureFrame)
+    frameRateMonitor = window.requestAnimationFrame(measureFrame)
   }
   
   // Memory monitoring
   const startMemoryMonitoring = () => {
-    if (!('memory' in performance)) return
+    if (!('memory' in performance)) {return}
     
     const measureMemory = () => {
-      const memory = (performance as any).memory
+      const memory = (performance as Performance & { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory
       if (memory) {
         metrics.value.memoryUsage = {
           usedJSSize: Math.round(memory.usedJSHeapSize / 1024 / 1024), // MB
@@ -203,7 +206,7 @@ export function usePerformanceMonitor() {
   
   // Network timing
   const measureNetworkTiming = () => {
-    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
     if (navigation) {
       metrics.value.networkTiming = {
         dns: navigation.domainLookupEnd - navigation.domainLookupStart,
@@ -257,7 +260,10 @@ export function usePerformanceMonitor() {
         // Update mark with duration
         const markIndex = marks.value.findIndex(m => m.name === startMark)
         if (markIndex >= 0) {
-          marks.value[markIndex].duration = duration
+          const mark = marks.value[markIndex]
+          if (mark) {
+            mark.duration = duration
+          }
         }
         
         performance.measure(name, startMark, endMark)
@@ -272,7 +278,7 @@ export function usePerformanceMonitor() {
   }
   
   // Measure message loading performance
-  const measureMessageLoad = async (loadFunction: () => Promise<any>) => {
+  const measureMessageLoad = async (loadFunction: () => Promise<unknown>) => {
     const startTime = performance.now()
     mark('message-load-start')
     
@@ -317,7 +323,7 @@ export function usePerformanceMonitor() {
       recommendations.push('CLS is poor (>0.1). Consider setting dimensions for images and avoiding inserting content above existing content.')
     }
     
-    if (metrics.value.scrollPerformance?.averageFps < 50) {
+    if (metrics.value.scrollPerformance?.averageFps && metrics.value.scrollPerformance.averageFps < 50) {
       recommendations.push('Scroll performance is poor (<50 FPS). Consider using virtual scrolling or reducing DOM complexity.')
     }
     
@@ -370,7 +376,7 @@ export function usePerformanceMonitor() {
 // Global performance utilities
 export const performanceUtils = {
   // Debounce function with performance tracking
-  debounce<T extends (...args: any[]) => any>(
+  debounce<T extends (..._args: unknown[]) => unknown>(
     func: T,
     delay: number,
     trackPerformance = false
@@ -396,7 +402,7 @@ export const performanceUtils = {
   },
   
   // Throttle function with performance tracking
-  throttle<T extends (...args: any[]) => any>(
+  throttle<T extends (..._args: unknown[]) => unknown>(
     func: T,
     delay: number,
     trackPerformance = false

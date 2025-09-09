@@ -19,60 +19,65 @@
       ref="listContainer"
       class="virtual-container"
       :class="{ updating: isUpdating }"
+      :style="{
+        height: `${virtualizer.getTotalSize()}px`,
+        width: '100%',
+        position: 'relative'
+      }"
     >
-      <VirtualList
-        ref="virtualListRef"
-        :data="virtualItems"
-        :options="virtualOptions"
-        :item-size="estimateSize"
-        :overscan="5"
-        @scroll="handleVirtualScroll"
+      <div
+        v-for="virtualItem in virtualizer.getVirtualItems()"
+        :key="String(virtualItem.key)"
+        class="virtual-item"
+        :style="{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: `${virtualItem.size}px`,
+          transform: `translateY(${virtualItem.start}px)`
+        }"
       >
-        <template #default="{ item, index, style }">
+        <div
+          :class="{
+            'date-separator-item': virtualItems[virtualItem.index]?.type === 'date',
+            'message-item': virtualItems[virtualItem.index]?.type === 'message'
+          }"
+        >
+          <!-- Date Separator -->
+          <DateSeparator
+            v-if="virtualItems[virtualItem.index]?.type === 'date'"
+            :date="virtualItems[virtualItem.index]?.data as Date"
+          />
+
+          <!-- Message with v-memo optimization -->
+          <MessageBubble
+            v-else-if="virtualItems[virtualItem.index]?.type === 'message'"
+            :key="(virtualItems[virtualItem.index]?.data as Message).id"
+            :class="animationClasses[(virtualItems[virtualItem.index]?.data as Message).id] || ''"
+            :message="virtualItems[virtualItem.index]?.data as Message"
+            :delivered="true"
+            @copy="$emit('messageCopy', $event)"
+            @reply="$emit('messageReply', $event)"
+            @forward="$emit('messageForward', $event)"
+            @recall="$emit('messageRecall', $event)"
+            @select="$emit('messageSelect', $event)"
+          />
+
+          <!-- Typing Indicator -->
           <div
-            :style="style"
-            :class="{
-              'virtual-item': true,
-              'date-separator-item': item.type === 'date',
-              'message-item': item.type === 'message'
-            }"
+            v-else-if="virtualItems[virtualItem.index]?.type === 'typing'"
+            class="typing-indicator"
           >
-            <!-- Date Separator -->
-            <DateSeparator
-              v-if="item.type === 'date'"
-              :date="item.data"
-            />
-
-            <!-- Message with v-memo optimization -->
-            <MessageBubble
-              v-else-if="item.type === 'message'"
-              v-memo="[item.data.id, item.data.content, item.data.status, item.data.updatedAt]"
-              :key="item.data.id"
-              :class="animationClasses[item.data.id]"
-              :message="item.data"
-              :delivered="true"
-              @copy="$emit('messageCopy', $event)"
-              @reply="$emit('messageReply', $event)"
-              @forward="$emit('messageForward', $event)"
-              @recall="$emit('messageRecall', $event)"
-              @select="$emit('messageSelect', $event)"
-            />
-
-            <!-- Typing Indicator -->
-            <div
-              v-else-if="item.type === 'typing'"
-              class="typing-indicator"
-            >
-              <div class="typing-dots">
-                <span />
-                <span />
-                <span />
-              </div>
-              <span class="typing-text">對方正在輸入...</span>
+            <div class="typing-dots">
+              <span />
+              <span />
+              <span />
             </div>
+            <span class="typing-text">對方正在輸入...</span>
           </div>
-        </template>
-      </VirtualList>
+        </div>
+      </div>
     </div>
 
     <!-- Loading States -->
@@ -88,257 +93,188 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, shallowRef } from 'vue'
-import { VirtualList } from '@tanstack/vue-virtual'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import type { Message } from '@/types'
-import MessageBubble from './MessageBubble.vue'
-import DateSeparator from './DateSeparator.vue'
+import MessageBubble from '@/components/conversation/MessageBubble.vue'
+import DateSeparator from '@/components/ui/DateSeparator.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 
-// Props
+interface VirtualItem {
+  type: 'message' | 'date' | 'typing'
+  data: Message | Date
+  id: string
+}
+
+
 interface Props {
   messages: Message[]
-  isSearchActive?: boolean
-  displayedMessages: Message[]
   loadingHistory?: boolean
-  isUpdating?: boolean
-  isTyping?: boolean
-  animationClasses?: Record<string, any>
+  showDateSeparators?: boolean
+  isSearchActive?: boolean
+  searchTerm?: string
+  enableAnimations?: boolean
+  scrollBehavior?: 'auto' | 'smooth'
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isSearchActive: false,
   loadingHistory: false,
-  isUpdating: false,
-  isTyping: false,
-  animationClasses: () => ({})
+  showDateSeparators: true,
+  isSearchActive: false,
+  searchTerm: '',
+  enableAnimations: true,
+  scrollBehavior: 'smooth'
 })
 
-// Emits
-const emit = defineEmits<{
+defineEmits<{
   messageCopy: [message: Message]
   messageReply: [message: Message] 
   messageForward: [message: Message]
   messageRecall: [message: Message]
   messageSelect: [message: Message]
   searchClear: []
-  loadMore: []
-  scroll: [event: Event]
+  scrollToTop: []
+  scrollToBottom: []
 }>()
 
 // Refs
 const listContainer = ref<HTMLElement>()
-const virtualListRef = ref()
+const isUpdating = ref(false)
+const animationClasses = ref<Record<string, string>>({})
 
-// Virtual scrolling setup
-const virtualOptions = {
-  overscan: 5,
-  estimateSize: () => 80, // Estimated item height
-  scrollMargin: listContainer,
-  lanes: 1
-}
-
-// Performance optimized refs
-const cachedGroupedMessages = shallowRef<Array<{ date: string; messages: Message[] }>>([])
-const lastGroupingTimestamp = ref(0)
-
-// Virtual list items - optimized for performance
-interface VirtualItem {
-  id: string
-  type: 'date' | 'message' | 'typing'
-  data: any
-  size?: number
-}
+// Computed
+const displayedMessages = computed(() => {
+  if (props.isSearchActive && props.searchTerm) {
+    return props.messages.filter(msg => 
+      msg.content.toLowerCase().includes(props.searchTerm.toLowerCase())
+    )
+  }
+  return props.messages
+})
 
 const virtualItems = computed<VirtualItem[]>(() => {
   const items: VirtualItem[] = []
   
-  if (props.isSearchActive) {
-    // Search results: no date grouping, direct message list
-    props.displayedMessages.forEach(message => {
+  if (props.showDateSeparators) {
+    let currentDate = ''
+    
+    displayedMessages.value.forEach((message) => {
+      const messageDate = new Date(message.createdAt).toDateString()
+      
+      if (messageDate !== currentDate) {
+        currentDate = messageDate
+        items.push({
+          type: 'date',
+          data: new Date(message.createdAt),
+          id: `date-${messageDate}`
+        })
+      }
+      
       items.push({
-        id: `msg-${message.id}`,
         type: 'message',
         data: message,
-        size: estimateMessageSize(message)
+        id: `message-${message.id}`
       })
     })
   } else {
-    // Normal view: use cached grouped messages
-    const groupedMessages = getOptimizedGroupedMessages()
-    
-    groupedMessages.forEach(group => {
-      // Add date separator
+    displayedMessages.value.forEach((message) => {
       items.push({
-        id: `date-${group.date}`,
-        type: 'date', 
-        data: group.date,
-        size: 60 // Date separator height
+        type: 'message',
+        data: message,
+        id: `message-${message.id}`
       })
-      
-      // Add messages in group
-      group.messages.forEach(message => {
-        items.push({
-          id: `msg-${message.id}`,
-          type: 'message',
-          data: message,
-          size: estimateMessageSize(message)
-        })
-      })
-    })
-  }
-  
-  // Add typing indicator if needed
-  if (props.isTyping) {
-    items.push({
-      id: 'typing-indicator',
-      type: 'typing',
-      data: null,
-      size: 80
     })
   }
   
   return items
 })
 
-// Optimized message grouping with caching
-const getOptimizedGroupedMessages = () => {
-  const messagesTimestamp = props.messages.length > 0 ? 
-    Math.max(...props.messages.map(m => new Date(m.updatedAt || m.createdAt).getTime())) : 0
-  
-  // Use cached result if messages haven't changed
-  if (messagesTimestamp <= lastGroupingTimestamp.value && cachedGroupedMessages.value.length > 0) {
-    return cachedGroupedMessages.value
-  }
-  
-  // Recalculate grouping
-  const groups: Array<{ date: string; messages: Message[] }> = []
-  let currentGroup: { date: string; messages: Message[] } | null = null
-  
-  props.messages.forEach(message => {
-    const messageDate = getMessageDate(message)
-    const dateKey = formatDateKey(messageDate)
-    
-    if (!currentGroup || currentGroup.date !== dateKey) {
-      currentGroup = {
-        date: dateKey,
-        messages: []
-      }
-      groups.push(currentGroup)
-    }
-    
-    currentGroup.messages.push(message)
-  })
-  
-  // Update cache
-  cachedGroupedMessages.value = groups
-  lastGroupingTimestamp.value = messagesTimestamp
-  
-  return groups
-}
-
-// Estimate item size for virtual scrolling
-const estimateSize = (index: number) => {
-  const item = virtualItems.value[index]
-  if (!item) return 80
-  
-  return item.size || estimateMessageSize(item.data)
-}
-
-const estimateMessageSize = (message: Message) => {
-  if (!message) return 80
-  
-  // Base size
-  let size = 60
-  
-  // Add size based on content length
-  const contentLength = message.content?.length || 0
-  size += Math.ceil(contentLength / 50) * 20 // ~20px per line
-  
-  // Add size for media
-  if (message.messageType === 'image') {
-    size += 200
-  } else if (message.messageType === 'file') {
-    size += 80
-  }
-  
-  return Math.min(Math.max(size, 60), 400) // Min 60px, max 400px
-}
-
-// Helper functions
-const getMessageDate = (message: Message): Date => {
-  const timestamp = message.timestamp || message.createdAt || new Date()
-  return typeof timestamp === 'number' ? new Date(timestamp) : 
-         typeof timestamp === 'string' ? new Date(timestamp) : timestamp
-}
-
-const formatDateKey = (date: Date): string => {
-  return date.toDateString()
-}
-
-// Virtual scroll event handling
-const handleVirtualScroll = (event: Event) => {
-  emit('scroll', event)
-  
-  // Check if need to load more messages
-  const target = event.target as HTMLElement
-  if (target.scrollTop < 200) {
-    emit('loadMore')
-  }
-}
-
-// Scroll to bottom method
-const scrollToBottom = () => {
-  if (virtualListRef.value) {
-    const itemCount = virtualItems.value.length
-    if (itemCount > 0) {
-      virtualListRef.value.scrollToIndex(itemCount - 1, { align: 'end' })
-    }
-  }
-}
-
-// Scroll to message method
-const scrollToMessage = (messageId: string) => {
-  const index = virtualItems.value.findIndex(item => 
-    item.type === 'message' && item.data.id === messageId
-  )
-  
-  if (index >= 0 && virtualListRef.value) {
-    virtualListRef.value.scrollToIndex(index, { align: 'center' })
-  }
-}
-
-// Expose methods for parent component
-defineExpose({
-  scrollToBottom,
-  scrollToMessage,
-  virtualListRef
+// Virtualizer setup
+const virtualizer = useVirtualizer({
+  count: virtualItems.value.length,
+  getScrollElement: () => listContainer.value || null,
+  estimateSize: () => 80,
+  overscan: 5,
 })
 
-// Watch for message changes and auto-scroll if needed
-let previousMessageCount = ref(0)
-
-watch(() => props.messages.length, (newCount, oldCount) => {
-  if (newCount > oldCount && oldCount > 0) {
-    // New messages added, scroll to bottom after DOM update
-    nextTick(() => {
-      scrollToBottom()
+// Methods
+const scrollToMessage = (messageId: string) => {
+  const index = virtualItems.value.findIndex(item => 
+    item.type === 'message' && (item.data as Message).id === messageId
+  )
+  
+  if (index >= 0) {
+    virtualizer.value.scrollToIndex(index, { 
+      align: 'center'
     })
   }
-  previousMessageCount.value = newCount
-}, { immediate: true })
+}
 
-// Performance: Clear cache when messages change significantly  
-watch(() => props.messages, () => {
-  // Reset cache if message array reference changed
-  lastGroupingTimestamp.value = 0
-}, { flush: 'sync' })
-
-onMounted(() => {
-  // Initial scroll to bottom
-  nextTick(() => {
-    scrollToBottom()
+const scrollToTop = () => {
+  virtualizer.value.scrollToIndex(0, { 
+    align: 'start'
   })
+}
+
+const scrollToBottom = () => {
+  const lastIndex = virtualItems.value.length - 1
+  if (lastIndex >= 0) {
+    virtualizer.value.scrollToIndex(lastIndex, { 
+      align: 'end'
+    })
+  }
+}
+
+// Animation handling
+const addMessageAnimation = (messageId: string) => {
+  if (!props.enableAnimations) {return}
+  
+  animationClasses.value = {
+    ...animationClasses.value,
+    [messageId]: 'message-enter'
+  }
+  
+  setTimeout(() => {
+    animationClasses.value = {
+      ...animationClasses.value,
+      [messageId]: 'message-enter-active'
+    }
+  }, 50)
+  
+  setTimeout(() => {
+    const { [messageId]: _removed, ...rest } = animationClasses.value
+    animationClasses.value = rest
+  }, 500)
+}
+
+// Watchers
+watch(() => props.messages.length, (newCount, oldCount) => {
+  if (oldCount && newCount > oldCount) {
+    nextTick(() => {
+      const newMessages = props.messages.slice(oldCount)
+      newMessages.forEach(msg => addMessageAnimation(msg.id))
+      
+      if (!props.isSearchActive) {
+        scrollToBottom()
+      }
+    })
+  }
+})
+
+// Lifecycle
+onMounted(() => {
+  nextTick(() => {
+    if (!props.isSearchActive && displayedMessages.value.length > 0) {
+      scrollToBottom()
+    }
+  })
+})
+
+// Expose methods
+defineExpose({
+  scrollToMessage,
+  scrollToTop,
+  scrollToBottom
 })
 </script>
 
@@ -350,147 +286,141 @@ onMounted(() => {
 }
 
 .search-results-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3);
   background: var(--blue-50);
-  border: 1px solid var(--blue-200);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
-  font-size: 0.875rem;
-  color: var(--blue-700);
-  flex-shrink: 0;
+  border-bottom: 1px solid var(--blue-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .clear-search-btn {
-  padding: var(--space-1) var(--space-2);
-  background: var(--blue-100);
-  border: 1px solid var(--blue-300);
-  border-radius: var(--radius-sm);
-  color: var(--blue-600);
-  font-size: 0.75rem;
+  background: var(--blue-500);
+  color: white;
+  border: none;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  font-size: 0.875rem;
 }
 
 .clear-search-btn:hover {
-  background: var(--blue-200);
-  border-color: var(--blue-400);
+  background: var(--blue-600);
 }
 
 .virtual-container {
   flex: 1;
-  min-height: 0;
+  overflow: auto;
   position: relative;
+  contain: layout style paint;
 }
 
 .virtual-container.updating {
-  opacity: 0.9;
-  transition: opacity 0.2s ease;
+  pointer-events: none;
 }
 
 .virtual-item {
-  padding: 0 var(--space-4);
+  contain: layout style paint;
+  will-change: transform;
 }
 
 .date-separator-item {
+  display: flex;
+  justify-content: center;
   padding: var(--space-2) 0;
 }
 
 .message-item {
-  padding: var(--space-2) 0;
-}
-
-.history-loading-wrapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
+  padding: 0 var(--space-3);
   display: flex;
-  justify-content: center;
-  padding: var(--space-4);
-  background: linear-gradient(
-    180deg, 
-    rgba(248, 250, 252, 0.95) 0%,
-    rgba(248, 250, 252, 0.8) 50%,
-    transparent 100%
-  );
-  backdrop-filter: blur(4px);
-}
-
-.history-loading-content {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: rgba(255, 255, 255, 0.9);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  flex-direction: column;
 }
 
 .typing-indicator {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  max-width: 200px;
-  padding: var(--space-3) var(--space-4);
-  background-color: white;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--gray-200);
-  margin: var(--space-2) 0;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  color: var(--gray-500);
+  font-style: italic;
 }
 
 .typing-dots {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .typing-dots span {
   width: 6px;
   height: 6px;
-  background-color: var(--gray-400);
+  background: var(--gray-400);
   border-radius: 50%;
-  animation: typing 1.4s infinite ease-in-out;
-}
-
-.typing-dots span:nth-child(1) {
-  animation-delay: -0.32s;
+  animation: typing-pulse 1.4s infinite;
 }
 
 .typing-dots span:nth-child(2) {
-  animation-delay: -0.16s;
+  animation-delay: 0.2s;
 }
 
-.typing-text {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  font-style: italic;
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
 }
 
-@keyframes typing {
-  0%, 80%, 100% {
-    transform: scale(0.8);
+@keyframes typing-pulse {
+  0%, 60%, 100% {
+    transform: initial;
     opacity: 0.5;
   }
-  40% {
-    transform: scale(1);
+  30% {
+    transform: scale(1.2);
     opacity: 1;
   }
 }
 
-/* Mobile optimizations */
+/* Message animations */
+.message-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.history-loading-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background);
+}
+
+.history-loading-content {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
-  .virtual-item {
+  .message-item {
     padding: 0 var(--space-2);
   }
+}
+
+/* Performance optimizations */
+@media (prefers-reduced-motion: reduce) {
+  .message-enter,
+  .message-enter-active {
+    transition: none;
+  }
   
-  .history-loading-content {
-    padding: var(--space-2) var(--space-3);
-    gap: var(--space-2);
+  .typing-dots span {
+    animation: none;
   }
 }
 </style>

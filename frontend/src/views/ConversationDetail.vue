@@ -278,8 +278,7 @@ const {
   getAnimationClasses
 } = useSmoothLoading({
   animationDuration: 300,
-  batchTimeout: 16,
-  enableVirtualScroll: false
+  debounceDelay: 16
 })
 
 // State
@@ -295,6 +294,10 @@ const messageSearchRef = ref()
 // Performance optimization refs
 const animationClasses = computed(() => getAnimationClasses || {})
 
+// Scroll position tracking for virtual list
+const virtualScrollPosition = ref({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 })
+const isInitialLoad = ref(true)
+
 // 🔒 防重入機制：確保不會重複載入相同對話
 const loadingConversationId = ref<string | null>(null)
 const conversationLoadPromise = ref<Promise<void> | null>(null)
@@ -304,6 +307,9 @@ const showNewMessageModal = ref(false)
 const newMessageCount = ref(0)
 const userScrolledUp = ref(false)
 const modalDismissedRecently = ref(false)
+
+// 追蹤客服是否剛發送消息（用於排除自己的消息觸發通知）
+const agentJustSentMessage = ref(false)
 
 // Computed properties for future enhancement
 
@@ -338,45 +344,48 @@ const displayedMessages = computed(() => {
 // 實際的消息數據（用於平滑載入系統）
 const messages = computed(() => smoothMessages.value)
 
-// Group messages by date
-const groupedMessages = computed(() => {
-  if (messages.value.length === 0) {return []}
-  
-  const groups: Array<{ date: string; messages: Message[] }> = []
-  let currentGroup: { date: string; messages: Message[] } | null = null
-  
-  messages.value.forEach(message => {
-    const messageDate = getMessageDate(message)
-    const dateKey = formatDateKey(messageDate)
-    
-    if (!currentGroup || currentGroup.date !== dateKey) {
-      currentGroup = {
-        date: dateKey,
-        messages: []
-      }
-      groups.push(currentGroup)
-    }
-    
-    currentGroup.messages.push(message)
-  })
-  
-  return groups
-})
+// Group messages by date (future feature, currently unused)
+// const groupedMessages = computed(() => {
+//   if (messages.value.length === 0) {return []}
+//   
+//   const groups: Array<{ date: string; messages: Message[] }> = []
+//   let currentGroup: { date: string; messages: Message[] } | null = null
+//   
+//   messages.value.forEach(message => {
+//     const messageDate = getMessageDate(message)
+//     const dateKey = formatDateKey(messageDate)
+//     
+//     if (!currentGroup || currentGroup.date !== dateKey) {
+//       currentGroup = {
+//         date: dateKey,
+//         messages: []
+//       }
+//       groups.push(currentGroup)
+//     }
+//     
+//     currentGroup.messages.push(message)
+//   })
+//   
+//   return groups
+// })
 
-// Helper functions for date grouping
-function getMessageDate(message: Message): Date {
-  const timestamp = message.timestamp || message.createdAt || new Date()
-  return typeof timestamp === 'number' ? new Date(timestamp) : 
-         typeof timestamp === 'string' ? new Date(timestamp) : timestamp
-}
+// Helper functions for date grouping (future feature, currently unused)
+// function getMessageDate(message: Message): Date {
+//   const timestamp = message.timestamp || message.createdAt || new Date()
+//   return typeof timestamp === 'number' ? new Date(timestamp) : 
+//          typeof timestamp === 'string' ? new Date(timestamp) : timestamp
+// }
 
-function formatDateKey(date: Date): string {
-  return date.toDateString() // Returns format like "Mon Jan 15 2024"
-}
+// function formatDateKey(date: Date): string {
+//   return date.toDateString() // Returns format like "Mon Jan 15 2024"
+// }
 
 // Message handlers
 const handleMessageSent = async () => {
   console.log('💬 [Message Sent] 客服發送了新消息，準備更新UI...')
+  
+  // 🎯 標記客服剛發送消息，防止觸發新消息通知
+  agentJustSentMessage.value = true
   
   // 🎯 追蹤用戶發送消息活動
   updateActivityState('interaction')
@@ -395,6 +404,13 @@ const handleMessageSent = async () => {
   // 🎯 客服發送消息後，強制滾動到底部查看最新消息
   await nextTick()
   scrollToBottom(true) // force = true，確保顯示剛發送的消息
+  
+  // 重置標記（延遲重置確保 loadMessages 處理完成）
+  setTimeout(() => {
+    agentJustSentMessage.value = false
+    console.log('🔄 [Message Sent] Agent message flag reset')
+  }, 1000)
+  
   console.log('✅ [Message Sent] 消息發送完成，已滾動到最新位置')
 }
 
@@ -533,20 +549,21 @@ async function loadConversation() {
   }
 }
 
-// 檢查用戶是否在底部 - 優化版本
+// 檢查用戶是否在底部 - 優化版本適用於虛擬列表
 function isUserAtBottom(): boolean {
-  if (!messagesContainer.value) {
-    console.log('🔍 [NewMessageIndicator] messagesContainer not found')
+  const { scrollTop, scrollHeight, clientHeight } = virtualScrollPosition.value
+  
+  if (scrollHeight === 0) {
+    console.log('🔍 [NewMessageIndicator] No scroll info yet, assuming at bottom')
     return true
   }
-  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
   
-  // 固定容忍度：50px（約一條消息的高度）
+  // 增加容忍度到100px（約1.5條消息的高度）
   // 這樣可以避免因為細微的滾動差異而誤判
-  const tolerance = 50
+  const tolerance = 100
   const atBottom = scrollTop + clientHeight >= scrollHeight - tolerance
   
-  console.log(`🔍 [NewMessageIndicator] Scroll position check:`, {
+  console.log(`🔍 [NewMessageIndicator] Virtual scroll position check:`, {
     scrollTop,
     scrollHeight,
     clientHeight,
@@ -557,14 +574,15 @@ function isUserAtBottom(): boolean {
   return atBottom
 }
 
-// 滾動事件處理（支持無限滾動）
-function handleScroll() {
-  if (!messagesContainer.value) {return}
+// 虛擬滾動事件處理 - 適用於 VirtualMessageList
+function handleVirtualScroll(scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }) {
+  // 更新滾動位置資訊
+  virtualScrollPosition.value = scrollInfo
   
   // 🎯 追蹤用戶滾動活動
   updateActivityState('user')
   
-  const { scrollTop } = messagesContainer.value
+  const { scrollTop } = scrollInfo
   const atBottom = isUserAtBottom()
   userScrolledUp.value = !atBottom
   
@@ -587,22 +605,8 @@ function handleScroll() {
     console.log('📜 [Infinite Scroll] 用戶向上滑動查看歷史，載入更多訊息...')
     console.log(`📊 [Infinite Scroll] 當前位置: scrollTop=${scrollTop}, 觸發閾值=${threshold}`)
     
-    // 保存當前滾動位置，載入完成後恢復
-    const currentScrollHeight = messagesContainer.value?.scrollHeight || 0
-    
-    loadMoreMessages().then(() => {
-      // 載入完成後，調整滾動位置以保持用戶視角
-      nextTick(() => {
-        if (messagesContainer.value && !isInitialLoad.value) {
-          const newScrollHeight = messagesContainer.value.scrollHeight
-          const heightDiff = newScrollHeight - currentScrollHeight
-          const newScrollTop = scrollTop + heightDiff
-          
-          messagesContainer.value.scrollTop = newScrollTop
-          console.log(`📍 [Infinite Scroll] 歷史訊息載入完成，調整滾動位置: ${scrollTop} → ${newScrollTop}`)
-        }
-      })
-    })
+    // 觸發載入更多歷史訊息
+    loadMoreMessages()
   }
 }
 
@@ -799,8 +803,15 @@ async function loadMessages() {
       return
     }
 
-    // 🎯 智能活動狀態更新
-    if (hasNewMessages) {
+    // 🎯 智能活動狀態更新和新消息通知處理
+    if (hasNewMessages && !isInitialLoad.value) {
+      // 🚫 如果是客服剛發送的消息，不觸發新消息通知
+      if (agentJustSentMessage.value) {
+        console.log(`📍 [NewMessageModal] Skipping notification - agent just sent message`)
+        updateActivityState('message')
+        return
+      }
+      
       // 更新消息接收活動狀態
       updateActivityState('message')
       
@@ -811,7 +822,7 @@ async function loadMessages() {
       const newMessages = messages.value.slice(-newMessagesCount)
       console.log('🔍 [DEBUG] New messages details:', newMessages.map(msg => ({
         id: msg.id,
-        content: `${msg.content?.substring(0, 50)  }...`,
+        content: `${msg.content?.substring(0, 50)}...`,
         senderType: msg.senderType,
         platform: msg.platform,
         createdAt: msg.createdAt
@@ -826,42 +837,30 @@ async function loadMessages() {
       const senderTypes = newMessages.map(msg => msg.senderType)
       console.log(`🔍 [DEBUG] All senderTypes in new messages:`, senderTypes)
       
-      // 智能滾動和新消息指示
-      if (!isInitialLoad.value) {
+      // 🎯 關鍵條件檢查：只有客戶消息且用戶不在底部才顯示通知
+      if (newCustomerMessagesCount > 0) {
         console.log(`🔍 [NewMessageIndicator] wasAtBottom: ${wasAtBottom}`)
-        console.log(`🔍 [DEBUG] Scroll position details:`, {
-          scrollTop: messagesContainer.value?.scrollTop,
-          scrollHeight: messagesContainer.value?.scrollHeight,
-          clientHeight: messagesContainer.value?.clientHeight,
-          isAtBottom: wasAtBottom
-        })
+        console.log(`🔍 [DEBUG] Virtual scroll position details:`, virtualScrollPosition.value)
         
-        // 無論用戶在什麼位置，都不自動滾動，只顯示提醒（如果有客戶消息）
-        console.log(`📍 [NewMessageModal] Processing customer messages, no auto-scroll`)
+        // 檢查用戶是否不在底部（核心條件）
+        const userNotAtBottom = !isUserAtBottom()
+        console.log(`📍 [NewMessageModal] User position check: notAtBottom=${userNotAtBottom}`)
         
-        // 只統計客戶消息
-        if (newCustomerMessagesCount > 0) {
+        if (userNotAtBottom && !modalDismissedRecently.value) {
+          // 🎯 滿足兩個條件：1. 有客戶新消息 2. 用戶不在底部 3. 最近沒關閉跳窗
           newMessageCount.value += newCustomerMessagesCount
-          
-          // 檢查用戶是否不在底部（新增條件）
-          const userNotAtBottom = !isUserAtBottom()
-          console.log(`📍 [NewMessageModal] User position check: notAtBottom=${userNotAtBottom}`)
-          
-          // 兩個條件都要滿足：1. 用戶不在底部 2. 最近沒關閉跳窗
-          if (userNotAtBottom && !modalDismissedRecently.value && newMessageCount.value > 0) {
-            showNewMessageModal.value = true
-            console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages (user not at bottom)`)
-          } else if (!userNotAtBottom) {
-            console.log(`📍 [NewMessageModal] Modal dismissed recently, not showing`)
-          } else {
-            console.log(`📍 [NewMessageModal] User at bottom, clearing modal`)
-            // 用戶在底部，清除新消息計數
-            newMessageCount.value = 0
-            showNewMessageModal.value = false
-          }
+          showNewMessageModal.value = true
+          console.log(`📍 [NewMessageModal] ✅ Showing modal with ${newMessageCount.value} unread customer messages (user not at bottom)`)
+        } else if (!userNotAtBottom) {
+          console.log(`📍 [NewMessageModal] ❌ User at bottom, clearing modal`)
+          // 用戶在底部，清除新消息計數
+          newMessageCount.value = 0
+          showNewMessageModal.value = false
         } else {
-          console.log(`📍 [NewMessageModal] No new customer messages, not showing modal`)
+          console.log(`📍 [NewMessageModal] ❌ Modal dismissed recently, not showing`)
         }
+      } else {
+        console.log(`📍 [NewMessageModal] ❌ No new customer messages, not showing modal`)
       }
     }
 
@@ -892,6 +891,12 @@ async function loadMessages() {
 async function handleNewMessagesDetected(newMessagesCount: number) {
   console.log(`🔍 [NewMessageIndicator] Processing ${newMessagesCount} new messages`)
   
+  // 🚫 如果是客服剛發送的消息，不觸發新消息通知
+  if (agentJustSentMessage.value) {
+    console.log(`📍 [NewMessageModal] Skipping notification - agent just sent message`)
+    return
+  }
+  
   // 獲取最新的消息來檢查發送者類型
   // 由於分頁模式下新消息可能不在當前頁，我們需要特殊處理
   // 暫時假設新消息是客戶消息（可以通過 API 調用最新消息來確認）
@@ -904,22 +909,21 @@ async function handleNewMessagesDetected(newMessagesCount: number) {
     const userNotAtBottom = !isUserAtBottom()
     console.log(`📍 [NewMessageModal] User position check: notAtBottom=${userNotAtBottom}`)
     
-    newMessageCount.value += newMessagesCount
-    
-    // 兩個條件都要滿足：1. 用戶不在底部 2. 最近沒關閉跳窗
-    if (userNotAtBottom && !modalDismissedRecently.value && newMessageCount.value > 0) {
+    // 🎯 關鍵條件檢查：只有用戶不在底部且沒有最近關閉跳窗才顯示
+    if (userNotAtBottom && !modalDismissedRecently.value) {
+      newMessageCount.value += newMessagesCount
       showNewMessageModal.value = true
-      console.log(`📍 [NewMessageModal] Showing modal with ${newMessageCount.value} unread customer messages (user not at bottom)`)
+      console.log(`📍 [NewMessageModal] ✅ Showing modal with ${newMessageCount.value} unread customer messages (user not at bottom)`)
     } else if (!userNotAtBottom) {
-      console.log(`📍 [NewMessageModal] Modal dismissed recently, not showing`)
-    } else {
-      console.log(`📍 [NewMessageModal] User at bottom, clearing modal`)
+      console.log(`📍 [NewMessageModal] ❌ User at bottom, clearing modal`)
       // 用戶在底部，清除新消息計數
       newMessageCount.value = 0
       showNewMessageModal.value = false
+    } else {
+      console.log(`📍 [NewMessageModal] ❌ Modal dismissed recently, not showing`)
     }
   } else {
-    console.log(`📍 [NewMessageModal] No new customer messages, not showing modal`)
+    console.log(`📍 [NewMessageModal] ❌ No new customer messages, not showing modal`)
   }
 }
 
@@ -976,168 +980,66 @@ async function markAsRead() {
   }
 }
 
-// 🎯 智能滾動到底部 - 根據用戶位置決定滾動行為
+// 🎯 智能滾動到底部 - 適用於虛擬列表
 function scrollToBottom(force = false) {
-  if (!messagesContainer.value) {return}
+  if (!virtualMessageListRef.value) {
+    console.log('📍 [Smart Scroll] Virtual message list ref not available')
+    return
+  }
   
-  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  const { scrollTop, scrollHeight, clientHeight } = virtualScrollPosition.value
   const isNearBottom = (scrollHeight - scrollTop - clientHeight) < 200
   
   // 如果用戶在底部附近或強制滾動，就平滑滾動到底部
   if (isNearBottom || force) {
-    messagesContainer.value.scrollTo({
-      top: scrollHeight,
-      behavior: 'smooth'
-    })
-    console.log('📍 [Smart Scroll] 平滑滾動到最新消息')
+    // 調用虛擬列表的滾動方法
+    if (typeof virtualMessageListRef.value.scrollToBottom === 'function') {
+      virtualMessageListRef.value.scrollToBottom(true)
+      console.log('📍 [Smart Scroll] 平滑滾動到最新消息 (Virtual)')
+    }
   } else {
     console.log('📍 [Smart Scroll] 用戶不在底部，保持當前位置')
   }
 }
 
-// 🚀 改进的立即滚动到底部函数 - 带多重验证
+// 🚀 改进的立即滚动到底部函数 - 适用于虚拟列表
 function scrollToBottomInstantly(): boolean {
-  if (!messagesContainer.value) {
-    console.warn('⚠️ [Scroll] Container not found')
+  if (!virtualMessageListRef.value) {
+    console.warn('⚠️ [Scroll] Virtual message list ref not found')
     return false
   }
   
-  const container = messagesContainer.value
-  const previousScrollTop = container.scrollTop
-  
-  // 尝试滚动到底部
-  const targetScrollTop = container.scrollHeight - container.clientHeight
-  if (targetScrollTop > 0) {
-    container.scrollTop = targetScrollTop
-  } else {
-    container.scrollTop = 0
+  // 使用虚拟列表的滚动方法
+  if (typeof virtualMessageListRef.value.scrollToBottom === 'function') {
+    virtualMessageListRef.value.scrollToBottom(false) // 立即滚动，不使用动画
+    console.log('📍 [Scroll] Instant scroll to bottom executed (Virtual)')
+    return true
   }
   
-  // 验证是否成功滚动
-  const scrolled = container.scrollTop > previousScrollTop
-  const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10
-  
-  console.log('📍 [Scroll] Scroll attempt:', {
-    previousScrollTop,
-    currentScrollTop: container.scrollTop,
-    scrollHeight: container.scrollHeight,
-    clientHeight: container.clientHeight,
-    scrolled,
-    isAtBottom
-  })
-  
-  return isAtBottom
+  return false
 }
 
-// 🎯 核心防抖滚动函数 - 解决MutationObserver竞态条件
+// 🎯 简化的初始滚动函数 - 适用于虚拟列表
 async function performInitialScrollWithDebounce(): Promise<void> {
-  console.log('🎯 [InitialScroll] Starting debounced scroll sequence')
+  console.log('🎯 [InitialScroll] Starting initial scroll for virtual list')
   
   // 等待 Vue 更新 DOM
   await nextTick()
   
-  if (!messagesContainer.value || smoothMessages.value.length === 0) {
-    console.warn('⚠️ [InitialScroll] No container or messages')
+  if (smoothMessages.value.length === 0) {
+    console.warn('⚠️ [InitialScroll] No messages to scroll to')
     return
   }
   
-  let observerDisconnected = false
-  
-  // 创建 MutationObserver
-  // eslint-disable-next-line no-undef
-  const observer = new MutationObserver((_mutations) => {
-    // 每次 DOM 变动时，清除之前的计时器
-    if (mutationDebounceTimer.value) {
-      clearTimeout(mutationDebounceTimer.value)
-      console.log('⏱️ [MutationObserver] DOM changed, resetting timer')
-    }
-    
-    // 设置新的计时器
-    mutationDebounceTimer.value = setTimeout(() => {
-      // DOM 已经稳定了 50ms，现在可以安全滚动
-      console.log('✅ [MutationObserver] DOM stable for 50ms, performing scroll')
-      
-      const success = scrollToBottomInstantly()
-      
-      if (success) {
-        console.log('✅ [MutationObserver] Successfully scrolled to bottom')
-        // 🎯 滚动完成后隐藏loader显示消息
-        isPreparing.value = false
-        console.log('🎯 [UI] Hamster loader hidden, messages now visible')
-      } else {
-        console.warn('⚠️ [MutationObserver] Scroll failed, retrying...')
-        // 如果失败，再试一次
-        setTimeout(() => {
-          const retrySuccess = scrollToBottomInstantly()
-          if (retrySuccess) {
-            isPreparing.value = false
-            console.log('🎯 [UI] Retry scroll success, hamster loader hidden')
-          }
-        }, 100)
-      }
-      
-      // 断开观察器
-      if (!observerDisconnected) {
-        observer.disconnect()
-        observerDisconnected = true
-        console.log('🔌 [MutationObserver] Observer disconnected')
-      }
-      
-      // 清理计时器引用
-      mutationDebounceTimer.value = null
-      
-    }, MUTATION_DEBOUNCE_DELAY)
-  })
-  
-  // 开始观察 DOM 变化
-  observer.observe(messagesContainer.value, {
-    childList: true,
-    subtree: true,
-    characterData: true // 也观察文字内容变化
-  })
-  
-  // 设置1秒超时保护
+  // 等待虚拟列表准备就绪
   setTimeout(() => {
-    if (!observerDisconnected) {
-      console.warn('⏰ [MutationObserver] Timeout reached, forcing scroll')
-      
-      // 清除 debounce 计时器
-      if (mutationDebounceTimer.value) {
-        clearTimeout(mutationDebounceTimer.value)
-        mutationDebounceTimer.value = null
-      }
-      
-      // 强制滚动
-      const timeoutSuccess = scrollToBottomInstantly()
-      if (timeoutSuccess) {
-        isPreparing.value = false
-        console.log('🎯 [UI] Timeout scroll success, hamster loader hidden')
-      }
-      
-      // 断开观察器
-      observer.disconnect()
-      observerDisconnected = true
+    if (virtualMessageListRef.value) {
+      scrollToBottomInstantly()
+      console.log('🎯 [InitialScroll] Virtual list scroll completed')
+    } else {
+      console.warn('⚠️ [InitialScroll] Virtual list ref not ready')
     }
-  }, 1000)
-  
-  // 立即尝试一次滚动（以防 DOM 已经渲染完成）
-  // eslint-disable-next-line no-undef
-  requestAnimationFrame(() => {
-    if (isInitialLoad.value && !observerDisconnected) {
-      const success = scrollToBottomInstantly()
-      if (success) {
-        console.log('🚀 [InitialScroll] Early scroll success, cleaning up observer')
-        isPreparing.value = false
-        console.log('🎯 [UI] Early scroll success, hamster loader hidden')
-        observer.disconnect()
-        observerDisconnected = true
-        if (mutationDebounceTimer.value) {
-          clearTimeout(mutationDebounceTimer.value)
-          mutationDebounceTimer.value = null
-        }
-      }
-    }
-  })
+  }, 100)
 }
 
 // 📍 檢查用戶是否可以看到最新消息區域
@@ -1326,15 +1228,15 @@ function handleGlobalKeydown(event: KeyboardEvent) {
       
     case 'Home':
       // 滾動到頂部
-      if (messagesContainer.value) {
+      if (virtualMessageListRef.value && typeof virtualMessageListRef.value.scrollToTop === 'function') {
         event.preventDefault()
-        messagesContainer.value.scrollTop = 0
+        virtualMessageListRef.value.scrollToTop()
       }
       break
       
     case 'End':
       // 滾動到底部
-      if (messagesContainer.value) {
+      if (virtualMessageListRef.value) {
         event.preventDefault()
         scrollToBottom()
       }
@@ -1374,15 +1276,6 @@ const initializeConversation = async (targetId: string) => {
     // 重置初始載入標記
     isInitialLoad.value = true
     
-    // 🎯 重置准备状态，显示loader
-    isPreparing.value = true
-    
-    // 清理之前的防抖计时器
-    if (mutationDebounceTimer.value) {
-      clearTimeout(mutationDebounceTimer.value)
-      mutationDebounceTimer.value = null
-    }
-    
     // 使用安全載入函數（防重入、錯誤處理已內建）
     await safeLoadConversation(targetId)
     
@@ -1392,7 +1285,6 @@ const initializeConversation = async (targetId: string) => {
     console.error(`❌ [Initialize] Failed to initialize conversation ${targetId}:`, error)
     // 错误时确保状态被重置
     isInitialLoad.value = false
-    isPreparing.value = false
   }
 }
 
@@ -1421,12 +1313,6 @@ onUnmounted(() => {
     typingTimeout.value = null
   }
   
-  // 清理防抖计时器
-  if (mutationDebounceTimer.value) {
-    clearTimeout(mutationDebounceTimer.value)
-    mutationDebounceTimer.value = null
-  }
-  
   // Remove event listeners
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   document.removeEventListener('keydown', handleGlobalKeydown)
@@ -1451,47 +1337,33 @@ declare global {
 if (import.meta.env.DEV) {
   // 强制滚动到底部（调试用）
   const forceScrollToBottom = () => {
-    console.log('🔧 [ForceScroll] Forcing scroll to bottom')
+    console.log('🔧 [ForceScroll] Forcing scroll to bottom (Virtual)')
     
-    if (!messagesContainer.value) {
-      console.error('No container found')
+    if (!virtualMessageListRef.value) {
+      console.error('Virtual message list ref not found')
       return
     }
     
-    const container = messagesContainer.value
-    
-    // 方法1：直接设置
-    container.scrollTop = Number.MAX_SAFE_INTEGER
-    
-    // 方法2：使用实际高度
-    // eslint-disable-next-line no-undef
-    requestAnimationFrame(() => {
-      container.scrollTop = container.scrollHeight
-      
-      // 方法3：再次确认
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight
-        
-        const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10
-        console.log(`🔧 [ForceScroll] Result: ${isAtBottom ? 'SUCCESS' : 'FAILED'}`)
-      }, 100)
-    })
+    if (typeof virtualMessageListRef.value.scrollToBottom === 'function') {
+      virtualMessageListRef.value.scrollToBottom(false)
+      console.log('🔧 [ForceScroll] Virtual scroll executed')
+    } else {
+      console.error('scrollToBottom method not available')
+    }
   }
 
   // 挂载到 window 供调试使用
   window.scrollDebug = {
     forceScroll: forceScrollToBottom,
     getScrollInfo: () => {
-      if (!messagesContainer.value) {return null}
-      const container = messagesContainer.value
       return {
-        scrollTop: container.scrollTop,
-        scrollHeight: container.scrollHeight,
-        clientHeight: container.clientHeight,
-        isAtBottom: container.scrollTop + container.clientHeight >= container.scrollHeight - 10,
+        virtualScrollPosition: virtualScrollPosition.value,
+        isAtBottom: isUserAtBottom(),
         messages: smoothMessages.value.length,
         isInitialLoad: isInitialLoad.value,
-        hasDebounceTimer: !!mutationDebounceTimer.value
+        agentJustSentMessage: agentJustSentMessage.value,
+        showNewMessageModal: showNewMessageModal.value,
+        newMessageCount: newMessageCount.value
       }
     },
     performScroll: () => performInitialScrollWithDebounce()
