@@ -18,7 +18,7 @@
     <div
       ref="listContainer"
       class="virtual-container"
-      :class="{ updating: isUpdating }"
+      :class="{ updating: props.isUpdating }"
       :style="{
         height: `${virtualizer.getTotalSize()}px`,
         width: '100%',
@@ -54,7 +54,7 @@
           <MessageBubble
             v-else-if="virtualItems[virtualItem.index]?.type === 'message'"
             :key="(virtualItems[virtualItem.index]?.data as Message).id"
-            :class="animationClasses[(virtualItems[virtualItem.index]?.data as Message).id] || ''"
+            :class="props.animationClasses?.[(virtualItems[virtualItem.index]?.data as Message).id] || ''"
             :message="virtualItems[virtualItem.index]?.data as Message"
             :delivered="true"
             @copy="$emit('messageCopy', $event)"
@@ -97,7 +97,7 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import type { Message } from '@/types'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
-import DateSeparator from '@/components/ui/DateSeparator.vue'
+import DateSeparator from '@/components/conversation/DateSeparator.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 
 interface VirtualItem {
@@ -109,21 +109,29 @@ interface VirtualItem {
 
 interface Props {
   messages: Message[]
+  displayedMessages?: Message[]
   loadingHistory?: boolean
   showDateSeparators?: boolean
   isSearchActive?: boolean
+  isUpdating?: boolean
+  isTyping?: boolean
   searchTerm?: string
   enableAnimations?: boolean
   scrollBehavior?: 'auto' | 'smooth'
+  animationClasses?: Record<string, string>
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  displayedMessages: undefined,
   loadingHistory: false,
   showDateSeparators: true,
   isSearchActive: false,
+  isUpdating: false,
+  isTyping: false,
   searchTerm: '',
   enableAnimations: true,
-  scrollBehavior: 'smooth'
+  scrollBehavior: 'smooth',
+  animationClasses: () => ({})
 })
 
 defineEmits<{
@@ -133,17 +141,22 @@ defineEmits<{
   messageRecall: [message: Message]
   messageSelect: [message: Message]
   searchClear: []
+  loadMore: []
+  scroll: [scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }]
   scrollToTop: []
   scrollToBottom: []
 }>()
 
 // Refs
 const listContainer = ref<HTMLElement>()
-const isUpdating = ref(false)
-const animationClasses = ref<Record<string, string>>({})
 
 // Computed
 const displayedMessages = computed(() => {
+  // Use provided displayedMessages if available, otherwise use messages
+  if (props.displayedMessages) {
+    return props.displayedMessages
+  }
+  
   if (props.isSearchActive && props.searchTerm) {
     return props.messages.filter(msg => 
       msg.content.toLowerCase().includes(props.searchTerm.toLowerCase())
@@ -191,7 +204,7 @@ const virtualItems = computed<VirtualItem[]>(() => {
 
 // Virtualizer setup
 const virtualizer = useVirtualizer({
-  count: virtualItems.value.length,
+  get count() { return virtualItems.value.length },
   getScrollElement: () => listContainer.value || null,
   estimateSize: () => 80,
   overscan: 5,
@@ -225,34 +238,17 @@ const scrollToBottom = () => {
   }
 }
 
-// Animation handling
-const addMessageAnimation = (messageId: string) => {
-  if (!props.enableAnimations) {return}
-  
-  animationClasses.value = {
-    ...animationClasses.value,
-    [messageId]: 'message-enter'
-  }
-  
-  setTimeout(() => {
-    animationClasses.value = {
-      ...animationClasses.value,
-      [messageId]: 'message-enter-active'
-    }
-  }, 50)
-  
-  setTimeout(() => {
-    const { [messageId]: _removed, ...rest } = animationClasses.value
-    animationClasses.value = rest
-  }, 500)
+// Animation handling  
+const addMessageAnimation = () => {
+  // Animation classes are handled by the parent component
+  // This component just uses them via props
 }
 
 // Watchers
 watch(() => props.messages.length, (newCount, oldCount) => {
   if (oldCount && newCount > oldCount) {
     nextTick(() => {
-      const newMessages = props.messages.slice(oldCount)
-      newMessages.forEach(msg => addMessageAnimation(msg.id))
+      addMessageAnimation()
       
       if (!props.isSearchActive) {
         scrollToBottom()

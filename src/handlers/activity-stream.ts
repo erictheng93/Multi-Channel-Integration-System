@@ -76,7 +76,7 @@ export const activityStreamHandler = {
           // 立即發送一次活動
           sendCurrentActivities()
 
-          // 定期發送活動更新 (每15秒)
+          // 定期發送活動更新 (每20秒)
           const activityInterval = setInterval(async () => {
             try {
               const activities = await getRecentActivities(c.env, payload.role, payload.userId)
@@ -88,7 +88,7 @@ export const activityStreamHandler = {
             } catch (error) {
               console.error('Failed to fetch activities:', error)
             }
-          }, 15000) // 15秒間隔
+          }, 20000) // 20秒間隔
 
           // 心跳信號 (每30秒)
           const heartbeatInterval = setInterval(() => {
