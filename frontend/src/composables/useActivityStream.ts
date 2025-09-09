@@ -59,11 +59,29 @@ export function useActivityStream() {
   })
 
   // 建立 SSE 連接
-  const connect = () => {
+  const connect = async () => {
     if (!token.value || !isAuthenticated.value) {
       error.value = '需要登入才能建立連線'
       console.warn('❌ [SSE Client] Cannot connect: not authenticated')
       return
+    }
+
+    // 檢查 token 是否需要刷新
+    if (authStore.shouldRefreshToken()) {
+      console.log('🔄 [SSE Client] Token needs refresh before connecting')
+      try {
+        const refreshResult = await authStore.refreshAuthToken()
+        if (!refreshResult.success) {
+          error.value = '認證失敗，無法連線'
+          console.error('❌ [SSE Client] Token refresh failed before connect:', refreshResult.error)
+          return
+        }
+        console.log('✅ [SSE Client] Token refreshed successfully before connect')
+      } catch (refreshError) {
+        error.value = '認證失敗，無法連線'
+        console.error('❌ [SSE Client] Token refresh exception before connect:', refreshError)
+        return
+      }
     }
 
     if (eventSource) {
@@ -128,7 +146,7 @@ export function useActivityStream() {
         }
       }
 
-      eventSource.onerror = (event) => {
+      eventSource.onerror = async (event) => {
         console.error('❌ [SSE Client] Connection error:', {
           readyState: eventSource?.readyState,
           error: event,
@@ -137,6 +155,30 @@ export function useActivityStream() {
         isConnected.value = false
         isConnecting.value = false
         error.value = '連線中斷'
+        
+        // 檢查是否為認證錯誤 (401) - EventSource doesn't expose HTTP status directly, 
+        // but we can infer from connection failures with valid tokens
+        if (eventSource?.readyState === (window as any).EventSource.CLOSED && token.value && authStore.shouldRefreshToken()) {
+          console.log('🔄 [SSE Client] Attempting token refresh before reconnect')
+          try {
+            const refreshResult = await authStore.refreshAuthToken()
+            if (refreshResult.success) {
+              console.log('✅ [SSE Client] Token refreshed successfully, reconnecting...')
+              // Reset retry count since we have a new token
+              retryCount.value = 0
+              scheduleReconnect()
+              return
+            } else {
+              console.error('❌ [SSE Client] Token refresh failed:', refreshResult.error)
+              error.value = '認證失敗'
+              return
+            }
+          } catch (refreshError) {
+            console.error('❌ [SSE Client] Token refresh exception:', refreshError)
+            error.value = '認證失敗'
+            return
+          }
+        }
         
         // 自動重連機制
         if (retryCount.value < maxRetries) {
@@ -207,9 +249,9 @@ export function useActivityStream() {
     
     console.log(`🔄 Scheduling reconnect #${retryCount.value} in ${delay}ms`)
     
-    reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = window.setTimeout(async () => {
       if (isAuthenticated.value) {
-        connect()
+        await connect()
       }
     }, delay)
   }
@@ -220,7 +262,7 @@ export function useActivityStream() {
       clearInterval(connectionCheckTimer)
     }
     
-    connectionCheckTimer = window.setInterval(() => {
+    connectionCheckTimer = window.setInterval(async () => {
       if (eventSource && eventSource.readyState === globalThis.EventSource.CLOSED) {
         console.log('🔍 Connection check: connection is closed, attempting reconnect')
         isConnected.value = false
@@ -254,14 +296,14 @@ export function useActivityStream() {
   }
 
   // 手動重連
-  const reconnect = () => {
+  const reconnect = async () => {
     console.log('🔄 Manual reconnect requested')
     disconnect()
     error.value = null
     retryCount.value = 0
     
     if (isAuthenticated.value) {
-      connect()
+      await connect()
     }
   }
 
@@ -270,17 +312,17 @@ export function useActivityStream() {
     try {
       // 發送一個請求到後端強制刷新
       // 或者重新連接來獲取最新數據
-      reconnect()
+      await reconnect()
     } catch (err) {
       console.error('❌ Failed to refresh activities:', err)
     }
   }
 
   // 生命週期管理
-  onMounted(() => {
+  onMounted(async () => {
     console.log('🎯 useActivityStream mounted')
     if (isAuthenticated.value) {
-      connect()
+      await connect()
     }
   })
 
