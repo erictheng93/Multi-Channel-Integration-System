@@ -56,10 +56,9 @@
         class="btn btn-primary"
         @click="connectPlatform"
       >
-        <LoadingSpinner
+        <HamsterLoader
           v-if="connecting"
-          size="xs"
-          variant="white"
+          message="連接中..."
         />
         <component
           :is="ConnectIcon"
@@ -74,9 +73,9 @@
         class="btn btn-secondary"
         @click="testConnection"
       >
-        <LoadingSpinner
+        <HamsterLoader
           v-if="testing"
-          size="xs"
+          message="測試中..."
         />
         <component
           :is="TestIcon"
@@ -144,9 +143,9 @@
         class="btn btn-sm btn-secondary"
         @click="verifyWebhook"
       >
-        <LoadingSpinner
+        <HamsterLoader
           v-if="verifyingWebhook"
-          size="xs"
+          message="驗證中..."
         />
         <component
           :is="CheckIcon"
@@ -198,7 +197,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { systemApi } from '@/api/system'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import {
   LineIcon,
   FacebookIcon,

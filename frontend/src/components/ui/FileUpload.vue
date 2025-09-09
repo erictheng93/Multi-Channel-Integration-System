@@ -21,10 +21,9 @@
       @click="openFileDialog"
     >
       <UploadIcon v-if="!uploading" />
-      <LoadingSpinner
+      <HamsterLoader
         v-else
-        size="sm"
-        variant="primary"
+        message="上傳中..."
       />
       <span>{{ buttonText }}</span>
     </button>
@@ -128,7 +127,7 @@
               v-else-if="file.uploading"
               class="upload-progress"
             >
-              <LoadingSpinner size="xs" />
+              <HamsterLoader message="上傳中..." />
             </div>
             <div
               v-else-if="file.uploaded"
@@ -181,7 +180,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import LoadingSpinner from './LoadingSpinner.vue'
+import HamsterLoader from './HamsterLoader.vue'
 import {
   UploadIcon,
   UploadCloudIcon,

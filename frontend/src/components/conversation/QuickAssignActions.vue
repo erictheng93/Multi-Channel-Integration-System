@@ -54,7 +54,7 @@
           v-if="loadingTeamMembers"
           class="menu-loading"
         >
-          <LoadingSpinner size="sm" />
+          <HamsterLoader message="指派中..." />
           <span>載入團隊成員中...</span>
         </div>
 
@@ -116,7 +116,7 @@ import { useConversationsStore } from '@/stores/conversations'
 import { usePermissions } from '@/services/permissionService'
 import type { Conversation, TeamMember, Agent } from '@/types'
 import { teamApi } from '@/api/team'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import {
   UserPlusIcon,
   TeamIcon,

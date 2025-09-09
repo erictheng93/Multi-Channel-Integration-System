@@ -111,7 +111,7 @@
             v-if="loadingMembers"
             class="loading-members"
           >
-            <LoadingSpinner size="sm" />
+            <HamsterLoader message="處理中..." />
             <span>載入成員中...</span>
           </div>
 
@@ -204,7 +204,7 @@ import { useConversationsStore } from '@/stores/conversations'
 import { usePermissions } from '@/services/permissionService'
 import type { Conversation, TeamMember, Agent } from '@/types'
 import { teamApi } from '@/api/team'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import {
   UserPlusIcon,
   UserCheckIcon,

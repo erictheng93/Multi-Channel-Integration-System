@@ -51,9 +51,9 @@
                 :disabled="loading"
                 @click="handleConfirm"
               >
-                <LoadingSpinner
+                <HamsterLoader
                   v-if="loading"
-                  class="btn-spinner"
+                  message="處理中..."
                 />
                 <span v-else>{{ confirmText }}</span>
               </button>
@@ -85,15 +85,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-// Loading Spinner Component
-const LoadingSpinner = {
-  template: `
-    <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
-      <path fill="currentColor" class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-    </svg>
-  `
-}
+import HamsterLoader from './HamsterLoader.vue'
 
 // Icons
 const QuestionIcon = {

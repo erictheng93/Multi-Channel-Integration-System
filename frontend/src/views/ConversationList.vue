@@ -223,7 +223,7 @@
             
             <template #loading>
               <div class="virtual-loading">
-                <LoadingSpinner size="sm" />
+                <HamsterLoader message="刷新中..." />
                 <span>智能載入更多對話中...</span>
               </div>
             </template>
@@ -284,7 +284,7 @@ import { webWorkerManager } from '@/services/webWorkerManager'
 import { predictiveLoader } from '@/services/predictiveLoader'
 import { idleTimeProcessor, TaskPriority } from '@/services/idleTimeProcessor'
 import AppLayout from '@/components/ui/AppLayout.vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import SmartVirtualScrollList from '@/components/ui/SmartVirtualScrollList.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'

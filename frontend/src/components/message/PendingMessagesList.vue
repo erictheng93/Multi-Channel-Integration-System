@@ -26,7 +26,7 @@
       v-if="loading && !messages.length"
       class="loading-state"
     >
-      <LoadingSpinner text="載入中..." />
+      <HamsterLoader message="載入中..." />
     </div>
 
     <div
@@ -106,9 +106,9 @@
             :disabled="recallingMessageId === message.id"
             @click="recallMessage(message)"
           >
-            <LoadingSpinner
+            <HamsterLoader
               v-if="recallingMessageId === message.id"
-              size="xs"
+              message="處理中..."
             />
             <XCircleIcon v-else />
             撤回
@@ -187,9 +187,9 @@
             :disabled="!!recallingMessageId"
             @click="confirmRecall"
           >
-            <LoadingSpinner
+            <HamsterLoader
               v-if="recallingMessageId"
-              size="xs"
+              message="處理中..."
             />
             確認撤回
           </button>
@@ -209,7 +209,7 @@ import {
   XCircleIcon, 
   EyeIcon 
 } from '@/components/icons'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import Modal from '@/components/ui/Modal.vue'

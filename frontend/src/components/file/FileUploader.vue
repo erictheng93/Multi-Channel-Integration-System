@@ -128,7 +128,7 @@
               v-else-if="file.uploading"
               class="upload-spinner"
             >
-              <LoadingSpinner size="xs" />
+              <HamsterLoader message="上傳中..." />
             </div>
           </div>
         </div>
@@ -170,9 +170,9 @@
         :disabled="uploading || !hasValidFiles"
         @click="startUpload"
       >
-        <LoadingSpinner
+        <HamsterLoader
           v-if="uploading"
-          size="sm"
+          message="檔案上傳中..."
         />
         <UploadIcon v-else />
         {{ uploading ? '上傳中...' : `上傳 ${validFilesCount} 個檔案` }}
@@ -247,7 +247,7 @@ import {
   VideoIcon,
   MusicIcon
 } from '@/components/icons'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { apiClient } from '@/api/base'
 
 interface FileWithPreview extends globalThis.File {
