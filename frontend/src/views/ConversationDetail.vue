@@ -94,15 +94,15 @@
 
       <!-- High Performance Virtual Message List -->
       <div class="messages-container-wrapper">
-        <!-- Loading States: 使用 isInitialLoading 作為主要的載入指示器 -->
+        <!-- Loading States: 只有真正的初始載入才顯示載入器 -->
         <HamsterLoader
-          v-if="isInitialLoading || (loadingMessages && messages.length === 0)"
+          v-if="isInitialLoading && !hasLoadedInitially"
           message="載入對話中..."
         />
 
-        <!-- Empty State: 只有在不是初始載入時才顯示 -->
+        <!-- Empty State: 只有在完成初始載入且無訊息時才顯示 -->
         <div
-          v-else-if="!isInitialLoading && displayedMessages.length === 0"
+          v-else-if="hasLoadedInitially && displayedMessages.length === 0"
           class="empty-state-wrapper"
         >
           <EmptyState
@@ -126,6 +126,7 @@
           :is-updating="isUpdating"
           :is-typing="isTyping"
           :animation-classes="animationClasses"
+          :enable-animations="true"
           @message-copy="handleMessageCopy"
           @message-reply="handleMessageReply"
           @message-forward="handleMessageForward"
@@ -134,6 +135,7 @@
           @search-clear="handleSearchClear"
           @load-more="loadMoreMessages"
           @scroll="handleVirtualScroll"
+          @new-message-while-scrolled="handleNewMessageWhileScrolled"
         />
       </div>
 
@@ -289,15 +291,16 @@ const {
   pageSize: 10 // Reduced page size for better initial performance
 })
 
-// Simplified smooth loading with performance optimizations
+// Smooth loading with optimized animations
 const {
   messages: smoothMessages,
   isUpdating,
   setMessagesImmediate,
+  updateMessages,
   getAnimationClasses
 } = useSmoothLoading({
-  animationDuration: 150, // Shorter animations
-  enableAnimations: false, // Disabled by default for performance
+  animationDuration: 400, // Smooth but not too slow
+  enableAnimations: true, // Enable smooth animations
   debounceDelay: 50
 })
 
@@ -305,7 +308,8 @@ const {
 const conversation = computed(() => conversationsStore.currentConversation)
 const closing = ref(false)
 const isTyping = ref(false)
-const isInitialLoading = ref(false) // 新增：統一的初始載入狀態
+const isInitialLoading = ref(true) // 真正的初始載入（只有第一次）
+const hasLoadedInitially = ref(false) // 標記是否已經完成初始載入
 const virtualMessageListRef = ref()
 const messageInputRef = ref()
 const keyboardShortcutsRef = ref()
@@ -333,7 +337,7 @@ const displayedMessages = computed(() => {
 
 const messages = computed(() => smoothMessages.value)
 
-// Performance optimization refs - Convert boolean classes to string classes
+// Animation classes for smooth message transitions
 const animationClasses = computed(() => {
   const result: Record<string, string> = {}
   
@@ -368,11 +372,11 @@ const USER_INACTIVE_THRESHOLD = 60000 // 用戶非活躍閾值：1分鐘
 const lastLoadTime = ref(0) // 最後載入時間，用於防抖
 const MIN_LOAD_INTERVAL = 2000 // 最小載入間隔：2秒
 
-// Performance optimized message handlers
+// Performance optimized message handlers with smooth animation
 const handleMessageSent = async () => {
   console.log('💬 Message sent, refreshing...')
   trackUserActivity() // 發送消息是用戶活動
-  await loadMessages(true) // 強制刷新，繞過防抖
+  await loadMessages(true, true) // Force refresh with animation (no loader)
   scrollToNewest()
   resetPollingDelay() // 重置輪詢延遲
 }
@@ -393,8 +397,8 @@ const loadConversation = async () => {
   }
 }
 
-// Performance optimized message loading with monitoring and debouncing
-const loadMessages = async (force = false) => {
+// Performance optimized message loading with smart loading states
+const loadMessages = async (force = false, animate = false) => {
   // 防抖機制：避免短時間內重複請求
   const now = Date.now()
   if (!force && now - lastLoadTime.value < MIN_LOAD_INTERVAL) {
@@ -402,8 +406,12 @@ const loadMessages = async (force = false) => {
     return
   }
   
-  // 設置初始載入狀態為 true，確保顯示 HamsterLoader
-  isInitialLoading.value = true
+  // 只有真正的初始載入才顯示 HamsterLoader
+  const isRealInitialLoad = !hasLoadedInitially.value && smoothMessages.value.length === 0
+  if (isRealInitialLoad) {
+    isInitialLoading.value = true
+  }
+  
   lastLoadTime.value = now
   
   try {
@@ -413,21 +421,36 @@ const loadMessages = async (force = false) => {
       
       if (rawMessages.value.length > 0) {
         mark('message-render-start')
-        setMessagesImmediate(rawMessages.value)
         
-        // Auto-scroll to bottom for initial load
-        await nextTick()
-        if (virtualMessageListRef.value) {
-          virtualMessageListRef.value.scrollToBottom()
+        // Use animated update for subsequent loads, immediate for initial load
+        if (animate && hasLoadedInitially.value) {
+          // 後續更新使用動畫，不顯示載入器
+          updateMessages(rawMessages.value, true)
+        } else {
+          // 初始載入使用立即更新
+          setMessagesImmediate(rawMessages.value)
+          
+          // Auto-scroll to bottom for initial load only
+          await nextTick()
+          if (virtualMessageListRef.value && !hasLoadedInitially.value) {
+            virtualMessageListRef.value.scrollToBottom()
+          }
         }
+        
+        // 標記已完成初始載入
+        if (!hasLoadedInitially.value) {
+          hasLoadedInitially.value = true
+        }
+        
         measure('message-render', 'message-render-start')
       }
       measure('message-fetch', 'message-fetch-start')
     })
   } finally {
-    // 只有當所有操作完成後才設置為 false
-    // 此時 displayedMessages 應該已經有數據了
-    isInitialLoading.value = false
+    // 只有真正的初始載入才重置載入狀態
+    if (isRealInitialLoad) {
+      isInitialLoading.value = false
+    }
   }
 }
 
@@ -533,11 +556,30 @@ const useQuickReply = (text: string) => {
 }
 
 // Virtual scroll handler with performance optimization
-const handleVirtualScroll = performanceUtils.throttle(() => {
-  // Simple scroll handling - virtual list manages most of the work
+// Handle scroll events from virtual list
+const handleVirtualScroll = performanceUtils.throttle((scrollInfo: unknown) => {
+  // Type guard for scroll info
+  const info = scrollInfo as { scrollTop: number; scrollHeight: number; clientHeight: number } | undefined
+  if (!info) {return}
+  
+  // Check if user is at bottom
+  const threshold = 100 // pixels from bottom
+  const isAtBottom = info.scrollHeight - info.scrollTop - info.clientHeight < threshold
+  
+  // Show new message modal if new messages arrive while scrolled up
+  if (!isAtBottom && newMessageCount.value > 0 && !showNewMessageModal.value) {
+    showNewMessageModal.value = true
+  }
+  
   // Reset polling delay on scroll (user activity)
   resetPollingDelay()
 }, 16) // 60fps throttling
+
+// Handle new messages while scrolled
+const handleNewMessageWhileScrolled = () => {
+  newMessageCount.value++
+  showNewMessageModal.value = true
+}
 
 // New message modal
 const scrollToNewest = () => {
@@ -576,8 +618,8 @@ const startPolling = () => {
     const isUserActive = Date.now() - lastUserActivity.value < USER_INACTIVE_THRESHOLD
     
     if (isUserActive) {
-      // 用戶活躍時才載入消息
-      await loadMessages()
+      // 用戶活躍時載入消息，使用平滑動畫（無載入器）
+      await loadMessages(false, true) // animate new messages during polling
     } else {
       console.log('⏸️ User inactive, skipping poll')
     }
@@ -610,8 +652,8 @@ const handleVisibilityChange = () => {
   console.log(`👁️ Page visibility changed: ${isPageVisible.value ? 'visible' : 'hidden'}`)
   
   if (isPageVisible.value) {
-    // 頁面變為可見時，立即刷新一次
-    loadMessages(true) // 強制刷新
+    // 頁面變為可見時，立即刷新一次（帶動畫，無載入器）
+    loadMessages(true, true) // Force refresh with animation
     resetPollingDelay()
     startPolling()
   }
@@ -734,7 +776,8 @@ watch(
     console.log(`🔄 Loading conversation: ${newId}`)
     mark('conversation-load-start')
     
-    // 重置初始載入狀態，確保顯示載入器
+    // 重置初始載入狀態（新對話就是初始載入）
+    hasLoadedInitially.value = false
     isInitialLoading.value = true
     
     try {
@@ -744,7 +787,7 @@ watch(
       // Load conversation and messages in parallel
       await Promise.all([
         loadConversation(),
-        setConversationId(newId).then(() => loadMessages(true)) // 強制載入新對話的消息
+        setConversationId(newId).then(() => loadMessages(true)) // 真正的初始載入
       ])
       
       measure('conversation-load', 'conversation-load-start')
@@ -752,10 +795,8 @@ watch(
     } catch (error) {
       console.error(`Failed to load conversation ${newId}:`, error)
       measure('conversation-load-error', 'conversation-load-start')
-    } finally {
-      // 確保在任何情況下都重置載入狀態
-      isInitialLoading.value = false
     }
+    // 注意：不在這裡重置 isInitialLoading，讓 loadMessages 自己管理
   },
   { 
     immediate: true,

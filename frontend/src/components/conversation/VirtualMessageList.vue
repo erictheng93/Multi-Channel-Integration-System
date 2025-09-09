@@ -50,19 +50,29 @@
             :date="virtualItems[virtualItem.index]?.data as Date"
           />
 
-          <!-- Message with v-memo optimization -->
-          <MessageBubble
+          <!-- Message with v-memo optimization and smooth entrance animation -->
+          <Transition
             v-else-if="virtualItems[virtualItem.index]?.type === 'message'"
-            :key="(virtualItems[virtualItem.index]?.data as Message).id"
-            :class="props.animationClasses?.[(virtualItems[virtualItem.index]?.data as Message).id] || ''"
-            :message="virtualItems[virtualItem.index]?.data as Message"
-            :delivered="true"
-            @copy="$emit('messageCopy', $event)"
-            @reply="$emit('messageReply', $event)"
-            @forward="$emit('messageForward', $event)"
-            @recall="$emit('messageRecall', $event)"
-            @select="$emit('messageSelect', $event)"
-          />
+            name="message"
+            mode="out-in"
+            appear
+          >
+            <MessageBubble
+              :key="(virtualItems[virtualItem.index]?.data as Message).id"
+              :class="[
+                'message-bubble-wrapper',
+                props.animationClasses?.[(virtualItems[virtualItem.index]?.data as Message).id] || '',
+                { 'message-new': isNewMessage((virtualItems[virtualItem.index]?.data as Message).id) }
+              ]"
+              :message="virtualItems[virtualItem.index]?.data as Message"
+              :delivered="true"
+              @copy="$emit('messageCopy', $event)"
+              @reply="$emit('messageReply', $event)"
+              @forward="$emit('messageForward', $event)"
+              @recall="$emit('messageRecall', $event)"
+              @select="$emit('messageSelect', $event)"
+            />
+          </Transition>
 
           <!-- Typing Indicator -->
           <div
@@ -93,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import type { Message } from '@/types'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
@@ -134,7 +144,7 @@ const props = withDefaults(defineProps<Props>(), {
   animationClasses: () => ({})
 })
 
-defineEmits<{
+const emit = defineEmits<{
   messageCopy: [message: Message]
   messageReply: [message: Message] 
   messageForward: [message: Message]
@@ -145,10 +155,14 @@ defineEmits<{
   scroll: [scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }]
   scrollToTop: []
   scrollToBottom: []
+  newMessageWhileScrolled: []
 }>()
 
 // Refs
 const listContainer = ref<HTMLElement>()
+const newMessageIds = ref(new Set<string>())
+const isUserAtBottom = ref(true)
+const lastScrollTop = ref(0)
 
 // Computed
 const displayedMessages = computed(() => {
@@ -223,47 +237,142 @@ const scrollToMessage = (messageId: string) => {
   }
 }
 
-const scrollToTop = () => {
-  virtualizer.value.scrollToIndex(0, { 
-    align: 'start'
-  })
-}
-
-const scrollToBottom = () => {
-  const lastIndex = virtualItems.value.length - 1
-  if (lastIndex >= 0) {
-    virtualizer.value.scrollToIndex(lastIndex, { 
-      align: 'end'
-    })
+const scrollToTop = async (retries = 3, delay = 100) => {
+  if (!virtualizer.value || virtualItems.value.length === 0) {
+    return
+  }
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Check if virtualizer is ready
+      const virtualElements = virtualizer.value.getVirtualItems()
+      if (virtualElements.length > 0) {
+        virtualizer.value.scrollToIndex(0, { 
+          align: 'start'
+        })
+        return // Success
+      }
+    } catch (error) {
+      console.warn(`Scroll to top attempt ${attempt + 1} failed:`, error)
+    }
+    
+    // Wait before retry
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
   }
 }
 
-// Animation handling  
-const addMessageAnimation = () => {
-  // Animation classes are handled by the parent component
-  // This component just uses them via props
+const scrollToBottom = async (retries = 3, delay = 100) => {
+  const lastIndex = virtualItems.value.length - 1
+  if (lastIndex < 0 || !virtualizer.value) {
+    return
+  }
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Check if virtualizer is ready and has measured items
+      const virtualElements = virtualizer.value.getVirtualItems()
+      if (virtualElements.length > 0) {
+        virtualizer.value.scrollToIndex(lastIndex, { 
+          align: 'end'
+        })
+        return // Success
+      }
+    } catch (error) {
+      console.warn(`Scroll to bottom attempt ${attempt + 1} failed:`, error)
+    }
+    
+    // Wait before retry
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
 }
 
-// Watchers
-watch(() => props.messages.length, (newCount, oldCount) => {
+// Animation handling with smooth entrance
+const isNewMessage = (messageId: string) => {
+  return newMessageIds.value.has(messageId)
+}
+
+const addMessageAnimation = () => {
+  // Mark new messages for animation
+  const existingIds = new Set(props.messages.map(m => m.id))
+  displayedMessages.value.forEach(msg => {
+    if (!existingIds.has(msg.id)) {
+      newMessageIds.value.add(msg.id)
+      // Auto-remove after animation completes
+      setTimeout(() => {
+        newMessageIds.value.delete(msg.id)
+      }, 500)
+    }
+  })
+}
+
+// Smart scroll management
+const checkIfUserAtBottom = () => {
+  if (!listContainer.value) {return true}
+  const { scrollTop, scrollHeight, clientHeight } = listContainer.value
+  const threshold = 100 // pixels from bottom
+  return scrollHeight - scrollTop - clientHeight < threshold
+}
+
+const handleScroll = () => {
+  if (!listContainer.value) {return}
+  const { scrollTop } = listContainer.value
+  
+  // Update user position
+  isUserAtBottom.value = checkIfUserAtBottom()
+  lastScrollTop.value = scrollTop
+  
+  // Emit scroll event
+  const { scrollHeight, clientHeight } = listContainer.value
+  emit('scroll', { scrollTop, scrollHeight, clientHeight })
+}
+
+// Watchers with smart scroll behavior
+watch(() => props.messages.length, async (newCount, oldCount) => {
   if (oldCount && newCount > oldCount) {
-    nextTick(() => {
-      addMessageAnimation()
-      
-      if (!props.isSearchActive) {
-        scrollToBottom()
-      }
-    })
+    // Check if user was at bottom before new messages
+    const wasAtBottom = isUserAtBottom.value
+    
+    await nextTick()
+    addMessageAnimation()
+    
+    // Wait a moment for virtualizer to update
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
+    // Only auto-scroll if user was already at bottom
+    if (!props.isSearchActive && wasAtBottom) {
+      await scrollToBottom()
+    } else if (!wasAtBottom) {
+      // Show new message notification to parent
+      emit('newMessageWhileScrolled')
+    }
   }
 })
 
-// Lifecycle
-onMounted(() => {
-  nextTick(() => {
-    if (!props.isSearchActive && displayedMessages.value.length > 0) {
-      scrollToBottom()
-    }
-  })
+// Lifecycle with scroll listener
+onMounted(async () => {
+  await nextTick()
+  
+  // Wait a bit for virtualizer to initialize
+  await new Promise(resolve => setTimeout(resolve, 50))
+  
+  if (!props.isSearchActive && displayedMessages.value.length > 0) {
+    await scrollToBottom()
+  }
+  
+  // Add scroll listener for smart scroll management
+  if (listContainer.value) {
+    listContainer.value.addEventListener('scroll', handleScroll, { passive: true })
+  }
+})
+
+onUnmounted(() => {
+  if (listContainer.value) {
+    listContainer.value.removeEventListener('scroll', handleScroll)
+  }
 })
 
 // Expose methods
@@ -275,148 +384,393 @@ defineExpose({
 </script>
 
 <style scoped>
+/* Modern Minimalist Container */
 .virtual-message-list {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+  position: relative;
 }
 
+/* Clean Search Header */
 .search-results-header {
-  padding: var(--space-3);
-  background: var(--blue-50);
-  border-bottom: 1px solid var(--blue-200);
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .clear-search-btn {
-  background: var(--blue-500);
-  color: white;
-  border: none;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
+  background: transparent;
+  color: #3b82f6;
+  border: 1px solid #dbeafe;
+  padding: 0.375rem 1rem;
+  border-radius: 2rem;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .clear-search-btn:hover {
-  background: var(--blue-600);
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
+/* Smooth Scrollable Container */
 .virtual-container {
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   contain: layout style paint;
+  scroll-behavior: smooth;
+  
+  /* Modern scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+.virtual-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.virtual-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.virtual-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.virtual-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .virtual-container.updating {
   pointer-events: none;
+  opacity: 0.98;
 }
 
+/* Optimized Virtual Items */
 .virtual-item {
   contain: layout style paint;
   will-change: transform;
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Elegant Date Separator */
 .date-separator-item {
   display: flex;
   justify-content: center;
-  padding: var(--space-2) 0;
+  padding: 1.25rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(to bottom, 
+    rgba(250, 251, 252, 0.95) 0%, 
+    rgba(250, 251, 252, 0.8) 50%,
+    transparent 100%);
+  backdrop-filter: blur(8px);
 }
 
+/* Clean Message Item Container */
 .message-item {
-  padding: 0 var(--space-3);
+  padding: 0.5rem 1.5rem;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
+/* Modern Typing Indicator */
 .typing-indicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  color: var(--gray-500);
-  font-style: italic;
+  gap: 0.625rem;
+  padding: 0.875rem 1.5rem;
+  margin: 0.5rem 1.5rem;
+  background: rgba(248, 250, 252, 0.8);
+  border-radius: 1.5rem;
+  width: fit-content;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .typing-dots {
   display: flex;
-  gap: var(--space-1);
+  gap: 0.25rem;
+  align-items: center;
 }
 
 .typing-dots span {
-  width: 6px;
-  height: 6px;
-  background: var(--gray-400);
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #64748b, #94a3b8);
   border-radius: 50%;
-  animation: typing-pulse 1.4s infinite;
+  animation: typing-pulse 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 .typing-dots span:nth-child(2) {
-  animation-delay: 0.2s;
+  animation-delay: 0.15s;
 }
 
 .typing-dots span:nth-child(3) {
-  animation-delay: 0.4s;
+  animation-delay: 0.3s;
+}
+
+.typing-text {
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 @keyframes typing-pulse {
   0%, 60%, 100% {
-    transform: initial;
-    opacity: 0.5;
+    transform: scale(1);
+    opacity: 0.3;
   }
   30% {
-    transform: scale(1.2);
+    transform: scale(1.3);
     opacity: 1;
   }
 }
 
-/* Message animations */
-.message-enter {
+/* Smooth Message Animations */
+.message-bubble-wrapper {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+/* Elegant Entrance Animations */
+.message-enter-from,
+.message-appear-from {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(12px) scale(0.98);
 }
 
-.message-enter-active {
+.message-enter-active,
+.message-appear-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.message-enter-to,
+.message-appear-to {
   opacity: 1;
-  transform: translateY(0);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0) scale(1);
 }
 
+/* Subtle Leave Animation */
+.message-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.message-leave-active {
+  transition: all 0.15s cubic-bezier(0.4, 0, 1, 1);
+  position: absolute;
+  width: 100%;
+}
+
+.message-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+}
+
+/* New Message Animation */
+.message-new {
+  animation: messageSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Smooth Loading Animation */
+.message-fade-in {
+  animation: smoothFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes smoothFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Clean Loading State */
 .history-loading-wrapper {
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: var(--background);
+  z-index: 15;
+  background: linear-gradient(to bottom, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(16px);
 }
 
 .history-loading-content {
   display: flex;
   justify-content: center;
-  padding: var(--space-3);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(4px);
-  border-bottom: 1px solid var(--gray-200);
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
-/* Responsive design */
+/* Responsive Design - Mobile First */
 @media (max-width: 768px) {
+  .virtual-message-list {
+    background: #ffffff;
+  }
+  
   .message-item {
-    padding: 0 var(--space-2);
+    padding: 0.375rem 1rem;
+  }
+  
+  .date-separator-item {
+    padding: 1rem 0;
+  }
+  
+  .search-results-header {
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+  }
+  
+  .clear-search-btn {
+    padding: 0.3125rem 0.875rem;
+    font-size: 0.75rem;
+  }
+  
+  .typing-indicator {
+    margin: 0.375rem 1rem;
+    padding: 0.75rem 1.25rem;
+  }
+  
+  .virtual-container::-webkit-scrollbar {
+    width: 4px;
   }
 }
 
-/* Performance optimizations */
+/* Tablet Adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .message-item {
+    padding: 0.5rem 1.25rem;
+  }
+}
+
+/* Large Screens */
+@media (min-width: 1440px) {
+  .message-item {
+    padding: 0.625rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  
+  .date-separator-item {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  
+  .typing-indicator {
+    margin: 0.5rem 2rem;
+  }
+}
+
+/* Accessibility & Performance */
 @media (prefers-reduced-motion: reduce) {
-  .message-enter,
-  .message-enter-active {
-    transition: none;
+  .message-enter-from,
+  .message-enter-active,
+  .message-appear-from,
+  .message-appear-active,
+  .message-leave-from,
+  .message-leave-active,
+  .message-bubble-wrapper,
+  .message-new,
+  .message-fade-in {
+    animation: none !important;
+    transition: opacity 0.15s ease !important;
   }
   
   .typing-dots span {
     animation: none;
+    opacity: 0.6;
+  }
+  
+  .virtual-container {
+    scroll-behavior: auto;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .search-results-header {
+    border-bottom: 2px solid currentColor;
+  }
+  
+  .clear-search-btn {
+    border-width: 2px;
+  }
+  
+  .typing-indicator {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Dark Mode Support (Future Enhancement) */
+@media (prefers-color-scheme: dark) {
+  .virtual-message-list {
+    background: linear-gradient(to bottom, #0f172a 0%, #1e293b 100%);
+  }
+  
+  .search-results-header {
+    background: rgba(15, 23, 42, 0.95);
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+  }
+  
+  .typing-indicator {
+    background: rgba(30, 41, 59, 0.8);
+    color: #94a3b8;
+  }
+  
+  .virtual-container::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+  
+  .virtual-container::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
   }
 }
 </style>
