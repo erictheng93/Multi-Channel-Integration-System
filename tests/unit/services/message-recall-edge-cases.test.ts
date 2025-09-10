@@ -23,7 +23,7 @@ describe('MessageRecallService Edge Cases', () => {
         get: vi.fn().mockResolvedValue(null),
         delete: vi.fn().mockResolvedValue(undefined)
       } as any,
-      MESSAGE_QUEUE: {
+      AGENT_QUEUE: {
         send: vi.fn().mockResolvedValue(undefined)
       } as any,
       LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',

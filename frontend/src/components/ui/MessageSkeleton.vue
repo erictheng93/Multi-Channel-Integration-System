@@ -148,6 +148,7 @@ const getRandomWidth = () => {
   gap: var(--space-2);
   max-width: 70%;
   min-width: 200px;
+  height: 60px; /* Fixed height to prevent layout shift */
 }
 
 /* 消息氣泡骨架 */
@@ -163,6 +164,7 @@ const getRandomWidth = () => {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  height: 100%; /* Use full available height */
 }
 
 .skeleton-text-line {

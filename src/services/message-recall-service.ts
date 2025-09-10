@@ -89,8 +89,8 @@ export class MessageRecallService {
       });
 
       // 3. Queue 排程延遲發送
-      if (this.env.MESSAGE_QUEUE) {
-        await this.env.MESSAGE_QUEUE.send({
+      if (this.env.AGENT_QUEUE) {
+        await this.env.AGENT_QUEUE.send({
           messageId,
           action: 'send_delayed_message',
           timestamp: now.toISOString()

@@ -73,7 +73,7 @@
           <button
             class="btn btn-secondary"
             :disabled="loadingMessages || loadingHistory"
-            @click="handleRefreshMessages"
+            @click="refreshMessages"
           >
             <RefreshIcon :spinning="loadingMessages || loadingHistory" />
           </button>
@@ -392,9 +392,8 @@ const handleMessageSent = async () => {
   resetPollingDelay() // 重置輪詢延遲
 }
 
-// 修復：手動刷新使用平滑動畫而不是 HamsterLoader
-const handleRefreshMessages = async () => {
-  console.log('🔄 Manual refresh triggered with smooth animation')
+const refreshMessages = async () => {
+  console.log('🔄 Manual refresh triggered')
   trackUserActivity() // 手動刷新是用戶活動
   await loadMessages(true, true) // Force refresh with animation (no loader)
   resetPollingDelay() // 重置輪詢延遲
@@ -461,7 +460,7 @@ const handleSSEMessage = async (event: MessageEvent) => {
 
       case 'new_message':
         // 優化：直接添加新消息，無需重新載入整個對話
-        if (data.data && data.data.conversationId == conversationId.value) {
+        if (data.data && data.data.conversationId === conversationId.value) {
           console.log('💬 [Message SSE] New message received directly:', data.data.content?.substring(0, 50))
           trackUserActivity() // SSE 消息是用戶活動指示
           
@@ -501,7 +500,7 @@ const handleSSEMessage = async (event: MessageEvent) => {
 
       case 'conversation_updated':
         // 處理對話狀態更新
-        if (data.data && data.data.conversationId == conversationId.value) {
+        if (data.data && data.data.conversationId === conversationId.value) {
           console.log('🔄 [Message SSE] Conversation updated')
           await loadMessages(false, true) // 使用平滑動畫重新載入
         }
@@ -890,7 +889,7 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
     case 'r':
       if (event.ctrlKey || event.metaKey) {
         event.preventDefault()
-        handleRefreshMessages() // Use smooth animation for keyboard refresh
+        refreshMessages()
       }
       break
       

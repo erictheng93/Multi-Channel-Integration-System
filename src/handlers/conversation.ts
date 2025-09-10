@@ -3,7 +3,8 @@ import { Hono } from 'hono';
 import { Context } from 'hono';
 import { DatabaseService } from '../services/database';
 import { databaseMiddleware, authMiddleware } from '../middleware/database';
-import type { HonoContext, Bindings } from '../types/bindings';
+import type { HonoContext } from '../types/bindings';
+import type { Bindings } from '../types';
 import { 
   successResponse, 
   errorResponse, 
@@ -13,6 +14,7 @@ import {
 } from '../utils/api-response';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql, eq, and, desc, inArray, count, aliasedTable } from 'drizzle-orm';
+import { realtimeQueueHandler } from './realtime-queue';
 import { conversations as conversationTable, agents, conversationTransfers, teams, conversationTags } from '../db/schema';
 
 const conversations = new Hono<HonoContext>();
@@ -165,12 +167,68 @@ conversations.post('/:id/messages', async (c) => {
       messageType,
     });
 
+    // 🚀 事件驅動推送：立即推送新消息事件到隊列
+    try {
+      await realtimeQueueHandler.createAndQueueEvent(
+        'message_created',
+        {
+          messageId: message?.id?.toString() || '',
+          conversationId: parseInt(conversationId),
+          content: message?.content || '',
+          messageType: (message?.messageType as 'text' | 'image' | 'file') || 'text',
+          senderType: 'agent',
+          senderId: agent!.id,
+          senderName: agent!.displayName || `Agent ${agent!.id}`,
+          customerName: conversation.customer?.displayName,
+          agentName: agent!.displayName,
+          metadata: message?.metadata ? JSON.parse(message.metadata) : undefined,
+          createdAt: message?.createdAt || new Date().toISOString(),
+          isRead: false
+        },
+        {
+          conversationId: parseInt(conversationId),
+          userIds: conversation.assignedUserId ? [parseInt(conversation.assignedUserId)] : []
+        },
+        'high', // 消息創建是高優先級事件
+        c.env,
+        'agent'
+      );
+      console.log(`🚀 [Message] Event queued for message ${message?.id || 'unknown'}`);
+    } catch (eventError) {
+      console.error('❌ [Message] Failed to queue event:', eventError);
+      // 不影響消息創建的成功，只記錄錯誤
+    }
+
     // 如果對話狀態是 pending，更新為 in-progress
     if (conversation.status === 'pending') {
       await dbService.updateConversation(conversationId, {
         status: 'in-progress',
         assignedUserId: agent!.id, // Keep as string - agents table uses TEXT id
       });
+
+      // 🚀 推送對話狀態更新事件
+      try {
+        await realtimeQueueHandler.createAndQueueEvent(
+          'conversation_status_changed',
+          {
+            conversationId: parseInt(conversationId),
+            status: 'in-progress',
+            assignedUserId: parseInt(agent!.id),
+            customerName: conversation.customer?.displayName,
+            updatedAt: new Date().toISOString(),
+            changes: { status: { from: 'pending', to: 'in-progress' } }
+          },
+          {
+            conversationId: parseInt(conversationId),
+            userIds: [parseInt(agent!.id)]
+          },
+          'normal',
+          c.env,
+          'agent'
+        );
+      } catch (eventError) {
+        console.error('❌ [Conversation] Failed to queue status change event:', eventError);
+      }
     }
 
     return c.json({

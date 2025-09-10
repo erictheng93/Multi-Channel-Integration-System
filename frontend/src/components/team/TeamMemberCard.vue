@@ -7,11 +7,16 @@
     <div 
       class="member-info"
     >
-      <div class="member-avatar">
+      <div
+        class="member-avatar"
+        style="width: 48px; height: 48px;"
+      >
         <img 
           v-if="member.avatar" 
           :src="member.avatar" 
           :alt="member.name"
+          style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+          loading="lazy"
         >
         <div
           v-else

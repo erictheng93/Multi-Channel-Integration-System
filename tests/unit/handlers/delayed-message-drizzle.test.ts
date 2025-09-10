@@ -73,7 +73,7 @@ describe('DelayedMessage API Handler', () => {
     // 設置環境和必要的 context values
     app.use('*', (c, next) => {
       c.env = {
-        MESSAGE_QUEUE: {
+        AGENT_QUEUE: {
           send: vi.fn().mockResolvedValue(undefined)
         }
       } as any;

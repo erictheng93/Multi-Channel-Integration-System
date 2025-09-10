@@ -33,15 +33,18 @@ export interface Bindings {
   R2_BUCKET_DEV: R2Bucket;
   
   // Queues - Both environments bound
-  MESSAGE_QUEUE_PROD: Queue;
-  MESSAGE_QUEUE_DEV: Queue;
+  AGENT_QUEUE_PROD: Queue;
+  AGENT_QUEUE_DEV: Queue;
+  REALTIME_QUEUE_PROD: Queue;
+  REALTIME_QUEUE_DEV: Queue;
   
   // These are set by resourceMiddleware based on ENVIRONMENT
   DB: D1Database;
   SESSIONS: KVNamespace;
   CACHE: KVNamespace;
   R2_BUCKET: R2Bucket;
-  MESSAGE_QUEUE: Queue;
+  AGENT_QUEUE: Queue;
+  REALTIME_QUEUE: Queue;
   KV: KVNamespace; // Alias for SESSIONS
   
   // Durable Objects (optional)
@@ -50,7 +53,7 @@ export interface Bindings {
   // Environment variables - LINE
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_CHANNEL_SECRET: string;
-  LINE_BOT_BASIC_ID?: string;
+  LINE_BOT_BASIC_ID: string;
   
   // Environment variables - JWT and Auth
   JWT_SECRET: string;
@@ -61,9 +64,9 @@ export interface Bindings {
   FACEBOOK_PAGE_ACCESS_TOKEN?: string;
   FACEBOOK_APP_SECRET?: string;
   FACEBOOK_VERIFY_TOKEN?: string;
-  FB_PAGE_ACCESS_TOKEN?: string; // Alias for backward compatibility
-  FB_APP_SECRET?: string; // Alias for backward compatibility
-  FB_VERIFY_TOKEN?: string; // Alias for backward compatibility
+  FB_PAGE_ACCESS_TOKEN: string;
+  FB_APP_SECRET: string;
+  FB_VERIFY_TOKEN: string;
   
   // Environment variables - System
   ENVIRONMENT?: string;

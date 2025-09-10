@@ -9,7 +9,7 @@ declare namespace Cloudflare {
 		R2_PUBLIC_URL: "https://s3.imfinethankyouandyou.com";
 		R2_BUCKET: R2Bucket;
 		DB: D1Database;
-		MESSAGE_QUEUE: Queue;
+		AGENT_QUEUE: Queue;
 	}
 }
 interface Env extends Cloudflare.Env {}

@@ -78,144 +78,152 @@
       </h3>
       <div class="qr-display-card">
         <div class="qr-image-container">
-          <img 
-            :src="currentQRCode.qrCode" 
-            alt="QR Code"
-            class="qr-image"
-          >
-          <div class="qr-overlay">
-            <button 
-              class="btn-icon"
-              title="下載 QR 碼"
-              @click="downloadQRCode"
+          <div style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center;">
+            <img 
+              :src="currentQRCode.qrCode" 
+              alt="QR Code"
+              style="width: 100%; height: 100%; object-fit: contain;"
+              loading="lazy"
+              class="qr-image"
             >
-              <DownloadIcon />
-            </button>
-            <button 
-              class="btn-icon"
-              title="複製連結"
-              @click="copyLink"
-            >
-              <CopyIcon />
-            </button>
-          </div>
-        </div>
-        
-        <div class="qr-info">
-          <div class="info-item">
-            <span class="info-label">活動名稱</span>
-            <span class="info-value">{{ currentQRCode.campaignName || '未命名' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">使用次數</span>
-            <span class="info-value">
-              {{ currentQRCode.usageCount }}
-              <span v-if="currentQRCode.maxUses"> / {{ currentQRCode.maxUses }}</span>
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">有效期限</span>
-            <span class="info-value">
-              {{ formatDate(currentQRCode.expiresAt) }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">狀態</span>
-            <span 
-              class="status-badge"
-              :class="getStatusClass(currentQRCode)"
-            >
-              {{ getStatusText(currentQRCode) }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- QR Code 歷史列表 -->
-    <div
-      v-if="qrCodeHistory.length > 0"
-      class="history-section"
-    >
-      <h3 class="section-title">
-        <HistoryIcon />
-        歷史 QR 碼 ({{ qrCodeHistory.length }})
-      </h3>
-      <div class="history-list">
-        <div 
-          v-for="qrCode in qrCodeHistory"
-          :key="qrCode.id"
-          class="history-card"
-          :class="{ 'inactive': !qrCode.isActive }"
-        >
-          <img 
-            :src="qrCode.qrCode"
-            alt="QR Code"
-            class="history-qr-image"
-          >
-          <div class="history-info">
-            <h4>{{ qrCode.campaignName || '未命名活動' }}</h4>
-            <div class="history-stats">
-              <span>使用: {{ qrCode.usageCount }}</span>
-              <span>建立: {{ formatDate(qrCode.createdAt) }}</span>
+            <div class="qr-overlay">
+              <button 
+                class="btn-icon"
+                title="下載 QR 碼"
+                @click="downloadQRCode"
+              >
+                <DownloadIcon />
+              </button>
+              <button 
+                class="btn-icon"
+                title="複製連結"
+                @click="copyLink"
+              >
+                <CopyIcon />
+              </button>
             </div>
           </div>
-          <div class="history-actions">
-            <button
-              v-if="qrCode.isActive"
-              class="btn-sm btn-warning"
-              @click="deactivateQRCode(qrCode.id)"
-            >
-              停用
-            </button>
-            <button
-              class="btn-sm btn-secondary"
-              @click="viewQRCode(qrCode)"
-            >
-              查看
-            </button>
+        
+          <div class="qr-info">
+            <div class="info-item">
+              <span class="info-label">活動名稱</span>
+              <span class="info-value">{{ currentQRCode.campaignName || '未命名' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">使用次數</span>
+              <span class="info-value">
+                {{ currentQRCode.usageCount }}
+                <span v-if="currentQRCode.maxUses"> / {{ currentQRCode.maxUses }}</span>
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">有效期限</span>
+              <span class="info-value">
+                {{ formatDate(currentQRCode.expiresAt) }}
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">狀態</span>
+              <span 
+                class="status-badge"
+                :class="getStatusClass(currentQRCode)"
+              >
+                {{ getStatusText(currentQRCode) }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 統計資訊 -->
-    <div class="stats-section">
-      <h3 class="section-title">
-        <StatsIcon />
-        QR 碼統計
-      </h3>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">
-            {{ stats.totalScans }}
-          </div>
-          <div class="stat-label">
-            總掃描次數
+      <!-- QR Code 歷史列表 -->
+      <div
+        v-if="qrCodeHistory.length > 0"
+        class="history-section"
+      >
+        <h3 class="section-title">
+          <HistoryIcon />
+          歷史 QR 碼 ({{ qrCodeHistory.length }})
+        </h3>
+        <div class="history-list">
+          <div 
+            v-for="qrCode in qrCodeHistory"
+            :key="qrCode.id"
+            class="history-card"
+            :class="{ 'inactive': !qrCode.isActive }"
+          >
+            <div style="width: 64px; height: 64px;">
+              <img 
+                :src="qrCode.qrCode"
+                alt="QR Code"
+                style="width: 100%; height: 100%; object-fit: contain;"
+                loading="lazy"
+                class="history-qr-image"
+              >
+              <div class="history-info">
+                <h4>{{ qrCode.campaignName || '未命名活動' }}</h4>
+                <div class="history-stats">
+                  <span>使用: {{ qrCode.usageCount }}</span>
+                  <span>建立: {{ formatDate(qrCode.createdAt) }}</span>
+                </div>
+              </div>
+              <div class="history-actions">
+                <button
+                  v-if="qrCode.isActive"
+                  class="btn-sm btn-warning"
+                  @click="deactivateQRCode(qrCode.id)"
+                >
+                  停用
+                </button>
+                <button
+                  class="btn-sm btn-secondary"
+                  @click="viewQRCode(qrCode)"
+                >
+                  查看
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">
-            {{ stats.newCustomers }}
-          </div>
-          <div class="stat-label">
-            新客戶數
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">
-            {{ stats.conversionRate }}%
-          </div>
-          <div class="stat-label">
-            轉換率
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">
-            {{ stats.activeQRCodes }}
-          </div>
-          <div class="stat-label">
-            有效 QR 碼
+
+        <!-- 統計資訊 -->
+        <div class="stats-section">
+          <h3 class="section-title">
+            <StatsIcon />
+            QR 碼統計
+          </h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">
+                {{ stats.totalScans }}
+              </div>
+              <div class="stat-label">
+                總掃描次數
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">
+                {{ stats.newCustomers }}
+              </div>
+              <div class="stat-label">
+                新客戶數
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">
+                {{ stats.conversionRate }}%
+              </div>
+              <div class="stat-label">
+                轉換率
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">
+                {{ stats.activeQRCodes }}
+              </div>
+              <div class="stat-label">
+                有效 QR 碼
+              </div>
+            </div>
           </div>
         </div>
       </div>

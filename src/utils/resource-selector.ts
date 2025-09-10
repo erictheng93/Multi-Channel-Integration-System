@@ -46,10 +46,10 @@ export class ResourceSelector {
   }
 
   /**
-   * 獲取訊息佇列
+   * 獲取代理佇列
    */
-  getMessageQueue(): Queue<unknown> {
-    return this.environment === 'development' ? this.env.MESSAGE_QUEUE_DEV : this.env.MESSAGE_QUEUE_PROD;
+  getAgentQueue(): Queue<unknown> {
+    return this.environment === 'development' ? this.env.AGENT_QUEUE_DEV : this.env.AGENT_QUEUE_PROD;
   }
 
   /**
@@ -82,7 +82,7 @@ export class ResourceSelector {
       SESSIONS: this.getSessionsKV(),
       CACHE: this.getCacheKV(),
       R2_BUCKET: this.getR2Bucket(),
-      MESSAGE_QUEUE: this.getMessageQueue(),
+      AGENT_QUEUE: this.getAgentQueue(),
       environment: this.environment
     };
   }
