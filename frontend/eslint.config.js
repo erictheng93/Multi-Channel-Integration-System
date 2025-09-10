@@ -81,6 +81,8 @@ export default [
         // Service Worker
         clients: 'readonly',
         caches: 'readonly',
+        // Server-Sent Events
+        EventSource: 'readonly',
         // Performance
         performance: 'readonly',
         // Node.js types (for type references)

@@ -17,6 +17,7 @@ import {
 } from './handlers';
 import { activityHandler } from './handlers/activity';
 import { activityStreamHandler } from './handlers/activity-stream';
+import { realtimeHandler } from './handlers/realtime';
 import {
   getSystemInfo,
   getSettings,
@@ -151,6 +152,13 @@ app.delete('/api/activities/cleanup', jwtAuth, activityHandler.cleanup);
 
 // SSE 活動流路由 (不使用 jwtAuth 中間件，在處理器內部驗證)
 app.get('/api/activities/stream', activityStreamHandler.connect);
+
+// SSE 即時通訊路由 (不使用 jwtAuth 中間件，在處理器內部驗證)
+app.get('/api/realtime/sse', realtimeHandler.sse);
+app.post('/api/realtime/typing', jwtAuth, realtimeHandler.sendTypingStatus);
+app.post('/api/realtime/broadcast', jwtAuth, realtimeHandler.broadcastToConversation);
+app.get('/api/realtime/conversation/:id/status', jwtAuth, realtimeHandler.getConversationStatus);
+app.post('/api/realtime/online-status', jwtAuth, realtimeHandler.updateOnlineStatus);
 
 // ==================== Webhook 處理 ====================
 

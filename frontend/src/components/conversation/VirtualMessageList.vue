@@ -1,5 +1,5 @@
 <template>
-  <div class="virtual-message-list">
+  <div class="virtual-message-list" ref="scrollContainer">
     <!-- Search Results Header -->
     <div
       v-if="isSearchActive"
@@ -14,10 +14,10 @@
       </button>
     </div>
 
-    <!-- Virtual List Container -->
+    <!-- Virtual Content Container -->
     <div
-      ref="listContainer"
-      class="virtual-container"
+      ref="listContainer" 
+      class="virtual-content"
       :class="{ updating: props.isUpdating }"
       :style="{
         height: `${virtualizer.getTotalSize()}px`,
@@ -159,10 +159,13 @@ const emit = defineEmits<{
 }>()
 
 // Refs
+const scrollContainer = ref<HTMLElement>()
 const listContainer = ref<HTMLElement>()
 const newMessageIds = ref(new Set<string>())
 const isUserAtBottom = ref(true)
 const lastScrollTop = ref(0)
+const lastLoadMoreTime = ref(0)
+const LOAD_MORE_THROTTLE_MS = 1000 // Prevent too frequent load requests
 
 // Computed
 const displayedMessages = computed(() => {
@@ -219,41 +222,35 @@ const virtualItems = computed<VirtualItem[]>(() => {
 // Virtualizer setup
 const virtualizer = useVirtualizer({
   get count() { return virtualItems.value.length },
-  getScrollElement: () => listContainer.value || null,
+  getScrollElement: () => scrollContainer.value || null,
   estimateSize: () => 80,
   overscan: 5,
 })
 
 // Methods
-const scrollToMessage = (messageId: string) => {
+const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
   const index = virtualItems.value.findIndex(item => 
     item.type === 'message' && (item.data as Message).id === messageId
   )
   
-  if (index >= 0) {
-    virtualizer.value.scrollToIndex(index, { 
-      align: 'center'
-    })
-  }
-}
-
-const scrollToTop = async (retries = 3, delay = 100) => {
-  if (!virtualizer.value || virtualItems.value.length === 0) {
+  if (index < 0 || !virtualizer.value) {
     return
   }
   
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      // Check if virtualizer is ready
-      const virtualElements = virtualizer.value.getVirtualItems()
-      if (virtualElements.length > 0) {
-        virtualizer.value.scrollToIndex(0, { 
-          align: 'start'
+      // Wait for virtualizer to be ready
+      await nextTick()
+      
+      const container = virtualizer.value.scrollElement
+      if (container && virtualizer.value.options.count === virtualItems.value.length) {
+        virtualizer.value.scrollToIndex(index, { 
+          align: 'center'
         })
         return // Success
       }
     } catch (error) {
-      console.warn(`Scroll to top attempt ${attempt + 1} failed:`, error)
+      console.warn(`Scroll to message attempt ${attempt + 1} failed:`, error)
     }
     
     // Wait before retry
@@ -263,7 +260,45 @@ const scrollToTop = async (retries = 3, delay = 100) => {
   }
 }
 
-const scrollToBottom = async (retries = 3, delay = 100) => {
+const scrollToTop = async (retries = 5, delay = 150) => {
+  if (!virtualizer.value || virtualItems.value.length === 0) {
+    return
+  }
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Wait a tick for the virtualizer to process any pending updates
+      await nextTick()
+      
+      // Check if virtualizer has the correct count and container element
+      const container = virtualizer.value.scrollElement
+      if (container && virtualizer.value.options.count === virtualItems.value.length) {
+        // Use direct scroll for more reliable scrolling
+        container.scrollTop = 0
+        return // Success
+      }
+    } catch (error) {
+      console.warn(`Scroll to top attempt ${attempt + 1} failed:`, error)
+    }
+    
+    // Wait before retry with exponential backoff
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)))
+    }
+  }
+  
+  // Final fallback: try scrollToIndex with a longer timeout
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300))
+    if (virtualizer.value) {
+      virtualizer.value.scrollToIndex(0, { align: 'start' })
+    }
+  } catch (error) {
+    console.warn('Final scroll to top attempt failed:', error)
+  }
+}
+
+const scrollToBottom = async (retries = 5, delay = 150) => {
   const lastIndex = virtualItems.value.length - 1
   if (lastIndex < 0 || !virtualizer.value) {
     return
@@ -271,22 +306,35 @@ const scrollToBottom = async (retries = 3, delay = 100) => {
   
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      // Check if virtualizer is ready and has measured items
-      const virtualElements = virtualizer.value.getVirtualItems()
-      if (virtualElements.length > 0) {
-        virtualizer.value.scrollToIndex(lastIndex, { 
-          align: 'end'
-        })
+      // Wait a tick for the virtualizer to process any pending updates
+      await nextTick()
+      
+      // Check if virtualizer has the correct count and container element
+      const container = virtualizer.value.scrollElement
+      if (container && virtualizer.value.options.count === virtualItems.value.length) {
+        // Use scrollToOffset instead of scrollToIndex for more reliable scrolling
+        const totalSize = virtualizer.value.getTotalSize()
+        container.scrollTop = totalSize
         return // Success
       }
     } catch (error) {
       console.warn(`Scroll to bottom attempt ${attempt + 1} failed:`, error)
     }
     
-    // Wait before retry
+    // Wait before retry with exponential backoff
     if (attempt < retries - 1) {
-      await new Promise(resolve => setTimeout(resolve, delay))
+      await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)))
     }
+  }
+  
+  // Final fallback: try scrollToIndex with a longer timeout
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300))
+    if (virtualizer.value) {
+      virtualizer.value.scrollToIndex(lastIndex, { align: 'end' })
+    }
+  } catch (error) {
+    console.warn('Final scroll to bottom attempt failed:', error)
   }
 }
 
@@ -311,22 +359,42 @@ const addMessageAnimation = () => {
 
 // Smart scroll management
 const checkIfUserAtBottom = () => {
-  if (!listContainer.value) {return true}
-  const { scrollTop, scrollHeight, clientHeight } = listContainer.value
+  if (!scrollContainer.value) {return true}
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
   const threshold = 100 // pixels from bottom
   return scrollHeight - scrollTop - clientHeight < threshold
 }
 
+const checkIfUserAtTop = () => {
+  if (!scrollContainer.value) {return false}
+  const { scrollTop } = scrollContainer.value
+  const threshold = 100 // pixels from top
+  return scrollTop < threshold
+}
+
 const handleScroll = () => {
-  if (!listContainer.value) {return}
-  const { scrollTop } = listContainer.value
+  if (!scrollContainer.value) {return}
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
   
   // Update user position
-  isUserAtBottom.value = checkIfUserAtBottom()
+  const isAtBottom = checkIfUserAtBottom()
+  const isAtTop = checkIfUserAtTop()
+  
+  isUserAtBottom.value = isAtBottom
   lastScrollTop.value = scrollTop
   
+  // Load more historical messages when scrolling near top
+  if (isAtTop && !props.loadingHistory && scrollTop < lastScrollTop.value) {
+    // Throttle load-more requests to prevent spam
+    const now = Date.now()
+    if (now - lastLoadMoreTime.value > LOAD_MORE_THROTTLE_MS) {
+      console.log('📜 User scrolled to top, loading more history...')
+      lastLoadMoreTime.value = now
+      emit('loadMore')
+    }
+  }
+  
   // Emit scroll event
-  const { scrollHeight, clientHeight } = listContainer.value
   emit('scroll', { scrollTop, scrollHeight, clientHeight })
 }
 
@@ -364,14 +432,14 @@ onMounted(async () => {
   }
   
   // Add scroll listener for smart scroll management
-  if (listContainer.value) {
-    listContainer.value.addEventListener('scroll', handleScroll, { passive: true })
+  if (scrollContainer.value) {
+    scrollContainer.value.addEventListener('scroll', handleScroll, { passive: true })
   }
 })
 
 onUnmounted(() => {
-  if (listContainer.value) {
-    listContainer.value.removeEventListener('scroll', handleScroll)
+  if (scrollContainer.value) {
+    scrollContainer.value.removeEventListener('scroll', handleScroll)
   }
 })
 
@@ -384,13 +452,37 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Modern Minimalist Container */
+/* Modern Minimalist Container - Now the scroll container */
 .virtual-message-list {
   height: 100%;
   display: flex;
   flex-direction: column;
   background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Modern scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+.virtual-message-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.virtual-message-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.virtual-message-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.virtual-message-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Clean Search Header */
@@ -432,38 +524,14 @@ defineExpose({
 }
 
 /* Smooth Scrollable Container */
-.virtual-container {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+/* Virtual Content Container - No longer scrollable, just content */
+.virtual-content {
   position: relative;
   contain: layout style paint;
-  scroll-behavior: smooth;
-  
-  /* Modern scrollbar */
-  scrollbar-width: thin;
-  scrollbar-color: #e2e8f0 transparent;
+  flex-shrink: 0; /* Don't shrink this container */
 }
 
-.virtual-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.virtual-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.virtual-container::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-  transition: background 0.2s;
-}
-
-.virtual-container::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.virtual-container.updating {
+.virtual-content.updating {
   pointer-events: none;
   opacity: 0.98;
 }
@@ -676,7 +744,7 @@ defineExpose({
     padding: 0.75rem 1.25rem;
   }
   
-  .virtual-container::-webkit-scrollbar {
+  .virtual-message-list::-webkit-scrollbar {
     width: 4px;
   }
 }
@@ -728,7 +796,7 @@ defineExpose({
     opacity: 0.6;
   }
   
-  .virtual-container {
+  .virtual-message-list {
     scroll-behavior: auto;
   }
 }
@@ -765,11 +833,11 @@ defineExpose({
     color: #94a3b8;
   }
   
-  .virtual-container::-webkit-scrollbar-thumb {
+  .virtual-message-list::-webkit-scrollbar-thumb {
     background: #475569;
   }
   
-  .virtual-container::-webkit-scrollbar-thumb:hover {
+  .virtual-message-list::-webkit-scrollbar-thumb:hover {
     background: #64748b;
   }
 }

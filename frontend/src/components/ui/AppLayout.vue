@@ -1043,9 +1043,11 @@ onUnmounted(() => {
 
 .page-content {
   flex: 1;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
   padding: var(--space-6);
   background-color: #f9fafb !important;
+  min-height: 0;
   /* 確保頁面內容區域也是固定背景色 */
 }
 
