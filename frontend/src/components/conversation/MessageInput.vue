@@ -525,7 +525,7 @@ defineExpose({
 
 <style scoped>
 .message-input {
-  max-width: 800px;
+  max-width: 1500px;
   margin: 0 auto;
 }
 
@@ -998,8 +998,8 @@ defineExpose({
 /* 平板設備優化 */
 @media (max-width: 1024px) {
   .message-input {
-    max-width: none;
-    margin: 0;
+    max-width: 1500px;
+    margin: 0 auto;
   }
 
   .emoji-picker-popup {

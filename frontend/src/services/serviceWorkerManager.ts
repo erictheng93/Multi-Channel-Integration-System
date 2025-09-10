@@ -215,6 +215,7 @@ export class ServiceWorkerManager {
   // 發送消息到 Service Worker
   async sendMessage(message: SWMessage): Promise<SWResponse> {
     if (!navigator.serviceWorker.controller) {
+      console.warn('⚠️ [SWManager] No active service worker controller available')
       throw new Error('No active service worker')
     }
 
@@ -325,6 +326,12 @@ export class ServiceWorkerManager {
 
   // 獲取快取統計
   async getCacheStats(): Promise<SWResponse | null> {
+    // 檢查 Service Worker 是否可用
+    if (!navigator.serviceWorker.controller || this.status.value !== 'active') {
+      console.debug('🔍 [SWManager] Service Worker not ready for cache stats')
+      return null
+    }
+
     try {
       const stats = await this.sendMessage({ type: 'GET_CACHE_STATS' })
       this.stats.value.cacheHitRate = stats.hitRate || 0

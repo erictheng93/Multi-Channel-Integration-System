@@ -9,6 +9,7 @@ import {
   unauthorizedResponse,
   handleApiError 
 } from '../utils/api-response';
+import { verifyJWT } from '../utils/auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql } from 'drizzle-orm';
 
@@ -33,8 +34,22 @@ export const realtimeHandler = {
   // 優化的 SSE 端點
   sse: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const payload = c.get('jwtPayload');
+      let payload = c.get('jwtPayload');
       const conversationId = c.req.query('conversationId');
+
+      // 如果沒有 payload，嘗試從查詢參數獲取 token (用於 EventSource)
+      if (!payload) {
+        const queryToken = c.req.query('token');
+        if (queryToken) {
+          try {
+            // 手動驗證 JWT token
+            payload = await verifyJWT(queryToken, c.env.JWT_SECRET);
+          } catch (error) {
+            console.error('Invalid query token:', error);
+            return unauthorizedResponse(c, 'Invalid token');
+          }
+        }
+      }
 
       if (!payload) {
         return unauthorizedResponse(c, 'Authentication required for SSE');
@@ -104,6 +119,25 @@ export const realtimeHandler = {
                 LIMIT 5
               `);
 
+              // 檢查新消息（優化：直接推送消息內容）
+              let newMessages: any[] = [];
+              if (conversationId) {
+                const messagesResult = await drizzleDb.run(sql`
+                  SELECT m.*, 
+                         c.customer_id,
+                         cu.display_name as customer_name,
+                         u.display_name as agent_name
+                  FROM messages m
+                  JOIN conversations c ON m.conversation_id = c.id
+                  JOIN customers cu ON c.customer_id = cu.id
+                  LEFT JOIN users u ON m.sender_id = u.id
+                  WHERE m.conversation_id = ${conversationId} 
+                  AND m.created_at > datetime('now', '-30 seconds')
+                  ORDER BY m.created_at ASC
+                `);
+                newMessages = messagesResult.results || [];
+              }
+
               // 檢查對話狀態變更
               let conversationUpdates = null;
               if (conversationId) {
@@ -118,7 +152,35 @@ export const realtimeHandler = {
               // 檢查打字狀態
               const typingStatuses = await realtimeHandler.getTypingStatuses(c.env, conversationId ? parseInt(conversationId) : null);
 
-              // 發送通知
+              // 發送新消息（優化：直接推送消息內容）
+              if (newMessages.length > 0) {
+                for (const message of newMessages) {
+                  const messageData = {
+                    id: (message as any).id,
+                    conversationId: parseInt(conversationId!),
+                    content: (message as any).content,
+                    messageType: (message as any).message_type || 'text',
+                    senderType: (message as any).sender_type,
+                    senderId: (message as any).sender_id,
+                    senderName: (message as any).sender_type === 'customer' 
+                      ? (message as any).customer_name 
+                      : (message as any).agent_name,
+                    createdAt: (message as any).created_at,
+                    isRead: (message as any).is_read,
+                    metadata: (message as any).metadata ? JSON.parse((message as any).metadata) : null
+                  };
+
+                  const eventData = {
+                    type: 'new_message',
+                    data: messageData,
+                    timestamp: new Date().toISOString()
+                  };
+                  
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
+                }
+              }
+
+              // 發送通知（保留作為備份）
               if (notifications.results || [].length > 0) {
                 for (const notification of notifications.results || []) {
                   const eventData = {

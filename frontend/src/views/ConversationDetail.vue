@@ -73,7 +73,7 @@
           <button
             class="btn btn-secondary"
             :disabled="loadingMessages || loadingHistory"
-            @click="refreshMessages"
+            @click="handleRefreshMessages"
           >
             <RefreshIcon :spinning="loadingMessages || loadingHistory" />
           </button>
@@ -233,6 +233,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMessages } from '@/composables'
 import { useSmoothLoading } from '@/composables/useSmoothLoading'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAuthStore } from '@/stores/auth'
 import { useConfirm } from '@/composables/useConfirm'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
 import type { Message, Conversation } from '@/types'
@@ -262,6 +263,7 @@ const AdvancedAssignActions = defineAsyncComponent(() => import('@/components/co
 const route = useRoute()
 const router = useRouter()
 const conversationsStore = useConversationsStore()
+const authStore = useAuthStore()
 
 // Performance monitoring
 const {
@@ -283,7 +285,6 @@ const {
   loadingHistory,
   totalMessages,
   fetchMessages,
-  refreshMessages,
   loadMoreMessages,
   setConversationId
 } = useMessages(undefined, {
@@ -297,6 +298,7 @@ const {
   isUpdating,
   setMessagesImmediate,
   updateMessages,
+  sortMessagesByTime,
   getAnimationClasses
 } = useSmoothLoading({
   animationDuration: 400, // Smooth but not too slow
@@ -322,6 +324,14 @@ const isSearchActive = ref(false)
 // New message notification
 const showNewMessageModal = ref(false)
 const newMessageCount = ref(0)
+
+// SSE real-time messaging
+const messageEventSource = ref<EventSource | null>(null)
+const sseConnected = ref(false)
+const sseError = ref<string | null>(null)
+const sseReconnectAttempts = ref(0)
+const maxSSEReconnectAttempts = 3
+let sseReconnectTimer: NodeJS.Timeout | null = null
 
 // Performance optimized computed properties
 const conversationId = computed(() => route.params.id as string)
@@ -361,11 +371,12 @@ const quickReplies = ref([
   { id: '4', text: '問題已為您解決，如有其他疑問請隨時聯繫' }
 ])
 
-// Optimized polling with smart intervals
+// Optimized polling as backup for SSE with longer intervals
 const pollingInterval = ref<NodeJS.Timeout | null>(null)
-const pollingDelays = [15000, 30000, 60000, 120000] // 15s → 30s → 1min → 2min (更合理的間隔)
+const pollingDelays = [30000, 60000, 120000, 300000] // 30s → 1min → 2min → 5min (SSE 備份間隔)
+const sseBackupPollingDelays = [60000, 180000, 300000] // SSE 連接時的備份輪詢：1min → 3min → 5min
 const currentPollingIndex = ref(0)
-const maxPollingDelay = 300000 // Max 5 minutes (減少不必要的請求)
+const maxPollingDelay = 600000 // Max 10 minutes for backup polling
 const isPageVisible = ref(true) // 頁面可見性狀態
 const lastUserActivity = ref(Date.now()) // 最後用戶活動時間
 const USER_INACTIVE_THRESHOLD = 60000 // 用戶非活躍閾值：1分鐘
@@ -379,6 +390,165 @@ const handleMessageSent = async () => {
   await loadMessages(true, true) // Force refresh with animation (no loader)
   scrollToNewest()
   resetPollingDelay() // 重置輪詢延遲
+}
+
+// 修復：手動刷新使用平滑動畫而不是 HamsterLoader
+const handleRefreshMessages = async () => {
+  console.log('🔄 Manual refresh triggered with smooth animation')
+  trackUserActivity() // 手動刷新是用戶活動
+  await loadMessages(true, true) // Force refresh with animation (no loader)
+  resetPollingDelay() // 重置輪詢延遲
+}
+
+// SSE 實時消息連接管理
+const connectSSE = async () => {
+  if (!authStore.token || !conversationId.value) {
+    console.warn('❌ [Message SSE] Cannot connect: missing token or conversation ID')
+    return
+  }
+
+  // 關閉現有連接
+  disconnectSSE()
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+    const sseUrl = `${baseUrl}/api/realtime/sse?conversationId=${conversationId.value}&token=${encodeURIComponent(authStore.token)}`
+    
+    console.log('🚀 [Message SSE] Connecting for conversation:', conversationId.value)
+    
+    messageEventSource.value = new EventSource(sseUrl, {
+      withCredentials: false
+    })
+
+    messageEventSource.value.onopen = () => {
+      console.log('✅ [Message SSE] Connected successfully')
+      sseConnected.value = true
+      sseError.value = null
+      sseReconnectAttempts.value = 0
+    }
+
+    messageEventSource.value.onmessage = (event) => {
+      handleSSEMessage(event)
+    }
+
+    messageEventSource.value.onerror = (error) => {
+      console.error('❌ [Message SSE] Connection error:', error)
+      sseConnected.value = false
+      sseError.value = 'SSE 連接中斷'
+      handleSSEReconnect()
+    }
+
+  } catch (error) {
+    console.error('❌ [Message SSE] Failed to establish connection:', error)
+    sseError.value = '無法建立 SSE 連接'
+  }
+}
+
+// 處理 SSE 消息
+const handleSSEMessage = async (event: MessageEvent) => {
+  try {
+    const data = JSON.parse(event.data)
+    console.log('📥 [Message SSE] Received:', data.type)
+
+    switch (data.type) {
+      case 'connection':
+        console.log('🔗 [Message SSE] Connection confirmed')
+        break
+
+      case 'heartbeat':
+        // SSE 心跳，保持連接活躍
+        break
+
+      case 'new_message':
+        // 優化：直接添加新消息，無需重新載入整個對話
+        if (data.data && data.data.conversationId == conversationId.value) {
+          console.log('💬 [Message SSE] New message received directly:', data.data.content?.substring(0, 50))
+          trackUserActivity() // SSE 消息是用戶活動指示
+          
+          // 檢查是否為重複消息（避免重複顯示）
+          const existingMessage = smoothMessages.value.find(msg => msg.id === data.data.id)
+          if (!existingMessage) {
+            // 優化：將新消息插入正確位置並排序，確保時間順序正確
+            const currentMessages = [...smoothMessages.value, data.data]
+            const sortedMessages = sortMessagesByTime(currentMessages)
+            updateMessages(sortedMessages, true)
+            
+            // 如果用戶在底部，自動滾動到新消息
+            await nextTick()
+            if (virtualMessageListRef.value) {
+              virtualMessageListRef.value.scrollToBottom()
+            }
+          } else {
+            console.log('⚠️ [Message SSE] Duplicate message ignored:', data.data.id)
+          }
+        }
+        break
+
+      case 'notification':
+        // 處理通知（備份機制，主要依賴 new_message）
+        if (data.data && data.data.type === 'new_message') {
+          console.log('💬 [Message SSE] Fallback: New message notification received')
+          trackUserActivity() // SSE 消息是用戶活動指示
+          // 只有在沒有直接收到消息時才重新載入
+          const recentMessages = smoothMessages.value.filter(msg => 
+            new Date(msg.createdAt).getTime() > Date.now() - 5000 // 最近5秒的消息
+          )
+          if (recentMessages.length === 0) {
+            await loadMessages(false, true) // 使用平滑動畫載入新消息
+          }
+        }
+        break
+
+      case 'conversation_updated':
+        // 處理對話狀態更新
+        if (data.data && data.data.conversationId == conversationId.value) {
+          console.log('🔄 [Message SSE] Conversation updated')
+          await loadMessages(false, true) // 使用平滑動畫重新載入
+        }
+        break
+
+      default:
+        console.log('❓ [Message SSE] Unknown message type:', data.type)
+    }
+  } catch (error) {
+    console.error('❌ [Message SSE] Failed to parse message:', error)
+  }
+}
+
+// SSE 重連機制
+const handleSSEReconnect = () => {
+  if (sseReconnectAttempts.value >= maxSSEReconnectAttempts) {
+    console.warn('⚠️ [Message SSE] Max reconnection attempts reached, falling back to polling')
+    return
+  }
+
+  sseReconnectAttempts.value++
+  const delay = Math.min(1000 * Math.pow(2, sseReconnectAttempts.value - 1), 10000) // 指數退避，最多10秒
+
+  console.log(`🔄 [Message SSE] Reconnecting attempt ${sseReconnectAttempts.value}/${maxSSEReconnectAttempts} in ${delay}ms`)
+
+  sseReconnectTimer = setTimeout(() => {
+    if (authStore.token && conversationId.value) {
+      connectSSE()
+    }
+  }, delay)
+}
+
+// 斷開 SSE 連接
+const disconnectSSE = () => {
+  if (messageEventSource.value) {
+    messageEventSource.value.close()
+    messageEventSource.value = null
+  }
+
+  if (sseReconnectTimer) {
+    clearTimeout(sseReconnectTimer)
+    sseReconnectTimer = null
+  }
+
+  sseConnected.value = false
+  sseReconnectAttempts.value = 0
+  console.log('🔌 [Message SSE] Disconnected')
 }
 
 const handleAttachmentUpload = (attachment: unknown) => {
@@ -406,8 +576,9 @@ const loadMessages = async (force = false, animate = false) => {
     return
   }
   
-  // 只有真正的初始載入才顯示 HamsterLoader
-  const isRealInitialLoad = !hasLoadedInitially.value && smoothMessages.value.length === 0
+  // 修復：只有真正的初始載入才顯示 HamsterLoader
+  // hasLoadedInitially 現在會在首次載入後立即設為 true，避免重複載入器
+  const isRealInitialLoad = !hasLoadedInitially.value
   if (isRealInitialLoad) {
     isInitialLoading.value = true
   }
@@ -419,11 +590,17 @@ const loadMessages = async (force = false, animate = false) => {
       mark('message-fetch-start')
       await fetchMessages()
       
+      // 標記已完成初始載入（無論是否有消息）
+      const wasInitialLoad = !hasLoadedInitially.value
+      if (wasInitialLoad) {
+        hasLoadedInitially.value = true
+      }
+      
       if (rawMessages.value.length > 0) {
         mark('message-render-start')
         
         // Use animated update for subsequent loads, immediate for initial load
-        if (animate && hasLoadedInitially.value) {
+        if (animate && !wasInitialLoad) {
           // 後續更新使用動畫，不顯示載入器
           updateMessages(rawMessages.value, true)
         } else {
@@ -432,17 +609,15 @@ const loadMessages = async (force = false, animate = false) => {
           
           // Auto-scroll to bottom for initial load only
           await nextTick()
-          if (virtualMessageListRef.value && !hasLoadedInitially.value) {
+          if (virtualMessageListRef.value && wasInitialLoad) {
             virtualMessageListRef.value.scrollToBottom()
           }
         }
         
-        // 標記已完成初始載入
-        if (!hasLoadedInitially.value) {
-          hasLoadedInitially.value = true
-        }
-        
         measure('message-render', 'message-render-start')
+      } else if (animate && !wasInitialLoad) {
+        // 即使沒有新消息，也要觸發平滑更新以保持一致性
+        updateMessages([], true)
       }
       measure('message-fetch', 'message-fetch-start')
     })
@@ -479,7 +654,7 @@ const handleMessageRecall = async (message: Message) => {
   
   if (confirmed) {
     console.log('Message recalled:', message.id)
-    await refreshMessages()
+    await loadMessages(true, true) // Force refresh with animation after message recall
   }
 }
 
@@ -599,7 +774,7 @@ const goBack = () => {
   router.push('/conversations')
 }
 
-// Smart polling with activity detection
+// Smart polling as backup for SSE with activity detection
 const startPolling = () => {
   if (pollingInterval.value) {
     clearTimeout(pollingInterval.value)
@@ -618,26 +793,44 @@ const startPolling = () => {
     const isUserActive = Date.now() - lastUserActivity.value < USER_INACTIVE_THRESHOLD
     
     if (isUserActive) {
-      // 用戶活躍時載入消息，使用平滑動畫（無載入器）
-      await loadMessages(false, true) // animate new messages during polling
+      // 根據 SSE 狀態決定輪詢行為
+      if (sseConnected.value && !sseError.value) {
+        // SSE 連接正常，執行備份輪詢（較長間隔）
+        console.log('🔄 [Polling backup] Loading messages with smooth animation')
+        await loadMessages(false, true) // animate new messages during backup polling
+      } else {
+        // SSE 未連接或有錯誤，執行主要輪詢（較短間隔）
+        console.log('🔄 [Polling fallback] Loading messages with smooth animation')
+        await loadMessages(false, true) // animate new messages during fallback polling
+      }
     } else {
       console.log('⏸️ User inactive, skipping poll')
     }
     
-    // 根據用戶活躍度調整延遲
-    const baseDelay = pollingDelays[currentPollingIndex.value] || maxPollingDelay
+    // 根據 SSE 狀態和用戶活躍度選擇延遲間隔
+    const delayArray = sseConnected.value && !sseError.value 
+      ? sseBackupPollingDelays // SSE 連接時使用較長的備份間隔
+      : pollingDelays // SSE 未連接時使用正常間隔
+    
+    const baseDelay = delayArray[currentPollingIndex.value] || maxPollingDelay
     const delay = isUserActive ? baseDelay : Math.min(baseDelay * 2, maxPollingDelay)
     
     pollingInterval.value = setTimeout(poll, delay)
     
-    // 只有在用戶不活躍時才增加延遲
-    if (!isUserActive && currentPollingIndex.value < pollingDelays.length - 1) {
+    // 根據情況調整輪詢索引
+    const maxIndex = delayArray.length - 1
+    if (!isUserActive && currentPollingIndex.value < maxIndex) {
       currentPollingIndex.value++
     }
   }
 
-  // Start with first delay
-  pollingInterval.value = setTimeout(poll, pollingDelays[0])
+  // 根據 SSE 狀態選擇初始延遲
+  const initialDelay = sseConnected.value && !sseError.value 
+    ? sseBackupPollingDelays[0] 
+    : pollingDelays[0]
+  
+  console.log(`🚀 [Polling] Starting with ${sseConnected.value ? 'backup' : 'fallback'} mode, delay: ${initialDelay}ms`)
+  pollingInterval.value = setTimeout(poll, initialDelay)
 }
 
 // Reset polling delay on user activity
@@ -647,15 +840,23 @@ const resetPollingDelay = () => {
 }
 
 // 處理頁面可見性變化
-const handleVisibilityChange = () => {
+const handleVisibilityChange = async () => {
   isPageVisible.value = document.visibilityState === 'visible'
   console.log(`👁️ Page visibility changed: ${isPageVisible.value ? 'visible' : 'hidden'}`)
   
   if (isPageVisible.value) {
-    // 頁面變為可見時，立即刷新一次（帶動畫，無載入器）
+    // 頁面變為可見時，重新建立 SSE 連接
+    if (conversationId.value) {
+      await connectSSE()
+    }
+    
+    // 立即刷新一次（帶動畫，無載入器）
     loadMessages(true, true) // Force refresh with animation
     resetPollingDelay()
     startPolling()
+  } else {
+    // 頁面隱藏時斷開 SSE 以節省資源
+    disconnectSSE()
   }
 }
 
@@ -689,7 +890,7 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
     case 'r':
       if (event.ctrlKey || event.metaKey) {
         event.preventDefault()
-        refreshMessages()
+        handleRefreshMessages() // Use smooth animation for keyboard refresh
       }
       break
       
@@ -717,8 +918,8 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   }
 }
 
-// Lifecycle with performance monitoring
-onMounted(() => {
+// Lifecycle with performance monitoring and SSE
+onMounted(async () => {
   console.log('🔧 ConversationDetail mounted')
   
   // Start performance monitoring
@@ -731,7 +932,12 @@ onMounted(() => {
   document.addEventListener('mousemove', trackUserActivity)
   document.addEventListener('click', trackUserActivity)
   
-  // Start polling only if page is visible
+  // Start SSE connection for real-time messaging (priority)
+  if (document.visibilityState === 'visible' && conversationId.value) {
+    await connectSSE()
+  }
+  
+  // Start polling as backup (will adjust interval based on SSE status)
   if (document.visibilityState === 'visible') {
     startPolling()
   }
@@ -747,10 +953,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Clean up polling
   if (pollingInterval.value) {
     clearTimeout(pollingInterval.value)
     pollingInterval.value = null
   }
+  
+  // Clean up SSE connection
+  disconnectSSE()
   
   // Remove all event listeners
   document.removeEventListener('keydown', handleGlobalKeydown)
@@ -767,7 +977,7 @@ onUnmounted(() => {
   }
 })
 
-// Watch for route changes with performance monitoring
+// Watch for route changes with performance monitoring and SSE reconnection
 watch(
   () => route.params.id,
   async (newId) => {
@@ -780,6 +990,9 @@ watch(
     hasLoadedInitially.value = false
     isInitialLoading.value = true
     
+    // 斷開舊的 SSE 連接
+    disconnectSSE()
+    
     try {
       // Reset polling
       currentPollingIndex.value = 0
@@ -789,6 +1002,11 @@ watch(
         loadConversation(),
         setConversationId(newId).then(() => loadMessages(true)) // 真正的初始載入
       ])
+      
+      // 建立新的 SSE 連接到新對話
+      if (document.visibilityState === 'visible') {
+        await connectSSE()
+      }
       
       measure('conversation-load', 'conversation-load-start')
       
@@ -929,12 +1147,13 @@ watch(
   border-top: 1px solid rgba(226, 232, 240, 0.6);
   padding: 24px;
   flex: 0 0 auto;
-  max-height: 200px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .quick-replies {
-  max-width: 800px;
+  max-width: 1500px;
   margin: 20px auto 0;
   display: flex;
   gap: 12px;
