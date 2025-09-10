@@ -99,8 +99,19 @@ export const simpleRealtimeHandler = {
               if (newMessages.length > 0) {
                 console.log(`📨 [Simple SSE] Found ${newMessages.length} new messages for conversation ${conversationId}`);
                 
-                // 保存最新消息時間（排序前）
-                const latestMessageTime = newMessages[0]?.createdAt;
+                // 調試：顯示實際返回的消息數據結構
+                console.log(`🔍 [Simple SSE Debug] First message data:`, {
+                  id: newMessages[0]?.id,
+                  createdAt: newMessages[0]?.createdAt,
+                  createdAtType: typeof newMessages[0]?.createdAt,
+                  messageKeys: Object.keys(newMessages[0] || {})
+                });
+                
+                // 保存最新消息時間（排序前）- 修復時間戳處理
+                const firstMessage = newMessages[0];
+                const latestMessageTime = firstMessage?.createdAt;
+                
+                console.log(`🔍 [Simple SSE Debug] Latest message time: "${latestMessageTime}" (type: ${typeof latestMessageTime})`);
                 
                 newMessages.reverse().forEach(message => {
                   const eventData = {
@@ -122,10 +133,30 @@ export const simpleRealtimeHandler = {
                   console.log(`✅ [Simple SSE] Message pushed: ${message.id}`);
                 });
 
-                // 更新最後檢查時間為最新消息的時間
-                if (latestMessageTime) {
-                  lastCheckTime = new Date(latestMessageTime);
-                  console.log(`🔄 [Simple SSE] Updated lastCheckTime to: ${lastCheckTime.toISOString()}`);
+                // 強制更新最後檢查時間 - 修復邏輯
+                if (latestMessageTime && latestMessageTime.trim()) {
+                  try {
+                    const newTime = new Date(latestMessageTime);
+                    if (!isNaN(newTime.getTime())) {
+                      lastCheckTime = newTime;
+                      console.log(`🔄 [Simple SSE] Updated lastCheckTime to: ${lastCheckTime.toISOString()}`);
+                    } else {
+                      console.error(`❌ [Simple SSE] Invalid timestamp: "${latestMessageTime}"`);
+                      // 使用當前時間作為備用
+                      lastCheckTime = new Date();
+                      console.log(`🔄 [Simple SSE] Fallback lastCheckTime to: ${lastCheckTime.toISOString()}`);
+                    }
+                  } catch (error) {
+                    console.error(`❌ [Simple SSE] Error parsing timestamp:`, error);
+                    // 使用當前時間作為備用
+                    lastCheckTime = new Date();
+                    console.log(`🔄 [Simple SSE] Fallback lastCheckTime to: ${lastCheckTime.toISOString()}`);
+                  }
+                } else {
+                  console.error(`❌ [Simple SSE] Empty or invalid latestMessageTime: "${latestMessageTime}"`);
+                  // 使用當前時間作為備用，防止重複推送
+                  lastCheckTime = new Date();
+                  console.log(`🔄 [Simple SSE] Fallback lastCheckTime to: ${lastCheckTime.toISOString()}`);
                 }
                 console.log(`✅ [Simple SSE] Successfully processed ${newMessages.length} messages`);
               }
