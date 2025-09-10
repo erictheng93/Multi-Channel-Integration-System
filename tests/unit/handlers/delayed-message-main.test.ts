@@ -37,7 +37,7 @@ describe('DelayedMessage Main Handler', () => {
       c.env = {
         DB: {} as any,
         JWT_SECRET: 'test-secret',
-        MESSAGE_QUEUE: {} as any,
+        AGENT_QUEUE: {} as any,
         SESSIONS: {} as any,
         CACHE: {} as any
       } as any;

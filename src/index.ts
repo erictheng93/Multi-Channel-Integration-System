@@ -17,7 +17,6 @@ import {
 } from './handlers';
 import { activityHandler } from './handlers/activity';
 import { activityStreamHandler } from './handlers/activity-stream';
-import { realtimeHandler } from './handlers/realtime';
 import {
   getSystemInfo,
   getSettings,
@@ -56,6 +55,7 @@ import {
   backupCredentials
 } from './handlers/credentials';
 import { jwtAuth } from './middleware/auth';
+import { signJWT } from './utils/auth';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -153,12 +153,57 @@ app.delete('/api/activities/cleanup', jwtAuth, activityHandler.cleanup);
 // SSE 活動流路由 (不使用 jwtAuth 中間件，在處理器內部驗證)
 app.get('/api/activities/stream', activityStreamHandler.connect);
 
-// SSE 即時通訊路由 (不使用 jwtAuth 中間件，在處理器內部驗證)
-app.get('/api/realtime/sse', realtimeHandler.sse);
-app.post('/api/realtime/typing', jwtAuth, realtimeHandler.sendTypingStatus);
-app.post('/api/realtime/broadcast', jwtAuth, realtimeHandler.broadcastToConversation);
-app.get('/api/realtime/conversation/:id/status', jwtAuth, realtimeHandler.getConversationStatus);
-app.post('/api/realtime/online-status', jwtAuth, realtimeHandler.updateOnlineStatus);
+// 🚀 事件驅動 SSE 即時通訊路由 (使用新的 V2 處理器)
+// 使用簡化版SSE處理器 - 移除複雜的跨Worker同步邏輯
+import { simpleRealtimeHandler } from './handlers/realtime-simple';
+// 簡化版SSE路由 - 每個連接獨立運行，無跨Worker同步
+app.get('/api/realtime/sse', simpleRealtimeHandler.sse);
+
+// 暫時移除複雜功能，專注於核心SSE消息推送
+// app.post('/api/realtime/typing', jwtAuth, simpleRealtimeHandler.sendTypingStatus);
+// app.post('/api/realtime/broadcast', jwtAuth, simpleRealtimeHandler.broadcastToConversation);
+// app.get('/api/realtime/conversation/:id/status', jwtAuth, simpleRealtimeHandler.getConversationStatus);
+// app.post('/api/realtime/online-status', jwtAuth, simpleRealtimeHandler.updateOnlineStatus);
+
+// 📊 隊列統一監控路由
+import { queueMonitorHandler } from './handlers/queue-monitor';
+app.get('/api/queues/stats', jwtAuth, queueMonitorHandler.getUnifiedStats);
+app.get('/api/queues/health', jwtAuth, queueMonitorHandler.getHealthCheck);
+app.get('/api/queues/performance', jwtAuth, queueMonitorHandler.getPerformanceMetrics);
+app.post('/api/queues/maintenance', jwtAuth, queueMonitorHandler.maintenanceOperations);
+
+// 🔑 臨時測試token生成端點 (僅用於調試)
+app.post('/api/debug/generate-token', async (c) => {
+  try {
+    const { userId = "admin-001", displayName = "Debug User", role = "admin" } = await c.req.json();
+    
+    const payload = {
+      userId,
+      displayName,
+      role,
+      teamId: 1,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
+    };
+    
+    const token = await signJWT(payload, c.env.JWT_SECRET);
+    console.log('🔑 [DEBUG] Generated test token for:', { userId, displayName, role });
+    
+    return c.json({
+      success: true,
+      token,
+      payload,
+      expiresAt: new Date((payload.exp * 1000)).toISOString()
+    });
+    
+  } catch (error) {
+    console.error('🔑 [DEBUG] Token generation failed:', error);
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+  }
+});
+
+// 簡化版測試事件 - 不再使用Queue，依賴1秒輪詢自動發現
+app.post('/api/realtime/test-event', jwtAuth, simpleRealtimeHandler.testEvent);
 
 // ==================== Webhook 處理 ====================
 
@@ -401,6 +446,38 @@ app.get('/admin-dashboard.html', (c) => {
                     <button class="btn" onclick="refreshActivity()">重新整理</button>
                 </div>
             </div>
+
+            <div class="card">
+                <h3>🚀 代理隊列監控</h3>
+                <div class="stat-number" id="agent-queue-status">
+                    <span class="status-indicator status-online"></span>
+                    載入中...
+                </div>
+                <div id="agent-queue-details">
+                    <p>延遲消息和撤回功能</p>
+                    <small id="agent-queue-metrics">載入中...</small>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
+                    <button class="btn btn-secondary" onclick="viewQueueDetails()">詳細資訊</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⚡ 實時隊列監控</h3>
+                <div class="stat-number" id="realtime-queue-status">
+                    <span class="status-indicator status-online"></span>
+                    載入中...
+                </div>
+                <div id="realtime-queue-details">
+                    <p>實時事件推送和SSE管理</p>
+                    <small id="realtime-queue-metrics">載入中...</small>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
+                    <button class="btn btn-secondary" onclick="testRealtimeEvent()">測試事件</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -473,12 +550,114 @@ app.get('/admin-dashboard.html', (c) => {
             }, 1000);
         }
 
+        // 載入隊列統計資料
+        async function loadQueueStats() {
+            try {
+                const response = await fetch(\`\${API_BASE}/api/queues/stats\`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const queueData = data.data;
+                    
+                    // 更新代理隊列狀態
+                    const agentQueue = queueData.queues.agentQueue;
+                    document.getElementById('agent-queue-status').innerHTML = 
+                        \`<span class="status-indicator status-\${agentQueue.status === 'healthy' ? 'online' : 'offline'}"></span>
+                        \${agentQueue.status === 'healthy' ? '正常運行' : '異常'}\`;
+                    
+                    document.getElementById('agent-queue-metrics').textContent = 
+                        \`批次大小: \${agentQueue.configuration.maxBatchSize}, 平均處理時間: \${agentQueue.metrics.avgProcessingTime}ms\`;
+                    
+                    // 更新實時隊列狀態
+                    const realtimeQueue = queueData.queues.realtimeQueue;
+                    document.getElementById('realtime-queue-status').innerHTML = 
+                        \`<span class="status-indicator status-\${realtimeQueue.status === 'healthy' ? 'online' : 'offline'}"></span>
+                        \${realtimeQueue.status === 'healthy' ? '正常運行' : '異常'}\`;
+                    
+                    document.getElementById('realtime-queue-metrics').textContent = 
+                        \`SSE連接: \${queueData.realtimeConnections.totalConnections}, 平均處理時間: \${realtimeQueue.metrics.avgProcessingTime}ms\`;
+                        
+                    console.log('📊 隊列統計資料載入成功:', queueData);
+                }
+            } catch (error) {
+                console.error('載入隊列統計資料失敗:', error);
+                document.getElementById('agent-queue-status').innerHTML = '<span class="status-indicator status-offline"></span>錯誤';
+                document.getElementById('realtime-queue-status').innerHTML = '<span class="status-indicator status-offline"></span>錯誤';
+            }
+        }
+
+        // 重新整理隊列統計
+        function refreshQueueStats() {
+            document.getElementById('agent-queue-status').innerHTML = '<span class="status-indicator status-online"></span>載入中...';
+            document.getElementById('realtime-queue-status').innerHTML = '<span class="status-indicator status-online"></span>載入中...';
+            loadQueueStats();
+        }
+
+        // 查看隊列詳細資訊
+        function viewQueueDetails() {
+            fetch(\`\${API_BASE}/api/queues/performance\`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const metrics = data.data;
+                        alert(\`📊 隊列性能指標：
+
+🚀 代理隊列 (AGENT_QUEUE):
+  • 吞吐量: \${metrics.agentQueue.throughput.messagesPerSecond}/秒
+  • 成功率: \${metrics.agentQueue.reliability.successRate}%
+  • 錯誤率: \${metrics.agentQueue.reliability.errorRate}%
+
+⚡ 實時隊列 (REALTIME_QUEUE):
+  • 事件吞吐量: \${metrics.realtimeQueue.throughput.eventsPerSecond}/秒
+  • 成功率: \${metrics.realtimeQueue.reliability.successRate}%
+  • SSE連接: \${metrics.realtimeQueue.sseMetrics.activeConnections}\`);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ 無法載入隊列詳細資訊：' + error.message);
+                });
+        }
+
+        // 測試實時事件
+        function testRealtimeEvent() {
+            const conversationId = prompt('請輸入對話ID進行測試（或留空使用預設值）:') || '1';
+            const message = prompt('請輸入測試消息內容:') || '🧪 系統測試消息';
+            
+            fetch(\`\${API_BASE}/api/realtime/test-event\`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer test-token' // 這裡需要實際的JWT token
+                },
+                body: JSON.stringify({
+                    conversationId: conversationId,
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(\`✅ 測試事件已發送！
+事件ID: \${data.eventId}
+當前連接數: \${data.currentConnections}\`);
+                } else {
+                    alert('❌ 測試事件發送失敗: ' + (data.error || '未知錯誤'));
+                }
+            })
+            .catch(error => {
+                alert('❌ 測試事件失敗：' + error.message);
+            });
+        }
+
         // 頁面載入時執行
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
+            loadQueueStats();
             
             // 每30秒重新整理統計資料
             setInterval(loadStats, 30000);
+            // 每15秒重新整理隊列統計
+            setInterval(loadQueueStats, 15000);
         });
     </script>
 </body>
@@ -498,95 +677,38 @@ app.notFound((c) => {
 
 // ==================== Queue Consumer ====================
 
-import { MessageRecallService } from './services/message-recall-service';
-
-interface QueueMessage {
-  messageId: string;
-  action: string;
-  timestamp: string;
-}
-
-/**
- * 判斷錯誤是否可重試
- */
-function isRetryableError(error?: string): boolean {
-  if (!error) return false;
-
-  const retryableErrors = [
-    'network error',
-    'timeout',
-    'rate limit',
-    'temporary failure',
-    'service unavailable'
-  ];
-
-  return retryableErrors.some(retryableError => 
-    error.toLowerCase().includes(retryableError)
-  );
-}
-
-/**
- * Queue Consumer 處理延遲訊息
- * 這個函數會被 Cloudflare Workers 自動調用
- */
-export async function queue(
-  batch: MessageBatch<QueueMessage>,
-  env: Bindings,
-  _ctx: ExecutionContext
-): Promise<void> {
-  console.log(`Processing queue batch with ${batch.messages.length} messages`);
-  
-  const recallService = new MessageRecallService(env);
-
-  // 處理批次中的每個訊息
-  for (const message of batch.messages) {
-    try {
-      const { messageId, action } = message.body;
-
-      console.log(`Processing queue message: ${messageId}, action: ${action}`);
-
-      if (action === 'send_delayed_message') {
-        const result = await recallService.processQueueMessage(messageId);
-        
-        if (result.success) {
-          if (result.skipped) {
-            console.log(`Message ${messageId} was cancelled, skipped sending`);
-          } else {
-            console.log(`Message ${messageId} sent successfully`);
-          }
-          
-          // 確認訊息處理完成
-          message.ack();
-        } else {
-          console.error(`Failed to process message ${messageId}:`, result.error);
-          
-          // 重試機制
-          if (isRetryableError(result.error)) {
-            console.log(`Retrying message ${messageId}`);
-            message.retry();
-          } else {
-            console.log(`Acknowledging failed message ${messageId}`);
-            message.ack();
-          }
-        }
-      } else {
-        console.warn(`Unknown action: ${action} for message ${messageId}`);
-        message.ack();
-      }
-
-    } catch (error) {
-      console.error(`Error processing queue message:`, error);
-      message.retry();
-    }
-  }
-  
-  console.log(`Finished processing queue batch`);
-}
+import { AgentQueueService } from './services/agent-queue-service';
+// 移除複雜的 RealtimeQueueService - 改用簡化版 SSE 獨立輪詢
 
 // ==================== 導出 ====================
 
-// 匯出 Worker 處理器
+// ==================== 導出 Worker 處理器 ====================
+
 export default {
   fetch: app.fetch,
-  queue: queue
+  queue: async (batch: MessageBatch<any>, env: Bindings) => {
+    // 檢查隊列名稱並路由到對應處理器
+    const queueName = batch.queue;
+    console.log(`🚀 [Queue Router] Processing queue: ${queueName} with ${batch.messages.length} messages`);
+    
+    try {
+      if (queueName === 'realtime-events') {
+        // 簡化版：實時事件由 SSE 連接自主輪詢處理，無需隊列
+        console.log(`📡 [Queue Router] Realtime events handled by simplified SSE polling - skipping queue processing`);
+        
+      } else if (queueName === 'agent-queue') {
+        // 處理代理隊列 (保留 - 延遲消息功能)
+        const agentService = new AgentQueueService(env);
+        await agentService.processMessageBatch(batch);
+        
+      } else {
+        console.warn(`⚠️ [Queue Router] Unknown queue: ${queueName}`);
+      }
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`❌ [Queue Router] Error processing queue ${queueName}:`, errorMessage);
+      throw error; // 重新抛出錯誤以觸發隊列重試機制
+    }
+  }
 };

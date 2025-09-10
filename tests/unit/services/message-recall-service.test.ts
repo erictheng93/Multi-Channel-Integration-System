@@ -19,7 +19,7 @@ const createMockBindings = (): Bindings => ({
     get: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(undefined)
   } as any,
-  MESSAGE_QUEUE: {
+  AGENT_QUEUE: {
     send: vi.fn().mockResolvedValue(undefined)
   } as any,
   LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
@@ -72,7 +72,7 @@ describe('MessageRecallService', () => {
       );
 
       // 驗證 Queue 排程
-      expect(mockBindings.MESSAGE_QUEUE.send).toHaveBeenCalledWith(
+      expect(mockBindings.AGENT_QUEUE.send).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'send_delayed_message',
           messageId: expect.any(String)
@@ -105,8 +105,8 @@ describe('MessageRecallService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle missing MESSAGE_QUEUE gracefully', async () => {
-      mockBindings.MESSAGE_QUEUE = undefined as any;
+    it('should handle missing AGENT_QUEUE gracefully', async () => {
+      mockBindings.AGENT_QUEUE = undefined as any;
 
       const result = await service.sendDelayedMessage(validRequest);
 

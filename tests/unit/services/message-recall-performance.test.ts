@@ -23,7 +23,7 @@ describe('MessageRecallService Performance Tests', () => {
         get: vi.fn().mockResolvedValue(null),
         delete: vi.fn().mockResolvedValue(undefined)
       } as any,
-      MESSAGE_QUEUE: {
+      AGENT_QUEUE: {
         send: vi.fn().mockResolvedValue(undefined)
       } as any,
       LINE_CHANNEL_ACCESS_TOKEN: 'test-token',
@@ -73,7 +73,7 @@ describe('MessageRecallService Performance Tests', () => {
       expect(mockBindings.SESSIONS.put).toHaveBeenCalledTimes(batchSize);
 
       // 驗證 Queue 調用次數
-      expect(mockBindings.MESSAGE_QUEUE.send).toHaveBeenCalledTimes(batchSize);
+      expect(mockBindings.AGENT_QUEUE.send).toHaveBeenCalledTimes(batchSize);
 
       console.log(`Batch send performance: ${batchSize} messages in ${duration.toFixed(2)}ms`);
     });

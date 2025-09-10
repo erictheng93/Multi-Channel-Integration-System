@@ -74,7 +74,7 @@ delayedMessages.post('/send', async (c) => {
     });
 
     // 加入到 Queue 中
-    await c.env.MESSAGE_QUEUE.send({
+    await c.env.AGENT_QUEUE.send({
       type: 'delayed_message',
       messageId: delayedMessage[0]?.id || '',
       scheduledAt,

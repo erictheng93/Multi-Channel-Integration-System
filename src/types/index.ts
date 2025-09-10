@@ -5,6 +5,7 @@ export * from './database';
 export * from './external-apis';
 export * from './handlers';
 export * from './api-standard';
+export * from './events';
 
 // Cloudflare Workers 環境變數類型定義
 export interface Bindings {
@@ -40,7 +41,8 @@ export interface Bindings {
   CACHE?: KVNamespace;
   FILES?: R2Bucket;
   AVATARS?: R2Bucket;
-  MESSAGE_QUEUE: Queue;
+  AGENT_QUEUE: Queue; // 代理延遲消息和撤回功能
+  REALTIME_QUEUE: Queue; // 實時事件推送隊列
   NOTIFICATION_QUEUE?: Queue;
   DELAYED_QUEUE?: Queue;
   KV: KVNamespace;

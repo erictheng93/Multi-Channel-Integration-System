@@ -4,7 +4,7 @@ export default {
     if (request.method === 'POST' && new URL(request.url).pathname === '/test-queue') {
       try {
         // 直接發送測試訊息到 Queue
-        await env.MESSAGE_QUEUE.send({
+        await env.AGENT_QUEUE.send({
           messageId: 'test-' + Date.now(),
           action: 'send_delayed_message',
           timestamp: new Date().toISOString()

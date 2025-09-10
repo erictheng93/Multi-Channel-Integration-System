@@ -23,13 +23,22 @@
           class="image-container"
           @click="openImagePreview"
         >
-          <img 
-            :src="attachmentUrl" 
-            :alt="attachmentName"
-            class="message-image-content"
-            @load="onImageLoad"
-            @error="onImageError"
+          <div
+            class="image-placeholder"
+            style="width: 300px; height: 200px; aspect-ratio: 3/2;"
           >
+            <img 
+              :src="attachmentUrl" 
+              :alt="attachmentName"
+              class="message-image-content"
+              width="300"
+              height="200"
+              style="width: 100%; height: 100%; object-fit: cover; display: block;"
+              loading="lazy"
+              @load="onImageLoad"
+              @error="onImageError"
+            >
+          </div>
           <div class="image-overlay">
             <div class="image-actions">
               <button
@@ -131,11 +140,14 @@
           <div
             v-if="stickerImageUrl && !stickerLoadError"
             class="sticker-image-container"
+            style="width: 160px; height: 160px;"
           >
             <img 
               :src="stickerImageUrl" 
               alt="LINE Sticker"
               class="sticker-image"
+              style="width: 100%; height: 100%; object-fit: contain;"
+              loading="lazy"
               @error="onStickerError"
               @load="onStickerLoad"
             >
@@ -299,13 +311,17 @@
             </div>
           </div>
           <div class="preview-content">
-            <img 
-              :src="attachmentUrl || ''" 
-              :alt="attachmentName" 
-              class="preview-image"
-              :style="{ transform: `scale(${zoomLevel})` }"
-              @wheel="handleZoom"
-            >
+            <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+              <img 
+                :src="attachmentUrl || ''" 
+                :alt="attachmentName" 
+                class="preview-image"
+                style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                :style="{ transform: `scale(${zoomLevel})` }"
+                loading="lazy"
+                @wheel="handleZoom"
+              >
+            </div>
           </div>
           <div class="preview-controls">
             <button

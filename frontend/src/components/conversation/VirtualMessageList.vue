@@ -1,5 +1,8 @@
 <template>
-  <div class="virtual-message-list" ref="scrollContainer">
+  <div
+    ref="scrollContainer"
+    class="virtual-message-list"
+  >
     <!-- Search Results Header -->
     <div
       v-if="isSearchActive"
@@ -90,10 +93,11 @@
       </div>
     </div>
 
-    <!-- Loading States -->
+    <!-- Loading States with fixed height to prevent CLS -->
     <div
       v-if="loadingHistory && messages.length > 0"
       class="history-loading-wrapper"
+      style="height: 60px; display: flex; align-items: center; justify-content: center;"
     >
       <div class="history-loading-content">
         <HamsterLoader message="載入更多歷史訊息..." />
@@ -225,6 +229,7 @@ const virtualizer = useVirtualizer({
   getScrollElement: () => scrollContainer.value || null,
   estimateSize: () => 80,
   overscan: 5,
+  measureElement: (element) => element?.getBoundingClientRect().height || 80,
 })
 
 // Methods

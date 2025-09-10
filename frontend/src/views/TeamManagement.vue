@@ -700,6 +700,8 @@
                 :src="currentQRCode"
                 alt="Team QR Code"
                 class="qr-image"
+                style="width: 100%; height: 100%; object-fit: contain;"
+                loading="lazy"
               >
               <HamsterLoader
                 v-else

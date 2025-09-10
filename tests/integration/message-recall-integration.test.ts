@@ -36,7 +36,7 @@ describe('Message Recall Integration Tests', () => {
         })
       } as any,
       SESSIONS: {} as any, // KV 接口對象
-      MESSAGE_QUEUE: {
+      AGENT_QUEUE: {
         send: vi.fn().mockResolvedValue(undefined),
         messages: [] as any[] // 模擬佇列
       } as any,
@@ -399,9 +399,9 @@ describe('Message Recall Integration Tests', () => {
       });
 
       // 3. 驗證佇列調用順序
-      expect(mockBindings.MESSAGE_QUEUE.send).toHaveBeenCalledTimes(2);
+      expect(mockBindings.AGENT_QUEUE.send).toHaveBeenCalledTimes(2);
       
-      const queueCalls = mockBindings.MESSAGE_QUEUE.send.mock.calls;
+      const queueCalls = mockBindings.AGENT_QUEUE.send.mock.calls;
       expect(queueCalls[0][1].delaySeconds).toBe(30);
       expect(queueCalls[1][1].delaySeconds).toBe(60);
     });
@@ -417,7 +417,7 @@ describe('Message Recall Integration Tests', () => {
       };
 
       // Mock 佇列失敗
-      mockBindings.MESSAGE_QUEUE.send = vi.fn().mockRejectedValue(
+      mockBindings.AGENT_QUEUE.send = vi.fn().mockRejectedValue(
         new Error('Queue service unavailable')
       );
 

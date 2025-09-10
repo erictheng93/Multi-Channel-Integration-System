@@ -729,6 +729,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+
   const loadMore = async () => {
     if (pagination.value.page >= pagination.value.totalPages) {return}
     await fetchConversations(filters.value, pagination.value.page + 1, true)

@@ -21,15 +21,21 @@
           class="image-container"
           @click="openImagePreview"
         >
-          <img 
-            :src="attachmentUrl" 
-            :alt="attachmentName"
-            class="message-image-content"
-            loading="lazy"
-            decoding="async"
-            @load="onImageLoad"
-            @error="onImageError"
+          <div
+            class="image-placeholder"
+            style="width: 300px; height: 200px; aspect-ratio: 3/2;"
           >
+            <img 
+              :src="attachmentUrl" 
+              :alt="attachmentName"
+              class="message-image-content"
+              style="width: 100%; height: 100%; object-fit: cover; display: block;"
+              loading="lazy"
+              decoding="async"
+              @load="onImageLoad"
+              @error="onImageError"
+            >
+          </div>
           <div 
             v-show="showActions"
             class="image-overlay"

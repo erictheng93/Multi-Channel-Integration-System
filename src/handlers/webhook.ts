@@ -9,6 +9,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { customers, conversations, messages, fileAttachments } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
+import { realtimeQueueHandler } from './realtime-queue';
 import type { 
   Bindings, 
   LineWebhookBody, 
@@ -549,6 +550,39 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
         });
         throw new Error(`Failed to create message: ${messageError}`);
       }
+
+    // 🚀 事件驅動推送：立即推送 LINE 新消息事件到隊列
+    try {
+      await realtimeQueueHandler.createAndQueueEvent(
+        'message_created',
+        {
+          messageId: messageId,
+          conversationId: parseInt(conversation!.id),
+          content: messageContent,
+          messageType: messageType as 'text' | 'image' | 'file',
+          senderType: 'customer',
+          senderId: user.id,
+          senderName: user.displayName || `Customer ${user.id}`,
+          customerName: user.displayName || 'Unknown',
+          agentName: 'System',
+          metadata: mediaData ? (mediaData as Record<string, unknown>) : {},
+          createdAt: timestamp,
+          isRead: false
+        },
+        {
+          conversationId: parseInt(conversation!.id),
+          userIds: conversation!.assignedUserId ? [parseInt(conversation!.assignedUserId)] : [],
+          broadcast: !conversation!.assignedUserId // 如果沒有分配用戶，則廣播給所有在線用戶
+        },
+        'urgent', // LINE 客戶消息是最高優先級
+        env,
+        'webhook'
+      );
+      console.log(`🚀 [LINE Webhook] Event queued for message ${messageId} from LINE user ${user.id}`);
+    } catch (eventError) {
+      console.error('❌ [LINE Webhook] Failed to queue event:', eventError);
+      // 不影響 webhook 處理的成功，只記錄錯誤
+    }
 
     // 記錄活動以觸發 SSE 更新
     try {

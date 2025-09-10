@@ -50,14 +50,25 @@ bucket_name = "multi-channel-platform-attachments"
 preview_bucket_name = "multi-channel-platform-attachments"
 experimental_remote = true
 
-# 生產環境 Queue
+# 生產環境 Queue - 代理延遲消息處理
 [[queues.producers]]
-binding = "MESSAGE_QUEUE"
-queue = "message-queue"
+binding = "AGENT_QUEUE"
+queue = "agent-queue"
 experimental_remote = true
 
 [[queues.consumers]]
-queue = "message-queue"
+queue = "agent-queue"
 max_batch_size = 10
 max_batch_timeout = 5
+
+# 實時事件推送隊列 - 新增
+[[queues.producers]]
+binding = "REALTIME_QUEUE"
+queue = "realtime-events"
+experimental_remote = true
+
+[[queues.consumers]]
+queue = "realtime-events"
+max_batch_size = 5
+max_batch_timeout = 1
 

@@ -83,7 +83,7 @@ export const realtimeHandler = {
           
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(connectionEvent)}\n\n`));
 
-          // 優化的心跳檢測 (每 25 秒)
+          // 優化的心跳檢測 (每 15 秒) - 減少延遲並提高連接穩定性
           heartbeatInterval = setInterval(() => {
             if (connectionClosed) {
               clearInterval(heartbeatInterval);
@@ -102,52 +102,60 @@ export const realtimeHandler = {
               clearInterval(heartbeatInterval);
               console.log('SSE heartbeat failed, connection closed');
             }
-          }, 25000);
+          }, 15000);
 
-          // 優化的通知檢查 (每 3 秒)
+          // 優化的通知檢查 (每 3 秒) - 合併查詢減少資料庫負載
           const checkNotifications = async () => {
             if (connectionClosed) return;
 
             try {
               const drizzleDb = drizzle(c.env.DB);
-              // 檢查新通知
-              const notifications = await drizzleDb.run(sql`
-                SELECT * FROM notifications
-                WHERE user_id = ${payload.userId} AND is_read = FALSE
-                AND created_at > datetime('now', '-30 seconds')
-                ORDER BY created_at DESC
-                LIMIT 5
-              `);
+              const timeWindow = '-30 seconds';
+              
+              // 優化：並行執行查詢而不是序列執行
+              const queryPromises = [];
+              
+              // 1. 檢查新通知 (只選擇必要欄位)
+              queryPromises.push(
+                drizzleDb.run(sql`
+                  SELECT id, type, title, content, created_at FROM notifications
+                  WHERE user_id = ${payload.userId} AND is_read = FALSE
+                  AND created_at > datetime('now', ${timeWindow})
+                  ORDER BY created_at DESC
+                  LIMIT 5
+                `)
+              );
 
-              // 檢查新消息（優化：直接推送消息內容）
-              let newMessages: any[] = [];
+              // 2. 檢查新消息和對話更新 (合併查詢)
               if (conversationId) {
-                const messagesResult = await drizzleDb.run(sql`
-                  SELECT m.*, 
-                         c.customer_id,
-                         cu.display_name as customer_name,
-                         u.display_name as agent_name
-                  FROM messages m
-                  JOIN conversations c ON m.conversation_id = c.id
-                  JOIN customers cu ON c.customer_id = cu.id
-                  LEFT JOIN users u ON m.sender_id = u.id
-                  WHERE m.conversation_id = ${conversationId} 
-                  AND m.created_at > datetime('now', '-30 seconds')
-                  ORDER BY m.created_at ASC
-                `);
-                newMessages = messagesResult.results || [];
+                queryPromises.push(
+                  drizzleDb.run(sql`
+                    SELECT m.id, m.content, m.message_type, m.sender_type, m.sender_id, m.created_at, m.is_read, m.metadata,
+                           c.customer_id, c.status as conversation_status, c.updated_at as conversation_updated_at,
+                           cu.display_name as customer_name,
+                           u.display_name as agent_name
+                    FROM messages m
+                    JOIN conversations c ON m.conversation_id = c.id
+                    JOIN customers cu ON c.customer_id = cu.id
+                    LEFT JOIN users u ON m.sender_id = u.id
+                    WHERE m.conversation_id = ${conversationId} 
+                    AND m.created_at > datetime('now', ${timeWindow})
+                    ORDER BY m.created_at ASC
+                  `),
+                  drizzleDb.get(sql`
+                    SELECT c.id, c.status, c.updated_at, cu.display_name as customer_name
+                    FROM conversations c
+                    JOIN customers cu ON c.customer_id = cu.id
+                    WHERE c.id = ${conversationId} AND c.updated_at > datetime('now', ${timeWindow})
+                  `)
+                );
               }
 
-              // 檢查對話狀態變更
-              let conversationUpdates = null;
-              if (conversationId) {
-                conversationUpdates = await drizzleDb.get(sql`
-                  SELECT c.*, cu.display_name as customer_name
-                  FROM conversations c
-                  JOIN customers cu ON c.customer_id = cu.id
-                  WHERE c.id = ${conversationId} AND c.updated_at > datetime('now', '-30 seconds')
-                `);
-              }
+              // 並行執行所有查詢
+              const results = await Promise.all(queryPromises);
+              const notifications = results[0] as any;
+              const newMessages = conversationId && results[1] ? ((results[1] as any)?.results || []) : [];
+              const conversationUpdates = conversationId && results[2] ? (results[2] as any) : null;
 
               // 檢查打字狀態
               const typingStatuses = await realtimeHandler.getTypingStatuses(c.env, conversationId ? parseInt(conversationId) : null);
@@ -181,8 +189,8 @@ export const realtimeHandler = {
               }
 
               // 發送通知（保留作為備份）
-              if (notifications.results || [].length > 0) {
-                for (const notification of notifications.results || []) {
+              if ((notifications as any)?.results?.length > 0) {
+                for (const notification of ((notifications as any)?.results || [])) {
                   const eventData = {
                     type: 'notification',
                     data: {
@@ -233,9 +241,38 @@ export const realtimeHandler = {
             }
           };
 
-          // 立即檢查一次，然後每 3 秒檢查
-          checkNotifications();
-          notificationCheckInterval = setInterval(checkNotifications, 3000);
+          // 智能檢查機制：根據活動情況調整檢查頻率
+          let consecutiveEmptyChecks = 0;
+          const maxEmptyChecks = 10; // 10次空檢查後降低頻率
+          let currentCheckInterval = 3000; // 開始 3 秒
+          
+          const smartCheckNotifications = async () => {
+            const startTime = Date.now();
+            await checkNotifications();
+            
+            // 模擬檢查結果（基於檢查時間長短判斷是否有數據）
+            const checkDuration = Date.now() - startTime;
+            const hadActivity = checkDuration > 50; // 如果查詢時間超過50ms，可能有數據處理
+            
+            if (hadActivity) {
+              consecutiveEmptyChecks = 0;
+              currentCheckInterval = 3000; // 重置為快速檢查
+            } else {
+              consecutiveEmptyChecks++;
+              if (consecutiveEmptyChecks >= maxEmptyChecks) {
+                currentCheckInterval = Math.min(10000, currentCheckInterval * 1.5); // 最多延長到10秒
+              }
+            }
+            
+            // 動態調整下次檢查間隔
+            if (notificationCheckInterval) {
+              clearTimeout(notificationCheckInterval);
+            }
+            notificationCheckInterval = setTimeout(smartCheckNotifications, currentCheckInterval);
+          };
+
+          // 立即檢查一次，然後啟動智能檢查
+          smartCheckNotifications();
         },
 
         cancel() {

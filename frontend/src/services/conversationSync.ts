@@ -22,9 +22,9 @@ interface SyncConfig {
 
 // 默認配置
 const DEFAULT_CONFIG: SyncConfig = {
-  sseUrl: '/api/conversations/stream',
+  sseUrl: '/api/realtime/sse',  // 修正為實際存在的 SSE 端點
   pollbackupInterval: 300000,   // 5分鐘備份輪詢（減少頻率）
-  heartbeatTimeout: 45000,      // 45秒心跳超時
+  heartbeatTimeout: 30000,      // 30秒心跳超時（配合15秒心跳間隔）
   reconnectDelay: 5000,         // 5秒重連延遲
   maxReconnectAttempts: 3       // 最多重連3次
 };
@@ -116,8 +116,8 @@ export class ConversationSyncService {
     try {
       const baseURL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
       const baseUrl = baseURL.endsWith('/api') 
-        ? `${baseURL}/conversations/stream`
-        : `${baseURL}/api/conversations/stream`;
+        ? `${baseURL}/realtime/sse`
+        : `${baseURL}/api/realtime/sse`;
       
       // 通過URL參數傳遞token（EventSource限制）
       const url = `${baseUrl}?token=${encodeURIComponent(authStore.token)}`;
@@ -239,7 +239,7 @@ export class ConversationSyncService {
       const shouldPoll = this.status.value === 'polling' || 
                         timeSinceSSEUpdate > this.config.pollbackupInterval;
 
-      // 添加頁面檢測：只在對話列表頁面進行輪詢，避免在對話詳情頁面造成干擾
+      // 添加頁面檢測：支持所有頁面的備份輪詢，但頻率不同
       const currentPath = window.location.pathname;
       const isConversationListPage = currentPath === '/conversations' || currentPath === '/';
       const isConversationDetailPage = currentPath.startsWith('/conversations/');
@@ -248,7 +248,9 @@ export class ConversationSyncService {
         console.log('🔄 [Sync Service] Backup polling triggered for conversation list');
         this.pollConversations();
       } else if (shouldPoll && isConversationDetailPage) {
-        console.log('🚫 [Sync Service] Skipping polling on conversation detail page');
+        // 對話詳情頁面也提供備份輪詢，但頻率較低避免與頁面內 SSE 衝突
+        console.log('🔄 [Sync Service] Backup polling triggered for conversation detail page');
+        this.pollConversations();
       }
     }, this.config.pollbackupInterval);
   }

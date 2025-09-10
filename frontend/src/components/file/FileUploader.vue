@@ -63,12 +63,17 @@
           class="file-item"
           :class="{ 'error': file.error }"
         >
-          <div class="file-preview">
+          <div
+            class="file-preview"
+            style="width: 48px; height: 48px;"
+          >
             <img
               v-if="file.preview && isImageFile(file)"
               :src="file.preview"
               :alt="file.name"
               class="image-preview"
+              style="width: 100%; height: 100%; object-fit: cover;"
+              loading="lazy"
             >
             <div
               v-else

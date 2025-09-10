@@ -103,7 +103,7 @@ systemHandler.get('/system/status', async (c) => {
         },
         queue: {
           status: 'available',
-          name: 'MESSAGE_QUEUE'
+          name: 'AGENT_QUEUE'
         }
       },
       environment: c.env.ENVIRONMENT || 'development'
