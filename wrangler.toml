@@ -19,43 +19,31 @@ zone_name = "imfinethankyouandyou.com"
 [observability]
 enabled = true
 
-# Build optimization
-minify = true
-upload_source_maps = true
-
 # 生產環境 D1 資料庫
 [[d1_databases]]
 binding = "DB"
 database_name = "multi-channel-platform"
 database_id = "08ae6790-2494-40a8-a07a-df3920783159"
 migrations_dir = "migrations"
-experimental_remote = true
 
 # 生產環境 KV Namespaces
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "ace3f7202e6a4dd8b98c50e9b91b2431"
-preview_id = "ace3f7202e6a4dd8b98c50e9b91b2431"
-experimental_remote = true
 
 [[kv_namespaces]]
 binding = "CACHE"
 id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
-preview_id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
-experimental_remote = true
 
 # 生產環境 R2 存儲
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "multi-channel-platform-attachments"
-preview_bucket_name = "multi-channel-platform-attachments"
-experimental_remote = true
 
 # 生產環境 Queue - 代理延遲消息處理
 [[queues.producers]]
 binding = "AGENT_QUEUE"
 queue = "agent-queue"
-experimental_remote = true
 
 [[queues.consumers]]
 queue = "agent-queue"
@@ -66,7 +54,6 @@ max_batch_timeout = 5
 [[queues.producers]]
 binding = "REALTIME_QUEUE"
 queue = "realtime-events"
-experimental_remote = true
 
 [[queues.consumers]]
 queue = "realtime-events"
