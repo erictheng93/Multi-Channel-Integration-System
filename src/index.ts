@@ -1,10 +1,12 @@
 // 主要入口點 - Handler-based 架構
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
+import { logger, createContextLogger } from './utils/logger';
+import { templateService } from './services/template-service';
 
-// 導入所有 handlers
+// Import handlers - consolidated imports
 import {
   authMainHandler,
   teamMainHandler,
@@ -15,8 +17,13 @@ import {
   qrcodeMainHandler,
   sessionMainHandler
 } from './handlers';
+
+// Import additional handlers
 import { activityHandler } from './handlers/activity';
 import { activityStreamHandler } from './handlers/activity-stream';
+import websocketMainHandler from './handlers/websocket-main';
+
+// Import system functions (grouped by functionality)
 import {
   getSystemInfo,
   getSettings,
@@ -31,22 +38,26 @@ import {
   healthCheck,
   getApiStatus
 } from './handlers/system';
-import { 
-  getTeamMembers, 
-  addTeamMember, 
-  inviteMember, 
+
+// Import team functions
+import {
+  getTeamMembers,
+  addTeamMember,
+  inviteMember,
   updateMemberStatus,
   updateMemberRole,
   resetMemberPassword,
   resetPasswordWithPolicy,
   changePassword,
-  deleteMember, 
-  getInvitations, 
+  deleteMember,
+  getInvitations,
   revokeInvitation,
   getMemberPassword,
   updateMember,
   migratePasswords
 } from './handlers/team';
+
+// Import credential functions
 import {
   storeCredential,
   getCredential,
@@ -54,18 +65,73 @@ import {
   clearPlatformCredentials,
   backupCredentials
 } from './handlers/credentials';
+// Import middleware and utilities
 import { jwtAuth } from './middleware/auth';
 import { signJWT } from './utils/auth';
+import { getSecurityConfig, isOriginAllowed, getSecurityHeaders } from './config/security';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// 獲取安全配置
+const environment = process.env.NODE_ENV || process.env.ENVIRONMENT || 'production';
+const securityConfig = getSecurityConfig(environment);
+
 // 添加中間件
-app.use('*', logger());
+app.use('*', honoLogger());
+
+// 🔥 Initialize latest message cache on startup
+app.use('*', async (c, next) => {
+  // Only run warmup on the first request after deployment
+  const shouldWarmup = c.req.header('cf-worker-started') ||
+                      c.req.url.includes('__warmup__');
+
+  if (shouldWarmup) {
+    try {
+      const { LatestMessageJobQueue } = await import('./workers/latest-message-worker');
+      const jobQueue = new LatestMessageJobQueue(c.env);
+      await jobQueue.warmupCache();
+      console.log('🔥 [Startup] Latest message cache warmup initiated');
+    } catch (error) {
+      console.warn('⚠️ [Startup] Cache warmup failed (non-critical):', error);
+    }
+  }
+
+  await next();
+});
+
+// 安全的 CORS 配置
 app.use('*', cors({
-  origin: '*',
+  origin: (origin) => {
+    // Fix CORS origin issue - ensure we return proper string value
+    if (!origin) {
+      // Allow same-origin requests
+      return origin;
+    }
+
+    if (isOriginAllowed(origin, securityConfig)) {
+      return origin;
+    }
+
+    return null;
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: securityConfig.cors.allowCredentials,
+  maxAge: securityConfig.cors.maxAge
 }));
+
+// 安全標頭中間件
+app.use('*', async (c, next) => {
+  await next();
+
+  // 設置安全標頭
+  const isHttps = c.req.url.startsWith('https://');
+  const headers = getSecurityHeaders(securityConfig, isHttps);
+
+  Object.entries(headers).forEach(([key, value]) => {
+    c.header(key, value);
+  });
+});
 
 // ==================== 基礎路由 ====================
 
@@ -153,6 +219,33 @@ app.delete('/api/activities/cleanup', jwtAuth, activityHandler.cleanup);
 // SSE 活動流路由 (不使用 jwtAuth 中間件，在處理器內部驗證)
 app.get('/api/activities/stream', activityStreamHandler.connect);
 
+// 🚀 WebSocket 即時通訊路由 (WebSocket + Durable Objects 架構)
+app.route('/api/websocket', websocketMainHandler);
+
+// 📊 WebSocket 分析和監控路由 (Phase 2: 長期優化)
+import websocketAnalyticsHandler from './handlers/websocket-analytics-main';
+app.route('/api/websocket/analytics', websocketAnalyticsHandler);
+
+// 👥 用戶體驗監控路由 (Phase 2: 長期優化)
+import userExperienceHandler from './handlers/user-experience-main';
+app.route('/api/user-experience', userExperienceHandler);
+
+// 🔐 Phase 2 認證管理路由 (認證令牌管理)
+import phase2AuthHandler from './handlers/phase2-auth-management';
+app.route('/api/phase2-auth', phase2AuthHandler);
+
+// 🚨 告警通知配置管理路由 (Slack, Email, Webhook 設定)
+import alertConfigHandler from './handlers/alert-config-management';
+app.route('/api/alert-config', alertConfigHandler);
+
+// ⚡ 數據優化管理路由 (緩存、批量操作、索引優化)
+import dataOptimizationHandler from './handlers/data-optimization-main';
+app.route('/api/data-optimization', dataOptimizationHandler);
+
+// 📡 SSE 性能監控路由 (Phase 2: SSE 完善和部署)
+import sseMonitoringHandler from './handlers/sse-monitoring-main';
+app.route('/api/sse/monitoring', sseMonitoringHandler);
+
 // 🚀 事件驅動 SSE 即時通訊路由 (使用新的 V2 處理器)
 // 使用簡化版SSE處理器 - 移除複雜的跨Worker同步邏輯
 import { simpleRealtimeHandler } from './handlers/realtime-simple';
@@ -172,35 +265,61 @@ app.get('/api/queues/health', jwtAuth, queueMonitorHandler.getHealthCheck);
 app.get('/api/queues/performance', jwtAuth, queueMonitorHandler.getPerformanceMetrics);
 app.post('/api/queues/maintenance', jwtAuth, queueMonitorHandler.maintenanceOperations);
 
-// 🔑 臨時測試token生成端點 (僅用於調試)
-app.post('/api/debug/generate-token', async (c) => {
-  try {
-    const { userId = "admin-001", displayName = "Debug User", role = "admin" } = await c.req.json();
-    
-    const payload = {
-      userId,
-      displayName,
-      role,
-      teamId: 1,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
-    };
-    
-    const token = await signJWT(payload, c.env.JWT_SECRET);
-    console.log('🔑 [DEBUG] Generated test token for:', { userId, displayName, role });
-    
-    return c.json({
-      success: true,
-      token,
-      payload,
-      expiresAt: new Date((payload.exp * 1000)).toISOString()
-    });
-    
-  } catch (error) {
-    console.error('🔑 [DEBUG] Token generation failed:', error);
-    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 500);
-  }
-});
+// 🔑 開發環境限定的測試token生成端點
+if (securityConfig.debug.enabled) {
+  app.post('/api/debug/generate-token', jwtAuth, async (c) => {
+    try {
+      const user = c.get('user');
+
+      // 只允許管理員使用此端點
+      if (user.role !== 'admin') {
+        return c.json({
+          success: false,
+          error: 'Only administrators can generate debug tokens'
+        }, 403);
+      }
+
+      // 限制可生成的角色
+      const { userId = "debug-user", displayName = "Debug User", role = "agent" } = await c.req.json();
+
+      // 防止生成超過當前用戶權限的token
+      if (role === 'admin' && user.role !== 'admin') {
+        return c.json({
+          success: false,
+          error: 'Cannot generate admin tokens'
+        }, 403);
+      }
+
+      const payload = {
+        userId,
+        displayName,
+        role,
+        teamId: user.teamId || 1,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minutes only
+      };
+
+      const token = await signJWT(payload, c.env.JWT_SECRET);
+
+      // 記錄調試token生成（不包含敏感信息）
+      // Token generated successfully
+
+      return c.json({
+        success: true,
+        token,
+        expiresAt: new Date((payload.exp * 1000)).toISOString(),
+        note: 'Debug token - limited to 30 minutes'
+      });
+
+    } catch (error) {
+      logger.error('Token generation failed', 'DEBUG', { error: error instanceof Error ? error.message : String(error) });
+      return c.json({
+        success: false,
+        error: 'Token generation failed'
+      }, 500);
+    }
+  });
+}
 
 // 簡化版測試事件 - 不再使用Queue，依賴1秒輪詢自動發現
 app.post('/api/realtime/test-event', jwtAuth, simpleRealtimeHandler.testEvent);
@@ -222,7 +341,8 @@ app.all('/api/webhooks/facebook', webhookHandler.facebook);
 
 // 全域錯誤處理
 app.onError((err, c) => {
-  console.error('Global error handler:', err);
+  const contextLogger = createContextLogger('GlobalErrorHandler');
+  contextLogger.error('Global error occurred', { path: c.req.path, method: c.req.method }, err);
   return c.json({
     error: 'Internal Server Error',
     message: err.message,
@@ -232,438 +352,17 @@ app.onError((err, c) => {
 
 // ==================== 靜態檔案服務 ====================
 
-// 管理後台 HTML
+// 管理後台 HTML - 使用模板服務
 app.get('/admin-dashboard.html', (c) => {
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多渠道客服管理系統</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e1e5e9;
-        }
-
-        .card h3 {
-            color: #2d3748;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 0.5rem;
-        }
-
-        .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-        }
-
-        .btn:hover {
-            background: #5a67d8;
-        }
-
-        .btn-secondary {
-            background: #718096;
-        }
-
-        .btn-secondary:hover {
-            background: #4a5568;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-
-        .status-online {
-            background-color: #48bb78;
-        }
-
-        .status-offline {
-            background-color: #f56565;
-        }
-
-        .quick-actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-        }
-
-        .alert {
-            background: #fed7d7;
-            border: 1px solid #feb2b2;
-            color: #c53030;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-
-        .alert-info {
-            background: #bee3f8;
-            border: 1px solid #90cdf4;
-            color: #2b6cb0;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 0.5rem;
-            }
-            
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .quick-actions {
-                flex-direction: column;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🚀 多渠道客服管理系統</h1>
-    </div>
-
-    <div class="container">
-        <div class="alert alert-info">
-            <strong>歡迎使用管理後台！</strong> 這是一個基本的管理介面，用於監控系統狀態和管理客服對話。
-        </div>
-
-        <div class="dashboard-grid">
-            <div class="card">
-                <h3>📊 系統狀態</h3>
-                <div class="stat-number" id="system-status">
-                    <span class="status-indicator status-online"></span>
-                    運行中
-                </div>
-                <p>系統正常運行</p>
-                <div class="quick-actions">
-                    <button class="btn" onclick="checkSystemHealth()">檢查健康狀態</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>💬 對話統計</h3>
-                <div class="stat-number" id="conversation-count">載入中...</div>
-                <p>總對話數量</p>
-                <div class="quick-actions">
-                    <button class="btn" onclick="loadConversations()">查看對話</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>👥 客戶統計</h3>
-                <div class="stat-number" id="customer-count">載入中...</div>
-                <p>總客戶數量</p>
-                <div class="quick-actions">
-                    <button class="btn" onclick="loadCustomers()">管理客戶</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>📱 LINE 整合</h3>
-                <div class="stat-number">
-                    <span class="status-indicator status-online"></span>
-                    已連接
-                </div>
-                <p>LINE Bot 狀態</p>
-                <div class="quick-actions">
-                    <button class="btn" onclick="testLineConnection()">測試連接</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>🔧 快速操作</h3>
-                <div class="quick-actions">
-                    <button class="btn" onclick="viewLogs()">查看日誌</button>
-                    <button class="btn btn-secondary" onclick="exportData()">匯出資料</button>
-                    <button class="btn btn-secondary" onclick="systemSettings()">系統設定</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>📈 最近活動</h3>
-                <div id="recent-activity">
-                    <p>載入最近活動...</p>
-                </div>
-                <div class="quick-actions">
-                    <button class="btn" onclick="refreshActivity()">重新整理</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>🚀 代理隊列監控</h3>
-                <div class="stat-number" id="agent-queue-status">
-                    <span class="status-indicator status-online"></span>
-                    載入中...
-                </div>
-                <div id="agent-queue-details">
-                    <p>延遲消息和撤回功能</p>
-                    <small id="agent-queue-metrics">載入中...</small>
-                </div>
-                <div class="quick-actions">
-                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
-                    <button class="btn btn-secondary" onclick="viewQueueDetails()">詳細資訊</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>⚡ 實時隊列監控</h3>
-                <div class="stat-number" id="realtime-queue-status">
-                    <span class="status-indicator status-online"></span>
-                    載入中...
-                </div>
-                <div id="realtime-queue-details">
-                    <p>實時事件推送和SSE管理</p>
-                    <small id="realtime-queue-metrics">載入中...</small>
-                </div>
-                <div class="quick-actions">
-                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
-                    <button class="btn btn-secondary" onclick="testRealtimeEvent()">測試事件</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // 基本的 JavaScript 功能
-        const API_BASE = window.location.origin;
-
-        // 載入統計資料
-        async function loadStats() {
-            try {
-                const response = await fetch(\`\${API_BASE}/api/stats\`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    document.getElementById('conversation-count').textContent = data.data.totalConversations || 0;
-                    document.getElementById('customer-count').textContent = data.data.totalCustomers || 0;
-                }
-            } catch (error) {
-                console.error('載入統計資料失敗:', error);
-                document.getElementById('conversation-count').textContent = '錯誤';
-                document.getElementById('customer-count').textContent = '錯誤';
-            }
-        }
-
-        // 檢查系統健康狀態
-        async function checkSystemHealth() {
-            try {
-                const response = await fetch(\`\${API_BASE}/api/health\`);
-                const data = await response.json();
-                
-                if (data.status === 'healthy') {
-                    alert('✅ 系統健康狀態良好！');
-                } else {
-                    alert('⚠️ 系統狀態異常，請檢查日誌');
-                }
-            } catch (error) {
-                alert('❌ 無法檢查系統狀態：' + error.message);
-            }
-        }
-
-        // 其他功能的佔位符
-        function loadConversations() {
-            alert('對話管理功能開發中...');
-        }
-
-        function loadCustomers() {
-            alert('客戶管理功能開發中...');
-        }
-
-        function testLineConnection() {
-            alert('LINE 連接測試功能開發中...');
-        }
-
-        function viewLogs() {
-            alert('日誌查看功能開發中...');
-        }
-
-        function exportData() {
-            alert('資料匯出功能開發中...');
-        }
-
-        function systemSettings() {
-            alert('系統設定功能開發中...');
-        }
-
-        function refreshActivity() {
-            document.getElementById('recent-activity').innerHTML = '<p>重新整理中...</p>';
-            setTimeout(() => {
-                document.getElementById('recent-activity').innerHTML = '<p>暫無最近活動</p>';
-            }, 1000);
-        }
-
-        // 載入隊列統計資料
-        async function loadQueueStats() {
-            try {
-                const response = await fetch(\`\${API_BASE}/api/queues/stats\`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const queueData = data.data;
-                    
-                    // 更新代理隊列狀態
-                    const agentQueue = queueData.queues.agentQueue;
-                    document.getElementById('agent-queue-status').innerHTML = 
-                        \`<span class="status-indicator status-\${agentQueue.status === 'healthy' ? 'online' : 'offline'}"></span>
-                        \${agentQueue.status === 'healthy' ? '正常運行' : '異常'}\`;
-                    
-                    document.getElementById('agent-queue-metrics').textContent = 
-                        \`批次大小: \${agentQueue.configuration.maxBatchSize}, 平均處理時間: \${agentQueue.metrics.avgProcessingTime}ms\`;
-                    
-                    // 更新實時隊列狀態
-                    const realtimeQueue = queueData.queues.realtimeQueue;
-                    document.getElementById('realtime-queue-status').innerHTML = 
-                        \`<span class="status-indicator status-\${realtimeQueue.status === 'healthy' ? 'online' : 'offline'}"></span>
-                        \${realtimeQueue.status === 'healthy' ? '正常運行' : '異常'}\`;
-                    
-                    document.getElementById('realtime-queue-metrics').textContent = 
-                        \`SSE連接: \${queueData.realtimeConnections.totalConnections}, 平均處理時間: \${realtimeQueue.metrics.avgProcessingTime}ms\`;
-                        
-                    console.log('📊 隊列統計資料載入成功:', queueData);
-                }
-            } catch (error) {
-                console.error('載入隊列統計資料失敗:', error);
-                document.getElementById('agent-queue-status').innerHTML = '<span class="status-indicator status-offline"></span>錯誤';
-                document.getElementById('realtime-queue-status').innerHTML = '<span class="status-indicator status-offline"></span>錯誤';
-            }
-        }
-
-        // 重新整理隊列統計
-        function refreshQueueStats() {
-            document.getElementById('agent-queue-status').innerHTML = '<span class="status-indicator status-online"></span>載入中...';
-            document.getElementById('realtime-queue-status').innerHTML = '<span class="status-indicator status-online"></span>載入中...';
-            loadQueueStats();
-        }
-
-        // 查看隊列詳細資訊
-        function viewQueueDetails() {
-            fetch(\`\${API_BASE}/api/queues/performance\`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const metrics = data.data;
-                        alert(\`📊 隊列性能指標：
-
-🚀 代理隊列 (AGENT_QUEUE):
-  • 吞吐量: \${metrics.agentQueue.throughput.messagesPerSecond}/秒
-  • 成功率: \${metrics.agentQueue.reliability.successRate}%
-  • 錯誤率: \${metrics.agentQueue.reliability.errorRate}%
-
-⚡ 實時隊列 (REALTIME_QUEUE):
-  • 事件吞吐量: \${metrics.realtimeQueue.throughput.eventsPerSecond}/秒
-  • 成功率: \${metrics.realtimeQueue.reliability.successRate}%
-  • SSE連接: \${metrics.realtimeQueue.sseMetrics.activeConnections}\`);
-                    }
-                })
-                .catch(error => {
-                    alert('❌ 無法載入隊列詳細資訊：' + error.message);
-                });
-        }
-
-        // 測試實時事件
-        function testRealtimeEvent() {
-            const conversationId = prompt('請輸入對話ID進行測試（或留空使用預設值）:') || '1';
-            const message = prompt('請輸入測試消息內容:') || '🧪 系統測試消息';
-            
-            fetch(\`\${API_BASE}/api/realtime/test-event\`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer test-token' // 這裡需要實際的JWT token
-                },
-                body: JSON.stringify({
-                    conversationId: conversationId,
-                    message: message
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(\`✅ 測試事件已發送！
-事件ID: \${data.eventId}
-當前連接數: \${data.currentConnections}\`);
-                } else {
-                    alert('❌ 測試事件發送失敗: ' + (data.error || '未知錯誤'));
-                }
-            })
-            .catch(error => {
-                alert('❌ 測試事件失敗：' + error.message);
-            });
-        }
-
-        // 頁面載入時執行
-        document.addEventListener('DOMContentLoaded', function() {
-            loadStats();
-            loadQueueStats();
-            
-            // 每30秒重新整理統計資料
-            setInterval(loadStats, 30000);
-            // 每15秒重新整理隊列統計
-            setInterval(loadQueueStats, 15000);
-        });
-    </script>
-</body>
-</html>`;
-
+  const html = templateService.renderAdminDashboard();
   return c.html(html);
+});
+
+// Admin dashboard JavaScript
+app.get('/admin-dashboard.js', (c) => {
+  const js = templateService.renderAdminDashboardJS();
+  c.header('Content-Type', 'application/javascript');
+  return c.text(js);
 });
 
 // 404 處理
@@ -682,6 +381,18 @@ import { AgentQueueService } from './services/agent-queue-service';
 
 // ==================== 導出 ====================
 
+// ==================== 導出 Durable Objects ====================
+
+// Import Durable Objects for WebSocket + Durable Objects Architecture
+import { ConversationRoom } from './durable-objects/ConversationRoom';
+import { UserConnection } from './durable-objects/UserConnection';
+import { MessageBroadcaster } from './durable-objects/MessageBroadcaster';
+import { DelayedMessageProcessor } from './durable-objects/DelayedMessageProcessor';
+import { LockCoordinator } from './services/distributed-lock-service';
+
+// Export Durable Objects
+export { ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageProcessor, LockCoordinator };
+
 // ==================== 導出 Worker 處理器 ====================
 
 export default {
@@ -689,25 +400,28 @@ export default {
   queue: async (batch: MessageBatch<any>, env: Bindings) => {
     // 檢查隊列名稱並路由到對應處理器
     const queueName = batch.queue;
-    console.log(`🚀 [Queue Router] Processing queue: ${queueName} with ${batch.messages.length} messages`);
-    
+    const queueLogger = createContextLogger('QueueRouter');
+    queueLogger.info('Processing queue', { queueName, messageCount: batch.messages.length });
+
     try {
       if (queueName === 'realtime-events') {
-        // 簡化版：實時事件由 SSE 連接自主輪詢處理，無需隊列
-        console.log(`📡 [Queue Router] Realtime events handled by simplified SSE polling - skipping queue processing`);
-        
+        // Handle latest message cache updates and other realtime events
+        const { handleLatestMessageQueue } = await import('./workers/latest-message-worker');
+        await handleLatestMessageQueue(batch, env);
+        queueLogger.info('Realtime events processed including latest message cache updates');
+
       } else if (queueName === 'agent-queue') {
         // 處理代理隊列 (保留 - 延遲消息功能)
         const agentService = new AgentQueueService(env);
         await agentService.processMessageBatch(batch);
-        
+
       } else {
-        console.warn(`⚠️ [Queue Router] Unknown queue: ${queueName}`);
+        queueLogger.warn('Unknown queue', { queueName });
       }
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`❌ [Queue Router] Error processing queue ${queueName}:`, errorMessage);
+      queueLogger.error('Error processing queue', { queueName, error: errorMessage });
       throw error; // 重新抛出錯誤以觸發隊列重試機制
     }
   }

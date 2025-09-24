@@ -28,6 +28,12 @@ tests/.env
 # logs
 logs/
 *.log
+
+# temp test files
+test-*.cjs
+test-*.js
+test-*.ts
+!tests/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -47,8 +47,12 @@ export interface Bindings {
   REALTIME_QUEUE: Queue;
   KV: KVNamespace; // Alias for SESSIONS
   
-  // Durable Objects (optional)
+  // Durable Objects - WebSocket + Durable Objects Architecture
   CONVERSATION_ROOM?: DurableObjectNamespace;
+  USER_CONNECTION?: DurableObjectNamespace;
+  MESSAGE_BROADCASTER?: DurableObjectNamespace;
+  DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
+  DISTRIBUTED_LOCK?: DurableObjectNamespace;
   
   // Environment variables - LINE
   LINE_CHANNEL_ACCESS_TOKEN: string;
@@ -72,6 +76,8 @@ export interface Bindings {
   ENVIRONMENT?: string;
   FRONTEND_URL?: string;
   CURRENT_ENVIRONMENT?: string;
+  WORKER_URL?: string;
+  ADMIN_TOKEN?: string;
   
   // Environment variables - Cloudflare
   CLOUDFLARE_ACCOUNT_ID?: string;

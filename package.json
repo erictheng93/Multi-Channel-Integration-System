@@ -10,6 +10,12 @@
     "build": "tsc --noEmit",
     "lint:check": "npx tsc --noEmit && cd frontend && npx vue-tsc --noEmit && npm run lint -- --max-warnings 80",
     "deploy": "wrangler deploy --minify",
+    "deploy:sse:production": "npx tsx scripts/deployment/deploy-sse-system.ts production",
+    "deploy:sse:staging": "npx tsx scripts/deployment/deploy-sse-system.ts staging",
+    "deploy:sse:check": "npm run build && npm run lint:check",
+    "health:check:all": "curl -f https://multi-channel.imfinethankyouandyou.com/api/system/health && curl -f https://multi-channel.imfinethankyouandyou.com/api/sse/monitoring/health",
+    "monitor:deployment": "watch -n 30 'curl -s https://multi-channel.imfinethankyouandyou.com/api/sse/monitoring/health | jq'",
+    "perf:baseline:sse": "curl -s https://multi-channel.imfinethankyouandyou.com/api/sse/monitoring/metrics | jq",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
@@ -60,7 +66,28 @@
     "hash:batch": "npx tsx scripts/generate-hash.ts batch",
     "sync:db:local": "tsx scripts/sync-database-structure.ts local",
     "sync:db:prod": "tsx scripts/sync-database-structure.ts prod",
-    "sync:db:all": "tsx scripts/sync-database-structure.ts all"
+    "sync:db:all": "tsx scripts/sync-database-structure.ts all",
+    "test:load:websocket": "npx tsx scripts/load-testing/websocket-load-test.ts",
+    "test:load:durable-objects": "npx tsx scripts/load-testing/durable-objects-stress-test.ts",
+    "test:stress:connections": "npx tsx scripts/stress-testing/connection-storm-test.ts",
+    "test:stress:messages": "npx tsx scripts/stress-testing/message-flood-test.ts",
+    "benchmark": "npx tsx tools/performance/benchmark-suite.ts",
+    "benchmark:baseline": "npm run benchmark -- --suites latency,throughput --iterations 500 --output baseline-results.json",
+    "benchmark:compare": "npm run benchmark -- --suites latency,throughput --iterations 500 --output comparison-results.json",
+    "profile:memory": "npx tsx tools/performance/memory-profiler.ts",
+    "profile:memory:gc": "node --expose-gc npx tsx tools/performance/memory-profiler.ts",
+    "test:all": "npx tsx scripts/run-all-tests.ts",
+    "test:all:parallel": "npm run test:all -- --parallel true --concurrency 3",
+    "test:load": "npm run test:all -- --category load",
+    "test:stress": "npm run test:all -- --category stress",
+    "test:benchmark": "npm run test:all -- --category benchmark",
+    "test:production-readiness": "npm run test:all -- --suites websocket-load-test,durable-objects-stress-test,benchmark-suite",
+    "monitor:start": "npx tsx src/monitoring/performance-monitor.ts",
+    "dashboard": "echo 'Dashboard available at http://localhost:8787/dashboard'",
+    "analyze:performance": "npm run benchmark && npm run profile:memory",
+    "setup:test-env": "mkdir -p test-results && mkdir -p memory-profiles && mkdir -p benchmark-results",
+    "clean:test-results": "rm -rf test-results/* memory-profiles/* benchmark-results/*",
+    "validate:config": "npx tsx scripts/validate-configuration.ts"
   },
   "overrides": {
     "esbuild": "^0.25.9",
@@ -75,7 +102,8 @@
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
     "uuid": "^10.0.0",
-    "vue-i18n": "^11.1.12"
+    "vue-i18n": "^11.1.12",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -83,6 +111,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^24.2.1",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.12",
     "better-sqlite3": "^12.2.0",
     "dotenv": "^17.2.1",
     "drizzle-kit": "^0.31.4",
@@ -90,6 +119,7 @@
     "jsdom": "^26.1.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "wrangler": "^4.34.0"
+    "wrangler": "^4.38.0",
+    "ws": "^8.18.0"
   }
 }

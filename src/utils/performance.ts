@@ -229,7 +229,6 @@ export class ResponseOptimizer {
 // 連接池管理 (模擬)
 export class ConnectionManager {
   private activeConnections: Map<string, number> = new Map();
-  // private _maxConnections: number = 1000; // 暫時未使用
 
   // 檢查連接限制
   checkConnectionLimit(userId: string): boolean {

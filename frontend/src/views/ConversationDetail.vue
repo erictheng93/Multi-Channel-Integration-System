@@ -1,86 +1,17 @@
 <template>
   <AppLayout>
-    <!-- 統計資訊放到頂部bar -->
-    <template #top-bar-stats>
-      <MessageIndicator
-        v-if="messages.length > 0"
-        :oldest-message="oldestMessage"
-        :latest-message="latestMessage"
-        :total-messages="totalMessages || messages.length"
-        class="message-indicator-topbar"
-      />
-    </template>
-
     <div class="conversation-detail">
-      <!-- Simplified Header -->
-      <div class="conversation-header">
-        <div class="header-left">
-          <button
-            class="back-button"
-            @click="goBack"
-          >
-            <ArrowLeftIcon />
-            返回列表
-          </button>
+      <!-- Simplified Header Component -->
+      <ConversationHeader
+        :conversation="conversation"
+        :loading="loading"
+        :closing="closing"
+        @back="goBack"
+        @close="closeConversation"
+        @refresh="handleRefreshMessages"
+      />
 
-          <div class="conversation-info">
-            <div class="customer-details">
-              <div class="customer-avatar">
-                {{ customerInitials }}
-              </div>
-              <div class="customer-meta">
-                <h1 class="customer-name">
-                  {{ conversation?.customer?.name || '載入中...' }}
-                </h1>
-                <div class="customer-badges">
-                  <PlatformBadge
-                    v-if="conversation"
-                    :platform="conversation.platform || 'unknown'"
-                    show-icon
-                  />
-                  <StatusBadge
-                    v-if="conversation"
-                    :status="conversation.status"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="header-actions">
-          <!-- Lazy loaded components -->
-          <Suspense>
-            <AdvancedAssignActions
-              v-if="conversation"
-              :conversation="conversation"
-              @assigned="handleConversationAssigned"
-              @unassigned="handleConversationUnassigned"
-              @error="handleAssignError"
-            />
-          </Suspense>
-
-          <button
-            v-if="conversation?.status !== 'closed'"
-            class="close-conversation-btn"
-            :disabled="closing"
-            @click="closeConversation"
-          >
-            <XCircleIcon />
-            <span>{{ closing ? '結束中...' : '結束對話' }}</span>
-          </button>
-
-          <button
-            class="btn btn-secondary"
-            :disabled="loadingMessages || loadingHistory"
-            @click="refreshMessages"
-          >
-            <RefreshIcon :spinning="loadingMessages || loadingHistory" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Lazy loaded search -->
+      <!-- Enhanced Search -->
       <div class="message-search-container">
         <Suspense>
           <MessageSearch
@@ -92,15 +23,15 @@
         </Suspense>
       </div>
 
-      <!-- High Performance Virtual Message List -->
+      <!-- High Performance Virtual Message List with WebSocket -->
       <div class="messages-container-wrapper">
-        <!-- Loading States: 只有真正的初始載入才顯示載入器 -->
+        <!-- Loading States -->
         <HamsterLoader
           v-if="isInitialLoading && !hasLoadedInitially"
           message="載入對話中..."
         />
 
-        <!-- Empty State: 只有在完成初始載入且無訊息時才顯示 -->
+        <!-- Empty State -->
         <div
           v-else-if="hasLoadedInitially && displayedMessages.length === 0"
           class="empty-state-wrapper"
@@ -115,7 +46,7 @@
           </EmptyState>
         </div>
 
-        <!-- Virtual Message List for Maximum Performance -->
+        <!-- Virtual Message List -->
         <VirtualMessageList
           v-else
           ref="virtualMessageListRef"
@@ -125,8 +56,10 @@
           :loading-history="loadingHistory"
           :is-updating="isUpdating"
           :is-typing="isTyping"
+          :typing-users="typingUsers"
           :animation-classes="animationClasses"
           :enable-animations="true"
+          :websocket-enabled="isWebSocketEnabled"
           @message-copy="handleMessageCopy"
           @message-reply="handleMessageReply"
           @message-forward="handleMessageForward"
@@ -139,7 +72,7 @@
         />
       </div>
 
-      <!-- 新消息提醒 -->
+      <!-- 新消息提醒 with WebSocket enhancements -->
       <div
         v-if="showNewMessageModal"
         class="glassmorphism-notification"
@@ -160,6 +93,10 @@
           <div class="glass-text">
             <span class="message-count">{{ newMessageCount }}</span>
             <span class="message-label">新消息</span>
+            <span
+              v-if="currentProtocol === 'websocket'"
+              class="delivery-status"
+            >即時</span>
           </div>
           <button
             class="glass-dismiss"
@@ -179,7 +116,7 @@
         </div>
       </div>
 
-      <!-- Enhanced Message Input -->
+      <!-- Enhanced Message Input with WebSocket features -->
       <div
         v-if="conversation?.status !== 'closed'"
         class="input-section"
@@ -188,7 +125,11 @@
           ref="messageInputRef"
           :conversation-id="conversationId"
           :disabled="false"
+          :websocket-enabled="isWebSocketEnabled"
+          :connection-quality="connectionQuality"
           @message-sent="handleMessageSent"
+          @typing-start="handleTypingStart"
+          @typing-stop="handleTypingStop"
           @attachment-upload="handleAttachmentUpload"
         />
 
@@ -205,6 +146,41 @@
           >
             {{ reply.text }}
           </button>
+        </div>
+
+        <!-- 🌐 Connection Status Bar (Phase 1: SSE-Primary) -->
+        <div
+          v-if="sseMessages.isConnected.value || sseMessages.hasError.value || isWebSocketEnabled"
+          class="connection-status-bar"
+        >
+          <div class="status-items">
+            <span class="status-item">
+              <span
+                class="status-dot"
+                :class="connectionStatusClass"
+              />
+              {{ connectionStatusText }}
+            </span>
+            <span
+              v-if="sseMessages.connectionState.value.reconnectAttempts > 0"
+              class="status-item reconnect-info"
+            >
+              重連嘗試: {{ sseMessages.connectionState.value.reconnectAttempts }}/{{ sseMessages.canReconnect.value ? '5' : 'max' }}
+            </span>
+            <span
+              v-if="presence.typingUsers.length > 0"
+              class="status-item"
+            >
+              {{ presence.typingUsers.length }} 人正在輸入
+            </span>
+            <span
+              v-if="sseMessages.connectionState.value.error"
+              class="status-item error-info"
+              :title="sseMessages.connectionState.value.error"
+            >
+              ⚠️ {{ sseMessages.connectionState.value.error }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -228,15 +204,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessages } from '@/composables'
-import { useSmoothLoading } from '@/composables/useSmoothLoading'
 import { useConversationsStore } from '@/stores/conversations'
-import { useAuthStore } from '@/stores/auth'
-import { useConfirm } from '@/composables/useConfirm'
+import { useMessages } from '@/composables/useMessages' // HTTP API fallback
+import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
+import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
-import type { Message, Conversation } from '@/types'
+import { useSmoothLoading } from '@/composables/useSmoothLoading'
+import { useConversationWebSocket } from '@/composables/useConversationWebSocket'
+import { useSSEMessages } from '@/composables/useSSEMessages' // 🚀 New SSE system
+import { useConfirm } from '@/composables/useConfirm'
+import { useConnectionState } from '@/composables/useConnectionState'
+import { useLoadingState } from '@/composables/useLoadingState'
+import { useEventHandler } from '@/composables/useEventHandler'
+import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
+import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
+import type { Message } from '@/types'
 
 // Core components
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -244,26 +228,32 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
-import MessageIndicator from '@/components/conversation/MessageIndicator.vue'
-import PlatformBadge from '@/components/ui/PlatformBadge.vue'
-import StatusBadge from '@/components/ui/StatusBadge.vue'
-import {
-  ArrowLeftIcon,
-  XCircleIcon,
-  RefreshIcon,
-  MessageCircleIcon
-} from '@/components/icons'
+import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
+import { MessageCircleIcon, XCircleIcon } from '@/components/icons'
 
 // Lazy load non-critical components for better performance
 const MessageSearch = defineAsyncComponent(() => import('@/components/conversation/MessageSearch.vue'))
 const KeyboardShortcuts = defineAsyncComponent(() => import('@/components/ui/KeyboardShortcuts.vue'))
-const AdvancedAssignActions = defineAsyncComponent(() => import('@/components/conversation/AdvancedAssignActions.vue'))
+// Unused components - commented out to reduce bundle size
+// const AdvancedAssignActions = defineAsyncComponent(() => import('@/components/conversation/AdvancedAssignActions.vue'))
+// const WebSocketStatusIndicator = defineAsyncComponent(() => import('@/components/ui/WebSocketStatusIndicator.vue'))
+// const TypingIndicator = defineAsyncComponent(() => import('@/components/conversation/TypingIndicator.vue'))
+// const PresenceBadge = defineAsyncComponent(() => import('@/components/ui/PresenceBadge.vue'))
 
 // Routes
 const route = useRoute()
 const router = useRouter()
 const conversationsStore = useConversationsStore()
-const authStore = useAuthStore()
+
+// 🚀 Phase 1: SSE-Primary Migration Strategy
+const migration = useWebSocketMigration({
+  strategy: 'sse_only', // 暫時強制使用 SSE，直到 WebSocket 修復
+  fallbackToSSE: true,
+  rolloutPercentage: 0 // 0% WebSocket rollout during Phase 1
+})
+
+// WebSocket Status Monitoring (保留供未來使用)
+const websocketStatus = useWebSocketStatus()
 
 // Performance monitoring
 const {
@@ -271,51 +261,171 @@ const {
   stopMonitoring,
   mark,
   measure,
-  measureMessageLoad,
   getPerformanceReport,
   logPerformanceSummary
 } = usePerformanceMonitor()
 
-// High performance message management
-const {
-  messages: rawMessages,
-  oldestMessage,
-  latestMessage,
-  loading: loadingMessages,
-  loadingHistory,
-  totalMessages,
-  fetchMessages,
-  loadMoreMessages,
-  setConversationId
-} = useMessages(undefined, {
-  enablePagination: true,
-  pageSize: 10 // Reduced page size for better initial performance
+// Conversation ID
+const conversationId = computed(() => route.params.id as string)
+
+// 🎯 Primary: SSE Messages System
+const sseMessages = useSSEMessages(conversationId, {
+  autoConnect: true,
+  reconnectOnError: true,
+  maxReconnectAttempts: 5,
+  reconnectDelay: 3000
 })
 
-// Smooth loading with optimized animations
+// 🔄 Fallback: WebSocket System (currently disabled)
+const conversationWS = useConversationWebSocket(conversationId, {
+  autoJoin: false, // Disabled during Phase 1
+  enableTypingIndicators: false,
+  enableMessageQueue: false
+})
+
+// 🛡️ Final Fallback: HTTP API System
+const httpMessages = useMessages(conversationId.value, {
+  enablePagination: true,
+  pageSize: 30
+})
+
+// 🧩 Unified State Management with new composables
+const connectionState = useConnectionState({
+  sseIsConnected: sseMessages.isConnected,
+  sseIsConnecting: sseMessages.isConnecting,
+  sseIsReconnecting: sseMessages.isReconnecting,
+  sseHasError: sseMessages.hasError,
+  wsIsJoined: conversationWS.isJoined,
+  wsIsConnecting: computed(() => false), // WebSocket connecting state
+  shouldUseWebSocket: migration.shouldUseWebSocket
+})
+
+const loadingState = useLoadingState({
+  sseIsConnected: sseMessages.isConnected,
+  wsIsJoined: conversationWS.isJoined,
+  httpMessagesCount: computed(() => httpMessages.messages.value.length),
+  shouldUseWebSocket: migration.shouldUseWebSocket,
+  isLoading: computed(() => httpMessages.loading.value)
+})
+
+// 🎯 Unified Event Handler for better memory management
+const eventHandler = useEventHandler()
+
+// ⚡ Performance Optimization for computed values
+const performanceOptimizer = usePerformanceOptimization({
+  cacheTimeout: 2 * 60 * 1000, // 2分鐘快取
+  maxCacheSize: 30,
+  enableProfiling: import.meta.env.DEV // 只在開發環境啟用性能分析
+})
+
+// 🚨 Unified Error Handling
+const errorHandler = useErrorHandler({
+  maxErrors: 20,
+  autoRetry: true,
+  showToast: true,
+  logToConsole: import.meta.env.DEV
+})
+
+// 🧠 Smart Message Source Selection
+const messages = computed((): Message[] => {
+  // Priority 1: SSE Messages (primary system)
+  if (sseMessages.isConnected.value && sseMessages.messages.value.length >= 0) {
+    return sseMessages.messages.value
+  }
+
+  // Priority 2: WebSocket Messages (disabled in Phase 1)
+  if (migration.shouldUseWebSocket.value && conversationWS.isJoined.value) {
+    return conversationWS.messages.value
+  }
+
+  // Priority 3: HTTP API Messages (final fallback)
+  return httpMessages.messages.value
+})
+
+// Extract connection and loading state
+const loading = computed(() => {
+  if (sseMessages.isConnected.value) {return false}
+  if (migration.shouldUseWebSocket.value) {return conversationWS.loading.value}
+  return httpMessages.loading.value
+})
+
+// Removed unused computed properties: isConnected, connectionState
+
+// Message statistics
+const messageCount = computed(() => messages.value.length)
+const hasNewMessages = computed(() => sseMessages.messageCount.value > 0 || conversationWS.hasNewMessages.value)
+const newMessagesCount = computed(() => sseMessages.messageCount.value || conversationWS.newMessagesCount.value)
+
+// Typing and presence (mainly from WebSocket, disabled in Phase 1)
+const presence = computed(() => conversationWS.presence.value)
+const typingUsers = computed(() => conversationWS.presence.value.typingUsers)
+
+// 🎨 Smooth loading for SSE messages (simplified)
 const {
   messages: smoothMessages,
   isUpdating,
-  setMessagesImmediate,
   updateMessages,
-  sortMessagesByTime,
   getAnimationClasses
 } = useSmoothLoading({
-  animationDuration: 400, // Smooth but not too slow
-  enableAnimations: true, // Enable smooth animations
+  animationDuration: 400,
+  enableAnimations: true,
   debounceDelay: 50
 })
 
-// Core state - using shallowRef for better performance
-const conversation = computed(() => conversationsStore.currentConversation)
+// Optimized message source watcher with unified debouncing
+const debouncedUpdateMessages = eventHandler.debounce((newMessages: Message[]) => {
+  updateMessages(newMessages, true)
+}, 50)
+
+watch(
+  () => messages.value,
+  (newMessages) => {
+    if (newMessages && newMessages.length >= 0) {
+      debouncedUpdateMessages(newMessages)
+    }
+  },
+  { immediate: true } // Removed deep watching for better performance
+)
+
+// Core state with null safety
+const conversation = computed(() => conversationsStore.currentConversation || undefined)
 const closing = ref(false)
 const isTyping = ref(false)
-const isInitialLoading = ref(true) // 真正的初始載入（只有第一次）
-const hasLoadedInitially = ref(false) // 標記是否已經完成初始載入
+
+// Use new composable state management
+const { hasLoadedInitially, isInitialLoading, loadingHistory } = loadingState
+
+// Component refs
 const virtualMessageListRef = ref()
 const messageInputRef = ref()
 const keyboardShortcutsRef = ref()
 const messageSearchRef = ref()
+
+// 🌐 Use unified connection state from composable
+const {
+  currentProtocol,
+  connectionQuality
+} = connectionState
+
+const isWebSocketEnabled = computed(() => migration.shouldUseWebSocket.value)
+
+// Typing state (disabled in Phase 1)
+const isLocalTyping = ref(false)
+
+// Create debounced stop typing function
+const debouncedStopTyping = eventHandler.debounce(() => {
+  isTyping.value = false
+  isLocalTyping.value = false
+
+  // Send WebSocket typing stop if enabled
+  if (isWebSocketEnabled.value && isWebSocketJoined.value) {
+    try {
+      stopWebSocketTyping()
+    } catch (error) {
+      console.error('Failed to stop typing indicator:', error)
+    }
+  }
+}, 3000)
 
 // Search state
 const searchResults = ref<Message[]>([])
@@ -323,45 +433,136 @@ const isSearchActive = ref(false)
 
 // New message notification
 const showNewMessageModal = ref(false)
-const newMessageCount = ref(0)
+const newMessageCount = computed(() => hasNewMessages.value ? newMessagesCount.value : 0)
 
-// SSE real-time messaging
-const messageEventSource = ref<EventSource | null>(null)
-const sseConnected = ref(false)
-const sseError = ref<string | null>(null)
-const sseReconnectAttempts = ref(0)
-const maxSSEReconnectAttempts = 3
-let sseReconnectTimer: NodeJS.Timeout | null = null
+// WebSocket connection state
+const isWebSocketJoined = computed(() =>
+  isWebSocketEnabled.value && conversationWS.isJoined.value
+)
 
 // Performance optimized computed properties
-const conversationId = computed(() => route.params.id as string)
+// const customerInitials = computed(() => { // Unused - commented out
+//   const name = conversation.value?.customer?.name || 'U'
+//   return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+// })
 
-const customerInitials = computed(() => {
-  const name = conversation.value?.customer?.name || 'U'
-  return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+// Memoized message filtering for better performance
+const memoizedMessageFilter = performanceOptimizer.memoize(
+  (messages: Message[], isSearching: boolean, searchResults: Message[]) => {
+    return isSearching ? searchResults : messages
+  },
+  (messages, isSearching, searchResults) =>
+    `${messages.length}-${isSearching}-${searchResults.length}`
+)
+
+const displayedMessages = performanceOptimizer.cachedComputed(() => {
+  return memoizedMessageFilter(
+    smoothMessages.value,
+    isSearchActive.value,
+    searchResults.value
+  )
+}, 'displayed-messages', { timeout: 500 })
+
+// 🌐 Performance optimized connection status with caching
+const connectionStatusText = performanceOptimizer.cachedComputed(() => {
+  // Priority 1: SSE Status
+  if (sseMessages.isConnected.value) {
+    return `📡 SSE 已連接 (${sseMessages.messageCount.value} 條訊息)`
+  }
+
+  if (sseMessages.isConnecting.value) {
+    return '📡 SSE 連接中...'
+  }
+
+  if (sseMessages.isReconnecting.value) {
+    const attempts = sseMessages.connectionState.value.reconnectAttempts
+    return `📡 SSE 重連中... (${attempts}/5)`
+  }
+
+  if (sseMessages.hasError.value) {
+    return '❌ SSE 連接失敗'
+  }
+
+  // Priority 2: WebSocket Status (disabled in Phase 1)
+  if (currentProtocol.value === 'websocket') {
+    return websocketStatus.statusIndicator.value.label
+  }
+
+  // Priority 3: HTTP Fallback
+  if (currentProtocol.value === 'http') {
+    return `🔄 HTTP 輪詢 (${messageCount.value} 條訊息)`
+  }
+
+  return '⚠️ 未連接'
+}, 'connection-status', { timeout: 1000 }) // 1秒快取，快速更新狀態
+
+const connectionStatusClass = computed(() => {
+  // SSE Status Classes
+  if (sseMessages.isConnected.value) {
+    return 'status-connected status-sse'
+  }
+
+  if (sseMessages.isConnecting.value || sseMessages.isReconnecting.value) {
+    return 'status-connecting status-sse'
+  }
+
+  if (sseMessages.hasError.value) {
+    return 'status-error status-sse'
+  }
+
+  // WebSocket Status Classes (legacy)
+  if (currentProtocol.value === 'websocket') {
+    const state = websocketStatus.connectionState.value
+    return {
+      'status-connected': state === 'connected',
+      'status-connecting': state === 'connecting',
+      'status-reconnecting': state === 'reconnecting',
+      'status-error': state === 'error',
+      'status-disconnected': state === 'disconnected',
+      'status-websocket': true
+    }
+  }
+
+  // HTTP Fallback
+  return 'status-connected status-http'
 })
 
-const displayedMessages = computed(() => {
-  return isSearchActive.value ? searchResults.value : smoothMessages.value
-})
+// const connectionQualityClass = computed(() => { // Unused - commented out
+//   const quality = websocketStatus.connectionHealth.value.quality
+//   return {
+//     'connection-excellent': quality === 'excellent',
+//     'connection-good': quality === 'good',
+//     'connection-fair': quality === 'fair',
+//     'connection-poor': quality === 'poor',
+//     'connection-offline': quality === 'offline'
+//   }
+// })
 
-const messages = computed(() => smoothMessages.value)
+// Removed unused computed property: statusIndicatorClass
+
+// Memoized animation class generation for better performance
+const memoizedAnimationClasses = performanceOptimizer.memoize(
+  (messages: Message[], getClassesFn: Function | undefined) => {
+    const result: Record<string, string> = {}
+
+    if (typeof getClassesFn === 'function' && messages.length > 0) {
+      messages.forEach(message => {
+        const classes = getClassesFn(message.id)
+        if (classes && classes['message-fade-in']) {
+          result[message.id] = 'message-fade-in'
+        }
+      })
+    }
+
+    return result
+  },
+  (messages, getClassesFn) => `${messages.length}-${typeof getClassesFn}`
+)
 
 // Animation classes for smooth message transitions
-const animationClasses = computed(() => {
-  const result: Record<string, string> = {}
-  
-  if (typeof getAnimationClasses === 'function' && smoothMessages.value.length > 0) {
-    smoothMessages.value.forEach(message => {
-      const classes = getAnimationClasses(message.id)
-      if (classes && classes['message-fade-in']) {
-        result[message.id] = 'message-fade-in'
-      }
-    })
-  }
-  
-  return result
-})
+const animationClasses = performanceOptimizer.cachedComputed(() => {
+  return memoizedAnimationClasses(smoothMessages.value, getAnimationClasses)
+}, 'animation-classes', { timeout: 1000 })
 
 // Quick replies
 const quickReplies = ref([
@@ -371,265 +572,212 @@ const quickReplies = ref([
   { id: '4', text: '問題已為您解決，如有其他疑問請隨時聯繫' }
 ])
 
-// Optimized polling as backup for SSE with longer intervals
+// Performance optimized polling as backup
 const pollingInterval = ref<NodeJS.Timeout | null>(null)
-const pollingDelays = [30000, 60000, 120000, 300000] // 30s → 1min → 2min → 5min (SSE 備份間隔)
-const sseBackupPollingDelays = [60000, 180000, 300000] // SSE 連接時的備份輪詢：1min → 3min → 5min
+// const pollingDelays = [30000, 60000, 120000, 300000] // Unused - commented out
 const currentPollingIndex = ref(0)
-const maxPollingDelay = 600000 // Max 10 minutes for backup polling
-const isPageVisible = ref(true) // 頁面可見性狀態
-const lastUserActivity = ref(Date.now()) // 最後用戶活動時間
-const USER_INACTIVE_THRESHOLD = 60000 // 用戶非活躍閾值：1分鐘
-const lastLoadTime = ref(0) // 最後載入時間，用於防抖
-const MIN_LOAD_INTERVAL = 2000 // 最小載入間隔：2秒
+const isPageVisible = ref(true)
+const lastUserActivity = ref(Date.now())
+// const USER_INACTIVE_THRESHOLD = 60000 // Unused - commented out
 
-// Performance optimized message handlers with smooth animation
-const handleMessageSent = async () => {
-  console.log('💬 Message sent, refreshing...')
-  trackUserActivity() // 發送消息是用戶活動
-  await loadMessages(true, true) // Force refresh with animation (no loader)
+// Enhanced message handlers with WebSocket support and error handling
+// 📤 Enhanced Message Sending with SSE Support
+const handleMessageSent = async (data: { content: string; attachments: unknown[] }) => {
+  console.log('📤 [Message] Sending via:', currentProtocol.value)
+  trackUserActivity()
+
+  // Stop typing indicators
+  stopTyping()
+
+  if (!data.content?.trim()) {
+    console.warn('Empty message content, skipping send')
+    return
+  }
+
+  try {
+    // Priority 1: Send via HTTP API (SSE doesn't send messages, only receives)
+    // Messages will appear in SSE stream after successful HTTP send
+    const success = await httpMessages.sendMessage(data.content)
+
+    if (success) {
+      console.log('✅ [Message] Sent successfully via HTTP API')
+      scrollToNewest()
+      migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
+
+      // SSE will automatically receive the new message from the server
+      // No need to manually add to SSE messages
+      return
+    }
+
+    // Priority 2: WebSocket fallback (disabled in Phase 1)
+    if (isWebSocketEnabled.value) {
+      console.log('🔄 [Message] Trying WebSocket fallback...')
+      const wsSuccess = await conversationWS.sendMessage(data.content)
+      if (wsSuccess) {
+        console.log('✅ [Message] Sent via WebSocket fallback')
+        scrollToNewest()
+        migration.reportMetric('message_sent_websocket_fallback', { content: data.content.substring(0, 50) })
+        return
+      }
+    }
+
+    errorHandler.handleError(
+      '所有訊息發送方式都失敗了',
+      { operation: 'send_message', content: data.content.substring(0, 50) },
+      ErrorType._NETWORK
+    )
+
+  } catch (error) {
+    errorHandler.handleError(
+      error as Error,
+      { operation: 'send_message_exception' },
+      ErrorType._CLIENT
+    )
+  }
+
+  // Reset polling and scroll regardless
+  resetPollingDelay()
   scrollToNewest()
-  resetPollingDelay() // 重置輪詢延遲
 }
 
-const refreshMessages = async () => {
-  console.log('🔄 Manual refresh triggered')
-  trackUserActivity() // 手動刷新是用戶活動
-  await loadMessages(true, true) // Force refresh with animation (no loader)
-  resetPollingDelay() // 重置輪詢延遲
-}
-
-// SSE 實時消息連接管理
-const connectSSE = async () => {
-  if (!authStore.token || !conversationId.value) {
-    console.warn('❌ [Message SSE] Cannot connect: missing token or conversation ID')
-    return
-  }
-
-  // 關閉現有連接
-  disconnectSSE()
+// 🔄 Enhanced Message Refresh with SSE Support
+const handleRefreshMessages = async () => {
+  console.log('🔄 [Refresh] Manual refresh triggered via:', currentProtocol.value)
+  trackUserActivity()
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
-    const sseUrl = `${baseUrl}/api/realtime/sse?conversationId=${conversationId.value}&token=${encodeURIComponent(authStore.token)}`
-    
-    console.log('🚀 [Message SSE] Connecting for conversation:', conversationId.value)
-    
-    messageEventSource.value = new EventSource(sseUrl, {
-      withCredentials: false
-    })
-
-    messageEventSource.value.onopen = () => {
-      console.log('✅ [Message SSE] Connected successfully')
-      sseConnected.value = true
-      sseError.value = null
-      sseReconnectAttempts.value = 0
+    // Priority 1: SSE reconnection (if connection lost)
+    if (sseMessages.hasError.value && !sseMessages.isConnecting.value) {
+      console.log('🔄 [Refresh] Reconnecting SSE...')
+      await sseMessages.reconnect()
     }
 
-    messageEventSource.value.onmessage = (event) => {
-      handleSSEMessage(event)
+    // Priority 2: HTTP refresh as fallback
+    if (!sseMessages.isConnected.value) {
+      console.log('🔄 [Refresh] Using HTTP API refresh...')
+      await httpMessages.refreshMessages()
     }
 
-    messageEventSource.value.onerror = (error) => {
-      console.error('❌ [Message SSE] Connection error:', error)
-      sseConnected.value = false
-      sseError.value = 'SSE 連接中斷'
-      handleSSEReconnect()
+    // Priority 3: WebSocket refresh (disabled in Phase 1)
+    if (isWebSocketEnabled.value && conversationWS.isJoined.value) {
+      await conversationWS.refreshMessages()
     }
+
+    resetPollingDelay()
+    console.log('✅ [Refresh] Manual refresh completed')
 
   } catch (error) {
-    console.error('❌ [Message SSE] Failed to establish connection:', error)
-    sseError.value = '無法建立 SSE 連接'
+    console.error('❌ [Refresh] Failed to refresh messages:', error)
+    // TODO: Show user notification for failed refresh
   }
 }
 
-// 處理 SSE 消息
-const handleSSEMessage = async (event: MessageEvent) => {
-  try {
-    const data = JSON.parse(event.data)
-    console.log('📥 [Message SSE] Received:', data.type)
+// Typing handlers with WebSocket support
+const handleTypingStart = () => {
+  startTyping()
+}
 
-    switch (data.type) {
-      case 'connection':
-        console.log('🔗 [Message SSE] Connection confirmed')
-        break
+const handleTypingStop = () => {
+  stopTyping()
+}
 
-      case 'heartbeat':
-        // SSE 心跳，保持連接活躍
-        break
+const startTyping = () => {
+  isTyping.value = true
+  isLocalTyping.value = true
 
-      case 'new_message':
-        // 優化：直接添加新消息，無需重新載入整個對話
-        if (data.data && data.data.conversationId === conversationId.value) {
-          console.log('💬 [Message SSE] New message received directly:', data.data.content?.substring(0, 50))
-          trackUserActivity() // SSE 消息是用戶活動指示
-          
-          // 檢查是否為重複消息（避免重複顯示）
-          const existingMessage = smoothMessages.value.find(msg => msg.id === data.data.id)
-          if (!existingMessage) {
-            // 優化：將新消息插入正確位置並排序，確保時間順序正確
-            const currentMessages = [...smoothMessages.value, data.data]
-            const sortedMessages = sortMessagesByTime(currentMessages)
-            updateMessages(sortedMessages, true)
-            
-            // 如果用戶在底部，自動滾動到新消息
-            await nextTick()
-            if (virtualMessageListRef.value) {
-              virtualMessageListRef.value.scrollToBottom()
-            }
-          } else {
-            console.log('⚠️ [Message SSE] Duplicate message ignored:', data.data.id)
-          }
-        }
-        break
-
-      case 'notification':
-        // 處理通知（備份機制，主要依賴 new_message）
-        if (data.data && data.data.type === 'new_message') {
-          console.log('💬 [Message SSE] Fallback: New message notification received')
-          trackUserActivity() // SSE 消息是用戶活動指示
-          // 只有在沒有直接收到消息時才重新載入
-          const recentMessages = smoothMessages.value.filter(msg => 
-            new Date(msg.createdAt).getTime() > Date.now() - 5000 // 最近5秒的消息
-          )
-          if (recentMessages.length === 0) {
-            await loadMessages(false, true) // 使用平滑動畫載入新消息
-          }
-        }
-        break
-
-      case 'conversation_updated':
-        // 處理對話狀態更新
-        if (data.data && data.data.conversationId === conversationId.value) {
-          console.log('🔄 [Message SSE] Conversation updated')
-          await loadMessages(false, true) // 使用平滑動畫重新載入
-        }
-        break
-
-      default:
-        console.log('❓ [Message SSE] Unknown message type:', data.type)
+  // Send WebSocket typing indicator if enabled
+  if (isWebSocketEnabled.value && isWebSocketJoined.value) {
+    try {
+      startWebSocketTyping()
+    } catch (error) {
+      console.error('Failed to send typing indicator:', error)
     }
-  } catch (error) {
-    console.error('❌ [Message SSE] Failed to parse message:', error)
   }
+
+  // Auto-stop typing after delay using debounced function
+  debouncedStopTyping()
 }
 
-// SSE 重連機制
-const handleSSEReconnect = () => {
-  if (sseReconnectAttempts.value >= maxSSEReconnectAttempts) {
-    console.warn('⚠️ [Message SSE] Max reconnection attempts reached, falling back to polling')
-    return
-  }
+const stopTyping = () => {
+  isTyping.value = false
+  isLocalTyping.value = false
 
-  sseReconnectAttempts.value++
-  const delay = Math.min(1000 * Math.pow(2, sseReconnectAttempts.value - 1), 10000) // 指數退避，最多10秒
-
-  console.log(`🔄 [Message SSE] Reconnecting attempt ${sseReconnectAttempts.value}/${maxSSEReconnectAttempts} in ${delay}ms`)
-
-  sseReconnectTimer = setTimeout(() => {
-    if (authStore.token && conversationId.value) {
-      connectSSE()
+  // Send WebSocket typing stop if enabled
+  if (isWebSocketEnabled.value && isWebSocketJoined.value) {
+    try {
+      stopWebSocketTyping()
+    } catch (error) {
+      console.error('Failed to stop typing indicator:', error)
     }
-  }, delay)
-}
-
-// 斷開 SSE 連接
-const disconnectSSE = () => {
-  if (messageEventSource.value) {
-    messageEventSource.value.close()
-    messageEventSource.value = null
   }
-
-  if (sseReconnectTimer) {
-    clearTimeout(sseReconnectTimer)
-    sseReconnectTimer = null
-  }
-
-  sseConnected.value = false
-  sseReconnectAttempts.value = 0
-  console.log('🔌 [Message SSE] Disconnected')
 }
 
 const handleAttachmentUpload = (attachment: unknown) => {
   console.log('Attachment uploaded:', attachment)
 }
 
-// Simplified conversation loading
+// Load more messages function
+const loadMoreMessages = async () => {
+  try {
+    loadingState.setHistoryLoading(true)
+    await httpMessages.loadMoreMessages()
+  } catch (error) {
+    errorHandler.handleError(
+      error as Error,
+      { operation: 'load_more_messages' },
+      ErrorType._NETWORK
+    )
+  } finally {
+    loadingState.setHistoryLoading(false)
+  }
+}
+
+// WebSocket typing functions
+const startWebSocketTyping = () => {
+  if (conversationWS.isJoined.value) {
+    // TODO: Implement WebSocket typing start when method is available
+    console.debug('WebSocket typing start requested')
+  }
+}
+
+const stopWebSocketTyping = () => {
+  if (conversationWS.isJoined.value) {
+    // TODO: Implement WebSocket typing stop when method is available
+    console.debug('WebSocket typing stop requested')
+  }
+}
+
+// Refresh messages function
+const refreshMessages = async () => {
+  await handleRefreshMessages()
+}
+
+// Simplified conversation loading with null safety
 const loadConversation = async () => {
   try {
     await conversationsStore.fetchConversation(conversationId.value)
-    if (conversation.value?.unreadCount) {
+    const currentConversation = conversation.value
+    if (currentConversation?.unreadCount) {
       await markAsRead()
     }
   } catch (error) {
     console.error('Failed to load conversation:', error)
+    // Handle conversation not found or network errors
+    router.push('/conversations')
   }
 }
 
-// Performance optimized message loading with smart loading states
-const loadMessages = async (force = false, animate = false) => {
-  // 防抖機制：避免短時間內重複請求
-  const now = Date.now()
-  if (!force && now - lastLoadTime.value < MIN_LOAD_INTERVAL) {
-    console.log('⏱️ Debounced: Too soon since last load')
-    return
-  }
-  
-  // 修復：只有真正的初始載入才顯示 HamsterLoader
-  // hasLoadedInitially 現在會在首次載入後立即設為 true，避免重複載入器
-  const isRealInitialLoad = !hasLoadedInitially.value
-  if (isRealInitialLoad) {
-    isInitialLoading.value = true
-  }
-  
-  lastLoadTime.value = now
-  
+const markAsRead = async () => {
   try {
-    return await measureMessageLoad(async () => {
-      mark('message-fetch-start')
-      await fetchMessages()
-      
-      // 標記已完成初始載入（無論是否有消息）
-      const wasInitialLoad = !hasLoadedInitially.value
-      if (wasInitialLoad) {
-        hasLoadedInitially.value = true
-      }
-      
-      if (rawMessages.value.length > 0) {
-        mark('message-render-start')
-        
-        // Use animated update for subsequent loads, immediate for initial load
-        if (animate && !wasInitialLoad) {
-          // 後續更新使用動畫，不顯示載入器
-          updateMessages(rawMessages.value, true)
-        } else {
-          // 初始載入使用立即更新
-          setMessagesImmediate(rawMessages.value)
-          
-          // Auto-scroll to bottom for initial load only
-          await nextTick()
-          if (virtualMessageListRef.value && wasInitialLoad) {
-            virtualMessageListRef.value.scrollToBottom()
-          }
-        }
-        
-        measure('message-render', 'message-render-start')
-      } else if (animate && !wasInitialLoad) {
-        // 即使沒有新消息，也要觸發平滑更新以保持一致性
-        updateMessages([], true)
-      }
-      measure('message-fetch', 'message-fetch-start')
-    })
-  } finally {
-    // 只有真正的初始載入才重置載入狀態
-    if (isRealInitialLoad) {
-      isInitialLoading.value = false
-    }
+    await conversationsStore.markAsRead(conversationId.value)
+  } catch (error) {
+    console.error('Failed to mark as read:', error)
   }
 }
 
-// Simplified message actions
+// Message actions
 const handleMessageCopy = (message: Message) => {
+  navigator.clipboard.writeText(message.content)
   console.log('Message copied:', message.content)
 }
 
@@ -645,15 +793,19 @@ const handleMessageForward = (message: Message) => {
 }
 
 const handleMessageRecall = async (message: Message) => {
-  const confirmed = await useConfirm().confirmWarning(
-    '撤回訊息',
-    '確定要撤回這條訊息嗎？撤回後對方將無法看到。',
-    '撤回'
-  )
-  
-  if (confirmed) {
-    console.log('Message recalled:', message.id)
-    await loadMessages(true, true) // Force refresh with animation after message recall
+  try {
+    const confirmed = await useConfirm().confirmWarning(
+      '撤回訊息',
+      '確定要撤回這條訊息嗎？撤回後對方將無法看到。',
+      '撤回'
+    )
+
+    if (confirmed) {
+      console.log('Message recalled:', message.id)
+      await refreshMessages()
+    }
+  } catch (error) {
+    console.error('Failed to recall message:', error)
   }
 }
 
@@ -672,86 +824,82 @@ const handleSearchClear = () => {
   isSearchActive.value = false
 }
 
-// Assignment handlers
-const handleConversationAssigned = (conversation: Conversation, assignedTo: string) => {
-  console.log('Conversation assigned:', { conversationId: conversation.id, assignedTo })
-}
+// Assignment handlers - Unused, commented out to reduce bundle size
+// const handleConversationAssigned = (conversation: Conversation, assignedTo: string) => {
+//   console.log('Conversation assigned:', { conversationId: conversation.id, assignedTo })
+// }
 
-const handleConversationUnassigned = (conversation: Conversation) => {
-  console.log('Conversation unassigned:', conversation.id)
-}
+// const handleConversationUnassigned = (conversation: Conversation) => {
+//   console.log('Conversation unassigned:', conversation.id)
+// }
 
-const handleAssignError = (error: string) => {
-  console.error('Assignment error:', error)
-}
+// const handleAssignError = (error: string) => {
+//   console.error('Assignment error:', error)
+// }
 
-// Simplified close conversation
+// Close conversation with enhanced error handling
 const closeConversation = async () => {
   if (closing.value) {return}
 
-  const confirmed = await useConfirm().confirmWarning(
-    '結束對話',
-    '確定要結束這個對話嗎？結束後將無法再次開啟。',
-    '結束對話'
-  )
-  
-  if (!confirmed) {return}
-
-  closing.value = true
   try {
+    const confirmed = await useConfirm().confirmWarning(
+      '結束對話',
+      '確定要結束這個對話嗎？結束後將無法再次開啟。',
+      '結束對話'
+    )
+
+    if (!confirmed) {return}
+
+    closing.value = true
     const success = await conversationsStore.closeConversation(conversationId.value)
     if (success) {
       router.push('/conversations')
+    } else {
+      console.error('Failed to close conversation: Server returned failure')
     }
   } catch (error) {
     console.error('Failed to close conversation:', error)
+    // Show user-friendly error message
   } finally {
     closing.value = false
   }
 }
 
-const markAsRead = async () => {
-  try {
-    await conversationsStore.markAsRead(conversationId.value)
-  } catch (error) {
-    console.error('Failed to mark as read:', error)
-  }
-}
-
-// Quick reply handler
+// Quick reply handler with enhanced validation
 const useQuickReply = (text: string) => {
-  if (messageInputRef.value && text.trim()) {
+  if (!text?.trim()) {
+    console.warn('Quick reply text is empty')
+    return
+  }
+
+  if (messageInputRef.value) {
     try {
       messageInputRef.value.setMessageText(text)
+      trackUserActivity()
     } catch (error) {
       console.error('Quick reply error:', error)
     }
+  } else {
+    console.warn('Message input reference not available')
   }
 }
 
-// Virtual scroll handler with performance optimization
-// Handle scroll events from virtual list
+// Virtual scroll handler
 const handleVirtualScroll = performanceUtils.throttle((scrollInfo: unknown) => {
-  // Type guard for scroll info
   const info = scrollInfo as { scrollTop: number; scrollHeight: number; clientHeight: number } | undefined
   if (!info) {return}
-  
-  // Check if user is at bottom
-  const threshold = 100 // pixels from bottom
+
+  const threshold = 100
   const isAtBottom = info.scrollHeight - info.scrollTop - info.clientHeight < threshold
-  
-  // Show new message modal if new messages arrive while scrolled up
+
   if (!isAtBottom && newMessageCount.value > 0 && !showNewMessageModal.value) {
     showNewMessageModal.value = true
   }
-  
-  // Reset polling delay on scroll (user activity)
-  resetPollingDelay()
-}, 16) // 60fps throttling
 
-// Handle new messages while scrolled
+  resetPollingDelay()
+}, 16)
+
 const handleNewMessageWhileScrolled = () => {
-  newMessageCount.value++
   showNewMessageModal.value = true
 }
 
@@ -761,7 +909,6 @@ const scrollToNewest = () => {
     virtualMessageListRef.value.scrollToBottom()
   }
   showNewMessageModal.value = false
-  newMessageCount.value = 0
 }
 
 const dismissNewMessageModal = () => {
@@ -773,108 +920,35 @@ const goBack = () => {
   router.push('/conversations')
 }
 
-// Smart polling as backup for SSE with activity detection
-const startPolling = () => {
-  if (pollingInterval.value) {
-    clearTimeout(pollingInterval.value)
-  }
-
-  const poll = async () => {
-    // 只在頁面可見且對話未關閉時輪詢
-    if (!isPageVisible.value || conversation.value?.status === 'closed') {
-      console.log('⏸️ Polling paused:', !isPageVisible.value ? 'page hidden' : 'conversation closed')
-      // 延遲後重新檢查
-      pollingInterval.value = setTimeout(poll, 30000)
-      return
-    }
-    
-    // 檢查用戶是否活躍
-    const isUserActive = Date.now() - lastUserActivity.value < USER_INACTIVE_THRESHOLD
-    
-    if (isUserActive) {
-      // 根據 SSE 狀態決定輪詢行為
-      if (sseConnected.value && !sseError.value) {
-        // SSE 連接正常，執行備份輪詢（較長間隔）
-        console.log('🔄 [Polling backup] Loading messages with smooth animation')
-        await loadMessages(false, true) // animate new messages during backup polling
-      } else {
-        // SSE 未連接或有錯誤，執行主要輪詢（較短間隔）
-        console.log('🔄 [Polling fallback] Loading messages with smooth animation')
-        await loadMessages(false, true) // animate new messages during fallback polling
-      }
-    } else {
-      console.log('⏸️ User inactive, skipping poll')
-    }
-    
-    // 根據 SSE 狀態和用戶活躍度選擇延遲間隔
-    const delayArray = sseConnected.value && !sseError.value 
-      ? sseBackupPollingDelays // SSE 連接時使用較長的備份間隔
-      : pollingDelays // SSE 未連接時使用正常間隔
-    
-    const baseDelay = delayArray[currentPollingIndex.value] || maxPollingDelay
-    const delay = isUserActive ? baseDelay : Math.min(baseDelay * 2, maxPollingDelay)
-    
-    pollingInterval.value = setTimeout(poll, delay)
-    
-    // 根據情況調整輪詢索引
-    const maxIndex = delayArray.length - 1
-    if (!isUserActive && currentPollingIndex.value < maxIndex) {
-      currentPollingIndex.value++
-    }
-  }
-
-  // 根據 SSE 狀態選擇初始延遲
-  const initialDelay = sseConnected.value && !sseError.value 
-    ? sseBackupPollingDelays[0] 
-    : pollingDelays[0]
-  
-  console.log(`🚀 [Polling] Starting with ${sseConnected.value ? 'backup' : 'fallback'} mode, delay: ${initialDelay}ms`)
-  pollingInterval.value = setTimeout(poll, initialDelay)
-}
-
-// Reset polling delay on user activity
+// Polling backup
 const resetPollingDelay = () => {
   currentPollingIndex.value = 0
-  lastUserActivity.value = Date.now() // 更新最後活動時間
+  lastUserActivity.value = Date.now()
 }
 
-// 處理頁面可見性變化
-const handleVisibilityChange = async () => {
-  isPageVisible.value = document.visibilityState === 'visible'
-  console.log(`👁️ Page visibility changed: ${isPageVisible.value ? 'visible' : 'hidden'}`)
-  
-  if (isPageVisible.value) {
-    // 頁面變為可見時，重新建立 SSE 連接
-    if (conversationId.value) {
-      await connectSSE()
-    }
-    
-    // 立即刷新一次（帶動畫，無載入器）
-    loadMessages(true, true) // Force refresh with animation
+const trackUserActivity = () => {
+  lastUserActivity.value = Date.now()
+  if (currentPollingIndex.value > 0) {
     resetPollingDelay()
-    startPolling()
-  } else {
-    // 頁面隱藏時斷開 SSE 以節省資源
-    disconnectSSE()
   }
 }
 
-// 追蹤用戶活動
-const trackUserActivity = () => {
-  lastUserActivity.value = Date.now()
-  
-  // 如果之前是不活躍狀態，重置輪詢延遲
-  if (currentPollingIndex.value > 0) {
-    console.log('🎯 User active again, resetting polling delay')
+// Page visibility handling
+const handleVisibilityChange = () => {
+  isPageVisible.value = document.visibilityState === 'visible'
+  console.log(`👁️ Page visibility changed: ${isPageVisible.value ? 'visible' : 'hidden'}`)
+
+  if (isPageVisible.value) {
+    trackUserActivity()
     resetPollingDelay()
   }
 }
 
 // Keyboard shortcuts
 const handleGlobalKeydown = (event: KeyboardEvent) => {
-  trackUserActivity() // 鍵盤輸入是用戶活動
+  trackUserActivity()
   resetPollingDelay()
-  
+
   const target = event.target as HTMLElement
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
     return
@@ -885,29 +959,29 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
       event.preventDefault()
       messageInputRef.value?.focus()
       break
-      
+
     case 'r':
       if (event.ctrlKey || event.metaKey) {
         event.preventDefault()
-        refreshMessages()
+        handleRefreshMessages()
       }
       break
-      
+
     case 'Escape':
       event.preventDefault()
       goBack()
       break
-      
+
     case 'End':
       event.preventDefault()
       scrollToNewest()
       break
-      
+
     case '?':
       event.preventDefault()
       keyboardShortcutsRef.value?.showShortcuts()
       break
-      
+
     case 'f':
       if (event.ctrlKey || event.metaKey) {
         event.preventDefault()
@@ -917,113 +991,129 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   }
 }
 
-// Lifecycle with performance monitoring and SSE
+// Watch for new messages from WebSocket
+watch(() => hasNewMessages.value, (hasNew) => {
+  if (hasNew) {
+    showNewMessageModal.value = true
+  }
+})
+
+// Note: Initial loading state is now managed by useLoadingState composable
+
+// Lifecycle with WebSocket and performance monitoring + error handling
 onMounted(async () => {
-  console.log('🔧 ConversationDetail mounted')
-  
-  // Start performance monitoring
-  mark('component-mount-start')
-  startMonitoring()
-  
-  // Setup event listeners
-  document.addEventListener('keydown', handleGlobalKeydown)
-  document.addEventListener('visibilitychange', handleVisibilityChange)
-  document.addEventListener('mousemove', trackUserActivity)
-  document.addEventListener('click', trackUserActivity)
-  
-  // Start SSE connection for real-time messaging (priority)
-  if (document.visibilityState === 'visible' && conversationId.value) {
-    await connectSSE()
-  }
-  
-  // Start polling as backup (will adjust interval based on SSE status)
-  if (document.visibilityState === 'visible') {
-    startPolling()
-  }
-  
-  measure('component-mount', 'component-mount-start')
-  
-  // Log performance summary in development
-  if (import.meta.env.DEV) {
-    setTimeout(() => {
-      logPerformanceSummary()
-    }, 5000) // After 5 seconds
+  console.log('🔧 ConversationDetail mounted with WebSocket support')
+
+  try {
+    // Start performance monitoring
+    mark('component-mount-start')
+    startMonitoring()
+
+    // Setup event listeners
+    document.addEventListener('keydown', handleGlobalKeydown)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('mousemove', trackUserActivity)
+    document.addEventListener('click', trackUserActivity)
+
+    // Load conversation data
+    await loadConversation()
+
+    // Mark initial loading as complete once WebSocket is set up
+    if (isWebSocketEnabled.value) {
+      // WebSocket will handle message loading
+      hasLoadedInitially.value = true
+      isInitialLoading.value = false
+    }
+
+    measure('component-mount', 'component-mount-start')
+
+    // Log performance summary in development
+    if (import.meta.env.DEV) {
+      // Performance monitoring with cache stats and error reporting
+      const performanceReportInterval = setInterval(() => {
+        logPerformanceSummary()
+
+        // Cache performance stats
+        const cacheStats = performanceOptimizer.getCacheStats()
+        if (cacheStats.totalHits + cacheStats.totalMisses > 0) {
+          console.log('🧠 [Cache Performance]', {
+            hitRate: `${(cacheStats.hitRate * 100).toFixed(1)}%`,
+            size: cacheStats.size,
+            totalOperations: cacheStats.totalHits + cacheStats.totalMisses
+          })
+        }
+
+        // Error handling stats
+        const errorStats = errorHandler.getErrorStats()
+        if (errorStats.total > 0) {
+          console.log('🚨 [Error Statistics]', errorStats)
+        }
+      }, 10000) // 每10秒報告一次
+
+      // Clean up performance monitoring on unmount
+      onUnmounted(() => {
+        clearInterval(performanceReportInterval)
+      })
+    }
+  } catch (error) {
+    console.error('Failed to initialize ConversationDetail component:', error)
+    // Handle critical initialization errors
+    isInitialLoading.value = false
+    router.push('/conversations')
   }
 })
 
 onUnmounted(() => {
-  // Clean up polling
+  // Clean up polling (still needed as it's not managed by eventHandler)
   if (pollingInterval.value) {
     clearTimeout(pollingInterval.value)
     pollingInterval.value = null
   }
-  
-  // Clean up SSE connection
-  disconnectSSE()
-  
-  // Remove all event listeners
-  document.removeEventListener('keydown', handleGlobalKeydown)
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-  document.removeEventListener('mousemove', trackUserActivity)
-  document.removeEventListener('click', trackUserActivity)
-  
+
+  // Note: Event listeners and timers are automatically cleaned up by useEventHandler
+
   // Stop performance monitoring
   stopMonitoring()
-  
+
   // Final performance report in development
   if (import.meta.env.DEV) {
     console.log('📊 [Final Performance Report]', getPerformanceReport())
+    console.log('🧠 [Cache Statistics]', performanceOptimizer.getCacheStats())
   }
 })
 
-// Watch for route changes with performance monitoring and SSE reconnection
+// Watch for route changes
 watch(
   () => route.params.id,
   async (newId) => {
     if (!newId || typeof newId !== 'string') {return}
-    
+
     console.log(`🔄 Loading conversation: ${newId}`)
     mark('conversation-load-start')
-    
-    // 重置初始載入狀態（新對話就是初始載入）
-    hasLoadedInitially.value = false
-    isInitialLoading.value = true
-    
-    // 斷開舊的 SSE 連接
-    disconnectSSE()
-    
+
+    // Reset states using composable
+    loadingState.resetLoadingState()
+
     try {
       // Reset polling
       currentPollingIndex.value = 0
-      
-      // Load conversation and messages in parallel
-      await Promise.all([
-        loadConversation(),
-        setConversationId(newId).then(() => loadMessages(true)) // 真正的初始載入
-      ])
-      
-      // 建立新的 SSE 連接到新對話
-      if (document.visibilityState === 'visible') {
-        await connectSSE()
-      }
-      
+
+      // Load conversation
+      await loadConversation()
+
       measure('conversation-load', 'conversation-load-start')
-      
+
     } catch (error) {
       console.error(`Failed to load conversation ${newId}:`, error)
       measure('conversation-load-error', 'conversation-load-start')
     }
-    // 注意：不在這裡重置 isInitialLoading，讓 loadMessages 自己管理
   },
-  { 
-    immediate: true,
-    flush: 'post'
-  }
+  { immediate: true, flush: 'post' }
 )
 </script>
 
 <style scoped>
-/* 使用與原文件相同的樣式，但添加性能優化 */
+/* Enhanced styles with WebSocket features */
 .conversation-detail {
   height: calc(100vh - 48px);
   display: flex;
@@ -1031,6 +1121,16 @@ watch(
   background-color: var(--gray-50);
   overflow: hidden;
   margin: -24px;
+}
+
+.top-bar-stats-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.websocket-status-topbar {
+  font-size: 0.75rem;
 }
 
 .conversation-header {
@@ -1111,10 +1211,196 @@ watch(
   gap: var(--space-2);
 }
 
+.presence-badge {
+  font-size: 0.75rem;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+/* Connection Status Badge */
+.connection-status-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.connection-excellent {
+  background-color: var(--green-100);
+  color: var(--green-800);
+  border: 1px solid var(--green-200);
+}
+
+.connection-good {
+  background-color: var(--blue-100);
+  color: var(--blue-800);
+  border: 1px solid var(--blue-200);
+}
+
+.connection-fair {
+  background-color: var(--yellow-100);
+  color: var(--yellow-800);
+  border: 1px solid var(--yellow-200);
+}
+
+.connection-poor {
+  background-color: var(--orange-100);
+  color: var(--orange-800);
+  border: 1px solid var(--orange-200);
+}
+
+.connection-offline {
+  background-color: var(--gray-100);
+  color: var(--gray-800);
+  border: 1px solid var(--gray-200);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-connected {
+  background-color: var(--green-500);
+  animation: pulse-green 2s infinite;
+}
+
+.status-connecting {
+  background-color: var(--yellow-500);
+  animation: pulse-yellow 1s infinite;
+}
+
+.status-reconnecting {
+  background-color: var(--orange-500);
+  animation: pulse-orange 1s infinite;
+}
+
+.status-error {
+  background-color: var(--red-500);
+}
+
+.status-disconnected {
+  background-color: var(--gray-400);
+}
+
+/* 🚀 Phase 1: Enhanced SSE Status Styles */
+.status-sse {
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  position: relative;
+}
+
+.status-connected.status-sse {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  animation: sse-connected 2s infinite;
+}
+
+.status-connecting.status-sse,
+.status-reconnecting.status-sse {
+  background: #3b82f6;
+  animation: sse-pulse 1.5s ease-in-out infinite alternate;
+}
+
+.status-error.status-sse {
+  background: #ef4444;
+  animation: sse-error-flash 2s infinite;
+}
+
+.status-http {
+  background: #8b5cf6;
+  border-radius: 2px;
+  animation: http-fade 3s infinite;
+}
+
+.status-websocket {
+  background: #06b6d4;
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+/* SSE Animation Keyframes */
+@keyframes sse-connected {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  }
+}
+
+@keyframes sse-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes sse-error-flash {
+  0%, 50%, 100% {
+    opacity: 1;
+    background: #ef4444;
+  }
+  25%, 75% {
+    opacity: 0.6;
+    background: #f87171;
+  }
+}
+
+@keyframes http-fade {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Status Item Enhancements */
+.reconnect-info {
+  color: #f59e0b !important;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.error-info {
+  color: #ef4444 !important;
+  font-weight: 600;
+  cursor: help;
+  font-size: 0.7rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.protocol-badge {
+  padding: 1px 4px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.typing-indicator-header {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
 .message-search-container {
@@ -1124,7 +1410,6 @@ watch(
   border-bottom: 1px solid var(--gray-200);
 }
 
-/* Performance optimized message container */
 .messages-container-wrapper {
   flex: 1;
   min-height: 0;
@@ -1184,6 +1469,34 @@ watch(
   box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
 }
 
+/* 🌐 Connection Status Bar (Phase 1: SSE-Primary) */
+.connection-status-bar {
+  padding: var(--space-2) 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.4);
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.status-items {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .closed-state {
   background-color: white;
   border-top: 1px solid var(--gray-200);
@@ -1200,7 +1513,7 @@ watch(
   font-weight: 500;
 }
 
-/* New message notification */
+/* Enhanced new message notification */
 .glassmorphism-notification {
   position: fixed;
   bottom: 200px;
@@ -1217,23 +1530,23 @@ watch(
   align-items: center;
   gap: 14px;
   padding: 14px 20px;
-  
+
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 16px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.08),
     0 2px 8px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  
+
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassmorphism-notification:hover .glass-content {
   background: rgba(255, 255, 255, 0.98);
   transform: translateY(-1px);
-  box-shadow: 
+  box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.12),
     0 4px 16px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -1274,6 +1587,15 @@ watch(
   color: #6b7280;
 }
 
+.delivery-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .glass-dismiss {
   width: 24px;
   height: 24px;
@@ -1295,7 +1617,6 @@ watch(
   transform: scale(1.05);
 }
 
-/* Close button styles */
 .close-conversation-btn {
   display: inline-flex;
   align-items: center;
@@ -1355,6 +1676,21 @@ watch(
   }
 }
 
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes pulse-yellow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-orange {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 /* Performance optimizations */
 .message-indicator-topbar {
   contain: layout style;
@@ -1366,24 +1702,34 @@ watch(
     padding: var(--space-3) var(--space-2);
     flex-wrap: wrap;
   }
-  
+
   .customer-name {
     font-size: 1.125rem;
   }
-  
+
   .customer-avatar {
     width: 36px;
     height: 36px;
     font-size: 0.875rem;
   }
-  
+
   .input-section {
     padding: 18px 16px;
     max-height: 140px;
   }
-  
+
   .glassmorphism-notification {
     bottom: 180px;
+  }
+
+  .connection-status-badge {
+    font-size: 0.625rem;
+    padding: 2px 6px;
+  }
+
+  .status-items {
+    font-size: 0.625rem;
+    gap: var(--space-2);
   }
 }
 </style>

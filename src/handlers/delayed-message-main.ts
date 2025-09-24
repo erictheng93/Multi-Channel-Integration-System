@@ -4,6 +4,7 @@ import type { Bindings } from '../types';
 import { MessageRecallService } from '../services/message-recall-service';
 import { PermissionService } from '../services/permission-service';
 import { jwtAuth } from '../middleware/auth';
+import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 
 const delayedMessageHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -48,7 +49,44 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       delaySeconds,
       messageType: messageType || 'text'
     });
-    
+
+    // 🚀 WebSocket Broadcasting: Delayed Message Scheduled
+    if (result.success && result.messageId) {
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_countdown',
+          conversationId,
+          messageId: result.messageId,
+          agentId: String(user.id),
+          data: {
+            content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+            messageType: messageType || 'text',
+            platform,
+            delaySeconds,
+            scheduledSendTime: result.scheduledSendTime,
+            recallDeadline: result.recallDeadline,
+            countdownStarted: true,
+            remainingSeconds: delaySeconds,
+            canRecall: true,
+            scheduledBy: {
+              id: user.id,
+              name: user.displayName,
+              role: user.role
+            },
+            timestamp: new Date().toISOString()
+          },
+          priority: 'normal'
+        });
+        console.log('✅ [WebSocket] Delayed message countdown started broadcast');
+
+        // Start countdown updates (we can implement this in DelayedMessageProcessor DO)
+        // This will send periodic countdown updates until the message is sent or recalled
+      } catch (broadcastError) {
+        console.warn('⚠️ [WebSocket] Delayed message countdown broadcast failed:', broadcastError);
+      }
+    }
+
     return c.json({
       success: result.success,
       data: result.success ? {
@@ -82,7 +120,67 @@ delayedMessageHandler.post('/recall/:messageId', jwtAuth, async (c) => {
     
     const messageRecallService = new MessageRecallService(c.env);
     const result = await messageRecallService.recallMessage(messageId, user.id.toString());
-    
+
+    // 🚀 WebSocket Broadcasting: Message Recall Event
+    if (result.success && result.messageId) {
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+
+        // Use conversationId from query parameter or request
+        const conversationId = c.req.query('conversationId') || 'unknown';
+
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_recalled',
+          conversationId,
+          messageId: result.messageId,
+          agentId: String(user.id),
+          data: {
+            recalledBy: {
+              id: user.id,
+              name: user.displayName,
+              role: user.role
+            },
+            recalledAt: new Date().toISOString(),
+            originalContent: 'Content recalled',
+            originalMessageType: 'text',
+            wasSuccessful: true,
+            reason: 'manual_recall',
+            timestamp: new Date().toISOString()
+          },
+          priority: 'high'
+        });
+        console.log('✅ [WebSocket] Message recall success broadcasted');
+      } catch (broadcastError) {
+        console.warn('⚠️ [WebSocket] Message recall broadcast failed:', broadcastError);
+      }
+    } else if (!result.success) {
+      // Broadcast recall failure
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_failed',
+          conversationId: 'unknown', // We don't have conversation context for failed recalls
+          messageId: messageId,
+          agentId: String(user.id),
+          data: {
+            failureReason: result.error || 'Recall failed',
+            attemptedBy: {
+              id: user.id,
+              name: user.displayName,
+              role: user.role
+            },
+            failedAt: new Date().toISOString(),
+            operation: 'recall',
+            timestamp: new Date().toISOString()
+          },
+          priority: 'high'
+        });
+        console.log('✅ [WebSocket] Message recall failure broadcasted');
+      } catch (broadcastError) {
+        console.warn('⚠️ [WebSocket] Message recall failure broadcast failed:', broadcastError);
+      }
+    }
+
     return c.json({
       success: result.success,
       data: result.success ? { messageId: result.messageId } : null,
@@ -139,7 +237,81 @@ delayedMessageHandler.post('/process', async (c) => {
     
     const messageRecallService = new MessageRecallService(c.env);
     const result = await messageRecallService.processQueueMessage(messageId);
-    
+
+    // 🚀 WebSocket Broadcasting: Queue Message Processing Result
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+
+      if (result.success && !result.skipped) {
+        // Get conversationId from request context
+        const conversationId = c.req.query('conversationId') || 'unknown';
+
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_sent',
+          conversationId: conversationId || 'unknown',
+          messageId: messageId,
+          agentId: 'system',
+          data: {
+            content: 'Message processed successfully',
+            messageType: 'text',
+            platform: 'unknown',
+            processedAt: new Date().toISOString(),
+            deliveryStatus: 'sent',
+            delayCompleted: true,
+            originalScheduledTime: new Date().toISOString(),
+            actualSentTime: new Date().toISOString(),
+            queueProcessingId: crypto.randomUUID(),
+            timestamp: new Date().toISOString()
+          },
+          priority: 'normal'
+        });
+        console.log('✅ [WebSocket] Delayed message sent event broadcasted');
+      } else if (result.skipped) {
+        // Message was skipped (likely cancelled)
+        // Get conversationId from request context
+        const conversationId = c.req.query('conversationId') || 'unknown';
+
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_recalled',
+          conversationId: conversationId || 'unknown',
+          messageId: messageId,
+          agentId: 'system',
+          data: {
+            skippedReason: 'Message was cancelled before processing',
+            processedAt: new Date().toISOString(),
+            wasSkipped: true,
+            originalScheduledTime: new Date().toISOString(),
+            timestamp: new Date().toISOString()
+          },
+          priority: 'low'
+        });
+        console.log('✅ [WebSocket] Delayed message skip event broadcasted');
+      } else if (!result.success) {
+        // Processing failed
+        // Get conversationId from request context
+        const conversationId = c.req.query('conversationId') || 'unknown';
+
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_failed',
+          conversationId: conversationId || 'unknown',
+          messageId: messageId,
+          agentId: 'system',
+          data: {
+            failureReason: result.error || 'Queue processing failed',
+            processedAt: new Date().toISOString(),
+            operation: 'queue_processing',
+            deliveryStatus: 'failed',
+            originalScheduledTime: new Date().toISOString(),
+            timestamp: new Date().toISOString()
+          },
+          priority: 'high'
+        });
+        console.log('✅ [WebSocket] Delayed message processing failure broadcasted');
+      }
+    } catch (broadcastError) {
+      console.warn('⚠️ [WebSocket] Queue processing broadcast failed:', broadcastError);
+    }
+
     return c.json({
       success: result.success,
       data: {

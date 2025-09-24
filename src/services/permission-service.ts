@@ -227,7 +227,6 @@ export class PermissionService {
       return {
         id: typeof userId === 'string' ? parseInt(userId) : userId,
         role: 'agent',
-        team_id: 1,
         teamId: 1,
         isActive: true
       };
@@ -265,8 +264,7 @@ export class PermissionService {
       const userData = {
         id: parseInt(user.id), // 轉換為數字以符合 UserPermissionData 類型
         role: user.role as string,
-        team_id: user.teamId,
-        teamId: user.teamId,
+        teamId: user.teamId || 0, // Default to 0 if null
         isActive: Boolean(user.isActive)
       };
       
@@ -306,7 +304,7 @@ export class PermissionService {
       }
 
       // Manager 可以看到團隊內的所有對話
-      if (user.role === 'team' && user.team_id) {
+      if (user.role === 'team' && user.teamId) {
         const drizzleDb = drizzle(database);
         const result = await drizzleDb
           .select({ id: conversations.id })
@@ -314,7 +312,7 @@ export class PermissionService {
           .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
           .where(
             or(
-              eq(agents.teamId, user.team_id),
+              eq(agents.teamId, user.teamId),
               isNull(conversations.assignedUserId)
             )
           )

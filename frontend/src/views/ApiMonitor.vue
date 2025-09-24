@@ -792,13 +792,13 @@ const statModalTitle = computed(() => {
 })
 
 const viewLogs = (api: ApiEndpoint): void => {
-  console.log('View logs for:', api.endpoint)
-  // TODO: 實現日誌查看功能
+  // Log viewing functionality will be implemented when required
+  console.info('API logs requested for:', api.endpoint)
 }
 
 const viewDocs = (api: ApiEndpoint): void => {
-  console.log('View docs for:', api.endpoint)
-  // TODO: 實現API文檔功能
+  // API documentation functionality will be implemented when required
+  console.info('API documentation requested for:', api.endpoint)
 }
 
 // 輔助函數

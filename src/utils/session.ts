@@ -3,6 +3,7 @@ import type { Message, Platform } from '../types';
 import { drizzle } from 'drizzle-orm/d1';
 import { conversationSessions, messages } from '../db/schema';
 import { eq, and, desc, sql, count, avg } from 'drizzle-orm';
+// Logger removed as not currently used in session utility
 
 // 對話會話類型定義
 interface ConversationSession {

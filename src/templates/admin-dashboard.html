@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多渠道客服管理系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e1e5e9;
+        }
+
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #718096;
+        }
+
+        .btn-secondary:hover {
+            background: #4a5568;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-online {
+            background-color: #48bb78;
+        }
+
+        .status-offline {
+            background-color: #f56565;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .alert {
+            background: #fed7d7;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            border: 1px solid #90cdf4;
+            color: #2b6cb0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 0.5rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 多渠道客服管理系統</h1>
+    </div>
+
+    <div class="container">
+        <div class="alert alert-info">
+            <strong>歡迎使用管理後台！</strong> 這是一個基本的管理介面，用於監控系統狀態和管理客服對話。
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>📊 系統狀態</h3>
+                <div class="stat-number" id="system-status">
+                    <span class="status-indicator status-online"></span>
+                    運行中
+                </div>
+                <p>系統正常運行</p>
+                <div class="quick-actions">
+                    <button class="btn" onclick="checkSystemHealth()">檢查健康狀態</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>💬 對話統計</h3>
+                <div class="stat-number" id="conversation-count">載入中...</div>
+                <p>總對話數量</p>
+                <div class="quick-actions">
+                    <button class="btn" onclick="loadConversations()">查看對話</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>👥 客戶統計</h3>
+                <div class="stat-number" id="customer-count">載入中...</div>
+                <p>總客戶數量</p>
+                <div class="quick-actions">
+                    <button class="btn" onclick="loadCustomers()">管理客戶</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📱 LINE 整合</h3>
+                <div class="stat-number">
+                    <span class="status-indicator status-online"></span>
+                    已連接
+                </div>
+                <p>LINE Bot 狀態</p>
+                <div class="quick-actions">
+                    <button class="btn" onclick="testLineConnection()">測試連接</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🔧 快速操作</h3>
+                <div class="quick-actions">
+                    <button class="btn" onclick="viewLogs()">查看日誌</button>
+                    <button class="btn btn-secondary" onclick="exportData()">匯出資料</button>
+                    <button class="btn btn-secondary" onclick="systemSettings()">系統設定</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📈 最近活動</h3>
+                <div id="recent-activity">
+                    <p>載入最近活動...</p>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn" onclick="refreshActivity()">重新整理</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🚀 代理隊列監控</h3>
+                <div class="stat-number" id="agent-queue-status">
+                    <span class="status-indicator status-online"></span>
+                    載入中...
+                </div>
+                <div id="agent-queue-details">
+                    <p>延遲消息和撤回功能</p>
+                    <small id="agent-queue-metrics">載入中...</small>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
+                    <button class="btn btn-secondary" onclick="viewQueueDetails()">詳細資訊</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⚡ 實時隊列監控</h3>
+                <div class="stat-number" id="realtime-queue-status">
+                    <span class="status-indicator status-online"></span>
+                    載入中...
+                </div>
+                <div id="realtime-queue-details">
+                    <p>實時事件推送和SSE管理</p>
+                    <small id="realtime-queue-metrics">載入中...</small>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
+                    <button class="btn btn-secondary" onclick="testRealtimeEvent()">測試事件</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/admin-dashboard.js"></script>
+</body>
+</html>

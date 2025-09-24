@@ -1,12 +1,14 @@
 // 密碼加密解密工具
 // 使用 AES-256-GCM 加密算法
 
+import type { Bindings } from '../types';
+
 const algorithm = 'AES-GCM';
 
 /**
  * 從環境變量獲取加密密鑰
  */
-function getEncryptionKey(env: any): ArrayBuffer {
+function getEncryptionKey(env: Bindings): ArrayBuffer {
   const keyString = env.ENCRYPTION_KEY || 'dev-encryption-key-32-char-long';
   
   // 確保密鑰長度為32字節 (256位)
@@ -17,7 +19,7 @@ function getEncryptionKey(env: any): ArrayBuffer {
 /**
  * 加密密碼
  */
-export async function encryptPassword(password: string, env: any): Promise<string> {
+export async function encryptPassword(password: string, env: Bindings): Promise<string> {
   try {
     const keyData = getEncryptionKey(env);
     const key = await crypto.subtle.importKey(
@@ -52,7 +54,7 @@ export async function encryptPassword(password: string, env: any): Promise<strin
 /**
  * 解密密碼
  */
-export async function decryptPassword(encryptedData: string, env: any): Promise<string> {
+export async function decryptPassword(encryptedData: string, env: Bindings): Promise<string> {
   try {
     const keyData = getEncryptionKey(env);
     const key = await crypto.subtle.importKey(
@@ -87,7 +89,7 @@ export async function decryptPassword(encryptedData: string, env: any): Promise<
 /**
  * 驗證加密密碼是否有效
  */
-export async function isValidEncryptedPassword(encryptedData: string, env: any): Promise<boolean> {
+export async function isValidEncryptedPassword(encryptedData: string, env: Bindings): Promise<boolean> {
   try {
     await decryptPassword(encryptedData, env);
     return true;

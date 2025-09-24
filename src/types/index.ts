@@ -7,45 +7,51 @@ export * from './handlers';
 export * from './api-standard';
 export * from './events';
 
-// Cloudflare Workers 環境變數類型定義
+// Export WebSocket and Durable Objects types
+export * from './websocket-types';
+
+// Cloudflare Workers environment bindings
 export interface Bindings {
-  // LINE 相關
+  // Required integrations
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_CHANNEL_SECRET: string;
   LINE_BOT_BASIC_ID: string;
-  
-  // Facebook 相關
   FB_APP_SECRET: string;
   FB_PAGE_ACCESS_TOKEN: string;
   FB_VERIFY_TOKEN: string;
-  
-  // 認證相關
   JWT_SECRET: string;
+
+  // Core Cloudflare services
+  DB: D1Database;
+  SESSIONS: KVNamespace;
+  KV: KVNamespace;
+  AGENT_QUEUE: Queue;
+  REALTIME_QUEUE: Queue;
+
+  // Optional services
   ENCRYPTION_KEY?: string;
   ADMIN_PASSWORD?: string;
-  
-  // 環境設定
   ENVIRONMENT?: string;
   FRONTEND_URL?: string;
-  
-  // R2 存儲相關
+  CACHE?: KVNamespace;
+  FILES?: R2Bucket;
+  AVATARS?: R2Bucket;
+  NOTIFICATION_QUEUE?: Queue;
+  DELAYED_QUEUE?: Queue;
+
+  // R2 storage (optional)
   R2_BUCKET?: R2Bucket;
   R2_PUBLIC_URL?: string;
   R2_CUSTOM_DOMAIN?: string;
   R2_BUCKET_NAME?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
-  
-  // Cloudflare 服務
-  DB: D1Database;
-  SESSIONS: KVNamespace;
-  CACHE?: KVNamespace;
-  FILES?: R2Bucket;
-  AVATARS?: R2Bucket;
-  AGENT_QUEUE: Queue; // 代理延遲消息和撤回功能
-  REALTIME_QUEUE: Queue; // 實時事件推送隊列
-  NOTIFICATION_QUEUE?: Queue;
-  DELAYED_QUEUE?: Queue;
-  KV: KVNamespace;
+
+  // Durable Objects
+  CONVERSATION_ROOM?: DurableObjectNamespace;
+  USER_CONNECTION?: DurableObjectNamespace;
+  MESSAGE_BROADCASTER?: DurableObjectNamespace;
+  DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
+  DISTRIBUTED_LOCK?: DurableObjectNamespace;
 }
 
 // LINE Webhook 相關類型定義
@@ -98,7 +104,7 @@ export interface LineWebhookBody {
   events: LineEvent[];
 }
 
-// 資料庫相關類型定義（統一 camelCase 格式）
+// Database entity types
 export interface Customer {
   id: number;
   platform: string;
@@ -147,7 +153,7 @@ export interface DbMessage {
   createdAt: string;
 }
 
-// 對話會話類型定義
+// Conversation session type
 export interface ConversationSession {
   id: string;
   conversation_id: number;
@@ -188,43 +194,43 @@ export interface FacebookMediaData {
 
 export type PlatformMediaData = LineMediaData | FacebookMediaData;
 
-// 資料庫用戶相關類型定義（向後相容）
+// Database user type
 export interface DbUser {
-  id: number | string; // 支持字符串 ID (agents)
+  id: number | string;
   email: string;
   displayName: string;
   role: 'admin' | 'team' | 'agent';
-  teamId?: number | null;
-  teamName?: string | null;
+  teamId?: number | null | undefined;
+  teamName?: string | null | undefined;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-// 團隊相關類型定義
+// Team type
 export interface Team {
   id: number;
   name: string;
-  description?: string | null;
-  qrCode?: string | null;
+  description?: string | null | undefined;
+  qrCode?: string | null | undefined;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-// 客戶標籤類型定義
+// Customer tag type
 export interface CustomerTag {
   id: number;
   name: string;
   color: string;
-  description?: string | null;
-  teamId?: number | null;
+  description?: string | null | undefined;
+  teamId?: number | null | undefined;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-// 客戶標籤關聯類型定義
+// Customer tag relation type
 export interface CustomerTagRelation {
   customerId: number;
   tagId: number;
@@ -233,15 +239,17 @@ export interface CustomerTagRelation {
 }
 
 export interface JWTPayload {
-  userId: number | string;  // Support both number (users table) and string (agents table)
-  displayName: string;  // Using displayName instead of username
-  email?: string;  // Optional email field
+  userId: number | string;
+  displayName: string;
+  email?: string;
   role: string;
-  teamId?: number | undefined;  // Allow undefined explicitly
+  teamId?: number | undefined;
+  teamName?: string | undefined;
   iat: number;
   exp: number;
   iss?: string;
-  type?: 'access' | 'refresh' | 'temp_password_change';  // Token type for better validation
+  type?: 'access' | 'refresh' | 'temp_password_change';
+  isSystemToken?: boolean;
 }
 
 // Facebook Webhook types
@@ -253,17 +261,21 @@ export interface FacebookRecipient {
   id: string;
 }
 
-export interface FacebookMessageAttachment {
-  type: 'image' | 'video' | 'audio' | 'file' | 'location' | 'template';
-  payload: {
-    url?: string;
-    title?: string;
-    coordinates?: {
-      lat: number;
-      long: number;
-    };
-    [key: string]: unknown;
+export type FacebookAttachmentType = 'image' | 'video' | 'audio' | 'file' | 'location' | 'template';
+
+export interface FacebookAttachmentPayload {
+  url?: string;
+  title?: string;
+  coordinates?: {
+    lat: number;
+    long: number;
   };
+  [key: string]: unknown;
+}
+
+export interface FacebookMessageAttachment {
+  type: FacebookAttachmentType;
+  payload: FacebookAttachmentPayload;
 }
 
 export interface FacebookMessage {
@@ -304,7 +316,7 @@ export interface FacebookWebhookBody {
   entry: FacebookWebhookEntry[];
 }
 
-// 擴展的 API 回應類型定義
+// Extended API response type
 export interface ExtendedApiResponse<T = unknown> {
   success: boolean;
   data?: T;
@@ -351,13 +363,16 @@ export interface LineFlexComponentStyle {
   separatorColor?: string;
 }
 
+export type LineActionType = 'postback' | 'message' | 'uri' | 'datetimepicker';
+export type DatetimeMode = 'date' | 'time' | 'datetime';
+
 export interface LineAction {
-  type: 'postback' | 'message' | 'uri' | 'datetimepicker';
+  type: LineActionType;
   label?: string;
   data?: string;
   text?: string;
   uri?: string;
-  mode?: 'date' | 'time' | 'datetime';
+  mode?: DatetimeMode;
   initial?: string;
   max?: string;
   min?: string;

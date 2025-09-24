@@ -1,24 +1,26 @@
 // 認證處理器 - 主要實現
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
-import { 
-  signJWT, 
+import {
+  signJWT,
   authenticateUser,
-  createUser, 
+  createUser,
   createSession
 } from '../utils/auth';
-import { 
-  jwtAuth, 
-  sessionAuth, 
-  requireRole, 
+import {
+  jwtAuth,
+  sessionAuth,
+  requireRole,
   rateLimit
 } from '../middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service';
 import { drizzle } from 'drizzle-orm/d1';
 import { agents } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { createContextLogger } from '../utils/logger';
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
+const authLogger = createContextLogger('Authentication');
 
 // 用戶登入
 authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
@@ -38,31 +40,31 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     const { user, passwordPolicy, accountStatus } = authResult;
     
     // 根據認證結果設定錯誤訊息
-    let errorMessage = '';
-    switch (accountStatus) {
-      case 'not_found':
-        errorMessage = 'User not found';
-        break;
-      case 'disabled':
-        errorMessage = 'Account disabled';
-        break;
-      case 'wrong_password':
-        errorMessage = 'Wrong password';
-        break;
-      case 'authenticated':
-        // 認證成功，繼續處理
-        break;
-      default:
-        errorMessage = 'Invalid email or password';
-    }
-    
-    if (!user) {
+    if (accountStatus !== 'success') {
+      let errorMessage = '';
+      switch (accountStatus) {
+        case 'not_found':
+          errorMessage = 'User not found';
+          break;
+        case 'disabled':
+          errorMessage = 'Account disabled';
+          break;
+        case 'wrong_password':
+          errorMessage = 'Wrong password';
+          break;
+        default:
+          errorMessage = 'Authentication failed';
+      }
       return c.json({ error: errorMessage }, 401);
+    }
+
+    if (!user) {
+      return c.json({ error: 'Authentication failed' }, 401);
     }
 
     // ✅ 優化：使用統一獲取的密碼政策
     if (passwordPolicy === 'must_change') {
-      console.log(`🔐 Password policy check - User: ${cleanEmail}, Policy: must_change, redirecting to change password`);
+      // Password change required
       
       // 生成臨時token用於密碼更改
       const tempToken = await signJWT(
@@ -108,7 +110,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         })
         .where(eq(agents.id, String(user.id)));
     } catch (error) {
-      console.warn('Failed to update last_login_at:', error);
+      authLogger.warn('Failed to update last login timestamp', { userId: user.id, error: error instanceof Error ? error.message : String(error) });
       // 不影響登入流程
     }
 
@@ -191,7 +193,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    authLogger.error('User login failed', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Login failed',
@@ -272,7 +274,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
+    authLogger.error('User registration failed', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Registration failed',
@@ -316,7 +318,7 @@ authHandler.post('/logout', sessionAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Logout error:', error);
+    authLogger.error('User logout failed', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Logout failed',
@@ -349,7 +351,7 @@ authHandler.get('/profile', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Profile error:', error);
+    authLogger.error('Profile update failed', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get profile',
@@ -378,7 +380,7 @@ authHandler.get('/me', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Me endpoint error:', error);
+    authLogger.error('Current user information retrieval failed', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get user info',
@@ -445,7 +447,7 @@ authHandler.post('/refresh', async (c) => {
         );
         userRow = (fallbackResult && fallbackResult.length > 0) ? fallbackResult[0] as any : undefined;
       } catch (error) {
-        console.warn('Legacy users table not found or query failed:', error);
+        authLogger.warn('Legacy users table query failed', { error: error instanceof Error ? error.message : String(error) });
         userRow = undefined;
       }
     }
@@ -496,7 +498,7 @@ authHandler.post('/refresh', async (c) => {
     });
 
   } catch (error) {
-    console.error('Token refresh error:', error);
+    authLogger.error('Token refresh failed', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Token refresh failed',

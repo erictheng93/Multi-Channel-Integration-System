@@ -44,8 +44,7 @@ export interface PermissionContext {
 export interface UserPermissionData {
   id: number;
   role: string;
-  teamId?: number | null;
-  team_id?: number | null;  // DB field name (backward compatibility)
+  teamId?: number;
   permissions?: string[];
   isActive: boolean;
 }
@@ -72,27 +71,20 @@ export interface QRFollowEvent {
 
 export interface CustomerCreationData {
   platform: string;
-  platformUserId: string;  // API field name
-  platform_user_id?: string;  // DB field name (optional for backward compatibility)
-  displayName?: string;  // API field name
-  display_name?: string;  // DB field name (optional for backward compatibility)
-  avatarUrl?: string;  // API field name
-  avatar_url?: string;  // DB field name (optional for backward compatibility)
-  sourceTeamId?: number;  // API field name
-  source_team_id?: number;  // DB field name (optional for backward compatibility)
+  platformUserId: string;
+  displayName?: string;
+  avatarUrl?: string;
+  sourceTeamId?: number;
   metadata?: Record<string, unknown>;
 }
 
 export interface ConversationCreationData {
-  customerId: number;  // API field name
-  customer_id?: number;  // DB field name (optional for backward compatibility)
-  assignedTeamId?: number;  // API field name
-  assigned_team_id?: number;  // DB field name (optional for backward compatibility)
-  assignedUserId?: number;  // API field name
-  assigned_user_id?: number;  // DB field name (optional for backward compatibility)
+  customerId: number;
+  assignedTeamId?: number;
+  assignedUserId?: number;
   status: 'active' | 'pending';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
-  metadata?: Record<string, unknown>;  // Additional conversation metadata
+  metadata?: Record<string, unknown>;
 }
 
 // Message recall service types

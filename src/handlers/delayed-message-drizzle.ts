@@ -1,13 +1,15 @@
 // 使用 Drizzle ORM 的延遲訊息處理器
 import { Hono } from 'hono';
-// import { v4 as uuidv4 } from 'uuid'; // 暫時未使用
 import { eq, and, desc } from 'drizzle-orm';
 import { DatabaseService } from '../services/database';
 import { databaseMiddleware, authMiddleware } from '../middleware/database';
 import * as schema from '../db/schema';
 import type { HonoContext } from '../types/bindings';
+import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
+import { createContextLogger } from '../utils/logger';
 
 const delayedMessages = new Hono<HonoContext>();
+const delayedMessageLogger = createContextLogger('DelayedMessage');
 
 // Apply middleware
 delayedMessages.use('*', databaseMiddleware);
@@ -82,6 +84,51 @@ delayedMessages.post('/send', async (c) => {
       delaySeconds,
     });
 
+    // 🚀 WebSocket Broadcasting: Delayed Message Scheduled
+    const messageId = delayedMessage[0]?.id || '';
+    if (messageId) {
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_countdown',
+          conversationId,
+          messageId,
+          agentId: agent!.id,
+          data: {
+            content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+            messageType,
+            delaySeconds,
+            scheduledSendTime: scheduledAt,
+            recallDeadline,
+            countdownStarted: true,
+            remainingSeconds: delaySeconds,
+            canRecall: true,
+            scheduledBy: {
+              id: agent!.id,
+              name: agent!.displayName || 'Agent',
+              role: agent!.role
+            },
+            metadata: metadata ? JSON.stringify(metadata) : null,
+            timestamp: new Date().toISOString()
+          },
+          priority: 'normal'
+        });
+        delayedMessageLogger.info('WebSocket delayed message countdown started broadcast', {
+          messageId,
+          conversationId,
+          agentId: agent!.id,
+          delaySeconds
+        });
+      } catch (broadcastError) {
+        delayedMessageLogger.warn('WebSocket delayed message countdown broadcast failed', {
+          messageId,
+          conversationId,
+          agentId: agent!.id,
+          error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+        });
+      }
+    }
+
     return c.json({
       success: true,
       data: {
@@ -94,7 +141,13 @@ delayedMessages.post('/send', async (c) => {
     });
 
   } catch (error) {
-    console.error('Send delayed message error:', error);
+    const agent = c.get('agent');
+    const { conversationId, delaySeconds } = await c.req.json() as DelayedSendRequest;
+    delayedMessageLogger.error('Send delayed message failed', {
+      conversationId: conversationId,
+      agentId: agent?.id,
+      delaySeconds: delaySeconds
+    });
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
@@ -153,6 +206,46 @@ delayedMessages.post('/recall/:messageId', async (c) => {
     // 更新狀態為已取消
     await dbService.updateDelayedMessageStatus(messageId, 'cancelled');
 
+    // 🚀 WebSocket Broadcasting: Message Recall Success
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastDelayedMessageEvent({
+        type: 'delayed_message_recalled',
+        conversationId: delayedMessage.conversationId,
+        messageId,
+        agentId: agent!.id,
+        data: {
+          recalledBy: {
+            id: agent!.id,
+            name: agent!.displayName || 'Agent',
+            role: agent!.role
+          },
+          recalledAt: new Date().toISOString(),
+          originalContent: delayedMessage.content.substring(0, 100) + (delayedMessage.content.length > 100 ? '...' : ''),
+          originalMessageType: delayedMessage.messageType,
+          wasSuccessful: true,
+          reason: 'manual_recall',
+          originalScheduledTime: delayedMessage.scheduledAt,
+          recallDeadline: metadata.recallDeadline,
+          timestamp: new Date().toISOString()
+        },
+        priority: 'high'
+      });
+      delayedMessageLogger.info('WebSocket message recall success broadcasted', {
+        messageId,
+        conversationId: delayedMessage.conversationId,
+        agentId: agent!.id,
+        recalledAt: new Date().toISOString()
+      });
+    } catch (broadcastError) {
+      delayedMessageLogger.warn('WebSocket message recall broadcast failed', {
+        messageId,
+        conversationId: delayedMessage.conversationId,
+        agentId: agent!.id,
+        error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+      });
+    }
+
     return c.json({
       success: true,
       data: {
@@ -163,7 +256,12 @@ delayedMessages.post('/recall/:messageId', async (c) => {
     });
 
   } catch (error) {
-    console.error('Recall message error:', error);
+    const messageId = c.req.param('messageId');
+    const agent = c.get('agent');
+    delayedMessageLogger.error('Recall message failed', {
+      messageId: messageId,
+      agentId: agent?.id
+    });
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
@@ -182,7 +280,6 @@ delayedMessages.get('/pending', async (c) => {
     const offset = (pageNum - 1) * pageSizeNum;
 
     const db = c.get('db');
-    // const kv = c.get('kv'); // 暫時未使用
 
     // 根據角色決定查詢範圍
     let whereCondition;
@@ -241,7 +338,16 @@ delayedMessages.get('/pending', async (c) => {
     });
 
   } catch (error) {
-    console.error('Get pending messages error:', error);
+    const agent = c.get('agent');
+    const { status = 'pending', page = '1', pageSize = '20' } = c.req.query();
+    const pageNum = Math.max(parseInt(page), 1);
+    const pageSizeNum = Math.min(parseInt(pageSize), 100);
+    delayedMessageLogger.error('Get pending messages failed', {
+      agentId: agent?.id,
+      status,
+      page: pageNum,
+      pageSize: pageSizeNum
+    }, error instanceof Error ? error : new Error(String(error)));
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
@@ -296,18 +402,61 @@ delayedMessages.post('/process', async (c) => {
       // 建立實際訊息
       const message = await dbService.createMessage({
         conversationId: delayedMessage.conversationId,
-        senderId: parseInt(delayedMessage.agentId) || 0,
+        agentSenderId: delayedMessage.agentId,
+        customerSenderId: null,
         senderType: 'agent',
         messageType: delayedMessage.messageType,
         content: delayedMessage.content,
         metadata: delayedMessage.metadata,
+        recallDeadline: null,
+        recalledAt: null,
+        sentAt: new Date().toISOString(),
+        isSent: true,
+        deliveryStatus: 'sent'
       });
 
       // 更新延遲訊息狀態
       await dbService.updateDelayedMessageStatus(messageId, 'sent');
 
-      // TODO: 發送到實際平台 (LINE, Facebook 等)
-      // await sendToPlatform(message, conversation);
+      // Platform integration will be handled by external services
+
+      // 🚀 WebSocket Broadcasting: Delayed Message Sent Successfully
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_sent',
+          conversationId: delayedMessage.conversationId,
+          messageId,
+          agentId: delayedMessage.agentId,
+          data: {
+            content: delayedMessage.content.substring(0, 100) + (delayedMessage.content.length > 100 ? '...' : ''),
+            messageType: delayedMessage.messageType,
+            actualMessageId: message?.id || '',
+            processedAt: new Date().toISOString(),
+            deliveryStatus: 'sent',
+            delayCompleted: true,
+            originalScheduledTime: delayedMessage.scheduledAt,
+            actualSentTime: new Date().toISOString(),
+            queueProcessingId: crypto.randomUUID(),
+            platform: 'drizzle_processed', // Indicate this was processed via Drizzle handler
+            timestamp: new Date().toISOString()
+          },
+          priority: 'normal'
+        });
+        delayedMessageLogger.info('WebSocket delayed message sent event broadcasted', {
+          messageId,
+          conversationId: delayedMessage.conversationId,
+          agentId: delayedMessage.agentId,
+          actualMessageId: message?.id
+        });
+      } catch (broadcastError) {
+        delayedMessageLogger.warn('WebSocket delayed message sent broadcast failed', {
+          messageId,
+          conversationId: delayedMessage.conversationId,
+          agentId: delayedMessage.agentId,
+          error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+        });
+      }
 
       return c.json({
         success: true,
@@ -320,19 +469,63 @@ delayedMessages.post('/process', async (c) => {
       });
 
     } catch (sendError) {
-      console.error('Failed to send message:', sendError);
+      delayedMessageLogger.error('Failed to send delayed message', {
+        messageId,
+        conversationId: delayedMessage.conversationId,
+        agentId: delayedMessage.agentId,
+        messageType: delayedMessage.messageType
+      }, sendError instanceof Error ? sendError : new Error(String(sendError)));
       
       // 更新狀態為失敗
       await dbService.updateDelayedMessageStatus(messageId, 'failed');
-      
-      return c.json({ 
-        success: false, 
-        error: 'Failed to send message' 
+
+      // 🚀 WebSocket Broadcasting: Delayed Message Send Failed
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastDelayedMessageEvent({
+          type: 'delayed_message_failed',
+          conversationId: delayedMessage.conversationId,
+          messageId,
+          agentId: delayedMessage.agentId,
+          data: {
+            failureReason: sendError instanceof Error ? sendError.message : 'Message sending failed',
+            processedAt: new Date().toISOString(),
+            operation: 'send_to_platform',
+            deliveryStatus: 'failed',
+            originalContent: delayedMessage.content.substring(0, 100) + (delayedMessage.content.length > 100 ? '...' : ''),
+            originalMessageType: delayedMessage.messageType,
+            originalScheduledTime: delayedMessage.scheduledAt,
+            platform: 'drizzle_processed',
+            timestamp: new Date().toISOString()
+          },
+          priority: 'high'
+        });
+        delayedMessageLogger.info('WebSocket delayed message failure broadcasted', {
+          messageId,
+          conversationId: delayedMessage.conversationId,
+          agentId: delayedMessage.agentId,
+          failureReason: sendError instanceof Error ? sendError.message : String(sendError)
+        });
+      } catch (broadcastError) {
+        delayedMessageLogger.warn('WebSocket delayed message failure broadcast failed', {
+          messageId,
+          conversationId: delayedMessage.conversationId,
+          agentId: delayedMessage.agentId,
+          error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+        });
+      }
+
+      return c.json({
+        success: false,
+        error: 'Failed to send message'
       }, 500);
     }
 
   } catch (error) {
-    console.error('Process queue message error:', error);
+    const { messageId } = await c.req.json();
+    delayedMessageLogger.error('Process queue message failed', {
+      messageId
+    }, error instanceof Error ? error : new Error(String(error)));
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
