@@ -8,7 +8,7 @@
     "dev:local": "wrangler dev --local --persist-to .wrangler",
     "dev:beta": "wrangler dev --x-remote-bindings",
     "build": "tsc --noEmit",
-    "lint:check": "npx tsc --noEmit && cd frontend && npx vue-tsc --noEmit && npm run lint -- --max-warnings 80",
+    "lint:check": "npx tsc --noEmit && cd frontend && npx vue-tsc --noEmit && npm run lint -- --max-warnings 0",
     "deploy": "wrangler deploy --minify",
     "deploy:sse:production": "npx tsx scripts/deployment/deploy-sse-system.ts production",
     "deploy:sse:staging": "npx tsx scripts/deployment/deploy-sse-system.ts staging",

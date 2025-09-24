@@ -217,7 +217,7 @@ import { useSSEMessages } from '@/composables/useSSEMessages' // 🚀 New SSE sy
 import { useConfirm } from '@/composables/useConfirm'
 import { useConnectionState } from '@/composables/useConnectionState'
 import { useLoadingState } from '@/composables/useLoadingState'
-import { useEventHandler } from '@/composables/useEventHandler'
+import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler'
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
 import type { Message } from '@/types'
@@ -373,9 +373,9 @@ const {
 })
 
 // Optimized message source watcher with unified debouncing
-const debouncedUpdateMessages = eventHandler.debounce((newMessages: Message[]) => {
+const debouncedUpdateMessages = eventHandler.debounce(((newMessages: Message[]) => {
   updateMessages(newMessages, true)
-}, 50)
+}) as AnyFunction, 50)
 
 watch(
   () => messages.value,

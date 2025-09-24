@@ -19,10 +19,10 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# ESLint check with warning limit
-npm run lint -- --max-warnings 80
+# ESLint check with strict warning limit (0 warnings allowed)
+npm run lint -- --max-warnings 0
 if [ $? -ne 0 ]; then
-  echo "❌ ESLint check failed! More than 80 warnings found."
+  echo "❌ ESLint check failed! No warnings allowed in committed code."
   exit 1
 fi
 

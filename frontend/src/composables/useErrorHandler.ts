@@ -25,6 +25,20 @@ export enum ErrorSeverity {
 }
 
 /**
+ * 錯誤上下文類型
+ */
+export interface ErrorContext {
+  userId?: string
+  sessionId?: string
+  url?: string
+  component?: string
+  action?: string
+  critical?: boolean
+  metadata?: Record<string, string | number | boolean>
+  [key: string]: unknown
+}
+
+/**
  * 錯誤信息接口
  */
 export interface ErrorInfo {
@@ -34,7 +48,7 @@ export interface ErrorInfo {
   message: string
   details?: string
   timestamp: number
-  context?: Record<string, any>
+  context?: ErrorContext
   retryable: boolean
   retryCount: number
   maxRetries: number
@@ -59,7 +73,7 @@ export interface ErrorHandler {
   recentError: Ref<ErrorInfo | null>
 
   // 錯誤處理方法
-  handleError: (_error: Error | string, _context?: Record<string, any>, _type?: ErrorType) => void
+  handleError: (_error: Error | string, _context?: ErrorContext, _type?: ErrorType) => void
   clearError: (_id: string) => void
   clearAllErrors: () => void
   retryError: (_id: string, _retryFn: () => Promise<void>) => Promise<void>
@@ -133,7 +147,7 @@ export function useErrorHandler(options: ErrorHandlerOptions = {}): ErrorHandler
   }
 
   // 確定錯誤嚴重程度
-  const determineSeverity = (type: ErrorType, context?: Record<string, any>): ErrorSeverity => {
+  const determineSeverity = (type: ErrorType, context?: ErrorContext): ErrorSeverity => {
     switch (type) {
       case ErrorType._NETWORK:
       case ErrorType._TIMEOUT:
@@ -164,7 +178,7 @@ export function useErrorHandler(options: ErrorHandlerOptions = {}): ErrorHandler
   // 處理錯誤
   const handleError = (
     error: Error | string,
-    context?: Record<string, any>,
+    context?: ErrorContext,
     type?: ErrorType
   ) => {
     const errorType = type || determineErrorType(error)
