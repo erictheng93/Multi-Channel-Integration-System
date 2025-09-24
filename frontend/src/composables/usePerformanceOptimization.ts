@@ -51,7 +51,7 @@ export interface PerformanceOptimizer {
   ) => ComputedRef<T>
 
   // 記憶化函數
-  memoize: <TArgs extends any[], TReturn>(
+  memoize: <TArgs extends readonly unknown[], TReturn>(
     _fn: (..._args: TArgs) => TReturn,
     _keyGenerator?: (..._args: TArgs) => string
   ) => (..._args: TArgs) => TReturn
@@ -82,7 +82,7 @@ export function usePerformanceOptimization(
   } = options
 
   // 快取存儲
-  const cache = new Map<CacheKey, CacheItem<any>>()
+  const cache = new Map<CacheKey, CacheItem<unknown>>()
   const totalHits = ref(0)
   const totalMisses = ref(0)
 
@@ -126,7 +126,7 @@ export function usePerformanceOptimization(
         if (enableProfiling) {
           console.debug(`Cache hit for key: ${key}`)
         }
-        return cached.value
+        return cached.value as T
       }
 
       // 計算新值
@@ -209,7 +209,7 @@ export function usePerformanceOptimization(
   }
 
   // 記憶化函數
-  const memoize = <TArgs extends any[], TReturn>(
+  const memoize = <TArgs extends readonly unknown[], TReturn>(
     fn: (..._args: TArgs) => TReturn,
     keyGenerator?: (..._args: TArgs) => string
   ) => {
@@ -220,7 +220,10 @@ export function usePerformanceOptimization(
 
       if (memoCache.has(key)) {
         totalHits.value++
-        return memoCache.get(key)!
+        const cachedResult = memoCache.get(key)
+        if (cachedResult !== undefined) {
+          return cachedResult
+        }
       }
 
       totalMisses.value++

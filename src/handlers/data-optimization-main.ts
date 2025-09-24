@@ -551,8 +551,8 @@ async function performBatchTest(service: any, operationCount: number, operationT
       operationType,
       totalTime,
       averageTimePerOperation: Math.round(totalTime / operationCount),
-      successCount: results.filter((r: unknown) => r !== null).length,
-      successRate: `${Math.round((results.filter((r: unknown) => r !== null).length / operationCount) * 100)}%`
+      successCount: results.filter((_r: unknown) => _r !== null).length,
+      successRate: `${Math.round((results.filter((_r: unknown) => _r !== null).length / operationCount) * 100)}%`
     };
 
   } catch (error) {

@@ -181,7 +181,7 @@ export class DataOptimizationService {
 
     try {
       // 將操作分批處理
-      const batches: Array<typeof operations> = [];
+      const batches = [];
       for (let i = 0; i < operations.length; i += config.batching.batchSize) {
         batches.push(operations.slice(i, i + config.batching.batchSize));
       }
@@ -190,7 +190,7 @@ export class DataOptimizationService {
 
       // 並行處理各批次
       for (const batch of batches) {
-        const batchResults = await this.executeBatchDirect(batch) as Array<T | null>;
+        const batchResults = await this.executeBatchDirect<T>(batch);
         results.push(...batchResults);
       }
 
@@ -277,7 +277,10 @@ export class DataOptimizationService {
           if (!indexData.has(key)) {
             indexData.set(key, []);
           }
-          indexData.get(key)!.push(record.id || i.toString());
+          const keyArray = indexData.get(key);
+          if (keyArray) {
+            keyArray.push(record.id || i.toString());
+          }
         }
       }
 
@@ -416,7 +419,7 @@ export class DataOptimizationService {
   private async simpleLZDecompress(compressedData: string): Promise<string> {
     // 簡化版解壓縮 - 這裡應該實現與壓縮對應的解壓邏輯
     // 由於這是演示版本，直接返回原數據
-    return compressedData.replace(/\[(\d+):(\d+)\]/g, (match) => {
+    return compressedData.replace(/\[(\d+):(\d+)\]/g, (match, _index, _length) => {
       // 在實際實現中，這裡需要從字典中查找對應的字符串
       return match; // 簡化版直接返回引用標記
     });

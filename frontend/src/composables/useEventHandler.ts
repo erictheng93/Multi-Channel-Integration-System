@@ -12,6 +12,9 @@ interface EventListener {
   (_evt: Event): void
 }
 
+// 通用函數類型
+export type AnyFunction = (..._args: unknown[]) => unknown
+
 export interface EventHandler {
   // 事件監聽器管理
   addEventListener: (_element: EventTarget, _event: string, _handler: EventListener, _options?: AddEventListenerOptions) => void
@@ -27,8 +30,8 @@ export interface EventHandler {
   cleanup: () => void
 
   // 防抖和節流函數
-  debounce: <T extends (..._args: any[]) => any>(_func: T, _delay: number) => (..._args: Parameters<T>) => void
-  throttle: <T extends (..._args: any[]) => any>(_func: T, _delay: number) => (..._args: Parameters<T>) => void
+  debounce: <T extends AnyFunction>(_func: T, _delay: number) => (..._args: Parameters<T>) => void
+  throttle: <T extends AnyFunction>(_func: T, _delay: number) => (..._args: Parameters<T>) => void
 }
 
 interface RegisteredEventListener {
@@ -106,7 +109,7 @@ export function useEventHandler(): EventHandler {
   }
 
   // 防抖函數
-  const debounce = <T extends (..._args: any[]) => any>(
+  const debounce = <T extends AnyFunction>(
     func: T,
     delay: number
   ): ((..._args: Parameters<T>) => void) => {
@@ -126,7 +129,7 @@ export function useEventHandler(): EventHandler {
   }
 
   // 節流函數
-  const throttle = <T extends (..._args: any[]) => any>(
+  const throttle = <T extends AnyFunction>(
     func: T,
     delay: number
   ): ((..._args: Parameters<T>) => void) => {
