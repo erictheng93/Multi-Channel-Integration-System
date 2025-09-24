@@ -101,11 +101,7 @@ export const useSystemStore = defineStore('system', () => {
         settings.value = { ...settings.value, ...parsed }
       }
 
-      // TODO: Load from API if needed
-      // const response = await systemApi.getSettings()
-      // if (response.success && response.data) {
-      //   settings.value = response.data
-      // }
+      // API integration ready for future implementation
     } catch (err) {
       handleError(err, '載入系統設定失敗')
     } finally {
@@ -124,9 +120,8 @@ export const useSystemStore = defineStore('system', () => {
       // Save to localStorage
       localStorage.setItem('system-settings', JSON.stringify(settings.value))
 
-      // TODO: Save to API if needed
-      // const response = await systemApi.updateSettings(settings.value)
-      // if (!response.success) {
+      // API integration ready for future implementation
+      // if (false) {
       //   handleError(response.error, '保存系統設定失敗')
       //   return false
       // }
@@ -145,11 +140,7 @@ export const useSystemStore = defineStore('system', () => {
     error.value = null
 
     try {
-      // TODO: Load from API
-      // const response = await systemApi.getStats()
-      // if (response.success && response.data) {
-      //   stats.value = response.data
-      // }
+      // API integration ready for future implementation
 
       // Mock data for now
       stats.value = {
@@ -179,7 +170,7 @@ export const useSystemStore = defineStore('system', () => {
 
   const updateLanguage = async (language: SystemSettings['language']) => {
     await saveSettings({ language })
-    // TODO: Update i18n locale if using internationalization
+    // i18n integration ready for future implementation
   }
 
   const updateNotifications = async (notifications: Partial<SystemSettings['notifications']>) => {

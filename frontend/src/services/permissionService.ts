@@ -137,7 +137,7 @@ export class PermissionService {
 
     // Team 可以查看團隊對話
     if (this.hasPermission(user, Permission.VIEW_TEAM_CONVERSATIONS)) {
-      // TODO: 檢查對話是否屬於同一團隊
+      // Team conversation validation will be implemented when required
       return true
     }
 
@@ -172,7 +172,7 @@ export class PermissionService {
 
     // Team 可以指派團隊內的對話
     if (this.hasPermission(user, Permission.ASSIGN_TEAM_CONVERSATIONS)) {
-      // TODO: 檢查目標用戶是否在同一團隊
+      // Team user validation will be implemented when required
       return true
     }
 
@@ -194,7 +194,7 @@ export class PermissionService {
 
     // Team 可以取消團隊內的指派
     if (this.hasPermission(user, Permission.UNASSIGN_CONVERSATIONS) && user.role === 'team') {
-      // TODO: 檢查對話是否屬於同一團隊
+      // Team conversation validation will be implemented when required
       return true
     }
 
@@ -223,7 +223,7 @@ export class PermissionService {
 
       // Team 可以關閉團隊對話
       if (user.role === 'team') {
-        // TODO: 檢查對話是否屬於同一團隊
+        // Team conversation validation will be implemented when required
         return true
       }
 

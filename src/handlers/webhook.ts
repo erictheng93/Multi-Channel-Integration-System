@@ -55,7 +55,7 @@ export const webhookHandler = {
         return errorResponse(c, 'Missing signature');
       }
 
-      console.log('🔐 [LINE Webhook] Verifying signature...');
+      // Verifying LINE webhook signature
       const isValid = await verifyLineSignature(body, signature, c.env.LINE_CHANNEL_SECRET);
       
       if (!isValid) {
@@ -531,6 +531,17 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
           metadata: mediaData ? JSON.stringify(mediaData) : null,
           createdAt: timestamp
         });
+
+      // 🚀 Trigger latest message cache update
+      try {
+        const { LatestMessageJobQueue } = await import('../workers/latest-message-worker');
+        const jobQueue = new LatestMessageJobQueue(env);
+        await jobQueue.updateLatestMessage(conversation!.id, messageId, 'high');
+        console.log(`📤 [Webhook] Triggered cache update for LINE message in conversation ${conversation!.id}`);
+      } catch (error) {
+        console.warn(`⚠️ [Webhook] Failed to trigger cache update:`, error);
+        // Don't fail the webhook for cache update failures
+      }
         
         console.log('✅ [LINE Webhook] Message created successfully:', {
           messageId,
@@ -914,6 +925,17 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         metadata: mediaData ? JSON.stringify(mediaData) : null,
         createdAt: timestamp
       });
+
+    // 🚀 Trigger latest message cache update
+    try {
+      const { LatestMessageJobQueue } = await import('../workers/latest-message-worker');
+      const jobQueue = new LatestMessageJobQueue(env);
+      await jobQueue.updateLatestMessage(conversation!.id, messageId, 'high');
+      console.log(`📤 [Webhook] Triggered cache update for Facebook message in conversation ${conversation!.id}`);
+    } catch (error) {
+      console.warn(`⚠️ [Webhook] Failed to trigger cache update:`, error);
+      // Don't fail the webhook for cache update failures
+    }
 
     // 記錄活動以觸發 SSE 更新
     try {

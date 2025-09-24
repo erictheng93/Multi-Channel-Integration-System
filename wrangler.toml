@@ -1,26 +1,27 @@
-# 檔案路徑: ./wrangler.toml
-# 專案名稱: multi-channel-platform
-# Created by: Assistant
-
-# 生產環境 Worker 配置
+# Multi-Channel Customer Support System - Unified Configuration
+# Consolidates both main and WebSocket functionality
 name = "multi-channel-platform"
 main = "src/index.ts"
 compatibility_date = "2025-07-31"
 compatibility_flags = ["nodejs_compat"]
 
-# 生產環境變數
+# Default production variables
 [vars]
 ENVIRONMENT = "production"
 R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
 
-# 生產環境路由
+# Production routes
 [[routes]]
 pattern = "multi-channel.imfinethankyouandyou.com/*"
 zone_name = "imfinethankyouandyou.com"
 
-# 觀察性設置
-[observability.logs]
+# Observability
+[observability]
 enabled = true
+
+# Build optimization
+minify = true
+upload_source_maps = true
 
 # 生產環境 D1 資料庫
 [[d1_databases]]
@@ -61,7 +62,7 @@ queue = "agent-queue"
 max_batch_size = 10
 max_batch_timeout = 5
 
-# 實時事件推送隊列 - 新增
+# Real-time events queue
 [[queues.producers]]
 binding = "REALTIME_QUEUE"
 queue = "realtime-events"
@@ -71,4 +72,65 @@ experimental_remote = true
 queue = "realtime-events"
 max_batch_size = 5
 max_batch_timeout = 1
+
+# =================== DURABLE OBJECTS (WebSocket) ===================
+
+# ConversationRoom - Manages WebSocket connections per conversation
+[[durable_objects.bindings]]
+name = "CONVERSATION_ROOM"
+class_name = "ConversationRoom"
+
+# UserConnection - Manages user presence and subscriptions
+[[durable_objects.bindings]]
+name = "USER_CONNECTION"
+class_name = "UserConnection"
+
+# MessageBroadcaster - Intelligent event distribution and broadcasting
+[[durable_objects.bindings]]
+name = "MESSAGE_BROADCASTER"
+class_name = "MessageBroadcaster"
+
+# DelayedMessageProcessor - Batch processing for scheduled messages
+[[durable_objects.bindings]]
+name = "DELAYED_MESSAGE_PROCESSOR"
+class_name = "DelayedMessageProcessor"
+
+# DistributedLock - Cross-Durable Object coordination and locking
+[[durable_objects.bindings]]
+name = "DISTRIBUTED_LOCK"
+class_name = "LockCoordinator"
+
+# =================== DURABLE OBJECTS MIGRATIONS ===================
+
+[[migrations]]
+tag = "v1"
+new_classes = [
+  "ConversationRoom",
+  "UserConnection",
+  "MessageBroadcaster",
+  "DelayedMessageProcessor",
+  "LockCoordinator"
+]
+
+# Development environment
+[env.development]
+name = "multi-channel-platform-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+R2_PUBLIC_URL = "http://localhost:8787"
+
+# Development resources (inherit from production but with dev IDs)
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "multi-channel-platform-dev"
+database_id = "dev-database-id-placeholder"
+
+[[env.development.kv_namespaces]]
+binding = "SESSIONS"
+id = "dev-sessions-kv-placeholder"
+
+[[env.development.kv_namespaces]]
+binding = "CACHE"
+id = "dev-cache-kv-placeholder"
 

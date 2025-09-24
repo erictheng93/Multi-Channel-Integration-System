@@ -880,28 +880,6 @@ export class EnterpriseAnalyticsEngine {
     
     return (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
   }
-  
-  // 私有方法：計算季節性 (暫時未使用)
-  /*
-  private _calculateSeasonality(data: TimeSeriesData[]): Record<string, number> {
-    const hourlyPattern: Record<number, number[]> = {};
-    
-    data.forEach(item => {
-      const hour = new Date(item.timestamp).getHours();
-      if (!hourlyPattern[hour]) hourlyPattern[hour] = [];
-      const messageCount = item.metadata?.messageCount as number || 0;
-      hourlyPattern[hour].push(messageCount);
-    });
-    
-    const seasonality: Record<string, number> = {};
-    Object.entries(hourlyPattern).forEach(([hour, values]) => {
-      seasonality[`hour_${hour}`] = values.reduce((a, b) => a + b, 0) / values.length;
-    });
-    
-    return seasonality;
-  }
-  */
-  
   // 私有方法：計算預測信心度
   private calculatePredictionConfidence(values: number[]): number {
     if (values.length < 3) return 0;

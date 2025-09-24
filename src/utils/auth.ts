@@ -360,6 +360,76 @@ export async function createSession(
   return sessionId;
 }
 
+// Phase 2 監控系統 JWT 令牌管理
+export async function generateSystemToken(
+  userId: string,
+  role: 'admin' | 'team' | 'agent',
+  displayName: string,
+  teamId: number,
+  secret: string,
+  expiresIn: number = 3600 // 1 小時默認
+): Promise<string> {
+  const payload = {
+    userId,
+    displayName,
+    role,
+    teamId,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + expiresIn
+  };
+
+  return await signJWT(payload, secret);
+}
+
+// 生成長期監控系統令牌 (用於內部 API 調用)
+export async function generateMonitoringToken(
+  secret: string,
+  _expiresIn: number = 7 * 24 * 60 * 60 // 7 天
+): Promise<string> {
+  const payload = {
+    userId: 'system-monitoring',
+    displayName: 'System Monitoring',
+    role: 'admin' as const,
+    teamId: 1,
+    isSystemToken: true
+  };
+
+  return await signJWT(payload, secret, _expiresIn);
+}
+
+// 批量令牌生成（用於測試和部署）
+export async function generateTokenBatch(
+  users: Array<{
+    userId: string;
+    role: 'admin' | 'team' | 'agent';
+    displayName: string;
+    teamId: number;
+  }>,
+  secret: string,
+  expiresIn: number = 3600
+): Promise<Array<{ userId: string; token: string; expiresAt: string }>> {
+  const tokens = [];
+
+  for (const user of users) {
+    const token = await generateSystemToken(
+      user.userId,
+      user.role,
+      user.displayName,
+      user.teamId,
+      secret,
+      expiresIn
+    );
+
+    tokens.push({
+      userId: user.userId,
+      token,
+      expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString()
+    });
+  }
+
+  return tokens;
+}
+
 export async function getSession(kv: KVNamespace, sessionId: string): Promise<Record<string, unknown> | null> {
   const sessionKey = `session:${sessionId}`;
   const sessionData = await kv.get(sessionKey);

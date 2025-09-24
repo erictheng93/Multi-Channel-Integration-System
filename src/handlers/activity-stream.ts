@@ -32,94 +32,19 @@ export const activityStreamHandler = {
 
       console.log(`🔗 SSE connection requested by user: ${payload.userId} (${payload.role})`)
 
-      // 設置 SSE headers
+      // 設置 SSE headers (CORS headers handled by main middleware)
       c.header('Content-Type', 'text/event-stream')
       c.header('Cache-Control', 'no-cache')
       c.header('Connection', 'keep-alive')
-      c.header('Access-Control-Allow-Origin', '*')
-      c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
 
-      // 創建 ReadableStream 用於 SSE
-      const stream = new ReadableStream({
-        start(controller) {
-          console.log(`📡 Starting SSE stream for user: ${payload.userId}`)
-          
-          // 發送連接確認
-          const encoder = new TextEncoder()
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'connected',
-            message: 'Activity stream connected',
-            timestamp: new Date().toISOString(),
-            userId: payload.userId
-          })}\n\n`))
-
-          // 立即發送當前活動
-          const sendCurrentActivities = async () => {
-            try {
-              const activities = await getRecentActivities(c.env, payload.role, payload.userId)
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'activities_update',
-                data: activities,
-                timestamp: new Date().toISOString()
-              })}\n\n`))
-              console.log(`📊 Sent ${activities.length} activities to user: ${payload.userId}`)
-            } catch (error) {
-              console.error('Failed to send initial activities:', error)
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'error',
-                message: 'Failed to load activities',
-                timestamp: new Date().toISOString()
-              })}\n\n`))
-            }
-          }
-
-          // 立即發送一次活動
-          sendCurrentActivities()
-
-          // 定期發送活動更新 (每20秒)
-          const activityInterval = setInterval(async () => {
-            try {
-              const activities = await getRecentActivities(c.env, payload.role, payload.userId)
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'activities_update',
-                data: activities,
-                timestamp: new Date().toISOString()
-              })}\n\n`))
-            } catch (error) {
-              console.error('Failed to fetch activities:', error)
-            }
-          }, 20000) // 20秒間隔
-
-          // 心跳信號 (每30秒)
-          const heartbeatInterval = setInterval(() => {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'heartbeat',
-              timestamp: new Date().toISOString()
-            })}\n\n`))
-          }, 30000) // 30秒心跳
-
-          // 清理函數
-          const cleanup = () => {
-            console.log(`🔌 Cleaning up SSE stream for user: ${payload.userId}`)
-            clearInterval(activityInterval)
-            clearInterval(heartbeatInterval)
-          }
-
-          // 當流被關閉時清理
-          return cleanup
-        },
-
-        cancel() {
-          console.log(`❌ SSE stream cancelled for user: ${payload.userId}`)
-        }
-      })
+      // Create SSE stream with simplified structure
+      const stream = createActivityStream(c.env, payload)
 
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*'
+          'Connection': 'keep-alive'
         }
       })
 
@@ -130,16 +55,86 @@ export const activityStreamHandler = {
   }
 }
 
-// 獲取最近活動的輔助函數
+// Helper functions for SSE stream management
+function createActivityStream(env: Bindings, payload: any) {
+  return new ReadableStream({
+    start(controller) {
+      console.log(`📡 Starting SSE stream for user: ${payload.userId}`)
+
+      const encoder = new TextEncoder()
+      const sendMessage = (data: any) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+      }
+
+      // Send connection confirmation
+      sendMessage({
+        type: 'connected',
+        message: 'Activity stream connected',
+        timestamp: new Date().toISOString(),
+        userId: payload.userId
+      })
+
+      // Setup intervals
+      const intervals = setupStreamIntervals(env, payload, sendMessage)
+
+      return () => {
+        console.log(`🔌 Cleaning up SSE stream for user: ${payload.userId}`)
+        intervals.forEach(clearInterval)
+      }
+    },
+    cancel() {
+      console.log(`❌ SSE stream cancelled for user: ${payload.userId}`)
+    }
+  })
+}
+
+function setupStreamIntervals(env: Bindings, payload: any, sendMessage: Function) {
+  // Send initial activities
+  sendActivitiesUpdate(env, payload, sendMessage)
+
+  // Activity updates every 20 seconds
+  const activityInterval = setInterval(() => {
+    sendActivitiesUpdate(env, payload, sendMessage)
+  }, 20000)
+
+  // Heartbeat every 30 seconds
+  const heartbeatInterval = setInterval(() => {
+    sendMessage({
+      type: 'heartbeat',
+      timestamp: new Date().toISOString()
+    })
+  }, 30000)
+
+  return [activityInterval, heartbeatInterval]
+}
+
+async function sendActivitiesUpdate(env: Bindings, payload: any, sendMessage: Function) {
+  try {
+    const activities = await getRecentActivities(env, payload.role, payload.userId)
+    sendMessage({
+      type: 'activities_update',
+      data: activities,
+      timestamp: new Date().toISOString()
+    })
+    console.log(`📊 Sent ${activities.length} activities to user: ${payload.userId}`)
+  } catch (error) {
+    console.error('Failed to send activities:', error)
+    sendMessage({
+      type: 'error',
+      message: 'Failed to load activities',
+      timestamp: new Date().toISOString()
+    })
+  }
+}
+
 async function getRecentActivities(env: Bindings, userRole: string, userId: string) {
   const activityService = new ActivityService(env.DB)
-  
+
   try {
-    // 根據用戶角色決定查看權限
-    const filters = userRole === 'admin' 
-      ? { pageSize: 10, page: 1 } // 管理員可以看所有活動
-      : { pageSize: 10, page: 1, userId } // 普通用戶只能看自己的活動
-    
+    const filters = userRole === 'admin'
+      ? { pageSize: 10, page: 1 }
+      : { pageSize: 10, page: 1, userId }
+
     const result = await activityService.getActivities(filters)
     return result.items
   } catch (error) {

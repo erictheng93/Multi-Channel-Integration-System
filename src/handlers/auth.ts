@@ -5,13 +5,12 @@ import { signJWT } from '../utils/auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and } from 'drizzle-orm';
 import { agents } from '../db/schema';
-import { 
-  successResponse, 
-  // errorResponse, // 暫時未使用 
-  validationErrorResponse, 
+import {
+  successResponse,
+  validationErrorResponse,
   unauthorizedResponse,
   notFoundResponse,
-  handleApiError 
+  handleApiError
 } from '../utils/api-response';
 
 export const authHandler = {
@@ -49,7 +48,7 @@ export const authHandler = {
       const passwordPolicy = agentRow.passwordPolicy || 'changeable';
       const mustChangePassword = passwordPolicy === 'must_change';
       
-      console.log(`🔐 Auth Debug - User: ${email}, Policy: ${passwordPolicy}, Must Change: ${mustChangePassword}`);
+      // Password policy evaluated
 
       // 轉換為 Agent 格式
       const agent: Agent = {

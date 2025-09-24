@@ -3,6 +3,7 @@ import type { Bindings } from '../types';
 import type {
   MediaFileInfo
 } from '../types/file-storage';
+import { createContextLogger } from './logger';
 
 // Legacy interface for backward compatibility
 export interface MediaFile {
@@ -30,7 +31,8 @@ export class FileStorageService {
     messageId?: string
   ): Promise<MediaFile | null> {
     try {
-      console.log(`Downloading file from ${originalUrl}`);
+      const storageLogger = createContextLogger('FileStorage');
+      storageLogger.info('Downloading file', { originalUrl });
       
       // 設置授權標頭（如果是 LINE API）
       const headers: Record<string, string> = {
@@ -45,7 +47,7 @@ export class FileStorageService {
       const response = await fetch(originalUrl, { headers });
       
       if (!response.ok) {
-        console.error(`Failed to download file: ${response.status} ${response.statusText}`);
+        storageLogger.error('Failed to download file', { status: response.status, statusText: response.statusText, url: originalUrl });
         return null;
       }
 
@@ -54,7 +56,7 @@ export class FileStorageService {
       
       // 檢查檔案大小限制（10MB）
       if (contentLength > 10 * 1024 * 1024) {
-        console.error('File too large:', contentLength);
+        storageLogger.error('File too large', { contentLength, maxSize: 10 * 1024 * 1024 });
         return null;
       }
 
@@ -81,7 +83,7 @@ export class FileStorageService {
         }
       });
 
-      console.log(`File uploaded to R2: ${storageKey}`);
+      storageLogger.info('File uploaded to R2', { storageKey, size: contentLength });
 
       const mediaFile: MediaFile = {
         id: fileId,
@@ -96,7 +98,8 @@ export class FileStorageService {
 
       return mediaFile;
     } catch (error) {
-      console.error('Error downloading and storing file:', error);
+      const storageLogger = createContextLogger('FileStorage');
+      storageLogger.error('Error downloading and storing file', { originalUrl }, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -116,7 +119,8 @@ export class FileStorageService {
       }
       return await object.arrayBuffer();
     } catch (error) {
-      console.error('Error getting file from R2:', error);
+      const storageLogger = createContextLogger('FileStorage');
+      storageLogger.error('Error getting file from R2', { storageKey }, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -131,10 +135,12 @@ export class FileStorageService {
       }
       
       await this.env.R2_BUCKET.delete(storageKey);
-      console.log(`File deleted from R2: ${storageKey}`);
+      const storageLogger = createContextLogger('FileStorage');
+      storageLogger.info('File deleted from R2', { storageKey });
       return true;
     } catch (error) {
-      console.error('Error deleting file from R2:', error);
+      const storageLogger = createContextLogger('FileStorage');
+      storageLogger.error('Error deleting file from R2', { storageKey }, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -177,7 +183,8 @@ export class FileStorageService {
         updatedAt: object.uploaded?.toISOString() || new Date().toISOString()
       };
     } catch (error) {
-      console.error('Error getting file info from R2:', error);
+      const storageLogger = createContextLogger('FileStorage');
+      storageLogger.error('Error getting file info from R2', { storageKey }, error instanceof Error ? error : String(error));
       return null;
     }
   }

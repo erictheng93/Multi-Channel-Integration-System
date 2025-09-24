@@ -18,6 +18,8 @@ import * as schema from '../db/schema';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql } from 'drizzle-orm';
 import { messages, conversations, customers, agents, teams } from '../db/schema';
+import { logger } from '../utils/logger';
+import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 
 export const messageHandler = {
     // 獲取對話訊息列表 - 使用 Drizzle ORM 獲得類型安全
@@ -95,6 +97,30 @@ export const messageHandler = {
                 createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now()
             }));
 
+            // 🚀 WebSocket Broadcasting: Typing Indicator (if applicable)
+            // This could be triggered by query parameters for real-time typing indicators
+            const triggerTyping = c.req.query('typing');
+            if (triggerTyping === 'start' || triggerTyping === 'stop') {
+                try {
+                    const broadcastService = new WebSocketBroadcastService(c.env);
+                    const user = c.get('user') || c.get('agent');
+                    if (user) {
+                        await broadcastService.broadcastTypingEvent({
+                            type: triggerTyping === 'start' ? 'typing_start' : 'typing_stop',
+                            conversationId,
+                            userId: String(user.id),
+                            userName: user.displayName,
+                            data: {
+                                timestamp: Date.now()
+                            }
+                        });
+                        console.log(`✅ [WebSocket] Typing ${triggerTyping} event broadcasted`);
+                    }
+                } catch (broadcastError) {
+                    console.warn(`⚠️ [WebSocket] Typing ${triggerTyping} broadcast failed:`, broadcastError);
+                }
+            }
+
             return paginatedResponse(c, items, {
                 page,
                 limit: pageSize,
@@ -166,6 +192,17 @@ export const messageHandler = {
                 metadata: hasAttachments ? JSON.stringify({ attachmentIds }) : null,
                 createdAt: new Date().toISOString()
             });
+
+            // 🚀 Trigger latest message cache update
+            try {
+                const { LatestMessageJobQueue } = await import('../workers/latest-message-worker');
+                const jobQueue = new LatestMessageJobQueue(c.env);
+                await jobQueue.updateLatestMessage(conversationId, messageId, 'normal');
+                console.log(`📤 [Message Handler] Triggered cache update for conversation ${conversationId}`);
+            } catch (error) {
+                console.warn(`⚠️ [Message Handler] Failed to trigger cache update:`, error);
+                // Don't fail the message creation for cache update failures
+            }
 
             // ✅ 如果有附件，使用 Drizzle ORM 更新附件
             if (hasAttachments) {
@@ -257,8 +294,11 @@ export const messageHandler = {
                     }
                 }
             } catch (error) {
-                console.error(`Failed to send ${conversationWithCustomer.platform} message:`, error);
-                // errorMessage = error instanceof Error ? error.message : 'Unknown error'; // 暫時未使用
+                logger.error(`Failed to send ${conversationWithCustomer.platform} message`, 'MessageHandler', {
+                    conversationId,
+                    platform: conversationWithCustomer.platform,
+                    messageType: mediaType || 'text'
+                }, error instanceof Error ? error : new Error(String(error)));
                 sendResult = false;
             }
 
@@ -279,7 +319,36 @@ export const messageHandler = {
                 })
                 .where(eq(schema.conversations.id, conversationId));
 
-            // ✅ 記錄活動以觸發 SSE 更新
+            // 🚀 WebSocket Broadcasting: Message Sent
+            try {
+                const broadcastService = new WebSocketBroadcastService(c.env);
+                await broadcastService.broadcastMessageEvent({
+                    type: sendResult ? 'message_sent' : 'message_recall_failed',
+                    conversationId: conversationId,
+                    messageId: messageId,
+                    agentId: agent.id,
+                    data: {
+                        content: content,
+                        messageType: mediaType || 'text',
+                        sender: {
+                            id: agent.id,
+                            name: agent.displayName,
+                            role: agent.role
+                        },
+                        platform: conversationWithCustomer.platform,
+                        hasAttachments: hasAttachments,
+                        attachmentCount: hasAttachments ? (attachmentIds?.length || 0) : 0,
+                        deliveryStatus: sendResult ? 'sent' : 'failed',
+                        timestamp: new Date().toISOString()
+                    },
+                    priority: 'normal'
+                });
+                console.log('✅ [WebSocket] Message sent event broadcasted');
+            } catch (broadcastError) {
+                console.warn('⚠️ [WebSocket] Message broadcast failed, continuing with fallback:', broadcastError);
+            }
+
+            // ✅ 記錄活動以觸發 SSE 更新 (為了向後相容性保留)
             try {
                 const { ActivityService } = await import('../services/activity-service');
                 const activityService = new ActivityService(c.env.DB);
@@ -297,17 +366,18 @@ export const messageHandler = {
                         messageType: mediaType || 'text',
                         messageId: messageId,
                         content: content?.substring(0, 100) || '[Media/Attachment]', // 只記錄前100字元
-                        sendResult: sendResult
+                        sendResult: sendResult,
+                        broadcastMethod: 'websocket_primary_sse_fallback'
                     }
                 });
 
                 if (activity) {
                     console.log('✅ [Agent Message] Activity recorded, triggering SSE broadcast...');
-                    
+
                     // 🚨 關鍵：觸發 SSE 推送
                     const { broadcastActivity } = await import('./activity-stream');
                     await broadcastActivity(c.env as any, activity);
-                    
+
                     console.log('📢 [Agent Message] SSE broadcast triggered successfully');
                 } else {
                     console.warn('⚠️ [Agent Message] Failed to create activity, skipping SSE broadcast');

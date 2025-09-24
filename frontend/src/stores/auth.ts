@@ -14,27 +14,40 @@ const TOKEN_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 分鐘
 // 會話恢復狀態類型
 type SessionStatus = 'pending' | 'authenticated' | 'unauthenticated' | 'restored';
 
-// 工具函數：清理localStorage中的認證數據
+// Utility functions for auth management
 function clearAuthStorage() {
   if (typeof window !== 'undefined' && window.localStorage) {
-    const authKeys = ['token', 'refreshToken', 'sessionExpiry', 'currentAgent'];
-    authKeys.forEach(key => localStorage.removeItem(key));
+    ['token', 'refreshToken', 'sessionExpiry', 'currentAgent'].forEach(key =>
+      localStorage.removeItem(key)
+    );
   }
 }
 
-// 工具函數：驗證 agent 資料的有效性
 function isValidAgent(agent: Agent | null): boolean {
-  if (!agent) {return false;}
-  
-  // 檢查必要欄位是否存在
-  return !!(
-    agent.id &&
-    agent.email &&
-    agent.displayName &&
-    agent.role &&
-    ['admin', 'team', 'agent'].includes(agent.role)
-  );
+  return !!(agent?.id && agent?.email && agent?.displayName &&
+    ['admin', 'team', 'agent'].includes(agent.role));
 }
+
+function storeAuthData(loginData: LoginResponse, expiry: number) {
+  if (typeof window === 'undefined' || !window.localStorage) {return;}
+
+  localStorage.setItem('token', loginData.token);
+  localStorage.setItem('sessionExpiry', expiry.toString());
+  localStorage.setItem('currentAgent', JSON.stringify(loginData.agent));
+
+  if (loginData.refreshToken) {
+    localStorage.setItem('refreshToken', loginData.refreshToken);
+  }
+}
+
+function handleLoginError(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return (error as Error).message;
+  }
+  if (typeof error === 'string') {return error;}
+  return '網路錯誤，請稍後再試';
+}
+
 
 
 export const useAuthStore = defineStore('auth', () => {
@@ -48,33 +61,37 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔧 新增：會話恢復狀態 - 解決競爭條件問題
   const sessionStatus = ref<SessionStatus>('pending');
 
-  // Initialize tokens and agent from localStorage
+  // 清除認證狀態的內部函數
+  function clearAuthState() {
+    token.value = null;
+    refreshToken.value = null;
+    currentAgent.value = null;
+    sessionExpiry.value = null;
+  }
+
+  // Initialize from localStorage with simplified logic
   if (typeof window !== 'undefined' && window.localStorage) {
     const storedToken = localStorage.getItem('token');
-    const storedRefreshToken = localStorage.getItem('refreshToken');
     const expiry = localStorage.getItem('sessionExpiry');
-    const storedAgent = localStorage.getItem('currentAgent');
-    
-    token.value = storedToken || null;
-    refreshToken.value = storedRefreshToken || null;
-    sessionExpiry.value = expiry ? parseInt(expiry, 10) : null;
-    
-    // Restore currentAgent from localStorage
-    if (storedAgent) {
-      try {
-        currentAgent.value = JSON.parse(storedAgent);
-      } catch (e) {
-        console.error('Failed to parse stored agent:', e);
-        currentAgent.value = null;
+
+    // Check session validity first
+    const isSessionValid = expiry && Date.now() <= parseInt(expiry, 10);
+
+    if (isSessionValid && storedToken) {
+      token.value = storedToken;
+      refreshToken.value = localStorage.getItem('refreshToken');
+      sessionExpiry.value = parseInt(expiry || '0', 10);
+
+      // Restore agent data
+      const storedAgent = localStorage.getItem('currentAgent');
+      if (storedAgent) {
+        try {
+          currentAgent.value = JSON.parse(storedAgent);
+        } catch {
+          clearAuthStorage();
+        }
       }
-    }
-    
-    // Check if session has expired
-    if (sessionExpiry.value && Date.now() > sessionExpiry.value) {
-      token.value = null;
-      refreshToken.value = null;
-      sessionExpiry.value = null;
-      currentAgent.value = null;
+    } else {
       clearAuthStorage();
     }
   }
@@ -87,86 +104,52 @@ export const useAuthStore = defineStore('auth', () => {
     currentAgent.value?.role === 'admin' || currentAgent.value?.role === 'team'
   );
 
-  // 方法
+  // Simplified login method
   async function login(credentials: LoginRequest) {
     loading.value = true;
     error.value = null;
 
     try {
       const response = await authApi.login(credentials);
-      if (response.success && response.data) {
-        const loginData = response.data as LoginResponse;
-        // 檢查是否需要強制更改密碼
-        if (loginData.mustChangePassword) {
-          return {
-            success: false,
-            mustChangePassword: true,
-            tempToken: loginData.tempToken,
-            agent: loginData.agent
-          };
-        }
-        token.value = loginData.token;
-        refreshToken.value = loginData.refreshToken || null;
-        currentAgent.value = loginData.agent;
-        
-        // Set session expiry
-        const expiry = Date.now() + SESSION_DURATION;
-        sessionExpiry.value = expiry;
-        // 儲存 tokens、過期時間和 currentAgent
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('token', loginData.token);
-          if (loginData.refreshToken) {
-            localStorage.setItem('refreshToken', loginData.refreshToken);
-          }
-          localStorage.setItem('sessionExpiry', expiry.toString());
-          // Save currentAgent to localStorage
-          localStorage.setItem('currentAgent', JSON.stringify(loginData.agent));
-        }
-        
-        // 設定預設 header
-        authApi.setAuthHeader(loginData.token, loginData.refreshToken);
-        
-        setSessionStatus('authenticated');
-        
-        return true;
-      } else {
-        // 使用 API 回傳的詳細錯誤訊息
-        const apiError = response.error || '登入失敗';
-        error.value = apiError;
-        
-        // 清理認證狀態
-        token.value = null;
-        refreshToken.value = null;
-        currentAgent.value = null;
-        sessionExpiry.value = null;
-        clearAuthStorage();
+
+      if (!response.success || !response.data) {
+        error.value = response.error || '登入失敗';
+        clearAuthState();
         setSessionStatus('unauthenticated');
-        
         return false;
       }
-    } catch (_err) {
-      
-      // 確保清理任何可能設置的認證狀態
-      token.value = null;
-      refreshToken.value = null;
-      currentAgent.value = null;
-      sessionExpiry.value = null;
-      
-      // 🔧 ULTRA DEBUG FIX: 清理 localStorage 防止殘留的認證資料影響判斷
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('sessionExpiry');
+
+      const loginData = response.data as LoginResponse;
+
+      // Handle password change requirement
+      if (loginData.mustChangePassword) {
+        return {
+          success: false,
+          mustChangePassword: true,
+          tempToken: loginData.tempToken,
+          agent: loginData.agent
+        };
       }
-      
-      // 提取更詳細的錯誤訊息
-      if (_err && typeof _err === 'object' && 'message' in _err) {
-        error.value = (_err as Error).message;
-      } else if (typeof _err === 'string') {
-        error.value = _err;
-      } else {
-        error.value = '網路錯誤，請稍後再試';
-      }
+
+      // Set auth state
+      token.value = loginData.token;
+      refreshToken.value = loginData.refreshToken || null;
+      currentAgent.value = loginData.agent;
+
+      const expiry = Date.now() + SESSION_DURATION;
+      sessionExpiry.value = expiry;
+
+      // Store auth data
+      storeAuthData(loginData, expiry);
+      authApi.setAuthHeader(loginData.token, loginData.refreshToken);
+      setSessionStatus('authenticated');
+
+      return true;
+
+    } catch (err) {
+      clearAuthState();
+      clearAuthStorage();
+      error.value = handleLoginError(err);
       
       // 🔧 設定會話狀態為未認證
       setSessionStatus('unauthenticated');

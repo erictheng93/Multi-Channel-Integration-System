@@ -1,0 +1,273 @@
+// WebSocket Authentication Middleware
+// Handles JWT authentication for WebSocket connections via query parameters
+// Since WebSocket upgrade requests can't use custom headers in browsers
+
+import type { Context, Next } from 'hono';
+import type { Bindings, JWTPayload } from '../types';
+import { verifyJWT } from '../utils/auth';
+
+export interface WebSocketUser {
+  id: number | string;
+  email: string;
+  displayName: string;
+  role: 'admin' | 'team' | 'agent';
+  teamId?: number | null;
+  teamName?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
+  const startTime = Date.now();
+  const clientIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+  const userAgent = c.req.header('User-Agent') || 'unknown';
+
+  try {
+    const url = new URL(c.req.url);
+    const token = url.searchParams.get('token');
+    const conversationId = url.searchParams.get('conversationId');
+    const deviceId = url.searchParams.get('deviceId');
+
+    // 詳細日誌記錄 - 連接嘗試
+    console.log(`🔐 [WebSocket Auth] Connection attempt from IP: ${clientIP}, ConversationID: ${conversationId || 'none'}, DeviceID: ${deviceId || 'none'}, Token: ${token ? 'present' : 'missing'}`);
+
+    // 檢查 1: 令牌是否存在
+    if (!token) {
+      console.log(`❌ [WebSocket Auth] No token provided from ${clientIP}`);
+      return new Response(JSON.stringify({
+        error: 'Authentication token required',
+        code: 4401, // 自定義 WebSocket 關閉代碼
+        message: 'WebSocket connections require a valid JWT token as query parameter',
+        timestamp: Date.now(),
+        suggestedAction: 'provide_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'NO_TOKEN',
+          'X-WebSocket-Close-Code': '4401'
+        }
+      });
+    }
+
+    // 檢查 2: 令牌格式驗證
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.log(`❌ [WebSocket Auth] Invalid token format from ${clientIP}: expected 3 parts, got ${tokenParts.length}`);
+      return new Response(JSON.stringify({
+        error: 'Invalid token format',
+        code: 4402,
+        message: 'JWT token must have 3 parts separated by dots',
+        timestamp: Date.now(),
+        suggestedAction: 'refresh_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'INVALID_TOKEN_FORMAT',
+          'X-WebSocket-Close-Code': '4402'
+        }
+      });
+    }
+
+    // 檢查 3: JWT 驗證
+    console.log(`🔍 [WebSocket Auth] Verifying JWT token for ${clientIP}...`);
+    const payload = await verifyJWT(token, c.env.JWT_SECRET) as JWTPayload | null;
+
+    if (!payload) {
+      console.log(`❌ [WebSocket Auth] Invalid or expired token from ${clientIP}`);
+      return new Response(JSON.stringify({
+        error: 'Invalid token',
+        code: 4403,
+        message: 'The provided JWT token is invalid or expired',
+        timestamp: Date.now(),
+        suggestedAction: 'refresh_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'INVALID_TOKEN',
+          'X-WebSocket-Close-Code': '4403'
+        }
+      });
+    }
+
+    // 檢查 4: 令牌即將過期預警 (提前 5 分鐘)
+    const currentTime = Math.floor(Date.now() / 1000);
+    const expiryBuffer = 300; // 5 minutes in seconds
+
+    if (payload.exp && payload.exp <= currentTime) {
+      console.log(`❌ [WebSocket Auth] Token already expired from ${clientIP}. Expired at: ${new Date(payload.exp * 1000).toISOString()}, Current: ${new Date().toISOString()}`);
+      return new Response(JSON.stringify({
+        error: 'Token expired',
+        code: 4404,
+        message: 'The JWT token has expired',
+        expiresAt: payload.exp,
+        currentTime: currentTime,
+        timestamp: Date.now(),
+        suggestedAction: 'refresh_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'TOKEN_EXPIRED',
+          'X-WebSocket-Close-Code': '4404'
+        }
+      });
+    }
+
+    if (payload.exp && payload.exp <= (currentTime + expiryBuffer)) {
+      console.log(`⚠️ [WebSocket Auth] Token will expire soon from ${clientIP}. Expires at: ${new Date(payload.exp * 1000).toISOString()}, Time remaining: ${payload.exp - currentTime} seconds`);
+      return new Response(JSON.stringify({
+        error: 'Token expiring soon',
+        code: 4405,
+        message: 'Please refresh your token before connecting',
+        expiresAt: payload.exp,
+        currentTime: currentTime,
+        timeRemaining: payload.exp - currentTime,
+        timestamp: Date.now(),
+        suggestedAction: 'refresh_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'TOKEN_EXPIRING_SOON',
+          'X-WebSocket-Close-Code': '4405'
+        }
+      });
+    }
+
+    // 檢查 5: 使用者資料提取和驗證
+    const userId = payload.userId?.toString() || String(payload.userId) || '0';
+    const email = payload.email || `${userId}@example.com`;
+    const displayName = payload.displayName || payload.email?.split('@')[0] || userId;
+    const role = (payload.role as 'admin' | 'team' | 'agent') || 'agent';
+
+    // 驗證關鍵欄位
+    if (!userId || userId === '0') {
+      console.log(`❌ [WebSocket Auth] Invalid userId in token from ${clientIP}: ${userId}`);
+      return new Response(JSON.stringify({
+        error: 'Invalid user data',
+        code: 4406,
+        message: 'Token contains invalid user identification',
+        timestamp: Date.now(),
+        suggestedAction: 'refresh_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'INVALID_USER_DATA',
+          'X-WebSocket-Close-Code': '4406'
+        }
+      });
+    }
+
+    // 檢查角色有效性
+    if (!['admin', 'team', 'agent'].includes(role)) {
+      console.log(`❌ [WebSocket Auth] Invalid role in token from ${clientIP}: ${role}`);
+      return new Response(JSON.stringify({
+        error: 'Invalid role',
+        code: 4407,
+        message: 'Token contains invalid user role',
+        providedRole: role,
+        validRoles: ['admin', 'team', 'agent'],
+        timestamp: Date.now(),
+        suggestedAction: 'refresh_token'
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'INVALID_ROLE',
+          'X-WebSocket-Close-Code': '4407'
+        }
+      });
+    }
+
+    const user: WebSocketUser = {
+      id: userId,
+      email: email,
+      displayName: displayName,
+      role: role,
+      teamId: payload.teamId || null,
+      teamName: payload.teamName || null,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Store user in context for handler access
+    c.set('user', user);
+
+    const authDuration = Date.now() - startTime;
+    console.log(`✅ [WebSocket Auth] User authenticated successfully: ${user.id} (${user.role}) from ${clientIP}, Duration: ${authDuration}ms, TeamID: ${user.teamId || 'none'}`);
+
+    // 🆕 Phase 2: 記錄成功的認證事件到分析服務
+    try {
+      const { createAnalyticsService } = await import('../monitoring/websocket-analytics-service');
+      const analyticsService = createAnalyticsService(c.env);
+
+      await analyticsService.recordConnectionQuality({
+        timestamp: Date.now(),
+        userId: user.id.toString(),
+        connectionId: `auth_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        latency: authDuration,
+        connectionTime: authDuration,
+        messagesPerSecond: 0,
+        errorRate: 0,
+        isStable: true
+      });
+    } catch (analyticsError) {
+      // 分析記錄失敗不影響主要功能
+      console.warn('⚠️ [WebSocket Auth] Failed to record analytics:', analyticsError);
+    }
+
+    return await next();
+  } catch (error) {
+    const authDuration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown authentication error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error(`❌ [WebSocket Auth] Authentication failed from ${clientIP}:`, {
+      error: errorMessage,
+      duration: `${authDuration}ms`,
+      userAgent,
+      stack: errorStack,
+      timestamp: new Date().toISOString()
+    });
+
+    // 🆕 Phase 2: 記錄認證錯誤到分析服務
+    try {
+      const { createAnalyticsService } = await import('../monitoring/websocket-analytics-service');
+      const analyticsService = createAnalyticsService(c.env);
+
+      await analyticsService.recordError({
+        timestamp: Date.now(),
+        errorCode: 4500,
+        errorType: 'AUTH_SYSTEM_ERROR',
+        message: errorMessage,
+        clientIP,
+        userAgent,
+        duration: authDuration
+      });
+    } catch (analyticsError) {
+      console.warn('⚠️ [WebSocket Auth] Failed to record error analytics:', analyticsError);
+    }
+
+    return new Response(JSON.stringify({
+      error: 'Authentication failed',
+      code: 4500,
+      message: errorMessage,
+      timestamp: Date.now(),
+      duration: authDuration,
+      suggestedAction: 'retry_with_new_token'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Error-Code': 'AUTH_SYSTEM_ERROR',
+        'X-WebSocket-Close-Code': '4500'
+      }
+    });
+  }
+};

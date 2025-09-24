@@ -4,20 +4,29 @@
  * Created: 2025-08-29
  */
 
-import type { 
-  Agent as DrizzleAgent
+import type {
+  customers,
+  conversations,
+  messages,
+  agents
 } from '../db/schema';
-import type { 
-  Customer, 
-  DbConversation, 
-  DbMessage, 
-  DbUser 
+import type {
+  Customer,
+  DbConversation,
+  DbMessage,
+  DbUser
 } from '../types';
+
+// Infer types from schema
+type DrizzleCustomer = typeof customers.$inferSelect;
+type DrizzleConversation = typeof conversations.$inferSelect;
+type DrizzleMessage = typeof messages.$inferSelect;
+type DrizzleAgent = typeof agents.$inferSelect;
 
 /**
  * 轉換 Drizzle Customer 到業務邏輯 Customer (camelCase 格式)
  */
-export function convertCustomer(drizzleCustomer: any): Customer {
+export function convertCustomer(drizzleCustomer: DrizzleCustomer): Customer {
   return {
     id: drizzleCustomer.id,
     platform: drizzleCustomer.platform,
@@ -36,7 +45,7 @@ export function convertCustomer(drizzleCustomer: any): Customer {
 /**
  * 轉換 Drizzle Conversation 到業務邏輯 DbConversation
  */
-export function convertConversation(drizzleConversation: any): DbConversation {
+export function convertConversation(drizzleConversation: DrizzleConversation): DbConversation {
   return {
     id: drizzleConversation.id,
     customerId: drizzleConversation.customerId,
@@ -52,29 +61,65 @@ export function convertConversation(drizzleConversation: any): DbConversation {
 /**
  * 轉換 Drizzle Message 到業務邏輯 DbMessage
  */
-export function convertMessage(drizzleMessage: any): DbMessage {
-  return {
+export function convertMessage(drizzleMessage: DrizzleMessage): DbMessage {
+  const result: DbMessage = {
     id: drizzleMessage.id,
     conversationId: drizzleMessage.conversationId,
     senderType: drizzleMessage.senderType as 'customer' | 'agent' | 'system',
-    customerSenderId: drizzleMessage.customerSenderId ?? 0,
-    agentSenderId: drizzleMessage.agentSenderId ?? '',
     content: drizzleMessage.content,
     messageType: drizzleMessage.messageType as 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker',
-    platformMessageId: drizzleMessage.platformMessageId || '',
     isRecalled: Boolean(drizzleMessage.isRecalled),
-    recallDeadline: drizzleMessage.recallDeadline || '',
-    recalledAt: drizzleMessage.recalledAt || '',
     isSent: Boolean(drizzleMessage.isSent),
-    sentAt: drizzleMessage.sentAt || '',
     deliveryStatus: (drizzleMessage.deliveryStatus as 'pending' | 'sent' | 'delivered' | 'failed') || 'pending',
-    replyToMessageId: drizzleMessage.replyToMessageId || '',
-    threadId: drizzleMessage.threadId || '',
-    sessionId: drizzleMessage.sessionId || '',
-    sessionSequence: drizzleMessage.sessionSequence || 1,
-    metadata: drizzleMessage.metadata || '',
     createdAt: drizzleMessage.createdAt || new Date().toISOString()
   };
+
+  // Handle optional fields with proper undefined assignment for exactOptionalPropertyTypes
+  if (drizzleMessage.customerSenderId !== null && drizzleMessage.customerSenderId !== undefined) {
+    result.customerSenderId = drizzleMessage.customerSenderId;
+  }
+
+  if (drizzleMessage.agentSenderId !== null && drizzleMessage.agentSenderId !== undefined) {
+    result.agentSenderId = drizzleMessage.agentSenderId;
+  }
+
+  if (drizzleMessage.platformMessageId !== null && drizzleMessage.platformMessageId !== undefined) {
+    result.platformMessageId = drizzleMessage.platformMessageId;
+  }
+
+  if (drizzleMessage.recallDeadline !== null && drizzleMessage.recallDeadline !== undefined) {
+    result.recallDeadline = drizzleMessage.recallDeadline;
+  }
+
+  if (drizzleMessage.recalledAt !== null && drizzleMessage.recalledAt !== undefined) {
+    result.recalledAt = drizzleMessage.recalledAt;
+  }
+
+  if (drizzleMessage.sentAt !== null && drizzleMessage.sentAt !== undefined) {
+    result.sentAt = drizzleMessage.sentAt;
+  }
+
+  if (drizzleMessage.replyToMessageId !== null && drizzleMessage.replyToMessageId !== undefined) {
+    result.replyToMessageId = drizzleMessage.replyToMessageId;
+  }
+
+  if (drizzleMessage.threadId !== null && drizzleMessage.threadId !== undefined) {
+    result.threadId = drizzleMessage.threadId;
+  }
+
+  if (drizzleMessage.sessionId !== null && drizzleMessage.sessionId !== undefined) {
+    result.sessionId = drizzleMessage.sessionId;
+  }
+
+  if (drizzleMessage.sessionSequence !== null && drizzleMessage.sessionSequence !== undefined) {
+    result.sessionSequence = drizzleMessage.sessionSequence;
+  }
+
+  if (drizzleMessage.metadata !== null && drizzleMessage.metadata !== undefined) {
+    result.metadata = drizzleMessage.metadata;
+  }
+
+  return result;
 }
 
 /**

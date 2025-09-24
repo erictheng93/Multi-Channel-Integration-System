@@ -154,9 +154,17 @@ export function useMessages(conversationId?: string, options?: {
         
         if (append && page > 1) {
           // 載入歷史消息時，使用專用合併函數
+          console.log(`🔗 [useMessages] Merging history: existing ${paginatedMessages.value.length} + new ${orderedMessages.length}`)
+          const oldestExisting = paginatedMessages.value.length > 0 ? paginatedMessages.value[0]?.createdAt : 'none'
+          const oldestNew = orderedMessages.length > 0 ? orderedMessages[0]?.createdAt : 'none'
+          console.log(`📅 [useMessages] Oldest existing: ${oldestExisting}, oldest new: ${oldestNew}`)
+
           paginatedMessages.value = messageOrderUtils.mergeHistoryMessages(paginatedMessages.value, orderedMessages)
+
+          console.log(`✅ [useMessages] After merge: ${paginatedMessages.value.length} total messages`)
         } else {
           // 初始載入或刷新
+          console.log(`🔄 [useMessages] Initial load: ${orderedMessages.length} messages`)
           paginatedMessages.value = orderedMessages
         }
         
@@ -164,7 +172,15 @@ export function useMessages(conversationId?: string, options?: {
         totalMessages.value = paginationInfo.total || 0
         hasMore.value = paginationInfo.hasMore || false
         currentPage.value = paginationInfo.page || 1
-        
+
+        console.log(`📊 [useMessages] Pagination updated:`, {
+          page: paginationInfo.page,
+          totalPages: paginationInfo.totalPages,
+          hasMore: paginationInfo.hasMore,
+          totalMessages: paginationInfo.total,
+          currentCount: paginatedMessages.value.length
+        })
+
         console.log(`📊 分頁載入成功: ${messagesArray.length} 條訊息 (頁面 ${paginationInfo.page}/${paginationInfo.totalPages || 1})`)
       } else {
         handleError(response.error || '無法載入訊息')
@@ -196,15 +212,97 @@ export function useMessages(conversationId?: string, options?: {
       await fetchMessages()
     }
   }
+
+  // 專門用於polling的函數，在分頁模式下不重置已載入的歷史訊息
+  const fetchLatestMessages = async () => {
+    if (!currentConversationId.value) {return}
+
+    if (enablePagination) {
+      // 在分頁模式下，只更新第1頁的最新訊息，但保持已載入的歷史訊息
+      console.log('🔄 [fetchLatestMessages] Polling latest messages without resetting pagination')
+
+      try {
+        const response = await messageApi.listPaginated(currentConversationId.value, {
+          page: 1,
+          pageSize
+        })
+
+        if (response.success && response.data) {
+          let latestMessagesArray: Message[]
+
+          if (Array.isArray(response.data)) {
+            latestMessagesArray = response.data
+          } else if (response.data && typeof response.data === 'object' && 'items' in response.data) {
+            const paginatedData = response.data as PaginatedResponse<Message>
+            latestMessagesArray = paginatedData.items || []
+          } else {
+            console.error('❌ [fetchLatestMessages] Unknown data format:', response.data)
+            return
+          }
+
+          // 確保最新訊息按時間排序
+          const orderedLatestMessages = messageOrderUtils.ensureChronologicalOrder(latestMessagesArray)
+
+          if (paginatedMessages.value.length === 0) {
+            // 如果還沒有任何訊息，直接設置
+            paginatedMessages.value = orderedLatestMessages
+          } else {
+            // 找到最新的已載入訊息時間
+            const latestLoadedMessage = messageOrderUtils.getLatestMessage(paginatedMessages.value)
+            const latestLoadedTime = latestLoadedMessage ? new Date(latestLoadedMessage.createdAt).getTime() : 0
+
+            // 只添加比已載入訊息更新的訊息
+            const newMessages = orderedLatestMessages.filter(msg =>
+              new Date(msg.createdAt).getTime() > latestLoadedTime
+            )
+
+            if (newMessages.length > 0) {
+              console.log(`📥 [fetchLatestMessages] Found ${newMessages.length} new messages`)
+              // 將新訊息添加到現有訊息末尾（保持時間順序）
+              paginatedMessages.value = messageOrderUtils.ensureChronologicalOrder([
+                ...paginatedMessages.value,
+                ...newMessages
+              ])
+              // 更新總訊息數
+              totalMessages.value += newMessages.length
+            } else {
+              console.log('📥 [fetchLatestMessages] No new messages found')
+            }
+          }
+        }
+      } catch (err) {
+        console.error('❌ [fetchLatestMessages] Error:', err)
+        // 如果polling失敗，不影響現有的分頁狀態
+      }
+    } else {
+      // 非分頁模式下，使用原來的邏輯
+      await messagesStore.fetchMessages(currentConversationId.value)
+    }
+  }
   
   // 載入更多歷史消息（infinite scroll）
   const loadMoreMessages = async () => {
+    console.log('🔄 [loadMoreMessages] Called with state:', {
+      enablePagination,
+      hasMore: hasMore.value,
+      loadingHistory: loadingHistory.value,
+      currentPage: currentPage.value,
+      totalMessages: totalMessages.value
+    })
+
     if (!enablePagination || !hasMore.value || loadingHistory.value) {
+      console.log('⚠️ [loadMoreMessages] Blocked:', {
+        enablePagination,
+        hasMore: hasMore.value,
+        loadingHistory: loadingHistory.value
+      })
       return false
     }
-    
+
     const nextPage = currentPage.value + 1
+    console.log(`📄 [loadMoreMessages] Loading page ${nextPage}...`)
     await fetchMessagesPaginated(nextPage, true)
+    console.log(`✅ [loadMoreMessages] Page ${nextPage} loaded, hasMore: ${hasMore.value}`)
     return hasMore.value
   }
 
@@ -333,8 +431,7 @@ export function useMessages(conversationId?: string, options?: {
   const deleteMessage = async (_messageId: string) => {
     clearError()
     try {
-      // TODO: Implement deleteMessage in store
-      // await messagesStore.deleteMessage(messageId)
+      // Delete message functionality will be implemented when required
       await refreshMessages()
     } catch (err) {
       handleError(err)
@@ -389,6 +486,7 @@ export function useMessages(conversationId?: string, options?: {
     // 方法
     setConversationId,
     fetchMessages,
+    fetchLatestMessages,
     refreshMessages,
     loadMoreMessages: enablePagination ? loadMoreMessages : async () => false,
     sendMessage,

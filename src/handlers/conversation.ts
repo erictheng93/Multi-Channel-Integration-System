@@ -34,7 +34,6 @@ conversations.get('/', async (c) => {
     const { status, limit = '50', page = '1' } = c.req.query();
     const limitNum = Math.min(parseInt(limit), 100);
     const pageNum = Math.max(parseInt(page), 1);
-    // const offset = (pageNum - 1) * limitNum; // 暫時未使用
 
     // 根據角色獲取對話 - 使用新的三層權限體系
     const conversationList = await dbService.getConversationsByRole(agent!, status, limitNum);

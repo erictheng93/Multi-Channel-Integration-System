@@ -1,11 +1,12 @@
 import { eq, and, desc, asc, count } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { 
-  customers, 
-  conversations, 
-  messages, 
+import {
+  customers,
+  conversations,
+  messages,
   systemSettings
 } from '../db/schema';
+import { createContextLogger } from './logger';
 import { 
   convertCustomer,
   convertConversation,
@@ -105,7 +106,8 @@ export async function findOrCreateCustomer(
           .set(updateData)
           .where(eq(customers.id, existingCustomer.id));
           
-        console.log(`📝 客戶資訊已更新 - ID: ${existingCustomer.id}, 平台: ${platform}, 用戶ID: ${platformUserId}`);
+        const dbLogger = createContextLogger('Database');
+        dbLogger.info('Customer info updated', { customerId: existingCustomer.id, platform, platformUserId });
         
         // 重新獲取更新後的客戶資料
         const updatedCustomer = await drizzleDb
@@ -118,7 +120,8 @@ export async function findOrCreateCustomer(
       }
     }
     
-    console.log(`👤 找到現有客戶 - ID: ${existingCustomer.id}, 平台: ${platform}, 用戶ID: ${platformUserId}`);
+    const dbLogger = createContextLogger('Database');
+    dbLogger.info('Found existing customer', { customerId: existingCustomer.id, platform, platformUserId });
     return convertCustomer(existingCustomer);
   }
 
@@ -154,7 +157,8 @@ export async function findOrCreateCustomer(
     throw new Error('Failed to retrieve created customer');
   }
 
-  console.log(`🆕 建立新客戶 - ID: ${newCustomer.id}, 平台: ${platform}, 用戶ID: ${platformUserId}`);
+  const dbLogger = createContextLogger('Database');
+  dbLogger.info('Created new customer', { customerId: newCustomer.id, platform, platformUserId });
   return convertCustomer(newCustomer);
 }
 
@@ -383,6 +387,8 @@ export async function getMessageStats(
       messageType: messages.messageType,
       platformMessageId: messages.platformMessageId,
       isRecalled: messages.isRecalled,
+      recallDeadline: messages.recallDeadline,
+      recalledAt: messages.recalledAt,
       isSent: messages.isSent,
       deliveryStatus: messages.deliveryStatus,
       replyToMessageId: messages.replyToMessageId,
@@ -407,9 +413,7 @@ export async function getMessageStats(
     return {
       ...baseMessage,
       customer_name: msg.customer_name,
-      platform: msg.platform,
-      recallDeadline: null, // Property doesn't exist in schema
-      recalledAt: msg.isRecalled ? new Date().toISOString() : null
+      platform: msg.platform
     };
   });
 
@@ -619,7 +623,8 @@ export async function updateCustomer(
     
     return true;
   } catch (error) {
-    console.error('Failed to update customer:', error);
+    const dbLogger = createContextLogger('Database');
+    dbLogger.error('Failed to update customer', { customerId, error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
