@@ -749,23 +749,37 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
     }
     
     // 檢查KV存儲 - 使用 CACHE 而不是 SESSIONS 進行健康檢查
-    let kvCheck = true
+    let kvCheck = false
     let kvResponseTime = 0
     const kvStart = Date.now()
-    try {
-      if (c.env.CACHE) {
-        await c.env.CACHE.put('health_check', 'test', { expirationTtl: 10 })
-        await c.env.CACHE.get('health_check')
-        await c.env.CACHE.delete('health_check')
-      } else {
-        throw new Error('CACHE KV binding not available')
+
+    if (c.env.CACHE) {
+      try {
+        // 簡化的KV測試 - 只測試基本的存取功能
+        const testKey = 'health_check_' + Date.now()
+        const testValue = 'healthy'
+
+        // 測試寫入
+        await c.env.CACHE.put(testKey, testValue, { expirationTtl: 60 })
+
+        // 測試讀取
+        const result = await c.env.CACHE.get(testKey)
+
+        // 測試結果
+        if (result === testValue) {
+          kvCheck = true
+        }
+
+        // 清理測試數據
+        await c.env.CACHE.delete(testKey)
+
+      } catch (error) {
+        console.error('Cache health check error:', error)
+        kvCheck = false
       }
-      kvResponseTime = Date.now() - kvStart
-    } catch (kvError) {
-      console.error('KV health check failed:', kvError)
-      kvCheck = false
-      kvResponseTime = Date.now() - kvStart
     }
+
+    kvResponseTime = Date.now() - kvStart
     
     // 檢查平台整合狀態
     const lineCheck = await checkLineIntegration(c.env)
