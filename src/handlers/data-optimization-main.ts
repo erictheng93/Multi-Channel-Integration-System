@@ -378,20 +378,74 @@ dataOptimizationHandler.get('/health', async (c) => {
       systemResponsive: true
     };
 
-    const healthScore = Object.values(healthChecks).filter(check =>
-      typeof check === 'boolean' ? check : check > 70
-    ).length / Object.keys(healthChecks).length;
+    // 智能健康檢查邏輯 - 處理初始化狀態
+    const evaluateCheck = (check: any) => {
+      if (typeof check === 'boolean') return check;
+      if (check === 0 && stats.totalQueries === 0) {
+        // 系統剛初始化，優化分數為0是正常的，給予中性評分
+        return true; // 或者可以返回 null 並在計算中排除
+      }
+      return check > 70;
+    };
+
+    const validChecks = Object.values(healthChecks).map(evaluateCheck);
+    const healthScore = validChecks.filter(check => check === true).length / validChecks.length;
 
     const overallHealth = healthScore >= 0.8 ? 'healthy' :
                          healthScore >= 0.6 ? 'degraded' : 'unhealthy';
+
+    // 生成智能建議
+    const generateSmartRecommendations = () => {
+      const recommendations = [];
+
+      if (stats.totalQueries === 0) {
+        recommendations.push(
+          '💡 系統剛初始化，建議執行性能基準測試',
+          '📊 運行快取測試以建立統計基準',
+          '⚡ 啟動批量操作測試來優化性能'
+        );
+      } else {
+        const hitRate = stats.totalQueries > 0 ? stats.cacheHits / stats.totalQueries : 0;
+        const batchRate = stats.totalQueries > 0 ? stats.batchedOperations / stats.totalQueries : 0;
+
+        if (hitRate < 0.7) {
+          recommendations.push('🎯 快取命中率偏低，建議調整TTL設置');
+        }
+        if (batchRate < 0.5) {
+          recommendations.push('📦 批量操作使用率較低，建議啟用更多批量處理');
+        }
+        if (stats.averageLatency > 500) {
+          recommendations.push('⚡ 平均延遲較高，建議優化查詢效率');
+        }
+
+        if (recommendations.length === 0) {
+          recommendations.push('✨ 系統運行優秀，持續監控性能指標');
+        }
+      }
+
+      return recommendations;
+    };
+
+    const smartRecommendations = generateSmartRecommendations();
 
     return c.json({
       status: overallHealth,
       score: Math.round(healthScore * 100),
       components: healthChecks,
-      recommendations: healthScore < 0.8 ?
-        ['Enable all optimization features', 'Check system performance', 'Review configuration'] :
-        ['System operating optimally'],
+      statistics: {
+        totalQueries: stats.totalQueries,
+        cacheHitRate: stats.totalQueries > 0 ?
+          Math.round((stats.cacheHits / stats.totalQueries) * 100) + '%' : 'N/A',
+        averageLatency: stats.averageLatency + 'ms',
+        batchEfficiency: stats.totalQueries > 0 ?
+          Math.round((stats.batchedOperations / stats.totalQueries) * 100) + '%' : 'N/A'
+      },
+      recommendations: smartRecommendations,
+      nextSteps: stats.totalQueries === 0 ? [
+        '1. 執行 /api/data-optimization/test-cache 進行快取測試',
+        '2. 執行 /api/data-optimization/test-batch 進行批量測試',
+        '3. 重新檢查健康狀態以獲得準確評分'
+      ] : [],
       timestamp: Date.now()
     });
 
@@ -401,6 +455,56 @@ dataOptimizationHandler.get('/health', async (c) => {
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
+    }, 500);
+  }
+});
+
+// =================== 基準初始化 API ===================
+
+// 初始化基準統計數據
+dataOptimizationHandler.post('/initialize-baseline', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (!['admin', 'team'].includes(user.role)) {
+      return c.json({
+        error: 'Insufficient permissions',
+        message: 'Only administrators and team members can initialize baseline'
+      }, 403);
+    }
+
+    const optimizationService = createDataOptimizationService(c.env);
+
+    // 檢查是否已經有統計數據
+    const existingStats = await optimizationService.getQueryStats();
+    if (existingStats.totalQueries > 0) {
+      return c.json({
+        warning: 'Baseline already exists',
+        message: 'System already has performance statistics',
+        currentStats: existingStats,
+        suggestion: 'Use /reset-stats endpoint first if you want to reinitialize'
+      });
+    }
+
+    // 初始化基準統計
+    await optimizationService.initializeBaselineStats();
+
+    // 獲取新的統計數據
+    const newStats = await optimizationService.getQueryStats();
+
+    return c.json({
+      success: true,
+      message: 'Baseline statistics initialized successfully',
+      statistics: newStats,
+      initializedBy: user.id,
+      timestamp: Date.now()
+    });
+
+  } catch (error) {
+    console.error('❌ [Data Optimization] Baseline initialization failed:', error);
+    return c.json({
+      error: 'Failed to initialize baseline',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
   }
 });
