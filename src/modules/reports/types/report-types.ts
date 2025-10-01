@@ -1,7 +1,7 @@
 // Reports 模組類型定義
 // Comprehensive reporting system with multiple report types and export formats
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { Context } from 'hono';
 
 // ======================== 基礎類型 ========================

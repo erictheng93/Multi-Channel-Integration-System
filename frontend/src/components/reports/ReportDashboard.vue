@@ -128,7 +128,7 @@
       <!-- 左側：篩選和報表列表 -->
       <div class="content-left">
         <!-- 篩選控制 -->
-        <div class="filter-section">
+        <div class="filter-section filters-section">
           <div class="filter-header">
             <h3 class="filter-title">
               🔍 篩選器

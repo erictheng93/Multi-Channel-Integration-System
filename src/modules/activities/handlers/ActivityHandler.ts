@@ -2,7 +2,7 @@
 // 活動模組 - 活動記錄處理器
 
 import { Context } from 'hono'
-import type { Bindings } from '../../../types'
+import type { Bindings } from '@/types'
 import { ActivityService } from '@modules/activities/services/ActivityService'
 import { ActivityStatsService } from '@modules/activities/services/ActivityStatsService'
 import {
@@ -10,7 +10,7 @@ import {
   paginatedResponse,
   errorResponse,
   validationErrorResponse
-} from '../../../utils/api-response'
+} from '@/utils/api-response'
 
 export class ActivityHandler {
   private activityService: ActivityService

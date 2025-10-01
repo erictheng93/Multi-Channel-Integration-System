@@ -348,7 +348,7 @@ describe('RealtimePerformanceMonitor', () => {
 
     it('should mark system as unhealthy when critical alerts exist', async () => {
       // Generate critical alert - 降低閾值使預設值觸發錯誤級別警報
-      (monitor as any).thresholds.errorRate = 0.005; // Lower than default 0.01 (1%)
+      (monitor as any).thresholds.eventFailureRate = 0.005; // Lower than default 0.01 (1%)
 
       await monitor['collectMetrics']();
       monitor['checkThresholds'](); // Manually trigger threshold checking
@@ -367,6 +367,9 @@ describe('RealtimePerformanceMonitor', () => {
       for (let i = 0; i < maxHistory + 10; i++) {
         await monitor['collectMetrics']();
       }
+
+      // Manually trigger cleanup as it's normally done in monitoring loop
+      monitor['cleanupOldData']();
 
       const history = monitor.getMetricsHistory();
       expect(history.length).toBeLessThanOrEqual(maxHistory);

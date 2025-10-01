@@ -19,7 +19,7 @@ import {
 // ======================== Mock 設置 ========================
 
 // Mock errorResponse
-vi.mock('../../shared/utils/api-response', () => ({
+vi.mock('../../../shared/utils/api-response', () => ({
   errorResponse: vi.fn((c, message, status) => ({ error: message, status }))
 }));
 
@@ -48,7 +48,13 @@ const createMockContext = (overrides: any = {}) => ({
     header: vi.fn()
   },
   env: {
-    DB: {},
+    DB: {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue({ count: 0 })
+        })
+      })
+    },
     CACHE: {
       get: vi.fn(),
       put: vi.fn()

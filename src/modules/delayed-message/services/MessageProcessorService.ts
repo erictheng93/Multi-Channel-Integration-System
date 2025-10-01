@@ -1,7 +1,7 @@
 // Delayed Message Module - Message Processor Service
 // 延遲訊息模組 - 訊息處理服務
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   DelayedMessageEntity,
   ProcessResult,

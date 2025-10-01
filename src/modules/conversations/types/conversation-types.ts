@@ -2,7 +2,7 @@
 // 對話模組類型定義
 
 // Database schema types
-import type { conversations, messages, customers, conversationTransfers } from '../../../db/schema';
+import type { conversations, messages, customers, conversationTransfers } from '@/db/schema';
 
 export type Conversation = typeof conversations.$inferSelect;
 export type NewConversation = typeof conversations.$inferInsert;
@@ -155,5 +155,5 @@ export interface ConversationEvent {
 }
 
 // Re-export shared types
-export type { Bindings } from '../../../types';
-export type { ApiResponse, PaginatedResponse } from '../../../types';
+export type { Bindings } from '@/types';
+export type { ApiResponse, PaginatedResponse } from '@/types';

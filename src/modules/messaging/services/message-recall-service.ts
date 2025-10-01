@@ -8,7 +8,7 @@ import {
   messageRecallLogs,
   delayedMessages,
   conversations
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   MessageRecall,
   RecallRequest,
@@ -17,7 +17,7 @@ import {
   RecallDeadlineExceededError,
   InvalidMessageDataError
 } from '../types/message-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 export class MessageRecallService {
   private drizzleDb: ReturnType<typeof drizzle>;

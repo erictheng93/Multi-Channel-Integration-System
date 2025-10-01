@@ -1,7 +1,7 @@
 // Webhook 驗證器 - 整合路由和安全驗證
 // Webhook Validator - Integration of Routing and Security Validation
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
 import { WebhookSecurityService, type SecurityValidationResult } from '@modules/integrations/services/webhook-security-service';
 import { WebhookRouterService, type WebhookRouteResult } from '@modules/integrations/services/webhook-router-service';

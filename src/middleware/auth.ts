@@ -67,8 +67,13 @@ declare module 'hono' {
  */
 export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> {
   try {
+    // 🔥 Skip authentication for OPTIONS requests (CORS preflight)
+    if (c.req.method === 'OPTIONS') {
+      return await next();
+    }
+
     const authHeader = c.req.header('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return c.json({ error: 'Missing or invalid authorization header' }, 401);
     }

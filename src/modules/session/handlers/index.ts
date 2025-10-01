@@ -35,7 +35,7 @@ import {
   // sessionSearchAccess
 } from '../middleware/index';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // 創建會話路由實例
 const sessionRouter = new Hono<{ Bindings: Bindings }>();

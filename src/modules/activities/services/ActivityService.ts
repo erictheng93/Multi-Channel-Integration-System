@@ -3,7 +3,7 @@
 
 import { eq, and, gte, lte, desc, count, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { activities } from '../../../db/schema'
+import { activities } from '@/db/schema'
 import {
   ActivityLog,
   CreateActivityRequest,

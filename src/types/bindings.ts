@@ -85,6 +85,10 @@ export interface Bindings {
   CLOUDFLARE_DATABASE_ID?: string;
   CLOUDFLARE_D1_TOKEN?: string;
   
+  // R2 Storage Configuration
+  R2_PUBLIC_DOMAIN?: string; // 公開 R2 域名（用於生成公開 URL）
+  WORKER_DOMAIN?: string; // Worker 域名（用於生成檔案下載 URL）
+
   // File upload settings
   MAX_FILE_SIZE?: string;
   ALLOWED_FILE_TYPES?: string;

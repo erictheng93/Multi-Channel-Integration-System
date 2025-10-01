@@ -96,17 +96,24 @@ describe('QRCodeCrudService', () => {
     vi.clearAllMocks();
 
     // 重置 mock 實現
+    // 創建可重用的鏈式 mock
+    const limitMock = vi.fn().mockResolvedValue([]);
+    const orderByMock = vi.fn().mockReturnValue({
+      limit: limitMock,
+      offset: vi.fn().mockResolvedValue([])
+    });
+    const whereMock = vi.fn().mockReturnValue({
+      limit: limitMock,
+      orderBy: orderByMock
+    });
+    const fromMock = vi.fn().mockReturnValue({
+      where: whereMock,
+      orderBy: orderByMock,
+      limit: limitMock
+    });
+
     mockDb.select.mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([]),
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              offset: vi.fn().mockResolvedValue([])
-            })
-          })
-        })
-      })
+      from: fromMock
     });
 
     mockDb.insert.mockReturnValue({

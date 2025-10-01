@@ -3,7 +3,7 @@
 
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, count, sql } from 'drizzle-orm';
-import { customers, conversations, messages } from '../../../db/schema';
+import { customers, conversations, messages } from '@/db/schema';
 import type {
   SystemServiceInterface,
   SystemStatus,

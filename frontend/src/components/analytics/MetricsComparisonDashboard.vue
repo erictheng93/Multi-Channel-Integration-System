@@ -301,7 +301,7 @@ async function loadData() {
   error.value = null;
 
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://backend.multi-channel-system.shop';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://multi-channel.imfinethankyouandyou.com';
 
     // 根據 preset 決定使用哪個 API endpoint
     let endpoint = '/api/analytics/comparison/metrics';
@@ -350,7 +350,7 @@ async function loadData() {
 // 載入快取統計
 async function loadCacheStats() {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://backend.multi-channel-system.shop';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://multi-channel.imfinethankyouandyou.com';
     const response = await fetch(`${apiUrl}/api/analytics/comparison/cache/stats`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`

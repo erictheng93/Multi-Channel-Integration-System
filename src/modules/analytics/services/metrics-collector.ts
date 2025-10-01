@@ -16,8 +16,8 @@ import type {
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
-import { metrics } from '../../../db/schema';
-import type { Bindings } from '../../../types';
+import { metrics } from '@/db/schema';
+import type { Bindings } from '@/types';
 
 /**
  * 統一指標收集服務

@@ -25,7 +25,15 @@
       "Bash(set TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoidGVzdC1hZG1pbiIsImRpc3BsYXlOYW1lIjoiVGVzdCBBZG1pbmlzdHJhdG9yIiwicm9sZSI6ImFkbWluIiwidGVhbUlkIjoxLCJpYXQiOjE3NTkyMDk1MDMsImV4cCI6MTc1OTI5NTkwM30.YMqcFJRbIWKbb4CCE5FUCXWhWNBMhj56gWJHmt3606A)",
       "Bash(cd:*)",
       "Bash(wrangler:*)",
-      "Bash(set)"
+      "Bash(set)",
+      "Bash(git mv:*)",
+      "Bash(perl:*)",
+      "Bash(git checkout:*)",
+      "Bash(md5sum:*)",
+      "Bash(git log:*)",
+      "Bash(xargs -0 sed -i \"s|../../../../src/modules/activities/types/interfaces|@modules/activities/types/interfaces|g\")",
+      "Bash(xargs:*)",
+      "Read(//d//**)"
     ],
     "deny": [],
     "ask": [],

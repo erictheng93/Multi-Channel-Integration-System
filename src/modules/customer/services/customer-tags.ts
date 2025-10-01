@@ -7,14 +7,14 @@ import {
   customers,
   customerTags,
   tags
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   CustomerTag,
   CustomerTagAssignment,
   CustomerTagOperation,
   CustomerNotFoundError
 } from '../types/customer-types';
-import type { JWTPayload } from '../../../types';
+import type { JWTPayload } from '@/types';
 
 export class CustomerTagService {
   private drizzleDb: ReturnType<typeof drizzle>;

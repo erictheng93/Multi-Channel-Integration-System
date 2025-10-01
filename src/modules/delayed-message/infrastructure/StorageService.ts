@@ -3,8 +3,8 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, count, sql } from 'drizzle-orm';
-import { delayedMessages, messageRecallLogs, conversations, customers, messages } from '../../../db/schema';
-import type { Bindings } from '../../../types';
+import { delayedMessages, messageRecallLogs, conversations, customers, messages } from '@/db/schema';
+import type { Bindings } from '@/types';
 import type {
   DelayedMessageStorage,
   DelayedMessageEntity,

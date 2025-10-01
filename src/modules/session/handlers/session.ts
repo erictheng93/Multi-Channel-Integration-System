@@ -2,8 +2,8 @@
 // 整合 SessionService, TopicService, 和 AnalyticsService
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
-import { jwtAuth } from '../../../middleware/auth';
+import type { Bindings } from '@/types';
+import { jwtAuth } from '@/middleware/auth';
 import { SessionService } from '@modules/session/services/session-service';
 import { TopicService } from '@modules/session/services/topic-service';
 import { AnalyticsService } from '@modules/session/services/analytics-service';
@@ -18,7 +18,7 @@ import {
   type UpdateSessionData,
   type BatchSessionOperation
 } from '../types/session-types';
-import { createContextLogger } from '../../../utils/logger';
+import { createContextLogger } from '@/utils/logger';
 
 const sessionHandler = new Hono<{ Bindings: Bindings }>();
 const logger = createContextLogger('SessionHandler');

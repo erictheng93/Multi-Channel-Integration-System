@@ -6,7 +6,7 @@ import { sql } from 'drizzle-orm';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import { analyticsAuth } from '@modules/analytics/middleware/analytics-auth';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,

@@ -1,7 +1,7 @@
 // 事件處理器 - 專門處理各種即時事件
 
 import { Context } from 'hono';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 import type {
   EventType,
   EventSource,
@@ -23,7 +23,7 @@ import {
   errorResponse,
   unauthorizedResponse,
   handleApiError
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
 import { createRealtimeEvent } from '@modules/realtime/handlers/realtime-main';
 

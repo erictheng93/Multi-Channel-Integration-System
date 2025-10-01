@@ -4,8 +4,8 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import type { Bindings } from '../../../types';
-import type { ServiceResponse } from '../../../types/services';
+import type { Bindings } from '@/types';
+import type { ServiceResponse } from '@/types/services';
 
 import type {
   AnalyticsServiceInterface,
@@ -40,7 +40,7 @@ import {
   agents,
   customers,
   conversations
-} from '../../../db/schema';
+} from '@/db/schema';
 
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';

@@ -4,7 +4,7 @@
  */
 
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   FileUploadRequest,
   FileQueryOptions,
@@ -20,7 +20,7 @@ import {
   notFoundResponse,
   errorResponse,
   handleApiError
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 import { getFileExtension, getFileType } from '@modules/file-management/utils/file-helpers';
 import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 

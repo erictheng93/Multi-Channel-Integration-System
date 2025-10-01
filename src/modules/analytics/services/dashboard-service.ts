@@ -3,7 +3,7 @@
 
 import { eq, and, gte, lte, desc, asc } from 'drizzle-orm';
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { AnalyticsCore } from '@modules/analytics/services/analytics-core';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import type {

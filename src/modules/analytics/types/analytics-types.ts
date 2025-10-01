@@ -1,7 +1,7 @@
 // Analytics Core Types - 統一分析服務核心類型定義
 
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 /**
  * 通用分析查詢接口

@@ -1,7 +1,7 @@
 // Session 模組類型定義
 // 對話會話管理相關的所有類型和介面
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { Context } from 'hono';
 
 // ======================== 基礎類型 ========================

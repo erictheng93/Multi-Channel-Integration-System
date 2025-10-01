@@ -2,7 +2,7 @@
 // System data validation middleware
 
 import { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { SystemSettingsUpdate } from '@modules/system/types/system-types';
 
 // ======================== 基礎驗證中間件 ========================

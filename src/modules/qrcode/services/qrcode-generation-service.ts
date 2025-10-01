@@ -83,11 +83,11 @@ export class QRCodeContentProcessor {
     body?: string;
   }): string {
     const { to, subject = '', body = '' } = email;
-    const params = new URLSearchParams();
-    if (subject) params.set('subject', subject);
-    if (body) params.set('body', body);
+    const params: string[] = [];
+    if (subject) params.push(`subject=${encodeURIComponent(subject)}`);
+    if (body) params.push(`body=${encodeURIComponent(body)}`);
 
-    return `mailto:${to}${params.toString() ? `?${params.toString()}` : ''}`;
+    return `mailto:${to}${params.length > 0 ? `?${params.join('&')}` : ''}`;
   }
 
   /**
@@ -151,8 +151,9 @@ export class QRCodeContentProcessor {
         case 'phone':
           return this.processPhoneContent(content);
         case 'text':
-        default:
           return content;
+        default:
+          throw new Error(`Unsupported QR code type: ${type}`);
       }
     }
 
@@ -552,8 +553,10 @@ export class QRCodeGenerationService {
    */
   private static isValidUrl(url: string): boolean {
     try {
-      new URL(url.startsWith('http') ? url : `https://${url}`);
-      return true;
+      const urlToTest = url.startsWith('http') ? url : `https://${url}`;
+      const parsed = new URL(urlToTest);
+      // 確保 URL 有有效的主機名稱
+      return parsed.hostname.includes('.') || parsed.hostname === 'localhost';
     } catch {
       return false;
     }

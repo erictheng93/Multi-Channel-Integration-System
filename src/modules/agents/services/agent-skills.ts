@@ -8,7 +8,7 @@ import type {
   SkillCategory,
   SkillLevel
 } from '../types/agent-types';
-import { generateId } from '../../../utils/id-generator';
+import { generateId } from '@/utils/id-generator';
 
 export class AgentSkillsService {
   constructor(private kv: KVNamespace) {}

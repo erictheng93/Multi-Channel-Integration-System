@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import teamHandlers from '@modules/teams/handlers/team';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 const app = new Hono<{ Bindings: Bindings }>();
 

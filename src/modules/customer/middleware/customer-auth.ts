@@ -6,17 +6,17 @@ import { eq, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import {
   customers
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   unauthorizedResponse,
   forbiddenResponse,
   notFoundResponse
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 import {
   CustomerPermissions,
   CustomerAccessScope
 } from '../types/customer-types';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 
 // ======================== 權限檢查中間件 ========================
 

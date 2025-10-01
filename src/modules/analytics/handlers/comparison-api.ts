@@ -3,12 +3,42 @@
 
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
+
+// 🔥 CORS Preflight Handler - Must come FIRST, before all routes
+comparisonAPI.options('*', (c) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  const response = new Response(null, { status: 204 });
+
+  if (allowedOrigins.includes(origin) && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  // 🔥 Prevent Cloudflare edge caching of OPTIONS responses
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
+});
 
 /**
  * GET /api/analytics/comparison/metric

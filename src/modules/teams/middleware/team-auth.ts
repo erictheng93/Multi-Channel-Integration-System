@@ -2,8 +2,8 @@
 // Team Authentication Middleware
 
 import type { MiddlewareHandler } from 'hono';
-import type { Bindings } from '../../../types';
-import { verifyJWT } from '../../../utils/auth';
+import type { Bindings } from '@/types';
+import { verifyJWT } from '@/utils/auth';
 import { TeamPermissionError } from '@modules/teams/types/team-types';
 
 // 基本認證中介層

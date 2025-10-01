@@ -25,7 +25,7 @@ export {
 // ======================== 中間件組合器 ========================
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import {
   qrCodeAuthMiddleware,
   requireCreatePermission,

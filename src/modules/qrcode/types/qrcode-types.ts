@@ -1,7 +1,7 @@
 // QRCode 模組類型定義
 // 定義二維碼相關的所有類型和介面
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // ======================== 基礎類型 ========================
 

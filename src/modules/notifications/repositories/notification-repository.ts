@@ -3,7 +3,7 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { sql, eq, and, or, desc, count, gte, lte, inArray } from 'drizzle-orm';
-import { notifications } from '../../../db/schema';
+import { notifications } from '@/db/schema';
 import {
   NotificationBase,
   NotificationQuery,

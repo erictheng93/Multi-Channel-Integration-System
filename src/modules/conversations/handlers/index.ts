@@ -2,7 +2,7 @@
 // 對話處理器索引
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import conversationMainHandler from '@modules/conversations/handlers/conversation-main';
 
 // 創建對話主路由器

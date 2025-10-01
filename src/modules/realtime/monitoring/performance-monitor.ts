@@ -1,6 +1,6 @@
 // Real-time 性能監控系統
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   EventType,
   EventPriority,

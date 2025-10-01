@@ -1,10 +1,10 @@
 // Real-time 認證中間件 - 專門處理即時通訊的認證需求
 
 import { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { SSEAuthPayload } from '@modules/realtime/types';
-import { verifyJWT } from '../../../utils/auth';
-import { unauthorizedResponse } from '../../../utils/api-response';
+import { verifyJWT } from '@/utils/auth';
+import { unauthorizedResponse } from '@/utils/api-response';
 
 // Real-time 認證配置
 interface RealtimeAuthConfig {

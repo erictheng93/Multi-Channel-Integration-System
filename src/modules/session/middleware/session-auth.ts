@@ -2,8 +2,8 @@
 // Session module authentication and permission middleware
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
-import { verifyJWT } from '../../../utils/auth';
+import type { Bindings } from '@/types';
+import { verifyJWT } from '@/utils/auth';
 
 // ======================== 基礎權限檢查 ========================
 

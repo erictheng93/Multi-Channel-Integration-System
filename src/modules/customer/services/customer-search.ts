@@ -10,7 +10,7 @@ import {
   teams,
   conversations,
   messages
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   CustomerListItem,
   CustomerFilters,
@@ -19,7 +19,7 @@ import {
   CustomerListResponse,
   CustomerSearchResponse
 } from '../types/customer-types';
-import type { JWTPayload } from '../../../types';
+import type { JWTPayload } from '@/types';
 
 export class CustomerSearchService {
   private drizzleDb: ReturnType<typeof drizzle>;

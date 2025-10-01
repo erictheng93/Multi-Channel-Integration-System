@@ -1,6 +1,6 @@
 // Real-time 管理服務 - 統一的即時通訊管理
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   RealtimeEvent,
   RealtimeConfig,

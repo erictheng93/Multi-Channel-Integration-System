@@ -1,6 +1,6 @@
 // SSE 連接管理服務 - 專門管理 SSE 連接的生命週期
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   SSEConnection,
   SSEEvent,

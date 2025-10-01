@@ -6,7 +6,7 @@ import {
   successResponse,
   notFoundResponse,
   handleApiError
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 import { CustomerCrudService } from '@modules/customer/services/customer-crud';
 import { sanitizeCustomerData } from '@modules/customer/middleware/customer-validation';
 import {
@@ -16,7 +16,7 @@ import {
   UpdateCustomerData,
   CustomerNotFoundError
 } from '../types/customer-types';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 
 /**
  * Customer CRUD 操作處理器類

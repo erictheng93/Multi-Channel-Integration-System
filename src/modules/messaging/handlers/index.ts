@@ -30,7 +30,7 @@ import {
   messageSearchAccess
 } from '../middleware/index';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // 創建訊息路由實例
 const messageRouter = new Hono<{ Bindings: Bindings }>();

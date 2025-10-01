@@ -88,22 +88,91 @@
       </div>
 
       <nav class="sidebar-nav">
-        <router-link
+        <!-- Regular navigation items -->
+        <template
           v-for="item in navigationItems"
           :key="item.path"
-          :to="item.path"
-          class="nav-item"
-          :class="{ active: $route.path === item.path }"
         >
-          <component
-            :is="item.icon"
-            class="nav-icon"
-          />
-          <span
-            v-if="!sidebarCollapsed || isMobile"
-            class="nav-text"
-          >{{ item.label }}</span>
-        </router-link>
+          <!-- Expandable Reports Item -->
+          <div
+            v-if="item.path === '/reports'"
+            class="nav-item-group"
+          >
+            <div
+              class="nav-item expandable"
+              :class="{ active: $route.path.startsWith('/reports') }"
+              @click="toggleReportsSubmenu"
+            >
+              <component
+                :is="item.icon"
+                class="nav-icon"
+              />
+              <span
+                v-if="!sidebarCollapsed || isMobile"
+                class="nav-text"
+              >{{ item.label }}</span>
+              <span
+                v-if="!sidebarCollapsed || isMobile"
+                class="expand-icon"
+                :class="{ expanded: isReportsExpanded }"
+              >
+                ▶
+              </span>
+            </div>
+
+            <!-- Reports Submenu -->
+            <transition name="submenu">
+              <div
+                v-show="isReportsExpanded && (!sidebarCollapsed || isMobile)"
+                class="submenu"
+              >
+                <router-link
+                  to="/reports/dashboard"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/reports/dashboard' }"
+                >
+                  <span class="submenu-icon">📊</span>
+                  <span>儀表板</span>
+                </router-link>
+
+                <router-link
+                  to="/reports/templates"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/reports/templates' }"
+                >
+                  <span class="submenu-icon">📋</span>
+                  <span>模板</span>
+                </router-link>
+
+                <router-link
+                  to="/reports/generate"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/reports/generate' }"
+                >
+                  <span class="submenu-icon">⚙️</span>
+                  <span>生成報表</span>
+                </router-link>
+              </div>
+            </transition>
+          </div>
+
+          <!-- Regular navigation items -->
+          <router-link
+            v-else
+            :to="item.path"
+            class="nav-item"
+            :class="{ active: $route.path === item.path }"
+          >
+            <component
+              :is="item.icon"
+              class="nav-icon"
+            />
+            <span
+              v-if="!sidebarCollapsed || isMobile"
+              class="nav-text"
+            >{{ item.label }}</span>
+          </router-link>
+        </template>
       </nav>
 
       <div class="sidebar-footer">
@@ -260,6 +329,7 @@ import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import DashboardIcon from '@/components/icons/DashboardIcon.vue'
 import ChatIcon from '@/components/icons/ChatIcon.vue'
+import TagIcon from '@/components/icons/TagIcon.vue'
 import BellIcon from '@/components/icons/BellIcon.vue'
 import LogoutIcon from '@/components/icons/LogoutIcon.vue'
 import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
@@ -284,6 +354,7 @@ const showMobileMenu = ref(false)
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
 const isMobile = ref(false)
+const isReportsExpanded = ref(false)
 const notifications = ref([
   {
     id: '1',
@@ -298,6 +369,7 @@ const navigationItems = computed(() => {
   const baseItems = [
     { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
     { path: '/conversations', label: '對話管理', icon: ChatIcon },
+    { path: '/customers/tags', label: '標籤管理', icon: TagIcon },
     { path: '/reports', label: '報表系統', icon: ReportsIcon }
   ]
 
@@ -350,6 +422,10 @@ const toggleSidebar = () => {
     sidebarCollapsed.value = !sidebarCollapsed.value
     isAutoCollapsed.value = false // 手動操作時清除自動摺疊狀態
   }
+}
+
+const toggleReportsSubmenu = () => {
+  isReportsExpanded.value = !isReportsExpanded.value
 }
 
 const handleResize = () => {
@@ -450,6 +526,11 @@ const handleClickOutside = (event: Event) => {
 // 監聽路由變化，確保組件正確更新
 watch(() => route.path, (newPath, oldPath) => {
   console.log('🔄 AppLayout detected route change:', oldPath, '->', newPath)
+
+  // 自動展開報表系統子菜單
+  if (newPath.startsWith('/reports/')) {
+    isReportsExpanded.value = true
+  }
 
   // 強制更新組件狀態
   nextTick(() => {
@@ -631,6 +712,11 @@ onUnmounted(() => {
   padding: var(--space-4);
 }
 
+/* Nav Item Group for Expandable Items */
+.nav-item-group {
+  margin-bottom: var(--space-2);
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -644,6 +730,11 @@ onUnmounted(() => {
   font-weight: 500;
   position: relative;
   overflow: hidden;
+}
+
+.nav-item.expandable {
+  cursor: pointer;
+  justify-content: space-between;
 }
 
 .sidebar-collapsed .nav-item {
@@ -669,10 +760,74 @@ onUnmounted(() => {
   white-space: nowrap;
   opacity: 1;
   transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
 }
 
 .sidebar-collapsed .nav-text {
   opacity: 0;
+}
+
+/* Expand Icon */
+.expand-icon {
+  font-size: 0.75rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--gray-500);
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+/* Submenu Styles */
+.submenu {
+  margin-left: var(--space-6);
+  margin-top: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--gray-200);
+  overflow: hidden;
+}
+
+.submenu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--gray-700);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.9rem;
+}
+
+.submenu-item:hover {
+  background: var(--gray-50);
+  color: var(--gray-900);
+  transform: translateX(2px);
+}
+
+.submenu-item.active {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  font-weight: 600;
+}
+
+.submenu-icon {
+  font-size: 1rem;
+}
+
+/* Submenu Animation */
+.submenu-enter-active,
+.submenu-leave-active {
+  transition: all 0.3s ease;
+  max-height: 200px;
+}
+
+.submenu-enter-from,
+.submenu-leave-to {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
 }
 
 .sidebar-footer {

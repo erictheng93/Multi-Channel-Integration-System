@@ -1,18 +1,18 @@
 // 認證處理器
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { AuthRequest, LoginResponse } from '@modules/auth/types/auth-types';
 import { signJWT } from '@modules/auth/services/auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and } from 'drizzle-orm';
-import { agents } from '../../../db/schema';
+import { agents } from '@/db/schema';
 import {
   successResponse,
   validationErrorResponse,
   unauthorizedResponse,
   notFoundResponse,
   handleApiError
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 
 export const authHandler = {
   // 用戶登入

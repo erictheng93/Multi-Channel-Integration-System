@@ -1,8 +1,8 @@
 import { Context, Next } from 'hono';
-import type { Bindings, DbUser, JWTPayload } from '../../../types';
+import type { Bindings, DbUser, JWTPayload } from '@/types';
 import { verifyJWT, getUserById, getSession } from '@modules/auth/services/auth';
 import { drizzle } from 'drizzle-orm/d1';
-import { agents } from '../../../db/schema';
+import { agents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 // 擴展 Context 類型以包含用戶信息

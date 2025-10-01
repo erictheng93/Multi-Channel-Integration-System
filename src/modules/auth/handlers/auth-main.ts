@@ -1,6 +1,6 @@
 // 認證處理器 - 主要實現
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import {
   signJWT,
   authenticateUser,
@@ -13,9 +13,9 @@ import {
   requireRole,
   rateLimit
 } from '../middleware/auth';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../../../services/activity-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
 import { drizzle } from 'drizzle-orm/d1';
-import { agents } from '../../../db/schema';
+import { agents } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@shared/utils/logger';
 

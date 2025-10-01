@@ -39,6 +39,7 @@ import { queueMonitorHandler } from '../handlers/queue-monitor';
 import webhookRouter from '../handlers/webhook';
 import modularSystemRouter from './modular-system-integration';
 import { createMonitoringHandlerMethods } from '../handlers/monitoring-dashboard';
+import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';
 
 /**
  * ?��?API路由�?- ?��??�能
@@ -271,6 +272,15 @@ const realtimeGroup = createRouteGroup({
       dependencies: ['auth', 'websocket'],
       healthCheck: '/health'
     }),
+    createRouteModule({
+      name: 'collaboration',
+      path: '/collaboration',
+      handler: collaborationMainHandler,
+      description: '統一多客服協作模組 (SSE + WebSocket)',
+      version: '1.0.0',
+      dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
     // TEMPORARILY DISABLED: realtime module needs Hono router wrapper
     // createRouteModule({
     //   name: 'realtime',
@@ -285,10 +295,10 @@ const realtimeGroup = createRouteGroup({
       name: 'sse-monitoring',
       path: '/sse/monitoring',
       handler: sseMonitoringHandler,
-      description: 'SSE ?�能??��?��?',
+      description: 'SSE Performance Monitoring',
       version: '1.0.0',
-      dependencies: ['auth'],
-      healthCheck: '/health'
+      dependencies: [], // Health endpoint is public, no auth dependency
+      // healthCheck: '/health' // Disabled - handler already provides /health endpoint
     })
   ]
 });

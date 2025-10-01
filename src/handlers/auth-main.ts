@@ -22,9 +22,54 @@ import { createContextLogger } from '../utils/logger';
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
-// 🔥 CORS修復: 處理所有 OPTIONS preflight 請求
+// 🔥 CORS middleware: 為所有響應添加 CORS headers
+authHandler.use('*', async (c, next) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  await next();
+
+  // 添加CORS headers到響應
+  if (allowedOrigins.includes(origin) && origin) {
+    c.header('Access-Control-Allow-Origin', origin);
+    c.header('Access-Control-Allow-Credentials', 'true');
+  }
+});
+
+// 🔥 CORS修復: 處理所有 OPTIONS preflight 請求並設置正確的 CORS headers
 authHandler.options('*', (c) => {
-  return c.body(null, 204);
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  const isAllowed = allowedOrigins.includes(origin);
+
+  // 創建響應並設置CORS headers
+  const response = new Response(null, { status: 204 });
+
+  if (isAllowed && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  console.log(`🔧 [Auth OPTIONS] Origin: ${origin}, Allowed: ${isAllowed}`);
+
+  return response;
 });
 
 // 用戶登入

@@ -4,23 +4,36 @@
  */
 
 import type { StorageService as IStorageService } from '@modules/file-management/types/storage-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { ErrorHandler, FileManagementError, FileLogger } from '@modules/file-management/utils/error-handler';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
 
 export class StorageService {
-  private static instance: StorageService;
+  private static instances: Map<string, StorageService> = new Map();
   private logger: FileLogger;
+  private bucket: R2Bucket;
 
-  private constructor() {
+  private constructor(bucket: R2Bucket) {
+    this.bucket = bucket;
     this.logger = new FileLogger({ operation: 'storage' });
   }
 
-  public static getInstance(): StorageService {
-    if (!StorageService.instance) {
-      StorageService.instance = new StorageService();
+  public static getInstance(env: Bindings): StorageService {
+    const envKey = env.ENVIRONMENT || 'production';
+
+    if (!StorageService.instances.has(envKey)) {
+      const bucket = env.R2_BUCKET;
+      if (!bucket) {
+        throw new FileManagementError(
+          ERROR_CODES.STORAGE_UNAVAILABLE,
+          { operation: 'getInstance', metadata: { environment: envKey } },
+          { customMessage: 'R2_BUCKET binding not found' }
+        );
+      }
+      StorageService.instances.set(envKey, new StorageService(bucket));
     }
-    return StorageService.instance;
+
+    return StorageService.instances.get(envKey)!;
   }
 
   /**
@@ -32,15 +45,11 @@ export class StorageService {
         try {
           this.logger.info('Starting file upload', { key, dataType: typeof data });
 
-          // TODO: 實現R2存儲邏輯
-          // const bucket = env.FILE_BUCKET;
-          // await bucket.put(key, data);
+          // 執行 R2 上傳
+          await this.bucket.put(key, data);
 
-          throw new FileManagementError(
-            ERROR_CODES.STORAGE_ERROR,
-            { operation: 'store', metadata: { key } },
-            { customMessage: 'R2 storage not yet implemented' }
-          );
+          this.logger.info('File uploaded successfully', { key });
+          return key;
         } catch (error) {
           this.logger.error('File upload failed', error as Error, { key });
 
@@ -69,17 +78,20 @@ export class StorageService {
         try {
           this.logger.info('Starting file retrieval', { key });
 
-          // TODO: 實現R2獲取邏輯
-          // const bucket = env.FILE_BUCKET;
-          // const object = await bucket.get(key);
-          // if (!object) return null;
-          // return object.body;
+          // 從 R2 獲取檔案
+          const object = await this.bucket.get(key);
 
-          throw new FileManagementError(
-            ERROR_CODES.STORAGE_ERROR,
-            { operation: 'retrieve', metadata: { key } },
-            { customMessage: 'R2 storage not yet implemented' }
-          );
+          if (!object) {
+            this.logger.warn('File not found in R2', { key });
+            throw new FileManagementError(
+              ERROR_CODES.FILE_NOT_FOUND,
+              { operation: 'retrieve', metadata: { key } },
+              { customMessage: `File not found: ${key}` }
+            );
+          }
+
+          this.logger.info('File retrieved successfully', { key });
+          return object.body;
         } catch (error) {
           this.logger.error('File retrieval failed', error as Error, { key });
 
@@ -108,16 +120,11 @@ export class StorageService {
         try {
           this.logger.info('Starting file deletion', { key });
 
-          // TODO: 實現R2刪除邏輯
-          // const bucket = env.FILE_BUCKET;
-          // await bucket.delete(key);
-          // return true;
+          // 執行 R2 刪除
+          await this.bucket.delete(key);
 
-          throw new FileManagementError(
-            ERROR_CODES.STORAGE_ERROR,
-            { operation: 'delete', metadata: { key } },
-            { customMessage: 'R2 storage not yet implemented' }
-          );
+          this.logger.info('File deleted successfully', { key });
+          return true;
         } catch (error) {
           this.logger.error('File deletion failed', error as Error, { key });
 
@@ -151,19 +158,15 @@ export class StorageService {
     try {
       this.logger.debug('Checking file existence', { key });
 
-      // TODO: 實現存在檢查邏輯
-      // const bucket = env.FILE_BUCKET;
-      // const object = await bucket.head(key);
-      // return object !== null;
+      // 使用 head 檢查檔案是否存在
+      const object = await this.bucket.head(key);
+      const exists = object !== null;
 
-      throw new FileManagementError(
-        ERROR_CODES.STORAGE_ERROR,
-        { operation: 'exists', metadata: { key } },
-        { customMessage: 'R2 storage not yet implemented' }
-      );
+      this.logger.debug('File existence check completed', { key, exists });
+      return exists;
     } catch (error) {
       // 存在性檢查失敗時不拋出錯誤，返回 false
-      this.logger.warn('File existence check failed', { key });
+      this.logger.warn('File existence check failed', { key, error: (error as Error).message });
       return false;
     }
   }
@@ -182,16 +185,30 @@ export function createStorageService(env: Bindings): IStorageService {
           try {
             logger.info('Uploading file to R2', { key, size: data.length });
 
-            // TODO: Implement R2 upload
-            // const bucket = env.FILE_BUCKET;
-            // await bucket.put(key, data, options);
+            const bucket = env.R2_BUCKET;
+            if (!bucket) {
+              throw new FileManagementError(
+                ERROR_CODES.STORAGE_UNAVAILABLE,
+                { operation: 'uploadFile', metadata: { key } },
+                { customMessage: 'R2_BUCKET binding not found' }
+              );
+            }
 
-            // 模擬成功（待 R2 整合後移除）
+            // 執行 R2 上傳
+            await bucket.put(key, data, options);
+
+            logger.info('File uploaded successfully to R2', { key });
+
+            // 生成 R2 公開 URL（如果設置了公開域名）
+            const publicUrl = env.R2_PUBLIC_DOMAIN
+              ? `https://${env.R2_PUBLIC_DOMAIN}/${key}`
+              : `r2://${key}`;
+
             return {
               success: true,
               key: key,
-              url: `https://storage.example.com/${key}`,
-              publicUrl: `https://storage.example.com/${key}`
+              url: publicUrl,
+              publicUrl: publicUrl
             };
           } catch (error) {
             logger.error('Upload failed', error as Error, { key });
@@ -213,21 +230,33 @@ export function createStorageService(env: Bindings): IStorageService {
           try {
             logger.info('Downloading file from R2', { key });
 
-            // TODO: Implement R2 download
-            // const bucket = env.FILE_BUCKET;
-            // const object = await bucket.get(key);
-            // if (!object) {
-            //   throw new FileManagementError(
-            //     ERROR_CODES.FILE_NOT_FOUND,
-            //     { operation: 'downloadFile', metadata: { key } }
-            //   );
-            // }
-            // const data = await object.arrayBuffer();
+            const bucket = env.R2_BUCKET;
+            if (!bucket) {
+              throw new FileManagementError(
+                ERROR_CODES.STORAGE_UNAVAILABLE,
+                { operation: 'downloadFile', metadata: { key } },
+                { customMessage: 'R2_BUCKET binding not found' }
+              );
+            }
 
-            // 模擬成功（待 R2 整合後移除）
+            // 從 R2 獲取檔案
+            const object = await bucket.get(key);
+            if (!object) {
+              throw new FileManagementError(
+                ERROR_CODES.FILE_NOT_FOUND,
+                { operation: 'downloadFile', metadata: { key } },
+                { customMessage: `File not found: ${key}` }
+              );
+            }
+
+            // 轉換為 ArrayBuffer
+            const data = await object.arrayBuffer();
+
+            logger.info('File downloaded successfully from R2', { key, size: data.byteLength });
+
             return {
               success: true,
-              data: new ArrayBuffer(0)
+              data: data
             };
           } catch (error) {
             logger.error('Download failed', error as Error, { key });
@@ -254,10 +283,19 @@ export function createStorageService(env: Bindings): IStorageService {
           try {
             logger.info('Deleting file from R2', { key });
 
-            // TODO: Implement R2 delete
-            // const bucket = env.FILE_BUCKET;
-            // await bucket.delete(key);
+            const bucket = env.R2_BUCKET;
+            if (!bucket) {
+              throw new FileManagementError(
+                ERROR_CODES.STORAGE_UNAVAILABLE,
+                { operation: 'deleteFile', metadata: { key } },
+                { customMessage: 'R2_BUCKET binding not found' }
+              );
+            }
 
+            // 執行 R2 刪除
+            await bucket.delete(key);
+
+            logger.info('File deleted successfully from R2', { key });
             return true;
           } catch (error) {
             logger.error('Delete failed', error as Error, { key });
@@ -272,6 +310,7 @@ export function createStorageService(env: Bindings): IStorageService {
         async (error) => {
           // 如果檔案不存在，視為成功
           if (error.code === ERROR_CODES.FILE_NOT_FOUND) {
+            logger.warn('File already deleted or does not exist', { key });
             return true;
           }
           throw error;
@@ -283,11 +322,15 @@ export function createStorageService(env: Bindings): IStorageService {
       try {
         logger.info('Generating signed URL', { key, operation, expiresIn });
 
-        // TODO: Implement signed URL generation
-        // const bucket = env.FILE_BUCKET;
-        // return await bucket.createSignedUrl(key, { expiresIn });
+        // R2 不支持原生 signed URLs，返回公開 URL 或通過 Worker 端點
+        // 如果配置了公開域名，返回公開 URL
+        if (env.R2_PUBLIC_DOMAIN) {
+          return `https://${env.R2_PUBLIC_DOMAIN}/${key}`;
+        }
 
-        return `https://storage.example.com/${key}?signed=true&expires=${expiresIn}`;
+        // 否則返回通過 Worker 訪問的 URL（需要在 Worker 中實現檔案下載端點）
+        const workerDomain = env.WORKER_DOMAIN || 'your-worker.workers.dev';
+        return `https://${workerDomain}/api/files/download/${encodeURIComponent(key)}`;
       } catch (error) {
         logger.error('Signed URL generation failed', error as Error, { key });
         throw new FileManagementError(
@@ -302,19 +345,39 @@ export function createStorageService(env: Bindings): IStorageService {
       try {
         logger.debug('Getting file info', { key });
 
-        // TODO: Implement file info retrieval
-        // const bucket = env.FILE_BUCKET;
-        // const object = await bucket.head(key);
+        const bucket = env.R2_BUCKET;
+        if (!bucket) {
+          throw new FileManagementError(
+            ERROR_CODES.STORAGE_UNAVAILABLE,
+            { operation: 'getFileInfo', metadata: { key } },
+            { customMessage: 'R2_BUCKET binding not found' }
+          );
+        }
+
+        // 使用 head 獲取檔案元數據
+        const object = await bucket.head(key);
+        if (!object) {
+          throw new FileManagementError(
+            ERROR_CODES.FILE_NOT_FOUND,
+            { operation: 'getFileInfo', metadata: { key } },
+            { customMessage: `File not found: ${key}` }
+          );
+        }
 
         return {
           key: key,
-          size: 0,
-          lastModified: new Date(),
-          etag: 'unknown',
-          contentType: 'application/octet-stream'
+          size: object.size,
+          lastModified: object.uploaded,
+          etag: object.etag,
+          contentType: object.httpMetadata?.contentType || 'application/octet-stream'
         };
       } catch (error) {
         logger.error('Get file info failed', error as Error, { key });
+
+        if (error instanceof FileManagementError) {
+          throw error;
+        }
+
         throw new FileManagementError(
           ERROR_CODES.STORAGE_READ_ERROR,
           { operation: 'getFileInfo', metadata: { key } },
@@ -327,11 +390,29 @@ export function createStorageService(env: Bindings): IStorageService {
       try {
         logger.debug('Listing files', { prefix, maxKeys });
 
-        // TODO: Implement file listing
-        // const bucket = env.FILE_BUCKET;
-        // const list = await bucket.list({ prefix, maxKeys });
+        const bucket = env.R2_BUCKET;
+        if (!bucket) {
+          throw new FileManagementError(
+            ERROR_CODES.STORAGE_UNAVAILABLE,
+            { operation: 'listFiles', metadata: { prefix } },
+            { customMessage: 'R2_BUCKET binding not found' }
+          );
+        }
 
-        return [];
+        // 列出 R2 bucket 中的檔案
+        const options: R2ListOptions = {};
+        if (prefix) options.prefix = prefix;
+        if (maxKeys) options.limit = maxKeys;
+
+        const list = await bucket.list(options);
+
+        // 轉換為標準格式
+        return list.objects.map(obj => ({
+          key: obj.key,
+          size: obj.size,
+          lastModified: obj.uploaded,
+          etag: obj.etag
+        }));
       } catch (error) {
         logger.error('List files failed', error as Error, { prefix });
         throw new FileManagementError(
@@ -348,13 +429,40 @@ export function createStorageService(env: Bindings): IStorageService {
           try {
             logger.info('Copying file', { sourceKey, destinationKey });
 
-            // TODO: Implement file copying
-            // const bucket = env.FILE_BUCKET;
-            // await bucket.copy(sourceKey, destinationKey);
+            const bucket = env.R2_BUCKET;
+            if (!bucket) {
+              throw new FileManagementError(
+                ERROR_CODES.STORAGE_UNAVAILABLE,
+                { operation: 'copyFile', metadata: { sourceKey, destinationKey } },
+                { customMessage: 'R2_BUCKET binding not found' }
+              );
+            }
 
+            // R2 不支持原生 copy，需要先下載再上傳
+            const sourceObject = await bucket.get(sourceKey);
+            if (!sourceObject) {
+              throw new FileManagementError(
+                ERROR_CODES.FILE_NOT_FOUND,
+                { operation: 'copyFile', metadata: { sourceKey } },
+                { customMessage: `Source file not found: ${sourceKey}` }
+              );
+            }
+
+            // 複製檔案
+            await bucket.put(destinationKey, sourceObject.body, {
+              httpMetadata: sourceObject.httpMetadata,
+              customMetadata: sourceObject.customMetadata
+            });
+
+            logger.info('File copied successfully', { sourceKey, destinationKey });
             return true;
           } catch (error) {
             logger.error('Copy file failed', error as Error, { sourceKey, destinationKey });
+
+            if (error instanceof FileManagementError) {
+              throw error;
+            }
+
             throw new FileManagementError(
               ERROR_CODES.STORAGE_COPY_ERROR,
               { operation: 'copyFile', metadata: { sourceKey, destinationKey } },
@@ -373,14 +481,43 @@ export function createStorageService(env: Bindings): IStorageService {
           try {
             logger.info('Moving file', { sourceKey, destinationKey });
 
-            // TODO: Implement file moving
-            // const bucket = env.FILE_BUCKET;
-            // await bucket.copy(sourceKey, destinationKey);
-            // await bucket.delete(sourceKey);
+            const bucket = env.R2_BUCKET;
+            if (!bucket) {
+              throw new FileManagementError(
+                ERROR_CODES.STORAGE_UNAVAILABLE,
+                { operation: 'moveFile', metadata: { sourceKey, destinationKey } },
+                { customMessage: 'R2_BUCKET binding not found' }
+              );
+            }
 
+            // R2 不支持原生 move，需要先複製再刪除
+            const sourceObject = await bucket.get(sourceKey);
+            if (!sourceObject) {
+              throw new FileManagementError(
+                ERROR_CODES.FILE_NOT_FOUND,
+                { operation: 'moveFile', metadata: { sourceKey } },
+                { customMessage: `Source file not found: ${sourceKey}` }
+              );
+            }
+
+            // 先複製到目標位置
+            await bucket.put(destinationKey, sourceObject.body, {
+              httpMetadata: sourceObject.httpMetadata,
+              customMetadata: sourceObject.customMetadata
+            });
+
+            // 再刪除源檔案
+            await bucket.delete(sourceKey);
+
+            logger.info('File moved successfully', { sourceKey, destinationKey });
             return true;
           } catch (error) {
             logger.error('Move file failed', error as Error, { sourceKey, destinationKey });
+
+            if (error instanceof FileManagementError) {
+              throw error;
+            }
+
             throw new FileManagementError(
               ERROR_CODES.STORAGE_MOVE_ERROR,
               { operation: 'moveFile', metadata: { sourceKey, destinationKey } },

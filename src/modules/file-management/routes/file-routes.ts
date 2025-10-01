@@ -4,8 +4,8 @@
  */
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
-import { jwtAuth } from '../../../middleware/auth';
+import type { Bindings } from '@/types';
+import { jwtAuth } from '@/middleware/auth';
 
 // 導入處理器
 import { createFileHandler } from '@modules/file-management/handlers/file-handler';

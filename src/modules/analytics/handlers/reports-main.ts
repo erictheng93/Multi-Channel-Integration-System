@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { ReportsService } from '@modules/analytics/services/reports-service';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {

@@ -9,7 +9,7 @@ import {
   customers,
   agents,
   messageRecallLogs
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   Message,
   MessageWithDetails,
@@ -23,7 +23,7 @@ import {
   MessageType,
   DeliveryStatus
 } from '../types/message-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 export class MessageCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;

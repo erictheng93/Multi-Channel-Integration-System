@@ -95,7 +95,17 @@ const router = createRouter({
         title: 'API監控'
       }
     },
-    // ==================== 報表系統路由 ====================
+    // ==================== 客戶管理路由 ====================
+    {
+      path: '/customers/tags',
+      name: 'CustomerTags',
+      component: () => import('@/views/CustomerTags.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '標籤管理'
+      }
+    },
+    // ==================== 報表系統路由 (嵌套結構 - 雙層 Sidebar) ====================
     {
       path: '/reports',
       component: () => import('@/views/Reports.vue'),
@@ -106,7 +116,6 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'Reports',
           redirect: '/reports/dashboard'
         },
         {
@@ -119,21 +128,21 @@ const router = createRouter({
           }
         },
         {
-          path: 'generate',
-          name: 'ReportGenerator',
-          component: () => import('@/components/reports/ReportGenerator.vue'),
-          meta: {
-            requiresAuth: true,
-            title: '生成報表'
-          }
-        },
-        {
           path: 'templates',
           name: 'ReportTemplates',
           component: () => import('@/components/reports/ReportTemplates.vue'),
           meta: {
             requiresAuth: true,
             title: '報表模板'
+          }
+        },
+        {
+          path: 'generate',
+          name: 'ReportGenerator',
+          component: () => import('@/components/reports/ReportGenerator.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '生成報表'
           }
         },
         {

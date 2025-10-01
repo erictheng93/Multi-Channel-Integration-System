@@ -4,7 +4,7 @@
  */
 
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { FileUploadRequest, FileUploadOptions } from '@modules/file-management/types/file-types';
 
 import { FileService } from '@modules/file-management/services/file-service';
@@ -14,7 +14,7 @@ import {
   validationErrorResponse,
   errorResponse,
   handleApiError
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 import { getFileExtension, getFileType } from '@modules/file-management/utils/file-helpers';
 import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';

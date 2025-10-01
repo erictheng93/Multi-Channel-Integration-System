@@ -1,6 +1,6 @@
 // 事件隊列服務 - 統一管理所有即時事件的隊列處理
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   RealtimeEvent,
   EventType,
@@ -10,7 +10,7 @@ import type {
   EventProcessingResult,
   QueueMessage
 } from '../types';
-import { QueueBaseService, QueueProcessingResult } from '../../../services/queue-base-service';
+import { QueueBaseService, QueueProcessingResult } from '@/services/queue-base-service';
 
 // 事件路由規則
 interface EventRoutingRule {

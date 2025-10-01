@@ -9,7 +9,7 @@ import type {
 
 import { CredentialError } from '@modules/integrations/types/integration-types';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 /**
  * 憑證資料結構

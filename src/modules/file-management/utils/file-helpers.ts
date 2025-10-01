@@ -4,7 +4,8 @@
  */
 
 import { MIME_TO_EXTENSION, FILE_EXTENSIONS, ALLOWED_MIME_TYPES } from '@modules/file-management/constants/file-config';
-import type { FileType, PlatformType, KeyGenerationOptions } from '@modules/file-management/types/file-types';
+import type { FileType, PlatformType } from '@modules/file-management/types/file-types';
+import type { KeyGenerationOptions } from '@modules/file-management/types/storage-types';
 
 /**
  * 從檔名或 MIME 類型獲取副檔名

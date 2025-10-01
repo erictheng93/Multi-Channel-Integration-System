@@ -3,7 +3,7 @@
 
 import { drizzle } from 'drizzle-orm/d1'
 import { sql, gte, count, desc } from 'drizzle-orm'
-import { activities } from '../../../db/schema'
+import { activities } from '@/db/schema'
 import { ActivityOverview } from '@modules/activities/types/interfaces'
 import { ActivityFormatter } from '@modules/activities/utils/formatters'
 

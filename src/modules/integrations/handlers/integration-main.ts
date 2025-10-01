@@ -2,7 +2,7 @@
 // Main Integration Module Handler
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   IntegrationRecord,
   CreateIntegrationRequest,
