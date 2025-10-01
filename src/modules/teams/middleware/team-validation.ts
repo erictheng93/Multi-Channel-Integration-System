@@ -2,7 +2,7 @@
 // Team Data Validation Middleware
 
 import type { MiddlewareHandler } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { InvalidTeamDataError } from '@modules/teams/types/team-types';
 
 // 建立團隊資料驗證

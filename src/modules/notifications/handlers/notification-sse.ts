@@ -2,8 +2,8 @@
 // SSE 專用處理器 - 實時通知推送
 
 import { Context } from 'hono';
-import type { Bindings } from '../../../types';
-import { unauthorizedResponse, handleApiError } from '../../../utils/api-response';
+import type { Bindings } from '@/types';
+import { unauthorizedResponse, handleApiError } from '@/utils/api-response';
 import { SSEAdapter } from '@modules/notifications/adapters/sse-adapter';
 import { NotificationChannelService } from '@modules/notifications/services/notification-channel-service';
 import { SSEConnection, SSEMessage } from '@modules/notifications/types';

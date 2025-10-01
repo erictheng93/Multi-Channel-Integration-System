@@ -1,0 +1,352 @@
+// Collaboration Manager - 統一協作管理器
+// 提供統一的協作功能入口,自動選擇適當的適配器
+
+import type {
+  CollaborationAdapter,
+  CollaborationProtocol,
+  CollaborationConfig,
+  Viewer,
+  ConversationRoomState,
+  JoinConversationRequest,
+  LeaveConversationRequest,
+  SendTypingRequest,
+  UpdatePresenceRequest,
+  BroadcastEventRequest,
+  CollaborationStats,
+  CollaborationEvent
+} from '../types';
+
+import { SSECollaborationAdapter } from '@modules/collaboration/adapters/sse-adapter';
+import { WebSocketCollaborationAdapter } from '@modules/collaboration/adapters/websocket-adapter';
+import { defaultCollaborationConfig, AdapterNotInitializedError } from '@modules/collaboration/types';
+import type { Bindings } from '@/types';
+
+/**
+ * CollaborationManager
+ * 統一的協作管理器,負責協調不同協議的適配器
+ */
+export class CollaborationManager {
+  private static instance: CollaborationManager;
+
+  private adapters = new Map<CollaborationProtocol, CollaborationAdapter>();
+  private config: CollaborationConfig;
+  private defaultAdapter?: CollaborationAdapter;
+  private initialized = false;
+
+  private constructor(config?: Partial<CollaborationConfig>) {
+    this.config = {
+      ...defaultCollaborationConfig,
+      ...config
+    };
+  }
+
+  /**
+   * 獲取單例實例
+   */
+  static getInstance(config?: Partial<CollaborationConfig>): CollaborationManager {
+    if (!CollaborationManager.instance) {
+      CollaborationManager.instance = new CollaborationManager(config);
+    }
+    return CollaborationManager.instance;
+  }
+
+  /**
+   * 初始化管理器
+   */
+  async initialize(env: Bindings, config?: Partial<CollaborationConfig>): Promise<void> {
+    if (config) {
+      this.config = { ...this.config, ...config };
+    }
+
+    console.log('[CollaborationManager] Initializing with config:', {
+      defaultProtocol: this.config.defaultProtocol,
+      enableWebSocket: this.config.enableWebSocket
+    });
+
+    // 始終初始化 SSE 適配器
+    const sseAdapter = new SSECollaborationAdapter();
+    await sseAdapter.initialize(env);
+    this.adapters.set('sse', sseAdapter);
+
+    // 如果啟用 WebSocket,初始化 WebSocket 適配器
+    if (this.config.enableWebSocket) {
+      try {
+        const wsAdapter = new WebSocketCollaborationAdapter();
+        await wsAdapter.initialize(env);
+        this.adapters.set('websocket', wsAdapter);
+        console.log('[CollaborationManager] WebSocket adapter initialized');
+      } catch (error) {
+        console.error('[CollaborationManager] Failed to initialize WebSocket adapter:', error);
+        console.log('[CollaborationManager] Falling back to SSE only');
+      }
+    }
+
+    // 設置預設適配器（帶降級邏輯）
+    this.defaultAdapter = this.adapters.get(this.config.defaultProtocol);
+
+    if (!this.defaultAdapter) {
+      // 如果預設協議不可用，嘗試降級
+      if (this.config.defaultProtocol === 'websocket') {
+        console.warn('[CollaborationManager] WebSocket not available, falling back to SSE as default');
+        this.defaultAdapter = this.adapters.get('sse');
+        this.config.defaultProtocol = 'sse'; // 更新配置
+      }
+
+      if (!this.defaultAdapter) {
+        throw new Error(`No adapter available. At least SSE adapter should be initialized.`);
+      }
+    }
+
+    this.initialized = true;
+    console.log('[CollaborationManager] Initialization complete');
+    console.log('[CollaborationManager] Default protocol:', this.config.defaultProtocol);
+    console.log('[CollaborationManager] Available protocols:', Array.from(this.adapters.keys()));
+  }
+
+  /**
+   * 獲取對話的查看者列表
+   */
+  async getConversationViewers(
+    conversationId: number,
+    protocol?: CollaborationProtocol
+  ): Promise<Viewer[]> {
+    const adapter = this.getAdapter(protocol);
+    return await adapter.getConversationViewers(conversationId);
+  }
+
+  /**
+   * 獲取對話房間完整狀態
+   */
+  async getConversationState(
+    conversationId: number,
+    protocol?: CollaborationProtocol
+  ): Promise<ConversationRoomState> {
+    const adapter = this.getAdapter(protocol);
+    return await adapter.getConversationState(conversationId);
+  }
+
+  /**
+   * 用戶加入對話
+   */
+  async joinConversation(
+    request: JoinConversationRequest
+  ): Promise<void> {
+    const adapter = this.getAdapter(request.protocol);
+    await adapter.joinConversation(request);
+  }
+
+  /**
+   * 用戶離開對話
+   */
+  async leaveConversation(
+    request: LeaveConversationRequest
+  ): Promise<void> {
+    const adapter = this.getAdapter();
+    await adapter.leaveConversation(request);
+  }
+
+  /**
+   * 發送輸入狀態
+   */
+  async sendTyping(request: SendTypingRequest): Promise<void> {
+    const adapter = this.getAdapter();
+    await adapter.sendTyping(request);
+  }
+
+  /**
+   * 更新用戶在線狀態
+   */
+  async updatePresence(request: UpdatePresenceRequest): Promise<void> {
+    const adapter = this.getAdapter();
+    await adapter.updatePresence(request);
+  }
+
+  /**
+   * 廣播事件到對話
+   */
+  async broadcastEvent(request: BroadcastEventRequest): Promise<void> {
+    const adapter = this.getAdapter();
+    await adapter.broadcastEvent(request);
+  }
+
+  /**
+   * 廣播到對話 (簡化版)
+   */
+  async broadcastToConversation(
+    conversationId: number,
+    event: CollaborationEvent,
+    excludeUsers?: number[]
+  ): Promise<void> {
+    await this.broadcastEvent({
+      conversationId,
+      event,
+      excludeUsers
+    });
+  }
+
+  /**
+   * 獲取統計信息
+   */
+  async getStats(protocol?: CollaborationProtocol): Promise<CollaborationStats> {
+    if (protocol) {
+      const adapter = this.getAdapter(protocol);
+      return await adapter.getStats();
+    }
+
+    // 聚合所有適配器的統計
+    const allStats: CollaborationStats[] = [];
+
+    for (const [_, adapter] of this.adapters) {
+      const stats = await adapter.getStats();
+      allStats.push(stats);
+    }
+
+    // 合併統計
+    return this.mergeStats(allStats);
+  }
+
+  /**
+   * 清理過期狀態
+   */
+  async cleanup(): Promise<number> {
+    let totalCleaned = 0;
+
+    for (const [protocol, adapter] of this.adapters) {
+      try {
+        const cleaned = await adapter.cleanup();
+        totalCleaned += cleaned;
+        console.log(`[CollaborationManager] Cleaned ${cleaned} items from ${protocol} adapter`);
+      } catch (error) {
+        console.error(`[CollaborationManager] Cleanup error for ${protocol}:`, error);
+      }
+    }
+
+    return totalCleaned;
+  }
+
+  /**
+   * 檢查管理器是否已初始化
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * 獲取當前配置
+   */
+  getConfig(): CollaborationConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * 更新配置
+   */
+  updateConfig(config: Partial<CollaborationConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * 獲取可用的協議列表
+   */
+  getAvailableProtocols(): CollaborationProtocol[] {
+    return Array.from(this.adapters.keys());
+  }
+
+  // =================== 私有方法 ===================
+
+  /**
+   * 獲取適配器（帶自動降級）
+   */
+  private getAdapter(protocol?: CollaborationProtocol): CollaborationAdapter {
+    if (!this.initialized) {
+      throw new Error('CollaborationManager not initialized. Call initialize() first.');
+    }
+
+    if (protocol) {
+      const adapter = this.adapters.get(protocol);
+      if (!adapter) {
+        // 如果請求的協議不可用，嘗試降級
+        if (protocol === 'websocket') {
+          console.warn('[CollaborationManager] WebSocket not available, falling back to SSE');
+          const fallbackAdapter = this.adapters.get('sse');
+          if (fallbackAdapter) {
+            return fallbackAdapter;
+          }
+        }
+        throw new AdapterNotInitializedError(protocol);
+      }
+      return adapter;
+    }
+
+    if (!this.defaultAdapter) {
+      throw new Error('No default adapter set');
+    }
+
+    return this.defaultAdapter;
+  }
+
+  /**
+   * 合併多個適配器的統計
+   */
+  private mergeStats(statsList: CollaborationStats[]): CollaborationStats {
+    const merged: CollaborationStats = {
+      totalViewers: 0,
+      totalTyping: 0,
+      totalRooms: 0,
+      connectionsByProtocol: {
+        sse: 0,
+        websocket: 0,
+        http: 0
+      },
+      topActiveConversations: []
+    };
+
+    const conversationMap = new Map<number, number>();
+
+    for (const stats of statsList) {
+      merged.totalViewers += stats.totalViewers;
+      merged.totalTyping += stats.totalTyping;
+      merged.totalRooms += stats.totalRooms;
+
+      // 合併協議連接數
+      for (const [protocol, count] of Object.entries(stats.connectionsByProtocol)) {
+        merged.connectionsByProtocol[protocol as CollaborationProtocol] += count;
+      }
+
+      // 合併活躍對話
+      for (const conv of stats.topActiveConversations) {
+        const current = conversationMap.get(conv.conversationId) || 0;
+        conversationMap.set(conv.conversationId, current + conv.viewerCount);
+      }
+    }
+
+    // 轉換為排序的陣列
+    merged.topActiveConversations = Array.from(conversationMap.entries())
+      .map(([conversationId, viewerCount]) => ({
+        conversationId,
+        viewerCount
+      }))
+      .sort((a, b) => b.viewerCount - a.viewerCount)
+      .slice(0, 10);
+
+    return merged;
+  }
+
+  /**
+   * 銷毀管理器
+   */
+  destroy(): void {
+    for (const [protocol, adapter] of this.adapters) {
+      if ('destroy' in adapter && typeof adapter.destroy === 'function') {
+        (adapter as any).destroy();
+      }
+    }
+
+    this.adapters.clear();
+    this.defaultAdapter = undefined;
+    this.initialized = false;
+  }
+}
+
+// 導出單例實例
+export const collaboration = CollaborationManager.getInstance();

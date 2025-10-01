@@ -1,7 +1,7 @@
 // Reports 服務實現
 // Comprehensive reporting service with generation, management and analytics
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   ReportBase,
   ReportDetails,

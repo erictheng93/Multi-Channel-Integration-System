@@ -10,12 +10,12 @@ import {
   teams,
   conversations,
   messages
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   CustomerStats,
   CustomerStatsResponse
 } from '../types/customer-types';
-import type { JWTPayload } from '../../../types';
+import type { JWTPayload } from '@/types';
 
 export class CustomerStatsService {
   private drizzleDb: ReturnType<typeof drizzle>;

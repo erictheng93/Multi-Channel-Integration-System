@@ -27,7 +27,7 @@ import {
   validateBatchOperation
 } from '../middleware/customer-validation';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // 創建客戶路由實例
 const customerRouter = new Hono<{ Bindings: Bindings }>();

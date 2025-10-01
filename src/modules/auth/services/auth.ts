@@ -1,9 +1,9 @@
 import { eq, and } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { agents, teams } from '../../../db/schema';
-import { convertAgent } from '../../../utils/drizzle-converters';
-import type { JWTPayload } from '../../../types';
-import type { DbUser } from '../../../types';
+import { agents, teams } from '@/db/schema';
+import { convertAgent } from '@/utils/drizzle-converters';
+import type { JWTPayload } from '@/types';
+import type { DbUser } from '@/types';
 
 /**
  * JWT 認證工具函數

@@ -5,7 +5,7 @@ import { Context, Next } from 'hono';
 import {
   validationErrorResponse,
   errorResponse
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 import {
   CreateCustomerData,
   UpdateCustomerData,
@@ -15,7 +15,7 @@ import {
   DEFAULT_CUSTOMER_VALIDATION,
   InvalidCustomerDataError
 } from '../types/customer-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // ======================== 通用驗證中間件 ========================
 

@@ -2,7 +2,7 @@
 // 管理儀表板小工具的創建、配置和生命週期
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   DashboardWidget,
   WidgetTemplate,

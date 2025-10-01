@@ -2,8 +2,8 @@
 // Agent Main Router Handler
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
-import { createDb } from '../../../db';
+import type { Bindings } from '@/types';
+import { createDb } from '@/db';
 import { AgentService } from '@modules/agents/services/agent-crud';
 import { AgentSkillsService } from '@modules/agents/services/agent-skills';
 import { AgentStatusService } from '@modules/agents/services/agent-status';

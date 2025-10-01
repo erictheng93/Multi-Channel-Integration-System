@@ -2,8 +2,8 @@
 // Agent Authentication Middleware
 
 import type { MiddlewareHandler } from 'hono';
-import type { Bindings } from '../../../types';
-import { verifyJWT } from '../../../utils/auth';
+import type { Bindings } from '@/types';
+import { verifyJWT } from '@/utils/auth';
 import { AgentPermissionError } from '@modules/agents/types/agent-types';
 
 // 基本認證中介層

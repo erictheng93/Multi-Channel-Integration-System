@@ -61,10 +61,10 @@ export interface AuthMiddlewareConfig {
 }
 
 // Re-export shared types that auth module needs
-export type { Bindings } from '../../../types';
+export type { Bindings } from '@/types';
 
 // Agent and Team types from database schema
-import type { agents, teams } from '../../../db/schema';
+import type { agents, teams } from '@/db/schema';
 export type Agent = typeof agents.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type NewAgent = typeof agents.$inferInsert;

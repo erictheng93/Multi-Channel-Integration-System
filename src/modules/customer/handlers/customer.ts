@@ -6,7 +6,7 @@ import {
   successResponse,
   paginatedResponse,
   handleApiError
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 import { CustomerSearchService } from '@modules/customer/services/customer-search';
 import { CustomerStatsService } from '@modules/customer/services/customer-stats';
 import { CustomerTagService } from '@modules/customer/services/customer-tags';
@@ -18,7 +18,7 @@ import {
   CustomerSearchQuery,
   CustomerTagOperation
 } from '../types/customer-types';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 
 /**
  * Customer 進階功能處理器類

@@ -2,7 +2,7 @@
 // Main session request handlers with comprehensive CRUD operations
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { SessionService } from '@modules/session/services/session-service';
 
 // 中間件導入

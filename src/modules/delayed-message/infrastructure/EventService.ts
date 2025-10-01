@@ -1,8 +1,8 @@
 // Delayed Message Module - Event Service
 // 延遲訊息模組 - 事件處理服務
 
-import { WebSocketBroadcastService } from '../../../services/websocket-broadcast-service';
-import type { Bindings } from '../../../types';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import type { Bindings } from '@/types';
 import type {
   DelayedMessageEvent,
   DelayedMessageEntity,

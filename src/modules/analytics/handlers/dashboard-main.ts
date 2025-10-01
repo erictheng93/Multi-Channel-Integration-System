@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
 import { WidgetManager } from '@modules/analytics/services/widget-manager';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {

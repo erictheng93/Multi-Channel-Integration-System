@@ -1,8 +1,8 @@
 // File Management 認證中間件
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
-import { unauthorizedResponse, forbiddenResponse } from '../../../utils/api-response';
+import type { Bindings } from '@/types';
+import { unauthorizedResponse, forbiddenResponse } from '@/utils/api-response';
 
 /**
  * 檔案訪問權限驗證中間件

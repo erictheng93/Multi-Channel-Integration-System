@@ -2,7 +2,7 @@
 
 import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // Analytics User interface
 interface AnalyticsUser {
@@ -23,6 +23,11 @@ interface AnalyticsUser {
  */
 export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>, next: Next) {
   try {
+    // 🔥 Skip authentication for OPTIONS requests (CORS preflight)
+    if (c.req.method === 'OPTIONS') {
+      return await next();
+    }
+
     // 獲取 JWT token
     const authHeader = c.req.header('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

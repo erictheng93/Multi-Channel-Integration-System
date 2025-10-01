@@ -8,7 +8,7 @@ import {
   FileManagementError,
   ErrorHandler,
   FileLogger
-} from '../../../../../src/modules/file-management/utils/error-handler';
+} from '@modules/file-management/utils/error-handler';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
 
 describe('FileManagementError', () => {

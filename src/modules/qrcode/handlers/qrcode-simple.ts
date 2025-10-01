@@ -1,6 +1,6 @@
 // 簡化版 QRCode 處理器 - 用於測試路由整合
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // 簡化版響應輔助函數
 const successResponse = (c: Context, data: any, message = 'Success', status = 200) => {

@@ -2,8 +2,8 @@
 // 團隊 QR Code 服務
 
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
-import { QRCodeServiceImpl } from '../../../services/qrcode-service-impl';
-import type { QRCodeMetadata } from '../../../types/services';
+import { QRCodeServiceImpl } from '@/services/qrcode-service-impl';
+import type { QRCodeMetadata } from '@/types/services';
 
 export class TeamQRService {
   private db: DrizzleD1Database;

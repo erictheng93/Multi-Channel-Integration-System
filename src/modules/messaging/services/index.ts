@@ -6,7 +6,7 @@ export { DelayedMessageService } from './delayed-message-service';
 export { MessageRecallService } from './message-recall-service';
 
 // 服務工廠函數
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { D1Database } from '@cloudflare/workers-types';
 
 export function createMessagingServices(db: D1Database, env: Bindings) {

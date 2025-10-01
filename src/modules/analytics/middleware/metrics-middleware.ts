@@ -4,7 +4,7 @@
 import { Context, Next } from 'hono';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import { METRIC_NAMES } from '@modules/analytics/constants/metrics-definitions';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { Metric } from '@modules/analytics/types/metrics-types';
 
 /**

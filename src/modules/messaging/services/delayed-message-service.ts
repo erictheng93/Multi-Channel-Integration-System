@@ -7,7 +7,7 @@ import {
   delayedMessages,
   messages,
   conversations
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   DelayedMessage,
   DelayedSendRequest,
@@ -19,7 +19,7 @@ import {
   QueueMessagePayload,
   QueueProcessingResult
 } from '../types/message-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 export class DelayedMessageService {
   private drizzleDb: ReturnType<typeof drizzle>;

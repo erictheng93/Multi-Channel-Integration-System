@@ -1,7 +1,7 @@
 // Delayed Message Module - Delayed Message Manager
 // 延遲訊息模組 - 核心管理器
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   DelayedMessageRequest,
   SendResult,
@@ -16,7 +16,7 @@ import { ValidationService } from '@modules/delayed-message/infrastructure/Valid
 import { EventService } from '@modules/delayed-message/infrastructure/EventService';
 import { MessageSchedulerService } from '@modules/delayed-message/services/MessageSchedulerService';
 import { MessageProcessorService } from '@modules/delayed-message/services/MessageProcessorService';
-import { PermissionService } from '../../../services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 
 /**
  * DelayedMessageManager - 延遲訊息核心管理器

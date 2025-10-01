@@ -2,7 +2,7 @@
 // 定義所有 QR Code 相關的路由處理器
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { qrCodeMainHandler } from '@modules/qrcode/handlers/qrcode-main';
 
 // ======================== 路由器定義 ========================

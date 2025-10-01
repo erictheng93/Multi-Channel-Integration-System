@@ -3,8 +3,8 @@
 
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and } from 'drizzle-orm';
-import { messages, conversations } from '../../../db/schema';
-import type { Bindings } from '../../../types';
+import { messages, conversations } from '@/db/schema';
+import type { Bindings } from '@/types';
 import type {
   Message,
   NewMessage,

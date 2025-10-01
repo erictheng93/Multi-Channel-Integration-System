@@ -2,7 +2,7 @@
 // Agent 模組類型定義
 
 // Database schema types
-import type { agents } from '../../../db/schema';
+import type { agents } from '@/db/schema';
 
 export type Agent = typeof agents.$inferSelect;
 export type NewAgent = typeof agents.$inferInsert;
@@ -272,4 +272,4 @@ export interface AgentEvent {
 }
 
 // 重新匯出共用類型
-export type { Bindings } from '../../../types';
+export type { Bindings } from '@/types';

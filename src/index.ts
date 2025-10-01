@@ -68,7 +68,6 @@ import {
   healthCheck,
   getApiStatus
 } from './handlers/system';
-
 // Import team functions
 import {
   getTeamMembers,
@@ -114,7 +113,6 @@ if (!routeValidation.valid) {
 
 // 🔧 Pre-register public WebSocket endpoints BEFORE unified route system
 // This ensures they are NOT covered by any auth middleware from the route system
-import websocketMainHandler from './handlers/websocket-main';
 app.get('/api/websocket/health', async (c) => {
   // Forward to websocket handler's health endpoint
   const handler = websocketMainHandler;
@@ -162,6 +160,9 @@ import { globalErrorHandler, errorHandlingMiddleware } from './core/error-handle
 let modularSystemInitialized = false;
 let modularSystemInitPromise: Promise<void> | null = null;
 
+// Collaboration 模組初始化狀態追蹤
+let collaborationInitialized = false;
+
 // 延遲初始化模組化系統（在第一個請求時執行）
 async function initializeModularSystem() {
   if (modularSystemInitialized) {
@@ -198,6 +199,65 @@ async function initializeModularSystem() {
   })();
 
   return modularSystemInitPromise;
+}
+
+// 延遲初始化 Collaboration 模組（在第一個請求時執行）
+async function initializeCollaboration(env: Bindings) {
+  if (collaborationInitialized) {
+    return;
+  }
+
+  try {
+    console.log('🤝 Initializing Collaboration Module...');
+    const { Collaboration } = await import('@modules/collaboration');
+
+    // 檢測環境：生產環境優先 WebSocket，開發環境使用 SSE
+    const isProduction = env.ENVIRONMENT === 'production';
+    const hasWebSocketSupport = !!(env.CONVERSATION_ROOM && env.USER_CONNECTION);
+
+    const config = {
+      defaultProtocol: (isProduction && hasWebSocketSupport) ? 'websocket' : 'sse',
+      enableWebSocket: hasWebSocketSupport, // 如果 Durable Objects 可用則啟用
+      typingExpirationSeconds: 5,
+      presenceExpirationSeconds: 300,
+      cleanupIntervalSeconds: 60,
+      maxViewersPerConversation: 50,
+      persistEvents: false
+    };
+
+    await Collaboration.initialize(env, config);
+
+    collaborationInitialized = true;
+
+    const protocolStatus = hasWebSocketSupport
+      ? `WebSocket (primary) + SSE (fallback)`
+      : `SSE only`;
+
+    console.log(`✅ Collaboration Module initialized successfully`);
+    console.log(`   Protocol: ${protocolStatus}`);
+    console.log(`   Environment: ${env.ENVIRONMENT || 'unknown'}`);
+  } catch (error) {
+    console.error('❌ Failed to initialize Collaboration Module:', error);
+    // 降級到僅 SSE 模式
+    try {
+      console.log('⚠️ Attempting fallback to SSE-only mode...');
+      const { Collaboration } = await import('@modules/collaboration');
+      await Collaboration.initialize(env, {
+        defaultProtocol: 'sse',
+        enableWebSocket: false,
+        typingExpirationSeconds: 5,
+        presenceExpirationSeconds: 300,
+        cleanupIntervalSeconds: 60,
+        maxViewersPerConversation: 50,
+        persistEvents: false
+      });
+      collaborationInitialized = true;
+      console.log('✅ Collaboration Module initialized in SSE fallback mode');
+    } catch (fallbackError) {
+      console.error('❌ Fallback initialization also failed:', fallbackError);
+      throw fallbackError;
+    }
+  }
 }
 
 // 註冊模組化系統管理API端點
@@ -248,6 +308,16 @@ app.use('*', async (c, next) => {
       console.error('⚠️ Modular system initialization failed (continuing anyway):', error);
     }
   }
+
+  // 🤝 初始化 Collaboration 模組
+  if (!collaborationInitialized) {
+    try {
+      await initializeCollaboration(c.env);
+    } catch (error) {
+      console.error('⚠️ Collaboration module initialization failed (continuing anyway):', error);
+    }
+  }
+
   await next();
 });
 
@@ -274,31 +344,75 @@ app.use('*', async (c, next) => {
 // 安全的 CORS 配置
 app.use('*', cors({
   origin: (origin) => {
-    // 🔥 修復 CORS 問題: 確保正確處理 localhost:3000 的跨域請求
+    // 🔥 修復 CORS 問題: 明確處理所有允許的origins
     if (!origin) {
       // 同源請求 (no Origin header) - 允許
       return '*';
     }
 
-    if (isOriginAllowed(origin, securityConfig)) {
+    // 🔧 生產環境允許的origins（包含開發用localhost）
+    const allowedOrigins = [
+      'https://multi-channel.imfinethankyouandyou.com',
+      'http://localhost:3000',
+      'https://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:8787', // Wrangler dev server
+    ];
+
+    // 檢查origin是否在允許列表中
+    if (allowedOrigins.includes(origin)) {
       console.log(`✅ CORS: Allowed origin: ${origin}`);
       return origin;
     }
-    // 不在白名單的 origin - 記錄並拒絕（返回空字串表示拒絕）
+
+    // 不在白名單的 origin - 記錄並拒絕
     console.warn(`❌ CORS: Blocked origin: ${origin}`);
-    return '';
+    return ''; // 返回空字串表示拒絕（Hono CORS 期望字串類型）
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  credentials: securityConfig.cors.allowCredentials,
-  maxAge: securityConfig.cors.maxAge
+  credentials: true, // 允許攜帶credentials
+  maxAge: 86400
 }));
 
-// 🔥 明確處理 OPTIONS preflight 請求 (必須在所有路由之前)
+// 🔥 手動處理 OPTIONS preflight 請求並設置 CORS headers
 app.options('*', (c) => {
-  // OPTIONS 請求已經由 CORS 中介軟體處理標頭
-  // 這裡只需要返回 204 No Content
-  return c.body(null, 204);
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  // 檢查origin是否被允許
+  const isAllowed = allowedOrigins.includes(origin);
+
+  if (isAllowed) {
+    console.log(`✅ CORS OPTIONS: Allowed origin: ${origin}`);
+  } else {
+    console.warn(`❌ CORS OPTIONS: Blocked origin: ${origin}`);
+  }
+
+  // 創建響應並設置CORS headers
+  const response = new Response(null, { status: 204 });
+
+  if (isAllowed && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  // 🔥 Prevent Cloudflare edge caching of OPTIONS responses
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
 });
 
 // 🔥 全域錯誤處理中間件 (必須在 CORS 和 OPTIONS 之後)
@@ -489,9 +603,38 @@ app.get('/api/realtime/monitoring/health', realtime.monitoring.health);
 app.get('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
 app.post('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
 
-// 活動記錄路由 - 使用 Hono 路由器掛載
-app.route('/api/activities', activityHandler);
+// 活動記錄路由 - SSE stream 必須在前面，避免被 activityHandler 捕獲
+// 🔥 OPTIONS handler for SSE stream endpoint - MUST come before GET handler
+app.options('/api/activities/stream', (c) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  const response = new Response(null, { status: 204 });
+
+  if (allowedOrigins.includes(origin) && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  // Prevent Cloudflare edge caching
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
+});
 app.get('/api/activities/stream', activityStreamHandler.connect);
+app.route('/api/activities', activityHandler);
 
 // 隊列監控細粒度路由 - 保留 (queueMonitorHandler 需要特定方法映射)
 import { queueMonitorHandler } from './handlers/queue-monitor';

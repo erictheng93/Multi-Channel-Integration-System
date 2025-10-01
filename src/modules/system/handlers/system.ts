@@ -6,7 +6,7 @@ import { SystemService } from '@modules/system/services/system-service';
 import type {
   SystemSettingsUpdate
 } from '../types/system-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 const app = new Hono<{ Bindings: Bindings }>();
 

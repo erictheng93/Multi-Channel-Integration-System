@@ -2,12 +2,12 @@
 // Message access control and permission middleware
 
 import { Context, Next } from 'hono';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 import {
   unauthorizedResponse,
   forbiddenResponse,
   notFoundResponse
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import type { MessageAccessScope, MessagePermissions, SenderType } from '@modules/messaging/types/message-types';
 

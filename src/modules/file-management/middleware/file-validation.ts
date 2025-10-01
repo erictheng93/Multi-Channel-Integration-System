@@ -4,13 +4,13 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import {
   validationErrorResponse,
   errorResponse,
   badRequestResponse
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 import { getFileExtension } from '@modules/file-management/utils/file-helpers';
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';

@@ -17,7 +17,7 @@ import {
   logSystemOperation
 } from '../middleware/system-auth';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // 創建系統路由實例
 const systemRouter = new Hono<{ Bindings: Bindings }>();

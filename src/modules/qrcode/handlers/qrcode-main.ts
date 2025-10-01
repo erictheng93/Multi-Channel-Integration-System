@@ -2,7 +2,7 @@
 // 實現所有 QR Code 相關的 API 端點處理邏輯
 
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { drizzle } from 'drizzle-orm/d1';
 import { QRCodeCrudService } from '@modules/qrcode/services/qrcode-crud-service';
 import { QRCodeGenerationService } from '@modules/qrcode/services/qrcode-generation-service';

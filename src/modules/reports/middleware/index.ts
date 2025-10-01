@@ -40,7 +40,7 @@ export {
 
 import { createMiddleware } from 'hono/factory';
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // 基礎報告訪問中間件組合
 export const basicReportsAccess = createMiddleware<{ Bindings: Bindings }>(

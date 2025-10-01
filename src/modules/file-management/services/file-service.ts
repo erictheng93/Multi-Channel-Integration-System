@@ -16,7 +16,7 @@ import type {
   BatchFileResult
 } from '../types/file-types';
 import type { StorageService } from '@modules/file-management/types/storage-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, sql, inArray, like, gte, lte } from 'drizzle-orm';
 import { fileAttachments } from '@shared/database/schema';

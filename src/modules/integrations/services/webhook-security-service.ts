@@ -1,7 +1,7 @@
 // Webhook 安全驗證服務
 // Enterprise-grade Webhook Security Verification Service
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
 
 /**

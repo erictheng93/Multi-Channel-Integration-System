@@ -7,7 +7,7 @@ import {
   paginatedResponse,
   notFoundResponse,
   handleApiError
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import {
   MessageSearchQuery,
@@ -16,7 +16,7 @@ import {
   MessageNotFoundError,
   InvalidMessageDataError
 } from '../types/message-types';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 
 /**
  * Message CRUD 操作處理器類

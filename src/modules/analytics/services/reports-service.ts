@@ -2,7 +2,7 @@
 // 提供報表模板管理、數據查詢、生成和分發功能
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { drizzle } from 'drizzle-orm/d1';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { DashboardService } from '@modules/analytics/services/dashboard-service';

@@ -2,11 +2,11 @@
 // System access control and permission middleware
 
 import { Context, Next } from 'hono';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 import {
   unauthorizedResponse,
   forbiddenResponse
-} from '../../../shared/utils/api-response';
+} from '@shared/utils/api-response';
 
 // ======================== 系統權限類型 ========================
 

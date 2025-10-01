@@ -2,7 +2,7 @@
 // 認證處理器索引
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { authHandler } from '@modules/auth/handlers/auth';
 
 // 創建認證路由

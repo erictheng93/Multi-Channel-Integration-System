@@ -1,7 +1,7 @@
 // Delayed Message Module - Message Scheduler Service
 // 延遲訊息模組 - 訊息排程服務
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   DelayedMessageRequest,
   DelayedMessageEntity

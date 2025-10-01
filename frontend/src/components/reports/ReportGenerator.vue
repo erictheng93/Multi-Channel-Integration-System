@@ -37,13 +37,13 @@
       <!-- 左側：表單 -->
       <div class="form-section">
         <form
-          class="report-form"
+          class="report-form report-generator-form"
           @submit.prevent="generateReport"
         >
           <!-- 報表類型選擇 -->
           <div class="form-group">
             <label class="form-label required">報表類型</label>
-            <div class="report-type-grid">
+            <div class="report-type-grid report-type-selector">
               <div
                 v-for="typeGroup in groupedReportTypes"
                 :key="typeGroup.category"

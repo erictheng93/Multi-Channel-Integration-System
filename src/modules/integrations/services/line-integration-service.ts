@@ -13,7 +13,7 @@ import type {
   TestResult
 } from '../types/integration-types';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 /**
  * LINE Bot API 訊息類型

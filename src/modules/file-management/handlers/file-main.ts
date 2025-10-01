@@ -2,15 +2,15 @@
 // 統一的檔案管理API端點
 
 import { Hono } from 'hono';
-import { jwtAuth } from '../../../middleware/auth';
-import type { Bindings } from '../../../types';
+import { jwtAuth } from '@/middleware/auth';
+import type { Bindings } from '@/types';
 import {
   successResponse,
   errorResponse,
   unauthorizedResponse,
   badRequestResponse,
   handleApiError
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 
 const fileMainHandler = new Hono<{ Bindings: Bindings }>();
 

@@ -1,8 +1,8 @@
 // 連接驗證中間件 - 驗證 SSE 連接的有效性和參數
 
 import { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
-import { errorResponse, badRequestResponse } from '../../../utils/api-response';
+import type { Bindings } from '@/types';
+import { errorResponse, badRequestResponse } from '@/utils/api-response';
 import { getRealtimeAuth } from '@modules/realtime/middleware/realtime-auth';
 
 // 連接驗證配置

@@ -2,7 +2,7 @@
 // 提供定時報表生成、郵件訂閱和分發管理功能
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { ReportsService } from '@modules/analytics/services/reports-service';
 import { ReportFormat, ChannelType } from '@modules/analytics/types/reports-types';
 import type {

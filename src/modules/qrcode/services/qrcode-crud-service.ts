@@ -9,7 +9,7 @@ import {
   qrCodeAnalytics,
   qrCodeTags,
   qrCodeTagRelations
-} from '../../../shared/database/schema';
+} from '@shared/database/schema';
 import { QRCodeGenerationService } from '@modules/qrcode/services/qrcode-generation-service';
 import type {
   QRCodeRecord,

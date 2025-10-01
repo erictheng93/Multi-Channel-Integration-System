@@ -4,11 +4,11 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import {
   errorResponse,
   validationErrorResponse
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { UPLOAD_CONFIG } from '@modules/file-management/constants/file-config';
 

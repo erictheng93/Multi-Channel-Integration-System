@@ -3,7 +3,7 @@
 
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { and, gte, lte, count, sql } from 'drizzle-orm';
-import { conversations, messages, activities } from '../../../db/schema';
+import { conversations, messages, activities } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 
 /**

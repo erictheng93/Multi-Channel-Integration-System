@@ -4,7 +4,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { conversationSessions, messages } from '../../../db/schema';
+import { conversationSessions, messages } from '@/db/schema';
 import { DEFAULT_SESSION_CONFIG } from '@modules/session/types/session-types';
 
 /**

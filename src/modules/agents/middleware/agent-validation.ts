@@ -2,7 +2,7 @@
 // Agent Data Validation Middleware
 
 import type { MiddlewareHandler } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { InvalidAgentDataError } from '@modules/agents/types/agent-types';
 
 // 建立代理資料驗證

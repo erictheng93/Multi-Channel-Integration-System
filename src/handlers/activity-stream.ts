@@ -5,13 +5,37 @@ import { ActivityService } from '@modules/activities'
 import { errorResponse } from '../utils/api-response'
 import { verifyJWT } from '../utils/auth'
 
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://multi-channel.imfinethankyouandyou.com',
+  'http://localhost:3000',
+  'https://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:8787',
+]
+
+// Helper function to add CORS headers to any response
+function addCorsHeaders(response: Response, origin: string): Response {
+  if (allowedOrigins.includes(origin) && origin) {
+    const newResponse = new Response(response.body, response)
+    newResponse.headers.set('Access-Control-Allow-Origin', origin)
+    newResponse.headers.set('Access-Control-Allow-Credentials', 'true')
+    newResponse.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    return newResponse
+  }
+  return response
+}
+
 export const activityStreamHandler = {
   // 建立 SSE 連接
   async connect(c: Context<{ Bindings: Bindings }>) {
+    const origin = c.req.header('Origin') || ''
+
     try {
       // 檢查 JWT payload (透過 middleware 設置)
       let payload = c.get('jwtPayload')
-      
+
       // 如果沒有 payload，嘗試從查詢參數獲取 token (用於 EventSource)
       if (!payload) {
         const queryToken = c.req.query('token')
@@ -21,13 +45,13 @@ export const activityStreamHandler = {
             payload = await verifyJWT(queryToken, c.env.JWT_SECRET)
           } catch (error) {
             console.error('Invalid query token:', error)
-            return errorResponse(c, 'Invalid token', 401)
+            return addCorsHeaders(errorResponse(c, 'Invalid token', 401), origin)
           }
         }
       }
-      
+
       if (!payload) {
-        return errorResponse(c, 'Unauthorized', 401)
+        return addCorsHeaders(errorResponse(c, 'Unauthorized', 401), origin)
       }
 
       console.log(`🔗 SSE connection requested by user: ${payload.userId} (${payload.role})`)
@@ -40,17 +64,24 @@ export const activityStreamHandler = {
       // Create SSE stream with simplified structure
       const stream = createActivityStream(c.env, payload)
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        }
-      })
+      // Create SSE headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+
+      // Add CORS headers for SSE
+      if (allowedOrigins.includes(origin) && origin) {
+        headers['Access-Control-Allow-Origin'] = origin
+        headers['Access-Control-Allow-Credentials'] = 'true'
+      }
+
+      return new Response(stream, { headers })
 
     } catch (error) {
       console.error('SSE connection error:', error)
-      return errorResponse(c, 'Failed to establish SSE connection', 500)
+      return addCorsHeaders(errorResponse(c, 'Failed to establish SSE connection', 500), origin)
     }
   }
 }

@@ -3,7 +3,7 @@
 
 import { eq, and, like, desc, asc, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { agents, teams } from '../../../db/schema';
+import { agents, teams } from '@/db/schema';
 import type {
   Agent,
   NewAgent,
@@ -23,8 +23,8 @@ import {
   AgentAlreadyExistsError,
   InvalidAgentDataError
 } from '../types/agent-types';
-import { generateId } from '../../../utils/id-generator';
-import { hashPassword } from '../../../utils/auth';
+import { generateId } from '@/utils/id-generator';
+import { hashPassword } from '@/utils/auth';
 
 export class AgentService implements AgentServiceInterface {
   constructor(private db: DrizzleD1Database<any>) {}

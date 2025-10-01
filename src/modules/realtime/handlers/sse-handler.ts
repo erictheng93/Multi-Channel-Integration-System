@@ -1,7 +1,7 @@
 // SSE 專用處理器 - 精細化連接管理
 
 import { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   SSEConnection,
   SSEEvent,
@@ -15,8 +15,8 @@ import {
   errorResponse,
   unauthorizedResponse,
   handleApiError
-} from '../../../utils/api-response';
-import { verifyJWT } from '../../../utils/auth';
+} from '@/utils/api-response';
+import { verifyJWT } from '@/utils/auth';
 
 // SSE 配置
 const sseConfig: SSEConfig = {

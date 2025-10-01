@@ -2,7 +2,7 @@
 // 整合所有即時通訊功能的統一處理器
 
 import { Context } from 'hono';
-import type { Bindings, JWTPayload } from '../../../types';
+import type { Bindings, JWTPayload } from '@/types';
 import type {
   RealtimeConfig,
   EventDrivenHandler,
@@ -15,8 +15,8 @@ import {
   errorResponse,
   unauthorizedResponse,
   handleApiError
-} from '../../../utils/api-response';
-import { verifyJWT } from '../../../utils/auth';
+} from '@/utils/api-response';
+import { verifyJWT } from '@/utils/auth';
 
 // 統一架構不再依賴外部處理器，使用內建實現
 

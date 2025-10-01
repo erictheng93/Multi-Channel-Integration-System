@@ -10,7 +10,7 @@ import {
   teams,
   conversations,
   messages
-} from '../../../db/schema';
+} from '@/db/schema';
 import {
   Customer,
   CustomerWithDetails,
@@ -20,7 +20,7 @@ import {
   CustomerAlreadyExistsError,
   CustomerMetadata
 } from '../types/customer-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 export class CustomerCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;

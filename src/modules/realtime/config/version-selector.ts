@@ -1,6 +1,6 @@
 // Real-time 版本選擇器 - 智能選擇最適合的版本
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { RealtimeConfig } from '@modules/realtime/types';
 
 // 版本特性定義

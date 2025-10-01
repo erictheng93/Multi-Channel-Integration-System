@@ -2,7 +2,7 @@
 // 統一通知處理器 - 模組化的主要 API 端點
 
 import { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import {
   successResponse,
   paginatedResponse,
@@ -11,7 +11,7 @@ import {
   unauthorizedResponse,
   notFoundResponse,
   handleApiError
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 
 // 導入通知模組服務
 import { NotificationService } from '@modules/notifications/services/notification-service';

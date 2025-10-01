@@ -2,7 +2,7 @@
 // 負責 QR Code 相關操作的權限驗證
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { errorResponse } from '@shared/utils/api-response';
 import { QR_CODE_PERMISSIONS } from '@modules/qrcode/types/qrcode-types';
 

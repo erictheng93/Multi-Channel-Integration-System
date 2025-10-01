@@ -3,7 +3,7 @@
 
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
-import { conversations, messages, customers, agents, conversationTransfers } from '../../../db/schema';
+import { conversations, messages, customers, agents, conversationTransfers } from '@/db/schema';
 import type {
   Conversation,
   NewConversation,

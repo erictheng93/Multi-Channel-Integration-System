@@ -2,7 +2,7 @@
 // Main reports request handlers with comprehensive reporting operations
 
 import { Hono } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { ReportsService } from '@modules/reports/services/reports-service';
 import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation } from '@modules/reports/types/report-types';
 

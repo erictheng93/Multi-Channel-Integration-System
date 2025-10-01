@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { qrCodeRouter } from '@modules/qrcode/handlers/index';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 
 // ======================== Mock 設置 ========================
 

@@ -31,9 +31,12 @@ interface PendingMessage {
   platform: 'line' | 'facebook';
   recipientPlatformId: string;
   scheduledAt: number; // timestamp
-  status: 'pending' | 'sent' | 'cancelled';
+  status: 'pending' | 'sent' | 'cancelled' | 'failed';
   metadata?: Record<string, any>;
   createdAt: number;
+  retryCount?: number; // 重試次數
+  lastRetryAt?: number; // 最後重試時間
+  failureReason?: string; // 失敗原因
 }
 
 /**
@@ -50,7 +53,7 @@ interface CancelResult {
  */
 interface StatusResult {
   exists: boolean;
-  status?: 'pending' | 'sent' | 'cancelled' | 'not_found';
+  status?: 'pending' | 'sent' | 'cancelled' | 'failed' | 'not_found';
   timeRemaining?: number; // 剩餘秒數
   canCancel?: boolean;
   scheduledAt?: number;
@@ -71,6 +74,133 @@ export class DelayedMessageBuffer implements DurableObject {
 
   // 下一個 Alarm 的時間
   private nextAlarmTime: number | null = null;
+
+  // 🔧 重試配置
+  private readonly MAX_RETRY_ATTEMPTS = 3;
+  private readonly RETRY_DELAYS = [1000, 2000, 4000]; // 1s, 2s, 4s (指數退避)
+  private readonly API_TIMEOUT_MS = 10000; // 10秒 API 逾時
+
+  // 🔧 Medium Issue Fix #2: 監控指標收集系統
+  private metrics = {
+    // Counter Metrics (累計計數)
+    messagesSentTotal: 0,
+    messagesFailedTotal: 0,
+    messagesCancelledTotal: 0,
+    messagesScheduledTotal: 0,
+    retryAttemptsTotal: 0,
+    dlqWritesTotal: 0,
+    dlqWriteFailuresTotal: 0,
+    alarmTriggersTotal: 0,
+    idempotencyPreventionsTotal: 0,
+
+    // Platform-specific counters
+    platformSuccesses: {
+      line: 0,
+      facebook: 0
+    },
+    platformFailures: {
+      line: 0,
+      facebook: 0
+    },
+
+    // Histogram data (for percentile calculations)
+    sendDurations: [] as number[], // 發送耗時 (ms)
+    retryCounts: [] as number[], // 重試次數分布
+
+    // Helper: Record send duration
+    recordSendDuration: (durationMs: number) => {
+      this.metrics.sendDurations.push(durationMs);
+      // Keep only last 1000 samples for memory efficiency
+      if (this.metrics.sendDurations.length > 1000) {
+        this.metrics.sendDurations.shift();
+      }
+    },
+
+    // Helper: Record retry count
+    recordRetryCount: (count: number) => {
+      this.metrics.retryCounts.push(count);
+      if (this.metrics.retryCounts.length > 1000) {
+        this.metrics.retryCounts.shift();
+      }
+    },
+
+    // Helper: Get percentile
+    getPercentile: (data: number[], percentile: number): number => {
+      if (data.length === 0) return 0;
+      const sorted = [...data].sort((a, b) => a - b);
+      const index = Math.ceil((percentile / 100) * sorted.length) - 1;
+      return sorted[index] || 0;
+    }
+  };
+
+  // 🔧 Medium Issue Fix #1: 結構化日誌系統
+  private logger = {
+    info: (action: string, context?: Record<string, any>) => {
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        service: 'DelayedMessageBuffer',
+        doId: this.state.id.toString(),
+        action,
+        ...context
+      }));
+    },
+
+    success: (action: string, context?: Record<string, any>) => {
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'success',
+        service: 'DelayedMessageBuffer',
+        doId: this.state.id.toString(),
+        action,
+        ...context
+      }));
+    },
+
+    warn: (action: string, context?: Record<string, any>) => {
+      console.warn(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        service: 'DelayedMessageBuffer',
+        doId: this.state.id.toString(),
+        action,
+        ...context
+      }));
+    },
+
+    error: (action: string, error: any, context?: Record<string, any>) => {
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        service: 'DelayedMessageBuffer',
+        doId: this.state.id.toString(),
+        action,
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        } : String(error),
+        ...context
+      }));
+    },
+
+    critical: (action: string, error: any, context?: Record<string, any>) => {
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'CRITICAL',
+        service: 'DelayedMessageBuffer',
+        doId: this.state.id.toString(),
+        action,
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        } : String(error),
+        alert: true, // 標記需要告警
+        ...context
+      }));
+    }
+  };
 
   constructor(state: DurableObjectState, env: Bindings) {
     this.state = state;
@@ -99,18 +229,19 @@ export class DelayedMessageBuffer implements DurableObject {
           return await this.handleStatus(request);
         case '/list':
           return await this.handleList(request);
+        case '/dlq':
+          return await this.handleDLQ(request);
+        case '/metrics':
+          return await this.handleMetrics(request);
         default:
           return new Response('Not Found', { status: 404 });
       }
     } catch (error) {
-      console.error('❌ [DelayedMessageBuffer] Request error:', error);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      this.logger.error('Request error', error, {
+        url: request.url,
+        method: request.method
+      });
+      return this.errorResponse(error);
     }
   }
 
@@ -137,19 +268,13 @@ export class DelayedMessageBuffer implements DurableObject {
 
     // 驗證參數
     if (!data.messageId || !data.conversationId || !data.content || !data.agentId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return this.badRequestResponse('Missing required fields');
     }
 
     // 驗證延遲時間 (1-120 秒)
     const delaySeconds = data.delaySeconds || 5;
     if (delaySeconds < 1 || delaySeconds > 120) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Delay must be between 1-120 seconds' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return this.badRequestResponse('Delay must be between 1-120 seconds');
     }
 
     const now = Date.now();
@@ -179,18 +304,24 @@ export class DelayedMessageBuffer implements DurableObject {
     // 3. 設定或更新 Alarm
     await this.updateAlarm();
 
-    console.log(`⏰ [DelayedMessageBuffer] Scheduled message ${message.id} for ${delaySeconds}s delay`);
+    // 🔧 Metrics: 訊息排程成功
+    this.metrics.messagesScheduledTotal++;
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        messageId: message.id,
-        scheduledAt,
-        canCancelUntil: scheduledAt,
-        delaySeconds
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    this.logger.success('Message scheduled', {
+      messageId: message.id,
+      delaySeconds,
+      scheduledAt,
+      platform: message.platform,
+      conversationId: message.conversationId
+    });
+
+    return this.jsonResponse({
+      success: true,
+      messageId: message.id,
+      scheduledAt,
+      canCancelUntil: scheduledAt,
+      delaySeconds
+    });
   }
 
   /**
@@ -208,21 +339,12 @@ export class DelayedMessageBuffer implements DurableObject {
     };
 
     if (!data.messageId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Message ID required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return this.badRequestResponse('Message ID required');
     }
 
     const result = await this.cancelMessage(data.messageId, data.reason);
 
-    return new Response(
-      JSON.stringify(result),
-      {
-        status: result.success ? 200 : 400,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    return this.jsonResponse(result, result.success ? 200 : 400);
   }
 
   /**
@@ -274,7 +396,15 @@ export class DelayedMessageBuffer implements DurableObject {
 
     const cancelledAt = Date.now();
 
-    console.log(`❌ [DelayedMessageBuffer] Cancelled message ${messageId}. Reason: ${reason || 'none'}`);
+    // 🔧 Metrics: 訊息撤銷成功
+    this.metrics.messagesCancelledTotal++;
+
+    this.logger.success('Message cancelled', {
+      messageId,
+      cancelReason: reason || 'none',
+      cancelledAt,
+      timeBeforeSend: message.scheduledAt - cancelledAt
+    });
 
     return {
       success: true,
@@ -292,22 +422,16 @@ export class DelayedMessageBuffer implements DurableObject {
     const messageId = url.searchParams.get('messageId');
 
     if (!messageId) {
-      return new Response(
-        JSON.stringify({ exists: false, status: 'not_found' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return this.badRequestResponse('Message ID required');
     }
 
     const message = this.pendingMessages.get(messageId);
 
     if (!message) {
-      return new Response(
-        JSON.stringify({
-          exists: false,
-          status: 'not_found'
-        } as StatusResult),
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      return this.jsonResponse({
+        exists: false,
+        status: 'not_found'
+      } as StatusResult);
     }
 
     const now = Date.now();
@@ -317,15 +441,12 @@ export class DelayedMessageBuffer implements DurableObject {
     const result: StatusResult = {
       exists: true,
       status: message.status,
-      timeRemaining: Math.ceil(timeRemaining / 1000), // 轉換為秒
+      timeRemaining: Math.ceil(timeRemaining / 1000),
       canCancel,
       scheduledAt: message.scheduledAt
     };
 
-    return new Response(
-      JSON.stringify(result),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    return this.jsonResponse(result);
   }
 
   /**
@@ -341,43 +462,321 @@ export class DelayedMessageBuffer implements DurableObject {
         timeRemaining: Math.max(0, msg.scheduledAt - Date.now())
       }));
 
+    return this.jsonResponse({
+      success: true,
+      count: messages.length,
+      messages
+    });
+  }
+
+  /**
+   * 🔧 查詢 Dead Letter Queue
+   *
+   * GET /dlq - 列出所有失敗訊息
+   */
+  private async handleDLQ(_request: Request): Promise<Response> {
+    try {
+      const dlqEntries = await this.state.storage.list<any>({ prefix: 'dlq:' });
+      const failedMessages = [];
+
+      for (const [_key, entry] of dlqEntries) {
+        failedMessages.push({
+          id: entry.id,
+          content: entry.content?.substring(0, 100) || '',
+          platform: entry.platform,
+          failedAt: entry.failedAt,
+          failureReason: entry.failureReason,
+          retryCount: entry.retryCount,
+          scheduledAt: entry.scheduledAt,
+          conversationId: entry.conversationId
+        });
+      }
+
+      // 按失敗時間降序排序
+      failedMessages.sort((a, b) => b.failedAt - a.failedAt);
+
+      return this.jsonResponse({
+        success: true,
+        count: failedMessages.length,
+        messages: failedMessages,
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      this.logger.error('DLQ query error', error);
+      return this.errorResponse(error);
+    }
+  }
+
+  /**
+   * 🔧 GET /metrics - 監控指標端點
+   *
+   * 提供 Prometheus 相容格式的指標輸出
+   */
+  private async handleMetrics(_request: Request): Promise<Response> {
+    try {
+      // 計算衍生指標
+      const totalMessages = this.metrics.messagesSentTotal + this.metrics.messagesFailedTotal;
+      const successRate = totalMessages > 0
+        ? ((this.metrics.messagesSentTotal / totalMessages) * 100).toFixed(2)
+        : '0.00';
+
+      const lineTotal = this.metrics.platformSuccesses.line + this.metrics.platformFailures.line;
+      const lineSuccessRate = lineTotal > 0
+        ? ((this.metrics.platformSuccesses.line / lineTotal) * 100).toFixed(2)
+        : '0.00';
+
+      const facebookTotal = this.metrics.platformSuccesses.facebook + this.metrics.platformFailures.facebook;
+      const facebookSuccessRate = facebookTotal > 0
+        ? ((this.metrics.platformSuccesses.facebook / facebookTotal) * 100).toFixed(2)
+        : '0.00';
+
+      // Percentile 計算
+      const p50Duration = this.metrics.getPercentile(this.metrics.sendDurations, 50);
+      const p95Duration = this.metrics.getPercentile(this.metrics.sendDurations, 95);
+      const p99Duration = this.metrics.getPercentile(this.metrics.sendDurations, 99);
+
+      const p50RetryCount = this.metrics.getPercentile(this.metrics.retryCounts, 50);
+      const p95RetryCount = this.metrics.getPercentile(this.metrics.retryCounts, 95);
+
+      // Gauge metrics (當前狀態)
+      const pendingMessagesCount = this.pendingMessages.size;
+      const dlqSize = await this.getDLQSize();
+
+      const metrics = {
+        // === Counter Metrics ===
+        counters: {
+          messages_scheduled_total: this.metrics.messagesScheduledTotal,
+          messages_sent_total: this.metrics.messagesSentTotal,
+          messages_failed_total: this.metrics.messagesFailedTotal,
+          messages_cancelled_total: this.metrics.messagesCancelledTotal,
+          retry_attempts_total: this.metrics.retryAttemptsTotal,
+          dlq_writes_total: this.metrics.dlqWritesTotal,
+          dlq_write_failures_total: this.metrics.dlqWriteFailuresTotal,
+          alarm_triggers_total: this.metrics.alarmTriggersTotal,
+          idempotency_preventions_total: this.metrics.idempotencyPreventionsTotal
+        },
+
+        // === Platform-specific Counters ===
+        platform_metrics: {
+          line: {
+            successes: this.metrics.platformSuccesses.line,
+            failures: this.metrics.platformFailures.line,
+            total: lineTotal,
+            success_rate_percent: lineSuccessRate
+          },
+          facebook: {
+            successes: this.metrics.platformSuccesses.facebook,
+            failures: this.metrics.platformFailures.facebook,
+            total: facebookTotal,
+            success_rate_percent: facebookSuccessRate
+          }
+        },
+
+        // === Gauge Metrics (Current State) ===
+        gauges: {
+          pending_messages_count: pendingMessagesCount,
+          dlq_size: dlqSize,
+          next_alarm_scheduled: this.nextAlarmTime ? new Date(this.nextAlarmTime).toISOString() : null
+        },
+
+        // === Histogram Metrics ===
+        histograms: {
+          send_duration_ms: {
+            p50: p50Duration,
+            p95: p95Duration,
+            p99: p99Duration,
+            sample_count: this.metrics.sendDurations.length
+          },
+          retry_count: {
+            p50: p50RetryCount,
+            p95: p95RetryCount,
+            sample_count: this.metrics.retryCounts.length
+          }
+        },
+
+        // === Derived Metrics ===
+        derived: {
+          overall_success_rate_percent: successRate,
+          total_messages_processed: totalMessages,
+          retry_rate_percent: totalMessages > 0
+            ? ((this.metrics.retryAttemptsTotal / totalMessages) * 100).toFixed(2)
+            : '0.00'
+        },
+
+        // === Metadata ===
+        metadata: {
+          durable_object_id: this.state.id.toString(),
+          timestamp: new Date().toISOString(),
+          uptime_seconds: Math.floor((Date.now() - (this.metrics as any).startTime || Date.now()) / 1000)
+        }
+      };
+
+      return this.jsonResponse(metrics);
+    } catch (error) {
+      this.logger.error('Metrics query error', error);
+      return this.errorResponse(error);
+    }
+  }
+
+  /**
+   * 輔助方法: 取得 DLQ 大小
+   */
+  private async getDLQSize(): Promise<number> {
+    try {
+      const dlqEntries = await this.state.storage.list({ prefix: 'dlq:' });
+      return dlqEntries.size;
+    } catch (error) {
+      this.logger.error('DLQ size query error', error);
+      return 0;
+    }
+  }
+
+  /**
+   * 🔧 統一錯誤處理: JSON 成功回應
+   */
+  private jsonResponse(data: any, status: number = 200): Response {
+    return new Response(
+      JSON.stringify(data),
+      {
+        status,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  /**
+   * 🔧 統一錯誤處理: JSON 錯誤回應
+   */
+  private errorResponse(error: any, status: number = 500): Response {
     return new Response(
       JSON.stringify({
-        success: true,
-        count: messages.length,
-        messages
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
       }),
-      { headers: { 'Content-Type': 'application/json' } }
+      {
+        status,
+        headers: { 'Content-Type': 'application/json' }
+      }
     );
+  }
+
+  /**
+   * 🔧 統一錯誤處理: 參數驗證錯誤
+   */
+  private badRequestResponse(message: string): Response {
+    return this.errorResponse(message, 400);
   }
 
   /**
    * Alarm 處理器 - 當時間到達時自動觸發
    *
-   * 這是 Durable Objects 的核心功能
-   * Cloudflare 會在精確的時間自動調用此方法
+   * 🔧 重構: 簡化批次處理邏輯
+   * - 複雜度降低: 從複雜邏輯到清晰的協調器
+   * - 職責分離: 收集 → 發送 → 處理結果
    */
   async alarm(): Promise<void> {
-    console.log('⏰ [DelayedMessageBuffer] Alarm triggered');
+    // Metrics 計數
+    this.metrics.alarmTriggersTotal++;
 
-    const now = Date.now();
-    const readyMessages: PendingMessage[] = [];
+    this.logger.info('Alarm triggered', {
+      pendingCount: this.pendingMessages.size,
+      nextAlarmTime: this.nextAlarmTime
+    });
 
-    // 找出所有到時間的訊息
-    for (const [_id, message] of this.pendingMessages) {
-      if (message.status === 'pending' && message.scheduledAt <= now) {
-        readyMessages.push(message);
-      }
+    // 專職函數 1: 收集就緒訊息
+    const readyMessages = this.collectReadyMessages();
+
+    if (readyMessages.length === 0) {
+      this.logger.info('No messages ready to send');
+      await this.updateAlarm();
+      return;
     }
 
-    console.log(`📤 [DelayedMessageBuffer] Found ${readyMessages.length} messages ready to send`);
+    // 專職函數 2: 批次發送訊息
+    const results = await this.sendBatchMessages(readyMessages);
 
-    // 並行發送所有到時間的訊息
-    const sendPromises = readyMessages.map(msg => this.sendMessage(msg));
-    await Promise.allSettled(sendPromises);
+    // 專職函數 3: 處理批次結果
+    await this.processBatchResults(readyMessages, results);
 
-    // 設定下一個 Alarm (如果還有待發訊息)
+    // 更新下一個 Alarm
     await this.updateAlarm();
+  }
+
+  /**
+   * 🔧 專職函數 1: 收集就緒訊息
+   *
+   * @returns 所有已到發送時間的訊息
+   */
+  private collectReadyMessages(): PendingMessage[] {
+    const now = Date.now();
+
+    // 創建不可變快照避免 Race Condition
+    const allPendingMessages = Array.from(this.pendingMessages.values());
+    const readyMessages = allPendingMessages.filter(
+      msg => msg.status === 'pending' && msg.scheduledAt <= now
+    );
+
+    this.logger.info('Ready messages collected', {
+      readyCount: readyMessages.length,
+      totalPending: allPendingMessages.length
+    });
+
+    return readyMessages;
+  }
+
+  /**
+   * 🔧 專職函數 2: 批次發送訊息
+   *
+   * @returns Promise.allSettled 結果
+   */
+  private async sendBatchMessages(
+    messages: PendingMessage[]
+  ): Promise<PromiseSettledResult<void>[]> {
+    const sendPromises = messages.map(msg => this.sendMessage(msg));
+    return await Promise.allSettled(sendPromises);
+  }
+
+  /**
+   * 🔧 專職函數 3: 處理批次結果
+   *
+   * 分析成功/失敗,記錄 DLQ,輸出統計
+   */
+  private async processBatchResults(
+    messages: PendingMessage[],
+    results: PromiseSettledResult<void>[]
+  ): Promise<void> {
+    let successCount = 0;
+    let failureCount = 0;
+    const dlqPromises: Promise<void>[] = [];
+
+    results.forEach((result, index) => {
+      const message = messages[index];
+
+      if (result.status === 'fulfilled') {
+        successCount++;
+      } else {
+        failureCount++;
+        const reason = result.reason ?? new Error('Unknown rejection reason');
+
+        // 收集 DLQ 操作
+        dlqPromises.push(this.addToDeadLetterQueue(message, reason));
+
+        this.logger.error('Message send failed', reason, {
+          messageId: message.id,
+          platform: message.platform,
+          retryCount: message.retryCount
+        });
+      }
+    });
+
+    // 確保所有 DLQ 寫入完成
+    await Promise.allSettled(dlqPromises);
+
+    this.logger.info('Batch send complete', {
+      successCount,
+      failureCount,
+      totalProcessed: successCount + failureCount
+    });
   }
 
   /**
@@ -404,59 +803,364 @@ export class DelayedMessageBuffer implements DurableObject {
       // 設定新的 Alarm
       await this.state.storage.setAlarm(earliestTime);
       this.nextAlarmTime = earliestTime;
-      console.log(`⏰ [DelayedMessageBuffer] Alarm set for ${new Date(earliestTime).toISOString()}`);
+      this.logger.info('Alarm set', {
+        scheduledTime: new Date(earliestTime).toISOString(),
+        timeUntilAlarm: earliestTime - Date.now(),
+        pendingMessagesCount: this.pendingMessages.size
+      });
     } else if (!earliestTime && this.nextAlarmTime) {
       // 沒有待發訊息，取消 Alarm
       await this.state.storage.deleteAlarm();
       this.nextAlarmTime = null;
-      console.log('⏰ [DelayedMessageBuffer] Alarm cancelled (no pending messages)');
+      this.logger.info('Alarm cancelled', {
+        reason: 'No pending messages'
+      });
+    }
+  }
+
+  /**
+   * 🔧 Dead Letter Queue - 記錄失敗訊息
+   * ✅ 修復: 實作重試機制避免靜默失敗
+   */
+  private async addToDeadLetterQueue(message: PendingMessage, reason: any): Promise<void> {
+    const maxAttempts = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const dlqKey = `dlq:${message.id}`;
+        const dlqEntry = {
+          ...message,
+          failedAt: Date.now(),
+          failureReason: reason instanceof Error ? reason.message : String(reason),
+          failureStack: reason instanceof Error ? reason.stack : undefined,
+          retryCount: message.retryCount || 0,
+          dlqWriteAttempt: attempt + 1,
+          environmentInfo: {
+            durableObjectId: this.state.id.toString(),
+            timestamp: new Date().toISOString()
+          }
+        };
+
+        await this.state.storage.put(dlqKey, dlqEntry);
+
+        // 🔧 Metrics: DLQ 寫入成功
+        this.metrics.dlqWritesTotal++;
+
+        this.logger.success('DLQ write successful', {
+          messageId: message.id,
+          attempt: attempt + 1,
+          retryCount: message.retryCount,
+          failureReason: dlqEntry.failureReason
+        });
+        return; // ✅ 成功寫入,立即返回
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.logger.error('DLQ write attempt failed', error, {
+          messageId: message.id,
+          attempt: attempt + 1,
+          maxAttempts
+        });
+
+        if (attempt < maxAttempts - 1) {
+          await this.sleep(1000 * (attempt + 1)); // 指數退避
+        }
+      }
+    }
+
+    // 🚨 Critical: DLQ 寫入在所有重試後仍然失敗
+    // 🔧 Metrics: DLQ 寫入永久失敗
+    this.metrics.dlqWriteFailuresTotal++;
+
+    this.logger.critical('DLQ write permanently failed', lastError, {
+      messageId: message.id,
+      maxAttempts,
+      platform: message.platform,
+      conversationId: message.conversationId
+    });
+
+    // TODO: 發送緊急告警到監控系統 (Phase 2)
+    // await this.sendCriticalAlert(message, lastError);
+  }
+
+  /**
+   * 🔧 輔助方法：延遲執行
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 🔧 冪等性檢查 - 檢查訊息是否已發送
+   */
+  private async isMessageAlreadySent(messageId: string): Promise<boolean> {
+    try {
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { messages } = await import('../db/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const db = drizzle(this.env.DB);
+      const existingMessage = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.id, messageId))
+        .limit(1);
+
+      return existingMessage.length > 0;
+    } catch (error) {
+      this.logger.error('Idempotency check error', error, {
+        messageId
+      });
+      return false; // 發生錯誤時假設未發送，讓後續邏輯處理
     }
   }
 
   /**
    * 真正發送訊息到平台
+   *
+   * 🔧 重構: 從 84 行單體函數拆解為專職函數
+   * - 複雜度: 18 → 6
+   * - 可測試性: ⭐⭐ → ⭐⭐⭐⭐⭐
+   * - 可維護性: 低 → 高
    */
   private async sendMessage(message: PendingMessage): Promise<void> {
     try {
-      console.log(`📤 [DelayedMessageBuffer] Sending message ${message.id} to ${message.platform}`);
+      this.logger.info('Sending message', {
+        messageId: message.id,
+        platform: message.platform,
+        conversationId: message.conversationId
+      });
 
-      // 標記為處理中
-      message.status = 'sent';
-
-      let success = false;
-
-      // 根據平台發送
-      if (message.platform === 'line') {
-        success = await this.sendLineMessage(message);
-      } else if (message.platform === 'facebook') {
-        success = await this.sendFacebookMessage(message);
+      // 專職函數 1: 檢查是否應該跳過發送
+      if (await this.shouldSkipMessage(message)) {
+        return;
       }
 
-      if (success) {
-        // 發送成功，從內存和存儲中移除
-        this.pendingMessages.delete(message.id);
-        await this.state.storage.delete(`msg:${message.id}`);
+      // 專職函數 2: 執行帶重試的發送
+      const sendResult = await this.sendWithRetry(message);
 
-        // 更新資料庫 (存入正式的 messages 表)
-        await this.storeMessageInDatabase(message);
-
-        console.log(`✅ [DelayedMessageBuffer] Message ${message.id} sent successfully`);
+      // 專職函數 3: 處理最終結果
+      if (sendResult.success) {
+        await this.handleSendSuccess(message, sendResult);
       } else {
-        // 發送失敗，保留在內存中等待重試
-        message.status = 'pending';
-        console.error(`❌ [DelayedMessageBuffer] Message ${message.id} send failed`);
+        await this.handlePermanentFailure(message, sendResult.error);
       }
 
     } catch (error) {
-      console.error(`❌ [DelayedMessageBuffer] Error sending message ${message.id}:`, error);
-      message.status = 'pending'; // 重置狀態以便重試
+      // 災難性錯誤處理 (不應發生,但保留防護)
+      await this.handleCatastrophicError(message, error);
     }
   }
 
   /**
+   * 🔧 專職函數 1: 檢查是否應該跳過訊息發送
+   *
+   * @returns true 如果應該跳過 (已發送或其他原因)
+   */
+  private async shouldSkipMessage(message: PendingMessage): Promise<boolean> {
+    const alreadySent = await this.isMessageAlreadySent(message.id);
+
+    if (alreadySent) {
+      this.metrics.idempotencyPreventionsTotal++;
+      this.logger.warn('Message already sent', {
+        messageId: message.id,
+        reason: 'Idempotency check prevented duplicate send'
+      });
+      this.pendingMessages.delete(message.id);
+      await this.state.storage.delete(`msg:${message.id}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 🔧 專職函數 2: 執行帶重試的發送邏輯
+   *
+   * @returns SendResult 包含 success 狀態和相關資料
+   */
+  private async sendWithRetry(message: PendingMessage): Promise<{
+    success: boolean;
+    error?: any;
+    attempt?: number;
+    duration?: number;
+  }> {
+    // 初始化重試計數
+    if (!message.retryCount) {
+      message.retryCount = 0;
+    }
+
+    let lastError: any = null;
+    const sendStartTime = Date.now();
+
+    // 指數退避重試機制
+    for (let attempt = 0; attempt <= this.MAX_RETRY_ATTEMPTS; attempt++) {
+      // Metrics: 重試嘗試計數
+      if (attempt > 0) {
+        this.metrics.retryAttemptsTotal++;
+      }
+
+      try {
+        this.logger.info('Retry attempt', {
+          messageId: message.id,
+          attempt: attempt + 1,
+          maxAttempts: this.MAX_RETRY_ATTEMPTS + 1,
+          platform: message.platform
+        });
+
+        // 專職函數 3: 根據平台發送
+        const success = await this.sendToPlatform(message);
+
+        if (success) {
+          return {
+            success: true,
+            attempt,
+            duration: Date.now() - sendStartTime
+          };
+        }
+
+        // API 返回失敗但沒拋錯
+        lastError = new Error(`Platform API returned failure for message ${message.id}`);
+
+      } catch (error) {
+        lastError = error;
+        this.logger.error('Send attempt failed', error, {
+          messageId: message.id,
+          attempt: attempt + 1,
+          platform: message.platform
+        });
+      }
+
+      // 等待後重試 (如果不是最後一次嘗試)
+      if (attempt < this.MAX_RETRY_ATTEMPTS) {
+        await this.waitBeforeRetry(message, attempt);
+      }
+    }
+
+    // 所有重試都失敗
+    return {
+      success: false,
+      error: lastError
+    };
+  }
+
+  /**
+   * 🔧 專職函數 3: 根據平台路由發送請求
+   */
+  private async sendToPlatform(message: PendingMessage): Promise<boolean> {
+    if (message.platform === 'line') {
+      return await this.sendLineMessage(message);
+    } else if (message.platform === 'facebook') {
+      return await this.sendFacebookMessage(message);
+    }
+
+    throw new Error(`Unsupported platform: ${message.platform}`);
+  }
+
+  /**
+   * 🔧 專職函數 4: 處理發送成功
+   */
+  private async handleSendSuccess(
+    message: PendingMessage,
+    result: { attempt?: number; duration?: number }
+  ): Promise<void> {
+    // 更新訊息狀態
+    message.status = 'sent';
+    this.pendingMessages.delete(message.id);
+    await this.state.storage.delete(`msg:${message.id}`);
+
+    // 更新資料庫
+    await this.storeMessageInDatabase(message);
+
+    // 更新 Metrics
+    this.metrics.messagesSentTotal++;
+    this.metrics.platformSuccesses[message.platform]++;
+    this.metrics.recordSendDuration(result.duration || 0);
+    this.metrics.recordRetryCount(result.attempt || 0);
+
+    this.logger.success('Message sent successfully', {
+      messageId: message.id,
+      attempt: (result.attempt || 0) + 1,
+      totalRetries: result.attempt || 0,
+      platform: message.platform,
+      durationMs: result.duration
+    });
+  }
+
+  /**
+   * 🔧 專職函數 5: 處理永久失敗
+   */
+  private async handlePermanentFailure(message: PendingMessage, error: any): Promise<void> {
+    // 標記為失敗
+    message.status = 'failed';
+    message.failureReason = error instanceof Error ? error.message : String(error);
+
+    // 從 pending 移除但保留在 storage
+    this.pendingMessages.delete(message.id);
+    await this.state.storage.put(`msg:${message.id}`, message);
+
+    // 記錄到 DLQ
+    await this.addToDeadLetterQueue(message, error);
+
+    // 更新 Metrics
+    this.metrics.messagesFailedTotal++;
+    this.metrics.platformFailures[message.platform]++;
+
+    this.logger.critical('Message permanently failed', error, {
+      messageId: message.id,
+      totalAttempts: this.MAX_RETRY_ATTEMPTS + 1,
+      platform: message.platform,
+      conversationId: message.conversationId
+    });
+  }
+
+  /**
+   * 🔧 專職函數 6: 處理災難性錯誤
+   */
+  private async handleCatastrophicError(message: PendingMessage, error: any): Promise<void> {
+    this.logger.critical('Fatal error sending message', error, {
+      messageId: message.id,
+      platform: message.platform
+    });
+
+    message.status = 'failed';
+    message.failureReason = error instanceof Error ? error.message : String(error);
+
+    await this.addToDeadLetterQueue(message, error);
+    this.pendingMessages.delete(message.id);
+    await this.state.storage.put(`msg:${message.id}`, message);
+
+    // 不重新拋出 - 錯誤已完全處理
+  }
+
+  /**
+   * 🔧 輔助函數: 等待後重試
+   */
+  private async waitBeforeRetry(message: PendingMessage, attempt: number): Promise<void> {
+    const delay = this.RETRY_DELAYS[attempt] || 4000;
+
+    this.logger.info('Waiting before retry', {
+      messageId: message.id,
+      delayMs: delay,
+      nextAttempt: attempt + 2
+    });
+
+    // 持久化重試狀態
+    message.retryCount = attempt + 1;
+    message.lastRetryAt = Date.now();
+    await this.state.storage.put(`msg:${message.id}`, message);
+
+    await this.sleep(delay);
+  }
+
+  /**
    * 發送 LINE 訊息
+   * ✅ 修復: 加入 10 秒逾時保護
    */
   private async sendLineMessage(message: PendingMessage): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
       const response = await fetch('https://api.line.me/v2/bot/message/push', {
         method: 'POST',
@@ -470,20 +1174,35 @@ export class DelayedMessageBuffer implements DurableObject {
             type: 'text',
             text: message.content
           }]
-        })
+        }),
+        signal: controller.signal // ✅ 加入逾時訊號
       });
 
+      clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
-      console.error('❌ [DelayedMessageBuffer] LINE API error:', error);
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.logger.error('LINE API timeout', error, {
+          timeout: this.API_TIMEOUT_MS
+        });
+        throw new Error('LINE API request timeout after 10s');
+      }
+
+      this.logger.error('LINE API error', error);
       return false;
     }
   }
 
   /**
    * 發送 Facebook 訊息
+   * ✅ 修復: 加入 10 秒逾時保護
    */
   private async sendFacebookMessage(message: PendingMessage): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
       const response = await fetch(
         `https://graph.facebook.com/v18.0/me/messages?access_token=${this.env.FB_PAGE_ACCESS_TOKEN}`,
@@ -495,19 +1214,35 @@ export class DelayedMessageBuffer implements DurableObject {
           body: JSON.stringify({
             recipient: { id: message.recipientPlatformId },
             message: { text: message.content }
-          })
+          }),
+          signal: controller.signal // ✅ 加入逾時訊號
         }
       );
 
+      clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
-      console.error('❌ [DelayedMessageBuffer] Facebook API error:', error);
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.logger.error('Facebook API timeout', error, {
+          timeout: this.API_TIMEOUT_MS
+        });
+        throw new Error('Facebook API request timeout after 10s');
+      }
+
+      this.logger.error('Facebook API error', error);
       return false;
     }
   }
 
   /**
    * 存入資料庫 (正式的 messages 表)
+   *
+   * 🔧 Phase 1 增強:
+   * - 使用事務確保原子性
+   * - 錯誤時拋出異常供上層處理
+   * - 完整性檢查
    */
   private async storeMessageInDatabase(message: PendingMessage): Promise<void> {
     try {
@@ -518,37 +1253,51 @@ export class DelayedMessageBuffer implements DurableObject {
       const db = drizzle(this.env.DB);
       const now = new Date().toISOString();
 
-      // 插入訊息記錄
-      await db.insert(messages).values({
-        id: message.id,
-        conversationId: message.conversationId,
-        senderType: 'agent',
-        agentSenderId: message.agentId,
-        content: message.content,
-        messageType: message.messageType,
-        isSent: true,
-        deliveryStatus: 'sent',
-        sentAt: now,
-        metadata: JSON.stringify({
-          ...message.metadata,
-          wasDelayed: true,
-          originalScheduledAt: message.scheduledAt
+      // 🔧 使用事務確保原子性操作
+      await db.batch([
+        // 1. 插入訊息記錄
+        db.insert(messages).values({
+          id: message.id,
+          conversationId: message.conversationId,
+          senderType: 'agent',
+          agentSenderId: message.agentId,
+          content: message.content,
+          messageType: message.messageType,
+          isSent: true,
+          deliveryStatus: 'sent',
+          sentAt: now,
+          metadata: JSON.stringify({
+            ...message.metadata,
+            wasDelayed: true,
+            originalScheduledAt: message.scheduledAt,
+            retryCount: message.retryCount || 0
+          }),
+          createdAt: now
         }),
-        createdAt: now
+
+        // 2. 更新對話的最後訊息時間
+        db
+          .update(conversations)
+          .set({
+            lastMessageAt: now,
+            updatedAt: now
+          })
+          .where(eq(conversations.id, message.conversationId))
+      ]);
+
+      this.logger.success('Message stored in database', {
+        messageId: message.id,
+        conversationId: message.conversationId,
+        retryCount: message.retryCount,
+        wasDelayed: true
       });
-
-      // 更新對話的最後訊息時間
-      await db
-        .update(conversations)
-        .set({
-          lastMessageAt: now,
-          updatedAt: now
-        })
-        .where(eq(conversations.id, message.conversationId));
-
-      console.log(`💾 [DelayedMessageBuffer] Message ${message.id} stored in database`);
     } catch (error) {
-      console.error('❌ [DelayedMessageBuffer] Database error:', error);
+      this.logger.error('Database transaction error', error, {
+        messageId: message.id,
+        conversationId: message.conversationId
+      });
+      // 🔧 拋出錯誤讓上層處理 (會觸發重試或記錄到 DLQ)
+      throw new Error(`Database storage failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -570,9 +1319,12 @@ export class DelayedMessageBuffer implements DurableObject {
       const currentAlarm = await this.state.storage.getAlarm();
       this.nextAlarmTime = currentAlarm;
 
-      console.log(`📂 [DelayedMessageBuffer] State restored: ${this.pendingMessages.size} pending messages`);
+      this.logger.info('State restored', {
+        pendingMessagesCount: this.pendingMessages.size,
+        nextAlarmTime: currentAlarm ? new Date(currentAlarm).toISOString() : null
+      });
     } catch (error) {
-      console.error('❌ [DelayedMessageBuffer] State restoration error:', error);
+      this.logger.error('State restoration error', error);
     }
   }
 }

@@ -1,0 +1,243 @@
+// Tags API Client
+// 標籤系統 API 介面
+
+import { apiClient } from './base'
+
+export interface Tag {
+  id: number
+  name: string
+  color: string
+  description?: string | null
+  teamId?: number | null
+  teamName?: string | null
+  isActive: boolean
+  createdBy: string
+  createdByName?: string | null
+  customerCount?: number
+  conversationCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateTagRequest {
+  name: string
+  color?: string
+  description?: string
+  teamId?: number | null
+}
+
+export interface UpdateTagRequest {
+  name?: string
+  color?: string
+  description?: string
+  isActive?: boolean
+}
+
+export interface TagUsageStats {
+  tagInfo: {
+    id: number
+    name: string
+    color: string
+  }
+  customers: {
+    total: number
+    byPlatform: {
+      line: number
+      facebook: number
+    }
+  }
+  conversations: {
+    total: number
+    active: number
+    closed: number
+  }
+  usageTrend: Array<{
+    date: string
+    assignments: number
+  }>
+  topAssigners: Array<{
+    name: string
+    assignments: number
+  }>
+}
+
+export interface BulkOperationRequest {
+  operation: 'activate' | 'deactivate' | 'update_color'
+  tagIds: number[]
+  data?: {
+    color?: string
+  }
+}
+
+export interface PaginatedTagsResponse {
+  success: boolean
+  data: Tag[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+  message: string
+}
+
+export interface TagResponse {
+  success: boolean
+  data: Tag
+  message: string
+}
+
+export interface TagStatsResponse {
+  success: boolean
+  data: TagUsageStats
+  message: string
+}
+
+/**
+ * 獲取標籤列表
+ */
+export const getTags = async (params?: {
+  page?: number
+  pageSize?: number
+  teamId?: number
+  search?: string
+  includeGlobal?: boolean
+}): Promise<PaginatedTagsResponse> => {
+  const queryString = params
+    ? `?${  new URLSearchParams(
+        Object.entries(params)
+          .filter(([, value]) => value !== undefined)
+          .map(([key, value]) => [key, String(value)])
+      ).toString()}`
+    : ''
+  const response = await apiClient.get<PaginatedTagsResponse>(`/api/tags${queryString}`)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch tags')
+  }
+  return response.data
+}
+
+/**
+ * 創建新標籤
+ */
+export const createTag = async (data: CreateTagRequest): Promise<TagResponse> => {
+  const response = await apiClient.post<TagResponse>('/api/tags', data)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to create tag')
+  }
+  return response.data
+}
+
+/**
+ * 獲取單一標籤詳情
+ */
+export const getTagById = async (id: number): Promise<TagResponse> => {
+  const response = await apiClient.get<TagResponse>(`/api/tags/${id}`)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch tag')
+  }
+  return response.data
+}
+
+/**
+ * 更新標籤
+ */
+export const updateTag = async (id: number, data: UpdateTagRequest): Promise<TagResponse> => {
+  const response = await apiClient.put<TagResponse>(`/api/tags/${id}`, data)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to update tag')
+  }
+  return response.data
+}
+
+/**
+ * 刪除標籤 (軟刪除)
+ */
+export const deleteTag = async (id: number): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.delete<void>(`/api/tags/${id}`)
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to delete tag')
+  }
+  return { success: true, message: 'Tag deleted successfully' }
+}
+
+/**
+ * 獲取標籤使用統計
+ */
+export const getTagUsageStats = async (id: number): Promise<TagStatsResponse> => {
+  const response = await apiClient.get<TagStatsResponse>(`/api/tags/${id}/stats`)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch tag stats')
+  }
+  return response.data
+}
+
+/**
+ * 批量操作標籤
+ */
+export const bulkOperateTags = async (
+  data: BulkOperationRequest
+): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post<void>('/api/tags/bulk', data)
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to perform bulk operation')
+  }
+  return { success: true, message: 'Bulk operation completed successfully' }
+}
+
+/**
+ * 獲取客戶的標籤
+ */
+export const getCustomerTags = async (customerId: number): Promise<{ success: boolean; data: Tag[] }> => {
+  const response = await apiClient.get<Tag[]>(`/api/customers/${customerId}/tags`)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch customer tags')
+  }
+  return { success: true, data: response.data }
+}
+
+/**
+ * 為客戶添加標籤
+ */
+export const addTagsToCustomer = async (
+  customerId: number,
+  tagIds: number[]
+): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post<void>(`/api/customers/${customerId}/tags`, { tagIds })
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to add tags to customer')
+  }
+  return { success: true, message: 'Tags added successfully' }
+}
+
+/**
+ * 從客戶移除標籤
+ */
+export const removeTagsFromCustomer = async (
+  customerId: number,
+  tagIds: number[]
+): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.request<void>(
+    'DELETE',
+    `/api/customers/${customerId}/tags`,
+    { tagIds }
+  )
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to remove tags from customer')
+  }
+  return { success: true, message: 'Tags removed successfully' }
+}
+
+/**
+ * 設置客戶標籤 (替換所有)
+ */
+export const setCustomerTags = async (
+  customerId: number,
+  tagIds: number[]
+): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.put<void>(`/api/customers/${customerId}/tags`, { tagIds })
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to set customer tags')
+  }
+  return { success: true, message: 'Tags set successfully' }
+}

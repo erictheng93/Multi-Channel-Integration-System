@@ -36,6 +36,7 @@
     "noEmit": true,
     "baseUrl": "./src",
     "paths": {
+      "@/*": ["./*"],
       "@modules/*": ["modules/*"],
       "@shared/*": ["shared/*"],
       "@infrastructure/*": ["infrastructure/*"],

@@ -2,7 +2,7 @@
 // Message data validation middleware
 
 import { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import {
   isValidMessageType,
   isValidSenderType,

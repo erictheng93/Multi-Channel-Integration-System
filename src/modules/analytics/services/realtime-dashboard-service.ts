@@ -4,7 +4,7 @@
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type {
   DashboardWidget,
   WidgetData,

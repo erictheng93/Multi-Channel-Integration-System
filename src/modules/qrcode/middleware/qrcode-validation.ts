@@ -2,7 +2,7 @@
 // 負責 QR Code 請求數據的驗證和清理
 
 import type { Context, Next } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { errorResponse } from '@shared/utils/api-response';
 import { QR_CODE_DEFAULTS } from '@modules/qrcode/types/qrcode-types';
 import { QRCodeGenerationService } from '@modules/qrcode/services/qrcode-generation-service';

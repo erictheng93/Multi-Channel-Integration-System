@@ -3,9 +3,9 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { createWebhookValidator } from '@modules/integrations/services/webhook-validator';
-import { successResponse, errorResponse, unauthorizedResponse } from '../../../utils/api-response-simplified';
+import { successResponse, errorResponse, unauthorizedResponse } from '@/utils/api-response';
 
 /**
  * Webhook Handler
@@ -46,7 +46,11 @@ webhookHandler.post('/line/:integrationId', async (c: Context<{ Bindings: Bindin
 
   try {
     // 獲取請求數據
-    const headers = Object.fromEntries(c.req.raw.headers.entries());
+    const headers: Record<string, string> = {};
+    for (const key of ['x-line-signature', 'x-hub-signature', 'x-hub-signature-256', 'content-type', 'user-agent']) {
+      const value = c.req.header(key);
+      if (value) headers[key] = value;
+    }
     const body = await c.req.text();
     const sourceIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Real-IP');
 
@@ -54,7 +58,7 @@ webhookHandler.post('/line/:integrationId', async (c: Context<{ Bindings: Bindin
     const validator = createWebhookValidator(
       c.env,
       c.env.DB,
-      c.env.WEBHOOK_KV || c.env.SESSION_KV
+      c.env.SESSIONS
     );
 
     // 執行完整驗證
@@ -105,10 +109,7 @@ webhookHandler.post('/line/:integrationId', async (c: Context<{ Bindings: Bindin
 
     console.error('[Webhook] LINE webhook processing error:', error);
 
-    return errorResponse(c, 'Internal server error', 500, {
-      processingTimeMs: processingTime,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(c, "Internal server error", 500);
   }
 });
 
@@ -142,7 +143,11 @@ webhookHandler.post('/facebook/:integrationId', async (c: Context<{ Bindings: Bi
 
   try {
     // 獲取請求數據
-    const headers = Object.fromEntries(c.req.raw.headers.entries());
+    const headers: Record<string, string> = {};
+    for (const key of ['x-line-signature', 'x-hub-signature', 'x-hub-signature-256', 'content-type', 'user-agent']) {
+      const value = c.req.header(key);
+      if (value) headers[key] = value;
+    }
     const body = await c.req.text();
     const sourceIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Real-IP');
 
@@ -150,7 +155,7 @@ webhookHandler.post('/facebook/:integrationId', async (c: Context<{ Bindings: Bi
     const validator = createWebhookValidator(
       c.env,
       c.env.DB,
-      c.env.WEBHOOK_KV || c.env.SESSION_KV
+      c.env.SESSIONS
     );
 
     // 執行完整驗證
@@ -195,10 +200,7 @@ webhookHandler.post('/facebook/:integrationId', async (c: Context<{ Bindings: Bi
 
     console.error('[Webhook] Facebook webhook processing error:', error);
 
-    return errorResponse(c, 'Internal server error', 500, {
-      processingTimeMs: processingTime,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(c, "Internal server error", 500);
   }
 });
 
@@ -225,14 +227,18 @@ webhookHandler.post('/instagram/:integrationId', async (c: Context<{ Bindings: B
   const integrationId = c.req.param('integrationId');
 
   try {
-    const headers = Object.fromEntries(c.req.raw.headers.entries());
+    const headers: Record<string, string> = {};
+    for (const key of ['x-line-signature', 'x-hub-signature', 'x-hub-signature-256', 'content-type', 'user-agent']) {
+      const value = c.req.header(key);
+      if (value) headers[key] = value;
+    }
     const body = await c.req.text();
     const sourceIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Real-IP');
 
     const validator = createWebhookValidator(
       c.env,
       c.env.DB,
-      c.env.WEBHOOK_KV || c.env.SESSION_KV
+      c.env.SESSIONS
     );
 
     const validationResult = await validator.validateAndRoute(
@@ -266,10 +272,7 @@ webhookHandler.post('/instagram/:integrationId', async (c: Context<{ Bindings: B
   } catch (error) {
     const processingTime = Date.now() - startTime;
 
-    return errorResponse(c, 'Internal server error', 500, {
-      processingTimeMs: processingTime,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(c, "Internal server error", 500);
   }
 });
 
@@ -284,7 +287,7 @@ webhookHandler.delete('/rate-limit/:integrationId', async (c: Context<{ Bindings
     const validator = createWebhookValidator(
       c.env,
       c.env.DB,
-      c.env.WEBHOOK_KV || c.env.SESSION_KV
+      c.env.SESSIONS
     );
 
     const success = await validator.clearRateLimit(integrationId);
@@ -299,9 +302,7 @@ webhookHandler.delete('/rate-limit/:integrationId', async (c: Context<{ Bindings
     return errorResponse(c, 'Failed to clear rate limit', 500);
 
   } catch (error) {
-    return errorResponse(c, 'Internal server error', 500, {
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(c, "Internal server error", 500);
   }
 });
 
@@ -317,7 +318,7 @@ webhookHandler.get('/security/stats', async (c: Context<{ Bindings: Bindings }>)
     const validator = createWebhookValidator(
       c.env,
       c.env.DB,
-      c.env.WEBHOOK_KV || c.env.SESSION_KV
+      c.env.SESSIONS
     );
 
     const stats = await validator.getSecurityStats(integrationId, hours);
@@ -325,9 +326,7 @@ webhookHandler.get('/security/stats', async (c: Context<{ Bindings: Bindings }>)
     return successResponse(c, stats);
 
   } catch (error) {
-    return errorResponse(c, 'Internal server error', 500, {
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return errorResponse(c, "Internal server error", 500);
   }
 });
 

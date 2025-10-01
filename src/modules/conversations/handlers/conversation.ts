@@ -4,8 +4,8 @@
 import { Context } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, desc, and, count } from 'drizzle-orm';
-import { conversations, messages, customers } from '../../../db/schema';
-import type { Bindings } from '../../../types';
+import { conversations, messages, customers } from '@/db/schema';
+import type { Bindings } from '@/types';
 import type {
   ConversationListResponse,
   ConversationWithDetails,

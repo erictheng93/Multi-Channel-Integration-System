@@ -14,14 +14,14 @@ import type {
   TeamTransferRequest,
   TeamStatsRequest
 } from '../types/team-types';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { ERROR_MESSAGES } from '@shared/utils/error-messages';
 import {
   jwtAuth,
   requireTeamAccess,
   requireManagerOrAdmin,
   requireAdmin
-} from '../../../middleware/auth';
+} from '@/middleware/auth';
 
 const app = new Hono<{ Bindings: Bindings }>();
 

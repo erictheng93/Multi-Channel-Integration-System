@@ -10,14 +10,14 @@ import type {
   MessageType
 } from '../types/integration-types';
 
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 import { FacebookIntegrationService } from '@modules/integrations/services/facebook-integration-service';
 
 /**
  * Webhook 路由結果
  */
-interface WebhookRouteResult {
+export interface WebhookRouteResult {
   success: boolean;
   events: PlatformEvent[];
   errors: string[];

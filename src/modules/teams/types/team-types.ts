@@ -2,7 +2,7 @@
 // 團隊模組類型定義
 
 // Database schema types
-import type { teams, agents } from '../../../db/schema';
+import type { teams, agents } from '@/db/schema';
 
 export type Team = typeof teams.$inferSelect;
 export type NewTeam = typeof teams.$inferInsert;
@@ -207,5 +207,5 @@ export class InvalidTeamDataError extends Error {
 }
 
 // Re-export shared types
-export type { Bindings } from '../../../types';
+export type { Bindings } from '@/types';
 // Note: ApiResponse, PaginatedResponse may need to be defined or imported from correct location

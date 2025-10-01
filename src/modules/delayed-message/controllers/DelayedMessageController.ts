@@ -3,10 +3,10 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import type { DelayedMessageRequest } from '@modules/delayed-message/types';
 import { DelayedMessageManager } from '@modules/delayed-message/services/DelayedMessageManager';
-import { jwtAuth } from '../../../middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 
 // 擴展 Context 類型以包含用戶信息
 type AuthenticatedContext = Context<{ Bindings: Bindings }> & {

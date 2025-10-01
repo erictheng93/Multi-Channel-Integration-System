@@ -1,13 +1,13 @@
 // Real-time 監控儀表板處理器
 
 import { Context } from 'hono';
-import type { Bindings } from '../../../types';
+import type { Bindings } from '@/types';
 import {
   successResponse,
   errorResponse,
   unauthorizedResponse,
   handleApiError
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
 import { RealtimeManager } from '@modules/realtime/services/realtime-manager';
 import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
