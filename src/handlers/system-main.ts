@@ -6,6 +6,7 @@ import { jwtAuth } from '../middleware/auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { customers, conversations, messages } from '../db/schema';
 import { count, sql } from 'drizzle-orm';
+import { handleApiError } from '../utils/api-response';
 
 const systemHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -111,71 +112,8 @@ systemHandler.get('/system/status', async (c) => {
     
     return c.json(status);
   } catch (error) {
-    console.error('Error getting system status:', error);
-    return c.json({
-      overall: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
-      version: '1.0.0'
-    }, 500);
-  }
-});
-
-// 資料統計端點
-systemHandler.get('/stats', async (c) => {
-  try {
-    // 使用更安全的統計查詢
-    const stats = {
-      totalMessages: 0,
-      totalCustomers: 0,
-      totalConversations: 0,
-      recentMessages: []
-    };
-
-    try {
-      // 檢查表是否存在並獲取統計
-      const drizzleDb = drizzle(c.env.DB);
-      const tablesResult = await drizzleDb.all(
-        sql`SELECT name FROM sqlite_master 
-            WHERE type='table' AND name IN ('messages', 'customers', 'conversations')`
-      );
-
-      const tablesCheck = tablesResult || [];
-      if (tablesCheck.length > 0) {
-        // 只查詢存在的表
-        const tableNames = tablesCheck.map((t: any) => t.name);
-        
-        if (tableNames.includes('messages')) {
-          const messagesResult = await drizzleDb.select({ count: count() }).from(messages).get();
-          stats.totalMessages = messagesResult?.count || 0;
-        }
-        
-        if (tableNames.includes('customers')) {
-          const customersResult = await drizzleDb.select({ count: count() }).from(customers).get();
-          stats.totalCustomers = customersResult?.count || 0;
-        }
-        
-        if (tableNames.includes('conversations')) {
-          const conversationsResult = await drizzleDb.select({ count: count() }).from(conversations).get();
-          stats.totalConversations = conversationsResult?.count || 0;
-        }
-      }
-    } catch (dbError) {
-      console.warn('Database query error, returning default stats:', dbError);
-    }
-    
-    return c.json({
-      success: true,
-      data: stats,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error getting stats:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -196,12 +134,8 @@ systemHandler.get('/messages/:messageId/replies', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting message replies:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -229,12 +163,8 @@ systemHandler.get('/conversations/:conversationId/message-tree', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting conversation message tree:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -242,8 +172,9 @@ systemHandler.get('/conversations/:conversationId/message-tree', async (c) => {
 systemHandler.get('/conversations/:conversationId/sessions', async (c) => {
   try {
     const conversationId = c.req.param('conversationId');
-    const { getSessionStats } = await import('../utils/session');
-    const stats = await getSessionStats(c.env.DB, conversationId);
+    const { AnalyticsService } = await import('../modules/session/services/analytics-service');
+    const analyticsService = new AnalyticsService(c.env.DB);
+    const stats = await analyticsService.getSessionStats(conversationId);
     
     return c.json({
       success: true,
@@ -251,12 +182,49 @@ systemHandler.get('/conversations/:conversationId/sessions', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting session stats:', error);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// 系統統計端點
+systemHandler.get('/stats', async (c) => {
+  try {
+    const drizzleDb = drizzle(c.env.DB);
+
+    // 獲取各項統計數據
+    let totalMessages = 0;
+    let totalCustomers = 0;
+    let totalConversations = 0;
+
+    try {
+      const [messagesResult, customersResult, conversationsResult] = await Promise.all([
+        drizzleDb.select({ count: count() }).from(messages),
+        drizzleDb.select({ count: count() }).from(customers),
+        drizzleDb.select({ count: count() }).from(conversations)
+      ]);
+
+      totalMessages = messagesResult[0]?.count || 0;
+      totalCustomers = customersResult[0]?.count || 0;
+      totalConversations = conversationsResult[0]?.count || 0;
+    } catch (dbError) {
+      console.warn('Database query failed, using default values:', dbError);
+      // 如果查詢失敗，使用默認值 0
+    }
+
     return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      success: true,
+      data: {
+        totalMessages,
+        totalCustomers,
+        totalConversations,
+        timestamp: new Date().toISOString()
+      },
       timestamp: new Date().toISOString()
-    }, 500);
+    });
+  } catch (error) {
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -270,7 +238,7 @@ systemHandler.get('/messages/recall-stats', jwtAuth, async (c) => {
       successfulRecalls: 0,
       failedRecalls: 0
     };
-    
+
     return c.json({
       success: true,
       data: stats,
@@ -278,12 +246,8 @@ systemHandler.get('/messages/recall-stats', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get recall stats error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_GET_RECALL_STATS,
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 

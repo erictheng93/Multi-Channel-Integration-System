@@ -134,43 +134,92 @@
           class="sticker-rendered-content"
         />
         
-        <!-- Fallback: Original sticker display logic -->
+        <!-- Fallback: Enhanced sticker display with loading states -->
         <template v-else>
-          <!-- Try to show actual sticker image -->
+          <!-- Loading state -->
           <div
-            v-if="stickerImageUrl && !stickerLoadError"
-            class="sticker-image-container"
-            style="width: 160px; height: 160px;"
+            v-if="stickerLoading && !stickerLoadError"
+            class="sticker-loading"
           >
-            <img 
-              :src="stickerImageUrl" 
+            <div class="sticker-loading-container">
+              <div class="sticker-skeleton" />
+              <div class="loading-spinner">
+                <div class="spinner-ring" />
+              </div>
+            </div>
+            <div class="loading-text">
+              載入貼圖中...
+            </div>
+          </div>
+
+          <!-- Sticker image with enhanced error handling -->
+          <div
+            v-else-if="stickerImageUrl && !stickerLoadError"
+            class="sticker-image-container"
+            style="width: 160px; height: 160px; position: relative;"
+          >
+            <img
+              :key="`sticker-${stickerMetadata?.stickerId}-${currentStickerUrlIndex}`"
+              :src="stickerImageUrl"
               alt="LINE Sticker"
               class="sticker-image"
               style="width: 100%; height: 100%; object-fit: contain;"
               loading="lazy"
               @error="onStickerError"
               @load="onStickerLoad"
+              @loadstart="onStickerLoadStart"
             >
+
+            <!-- CDN source indicator (dev mode only) -->
+            <div
+              v-if="currentStickerUrlIndex > 0"
+              class="cdn-fallback-indicator"
+              :title="`使用備用CDN源 #${currentStickerUrlIndex + 1}`"
+            >
+              ⚡
+            </div>
           </div>
-          
-          <!-- Fallback: Show sticker placeholder if image fails -->
+
+          <!-- Enhanced fallback for failed stickers -->
           <div
             v-else
-            class="sticker-placeholder"
+            class="sticker-placeholder enhanced"
           >
-            <div class="sticker-icon">
-              🏷️
+            <div class="sticker-icon-large">
+              <div class="sticker-emoji">
+                🎭
+              </div>
             </div>
-            <div class="sticker-text">
-              {{ message.content }}
+            <div class="sticker-fallback-content">
+              <div class="sticker-text">
+                {{ message.content }}
+              </div>
+              <div class="sticker-error-hint">
+                <span v-if="currentStickerUrlIndex >= stickerUrls.length - 1">
+                  貼圖載入失敗
+                </span>
+                <span v-else>
+                  正在嘗試載入...
+                </span>
+              </div>
             </div>
           </div>
-          
+
+          <!-- Sticker metadata info (enhanced) -->
           <div
             v-if="stickerMetadata"
-            class="sticker-info"
+            class="sticker-info enhanced"
           >
-            Package: {{ stickerMetadata.packageId }} | Sticker: {{ stickerMetadata.stickerId }}
+            <span class="sticker-id-info">
+              📦 {{ stickerMetadata.packageId }} · 🏷️ {{ stickerMetadata.stickerId }}
+            </span>
+            <span
+              v-if="currentStickerUrlIndex > 0"
+              class="cdn-info"
+              :title="stickerImageUrl || undefined"
+            >
+              · CDN {{ currentStickerUrlIndex + 1 }}
+            </span>
           </div>
         </template>
       </div>
@@ -351,7 +400,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import type { Message } from '@/types'
 import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
 import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
@@ -404,7 +453,6 @@ const showImagePreview = ref(false)
 const zoomLevel = ref(1)
 const imageLoaded = ref(false)
 const imageError = ref(false)
-const stickerLoadError = ref(false)
 const showActions = ref(false)
 const showActionsMenu = ref(false)
 
@@ -492,31 +540,42 @@ const stickerMetadata = computed(() => {
   }
 })
 
+// 貼圖 CDN 回退機制狀態
+const currentStickerUrlIndex = ref(0)
+const stickerLoadError = ref(false)
+const stickerLoading = ref(false)
+
+const stickerUrls = computed(() => {
+  if (!stickerMetadata.value) {return []}
+
+  return [
+    // Format 1: Android 平台（主要）
+    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/android/sticker.png`,
+    // Format 2: iPhone 平台（備用1）
+    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/iPhone/sticker.png`,
+    // Format 3: iPad 平台（備用2）
+    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/iPad/sticker.png`,
+    // Format 4: 舊版格式（最終回退）
+    `http://dl.stickershop.line.naver.jp/products/0/0/1/${stickerMetadata.value.packageId}/android/sticker.png`
+  ]
+})
+
 const stickerImageUrl = computed(() => {
   console.log('🔍 [Sticker Debug] Computing sticker image URL...')
   console.log('🔍 [Sticker Debug] stickerMetadata.value:', stickerMetadata.value)
-  
-  if (!stickerMetadata.value) {
-    console.log('🔍 [Sticker Debug] No sticker metadata, returning null')
+
+  if (!stickerUrls.value.length) {
+    console.log('🔍 [Sticker Debug] No sticker URLs available')
     return null
   }
-  
-  // Correct LINE sticker URL formats based on 2025 documentation
-  const urls = [
-    // Format 1: Individual sticker (most likely to work)
-    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/android/sticker.png`,
-    // Format 2: Alternative with different platform
-    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/iPhone/sticker.png`,
-    // Format 3: Legacy format
-    `http://dl.stickershop.line.naver.jp/products/0/0/1/${stickerMetadata.value.packageId}/android/sticker.png`
-  ]
-  
-  const finalUrl = urls[0] // Start with android format
-  console.log('🔍 [Sticker Debug] Generated sticker URL:', finalUrl)
-  console.log('🔍 [Sticker Debug] PackageId:', stickerMetadata.value.packageId)
-  console.log('🔍 [Sticker Debug] StickerId:', stickerMetadata.value.stickerId)
-  
-  return finalUrl
+
+  const currentUrl = stickerUrls.value[currentStickerUrlIndex.value]
+  console.log('🔍 [Sticker Debug] Current URL index:', currentStickerUrlIndex.value)
+  console.log('🔍 [Sticker Debug] Generated sticker URL:', currentUrl)
+  console.log('🔍 [Sticker Debug] PackageId:', stickerMetadata.value?.packageId)
+  console.log('🔍 [Sticker Debug] StickerId:', stickerMetadata.value?.stickerId)
+
+  return currentUrl
 })
 
 // 处理消息内容，使用智能emoji渲染器
@@ -744,18 +803,52 @@ const onImageError = () => {
   emit('image-error', props.message)
 }
 
-// Sticker error handler
-const onStickerError = () => {
-  console.warn('❌ [Sticker Debug] Failed to load sticker image for sticker:', stickerMetadata.value?.stickerId)
-  console.warn('❌ [Sticker Debug] Failed URL:', stickerImageUrl.value)
-  stickerLoadError.value = true
+// 貼圖載入開始
+const onStickerLoadStart = () => {
+  stickerLoading.value = true
+  console.log('🔄 [Sticker Debug] Starting to load sticker...')
 }
 
-// Sticker load success handler
-const onStickerLoad = () => {
-  console.log('✅ [Sticker Debug] Sticker image loaded successfully:', stickerMetadata.value?.stickerId)
-  stickerLoadError.value = false
+// 貼圖錯誤處理 - 智能 CDN 回退
+const onStickerError = () => {
+  const currentUrl = stickerUrls.value[currentStickerUrlIndex.value]
+  console.warn('❌ [Sticker Debug] Failed to load sticker from URL:', currentUrl)
+  console.warn('❌ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
+
+  // 嘗試下一個 CDN 源
+  if (currentStickerUrlIndex.value < stickerUrls.value.length - 1) {
+    currentStickerUrlIndex.value++
+    console.log('🔄 [Sticker Debug] Trying fallback URL index:', currentStickerUrlIndex.value)
+    console.log('🔄 [Sticker Debug] Next URL:', stickerUrls.value[currentStickerUrlIndex.value])
+
+    // 重新觸發載入（透過重設 key 強制重新渲染）
+    nextTick(() => {
+      stickerLoading.value = true
+    })
+  } else {
+    // 所有 URL 都失敗了
+    console.error('💥 [Sticker Debug] All CDN sources failed for sticker:', stickerMetadata.value?.stickerId)
+    stickerLoadError.value = true
+    stickerLoading.value = false
+  }
 }
+
+// 貼圖載入成功
+const onStickerLoad = () => {
+  console.log('✅ [Sticker Debug] Sticker loaded successfully from URL index:', currentStickerUrlIndex.value)
+  console.log('✅ [Sticker Debug] Loaded URL:', stickerImageUrl.value)
+  console.log('✅ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
+
+  stickerLoadError.value = false
+  stickerLoading.value = false
+}
+
+// 重設貼圖狀態（當 sticker metadata 改變時）
+watch(() => stickerMetadata.value, () => {
+  currentStickerUrlIndex.value = 0
+  stickerLoadError.value = false
+  stickerLoading.value = false
+}, { deep: true })
 
 // File download
 const downloadFile = () => {
@@ -1470,6 +1563,214 @@ const selectMessage = () => {
 
 .message-outgoing .sticker-info {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* Enhanced Sticker Loading States */
+.sticker-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.sticker-loading-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: var(--space-2);
+}
+
+.sticker-skeleton {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--radius-lg);
+}
+
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.spinner-ring {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--gray-300);
+  border-top: 2px solid var(--primary-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.message-outgoing .loading-text {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-outgoing .sticker-skeleton {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.2) 75%);
+  background-size: 200% 100%;
+}
+
+.message-outgoing .spinner-ring {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.8);
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Enhanced Sticker Placeholder */
+.sticker-placeholder.enhanced {
+  min-height: 120px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+  border: 2px dashed var(--gray-300);
+  transition: all var(--transition-fast);
+}
+
+.sticker-icon-large {
+  margin-bottom: var(--space-3);
+}
+
+.sticker-emoji {
+  font-size: 3rem;
+  opacity: 0.6;
+  animation: bounce 2s infinite;
+}
+
+.sticker-fallback-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sticker-error-hint {
+  font-size: 0.7rem;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.message-outgoing .sticker-placeholder.enhanced {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-outgoing .sticker-error-hint {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-8px); }
+  60% { transform: translateY(-4px); }
+}
+
+/* CDN Fallback Indicator */
+.cdn-fallback-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--amber-500);
+  color: white;
+  border-radius: var(--radius-full);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(245, 158, 11, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+    transform: scale(1.1);
+  }
+}
+
+/* Enhanced Sticker Info */
+.sticker-info.enhanced {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--gray-100);
+  border-radius: var(--radius-md);
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+.sticker-id-info {
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.cdn-info {
+  color: var(--amber-600);
+  font-weight: 600;
+  font-size: 0.6rem;
+}
+
+.message-outgoing .sticker-info.enhanced {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.message-outgoing .sticker-id-info {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-outgoing .cdn-info {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+  .sticker-loading-container,
+  .sticker-image-container {
+    width: 100px !important;
+    height: 100px !important;
+  }
+
+  .sticker-placeholder.enhanced {
+    min-height: 100px;
+    padding: var(--space-3);
+  }
+
+  .sticker-emoji {
+    font-size: 2rem;
+  }
+
+  .sticker-info.enhanced {
+    font-size: 0.6rem;
+  }
 }
 
 /* Message Actions Styles */

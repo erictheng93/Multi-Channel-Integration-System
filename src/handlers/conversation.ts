@@ -14,7 +14,7 @@ import {
 } from '../utils/api-response';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql, eq, and, desc, inArray, count, aliasedTable } from 'drizzle-orm';
-import { realtimeQueueHandler } from './realtime-queue';
+import { realtime } from '@modules/realtime';
 import { conversations as conversationTable, agents, conversationTransfers, teams, conversationTags } from '../db/schema';
 
 const conversations = new Hono<HonoContext>();
@@ -51,11 +51,8 @@ conversations.get('/', async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversations error:', error);
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -106,11 +103,8 @@ conversations.get('/:id', async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversation error:', error);
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -168,7 +162,7 @@ conversations.post('/:id/messages', async (c) => {
 
     // 🚀 事件驅動推送：立即推送新消息事件到隊列
     try {
-      await realtimeQueueHandler.createAndQueueEvent(
+      await realtime.createEvent(
         'message_created',
         {
           messageId: message?.id?.toString() || '',
@@ -189,8 +183,7 @@ conversations.post('/:id/messages', async (c) => {
           userIds: conversation.assignedUserId ? [parseInt(conversation.assignedUserId)] : []
         },
         'high', // 消息創建是高優先級事件
-        c.env,
-        'agent'
+        'user'
       );
       console.log(`🚀 [Message] Event queued for message ${message?.id || 'unknown'}`);
     } catch (eventError) {
@@ -207,7 +200,7 @@ conversations.post('/:id/messages', async (c) => {
 
       // 🚀 推送對話狀態更新事件
       try {
-        await realtimeQueueHandler.createAndQueueEvent(
+        await realtime.createEvent(
           'conversation_status_changed',
           {
             conversationId: parseInt(conversationId),
@@ -222,8 +215,7 @@ conversations.post('/:id/messages', async (c) => {
             userIds: [parseInt(agent!.id)]
           },
           'normal',
-          c.env,
-          'agent'
+          'user'
         );
       } catch (eventError) {
         console.error('❌ [Conversation] Failed to queue status change event:', eventError);
@@ -236,11 +228,8 @@ conversations.post('/:id/messages', async (c) => {
     });
 
   } catch (error) {
-    console.error('Send message error:', error);
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -303,11 +292,8 @@ conversations.patch('/:id/status', async (c) => {
     });
 
   } catch (error) {
-    console.error('Update conversation status error:', error);
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -345,11 +331,8 @@ conversations.post('/:id/mark-read', async (c) => {
     });
 
   } catch (error) {
-    console.error('Mark messages as read error:', error);
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -415,7 +398,7 @@ const handlerMethods = {
           fromUserId: conversation.assignedUserId,
           toUserId: toUserId || null,
           transferReason: reason || null,
-          transferredBy: payload?.userId,
+          transferredBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system',
           transferType: transferType
         });
 
@@ -466,7 +449,7 @@ const handlerMethods = {
           .values({
             conversationId: conversationId,
             tagId: tagId,
-            assignedBy: payload?.userId
+            assignedBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system'
           })
           .onConflictDoNothing()
       );
@@ -679,7 +662,7 @@ const handlerMethods = {
                   .values({
                     conversationId: convId, // 保持字符串
                     tagId: parseInt(tagId),
-                    assignedBy: payload?.userId
+                    assignedBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system'
                   })
                   .onConflictDoNothing()
               );

@@ -1,5 +1,16 @@
-// 訊息撤回服務 - 優化版本
-// Message Recall Service - Optimized Version
+/**
+ * 訊息撤回服務 - 優化版本
+ * Message Recall Service - Optimized Version
+ *
+ * ⚠️ DEPRECATED: 此服務已棄用
+ *
+ * 原因：已從 Cloudflare Queues + KV 方案遷移到 Durable Objects
+ * 替代方案：使用 DelayedMessageBuffer Durable Object
+ *
+ * 此文件保留僅用於向後兼容和參考，未來版本將移除
+ *
+ * @deprecated 使用 DelayedMessageBuffer 替代
+ */
 
 import type { Bindings } from '../types';
 import type {

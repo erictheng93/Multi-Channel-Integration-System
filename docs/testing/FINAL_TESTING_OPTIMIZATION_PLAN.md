@@ -136,7 +136,7 @@ export const createMockRoute = (overrides = {}) => ({
 
 ```typescript
 // tests/unit/integrations/facebook-adapter.test.ts
-import { FacebookAdapter } from '../../../src/integrations/platform-adapter'
+import { FacebookIntegrationService } from '../../../src/modules/integration/services/facebook-integration-service'
 
 describe('FacebookAdapter', () => {
   let adapter: FacebookAdapter

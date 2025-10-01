@@ -1,0 +1,177 @@
+{
+  "$schema": "./sync.config.schema.json",
+  "description": "數據庫自動同步配置文件",
+  "version": "1.0.0",
+
+  "environments": {
+    "development": {
+      "description": "開發環境配置",
+      "sync": {
+        "source": "production",
+        "target": "local",
+        "mode": "incremental",
+        "excludeSensitive": true,
+        "backupBeforeSync": true,
+        "tables": [
+          "customers",
+          "conversations",
+          "messages",
+          "teams",
+          "tags",
+          "qr_codes"
+        ]
+      },
+      "schedule": {
+        "enabled": true,
+        "interval": 120,
+        "timeWindow": {
+          "start": "02:00",
+          "end": "06:00"
+        },
+        "workdaysOnly": false
+      },
+      "monitoring": {
+        "healthCheckInterval": 15,
+        "enableAlerts": true,
+        "retentionDays": 30
+      }
+    },
+
+    "staging": {
+      "description": "測試環境配置",
+      "sync": {
+        "source": "production",
+        "target": "staging",
+        "mode": "full",
+        "excludeSensitive": false,
+        "backupBeforeSync": true,
+        "tables": ["*"]
+      },
+      "schedule": {
+        "enabled": true,
+        "interval": 240,
+        "timeWindow": {
+          "start": "01:00",
+          "end": "05:00"
+        },
+        "workdaysOnly": true
+      }
+    },
+
+    "production": {
+      "description": "生產環境配置（僅備份和監控）",
+      "sync": {
+        "source": "production",
+        "target": "backup",
+        "mode": "backup-only",
+        "excludeSensitive": false,
+        "backupBeforeSync": false
+      },
+      "schedule": {
+        "enabled": true,
+        "interval": 60,
+        "timeWindow": {
+          "start": "03:00",
+          "end": "04:00"
+        },
+        "workdaysOnly": false
+      },
+      "monitoring": {
+        "healthCheckInterval": 5,
+        "enableAlerts": true,
+        "retentionDays": 90
+      }
+    }
+  },
+
+  "security": {
+    "sensitiveFields": {
+      "agents": ["password_hash", "email"],
+      "system_settings": ["*"],
+      "activities": ["ip_address", "user_agent"]
+    },
+    "encryption": {
+      "enabled": false,
+      "algorithm": "AES-256-GCM",
+      "keyFile": "./.encryption.key"
+    },
+    "audit": {
+      "enabled": true,
+      "logAllOperations": true,
+      "retentionDays": 365
+    }
+  },
+
+  "performance": {
+    "batchSize": 1000,
+    "maxConcurrentConnections": 5,
+    "timeoutSeconds": 300,
+    "retryAttempts": 3,
+    "retryDelaySeconds": 30
+  },
+
+  "notifications": {
+    "channels": {
+      "email": {
+        "enabled": false,
+        "recipients": ["admin@example.com"],
+        "smtp": {
+          "host": "smtp.example.com",
+          "port": 587,
+          "secure": true,
+          "auth": {
+            "user": "${SMTP_USER}",
+            "pass": "${SMTP_PASS}"
+          }
+        }
+      },
+      "webhook": {
+        "enabled": false,
+        "url": "${WEBHOOK_URL}",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer ${WEBHOOK_TOKEN}"
+        }
+      },
+      "slack": {
+        "enabled": false,
+        "webhook": "${SLACK_WEBHOOK}",
+        "channel": "#database-alerts",
+        "username": "DB Sync Bot"
+      }
+    },
+    "triggers": {
+      "onSuccess": ["slack"],
+      "onWarning": ["email", "slack"],
+      "onError": ["email", "slack", "webhook"],
+      "onHealthCheck": []
+    }
+  },
+
+  "reporting": {
+    "enabled": true,
+    "formats": ["json", "html"],
+    "includeMetrics": true,
+    "includeLogs": false,
+    "retentionDays": 60,
+    "outputDir": "./sync-reports"
+  },
+
+  "advanced": {
+    "customScripts": {
+      "preSyncHook": null,
+      "postSyncHook": null,
+      "dataTransformHook": null
+    },
+    "conflictResolution": {
+      "strategy": "source-wins",
+      "customResolver": null
+    },
+    "validation": {
+      "enabled": true,
+      "checksumValidation": true,
+      "foreignKeyValidation": true,
+      "customValidators": []
+    }
+  }
+}

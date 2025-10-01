@@ -247,33 +247,23 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
 
 // getUserByUsername function removed - using email for authentication instead
 
-// ✅ 優化：單次查詢完整認證（包含密碼策略檢查）
+// ✅ 優化：單次查詢完整認證（使用原始SQL避免Drizzle問題）
 export async function authenticateUser(
   db: D1Database,
   email: string,
   password: string
 ): Promise<{ user: DbUser | null; passwordPolicy?: string; accountStatus?: string }> {
-  const drizzleDb = drizzle(db);
-  
-  // 🚀 單次查詢獲取所有必要資料
-  const user = await drizzleDb
-    .select({
-      id: agents.id,
-      email: agents.email,
-      password_hash: agents.passwordHash,
-      display_name: agents.displayName,
-      role: agents.role,
-      team_id: agents.teamId,
-      team_name: teams.name,
-      is_active: agents.isActive,
-      password_policy: agents.passwordPolicy,  // ✅ 同時獲取密碼策略
-      created_at: agents.createdAt,
-      updated_at: agents.updatedAt
-    })
-    .from(agents)
-    .leftJoin(teams, eq(agents.teamId, teams.id))
-    .where(eq(agents.email, email))  // ✅ 移除 isActive 條件，統一在邏輯中處理
-    .get();
+
+  // 🚀 使用原始SQL查詢避免Drizzle ORM問題
+  const query = `
+    SELECT id, email, password_hash, display_name, role, team_id,
+           is_active, password_policy, created_at, updated_at
+    FROM agents
+    WHERE email = ?
+  `;
+
+  const result = await db.prepare(query).bind(email).first();
+  const user = result as any;
 
   // 用戶不存在
   if (!user) {
@@ -305,12 +295,12 @@ export async function authenticateUser(
     passwordHash: '', // Not needed for return
     passwordPolicy: user.password_policy || 'changeable',
     lastLoginAt: null
-  }, user.team_name || undefined);
+  });
 
-  return { 
-    user: authenticatedUser, 
+  return {
+    user: authenticatedUser,
     passwordPolicy: user.password_policy || 'changeable',
-    accountStatus: 'authenticated'
+    accountStatus: 'success'
   };
 }
 
@@ -371,14 +361,13 @@ export async function generateSystemToken(
 ): Promise<string> {
   const payload = {
     userId,
+    username: userId, // Use userId as username for system tokens
     displayName,
     role,
-    teamId,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + expiresIn
+    teamId
   };
 
-  return await signJWT(payload, secret);
+  return await signJWT(payload, secret, expiresIn);
 }
 
 // 生成長期監控系統令牌 (用於內部 API 調用)
@@ -388,6 +377,7 @@ export async function generateMonitoringToken(
 ): Promise<string> {
   const payload = {
     userId: 'system-monitoring',
+    username: 'system-monitoring',
     displayName: 'System Monitoring',
     role: 'admin' as const,
     teamId: 1,

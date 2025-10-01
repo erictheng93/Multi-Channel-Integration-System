@@ -64,7 +64,7 @@ export const notificationHandler = {
       const limit = parseInt(pageSize);
 
       // 使用 Drizzle ORM 構建查詢
-      const whereConditions = [eq(notifications.userId, payload?.userId)];
+      const whereConditions = [eq(notifications.userId, typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || '')];
 
       // 通知類型篩選
       if (type) {
@@ -166,7 +166,7 @@ export const notificationHandler = {
 
       // 構建更新條件
       const updateConditions = [
-        eq(notifications.userId, payload?.userId),
+        eq(notifications.userId, typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''),
         eq(notifications.isRead, false)
       ];
 

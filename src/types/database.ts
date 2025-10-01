@@ -78,7 +78,7 @@ export interface ConversationDbRecord {
 // Message database record types
 export interface MessageDbRecord {
   id: string;
-  conversation_id: number;
+  conversation_id: string; // Fixed: Changed from number to string to match conversations.id (TEXT)
   sender_type: 'customer' | 'agent' | 'system';
   sender_id: number | null;
   content: string;

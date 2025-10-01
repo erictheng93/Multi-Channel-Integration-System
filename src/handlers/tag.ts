@@ -172,7 +172,7 @@ export const tagHandler = {
           color: color,
           description: description || null,
           teamId: teamId || null,
-          createdBy: payload?.userId
+          createdBy: typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || 'system'
         })
         .returning();
 

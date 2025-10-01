@@ -1,6 +1,7 @@
 // 客戶管理處理器 - 主要實現
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
+import { handleApiError } from '../utils/api-response';
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -19,12 +20,8 @@ customerHandler.get('/', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting customers:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -55,12 +52,8 @@ customerHandler.get('/:customerId', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting customer:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -92,12 +85,8 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting customer by platform ID:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 

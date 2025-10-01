@@ -1,0 +1,172 @@
+-- Emergency Migration: Create Missing Tables
+-- Created: 2025-09-25
+-- Purpose: Create all missing tables to sync with production
+
+-- Create customers table
+CREATE TABLE IF NOT EXISTS `customers` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `platform` TEXT NOT NULL,
+  `platform_user_id` TEXT NOT NULL,
+  `display_name` TEXT,
+  `avatar_url` TEXT,
+  `phone` TEXT,
+  `email` TEXT,
+  `source_team_id` INTEGER,
+  `metadata` TEXT,
+  `created_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `profile_updated_at` DATETIME DEFAULT NULL,
+  `profile_data` TEXT DEFAULT NULL,
+  UNIQUE(`platform`, `platform_user_id`)
+);
+
+-- Create activities table
+CREATE TABLE IF NOT EXISTS `activities` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `user_id` TEXT NOT NULL,
+  `user_name` TEXT NOT NULL,
+  `user_role` TEXT NOT NULL,
+  `action` TEXT NOT NULL,
+  `resource_type` TEXT NOT NULL,
+  `resource_id` TEXT,
+  `details` TEXT,
+  `ip_address` TEXT,
+  `user_agent` TEXT,
+  `created_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create system_settings table
+CREATE TABLE IF NOT EXISTS `system_settings` (
+  `key` TEXT PRIMARY KEY,
+  `value` TEXT NOT NULL,
+  `created_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create notifications table
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` TEXT PRIMARY KEY,
+  `user_id` TEXT NOT NULL REFERENCES agents(id),
+  `type` TEXT NOT NULL,
+  `title` TEXT NOT NULL,
+  `content` TEXT NOT NULL,
+  `data` TEXT,
+  `is_read` INTEGER DEFAULT 0,
+  `read_at` TEXT,
+  `expires_at` TEXT,
+  `created_at` TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create tags table
+CREATE TABLE IF NOT EXISTS `tags` (
+  `id` INTEGER PRIMARY KEY,
+  `name` TEXT NOT NULL,
+  `color` TEXT NOT NULL DEFAULT '#3B82F6',
+  `description` TEXT,
+  `team_id` INTEGER REFERENCES teams(id),
+  `is_active` INTEGER DEFAULT 1,
+  `created_by` TEXT NOT NULL REFERENCES agents(id),
+  `created_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(`name`, `team_id`)
+);
+
+-- Create customer_tags junction table
+CREATE TABLE IF NOT EXISTS `customer_tags` (
+  `customer_id` INTEGER NOT NULL REFERENCES customers(id),
+  `tag_id` INTEGER NOT NULL REFERENCES tags(id),
+  `assigned_by` TEXT NOT NULL REFERENCES agents(id),
+  `assigned_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`customer_id`, `tag_id`)
+);
+
+-- Create conversation_tags junction table
+CREATE TABLE IF NOT EXISTS `conversation_tags` (
+  `conversation_id` TEXT NOT NULL REFERENCES conversations(id),
+  `tag_id` INTEGER NOT NULL REFERENCES tags(id),
+  `assigned_by` TEXT NOT NULL REFERENCES agents(id),
+  `assigned_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`conversation_id`, `tag_id`)
+);
+
+-- Create conversation_transfers table
+CREATE TABLE IF NOT EXISTS `conversation_transfers` (
+  `id` INTEGER PRIMARY KEY,
+  `conversation_id` TEXT NOT NULL REFERENCES conversations(id),
+  `from_team_id` INTEGER REFERENCES teams(id),
+  `to_team_id` INTEGER REFERENCES teams(id),
+  `from_user_id` TEXT REFERENCES agents(id),
+  `to_user_id` TEXT REFERENCES agents(id),
+  `transfer_reason` TEXT,
+  `transferred_by` TEXT NOT NULL REFERENCES agents(id),
+  `transfer_type` TEXT DEFAULT 'manual',
+  `created_at` TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create message_recall_logs table
+CREATE TABLE IF NOT EXISTS `message_recall_logs` (
+  `id` INTEGER PRIMARY KEY,
+  `message_id` TEXT NOT NULL,
+  `user_id` TEXT NOT NULL REFERENCES agents(id),
+  `action` TEXT NOT NULL,
+  `created_at` TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create qr_codes table
+CREATE TABLE IF NOT EXISTS `qr_codes` (
+  `id` TEXT PRIMARY KEY,
+  `team_id` INTEGER NOT NULL,
+  `token` TEXT NOT NULL UNIQUE,
+  `line_url` TEXT NOT NULL,
+  `qr_code_image_url` TEXT NOT NULL,
+  `campaign_name` TEXT,
+  `description` TEXT,
+  `usage_count` INTEGER DEFAULT 0,
+  `max_uses` INTEGER,
+  `is_active` INTEGER DEFAULT 1,
+  `expires_at` TEXT,
+  `created_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create qr_code_scans table
+CREATE TABLE IF NOT EXISTS `qr_code_scans` (
+  `id` TEXT PRIMARY KEY,
+  `qr_code_id` TEXT NOT NULL,
+  `customer_id` INTEGER,
+  `platform` TEXT NOT NULL,
+  `platform_user_id` TEXT,
+  `scan_metadata` TEXT,
+  `scanned_at` TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create qr_code_analytics table
+CREATE TABLE IF NOT EXISTS `qr_code_analytics` (
+  `id` INTEGER PRIMARY KEY,
+  `qr_code_id` TEXT NOT NULL REFERENCES qr_codes(id),
+  `date` TEXT NOT NULL,
+  `total_scans` INTEGER DEFAULT 0,
+  `unique_scans` INTEGER DEFAULT 0,
+  `new_customers` INTEGER DEFAULT 0,
+  `returning_customers` INTEGER DEFAULT 0,
+  `created_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(`qr_code_id`, `date`)
+);
+
+-- Update agents table to include missing fields
+ALTER TABLE `agents` ADD COLUMN `last_active` TEXT;
+
+-- Update customers table profile fields if they don't exist
+-- ALTER TABLE `customers` ADD COLUMN `profile_updated_at` DATETIME DEFAULT NULL;
+-- ALTER TABLE `customers` ADD COLUMN `profile_data` TEXT DEFAULT NULL;
+
+-- Update conversations table with missing fields
+ALTER TABLE `conversations` ADD COLUMN `priority` TEXT DEFAULT 'normal';
+ALTER TABLE `conversations` ADD COLUMN `first_response_at` TEXT;
+ALTER TABLE `conversations` ADD COLUMN `closed_at` TEXT;
+ALTER TABLE `conversations` ADD COLUMN `internal_notes` TEXT;
+
+-- Update file_attachments table field name (mimeType -> mime_type)
+-- This will be handled in a separate migration to avoid conflicts
+
+-- Migration completed: All missing tables now created

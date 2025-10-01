@@ -30,17 +30,22 @@ migrations_dir = "migrations"
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "ace3f7202e6a4dd8b98c50e9b91b2431"
+preview_id = "ace3f7202e6a4dd8b98c50e9b91b2431"
 
 [[kv_namespaces]]
 binding = "CACHE"
 id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
+preview_id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
 
 # 生產環境 R2 存儲
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "multi-channel-platform-attachments"
+preview_bucket_name = "multi-channel-platform-attachments"
 
 # 生產環境 Queue - 代理延遲消息處理
+# ⚠️ DEPRECATED: 延遲訊息已遷移到 Durable Objects (DelayedMessageBuffer)
+# 保留此配置僅用於向後兼容，未來版本將移除
 [[queues.producers]]
 binding = "AGENT_QUEUE"
 queue = "agent-queue"
@@ -82,6 +87,11 @@ class_name = "MessageBroadcaster"
 name = "DELAYED_MESSAGE_PROCESSOR"
 class_name = "DelayedMessageProcessor"
 
+# DelayedMessageBuffer - Instant-cancel undo buffer for agent messages
+[[durable_objects.bindings]]
+name = "DELAYED_MESSAGE_BUFFER"
+class_name = "DelayedMessageBuffer"
+
 # DistributedLock - Cross-Durable Object coordination and locking
 [[durable_objects.bindings]]
 name = "DISTRIBUTED_LOCK"
@@ -89,6 +99,7 @@ class_name = "LockCoordinator"
 
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
+# Initial migration - Original Durable Objects
 [[migrations]]
 tag = "v1"
 new_classes = [
@@ -98,6 +109,11 @@ new_classes = [
   "DelayedMessageProcessor",
   "LockCoordinator"
 ]
+
+# Migration v2 - Add DelayedMessageBuffer
+[[migrations]]
+tag = "v2"
+new_classes = ["DelayedMessageBuffer"]
 
 # Development environment
 [env.development]

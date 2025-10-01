@@ -5,6 +5,7 @@ import { ERROR_MESSAGES } from '../utils/error-messages';
 import { QRCodeService } from '../services/qrcode-service';
 import { getTeamByQRCode } from '../utils/team';
 import { jwtAuth } from '../middleware/auth';
+import { handleApiError } from '../utils/api-response';
 
 const qrcodeHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -21,12 +22,8 @@ qrcodeHandler.delete('/:token', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Deactivate QR code error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_DEACTIVATE_QR_CODE,
-      timestamp: new Date().toISOString()
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 

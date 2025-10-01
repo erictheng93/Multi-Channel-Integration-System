@@ -1,5 +1,13 @@
 echo "🔍 Running pre-commit checks..."
 
+# Check import paths (prevent deep relative paths)
+echo "Checking import paths..."
+npx tsx scripts/check-import-paths.ts
+if [ $? -ne 0 ]; then
+  echo "⚠️  Import path check failed (use --no-verify to bypass)"
+  exit 1
+fi
+
 # Backend TypeScript check
 echo "Checking backend TypeScript..."
 npx tsc --noEmit

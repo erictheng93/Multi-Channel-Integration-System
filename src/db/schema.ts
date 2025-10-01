@@ -296,3 +296,168 @@ export type NewConversationTransfer = typeof conversationTransfers.$inferInsert;
 export type NewCustomer = typeof customers.$inferInsert;
 export type NewConversation = typeof conversations.$inferInsert;
 export type Agent = typeof agents.$inferSelect;
+
+// ======================== Reports System Tables ========================
+
+// Reports main table - 報告系統主表
+export const reports = sqliteTable('reports', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description'),
+  type: text('type').notNull(), // 'conversation_summary', 'agent_performance', etc.
+  format: text('format').notNull(), // 'json', 'csv', 'excel', 'pdf', 'html'
+  status: text('status').notNull().default('pending'), // 'pending', 'generating', 'completed', 'failed'
+
+  // Ownership
+  createdBy: text('created_by').notNull(),
+  teamId: integer('team_id').references(() => teams.id),
+
+  // Metadata
+  timeRange: text('time_range'),
+  startDate: text('start_date'),
+  endDate: text('end_date'),
+  filters: text('filters'), // JSON string
+  options: text('options'), // JSON string
+
+  // Generation tracking
+  generationStartedAt: text('generation_started_at'),
+  completedAt: text('completed_at'),
+  failedAt: text('failed_at'),
+  errorMessage: text('error_message'),
+  executionTime: integer('execution_time'), // seconds
+
+  // File information
+  downloadUrl: text('download_url'),
+  fileSize: integer('file_size'), // bytes
+  fileHash: text('file_hash'),
+
+  // Lifecycle
+  downloadedCount: integer('downloaded_count').default(0),
+  lastDownloadedAt: text('last_downloaded_at'),
+  expiresAt: text('expires_at'),
+  deletedAt: text('deleted_at'),
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Scheduled reports table - 排程報告表
+export const scheduledReports = sqliteTable('scheduled_reports', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+
+  // Report configuration
+  reportType: text('report_type').notNull(),
+  reportFormat: text('report_format').notNull().default('excel'),
+  reportParams: text('report_params').notNull(), // JSON string
+
+  // Schedule configuration
+  scheduleType: text('schedule_type').notNull(), // 'daily', 'weekly', 'monthly', 'custom'
+  scheduleConfig: text('schedule_config').notNull(), // JSON string
+  timezone: text('timezone').default('UTC'),
+
+  // Execution settings
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  maxRetries: integer('max_retries').default(3),
+  retryDelayMinutes: integer('retry_delay_minutes').default(30),
+
+  // Ownership
+  createdBy: text('created_by').notNull(),
+  teamId: integer('team_id').references(() => teams.id),
+
+  // Notification
+  notifyOnCompletion: integer('notify_on_completion', { mode: 'boolean' }).default(true),
+  notifyOnFailure: integer('notify_on_failure', { mode: 'boolean' }).default(true),
+  notificationEmails: text('notification_emails'), // JSON array
+
+  // Lifecycle
+  nextExecutionAt: text('next_execution_at'),
+  lastExecutionAt: text('last_execution_at'),
+  lastExecutionStatus: text('last_execution_status'),
+  executionCount: integer('execution_count').default(0),
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'),
+});
+
+// Scheduled report executions table - 排程執行歷史表
+export const scheduledReportExecutions = sqliteTable('scheduled_report_executions', {
+  id: text('id').primaryKey(),
+  scheduledReportId: text('scheduled_report_id').notNull().references(() => scheduledReports.id),
+
+  // Execution details
+  executionStartedAt: text('execution_started_at').notNull(),
+  executionCompletedAt: text('execution_completed_at'),
+  executionStatus: text('execution_status').notNull(), // 'running', 'success', 'failed', 'cancelled'
+  executionDuration: integer('execution_duration'), // seconds
+
+  // Result
+  generatedReportId: text('generated_report_id').references(() => reports.id),
+  errorMessage: text('error_message'),
+  retryCount: integer('retry_count').default(0),
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Report download history table - 報告下載歷史表
+export const reportDownloadHistory = sqliteTable('report_download_history', {
+  id: text('id').primaryKey(),
+  reportId: text('report_id').notNull().references(() => reports.id),
+
+  // Download details
+  downloadedBy: text('downloaded_by').notNull(),
+  downloadedAt: text('downloaded_at').default(sql`CURRENT_TIMESTAMP`),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+
+  // Download method
+  downloadMethod: text('download_method'), // 'manual', 'scheduled', 'api'
+  downloadSize: integer('download_size'), // bytes
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Report templates table - 報告模板表
+export const reportTemplates = sqliteTable('report_templates', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+
+  // Template configuration
+  reportType: text('report_type').notNull(),
+  templateConfig: text('template_config').notNull(), // JSON string
+  previewImageUrl: text('preview_image_url'),
+
+  // Categorization
+  category: text('category'), // 'operational', 'analytical', 'executive', 'compliance'
+  tags: text('tags'), // JSON array
+
+  // Usage tracking
+  isSystemTemplate: integer('is_system_template', { mode: 'boolean' }).default(false),
+  isPublic: integer('is_public', { mode: 'boolean' }).default(false),
+  createdBy: text('created_by').notNull(),
+  teamId: integer('team_id').references(() => teams.id),
+
+  // Popularity
+  usageCount: integer('usage_count').default(0),
+  lastUsedAt: text('last_used_at'),
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'),
+});
+
+// Export types for reports system
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
+export type ScheduledReport = typeof scheduledReports.$inferSelect;
+export type NewScheduledReport = typeof scheduledReports.$inferInsert;
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type NewReportTemplate = typeof reportTemplates.$inferInsert;

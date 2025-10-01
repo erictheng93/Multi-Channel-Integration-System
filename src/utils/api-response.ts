@@ -133,6 +133,14 @@ export function internalErrorResponse(c: Context, message: string = 'Internal se
   }, HTTP_STATUS.INTERNAL_SERVER_ERROR)
 }
 
+// 錯誤請求響應
+export function badRequestResponse(c: Context, message: string = 'Bad request'): Response {
+  return errorResponse(c, {
+    code: API_ERROR_CODES.VALIDATION_ERROR,
+    message
+  }, HTTP_STATUS.BAD_REQUEST)
+}
+
 // 錯誤處理中間件
 export function handleApiError(error: unknown, c: Context): Response {
   console.error('API Error:', error)

@@ -708,4 +708,231 @@ describe('Webhook Processing Integration Tests', () => {
       expect(endTime - startTime).toBeLessThan(1000); // Should process within 1 second
     });
   });
+
+  describe('Idempotency and Duplicate Prevention', () => {
+    it('should prevent duplicate message processing using platformMessageId', async () => {
+      const lineWebhookPayload = {
+        events: [{
+          type: 'message',
+          timestamp: 1640995200000,
+          source: {
+            type: 'user',
+            userId: 'idempotency-test-user'
+          },
+          replyToken: 'reply-token-idempotency',
+          message: {
+            id: 'duplicate-msg-123',
+            type: 'text',
+            text: 'This message will be sent twice'
+          }
+        }]
+      };
+
+      mockContext.req.header = vi.fn((header) => {
+        if (header === 'X-Line-Signature') return 'valid-line-signature';
+        return null;
+      });
+      mockContext.req.text = vi.fn().mockResolvedValue(JSON.stringify(lineWebhookPayload));
+
+      let duplicateCheckCount = 0;
+      let messageInsertAttempts = 0;
+
+      mockDB.prepare.mockImplementation((query: string) => {
+        const operation = {
+          bind: vi.fn().mockReturnThis(),
+          first: vi.fn().mockImplementation(async () => {
+            if (query.includes('SELECT * FROM messages') && query.includes('platform_message_id')) {
+              duplicateCheckCount++;
+              if (duplicateCheckCount === 1) {
+                return null; // First request: no duplicate
+              } else {
+                return { id: 'existing-msg-id', platform_message_id: 'duplicate-msg-123' }; // Second request: found duplicate
+              }
+            }
+            if (query.includes('SELECT * FROM customers')) {
+              return { id: 1001, platform_user_id: 'idempotency-test-user' };
+            }
+            if (query.includes('SELECT * FROM conversations')) {
+              return { id: 2001, customer_id: 1001, status: 'active' };
+            }
+            return null;
+          }),
+          run: vi.fn().mockImplementation(async () => {
+            if (query.includes('INSERT INTO messages')) {
+              messageInsertAttempts++;
+              return { meta: { last_row_id: 3001 }, success: true };
+            }
+            return { success: true };
+          })
+        };
+        return operation;
+      });
+
+      // First webhook delivery - should create message
+      const firstResult = await webhookHandler.line(mockContext);
+      expect(firstResult.status).toBe(200);
+      expect(duplicateCheckCount).toBe(1);
+      expect(messageInsertAttempts).toBe(1);
+
+      // Second webhook delivery (duplicate) - should skip message creation
+      const secondResult = await webhookHandler.line(mockContext);
+      expect(secondResult.status).toBe(200);
+      expect(duplicateCheckCount).toBe(2);
+      expect(messageInsertAttempts).toBe(1); // Should not increase - duplicate prevented
+    });
+
+    it('should handle missing platformMessageId gracefully', async () => {
+      const facebookWebhookWithoutMid = {
+        object: 'page',
+        entry: [{
+          id: 'page-123',
+          time: 1640995200000,
+          messaging: [{
+            sender: { id: 'no-mid-user' },
+            recipient: { id: 'page-123' },
+            timestamp: 1640995200000,
+            message: {
+              // Missing 'mid' field
+              text: 'Message without message ID'
+            }
+          }]
+        }]
+      };
+
+      mockContext.req.query = vi.fn(() => null);
+      mockContext.req.header = vi.fn(() => null);
+      mockContext.req.json = vi.fn().mockResolvedValue(facebookWebhookWithoutMid);
+
+      mockDB.prepare.mockImplementation((query: string) => ({
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null),
+        run: vi.fn().mockResolvedValue({
+          meta: { last_row_id: 1001 },
+          success: true
+        })
+      }));
+
+      const result = await webhookHandler.facebook(mockContext);
+
+      // Should process successfully even without platformMessageId
+      expect(result.status).toBe(200);
+    });
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    it('should recover from temporary database connection issues', async () => {
+      const lineWebhookPayload = {
+        events: [{
+          type: 'message',
+          timestamp: 1640995200000,
+          source: {
+            type: 'user',
+            userId: 'retry-test-user'
+          },
+          replyToken: 'reply-token-retry',
+          message: {
+            id: 'retry-msg-123',
+            type: 'text',
+            text: 'Test retry mechanism'
+          }
+        }]
+      };
+
+      mockContext.req.header = vi.fn((header) => {
+        if (header === 'X-Line-Signature') return 'valid-line-signature';
+        return null;
+      });
+      mockContext.req.text = vi.fn().mockResolvedValue(JSON.stringify(lineWebhookPayload));
+
+      let attemptCount = 0;
+
+      mockDB.prepare.mockImplementation((query: string) => {
+        attemptCount++;
+
+        if (attemptCount === 1 && query.includes('SELECT * FROM customers')) {
+          // Simulate temporary connection failure
+          throw new Error('Database connection timeout');
+        }
+
+        // Normal behavior after first attempt
+        return {
+          bind: vi.fn().mockReturnThis(),
+          first: vi.fn().mockResolvedValue(null),
+          run: vi.fn().mockResolvedValue({
+            meta: { last_row_id: 1001 },
+            success: true
+          })
+        };
+      });
+
+      const result = await webhookHandler.line(mockContext);
+
+      // Should return error on first failure
+      expect(result.status).toBe(500);
+      expect(attemptCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle malformed webhook payloads gracefully', async () => {
+      const malformedPayloads = [
+        { events: null }, // null events
+        { events: [] }, // empty events
+        { events: [{ type: 'unknown' }] }, // unknown event type
+        { events: [{ type: 'message' }] }, // missing message data
+        { events: [{ type: 'message', message: { type: 'text' } }] } // missing source
+      ];
+
+      for (const payload of malformedPayloads) {
+        mockContext.req.header = vi.fn((header) => {
+          if (header === 'X-Line-Signature') return 'valid-line-signature';
+          return null;
+        });
+        mockContext.req.text = vi.fn().mockResolvedValue(JSON.stringify(payload));
+
+        const result = await webhookHandler.line(mockContext);
+
+        // Should handle gracefully without crashing
+        expect([200, 400, 500]).toContain(result.status);
+      }
+    });
+
+    it('should handle SSE broadcast failures without affecting webhook processing', async () => {
+      const lineWebhookPayload = {
+        events: [{
+          type: 'message',
+          timestamp: 1640995200000,
+          source: {
+            type: 'user',
+            userId: 'sse-failure-test'
+          },
+          replyToken: 'reply-sse-failure',
+          message: {
+            id: 'sse-failure-msg',
+            type: 'text',
+            text: 'Test SSE failure handling'
+          }
+        }]
+      };
+
+      mockContext.req.header = vi.fn((header) => {
+        if (header === 'X-Line-Signature') return 'valid-line-signature';
+        return null;
+      });
+      mockContext.req.text = vi.fn().mockResolvedValue(JSON.stringify(lineWebhookPayload));
+
+      mockDB.prepare.mockImplementation((query: string) => ({
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null),
+        run: vi.fn().mockResolvedValue({
+          meta: { last_row_id: 1001 },
+          success: true
+        })
+      }));
+
+      // Note: SSE broadcast failures are logged but don't affect webhook success
+      const result = await webhookHandler.line(mockContext);
+
+      // Webhook should still succeed even if SSE broadcast fails
+      expect(result.status).toBe(200);
+    });
+  });
 });

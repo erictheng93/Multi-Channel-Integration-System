@@ -273,10 +273,10 @@ describe('Customer Main Handler', () => {
 
   describe('Error Handling', () => {
     it('should handle module import errors', async () => {
-      // Mock dynamic import failure
-      vi.doMock('../../../src/utils/database', () => {
-        throw new Error('Module import failed');
-      });
+      // Simulate critical database failure that would occur on module import
+      mockDatabaseUtils.getAllCustomers.mockRejectedValue(
+        new Error('Module import failed')
+      );
 
       const response = await app.request('/api/customers');
 
@@ -284,10 +284,14 @@ describe('Customer Main Handler', () => {
 
       const result = await response.json();
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Unknown error');
+      expect(result.error).toBe('Module import failed');
+
+      // Restore mock for subsequent tests
+      vi.clearAllMocks();
     });
 
     it('should handle unexpected errors gracefully', async () => {
+      // Mock a synchronous error during execution
       mockDatabaseUtils.getAllCustomers.mockImplementation(() => {
         throw new TypeError('Unexpected error');
       });
@@ -299,6 +303,9 @@ describe('Customer Main Handler', () => {
       const result = await response.json();
       expect(result.success).toBe(false);
       expect(result.error).toBe('Unexpected error');
+
+      // Restore mock for subsequent tests
+      vi.clearAllMocks();
     });
   });
 });

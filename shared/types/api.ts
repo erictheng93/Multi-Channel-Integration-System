@@ -14,6 +14,14 @@ export interface StandardApiResponse<T = unknown> {
   message?: string
   timestamp?: string
   requestId?: string
+  metadata?: {
+    errorCode?: string
+    processedAt?: string
+    queryTime?: number
+    cacheHit?: boolean
+    totalRecords?: number
+    [key: string]: unknown
+  }
 }
 
 // 分頁響應格式

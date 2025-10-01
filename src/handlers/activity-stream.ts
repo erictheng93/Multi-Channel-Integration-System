@@ -1,7 +1,7 @@
-// SSE 活動流處理器
+// SSE 活動流處理器 - Updated to use modularized Activities
 import { Context } from 'hono'
 import type { Bindings } from '../types'
-import { ActivityService } from '../services/activity-service'
+import { ActivityService } from '@modules/activities'
 import { errorResponse } from '../utils/api-response'
 import { verifyJWT } from '../utils/auth'
 

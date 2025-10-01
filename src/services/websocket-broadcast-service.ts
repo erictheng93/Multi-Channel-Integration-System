@@ -27,7 +27,13 @@ export class WebSocketBroadcastService {
 
   constructor(env: Bindings) {
     this.env = env;
-    this.lockService = new DistributedLockService(env);
+    try {
+      this.lockService = new DistributedLockService(env);
+    } catch (error) {
+      console.warn('⚠️ [WebSocket Broadcast] Failed to initialize DistributedLockService, using fallback mode');
+      // 在測試環境或 DISTRIBUTED_LOCK 不可用時，創建一個 null lockService
+      this.lockService = null as any;
+    }
   }
 
   // =================== Core Broadcasting Methods ===================

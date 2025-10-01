@@ -2,7 +2,7 @@
 -- UP
 CREATE TABLE IF NOT EXISTS conversation_sessions (
   id TEXT PRIMARY KEY,
-  conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+  conversation_id TEXT NOT NULL REFERENCES conversations(id),
   session_type TEXT NOT NULL DEFAULT 'continuous' CHECK (session_type IN ('continuous', 'topical', 'manual')),
   topic TEXT,
   start_time TEXT NOT NULL,
@@ -18,5 +18,4 @@ CREATE INDEX IF NOT EXISTS idx_conversation_sessions_conversation_id ON conversa
 CREATE INDEX IF NOT EXISTS idx_conversation_sessions_is_active ON conversation_sessions(is_active);
 CREATE INDEX IF NOT EXISTS idx_conversation_sessions_last_activity ON conversation_sessions(last_activity);
 
--- Add lastActive column to agents table if not exists
-ALTER TABLE agents ADD COLUMN last_active TEXT;
+-- Note: last_active column already added to agents table manually

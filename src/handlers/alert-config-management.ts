@@ -6,6 +6,7 @@ import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { AlertNotificationService, NotificationChannel as _NotificationChannel } from '../services/alert-notification-service';
 import { AlertLevel } from '../monitoring/websocket-analytics-service';
+import { handleApiError } from '../utils/api-response';
 
 const alertConfigHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -99,11 +100,8 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Alert Config] Slack configuration failed:', error);
-    return c.json({
-      error: 'Configuration failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -247,11 +245,8 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Alert Config] Email configuration failed:', error);
-    return c.json({
-      error: 'Configuration failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -332,11 +327,8 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Alert Config] Webhook configuration failed:', error);
-    return c.json({
-      error: 'Configuration failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -386,11 +378,8 @@ alertConfigHandler.get('/channels/status', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Alert Config] Status check failed:', error);
-    return c.json({
-      error: 'Status check failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -423,11 +412,8 @@ alertConfigHandler.get('/logs', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Alert Config] Logs fetch failed:', error);
-    return c.json({
-      error: 'Failed to fetch logs',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 
@@ -482,11 +468,8 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Alert Config] Test alert failed:', error);
-    return c.json({
-      error: 'Test alert failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
   }
 });
 

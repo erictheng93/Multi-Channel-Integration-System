@@ -1,31 +1,42 @@
-// 團隊管理主要處理器測試 - Handler-based 架構
+// 團隊管理主要處理器測試 - 模組化架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import teamMainHandler from '../../../src/handlers/team-main';
+import teamMainHandler from '@modules/teams/handlers/team';
 import { setupHandlerTest } from '../../helpers/handler-test-setup';
 
-// Mock utilities
-vi.mock('../../../src/utils/team', () => ({
-  createTeam: vi.fn(),
-  getAllTeams: vi.fn(),
-  getTeamById: vi.fn(),
-  updateTeam: vi.fn(),
-  deleteTeam: vi.fn(),
-  getTeamMembers: vi.fn(),
-  getTeamStats: vi.fn()
+// Mock services
+vi.mock('../../../src/modules/teams/services/team-service', () => ({
+  TeamService: vi.fn().mockImplementation(() => ({
+    createTeam: vi.fn(),
+    listTeams: vi.fn(),
+    getTeam: vi.fn(),
+    updateTeam: vi.fn(),
+    deleteTeam: vi.fn(),
+    getMembers: vi.fn(),
+    getTeamStats: vi.fn()
+  }))
 }));
 
-vi.mock('../../../src/services/qrcode-service', () => ({
-  QRCodeService: {
+vi.mock('../../../src/modules/teams/services/qr-service', () => ({
+  TeamQRService: vi.fn().mockImplementation(() => ({
     generateTeamQRCode: vi.fn(),
-    getTeamQRCodes: vi.fn()
-  }
+    getTeamQRCodes: vi.fn(),
+    generateTestQRCode: vi.fn()
+  }))
+}));
+
+vi.mock('../../../src/modules/teams/services/activity-service', () => ({
+  TeamActivityService: vi.fn().mockImplementation(() => ({
+    logTeamCreate: vi.fn(),
+    logTeamUpdate: vi.fn(),
+    logTeamDelete: vi.fn()
+  }))
 }));
 
 // Mock middleware
 vi.mock('../../../src/middleware/auth', () => ({
   jwtAuth: vi.fn((c, next) => {
-    c.set('user', { 
-      id: 'user-123', 
+    c.set('user', {
+      id: 'user-123',
       role: 'admin',
       username: 'admin-user',
       teamId: 1
@@ -33,36 +44,32 @@ vi.mock('../../../src/middleware/auth', () => ({
     return next();
   }),
   requireRole: vi.fn(() => (c, next) => next()),
-  requireTeamAccess: vi.fn(() => (c, next) => next())
+  requireTeamAccess: vi.fn(() => (c, next) => next()),
+  requireManagerOrAdmin: vi.fn(() => (c, next) => next()),
+  requireAdmin: vi.fn(() => (c, next) => next())
 }));
 
 describe('Team Main Handler', () => {
   let app: any;
-  let mockTeamUtils: any;
-  let mockQRCodeService: any;
+  let mockTeamService: any;
+  let mockQRService: any;
+  let mockActivityService: any;
 
   beforeEach(async () => {
     const testSetup = setupHandlerTest();
     app = testSetup.app;
-    
+
     // Add the team handler routes after setting up the environment
     app.route('/api/teams', teamMainHandler);
 
-    // Setup mocks
-    const teamModule = await import('../../../src/utils/team');
-    const qrModule = await import('../../../src/services/qrcode-service');
-    
-    mockTeamUtils = {
-      createTeam: teamModule.createTeam as any,
-      getAllTeams: teamModule.getAllTeams as any,
-      getTeamById: teamModule.getTeamById as any,
-      updateTeam: teamModule.updateTeam as any,
-      deleteTeam: teamModule.deleteTeam as any,
-      getTeamMembers: teamModule.getTeamMembers as any,
-      getTeamStats: teamModule.getTeamStats as any
-    };
+    // Setup service mocks
+    const { TeamService } = await import('../../../src/modules/teams/services/team-service');
+    const { TeamQRService } = await import('../../../src/modules/teams/services/qr-service');
+    const { TeamActivityService } = await import('../../../src/modules/teams/services/activity-service');
 
-    mockQRCodeService = qrModule.QRCodeService;
+    mockTeamService = new (TeamService as any)();
+    mockQRService = new (TeamQRService as any)();
+    mockActivityService = new (TeamActivityService as any)();
 
     vi.clearAllMocks();
   });
@@ -78,7 +85,10 @@ describe('Team Main Handler', () => {
         { id: 2, name: 'Team 2', description: 'Test team 2' }
       ];
 
-      mockTeamUtils.getAllTeams.mockResolvedValue(mockTeams);
+      mockTeamService.listTeams.mockResolvedValue({
+        teams: mockTeams,
+        pagination: { page: 1, limit: 20, total: 2, totalPages: 1 }
+      });
 
       const response = await app.request('/api/teams');
 

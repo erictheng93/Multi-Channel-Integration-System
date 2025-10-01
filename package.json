@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "prepare": "husky install",
-    "dev": "wrangler dev --local --persist-to .wrangler",
+    "dev": "wrangler dev --remote",
     "dev:remote": "wrangler dev --remote",
     "dev:local": "wrangler dev --local --persist-to .wrangler",
     "dev:beta": "wrangler dev --x-remote-bindings",
@@ -48,6 +48,17 @@
     "test:handlers:auth": "npx vitest tests/unit/handlers/auth-main.test.ts",
     "test:handlers:team": "npx vitest tests/unit/handlers/team-main.test.ts",
     "test:handlers:system": "npx vitest tests/unit/handlers/system-main.test.ts",
+    "sync:db": "npx tsx scripts/sync-database.ts",
+    "sync:db:to-local": "npx tsx scripts/sync-database.ts --production-to-local",
+    "sync:db:to-prod": "npx tsx scripts/sync-database.ts --local-to-production",
+    "sync:db:schema": "npx tsx scripts/sync-database.ts --schema-only",
+    "sync:db:data": "npx tsx scripts/sync-database.ts --data-only",
+    "sync:db:full": "npx tsx scripts/sync-database.ts --full",
+    "sync:db:live": "npx tsx scripts/sync-database.ts --production-to-local --no-dry-run",
+    "sync:scheduler": "npx tsx scripts/sync-scheduler.ts",
+    "sync:scheduler:start": "npx tsx scripts/sync-scheduler.ts start",
+    "sync:scheduler:status": "npx tsx scripts/sync-scheduler.ts status",
+    "sync:scheduler:test": "npx tsx scripts/sync-scheduler.ts test-sync",
     "test:handlers:conversation": "npx vitest tests/unit/handlers/conversation-main.test.ts",
     "test:handlers:customer": "npx vitest tests/unit/handlers/customer-main.test.ts",
     "db:view": "npx tsx scripts/db-viewer.ts",
@@ -96,6 +107,7 @@
     }
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.7.3",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.4",
     "hono": "^4.8.10",
@@ -106,12 +118,14 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250926.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^24.2.1",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.5.12",
+    "@vitest/coverage-v8": "^3.2.4",
     "better-sqlite3": "^12.2.0",
     "dotenv": "^17.2.1",
     "drizzle-kit": "^0.31.4",
@@ -119,6 +133,7 @@
     "jsdom": "^26.1.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
+    "vitest": "^3.2.4",
     "wrangler": "^4.38.0",
     "ws": "^8.18.0"
   }

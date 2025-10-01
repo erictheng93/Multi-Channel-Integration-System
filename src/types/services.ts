@@ -34,7 +34,7 @@ export interface PermissionRule {
 }
 
 export interface PermissionContext {
-  userId: number;
+  userId: string | number; // ✅ 支持字符串和數字類型
   role: string;
   teamId?: number;
   resourceId?: string | number;
@@ -90,7 +90,7 @@ export interface ConversationCreationData {
 // Message recall service types
 export interface PendingMessage {
   id: string;
-  conversation_id: number;
+  conversation_id: string; // Fixed: Changed from number to string to match conversations.id (TEXT)
   content: string;
   message_type: string;
   platform: string;

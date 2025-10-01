@@ -1,3 +1,6 @@
+// Import Cloudflare Workers types
+/// <reference types="@cloudflare/workers-types" />
+
 // 匯出所有型別定義
 export * from './shared';
 export * from './converters';
@@ -10,8 +13,11 @@ export * from './events';
 // Export WebSocket and Durable Objects types
 export * from './websocket-types';
 
-// Cloudflare Workers environment bindings
-export interface Bindings {
+// Re-export Bindings to maintain consistency
+export type { Bindings } from './bindings';
+
+// Legacy interface kept for backward compatibility (deprecated)
+export interface LegacyBindings {
   // Required integrations
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_CHANNEL_SECRET: string;
@@ -156,7 +162,7 @@ export interface DbMessage {
 // Conversation session type
 export interface ConversationSession {
   id: string;
-  conversation_id: number;
+  conversation_id: string; // Fixed: Changed from number to string to match conversations.id (TEXT)
   session_type: 'continuous' | 'topic_based' | 'time_based';
   topic?: string;
   start_time: string;
@@ -240,9 +246,10 @@ export interface CustomerTagRelation {
 
 export interface JWTPayload {
   userId: number | string;
+  username?: string;
   displayName: string;
   email?: string;
-  role: string;
+  role: 'admin' | 'team' | 'agent';
   teamId?: number | undefined;
   teamName?: string | undefined;
   iat: number;

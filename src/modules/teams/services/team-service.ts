@@ -1,0 +1,458 @@
+// Team Service
+// 團隊服務層
+
+import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { eq, desc, and, count, or, like } from 'drizzle-orm';
+import { teams, agents, conversations, messages } from '../../../db/schema';
+import type {
+  Team,
+  NewTeam,
+  TeamWithStats,
+  TeamListRequest,
+  TeamListResponse,
+  TeamCreateRequest,
+  TeamUpdateRequest,
+  TeamServiceInterface,
+  TeamStats,
+  TeamStatsRequest,
+  TeamMember,
+  TeamMemberAddRequest,
+  TeamMemberUpdateRequest,
+  TeamQRCodeResponse,
+  TeamTransferRequest,
+  TeamTransferResponse
+} from '../types/team-types';
+
+export class TeamService implements TeamServiceInterface {
+  private db: DrizzleD1Database;
+
+  constructor(database: D1Database) {
+    this.db = drizzle(database);
+  }
+
+  // Create new team
+  async createTeam(data: TeamCreateRequest): Promise<Team> {
+    const teamData: NewTeam = {
+      name: data.name,
+      description: data.description || null,
+      isActive: data.isActive ?? true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await this.db.insert(teams).values(teamData);
+
+    // Get the created team (SQLite returns lastInsertRowId)
+    const result = await this.db
+      .select()
+      .from(teams)
+      .where(eq(teams.name, teamData.name))
+      .orderBy(desc(teams.createdAt))
+      .limit(1);
+
+    const team = result[0];
+    if (!team) {
+      throw new Error('Failed to create team');
+    }
+
+    return team;
+  }
+
+  // Get team by ID with stats
+  async getTeam(id: number): Promise<TeamWithStats | null> {
+    const [team] = await this.db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, id))
+      .limit(1);
+
+    if (!team) return null;
+
+    // Get member count
+    const memberCountResult = await this.db
+      .select({ memberCount: count() })
+      .from(agents)
+      .where(eq(agents.teamId, id));
+    const memberCount = memberCountResult[0]?.memberCount || 0;
+
+    // Get active members count
+    const activeMembersResult = await this.db
+      .select({ activeMembers: count() })
+      .from(agents)
+      .where(and(eq(agents.teamId, id), eq(agents.isActive, true)));
+    const activeMembers = activeMembersResult[0]?.activeMembers || 0;
+
+    // Get conversation count
+    const conversationCountResult = await this.db
+      .select({ conversationCount: count() })
+      .from(conversations)
+      .where(eq(conversations.assignedTeamId, id));
+    const conversationCount = conversationCountResult[0]?.conversationCount || 0;
+
+    return {
+      ...team,
+      memberCount,
+      activeMembers,
+      conversationCount,
+      qrCodeScans: 0 // Would need QR scan tracking table
+    };
+  }
+
+  // Update team
+  async updateTeam(id: number, data: TeamUpdateRequest): Promise<Team> {
+    const updateData = {
+      ...data,
+      updatedAt: new Date().toISOString()
+    };
+
+    await this.db
+      .update(teams)
+      .set(updateData)
+      .where(eq(teams.id, id));
+
+    const result = await this.db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, id))
+      .limit(1);
+
+    if (!result[0]) {
+      throw new Error('Team not found after update');
+    }
+
+    return result[0];
+  }
+
+  // Delete team (soft delete by setting inactive)
+  async deleteTeam(id: number): Promise<boolean> {
+    try {
+      await this.db
+        .update(teams)
+        .set({
+          isActive: false,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(teams.id, id));
+
+      return true;
+    } catch (error) {
+      console.error('Delete team error:', error);
+      return false;
+    }
+  }
+
+  // List teams with pagination
+  async listTeams(params: TeamListRequest): Promise<TeamListResponse> {
+    const {
+      page = 1,
+      limit = 20,
+      includeInactive = false,
+      search
+    } = params;
+
+    const offset = (page - 1) * Math.min(limit, 100);
+    const actualLimit = Math.min(limit, 100);
+
+    // Build where conditions
+    const whereConditions = [];
+    if (!includeInactive) {
+      whereConditions.push(eq(teams.isActive, true));
+    }
+    if (search) {
+      whereConditions.push(
+        or(
+          like(teams.name, `%${search}%`),
+          like(teams.description, `%${search}%`)
+        )
+      );
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    // Get teams with member counts
+    const teamList = await this.db
+      .select({
+        team: teams,
+        memberCount: count(agents.id)
+      })
+      .from(teams)
+      .leftJoin(agents, eq(teams.id, agents.teamId))
+      .where(whereClause)
+      .groupBy(teams.id)
+      .orderBy(desc(teams.createdAt))
+      .limit(actualLimit)
+      .offset(offset);
+
+    // Get total count
+    const totalResult = await this.db
+      .select({ total: count() })
+      .from(teams)
+      .where(whereClause);
+    const total = totalResult[0]?.total || 0;
+
+    const teamsWithStats: TeamWithStats[] = await Promise.all(
+      teamList.map(async (row) => {
+        // Get active members count
+        const activeMembersResult = await this.db
+          .select({ activeMembers: count() })
+          .from(agents)
+          .where(and(eq(agents.teamId, row.team.id), eq(agents.isActive, true)));
+        const activeMembers = activeMembersResult[0]?.activeMembers || 0;
+
+        // Get conversation count
+        const conversationCountResult = await this.db
+          .select({ conversationCount: count() })
+          .from(conversations)
+          .where(eq(conversations.assignedTeamId, row.team.id));
+        const conversationCount = conversationCountResult[0]?.conversationCount || 0;
+
+        return {
+          ...row.team,
+          memberCount: row.memberCount,
+          activeMembers,
+          conversationCount,
+          qrCodeScans: 0
+        };
+      })
+    );
+
+    return {
+      teams: teamsWithStats,
+      pagination: {
+        page,
+        limit: actualLimit,
+        total,
+        totalPages: Math.ceil(total / actualLimit)
+      }
+    };
+  }
+
+  // Search teams
+  async searchTeams(query: string): Promise<Team[]> {
+    return this.db
+      .select()
+      .from(teams)
+      .where(
+        and(
+          eq(teams.isActive, true),
+          or(
+            like(teams.name, `%${query}%`),
+            like(teams.description, `%${query}%`)
+          )
+        )
+      )
+      .limit(20);
+  }
+
+  // Add member to team
+  async addMember(teamId: number, request: TeamMemberAddRequest): Promise<TeamMember> {
+    await this.db
+      .update(agents)
+      .set({
+        teamId,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(agents.id, request.agentId));
+
+    const result = await this.db
+      .select()
+      .from(agents)
+      .where(eq(agents.id, request.agentId))
+      .limit(1);
+
+    const agent = result[0];
+    if (!agent) {
+      throw new Error('Agent not found after adding to team');
+    }
+
+    return {
+      id: agent.id,
+      displayName: agent.displayName,
+      email: agent.email,
+      role: agent.role,
+      isActive: agent.isActive,
+      lastActive: agent.lastActive,
+      joinedAt: agent.updatedAt
+    };
+  }
+
+  // Remove member from team
+  async removeMember(teamId: number, agentId: string): Promise<boolean> {
+    try {
+      await this.db
+        .update(agents)
+        .set({
+          teamId: null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(and(eq(agents.id, agentId), eq(agents.teamId, teamId)));
+
+      return true;
+    } catch (error) {
+      console.error('Remove team member error:', error);
+      return false;
+    }
+  }
+
+  // Update team member
+  async updateMember(teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
+    const updateData: any = {
+      updatedAt: new Date().toISOString()
+    };
+
+    if (request.role) updateData.role = request.role;
+    if (typeof request.isActive === 'boolean') updateData.isActive = request.isActive;
+
+    await this.db
+      .update(agents)
+      .set(updateData)
+      .where(and(eq(agents.id, agentId), eq(agents.teamId, teamId)));
+
+    const result = await this.db
+      .select()
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+
+    const agent = result[0];
+    if (!agent) {
+      throw new Error('Agent not found after update');
+    }
+
+    return {
+      id: agent.id,
+      displayName: agent.displayName,
+      email: agent.email,
+      role: agent.role,
+      isActive: agent.isActive,
+      lastActive: agent.lastActive,
+      joinedAt: agent.createdAt
+    };
+  }
+
+  // Get team members
+  async getMembers(teamId: number): Promise<TeamMember[]> {
+    const members = await this.db
+      .select()
+      .from(agents)
+      .where(eq(agents.teamId, teamId))
+      .orderBy(agents.displayName);
+
+    return members.map(agent => ({
+      id: agent.id,
+      displayName: agent.displayName,
+      email: agent.email,
+      role: agent.role,
+      isActive: agent.isActive,
+      lastActive: agent.lastActive,
+      joinedAt: agent.createdAt
+    }));
+  }
+
+  // Generate QR Code
+  async generateQRCode(teamId: number): Promise<TeamQRCodeResponse> {
+    const qrCode = crypto.randomUUID(); // Simple QR code generation
+
+    await this.db
+      .update(teams)
+      .set({
+        qrCode,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(teams.id, teamId));
+
+    return {
+      teamId,
+      qrCode,
+      generatedAt: new Date().toISOString(),
+      scanCount: 0
+    };
+  }
+
+  // Get QR Code
+  async getQRCode(teamId: number): Promise<TeamQRCodeResponse | null> {
+    const [team] = await this.db
+      .select({ qrCode: teams.qrCode, updatedAt: teams.updatedAt })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team || !team.qrCode) return null;
+
+    return {
+      teamId,
+      qrCode: team.qrCode,
+      generatedAt: team.updatedAt || new Date().toISOString(),
+      scanCount: 0
+    };
+  }
+
+  // Get team statistics
+  async getTeamStats(teamId: number, params?: TeamStatsRequest): Promise<TeamStats> {
+    const team = await this.getTeam(teamId);
+    if (!team) throw new Error('Team not found');
+
+    // Get message counts
+    const messagesCountResult = await this.db
+      .select({ messagesCount: count() })
+      .from(messages)
+      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(eq(conversations.assignedTeamId, teamId));
+    const messagesCount = messagesCountResult[0]?.messagesCount || 0;
+
+    return {
+      teamId,
+      teamName: team.name,
+      totalMembers: team.memberCount || 0,
+      activeMembers: team.activeMembers || 0,
+      conversationsHandled: team.conversationCount || 0,
+      messagesCount,
+      avgResponseTime: 0, // Would need message timing analysis
+      qrCodeScans: 0,
+      period: {
+        from: params?.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        to: params?.dateTo || new Date().toISOString()
+      }
+    };
+  }
+
+  // Get all teams statistics
+  async getAllTeamsStats(params?: TeamStatsRequest): Promise<TeamStats[]> {
+    const { teams: teamList } = await this.listTeams({ includeInactive: false });
+
+    return Promise.all(
+      teamList.map(team => this.getTeamStats(team.id, params))
+    );
+  }
+
+  // Transfer members between teams
+  async transferMembers(request: TeamTransferRequest): Promise<TeamTransferResponse> {
+    const transferredAgents: string[] = [];
+    const failedTransfers: Array<{ agentId: string; reason: string }> = [];
+
+    for (const agentId of request.agentIds) {
+      try {
+        await this.db
+          .update(agents)
+          .set({
+            teamId: request.toTeamId,
+            updatedAt: new Date().toISOString()
+          })
+          .where(and(eq(agents.id, agentId), eq(agents.teamId, request.fromTeamId)));
+
+        transferredAgents.push(agentId);
+      } catch (error) {
+        failedTransfers.push({
+          agentId,
+          reason: `Transfer failed: ${error}`
+        });
+      }
+    }
+
+    return {
+      success: failedTransfers.length === 0,
+      transferredAgents,
+      failedTransfers
+    };
+  }
+}
