@@ -325,7 +325,7 @@ class ApiClient {
 }
 
 // 建立 API 客戶端實例
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787';
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
 export const apiClient = new ApiClient(
   baseURL.endsWith('/api') ? baseURL : `${baseURL}/api`
 );

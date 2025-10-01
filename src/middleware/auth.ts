@@ -1,15 +1,64 @@
 import { Context, Next } from 'hono';
-import type { Bindings, DbUser } from '../types';
+import type { Bindings, JWTPayload } from '../types';
+import type { DbUser } from '../types';
 import { verifyJWT, getUserById, getSession } from '../utils/auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { agents } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
+import type { CustomerPermissions, CustomerAccessScope } from '@modules/customer/types/customer-types';
 
-// 擴展 Context 類型以包含用戶信息
+// 擴展 Context 類型以包含用戶信息和其他變數
 declare module 'hono' {
   interface ContextVariableMap {
     user: DbUser;
     session: Record<string, unknown>;
+    jwtPayload: JWTPayload;
+    // 客戶模組變數
+    createCustomerData: any;
+    customerId: string;
+    updateCustomerData: any;
+    // 會話模組變數
+    sessionId: string;
+    createSessionData: any;
+    updateSessionData: any;
+    sessionQuery: any;
+    sessionSearchQuery: Record<string, unknown>;
+    batchOperation: Record<string, unknown>;
+    // 系統變數
+    requestId: string;
+    userId: string;
+    // 其他常用變數
+    customerFilters: any;
+    paginationParams: { page: number; pageSize: number };
+    searchQuery: any;
+    tagOperation: any;
+    // Reports module variables
+    reportId: string;
+    scheduledReportId: string;
+    reportParams: Record<string, unknown>;
+    reportQuery: Record<string, unknown>;
+    scheduledReportData: Record<string, unknown>;
+    previewParams: Record<string, unknown>;
+    // QRCode module variables
+    qrCode: any;
+    canAccess: boolean;
+    canModify: boolean;
+    validatedData: any;
+    validatedQuery: any;
+    // Realtime module variables
+    realtimeAuth: any;
+    connectionValidation: any;
+    // File management variables
+    fileValidation: any;
+    validatedFile: any;
+    filesValidation: any;
+    validatedFiles: any;
+    // System permissions
+    systemPermissions: SystemPermissions;
+    systemAccessScope: SystemAccessScope;
+    customerPermissions: CustomerPermissions;
+    customerAccessScope: CustomerAccessScope;
   }
 }
 

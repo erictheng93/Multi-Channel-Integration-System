@@ -1,5 +1,16 @@
-// Cloudflare Queue Consumer - 延遲訊息處理
-// Queue Consumer for Delayed Message Processing
+/**
+ * Cloudflare Queue Consumer - 延遲訊息處理
+ * Queue Consumer for Delayed Message Processing
+ *
+ * ⚠️ DEPRECATED: Delayed Message 處理部分已棄用
+ *
+ * 原因：已從 Cloudflare Queues 遷移到 Durable Objects + Alarm API
+ * 新實現：DelayedMessageBuffer Durable Object 自動處理延遲發送
+ *
+ * 此文件保留用於其他 Queue 處理，但 delayed message 相關代碼已標記為 deprecated
+ *
+ * @deprecated (延遲訊息部分) 使用 Durable Objects Alarm API 替代
+ */
 
 import type { Bindings } from './types';
 import { MessageRecallService } from './services/message-recall-service';
@@ -13,6 +24,9 @@ export interface QueueMessage {
 /**
  * Queue Consumer 處理延遲訊息
  * 當 Queue 中的訊息到達預定時間時，此函數會被自動調用
+ *
+ * ⚠️ DEPRECATED: 此函數不再處理延遲訊息
+ * Durable Objects + Alarm API 已接管所有延遲訊息處理
  */
 async function handleQueueMessage(
   batch: MessageBatch<QueueMessage>,
@@ -29,32 +43,15 @@ async function handleQueueMessage(
       console.log(`Processing queue message: ${messageId}, action: ${action}`);
 
       if (action === 'send_delayed_message') {
-        const result = await recallService.processQueueMessage(messageId);
-        
-        if (result.success) {
-          if (result.skipped) {
-            console.log(`Message ${messageId} was cancelled, skipped sending`);
-          } else {
-            console.log(`Message ${messageId} sent successfully`);
-          }
-          
-          // 確認訊息處理完成
-          message.ack();
-        } else {
-          console.error(`Failed to process message ${messageId}:`, result.error);
-          
-          // 重試機制：如果是暫時性錯誤，可以選擇不 ack，讓 Queue 重試
-          // 如果是永久性錯誤，則 ack 以避免無限重試
-          if (isRetryableError(result.error)) {
-            message.retry();
-          } else {
-            message.ack();
-          }
-        }
-      } else {
-        console.warn(`Unknown action: ${action} for message ${messageId}`);
-        message.ack();
+        // ⚠️ DEPRECATED: 延遲訊息現在由 Durable Objects 處理
+        console.warn('⚠️ [DEPRECATED] Delayed message processing via Queue is deprecated. Use Durable Objects instead.');
+        message.ack(); // 直接確認，不再處理
+        continue;
       }
+
+      // 其他未知 action
+      console.warn(`Unknown action: ${action} for message ${messageId}`);
+      message.ack();
 
     } catch (error) {
       console.error(`Error processing queue message:`, error);

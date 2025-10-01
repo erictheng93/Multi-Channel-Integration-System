@@ -22,6 +22,11 @@ import { createContextLogger } from '../utils/logger';
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
+// 🔥 CORS修復: 處理所有 OPTIONS preflight 請求
+authHandler.options('*', (c) => {
+  return c.body(null, 204);
+});
+
 // 用戶登入
 authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
   try {

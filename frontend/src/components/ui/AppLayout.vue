@@ -269,6 +269,7 @@ import UsersIcon from '@/components/icons/UsersIcon.vue'
 import ActivityIcon from '@/components/icons/ActivityIcon.vue'
 import SettingsIcon from '@/components/icons/SettingsIcon.vue'
 import MonitorIcon from '@/components/icons/MonitorIcon.vue'
+import ReportsIcon from '@/components/icons/ReportsIcon.vue'
 
 // Icons are now imported from separate .vue files
 
@@ -296,7 +297,8 @@ const notifications = ref([
 const navigationItems = computed(() => {
   const baseItems = [
     { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
-    { path: '/conversations', label: '對話管理', icon: ChatIcon }
+    { path: '/conversations', label: '對話管理', icon: ChatIcon },
+    { path: '/reports', label: '報表系統', icon: ReportsIcon }
   ]
 
   // Navigation items based on user role
@@ -1048,7 +1050,36 @@ onUnmounted(() => {
   padding: var(--space-6);
   background-color: #f9fafb !important;
   min-height: 0;
-  /* 確保頁面內容區域也是固定背景色 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  /* 確保頁面內容區域也是固定背景色和滾動功能 */
+}
+
+/* Custom Scrollbar Styles */
+.page-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.page-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.page-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.page-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Firefox scrollbar */
+.page-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
 }
 
 /* Notification Panel */

@@ -1,0 +1,63 @@
+name: TypeScript Type Checking
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check import paths
+        run: |
+          echo "🔍 Checking import paths..."
+          npx tsx scripts/check-import-paths.ts || true
+          # Note: This is a warning, not blocking CI
+
+      - name: TypeScript compilation check (Backend)
+        run: |
+          echo "🔨 Checking backend TypeScript..."
+          npm run build
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: TypeScript compilation check (Frontend)
+        run: |
+          cd frontend
+          echo "🔨 Checking frontend TypeScript..."
+          npx vue-tsc --noEmit
+
+      - name: ESLint check (Frontend)
+        run: |
+          cd frontend
+          echo "🔍 Running ESLint..."
+          npm run lint -- --max-warnings 0
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ All TypeScript checks passed!"
+          echo ""
+          echo "📊 Verified:"
+          echo "  - Import paths compliance"
+          echo "  - Backend TypeScript compilation"
+          echo "  - Frontend TypeScript compilation"
+          echo "  - Frontend ESLint (zero warnings)"

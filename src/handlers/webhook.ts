@@ -9,7 +9,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { customers, conversations, messages, fileAttachments } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
-import { realtimeQueueHandler } from './realtime-queue';
+import { realtime } from '@modules/realtime';
 import type { 
   Bindings, 
   LineWebhookBody, 
@@ -564,7 +564,7 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
 
     // 🚀 事件驅動推送：立即推送 LINE 新消息事件到隊列
     try {
-      await realtimeQueueHandler.createAndQueueEvent(
+      await realtime.createEvent(
         'message_created',
         {
           messageId: messageId,
@@ -586,7 +586,6 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
           broadcast: !conversation!.assignedUserId // 如果沒有分配用戶，則廣播給所有在線用戶
         },
         'urgent', // LINE 客戶消息是最高優先級
-        env,
         'webhook'
       );
       console.log(`🚀 [LINE Webhook] Event queued for message ${messageId} from LINE user ${user.id}`);
@@ -1020,3 +1019,31 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
     throw error;
   }
 }
+// ==================== Hono Router Wrapper ====================
+import { Hono } from 'hono';
+
+/**
+ * Webhook Router - Hono wrapper for webhook handlers
+ * Provides a unified router interface for LINE and Facebook webhooks
+ */
+export const webhookRouter = new Hono<{ Bindings: Bindings }>();
+
+// Health check endpoint
+webhookRouter.get('/health', (c) => {
+  return c.json({
+    status: 'healthy',
+    module: 'webhook',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// LINE webhook endpoint
+webhookRouter.post('/line', (c) => webhookHandler.line(c));
+
+// Facebook webhook endpoint
+webhookRouter.get('/facebook', (c) => webhookHandler.facebook(c));
+webhookRouter.post('/facebook', (c) => webhookHandler.facebook(c));
+
+// Default export for route registry
+export default webhookRouter;

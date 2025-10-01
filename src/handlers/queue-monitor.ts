@@ -5,7 +5,7 @@
 import { Context } from 'hono';
 import type { Bindings } from '../types';
 import { successResponse, errorResponse, handleApiError } from '../utils/api-response';
-import { sseManager } from './realtime-queue';
+import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
 
 export interface QueueStats {
   name: string;
@@ -57,7 +57,7 @@ export const queueMonitorHandler = {
       console.log('📊 [Queue Monitor] Fetching unified queue statistics...');
       
       // 獲取 SSE 連接統計
-      const sseStats = await sseManager.getStats();
+      const sseStats = enhancedSSEManager.getDetailedStats();
       
       // AGENT_QUEUE 統計  
       const agentQueueStats: QueueStats = {
@@ -160,7 +160,7 @@ export const queueMonitorHandler = {
           status: 'healthy', 
           checks: {
             queueAvailable: true,
-            sseConnections: (await sseManager.getStats()).totalConnections,
+            sseConnections: enhancedSSEManager.getDetailedStats().totalConnections,
             processingLatency: '< 100ms'
           }
         },
@@ -205,7 +205,7 @@ export const queueMonitorHandler = {
             retryRate: 0.05
           },
           sseMetrics: {
-            activeConnections: (await sseManager.getStats()).totalConnections,
+            activeConnections: enhancedSSEManager.getDetailedStats().totalConnections,
             connectionUptime: '95%',
             eventDeliveryRate: 99.5
           }
@@ -227,11 +227,11 @@ export const queueMonitorHandler = {
 
       switch (operation) {
         case 'cleanup_stale_connections':
-          sseManager.cleanupStaleConnections();
+          enhancedSSEManager.cleanupStaleConnections();
           return successResponse(c, { operation: 'cleanup_stale_connections', completed: true }, 'Stale connections cleaned up');
 
         case 'get_connection_details':
-          const connectionStats = await sseManager.getStats();
+          const connectionStats = enhancedSSEManager.getDetailedStats();
           return successResponse(c, connectionStats, 'Connection details retrieved');
 
         default:

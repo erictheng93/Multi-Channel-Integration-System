@@ -187,7 +187,7 @@ export const attachmentHandler = {
         storagePath,
         storageUrl,
         uploadStatus,
-        uploadedBy: payload.userId,
+        uploadedBy: typeof payload.userId === 'string' ? payload.userId : payload.userId.toString(),
         createdAt: now,
         updatedAt: now
       };

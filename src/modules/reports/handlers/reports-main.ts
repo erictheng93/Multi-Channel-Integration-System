@@ -1,0 +1,663 @@
+// Reports 主要處理器
+// Main reports request handlers with comprehensive reporting operations
+
+import { Hono } from 'hono';
+import type { Bindings } from '../../../types';
+import { ReportsService } from '@modules/reports/services/reports-service';
+import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation } from '@modules/reports/types/report-types';
+
+// 中間件導入
+import {
+  checkReportsAccess,
+  checkReportsViewPermission,
+  checkReportsGeneratePermission,
+  checkReportsDownloadPermission,
+  checkReportsDeletePermission,
+  checkReportsStatsPermission,
+  checkReportsBatchPermission,
+  checkScheduledReportsPermission,
+  checkSpecialReportTypePermission,
+  validateRequestSize,
+  validateRateLimit,
+  validateReportId,
+  validateScheduledReportId,
+  validateReportGenerationParams,
+  validateReportListQuery,
+  validateBatchReportOperation,
+  validateScheduledReportData,
+  validateReportPreviewRequest,
+  logReportsOperation
+} from '../middleware/index';
+
+// 創建報告路由實例
+const reportsHandler = new Hono<{ Bindings: Bindings }>();
+
+// ======================== 健康檢查和資訊端點 ========================
+
+/**
+ * 健康檢查端點
+ * GET /api/reports/health
+ */
+reportsHandler.get('/health', (c) => {
+  return c.json({
+    status: 'healthy',
+    module: 'reports',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
+/**
+ * 模組資訊端點
+ * GET /api/reports/info
+ */
+reportsHandler.get('/info', (c) => {
+  return c.json({
+    success: true,
+    data: {
+      module: 'reports',
+      version: '1.0.0',
+      description: 'Comprehensive reporting system with multiple report types and export formats',
+      features: [
+        'Report generation (10 types: conversation_summary, agent_performance, team_analytics, etc.)',
+        'Multiple export formats (json, csv, excel, pdf, html)',
+        'Scheduled reports with automated delivery',
+        'Batch operations for report management',
+        'Report preview functionality',
+        'Statistical analysis and reporting',
+        'Advanced filtering and customization',
+        'Real-time report status tracking',
+        'Report templates and presets',
+        'Download history and access control'
+      ],
+      reportTypes: [
+        'conversation_summary - 對話摘要報告',
+        'agent_performance - 客服績效報告',
+        'team_analytics - 團隊分析報告',
+        'customer_satisfaction - 客戶滿意度報告',
+        'platform_usage - 平台使用情況',
+        'message_statistics - 訊息統計報告',
+        'response_time_analysis - 回應時間分析',
+        'workload_distribution - 工作量分配報告',
+        'system_health - 系統健康報告',
+        'custom - 自定義報告'
+      ],
+      endpoints: [
+        'GET /health - Health check',
+        'GET /info - Module information',
+        'POST / - Generate report',
+        'GET / - List reports',
+        'GET /:id - Get report details',
+        'GET /:id/download - Download report',
+        'DELETE /:id - Delete report',
+        'GET /stats - Report statistics',
+        'POST /batch - Batch operations',
+        'GET /templates/:type - Get report templates',
+        'POST /preview - Preview report',
+        'POST /scheduled - Create scheduled report',
+        'GET /scheduled - List scheduled reports',
+        'PUT /scheduled/:id - Update scheduled report',
+        'DELETE /scheduled/:id - Delete scheduled report'
+      ],
+      permissions: {
+        admin: 'Full report management access including system health and custom reports',
+        team: 'Team-scoped report generation, analytics, and scheduled reports',
+        agent: 'Basic report access for assigned conversations and personal performance'
+      }
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ======================== 報告生成與管理 ========================
+
+/**
+ * 生成報告
+ * POST /api/reports
+ */
+reportsHandler.post(
+  '/',
+  validateRequestSize,
+  validateReportGenerationParams,
+  validateRateLimit,
+  checkReportsAccess,
+  checkReportsGeneratePermission,
+  checkSpecialReportTypePermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const reportParams = c.get('reportParams');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const report = await reportsService.generateReport(reportParams as unknown as ReportGenerationParams, String(String(payload.userId)));
+
+      return c.json({
+        success: true,
+        data: report,
+        message: 'Report generation started successfully',
+        estimatedTime: `${(reportParams as unknown as ReportGenerationParams).type ? REPORT_TYPE_CONFIG[(reportParams as unknown as ReportGenerationParams).type]?.estimatedGenerationTime || 60 : 60} seconds`,
+        timestamp: new Date().toISOString()
+      }, 201);
+    } catch (error) {
+      console.error('Generate report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate report',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 獲取報告列表
+ * GET /api/reports
+ */
+reportsHandler.get(
+  '/',
+  validateReportListQuery,
+  checkReportsAccess,
+  checkReportsViewPermission,
+  async (c) => {
+    try {
+      const query = c.get('reportQuery');
+      const reportsService = new ReportsService(c.env);
+
+      const result = await reportsService.listReports(query);
+
+      return c.json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('List reports error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to list reports',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 獲取單個報告詳情
+ * GET /api/reports/:id
+ */
+reportsHandler.get(
+  '/:id',
+  validateReportId,
+  checkReportsAccess,
+  checkReportsViewPermission,
+  async (c) => {
+    try {
+      const reportId = c.get('reportId');
+      const reportsService = new ReportsService(c.env);
+
+      const report = await reportsService.getReportDetails(String(reportId));
+
+      if (!report) {
+        return c.json({
+          success: false,
+          error: 'Report not found',
+          timestamp: new Date().toISOString()
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: report,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Get report details error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get report details',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 下載報告
+ * GET /api/reports/:id/download
+ */
+reportsHandler.get(
+  '/:id/download',
+  validateReportId,
+  validateRateLimit,
+  checkReportsAccess,
+  checkReportsDownloadPermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const reportId = c.get('reportId');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const downloadInfo = await reportsService.downloadReport(String(reportId), String(payload.userId));
+
+      if (!downloadInfo) {
+        return c.json({
+          success: false,
+          error: 'Report not found or not ready for download',
+          timestamp: new Date().toISOString()
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: {
+          downloadUrl: downloadInfo.url,
+          filename: downloadInfo.filename,
+          message: 'Report ready for download'
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Download report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to download report',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 刪除報告
+ * DELETE /api/reports/:id
+ */
+reportsHandler.delete(
+  '/:id',
+  validateReportId,
+  validateRateLimit,
+  checkReportsAccess,
+  checkReportsDeletePermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const reportId = c.get('reportId');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const success = await reportsService.deleteReport(String(reportId), String(payload.userId));
+
+      if (!success) {
+        return c.json({
+          success: false,
+          error: 'Report not found or could not be deleted',
+          timestamp: new Date().toISOString()
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        message: 'Report deleted successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Delete report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete report',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ======================== 統計分析 ========================
+
+/**
+ * 獲取報告統計
+ * GET /api/reports/stats
+ */
+reportsHandler.get(
+  '/stats',
+  checkReportsAccess,
+  checkReportsStatsPermission,
+  async (c) => {
+    try {
+      const timeRange = c.req.query('timeRange') as any || 'last_30_days';
+      const reportsService = new ReportsService(c.env);
+
+      const stats = await reportsService.getReportStatistics(timeRange);
+
+      return c.json({
+        success: true,
+        data: stats,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Get report stats error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get report statistics',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ======================== 批量操作 ========================
+
+/**
+ * 執行批量報告操作
+ * POST /api/reports/batch
+ */
+reportsHandler.post(
+  '/batch',
+  validateRequestSize,
+  validateBatchReportOperation,
+  validateRateLimit,
+  checkReportsAccess,
+  checkReportsBatchPermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const batchOperation = c.get('batchOperation');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const result = await reportsService.batchOperation(batchOperation as unknown as BatchReportOperation, String(payload.userId));
+
+      return c.json({
+        success: true,
+        data: result,
+        message: `Batch operation ${batchOperation.action} completed`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Batch operation error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to execute batch operation',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ======================== 報告模板和預覽 ========================
+
+/**
+ * 獲取報告模板
+ * GET /api/reports/templates/:type
+ */
+reportsHandler.get(
+  '/templates/:type',
+  checkReportsAccess,
+  checkReportsViewPermission,
+  async (c) => {
+    try {
+      const reportType = c.req.param('type') as any;
+      const reportsService = new ReportsService(c.env);
+
+      if (!reportType || !REPORT_TYPE_CONFIG[reportType]) {
+        return c.json({
+          success: false,
+          error: 'Invalid report type',
+          timestamp: new Date().toISOString()
+        }, 400);
+      }
+
+      const templates = await reportsService.getAvailableTemplates(reportType);
+
+      return c.json({
+        success: true,
+        data: templates,
+        reportType,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Get report templates error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get report templates',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 預覽報告
+ * POST /api/reports/preview
+ */
+reportsHandler.post(
+  '/preview',
+  validateRequestSize,
+  validateReportPreviewRequest,
+  checkReportsAccess,
+  checkReportsViewPermission,
+  async (c) => {
+    try {
+      const previewParams = c.get('previewParams');
+      const reportsService = new ReportsService(c.env);
+
+      const previewData = await reportsService.previewReport(previewParams as unknown as ReportGenerationParams);
+
+      return c.json({
+        success: true,
+        data: previewData,
+        message: 'Report preview generated successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Preview report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate report preview',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ======================== 排程報告管理 ========================
+
+/**
+ * 創建排程報告
+ * POST /api/reports/scheduled
+ */
+reportsHandler.post(
+  '/scheduled',
+  validateRequestSize,
+  validateScheduledReportData,
+  validateRateLimit,
+  checkReportsAccess,
+  checkScheduledReportsPermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const scheduledReportData = c.get('scheduledReportData');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const scheduledReport = await reportsService.createScheduledReport(
+        scheduledReportData as any,
+        String(String(payload.userId))
+      );
+
+      return c.json({
+        success: true,
+        data: scheduledReport,
+        message: 'Scheduled report created successfully',
+        timestamp: new Date().toISOString()
+      }, 201);
+    } catch (error) {
+      console.error('Create scheduled report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create scheduled report',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 獲取排程報告列表
+ * GET /api/reports/scheduled
+ */
+reportsHandler.get(
+  '/scheduled',
+  checkReportsAccess,
+  checkScheduledReportsPermission,
+  async (c) => {
+    try {
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      // Admin 可以查看所有，其他角色只能查看自己的
+      const userId = payload.role === 'admin' ? undefined : String(payload.userId);
+      const scheduledReports = await reportsService.listScheduledReports(userId ? String(userId) : undefined);
+
+      return c.json({
+        success: true,
+        data: scheduledReports,
+        count: scheduledReports.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('List scheduled reports error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to list scheduled reports',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 更新排程報告
+ * PUT /api/reports/scheduled/:id
+ */
+reportsHandler.put(
+  '/scheduled/:id',
+  validateRequestSize,
+  validateScheduledReportId,
+  validateScheduledReportData,
+  validateRateLimit,
+  checkReportsAccess,
+  checkScheduledReportsPermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const scheduledReportId = c.get('scheduledReportId');
+      const scheduledReportData = c.get('scheduledReportData');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const updatedReport = await reportsService.updateScheduledReport(
+        String(scheduledReportId),
+        scheduledReportData as any,
+        String(String(payload.userId))
+      );
+
+      return c.json({
+        success: true,
+        data: updatedReport,
+        message: 'Scheduled report updated successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Update scheduled report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update scheduled report',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 刪除排程報告
+ * DELETE /api/reports/scheduled/:id
+ */
+reportsHandler.delete(
+  '/scheduled/:id',
+  validateScheduledReportId,
+  validateRateLimit,
+  checkReportsAccess,
+  checkScheduledReportsPermission,
+  logReportsOperation,
+  async (c) => {
+    try {
+      const scheduledReportId = c.get('scheduledReportId');
+      const payload = c.get('jwtPayload');
+      const reportsService = new ReportsService(c.env);
+
+      const success = await reportsService.deleteScheduledReport(String(scheduledReportId), String(String(payload.userId)));
+
+      if (!success) {
+        return c.json({
+          success: false,
+          error: 'Scheduled report not found or could not be deleted',
+          timestamp: new Date().toISOString()
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        message: 'Scheduled report deleted successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Delete scheduled report error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete scheduled report',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ======================== 錯誤處理 ========================
+
+// 全域錯誤處理
+reportsHandler.onError((err, c) => {
+  console.error('Reports handler error:', err);
+  return c.json({
+    success: false,
+    error: 'Internal server error in reports module',
+    timestamp: new Date().toISOString()
+  }, 500);
+});
+
+// 404 處理
+reportsHandler.notFound((c) => {
+  return c.json({
+    success: false,
+    error: 'Reports endpoint not found',
+    availableEndpoints: [
+      'GET /health',
+      'GET /info',
+      'POST /',
+      'GET /',
+      'GET /:id',
+      'GET /:id/download',
+      'DELETE /:id',
+      'GET /stats',
+      'POST /batch',
+      'GET /templates/:type',
+      'POST /preview',
+      'POST /scheduled',
+      'GET /scheduled',
+      'PUT /scheduled/:id',
+      'DELETE /scheduled/:id'
+    ],
+    timestamp: new Date().toISOString()
+  }, 404);
+});
+
+export default reportsHandler;

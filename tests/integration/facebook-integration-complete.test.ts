@@ -3,7 +3,7 @@ import { Context } from 'hono';
 import { webhookHandler } from '../../src/handlers/webhook';
 import { messageHandler } from '../../src/handlers/message';
 import { createUserSyncService } from '../../src/services/user-sync';
-import { FacebookAdapter } from '../../src/integrations/platform-adapter';
+import { FacebookIntegrationService } from '@modules/integration/services/facebook-integration-service';
 import type { Bindings } from '../../src/types';
 import { createMockDatabase } from '../helpers/mockDatabase';
 

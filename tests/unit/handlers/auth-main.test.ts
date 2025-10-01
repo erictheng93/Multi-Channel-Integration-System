@@ -134,8 +134,8 @@ describe('Auth Main Handler', () => {
           isActive: true,
           createdAt: '2024-01-01T00:00:00.000Z'
         },
-        passwordPolicy: 'valid',
-        accountStatus: 'authenticated'
+        passwordPolicy: 'changeable',
+        accountStatus: 'success'
       };
 
       mockAuthUtils.authenticateUser.mockResolvedValue(mockAuthResult);

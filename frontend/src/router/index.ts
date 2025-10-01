@@ -89,11 +89,63 @@ const router = createRouter({
       path: '/api-monitor',
       name: 'ApiMonitor',
       component: () => import('@/views/ApiMonitor.vue'),
-      meta: { 
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
         title: 'API監控'
       }
+    },
+    // ==================== 報表系統路由 ====================
+    {
+      path: '/reports',
+      component: () => import('@/views/Reports.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '報表系統'
+      },
+      children: [
+        {
+          path: '',
+          name: 'Reports',
+          redirect: '/reports/dashboard'
+        },
+        {
+          path: 'dashboard',
+          name: 'ReportsDashboard',
+          component: () => import('@/components/reports/ReportDashboard.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '報表儀表板'
+          }
+        },
+        {
+          path: 'generate',
+          name: 'ReportGenerator',
+          component: () => import('@/components/reports/ReportGenerator.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '生成報表'
+          }
+        },
+        {
+          path: 'templates',
+          name: 'ReportTemplates',
+          component: () => import('@/components/reports/ReportTemplates.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '報表模板'
+          }
+        },
+        {
+          path: ':id',
+          name: 'ReportViewer',
+          component: () => import('@/components/reports/ReportViewer.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '檢視報表'
+          }
+        }
+      ]
     },
     {
       path: '/:pathMatch(.*)*',

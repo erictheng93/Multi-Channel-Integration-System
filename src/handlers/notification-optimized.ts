@@ -51,7 +51,7 @@ export const optimizedNotificationHandler = {
 
       // 生成快取鍵
       const cacheParams = { type, isRead, priority, dateFrom, dateTo };
-      const cacheKey = `notifications:${payload.userId}:${JSON.stringify(cacheParams)}`;
+      const cacheKey = `notifications:${typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''}:${JSON.stringify(cacheParams)}`;
 
       // 構建查詢
       let baseQuery = `
@@ -64,7 +64,7 @@ export const optimizedNotificationHandler = {
         WHERE user_id = ? AND (expires_at IS NULL OR expires_at > datetime('now'))
       `;
 
-      const params: any[] = [payload?.userId];
+      const params: any[] = [typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''];
       const whereConditions: string[] = [];
 
       // 添加篩選條件
@@ -149,7 +149,7 @@ export const optimizedNotificationHandler = {
       // 構建更新條件
       const drizzleDb = drizzle(c.env.DB);
       const updateConditions = [
-        eq(notifications.userId, payload?.userId),
+        eq(notifications.userId, typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''),
         eq(notifications.isRead, false)
       ];
 
@@ -172,7 +172,7 @@ export const optimizedNotificationHandler = {
 
       // 清理相關快取
       const cache = new CacheManager(c.env);
-      await cache.deletePattern(`cache:notifications:${payload?.userId}`);
+      await cache.deletePattern(`cache:notifications:${typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''}`);
 
       return successResponse(c, { 
         updated: "success"
@@ -190,7 +190,7 @@ export const optimizedNotificationHandler = {
       const cache = new CacheManager(c.env);
       
       // 檢查快取
-      const cacheKey = `notification_stats:${payload?.userId}`;
+      const cacheKey = `notification_stats:${typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''}`;
       const cached = await cache.get('stats', cacheKey);
       if (cached) {
         return successResponse(c, cached, 'Notification statistics retrieved from cache');

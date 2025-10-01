@@ -134,7 +134,7 @@ export const authHandler = {
       // 從資料庫獲取最新的用戶資訊
       const db = drizzle(c.env.DB);
       const agentRow = await db.select().from(agents)
-        .where(and(eq(agents.id, payload.userId), eq(agents.isActive, true)))
+        .where(and(eq(agents.id, typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()), eq(agents.isActive, true)))
         .get();
 
       if (!agentRow) {
@@ -186,7 +186,7 @@ export const authHandler = {
       // 驗證用戶是否仍然存在且活躍
       const db = drizzle(c.env.DB);
       const agentRow = await db.select().from(agents)
-        .where(and(eq(agents.id, payload.userId), eq(agents.isActive, true)))
+        .where(and(eq(agents.id, typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()), eq(agents.isActive, true)))
         .get();
 
       if (!agentRow) {

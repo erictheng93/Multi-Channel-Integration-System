@@ -24,7 +24,7 @@ class ModernApiClient {
   private refreshToken: string | null = null
 
   constructor(options: ModernApiClientOptions = {}) {
-    this.baseURL = options.baseURL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787'
+    this.baseURL = options.baseURL || import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
     this.timeout = options.timeout || 30000
     this.retries = options.retries || 3
     this.retryDelay = options.retryDelay || 1000
@@ -250,8 +250,14 @@ class ModernApiClient {
   }
 
   // HTTP 方法
-  get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>('GET', endpoint)
+  get<T>(endpoint: string, params?: Record<string, string>): Promise<ApiResponse<T>> {
+    // 如果有 params，添加到 URL
+    let url = endpoint;
+    if (params) {
+      const queryString = new URLSearchParams(params).toString();
+      url = `${endpoint}?${queryString}`;
+    }
+    return this.makeRequest<T>('GET', url)
   }
 
   post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
@@ -262,8 +268,8 @@ class ModernApiClient {
     return this.makeRequest<T>('PUT', endpoint, data)
   }
 
-  delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>('DELETE', endpoint)
+  delete<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>('DELETE', endpoint, data)
   }
 
   patch<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {

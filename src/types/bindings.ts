@@ -52,6 +52,7 @@ export interface Bindings {
   USER_CONNECTION?: DurableObjectNamespace;
   MESSAGE_BROADCASTER?: DurableObjectNamespace;
   DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
+  DELAYED_MESSAGE_BUFFER?: DurableObjectNamespace; // Instant-cancel undo buffer
   DISTRIBUTED_LOCK?: DurableObjectNamespace;
   
   // Environment variables - LINE
@@ -94,7 +95,8 @@ export interface Bindings {
   // Additional optional buckets
   FILES?: R2Bucket;
   AVATARS?: R2Bucket;
-  
+  FILE_STORAGE: R2Bucket; // Primary file storage for attachments
+
   // Additional optional queues
   NOTIFICATION_QUEUE?: Queue;
   DELAYED_QUEUE?: Queue;

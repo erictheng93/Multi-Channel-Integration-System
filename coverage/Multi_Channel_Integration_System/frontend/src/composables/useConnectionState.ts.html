@@ -1,0 +1,412 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for Multi_Channel_Integration_System/frontend/src/composables/useConnectionState.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../../prettify.css" />
+    <link rel="stylesheet" href="../../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../../index.html">All files</a> / <a href="index.html">Multi_Channel_Integration_System/frontend/src/composables</a> useConnectionState.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/58</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/58</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { computed, type ComputedRef } from 'vue'<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+&nbsp;
+interface ConnectionStateOptions {
+  sseIsConnected: ComputedRef&lt;boolean&gt; | { value: boolean }
+  sseIsConnecting: ComputedRef&lt;boolean&gt; | { value: boolean }
+  sseIsReconnecting: ComputedRef&lt;boolean&gt; | { value: boolean }
+  sseHasError: ComputedRef&lt;boolean&gt; | { value: boolean }
+  wsIsJoined: ComputedRef&lt;boolean&gt; | { value: boolean }
+  wsIsConnecting: ComputedRef&lt;boolean&gt; | { value: boolean }
+  shouldUseWebSocket: ComputedRef&lt;boolean&gt; | { value: boolean }
+}
+&nbsp;
+export interface ConnectionState {
+  // 主要連接狀態
+  isConnected: ComputedRef&lt;boolean&gt;
+  currentProtocol: ComputedRef&lt;'sse' | 'websocket' | 'http'&gt;
+  connectionQuality: ComputedRef&lt;'excellent' | 'good' | 'poor' | 'offline'&gt;
+&nbsp;
+  // 詳細狀態
+  connectionState: ComputedRef&lt;string&gt;
+  isAnyConnecting: ComputedRef&lt;boolean&gt;
+  hasAnyError: ComputedRef&lt;boolean&gt;
+&nbsp;
+  // 狀態檢查函數
+  isUsingSSE: ComputedRef&lt;boolean&gt;
+  isUsingWebSocket: ComputedRef&lt;boolean&gt;
+  isUsingHTTP: ComputedRef&lt;boolean&gt;
+}
+&nbsp;
+/**
+ * 統一的連接狀態管理 composable
+ * 整合 SSE、WebSocket 和 HTTP 的連接狀態
+ */
+<span class="cstat-no" title="statement not covered" >export function useConnectionState(options: ConnectionStateOptions): ConnectionState {</span>
+<span class="cstat-no" title="statement not covered" >  const {</span>
+<span class="cstat-no" title="statement not covered" >    sseIsConnected,</span>
+<span class="cstat-no" title="statement not covered" >    sseIsConnecting,</span>
+<span class="cstat-no" title="statement not covered" >    sseIsReconnecting,</span>
+<span class="cstat-no" title="statement not covered" >    sseHasError,</span>
+<span class="cstat-no" title="statement not covered" >    wsIsJoined,</span>
+<span class="cstat-no" title="statement not covered" >    wsIsConnecting,</span>
+<span class="cstat-no" title="statement not covered" >    shouldUseWebSocket</span>
+<span class="cstat-no" title="statement not covered" >  } = options</span>
+&nbsp;
+  // 主要連接狀態
+<span class="cstat-no" title="statement not covered" >  const isConnected = computed(() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return sseIsConnected.value ||</span>
+<span class="cstat-no" title="statement not covered" >           (shouldUseWebSocket.value &amp;&amp; wsIsJoined.value) ||</span>
+<span class="cstat-no" title="statement not covered" >           (!shouldUseWebSocket.value &amp;&amp; !sseHasError.value)</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
+&nbsp;
+  // 當前使用的協議
+<span class="cstat-no" title="statement not covered" >  const currentProtocol = computed((): 'sse' | 'websocket' | 'http' =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (sseIsConnected.value) {return 'sse'}</span>
+<span class="cstat-no" title="statement not covered" >    if (shouldUseWebSocket.value &amp;&amp; wsIsJoined.value) {return 'websocket'}</span>
+<span class="cstat-no" title="statement not covered" >    return 'http'</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
+&nbsp;
+  // 連接品質評估
+<span class="cstat-no" title="statement not covered" >  const connectionQuality = computed((): 'excellent' | 'good' | 'poor' | 'offline' =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (sseIsConnected.value) {return 'excellent'} // SSE is always stable</span>
+<span class="cstat-no" title="statement not covered" >    if (shouldUseWebSocket.value &amp;&amp; wsIsJoined.value) {return 'good'}</span>
+<span class="cstat-no" title="statement not covered" >    if (sseIsReconnecting.value || wsIsConnecting.value) {return 'poor'}</span>
+<span class="cstat-no" title="statement not covered" >    if (sseHasError.value) {return 'offline'}</span>
+<span class="cstat-no" title="statement not covered" >    return 'good' // HTTP fallback</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
+&nbsp;
+  // 詳細連接狀態
+<span class="cstat-no" title="statement not covered" >  const connectionState = computed(() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (sseIsConnected.value) {return 'sse_connected'}</span>
+<span class="cstat-no" title="statement not covered" >    if (sseIsConnecting.value) {return 'sse_connecting'}</span>
+<span class="cstat-no" title="statement not covered" >    if (sseIsReconnecting.value) {return 'sse_reconnecting'}</span>
+<span class="cstat-no" title="statement not covered" >    if (shouldUseWebSocket.value &amp;&amp; wsIsJoined.value) {return 'websocket_connected'}</span>
+<span class="cstat-no" title="statement not covered" >    if (shouldUseWebSocket.value &amp;&amp; wsIsConnecting.value) {return 'websocket_connecting'}</span>
+<span class="cstat-no" title="statement not covered" >    if (sseHasError.value) {return 'error'}</span>
+<span class="cstat-no" title="statement not covered" >    return 'http_fallback'</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
+&nbsp;
+  // 是否有任何連接正在進行
+<span class="cstat-no" title="statement not covered" >  const isAnyConnecting = computed(() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return sseIsConnecting.value || sseIsReconnecting.value || wsIsConnecting.value</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
+&nbsp;
+  // 是否有任何錯誤
+<span class="cstat-no" title="statement not covered" >  const hasAnyError = computed(() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    return sseHasError.value</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
+&nbsp;
+  // 狀態檢查函數
+<span class="cstat-no" title="statement not covered" >  const isUsingSSE = computed(() =&gt; sseIsConnected.value)</span>
+<span class="cstat-no" title="statement not covered" >  const isUsingWebSocket = computed(() =&gt; shouldUseWebSocket.value &amp;&amp; wsIsJoined.value)</span>
+<span class="cstat-no" title="statement not covered" >  const isUsingHTTP = computed(() =&gt; currentProtocol.value === 'http')</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return {</span>
+    // 主要狀態
+<span class="cstat-no" title="statement not covered" >    isConnected,</span>
+<span class="cstat-no" title="statement not covered" >    currentProtocol,</span>
+<span class="cstat-no" title="statement not covered" >    connectionQuality,</span>
+&nbsp;
+    // 詳細狀態
+<span class="cstat-no" title="statement not covered" >    connectionState,</span>
+<span class="cstat-no" title="statement not covered" >    isAnyConnecting,</span>
+<span class="cstat-no" title="statement not covered" >    hasAnyError,</span>
+&nbsp;
+    // 檢查函數
+<span class="cstat-no" title="statement not covered" >    isUsingSSE,</span>
+<span class="cstat-no" title="statement not covered" >    isUsingWebSocket,</span>
+<span class="cstat-no" title="statement not covered" >    isUsingHTTP</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" >}</span></pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2025-09-30T08:26:37.219Z
+            </div>
+        <script src="../../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../../sorter.js"></script>
+        <script src="../../../../block-navigation.js"></script>
+    </body>
+</html>
+    

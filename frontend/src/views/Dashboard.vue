@@ -350,6 +350,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Analytics Comparison Section -->
+      <div class="analytics-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            數據趨勢分析
+          </h3>
+          <p class="section-subtitle">
+            關鍵指標期間比較與趨勢洞察
+          </p>
+        </div>
+        <MetricsComparisonDashboard
+          title="對話指標趨勢分析"
+          preset="conversation"
+          :auto-refresh="true"
+          :refresh-interval="60000"
+        />
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -372,6 +390,7 @@ import RefreshButton from '@/components/ui/RefreshButton.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 // import NavigationTest from '@/components/debug/NavigationTest.vue'
 import { ChatIcon, UserIcon, MessageCircleIcon } from '@/components/icons'
+import MetricsComparisonDashboard from '@/components/analytics/MetricsComparisonDashboard.vue'
 import type { Conversation } from '@/types'
 import type { ActivityLog } from '@/api/activities'
 
@@ -687,6 +706,8 @@ onBeforeUnmount(() => {
   max-width: clamp(1200px, 85vw, 1650px);
   margin: 0 auto;
   padding: clamp(1rem, 2vw, 2rem) clamp(0.5rem, 2vw, 1.5rem);
+  min-height: 100%;
+  /* 確保內容可以完整顯示並滾動 */
 }
 
 .welcome-section {
@@ -1035,6 +1056,10 @@ onBeforeUnmount(() => {
 }
 
 .performance-section {
+  margin-top: var(--space-12);
+}
+
+.analytics-section {
   margin-top: var(--space-12);
 }
 
