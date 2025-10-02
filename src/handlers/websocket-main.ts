@@ -11,6 +11,10 @@ import type {
 import { websocketAuth } from '../middleware/websocket-auth';
 import { DistributedLockService } from '../services/distributed-lock-service';
 
+// P1 Optimizations
+import { getCircuitBreaker } from '../services/websocket-circuit-breaker';
+import { createMessagePersistenceService } from '../services/message-persistence-service';
+
 /**
  * Architecture Overview:
  *
