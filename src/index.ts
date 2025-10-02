@@ -111,23 +111,27 @@ if (!routeValidation.valid) {
   throw new Error('Invalid route configuration');
 }
 
-// 🔧 Pre-register public WebSocket endpoints BEFORE unified route system
+// 🔧 Pre-register public WebSocket health check endpoints BEFORE unified route system
 // This ensures they are NOT covered by any auth middleware from the route system
-app.get('/api/websocket/health', async (c) => {
-  // Forward to websocket handler's health endpoint
-  const handler = websocketMainHandler;
-  const url = new URL(c.req.url);
-  url.pathname = '/health';
-  return handler.fetch(new Request(url.toString(), c.req.raw), c.env, c.executionCtx);
-});
-app.get('/api/websocket/migration-status', async (c) => {
-  // Forward to websocket handler's migration-status endpoint
-  const handler = websocketMainHandler;
-  const url = new URL(c.req.url);
-  url.pathname = '/migration-status';
-  return handler.fetch(new Request(url.toString(), c.req.raw), c.env, c.executionCtx);
-});
-console.log('✅ Public WebSocket endpoints pre-registered (health, migration-status)');
+import websocketHealthApp from './handlers/websocket-health';
+import websocketDashboardApp from './handlers/websocket-dashboard';
+
+app.route('/api/websocket', websocketHealthApp);
+console.log('✅ Public WebSocket health endpoints registered:');
+console.log('   • GET /api/websocket/health');
+console.log('   • GET /api/websocket/migration-status');
+console.log('   • GET /api/websocket/readiness');
+console.log('   • GET /api/websocket/liveness');
+
+// Register P1 Optimization: WebSocket Dashboard (requires auth)
+app.route('/api/websocket/dashboard', websocketDashboardApp);
+console.log('✅ WebSocket Dashboard endpoints registered:');
+console.log('   • GET /api/websocket/dashboard/metrics (Admin/Team)');
+console.log('   • GET /api/websocket/dashboard/connections (Admin/Team)');
+console.log('   • GET /api/websocket/dashboard/history (Admin/Team)');
+console.log('   • GET /api/websocket/dashboard/trends (Admin/Team)');
+console.log('   • GET /api/websocket/dashboard/durable-objects (Admin)');
+console.log('   • GET /api/websocket/dashboard/alerts (Admin/Team)');
 
 // 創建路由註冊器
 const routeRegistry = new RouteRegistry(app);
@@ -201,6 +205,19 @@ async function initializeModularSystem() {
   return modularSystemInitPromise;
 }
 
+// 延遲初始化 P1 Optimizations（在第一個請求時執行）
+async function initializeP1Optimizations(env: Bindings) {
+  try {
+    console.log('🚀 Initializing P1 Optimizations...');
+    const { initializeP1Optimizations: init } = await import('./services/p1-optimizations');
+    await init(env);
+    console.log('✅ P1 Optimizations initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize P1 Optimizations:', error);
+    // P1 優化失敗不應阻塞系統啟動
+  }
+}
+
 // 延遲初始化 Collaboration 模組（在第一個請求時執行）
 async function initializeCollaboration(env: Bindings) {
   if (collaborationInitialized) {
@@ -209,6 +226,10 @@ async function initializeCollaboration(env: Bindings) {
 
   try {
     console.log('🤝 Initializing Collaboration Module...');
+
+    // 先初始化 P1 優化
+    await initializeP1Optimizations(env);
+
     const { Collaboration } = await import('@modules/collaboration');
 
     // 檢測環境：生產環境優先 WebSocket，開發環境使用 SSE
@@ -777,18 +798,26 @@ import { AgentQueueService } from './services/agent-queue-service';
 // ==================== 導出 ====================
 
 // ==================== 導出 Durable Objects ====================
+// CRITICAL: These exports are REQUIRED for Cloudflare Workers runtime
+// They must match the class_name values in wrangler.toml [[durable_objects.bindings]]
 
 // Import Durable Objects for WebSocket + Durable Objects Architecture
-import { SimplifiedConversationRoom } from './durable-objects/ConversationRoomSimplified';
+import { ConversationRoom } from './durable-objects/ConversationRoom';
 import { UserConnection } from './durable-objects/UserConnection';
 import { MessageBroadcaster } from './durable-objects/MessageBroadcaster';
 import { DelayedMessageProcessor } from './durable-objects/DelayedMessageProcessor';
 import { DelayedMessageBuffer } from './durable-objects/DelayedMessageBuffer';
 import { LockCoordinator } from './services/distributed-lock-service';
 
-// Export Durable Objects
+// Export Durable Objects (must match wrangler.toml class_name exactly)
 export {
-  SimplifiedConversationRoom as ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageProcessor, DelayedMessageBuffer, LockCoordinator };
+  ConversationRoom,
+  UserConnection,
+  MessageBroadcaster,
+  DelayedMessageProcessor,
+  DelayedMessageBuffer,
+  LockCoordinator
+};
 
 // ==================== 導出 Worker 處理器 ====================
 
