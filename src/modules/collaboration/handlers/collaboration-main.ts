@@ -218,6 +218,9 @@ app.post('/cleanup', async (c: Context<{ Bindings: Bindings }>) => {
  */
 app.get('/health', async (c: Context<{ Bindings: Bindings }>) => {
   try {
+    // 注意：isInitialized() 依賴於中間件初始化
+    // 如果訪問此端點時模組尚未初始化，status 將顯示 not_initialized
+    // 這是正常的，因為初始化是延遲執行的（在第一個請求的中間件中）
     const isInitialized = collaboration.isInitialized();
     const config = collaboration.getConfig();
     const protocols = collaboration.getAvailableProtocols();
@@ -229,7 +232,8 @@ app.get('/health', async (c: Context<{ Bindings: Bindings }>) => {
         enableWebSocket: config.enableWebSocket
       },
       availableProtocols: protocols,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      note: isInitialized ? undefined : 'Module will initialize on first business request. Try accessing any conversation endpoint or refresh this page after a few seconds.'
     }, 'Health check completed');
   } catch (error) {
     return errorResponse(c, 'Health check failed', 500);

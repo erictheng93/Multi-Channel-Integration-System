@@ -33,7 +33,11 @@
       "Bash(git log:*)",
       "Bash(xargs -0 sed -i \"s|../../../../src/modules/activities/types/interfaces|@modules/activities/types/interfaces|g\")",
       "Bash(xargs:*)",
-      "Read(//d//**)"
+      "Read(//d//**)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc1OTM5OTg1MSwiZXhwIjoxNzU5NDA3MDUxfQ.JSEtWtOTlUxEpSt4JHVyyJdYZBn-zgrMdOHBoPKrPpM\")",
+      "Bash(echo \"=== 1. 測試協作健康端點 ===\" curl -s -H \"Authorization: Bearer $TOKEN\" https://multi-channel.imfinethankyouandyou.com/api/collaboration/health)",
+      "Bash(for i in {1..5})",
+      "Bash(do echo \"=== Request $i ===\")"
     ],
     "deny": [],
     "ask": [],
