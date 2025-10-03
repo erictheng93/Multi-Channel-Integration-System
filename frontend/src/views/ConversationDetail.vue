@@ -204,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useMessages } from '@/composables/useMessages' // HTTP API fallback
@@ -761,13 +761,10 @@ const loadConversation = async () => {
       await markAsRead()
     }
 
-    // 🔥 自動滾動到最新消息（最底部）
-    // 使用 nextTick 確保 DOM 已經完全更新並渲染了所有消息
-    await nextTick()
-    setTimeout(() => {
-      scrollToNewest()
-      console.log('✅ [Auto-scroll] Scrolled to newest message on conversation load')
-    }, 300) // 延遲300ms確保虛擬滾動列表已經完全渲染
+    // 🔥 NO LONGER NEEDED: VirtualMessageList now handles initial scroll automatically
+    // The component will scroll to bottom immediately when messages are loaded
+    // This prevents the flash of old messages that occurred with the 300ms delay
+    console.log('✅ [loadConversation] Messages loaded, VirtualMessageList will auto-scroll')
   } catch (error) {
     console.error('Failed to load conversation:', error)
     // Handle conversation not found or network errors

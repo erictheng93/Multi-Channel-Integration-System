@@ -430,20 +430,26 @@ export class WebSocketManager {
   }
 
   private clearTemporaryState(): void {
-    // Clear typing indicators
-    this.typingUsers.value = {}
+    // 🔥 Use nextTick to break synchronous execution chain and prevent infinite recursion
+    // This ensures Vue's reactivity system processes updates in separate microtasks
+    import('vue').then(({ nextTick }) => {
+      nextTick(() => {
+        // Clear typing indicators
+        this.typingUsers.value = {}
 
-    // Clear typing users from conversation connections
-    for (const connection of this.conversations.values()) {
-      connection.typingUsers.clear()
-    }
+        // Clear typing users from conversation connections
+        for (const connection of this.conversations.values()) {
+          connection.typingUsers.clear()
+        }
 
-    // Mark all users as offline
-    for (const presence of this.userPresence.values()) {
-      presence.isOnline = false
-      presence.lastSeen = Date.now()
-    }
-    this.updateOnlineUsers()
+        // Mark all users as offline
+        for (const presence of this.userPresence.values()) {
+          presence.isOnline = false
+          presence.lastSeen = Date.now()
+        }
+        this.updateOnlineUsers()
+      })
+    })
   }
 
   private updateConnectedConversations(): void {
