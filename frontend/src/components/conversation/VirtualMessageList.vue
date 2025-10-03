@@ -70,6 +70,10 @@ const props = withDefaults(defineProps<Props>(), {
   hasMore: false
 })
 
+// 🔼 處理加載更多（加載更早的消息）
+const emit = defineEmits<{
+  loadMore: []
+}>()
 // Refs
 const scrollContainer = ref<HTMLElement>()
 const listContainer = ref<HTMLElement>()
@@ -160,11 +164,6 @@ const updateContainerHeight = () => {
     containerHeight.value = scrollContainer.value.clientHeight
   }
 }
-
-// 🔼 處理加載更多（加載更早的消息）
-const emit = defineEmits<{
-  loadMore: []
-}>()
 
 const handleLoadMore = () => {
   if (props.loading || !props.hasMore) {
