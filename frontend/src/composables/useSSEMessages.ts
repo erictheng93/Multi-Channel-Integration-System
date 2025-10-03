@@ -55,6 +55,10 @@ export function useSSEMessages(
     error: null
   })
 
+  // 🎯 新消息追蹤：區分「歷史消息」和「新到達的消息」
+  const newlyArrivedMessages = ref<Message[]>([])
+  const initialLoadCompleted = ref(false)
+
   let eventSource: EventSource | null = null
   let reconnectTimer: NodeJS.Timeout | null = null
   let heartbeatTimer: NodeJS.Timeout | null = null
@@ -70,7 +74,8 @@ export function useSSEMessages(
   )
 
   // Statistics
-  const messageCount = computed(() => messages.value.length)
+  const messageCount = computed(() => newlyArrivedMessages.value.length) // ✅ 只計算新到達的消息
+  const totalMessageCount = computed(() => messages.value.length) // 總消息數（包含歷史）
   const latestMessage = computed(() =>
     messages.value.length > 0 ? messages.value[messages.value.length - 1] : null
   )
@@ -205,7 +210,10 @@ export function useSSEMessages(
       case 'initial_messages':
         if (data.messages) {
           messages.value = [...data.messages]
-          console.log(`[SSE] Loaded ${data.count || 0} initial messages`)
+          // 🎯 初始消息加載時，重置新消息追蹤
+          newlyArrivedMessages.value = []
+          initialLoadCompleted.value = true
+          console.log(`[SSE] ✅ Loaded ${data.count || 0} initial messages (not counted as new)`)
         }
         break
 
@@ -218,7 +226,14 @@ export function useSSEMessages(
 
           if (newMessages.length > 0) {
             messages.value.push(...newMessages)
-            console.log(`[SSE] Added ${newMessages.length} new messages`)
+
+            // 🎯 只有在初始加載完成後，才計入新消息
+            if (initialLoadCompleted.value) {
+              newlyArrivedMessages.value.push(...newMessages)
+              console.log(`[SSE] ✅ Added ${newMessages.length} NEW messages (total new: ${newlyArrivedMessages.value.length})`)
+            } else {
+              console.log(`[SSE] Added ${newMessages.length} messages during initial load (not counted as new)`)
+            }
           }
         }
         break
@@ -313,6 +328,11 @@ export function useSSEMessages(
     messages.value = []
   }
 
+  const clearNewMessageCount = (): void => {
+    newlyArrivedMessages.value = []
+    console.log('[SSE] 🔄 New message count cleared')
+  }
+
   const addMessage = (message: Message): void => {
     // Add message if it doesn't already exist
     const exists = messages.value.some(existing => existing.id === message.id)
@@ -388,6 +408,7 @@ export function useSSEMessages(
 
     // Statistics
     messageCount: readonly(messageCount),
+    totalMessageCount: readonly(totalMessageCount),
     latestMessage: readonly(latestMessage),
     oldestMessage: readonly(oldestMessage),
 
@@ -396,6 +417,7 @@ export function useSSEMessages(
     disconnect,
     reconnect,
     clearMessages,
+    clearNewMessageCount,
     addMessage,
 
     // Utilities

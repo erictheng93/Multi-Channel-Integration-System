@@ -53,6 +53,8 @@
           :messages="messages"
           :displayed-messages="displayedMessages"
           :is-search-active="isSearchActive"
+          :loading="httpMessages.loading.value"
+          :has-more="httpMessages.hasMore.value"
           :loading-history="loadingHistory"
           :is-updating="isUpdating"
           :is-typing="isTyping"
@@ -286,7 +288,7 @@ const conversationWS = useConversationWebSocket(conversationId, {
 // 🛡️ Final Fallback: HTTP API System
 const httpMessages = useMessages(conversationId.value, {
   enablePagination: true,
-  pageSize: 30
+  pageSize: 10 // 🎯 初始加載10條消息，優化首屏加載速度
 })
 
 // 🧩 Unified State Management with new composables
@@ -326,11 +328,27 @@ const errorHandler = useErrorHandler({
   logToConsole: import.meta.env.DEV
 })
 
-// 🧠 Smart Message Source Selection
+// 🧠 Hybrid Message Source Strategy (SSE + HTTP)
+// SSE 用於實時推送，HTTP 用於歷史消息分頁加載
 const messages = computed((): Message[] => {
-  // Priority 1: SSE Messages (primary system)
-  if (sseMessages.isConnected.value && sseMessages.messages.value.length >= 0) {
-    return sseMessages.messages.value
+  // Priority 1: SSE + HTTP Hybrid (推薦策略)
+  if (sseMessages.isConnected.value) {
+    // 🎯 混合策略：合併 SSE 實時消息和 HTTP 歷史消息
+    const sseMessageIds = new Set(sseMessages.messages.value.map(m => m.id))
+
+    // 過濾出不在 SSE 消息中的 HTTP 歷史消息（避免重複）
+    const httpHistoryMessages = httpMessages.messages.value.filter(
+      m => !sseMessageIds.has(m.id)
+    )
+
+    // 合併消息並按時間排序（從舊到新）
+    const mergedMessages = [...httpHistoryMessages, ...sseMessages.messages.value].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+
+    console.log(`🔀 [Hybrid] Merged messages: ${httpHistoryMessages.length} HTTP + ${sseMessages.messages.value.length} SSE = ${mergedMessages.length} total`)
+
+    return mergedMessages
   }
 
   // Priority 2: WebSocket Messages (disabled in Phase 1)
@@ -338,7 +356,7 @@ const messages = computed((): Message[] => {
     return conversationWS.messages.value
   }
 
-  // Priority 3: HTTP API Messages (final fallback)
+  // Priority 3: HTTP API Messages (fallback)
   return httpMessages.messages.value
 })
 
@@ -914,10 +932,14 @@ const scrollToNewest = () => {
     virtualMessageListRef.value.scrollToBottom()
   }
   showNewMessageModal.value = false
+  // 🎯 清除新消息計數，用戶已查看消息
+  sseMessages.clearNewMessageCount()
 }
 
 const dismissNewMessageModal = () => {
   showNewMessageModal.value = false
+  // 🎯 清除新消息計數，用戶已關閉提醒
+  sseMessages.clearNewMessageCount()
 }
 
 // Navigation
@@ -1054,6 +1076,12 @@ onMounted(() => {
       hasLoadedInitially.value = true
       isInitialLoading.value = false
     }
+
+    // 🚀 智能預加載相鄰對話
+    if (conversationId.value) {
+      conversationsStore.preloadAdjacentConversationMessages(conversationId.value)
+    }
+
     measure('component-mount', 'component-mount-start')
   }).catch(error => {
     console.error('Failed to initialize ConversationDetail component:', error)

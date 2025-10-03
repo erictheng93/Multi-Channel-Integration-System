@@ -992,12 +992,13 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
         })}\n\n`;
         controller.enqueue(new TextEncoder().encode(connectionMessage));
 
-        // 發送初始訊息（最近30條）
+        // 發送初始訊息（最近10條）
+        // 🎯 與前端 pageSize 配置保持一致，剩餘歷史消息由 HTTP 分頁加載提供
         const sendInitialMessages = async () => {
           if (!isConnected) return;
 
           try {
-            const initialMessages = await getRecentMessages(conversationId, 30, c.env.DB);
+            const initialMessages = await getRecentMessages(conversationId, 10, c.env.DB);
 
             if (initialMessages.length > 0) {
               // 更新最後訊息ID和時間戳

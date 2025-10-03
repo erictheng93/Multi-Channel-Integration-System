@@ -53,7 +53,8 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "mcp__chrome-devtools__fill",
-      "mcp__chrome-devtools__take_screenshot"
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__list_pages"
     ],
     "deny": [],
     "ask": [],
