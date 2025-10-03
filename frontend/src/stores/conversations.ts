@@ -309,7 +309,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     if (nextPage > pagination.value.totalPages) {return}
 
     console.log(`🔮 [ConversationsStore] Preloading page ${nextPage}`)
-    
+
     try {
       await cacheManager.prefetch(`conversations:page:${nextPage}`, async () => {
         const cleanFilters = Object.fromEntries(
@@ -320,11 +320,85 @@ export const useConversationsStore = defineStore('conversations', () => {
           pageSize: pagination.value.pageSize,
           ...cleanFilters
         })
-        
+
         return response.data
       })
     } catch (error) {
       console.warn(`⚠️ [ConversationsStore] Preload failed for page ${nextPage}:`, error)
+    }
+  }
+
+  // 🚀 智能預加載相鄰對話的消息
+  const preloadAdjacentConversationMessages = async (currentConversationId: string) => {
+    console.log(`🔮 [ConversationsStore] Starting intelligent preload for adjacent conversations`)
+
+    const currentIndex = conversations.value.findIndex(c => c.id === currentConversationId)
+    if (currentIndex === -1) {
+      console.warn(`⚠️ [ConversationsStore] Current conversation not found in list`)
+      return
+    }
+
+    // 🎯 預加載策略：當前對話的上下各一個
+    const adjacentConversations: string[] = []
+
+    // 上一個對話
+    if (currentIndex > 0) {
+      const prevConv = conversations.value[currentIndex - 1]
+      if (prevConv?.id) {
+        adjacentConversations.push(prevConv.id)
+      }
+    }
+
+    // 下一個對話
+    if (currentIndex < conversations.value.length - 1) {
+      const nextConv = conversations.value[currentIndex + 1]
+      if (nextConv?.id) {
+        adjacentConversations.push(nextConv.id)
+      }
+    }
+
+    console.log(`🔮 [ConversationsStore] Preloading ${adjacentConversations.length} adjacent conversations`)
+
+    // 🌐 使用 requestIdleCallback 在瀏覽器空閒時預加載
+    // 避免影響當前對話的性能
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => {
+        adjacentConversations.forEach(async (convId) => {
+          if (!convId) {return}
+          try {
+            await cacheManager.prefetch(`conversation:messages:${convId}`, async () => {
+              const { messageApi } = await import('@/api/message')
+              const response = await messageApi.listPaginated(convId, {
+                page: 1,
+                pageSize: 10 // 只預加載最新 10 條
+              })
+              return response.data
+            })
+            console.log(`✅ [ConversationsStore] Preloaded messages for conversation ${convId}`)
+          } catch (error) {
+            console.warn(`⚠️ [ConversationsStore] Failed to preload ${convId}:`, error)
+          }
+        })
+      })
+    } else {
+      // 降級方案：使用 setTimeout
+      setTimeout(() => {
+        adjacentConversations.forEach(async (convId) => {
+          if (!convId) {return}
+          try {
+            await cacheManager.prefetch(`conversation:messages:${convId}`, async () => {
+              const { messageApi } = await import('@/api/message')
+              const response = await messageApi.listPaginated(convId, {
+                page: 1,
+                pageSize: 10
+              })
+              return response.data
+            })
+          } catch (error) {
+            console.warn(`⚠️ [ConversationsStore] Failed to preload ${convId}:`, error)
+          }
+        })
+      }, 1000) // 1秒後執行
     }
   }
 
@@ -836,6 +910,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     optimisticUpdateConversation,
     loadWithCache,
     preloadNextPage,
+    preloadAdjacentConversationMessages,
 
     // Test compatibility methods
     loadConversations,
