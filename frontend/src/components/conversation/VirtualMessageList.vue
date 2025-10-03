@@ -87,6 +87,16 @@ const containerHeight = ref(CONTAINER_HEIGHT)
 const totalHeight = computed(() => props.messages.length * ITEM_HEIGHT)
 
 const visibleRange = computed(() => {
+  // 🔥 On first load, force show bottom items to prevent flash of old messages
+  if (isFirstLoad.value && props.messages.length > 0 && scrollTop.value === 0) {
+    // Calculate range to show last items
+    const itemsToShow = Math.ceil(containerHeight.value / ITEM_HEIGHT) + BUFFER_SIZE
+    const start = Math.max(0, props.messages.length - itemsToShow)
+    const end = props.messages.length
+    console.log(`🎯 [visibleRange] First load: showing bottom items ${start} to ${end}`)
+    return { start, end }
+  }
+
   const start = Math.max(0, Math.floor(scrollTop.value / ITEM_HEIGHT) - BUFFER_SIZE)
   const end = Math.min(
     props.messages.length,
@@ -117,9 +127,14 @@ const updateContainerHeight = () => {
   }
 }
 
+// Track if this is the first load to prevent flash of old messages
+const isFirstLoad = ref(true)
+
 const scrollToBottom = () => {
   if (scrollContainer.value) {
-    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight
+    const targetScrollTop = scrollContainer.value.scrollHeight - scrollContainer.value.clientHeight
+    scrollContainer.value.scrollTop = targetScrollTop
+    console.log(`📜 [VirtualMessageList] Scrolled to bottom: scrollTop=${targetScrollTop}, scrollHeight=${scrollContainer.value.scrollHeight}`)
   }
 }
 
@@ -129,10 +144,14 @@ onMounted(() => {
     scrollContainer.value.addEventListener('scroll', handleScroll, { passive: true })
     updateContainerHeight()
 
-    // Scroll to bottom initially
-    nextTick(() => {
-      scrollToBottom()
-    })
+    // 🔥 CRITICAL: Set initial scrollTop to bottom BEFORE rendering
+    // This prevents visibleRange from calculating based on scrollTop=0
+    if (props.messages.length > 0) {
+      const maxScrollTop = scrollContainer.value.scrollHeight - scrollContainer.value.clientHeight
+      scrollContainer.value.scrollTop = maxScrollTop
+      scrollTop.value = maxScrollTop
+      console.log(`🎯 [VirtualMessageList] Initial scrollTop set to ${maxScrollTop}`)
+    }
   }
 
   // Resize observer for container height
@@ -152,12 +171,32 @@ onMounted(() => {
   })
 })
 
-// Watch for new messages and scroll to bottom
+// 🔥 CRITICAL FIX: Watch messages and scroll to bottom immediately on first load
+// This prevents the flash of old messages before auto-scrolling
 watch(() => props.messages.length, (newLength, oldLength) => {
-  if (newLength > oldLength) {
-    nextTick(() => {
-      scrollToBottom()
-    })
+  if (newLength > 0) {
+    if (isFirstLoad.value) {
+      // 🔥 On first load, use multiple RAFs to ensure complete rendering
+      console.log('🎯 [VirtualMessageList] First load detected, preparing to scroll...')
+
+      nextTick(() => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              // Triple RAF to absolutely ensure DOM is ready
+              scrollToBottom()
+              isFirstLoad.value = false
+              console.log('✅ [VirtualMessageList] First load: scrolled to bottom')
+            })
+          })
+        })
+      })
+    } else if (newLength > oldLength) {
+      // New messages added, scroll to show them
+      nextTick(() => {
+        scrollToBottom()
+      })
+    }
   }
 })
 

@@ -684,10 +684,20 @@ export class WebSocketClient {
   }
 
   private updateConnectionState(state: WebSocketConnectionState): void {
+    // 🔥 Update state synchronously for immediate UI feedback
     this.connectionState.value = state
     this.isConnected.value = state === 'connected'
-    this.handlers.onConnectionChange?.(state)
     this.log(`Connection state changed to: ${state}`)
+
+    // 🔥 Defer callback execution to prevent infinite recursion
+    // This breaks the synchronous execution chain that could trigger cascading updates
+    if (this.handlers.onConnectionChange) {
+      import('vue').then(({ nextTick }) => {
+        nextTick(() => {
+          this.handlers.onConnectionChange?.(state)
+        })
+      })
+    }
   }
 
   private generateMessageId(): string {
