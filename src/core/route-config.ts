@@ -234,16 +234,9 @@ const monitoringGroup = createRouteGroup({
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
-    }),
-    createRouteModule({
-      name: 'activities',
-      path: '/activities',
-      handler: activityHandler as any,
-      description: '活�?記�??��?',
-      version: '1.0.0',
-      dependencies: ['auth'],
-      healthCheck: '/health'
     })
+    // NOTE: activities routes are registered explicitly in index.ts to support SSE stream with query token auth
+    // See index.ts lines 657-658 for /api/activities/stream and /api/activities routes
   ]
 });
 

@@ -322,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -365,34 +365,26 @@ const notifications = ref([
   }
 ])
 
+const baseNavigationItems = [
+  { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
+  { path: '/conversations', label: '對話管理', icon: ChatIcon },
+  { path: '/customers/tags', label: '標籤管理', icon: TagIcon },
+  { path: '/reports', label: '報表系統', icon: ReportsIcon }
+]
+
+const adminNavigationItems = [
+  ...baseNavigationItems,
+  { path: '/team', label: '團隊管理', icon: UsersIcon },
+  { path: '/activities', label: '活動記錄', icon: ActivityIcon },
+  { path: '/api-monitor', label: 'API監控', icon: MonitorIcon },
+  { path: '/settings', label: '系統設定', icon: SettingsIcon }
+]
+
+// Use computed with proper caching to prevent infinite loops
 const navigationItems = computed(() => {
-  const baseItems = [
-    { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
-    { path: '/conversations', label: '對話管理', icon: ChatIcon },
-    { path: '/customers/tags', label: '標籤管理', icon: TagIcon },
-    { path: '/reports', label: '報表系統', icon: ReportsIcon }
-  ]
-
-  // Navigation items based on user role
-
-  // Show admin features only for admin users
-  try {
-    // Only show admin menu items if we have confirmed the user is an admin
-    if (authStore.currentAgent && authStore.isAdmin) {
-      baseItems.push(
-        { path: '/team', label: '團隊管理', icon: UsersIcon },
-        { path: '/activities', label: '活動記錄', icon: ActivityIcon },
-        { path: '/api-monitor', label: 'API監控', icon: MonitorIcon },
-        { path: '/settings', label: '系統設定', icon: SettingsIcon }
-      )
-    }
-    // Remove the temporary admin menu display during loading to prevent confusion
-  } catch (error) {
-    console.warn('Error in navigation items:', error)
-    // Fallback: only show basic items if there's an error
-  }
-
-  return baseItems
+  // Directly check role without intermediate variables
+  const isAdmin = authStore.currentAgent?.role === 'admin'
+  return isAdmin ? adminNavigationItems : baseNavigationItems
 })
 
 const currentPageTitle = computed(() => {
@@ -524,24 +516,16 @@ const handleClickOutside = (event: Event) => {
 }
 
 // 監聽路由變化，確保組件正確更新
-watch(() => route.path, (newPath, oldPath) => {
-  console.log('🔄 AppLayout detected route change:', oldPath, '->', newPath)
-
+watch(() => route.path, (newPath) => {
   // 自動展開報表系統子菜單
   if (newPath.startsWith('/reports/')) {
     isReportsExpanded.value = true
   }
 
-  // 強制更新組件狀態
-  nextTick(() => {
-    // 關閉任何打開的菜單
-    showUserMenu.value = false
-    showNotifications.value = false
-
-    // 強制重新計算導航項目
-    console.log('🔄 AppLayout: Current page title updated to:', currentPageTitle.value)
-  })
-}, { immediate: true, flush: 'post' })
+  // 關閉任何打開的菜單
+  showUserMenu.value = false
+  showNotifications.value = false
+})
 
 onMounted(() => {
   // Load notifications or other initialization

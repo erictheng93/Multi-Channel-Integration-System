@@ -404,3 +404,4 @@ This is a comprehensive, production-ready system with **enterprise-grade archite
 - 這個專案不使用本地API，全部都使用生產環境API。
 - 互動始終以思考模式進行。Always think hard.
 - 這個專案不使用本地local開發環境的資源，一切都鏈接到遠端remote的資源。
+- Always check chrome-devtools docs to make sure it is up-to-date when needed for implementing new libraries or frameworks, or adding features using them.

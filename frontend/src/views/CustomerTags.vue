@@ -1,410 +1,418 @@
 <template>
-  <div class="customer-tags-page">
-    <!-- 頁面標題 -->
-    <div class="page-header glass">
-      <div class="header-content">
-        <div class="title-section">
-          <h1 class="page-title">
-            <svg
-              class="title-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
+  <AppLayout>
+    <div class="customer-tags">
+      <!-- Welcome Section -->
+      <div class="welcome-section">
+        <div class="welcome-content">
+          <div class="welcome-greeting">
+            <h1 class="welcome-title">
+              標籤管理
+            </h1>
+            <p class="welcome-subtitle">
+              管理客戶與對話標籤，優化分類與篩選
+            </p>
+          </div>
+          <div class="welcome-actions">
+            <button
+              class="btn btn-primary"
+              @click="showCreateModal = true"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-              />
-            </svg>
-            標籤管理
-          </h1>
-          <p class="page-subtitle">
-            管理客戶與對話標籤，優化分類與篩選
-          </p>
-        </div>
-
-        <button
-          class="create-btn glass-primary"
-          @click="showCreateModal = true"
-        >
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          新增標籤
-        </button>
-      </div>
-
-      <!-- 統計卡片 -->
-      <div class="stats-row">
-        <div class="stat-card glass-light">
-          <div
-            class="stat-icon"
-            style="background: rgba(59, 130, 246, 0.2);"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-              />
-            </svg>
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">總標籤數</span>
-            <span class="stat-value">{{ totalTags }}</span>
-          </div>
-        </div>
-
-        <div class="stat-card glass-light">
-          <div
-            class="stat-icon"
-            style="background: rgba(16, 185, 129, 0.2);"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">已標記客戶</span>
-            <span class="stat-value">{{ totalCustomers }}</span>
-          </div>
-        </div>
-
-        <div class="stat-card glass-light">
-          <div
-            class="stat-icon"
-            style="background: rgba(245, 158, 11, 0.2);"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-              />
-            </svg>
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">已標記對話</span>
-            <span class="stat-value">{{ totalConversations }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 工具欄 -->
-    <div class="toolbar glass">
-      <div class="search-box glass-light">
-        <svg
-          class="search-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-        >
-          <circle
-            cx="11"
-            cy="11"
-            r="8"
-          />
-          <path d="m21 21-4.35-4.35" />
-        </svg>
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="搜尋標籤名稱或描述..."
-          class="search-input"
-        >
-      </div>
-
-      <div class="toolbar-actions">
-        <select
-          v-model="filterTeam"
-          class="filter-select glass-light"
-        >
-          <option value="">
-            所有團隊
-          </option>
-          <option value="global">
-            全局標籤
-          </option>
-          <option value="team">
-            團隊標籤
-          </option>
-        </select>
-
-        <button
-          v-if="selectedTags.length > 0"
-          class="bulk-btn glass-light"
-          @click="showBulkMenu = !showBulkMenu"
-        >
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-            />
-          </svg>
-          批量操作 ({{ selectedTags.length }})
-        </button>
-      </div>
-    </div>
-
-    <!-- 標籤列表 -->
-    <div class="tags-grid">
-      <div
-        v-for="tag in filteredTags"
-        :key="tag.id"
-        class="tag-card glass"
-        :class="{ selected: selectedTags.includes(tag.id) }"
-      >
-        <div class="tag-card-header">
-          <input
-            type="checkbox"
-            :checked="selectedTags.includes(tag.id)"
-            class="tag-checkbox"
-            @change="toggleTagSelection(tag.id)"
-          >
-          <div
-            class="tag-color-large"
-            :style="{ backgroundColor: tag.color }"
-          />
-        </div>
-
-        <div class="tag-card-body">
-          <h3 class="tag-card-title">
-            {{ tag.name }}
-          </h3>
-          <p
-            v-if="tag.description"
-            class="tag-card-description"
-          >
-            {{ tag.description }}
-          </p>
-
-          <div class="tag-meta">
-            <span class="meta-item">
               <svg
-                class="meta-icon"
+                class="icon"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
+                stroke-width="2"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              新增標籤
+            </button>
+            <button
+              class="btn btn-secondary"
+              @click="loadTags"
+            >
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-overview">
+        <div class="stats-grid">
+          <div class="stat-card tags">
+            <div class="stat-content">
+              <div class="stat-number">
+                {{ totalTags }}
+              </div>
+              <div class="stat-label">
+                總標籤數
+              </div>
+            </div>
+            <div class="stat-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-card customers">
+            <div class="stat-content">
+              <div class="stat-number">
+                {{ totalCustomers }}
+              </div>
+              <div class="stat-label">
+                已標記客戶
+              </div>
+            </div>
+            <div class="stat-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
                   d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              {{ tag.customerCount || 0 }} 客戶
-            </span>
-            <span class="meta-item">
+            </div>
+          </div>
+
+          <div class="stat-card conversations">
+            <div class="stat-content">
+              <div class="stat-number">
+                {{ totalConversations }}
+              </div>
+              <div class="stat-label">
+                已標記對話
+              </div>
+            </div>
+            <div class="stat-icon">
               <svg
-                class="meta-icon"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
+                stroke-width="2"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
                   d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
                 />
               </svg>
-              {{ tag.conversationCount || 0 }} 對話
-            </span>
+            </div>
           </div>
-
-          <div
-            v-if="tag.teamId"
-            class="tag-badge glass-light"
-          >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            團隊標籤
-          </div>
-          <div
-            v-else
-            class="tag-badge glass-primary"
-          >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            全局
-          </div>
-        </div>
-
-        <div class="tag-card-footer">
-          <button
-            class="action-btn glass-light"
-            @click="viewTagStats(tag)"
-          >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            統計
-          </button>
-          <button
-            class="action-btn glass-light"
-            @click="editTag(tag)"
-          >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            編輯
-          </button>
-          <button
-            class="action-btn glass-light delete-btn"
-            @click="confirmDelete(tag)"
-          >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-            刪除
-          </button>
         </div>
       </div>
 
-      <!-- 空狀態 -->
-      <div
-        v-if="filteredTags.length === 0 && !loading"
-        class="empty-state glass"
-      >
-        <svg
-          class="empty-icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-          />
-        </svg>
-        <h3>尚無標籤</h3>
-        <p>建立第一個標籤來開始管理客戶分類</p>
-        <button
-          class="create-first-btn glass-primary"
-          @click="showCreateModal = true"
-        >
+      <!-- Toolbar -->
+      <div class="toolbar-section">
+        <div class="search-box">
           <svg
-            class="icon"
+            class="search-icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
+            stroke-width="2"
           >
+            <circle
+              cx="11"
+              cy="11"
+              r="8"
+            />
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
+              d="m21 21-4.35-4.35"
             />
           </svg>
-          立即創建
-        </button>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="搜尋標籤名稱或描述..."
+            class="search-input"
+          >
+        </div>
+
+        <div class="toolbar-actions">
+          <select
+            v-model="filterTeam"
+            class="filter-select"
+          >
+            <option value="">
+              所有團隊
+            </option>
+            <option value="global">
+              全局標籤
+            </option>
+            <option value="team">
+              團隊標籤
+            </option>
+          </select>
+
+          <button
+            v-if="selectedTags.length > 0"
+            class="btn btn-secondary"
+            @click="showBulkMenu = !showBulkMenu"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+              />
+            </svg>
+            批量操作 ({{ selectedTags.length }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Tags Grid -->
+      <div class="content-section">
+        <HamsterLoader
+          v-if="loading"
+          message="載入標籤中..."
+        />
+
+        <EmptyState
+          v-else-if="filteredTags.length === 0"
+          title="尚無標籤"
+          description="建立第一個標籤來開始管理客戶分類"
+        >
+          <template #actions>
+            <button
+              class="btn btn-primary"
+              @click="showCreateModal = true"
+            >
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              立即創建
+            </button>
+          </template>
+        </EmptyState>
+
+        <div
+          v-else
+          class="tags-grid"
+        >
+          <div
+            v-for="tag in filteredTags"
+            :key="tag.id"
+            class="tag-card"
+            :class="{ selected: selectedTags.includes(tag.id) }"
+          >
+            <div class="tag-card-header">
+              <input
+                type="checkbox"
+                :checked="selectedTags.includes(tag.id)"
+                class="tag-checkbox"
+                @change="toggleTagSelection(tag.id)"
+              >
+              <div
+                class="tag-color-badge"
+                :style="{ backgroundColor: tag.color }"
+              />
+            </div>
+
+            <div class="tag-card-body">
+              <h3 class="tag-card-title">
+                {{ tag.name }}
+              </h3>
+              <p
+                v-if="tag.description"
+                class="tag-card-description"
+              >
+                {{ tag.description }}
+              </p>
+
+              <div class="tag-meta">
+                <span class="meta-item">
+                  <svg
+                    class="meta-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  {{ tag.customerCount || 0 }} 客戶
+                </span>
+                <span class="meta-item">
+                  <svg
+                    class="meta-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                    />
+                  </svg>
+                  {{ tag.conversationCount || 0 }} 對話
+                </span>
+              </div>
+
+              <div class="tag-badges">
+                <div
+                  v-if="tag.teamId"
+                  class="tag-badge team"
+                >
+                  <svg
+                    class="badge-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  團隊標籤
+                </div>
+                <div
+                  v-else
+                  class="tag-badge global"
+                >
+                  <svg
+                    class="badge-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  全局
+                </div>
+              </div>
+            </div>
+
+            <div class="tag-card-footer">
+              <button
+                class="action-btn"
+                @click="viewTagStats(tag)"
+              >
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                統計
+              </button>
+              <button
+                class="action-btn"
+                @click="editTag(tag)"
+              >
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                編輯
+              </button>
+              <button
+                class="action-btn danger"
+                @click="confirmDelete(tag)"
+              >
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                刪除
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 載入狀態 -->
-    <div
-      v-if="loading"
-      class="loading-overlay glass"
-    >
-      <div class="spinner-large" />
-      <p>載入中...</p>
-    </div>
-
-    <!-- 創建/編輯標籤 Modal -->
+    <!-- Create/Edit Modal -->
     <Transition name="modal">
       <div
         v-if="showCreateModal || showEditModal"
@@ -412,7 +420,7 @@
         @click="closeModals"
       >
         <div
-          class="modal-content glass"
+          class="modal-content"
           @click.stop
         >
           <div class="modal-header">
@@ -428,11 +436,11 @@
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
+                stroke-width="2"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
@@ -445,7 +453,7 @@
               <input
                 v-model="formData.name"
                 type="text"
-                class="form-input glass-light"
+                class="form-input"
                 placeholder="例如: VIP客戶"
                 maxlength="50"
               >
@@ -468,8 +476,13 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
+                    stroke-width="3"
                   >
-                    <polyline points="20 6 9 17 4 12" />
+                    <polyline
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      points="20 6 9 17 4 12"
+                    />
                   </svg>
                 </div>
                 <input
@@ -484,7 +497,7 @@
               <label class="form-label">描述</label>
               <textarea
                 v-model="formData.description"
-                class="form-textarea glass-light"
+                class="form-textarea"
                 placeholder="選填：描述此標籤的用途..."
                 rows="3"
                 maxlength="200"
@@ -495,7 +508,7 @@
               <label class="form-label">範圍</label>
               <div class="scope-options">
                 <label
-                  class="scope-option glass-light"
+                  class="scope-option"
                   :class="{ selected: !formData.teamId }"
                 >
                   <input
@@ -506,15 +519,15 @@
                   >
                   <div class="scope-content">
                     <svg
-                      class="icon"
+                      class="scope-icon"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
+                      stroke-width="2"
                     >
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        stroke-width="2"
                         d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
@@ -522,7 +535,7 @@
                   </div>
                 </label>
                 <label
-                  class="scope-option glass-light"
+                  class="scope-option"
                   :class="{ selected: formData.teamId }"
                 >
                   <input
@@ -533,15 +546,15 @@
                   >
                   <div class="scope-content">
                     <svg
-                      class="icon"
+                      class="scope-icon"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
+                      stroke-width="2"
                     >
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        stroke-width="2"
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                       />
                     </svg>
@@ -554,13 +567,13 @@
 
           <div class="modal-footer">
             <button
-              class="btn-cancel glass-light"
+              class="btn btn-secondary"
               @click="closeModals"
             >
               取消
             </button>
             <button
-              class="btn-confirm glass-primary"
+              class="btn btn-primary"
               :disabled="!formData.name"
               @click="saveTag"
             >
@@ -569,11 +582,11 @@
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
+                stroke-width="2"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
                   d="M5 13l4 4L19 7"
                 />
               </svg>
@@ -583,12 +596,15 @@
         </div>
       </div>
     </Transition>
-  </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getTags, createTag, updateTag, deleteTag, type Tag } from '@/api/tags'
+import AppLayout from '@/components/ui/AppLayout.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
 const loading = ref(false)
 const searchQuery = ref('')
@@ -612,7 +628,7 @@ const predefinedColors = [
   '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'
 ]
 
-// 計算屬性
+// Computed Properties
 const totalTags = computed(() => tags.value.length)
 const totalCustomers = computed(() => tags.value.reduce((sum, t) => sum + (t.customerCount || 0), 0))
 const totalConversations = computed(() => tags.value.reduce((sum, t) => sum + (t.conversationCount || 0), 0))
@@ -620,7 +636,7 @@ const totalConversations = computed(() => tags.value.reduce((sum, t) => sum + (t
 const filteredTags = computed(() => {
   let result = tags.value
 
-  // 搜尋篩選
+  // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(
@@ -628,7 +644,7 @@ const filteredTags = computed(() => {
     )
   }
 
-  // 團隊篩選
+  // Team filter
   if (filterTeam.value === 'global') {
     result = result.filter(t => !t.teamId)
   } else if (filterTeam.value === 'team') {
@@ -638,7 +654,7 @@ const filteredTags = computed(() => {
   return result
 })
 
-// 載入標籤
+// Load tags
 const loadTags = async () => {
   try {
     loading.value = true
@@ -653,7 +669,7 @@ const loadTags = async () => {
   }
 }
 
-// 切換選擇
+// Toggle tag selection
 const toggleTagSelection = (tagId: number) => {
   const index = selectedTags.value.indexOf(tagId)
   if (index > -1) {
@@ -663,7 +679,7 @@ const toggleTagSelection = (tagId: number) => {
   }
 }
 
-// 編輯標籤
+// Edit tag
 const editTag = (tag: Tag) => {
   editingTag.value = tag
   formData.value = {
@@ -675,7 +691,7 @@ const editTag = (tag: Tag) => {
   showEditModal.value = true
 }
 
-// 儲存標籤
+// Save tag
 const saveTag = async () => {
   try {
     loading.value = true
@@ -693,7 +709,7 @@ const saveTag = async () => {
   }
 }
 
-// 確認刪除
+// Confirm delete
 const confirmDelete = async (tag: Tag) => {
   if (window.confirm(`確定要刪除標籤「${tag.name}」嗎？`)) {
     try {
@@ -708,13 +724,13 @@ const confirmDelete = async (tag: Tag) => {
   }
 }
 
-// 查看統計
+// View tag stats
 const viewTagStats = (tag: Tag) => {
   console.log('View stats for:', tag)
-  // TODO: 實現統計頁面
+  // TODO: Implement stats page
 }
 
-// 關閉 Modal
+// Close modals
 const closeModals = () => {
   showCreateModal.value = false
   showEditModal.value = false
@@ -733,307 +749,345 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.customer-tags-page {
-  padding: 2rem;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.customer-tags {
+  max-width: clamp(1200px, 85vw, 1650px);
+  margin: 0 auto;
+  padding: clamp(1rem, 2vw, 2rem) clamp(0.5rem, 2vw, 1.5rem);
+  min-height: 100%;
 }
 
-/* Glassmorphism */
-.glass {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border-radius: 1rem;
+/* Welcome Section */
+.welcome-section {
+  margin-bottom: var(--space-12);
+  padding: var(--space-8) 0;
 }
 
-.glass-light {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.glass-primary {
-  background: rgba(59, 130, 246, 0.2);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-}
-
-/* 頁面標題 */
-.page-header {
-  padding: 2rem;
-  margin-bottom: 1.5rem;
-}
-
-.header-content {
+.welcome-content {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
+  max-width: 100%;
 }
 
-.title-section {
+.welcome-greeting {
   flex: 1;
 }
 
-.page-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 0.5rem 0;
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 2rem;
-  font-weight: 700;
+.welcome-title {
+  font-size: clamp(1.75rem, 1.5rem + 2vw, 2.8rem);
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.025em;
 }
 
-.title-icon {
-  width: 2rem;
-  height: 2rem;
-  stroke-width: 2;
-}
-
-.page-subtitle {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.7);
+.welcome-subtitle {
   font-size: 1rem;
+  color: var(--gray-600);
+  font-weight: 400;
 }
 
-.create-btn {
+.welcome-actions {
   display: flex;
+  gap: var(--space-4);
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 0.75rem;
-  color: #60A5FA;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
 }
 
-.create-btn:hover {
-  background: rgba(59, 130, 246, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+/* Stats Overview */
+.stats-overview {
+  margin-bottom: var(--space-12);
 }
 
-/* 統計卡片 */
-.stats-row {
+.stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(clamp(240px, 20vw, 300px), 1fr));
+  gap: clamp(1rem, 2vw, 2rem);
 }
 
 .stat-card {
+  background: white;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  border: 1px solid var(--gray-100);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  border-radius: 0.75rem;
+  justify-content: space-between;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
 }
 
-.stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--gray-200);
+  transition: background-color var(--transition-fast);
 }
 
-.stat-icon svg {
-  width: 1.5rem;
-  height: 1.5rem;
-  stroke-width: 2;
-  color: rgba(255, 255, 255, 0.9);
+.stat-card.tags::before {
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
 }
 
-.stat-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.stat-card.customers::before {
+  background: linear-gradient(180deg, #10b981, #059669);
+}
+
+.stat-card.conversations::before {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: var(--space-1);
+  line-height: 1;
 }
 
 .stat-label {
-  color: rgba(255, 255, 255, 0.7);
   font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.stat-value {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 1.75rem;
-  font-weight: 700;
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
+  background: var(--gray-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-600);
+  flex-shrink: 0;
 }
 
-/* 工具欄 */
-.toolbar {
+/* Toolbar Section */
+.toolbar-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+  padding: var(--space-4);
+  background: white;
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  border: 1px solid var(--gray-100);
 }
 
 .search-box {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex: 1;
   max-width: 400px;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  transition: all var(--transition-fast);
+}
+
+.search-box:focus-within {
+  background: white;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  stroke-width: 2;
-  color: rgba(255, 255, 255, 0.5);
+  width: 20px;
+  height: 20px;
+  color: var(--gray-400);
+  flex-shrink: 0;
 }
 
 .search-input {
   flex: 1;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--gray-900);
   font-size: 0.9375rem;
   outline: none;
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--gray-400);
 }
 
 .toolbar-actions {
   display: flex;
-  gap: 0.75rem;
-}
-
-.filter-select,
-.bulk-btn {
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 0.75rem;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
+  gap: var(--space-3);
+  align-items: center;
 }
 
 .filter-select {
-  background: rgba(255, 255, 255, 0.05);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
 .filter-select:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: white;
+  border-color: var(--gray-300);
 }
 
-.bulk-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* 標籤網格 */
+/* Content Section */
+.content-section {
+  margin-top: var(--space-8);
+}
+
+/* Tags Grid */
 .tags-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-6);
 }
 
 .tag-card {
-  padding: 1.5rem;
-  border-radius: 1rem;
-  transition: all 0.3s;
+  background: white;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  border: 1px solid var(--gray-100);
+  transition: all var(--transition-fast);
   cursor: pointer;
 }
 
 .tag-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .tag-card.selected {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-500);
+  background: var(--primary-50);
 }
 
 .tag-card-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .tag-checkbox {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
+  border-radius: var(--radius-md);
 }
 
-.tag-color-large {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.tag-color-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .tag-card-body {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .tag-card-title {
-  margin: 0 0 0.5rem 0;
-  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 var(--space-2) 0;
+  color: var(--gray-900);
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .tag-card-description {
-  margin: 0 0 1rem 0;
-  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 var(--space-4) 0;
+  color: var(--gray-600);
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
 .tag-meta {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  color: rgba(255, 255, 255, 0.7);
+  gap: var(--space-2);
+  color: var(--gray-600);
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .meta-icon {
-  width: 1rem;
-  height: 1rem;
-  stroke-width: 2;
+  width: 16px;
+  height: 16px;
+  color: var(--gray-400);
+}
+
+.tag-badges {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .tag-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
+.tag-badge.global {
+  background: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.tag-badge.team {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.badge-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .tag-card-footer {
   display: flex;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--gray-100);
 }
 
 .action-btn {
@@ -1041,68 +1095,76 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  padding: 0.625rem;
-  border: none;
-  border-radius: 0.5rem;
-  color: rgba(255, 255, 255, 0.8);
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+  color: var(--gray-700);
   font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 1);
+  background: white;
+  border-color: var(--gray-300);
+  color: var(--gray-900);
 }
 
-.delete-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #EF4444;
+.action-btn.danger:hover {
+  background: var(--danger-50);
+  border-color: var(--danger-200);
+  color: var(--danger-700);
 }
 
-/* 空狀態 */
-.empty-state {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 4rem;
-  height: 4rem;
-  stroke-width: 1.5;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.empty-state h3 {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.5rem;
-}
-
-.empty-state p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.create-first-btn {
+/* Buttons */
+.btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  padding: 0.875rem 1.5rem;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
   border: none;
-  border-radius: 0.75rem;
-  color: #60A5FA;
-  font-size: 1rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background: var(--primary-600);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+}
+
+.btn-secondary:hover {
+  background: var(--gray-200);
+  color: var(--gray-900);
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* Modal */
@@ -1115,10 +1177,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   z-index: 2000;
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 .modal-content {
@@ -1126,94 +1188,106 @@ onMounted(() => {
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  padding: 2rem;
+  background: white;
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+  padding: var(--space-8);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-6);
 }
 
 .modal-title {
   margin: 0;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--gray-900);
   font-size: 1.5rem;
   font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .modal-close {
-  padding: 0.5rem;
+  padding: var(--space-2);
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background: transparent;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--gray-400);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--gray-100);
+  color: var(--gray-700);
 }
 
 .modal-body {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .form-label {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--gray-700);
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .form-input,
 .form-textarea {
-  padding: 0.875rem 1rem;
-  border: none;
-  border-radius: 0.75rem;
-  color: rgba(255, 255, 255, 0.9);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+  color: var(--gray-900);
   font-size: 0.9375rem;
   outline: none;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .form-input:focus,
 .form-textarea:focus {
-  background: rgba(255, 255, 255, 0.1);
+  background: white;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--gray-400);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
 }
 
 .color-picker {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .color-option {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  border: 2px solid transparent;
+  transition: all var(--transition-fast);
+  border: 3px solid transparent;
 }
 
 .color-option:hover {
@@ -1221,45 +1295,48 @@ onMounted(() => {
 }
 
 .color-option.selected {
-  border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: var(--gray-900);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .check-icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  stroke-width: 3;
+  width: 20px;
+  height: 20px;
   color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .color-input {
-  width: 3rem;
-  height: 3rem;
+  width: 48px;
+  height: 48px;
   border: none;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   cursor: pointer;
 }
 
 .scope-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .scope-option {
-  padding: 1rem;
-  border-radius: 0.75rem;
+  padding: var(--space-4);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-xl);
+  background: var(--gray-50);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .scope-option:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: white;
+  border-color: var(--gray-300);
 }
 
 .scope-option.selected {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: var(--primary-50);
+  border-color: var(--primary-500);
 }
 
 .scope-radio {
@@ -1270,96 +1347,27 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  color: rgba(255, 255, 255, 0.9);
+  gap: var(--space-2);
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+.scope-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .modal-footer {
   display: flex;
-  gap: 0.75rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--gray-100);
 }
 
-.btn-cancel,
-.btn-confirm {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  border: none;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.btn-confirm {
-  color: #60A5FA;
-}
-
-.btn-confirm:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
-}
-
-.btn-confirm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 載入 */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  z-index: 1500;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.spinner-large {
-  width: 3rem;
-  height: 3rem;
-  border: 4px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #60A5FA;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 圖標 */
-.icon {
-  width: 1rem;
-  height: 1rem;
-  stroke-width: 2;
-  flex-shrink: 0;
-}
-
-/* 動畫 */
+/* Modal Transitions */
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.3s;
+  transition: all 0.3s ease;
 }
 
 .modal-enter-from,
@@ -1369,6 +1377,83 @@ onMounted(() => {
 
 .modal-enter-from .modal-content,
 .modal-leave-to .modal-content {
-  transform: scale(0.9);
+  transform: scale(0.95);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .customer-tags {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .welcome-content {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-6);
+  }
+
+  .toolbar-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    max-width: none;
+  }
+
+  .tags-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-tags {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .welcome-title {
+    font-size: 1.75rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tags-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .welcome-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: var(--space-3);
+  }
+
+  .tag-card-footer {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .tag-card,
+  .action-btn,
+  .btn,
+  .modal-overlay,
+  .modal-content {
+    transition: none !important;
+  }
+
+  .stat-card:hover,
+  .tag-card:hover {
+    transform: none !important;
+  }
 }
 </style>

@@ -204,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useMessages } from '@/composables/useMessages' // HTTP API fallback
@@ -760,6 +760,14 @@ const loadConversation = async () => {
     if (currentConversation?.unreadCount) {
       await markAsRead()
     }
+
+    // 🔥 自動滾動到最新消息（最底部）
+    // 使用 nextTick 確保 DOM 已經完全更新並渲染了所有消息
+    await nextTick()
+    setTimeout(() => {
+      scrollToNewest()
+      console.log('✅ [Auto-scroll] Scrolled to newest message on conversation load')
+    }, 300) // 延遲300ms確保虛擬滾動列表已經完全渲染
   } catch (error) {
     console.error('Failed to load conversation:', error)
     // Handle conversation not found or network errors
@@ -1000,67 +1008,62 @@ watch(() => hasNewMessages.value, (hasNew) => {
 
 // Note: Initial loading state is now managed by useLoadingState composable
 
+// Performance monitoring interval (declare at top level for cleanup)
+let performanceReportInterval: ReturnType<typeof setInterval> | null = null
+
 // Lifecycle with WebSocket and performance monitoring + error handling
-onMounted(async () => {
+onMounted(() => {
   console.log('🔧 ConversationDetail mounted with WebSocket support')
 
-  try {
-    // Start performance monitoring
-    mark('component-mount-start')
-    startMonitoring()
+  // Start performance monitoring
+  mark('component-mount-start')
+  startMonitoring()
 
-    // Setup event listeners
-    document.addEventListener('keydown', handleGlobalKeydown)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    document.addEventListener('mousemove', trackUserActivity)
-    document.addEventListener('click', trackUserActivity)
+  // Setup event listeners
+  document.addEventListener('keydown', handleGlobalKeydown)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  document.addEventListener('mousemove', trackUserActivity)
+  document.addEventListener('click', trackUserActivity)
 
-    // Load conversation data
-    await loadConversation()
+  // Log performance summary in development
+  if (import.meta.env.DEV) {
+    // Performance monitoring with cache stats and error reporting
+    performanceReportInterval = setInterval(() => {
+      logPerformanceSummary()
 
+      // Cache performance stats
+      const cacheStats = performanceOptimizer.getCacheStats()
+      if (cacheStats.totalHits + cacheStats.totalMisses > 0) {
+        console.log('🧠 [Cache Performance]', {
+          hitRate: `${(cacheStats.hitRate * 100).toFixed(1)}%`,
+          size: cacheStats.size,
+          totalOperations: cacheStats.totalHits + cacheStats.totalMisses
+        })
+      }
+
+      // Error handling stats
+      const errorStats = errorHandler.getErrorStats()
+      if (errorStats.total > 0) {
+        console.log('🚨 [Error Statistics]', errorStats)
+      }
+    }, 10000) // 每10秒報告一次
+  }
+
+  // Load conversation data asynchronously (don't await in onMounted)
+  loadConversation().then(() => {
     // Mark initial loading as complete once WebSocket is set up
     if (isWebSocketEnabled.value) {
       // WebSocket will handle message loading
       hasLoadedInitially.value = true
       isInitialLoading.value = false
     }
-
     measure('component-mount', 'component-mount-start')
-
-    // Log performance summary in development
-    if (import.meta.env.DEV) {
-      // Performance monitoring with cache stats and error reporting
-      const performanceReportInterval = setInterval(() => {
-        logPerformanceSummary()
-
-        // Cache performance stats
-        const cacheStats = performanceOptimizer.getCacheStats()
-        if (cacheStats.totalHits + cacheStats.totalMisses > 0) {
-          console.log('🧠 [Cache Performance]', {
-            hitRate: `${(cacheStats.hitRate * 100).toFixed(1)}%`,
-            size: cacheStats.size,
-            totalOperations: cacheStats.totalHits + cacheStats.totalMisses
-          })
-        }
-
-        // Error handling stats
-        const errorStats = errorHandler.getErrorStats()
-        if (errorStats.total > 0) {
-          console.log('🚨 [Error Statistics]', errorStats)
-        }
-      }, 10000) // 每10秒報告一次
-
-      // Clean up performance monitoring on unmount
-      onUnmounted(() => {
-        clearInterval(performanceReportInterval)
-      })
-    }
-  } catch (error) {
+  }).catch(error => {
     console.error('Failed to initialize ConversationDetail component:', error)
     // Handle critical initialization errors
     isInitialLoading.value = false
     router.push('/conversations')
-  }
+  })
 })
 
 onUnmounted(() => {
@@ -1068,6 +1071,12 @@ onUnmounted(() => {
   if (pollingInterval.value) {
     clearTimeout(pollingInterval.value)
     pollingInterval.value = null
+  }
+
+  // Clean up performance monitoring interval
+  if (performanceReportInterval) {
+    clearInterval(performanceReportInterval)
+    performanceReportInterval = null
   }
 
   // Note: Event listeners and timers are automatically cleaned up by useEventHandler

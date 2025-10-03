@@ -110,7 +110,7 @@ export const getTags = async (params?: {
           .map(([key, value]) => [key, String(value)])
       ).toString()}`
     : ''
-  const response = await apiClient.get<PaginatedTagsResponse>(`/api/tags${queryString}`)
+  const response = await apiClient.get<PaginatedTagsResponse>(`/customers/tags/available${queryString}`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tags')
   }
@@ -121,7 +121,7 @@ export const getTags = async (params?: {
  * 創建新標籤
  */
 export const createTag = async (data: CreateTagRequest): Promise<TagResponse> => {
-  const response = await apiClient.post<TagResponse>('/api/tags', data)
+  const response = await apiClient.post<TagResponse>('/tags', data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to create tag')
   }
@@ -132,7 +132,7 @@ export const createTag = async (data: CreateTagRequest): Promise<TagResponse> =>
  * 獲取單一標籤詳情
  */
 export const getTagById = async (id: number): Promise<TagResponse> => {
-  const response = await apiClient.get<TagResponse>(`/api/tags/${id}`)
+  const response = await apiClient.get<TagResponse>(`/tags/${id}`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag')
   }
@@ -143,7 +143,7 @@ export const getTagById = async (id: number): Promise<TagResponse> => {
  * 更新標籤
  */
 export const updateTag = async (id: number, data: UpdateTagRequest): Promise<TagResponse> => {
-  const response = await apiClient.put<TagResponse>(`/api/tags/${id}`, data)
+  const response = await apiClient.put<TagResponse>(`/tags/${id}`, data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to update tag')
   }
@@ -154,7 +154,7 @@ export const updateTag = async (id: number, data: UpdateTagRequest): Promise<Tag
  * 刪除標籤 (軟刪除)
  */
 export const deleteTag = async (id: number): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.delete<void>(`/api/tags/${id}`)
+  const response = await apiClient.delete<void>(`/tags/${id}`)
   if (!response.success) {
     throw new Error(response.error || 'Failed to delete tag')
   }
@@ -165,7 +165,7 @@ export const deleteTag = async (id: number): Promise<{ success: boolean; message
  * 獲取標籤使用統計
  */
 export const getTagUsageStats = async (id: number): Promise<TagStatsResponse> => {
-  const response = await apiClient.get<TagStatsResponse>(`/api/tags/${id}/stats`)
+  const response = await apiClient.get<TagStatsResponse>(`/tags/${id}/stats`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag stats')
   }
@@ -178,7 +178,7 @@ export const getTagUsageStats = async (id: number): Promise<TagStatsResponse> =>
 export const bulkOperateTags = async (
   data: BulkOperationRequest
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.post<void>('/api/tags/bulk', data)
+  const response = await apiClient.post<void>('/tags/bulk', data)
   if (!response.success) {
     throw new Error(response.error || 'Failed to perform bulk operation')
   }
@@ -189,7 +189,7 @@ export const bulkOperateTags = async (
  * 獲取客戶的標籤
  */
 export const getCustomerTags = async (customerId: number): Promise<{ success: boolean; data: Tag[] }> => {
-  const response = await apiClient.get<Tag[]>(`/api/customers/${customerId}/tags`)
+  const response = await apiClient.get<Tag[]>(`/customers/${customerId}/tags`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch customer tags')
   }
@@ -203,7 +203,7 @@ export const addTagsToCustomer = async (
   customerId: number,
   tagIds: number[]
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.post<void>(`/api/customers/${customerId}/tags`, { tagIds })
+  const response = await apiClient.post<void>(`/customers/${customerId}/tags`, { tagIds })
   if (!response.success) {
     throw new Error(response.error || 'Failed to add tags to customer')
   }
@@ -219,7 +219,7 @@ export const removeTagsFromCustomer = async (
 ): Promise<{ success: boolean; message: string }> => {
   const response = await apiClient.request<void>(
     'DELETE',
-    `/api/customers/${customerId}/tags`,
+    `/customers/${customerId}/tags`,
     { tagIds }
   )
   if (!response.success) {
@@ -235,7 +235,7 @@ export const setCustomerTags = async (
   customerId: number,
   tagIds: number[]
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.put<void>(`/api/customers/${customerId}/tags`, { tagIds })
+  const response = await apiClient.put<void>(`/customers/${customerId}/tags`, { tagIds })
   if (!response.success) {
     throw new Error(response.error || 'Failed to set customer tags')
   }

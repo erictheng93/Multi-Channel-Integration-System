@@ -33,10 +33,13 @@ authHandler.use('*', async (c, next) => {
     'http://localhost:8787',
   ];
 
+  // Check if origin matches Cloudflare Pages preview domains
+  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+
   await next();
 
   // 添加CORS headers到響應
-  if (allowedOrigins.includes(origin) && origin) {
+  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
   }
@@ -53,7 +56,9 @@ authHandler.options('*', (c) => {
     'http://localhost:8787',
   ];
 
-  const isAllowed = allowedOrigins.includes(origin);
+  // Check if origin matches Cloudflare Pages preview domains
+  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+  const isAllowed = allowedOrigins.includes(origin) || isPagesPreview;
 
   // 創建響應並設置CORS headers
   const response = new Response(null, { status: 204 });

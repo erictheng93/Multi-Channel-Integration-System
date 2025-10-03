@@ -29,13 +29,55 @@ export function createAgentRouter() {
 
   // 建立新代理
   router.post('/agents',
-    requireAdminRole(),
+    requireTeamLeaderOrAdmin(),  // 允許 Team 和 Admin
     agentValidationMiddleware.createAgent,
     async (c) => {
       const db = createDb(c.env.DB);
       const agentService = new AgentService(db);
+      const currentUser = c.get('user');
 
       const data = await c.req.json();
+
+      // 角色權限檢查：Team 只能建立 agent 角色
+      if (currentUser.role === 'team') {
+        if (data.role && data.role !== 'agent') {
+          return c.json({
+            success: false,
+            error: 'Team leaders can only create agents with "agent" role',
+            timestamp: new Date().toISOString()
+          }, 403);
+        }
+
+        // 強制設定為 agent 角色
+        data.role = 'agent';
+
+        // Team 只能將成員加入自己的團隊
+        if (data.teamId && data.teamId !== currentUser.teamId) {
+          return c.json({
+            success: false,
+            error: 'Team leaders can only add members to their own team',
+            timestamp: new Date().toISOString()
+          }, 403);
+        }
+
+        // 如果沒有指定 teamId，自動設為當前 Team 的 teamId
+        if (!data.teamId) {
+          data.teamId = currentUser.teamId;
+        }
+      }
+
+      // Admin 可以建立任何角色，但不能建立比自己權限高的角色
+      if (currentUser.role === 'admin' && data.role) {
+        const validRoles = ['admin', 'team', 'agent'];
+        if (!validRoles.includes(data.role)) {
+          return c.json({
+            success: false,
+            error: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
+            timestamp: new Date().toISOString()
+          }, 400);
+        }
+      }
+
       const agent = await agentService.createAgent(data);
 
       return c.json({
@@ -121,9 +163,52 @@ export function createAgentRouter() {
     async (c) => {
       const db = createDb(c.env.DB);
       const agentService = new AgentService(db);
+      const currentUser = c.get('user');
 
       const agentId = c.req.param('agentId')!;
       const data = await c.req.json();
+
+      // 取得目標 agent 的資訊
+      const targetAgent = await agentService.getAgent(agentId);
+      if (!targetAgent) {
+        return c.json({ error: 'Agent not found' }, 404);
+      }
+
+      // Team 角色的限制
+      if (currentUser.role === 'team') {
+        // Team 不能修改角色
+        if (data.role) {
+          return c.json({
+            success: false,
+            error: 'Team leaders cannot change agent roles',
+            timestamp: new Date().toISOString()
+          }, 403);
+        }
+
+        // Team 不能將成員移出自己的團隊
+        if (data.teamId && data.teamId !== currentUser.teamId) {
+          return c.json({
+            success: false,
+            error: 'Team leaders cannot move agents to other teams',
+            timestamp: new Date().toISOString()
+          }, 403);
+        }
+      }
+
+      // 防止修改角色為比當前用戶更高的權限
+      if (data.role) {
+        const roleHierarchy: Record<string, number> = { admin: 3, team: 2, agent: 1 };
+        const currentUserLevel = roleHierarchy[currentUser.role] || 0;
+        const newRoleLevel = roleHierarchy[data.role] || 0;
+
+        if (newRoleLevel > currentUserLevel) {
+          return c.json({
+            success: false,
+            error: 'Cannot assign a role higher than your own',
+            timestamp: new Date().toISOString()
+          }, 403);
+        }
+      }
 
       const updatedAgent = await agentService.updateAgent(agentId, data);
 
