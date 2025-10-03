@@ -157,7 +157,8 @@ export const useConversationsStore = defineStore('conversations', () => {
   const updateConversationInList = (updatedConversation: Conversation) => {
     const index = conversations.value.findIndex(c => c.id === updatedConversation.id)
     if (index !== -1) {
-      conversations.value[index] = updatedConversation
+      // Use splice to trigger reactivity properly without causing infinite loops
+      conversations.value.splice(index, 1, updatedConversation)
     }
   }
 

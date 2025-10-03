@@ -50,8 +50,14 @@ export function useSmoothLoading(options: SmoothLoadingOptions = {}) {
       if (animationTimer) {clearTimeout(animationTimer)}
       
       animationTimer = setTimeout(() => {
-        animatingItems.value.clear()
-        isUpdating.value = false
+        // Use try-catch to prevent potential errors from triggering infinite loops
+        try {
+          animatingItems.value.clear()
+          isUpdating.value = false
+        } catch (err) {
+          console.error('[useSmoothLoading] Animation cleanup error:', err)
+          isUpdating.value = false // Ensure flag is reset even on error
+        }
       }, config.animationDuration)
     }
   }

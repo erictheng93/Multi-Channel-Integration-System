@@ -123,6 +123,50 @@ console.log('   • GET /api/websocket/migration-status');
 console.log('   • GET /api/websocket/readiness');
 console.log('   • GET /api/websocket/liveness');
 
+// 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
+// This prevents auth middleware from being applied (SSE uses query token)
+app.options('/api/activities/stream', (c) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  // Check if origin matches Cloudflare Pages preview domains
+  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+
+  const response = new Response(null, { status: 204 });
+
+  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  // Prevent Cloudflare edge caching
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
+});
+app.get('/api/activities/stream', activityStreamHandler.connect);
+console.log('✅ SSE activity stream endpoint registered:');
+console.log('   • OPTIONS /api/activities/stream');
+console.log('   • GET /api/activities/stream (query token auth)');
+
+// 🔧 Pre-register Analytics Comparison API BEFORE unified route system
+// This prevents the /api/analytics/* catch-all from intercepting these routes
+app.route('/api/analytics/comparison', comparisonAPI);
+console.log('✅ Analytics Comparison API registered:');
+console.log('   • /api/analytics/comparison/* (with internal OPTIONS handler)');
+
 // Register P1 Optimization: WebSocket Dashboard (requires auth)
 app.route('/api/websocket/dashboard', websocketDashboardApp);
 console.log('✅ WebSocket Dashboard endpoints registered:');
@@ -587,8 +631,8 @@ app.get('/join', async (c) => {
 });
 
 // ==================== Analytics Comparison API ====================
-// Period comparison endpoints for analytics module
-app.route('/api/analytics/comparison', comparisonAPI);
+// Period comparison endpoints have been pre-registered (lines 162-167)
+// to prevent the main /api/analytics/* handler from intercepting them
 
 // ==================== WebSocket Real-time System ====================
 // WebSocket routes are now managed by the Unified Route Registry (src/core/route-config.ts)
@@ -624,37 +668,8 @@ app.get('/api/realtime/monitoring/health', realtime.monitoring.health);
 app.get('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
 app.post('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
 
-// 活動記錄路由 - SSE stream 必須在前面，避免被 activityHandler 捕獲
-// 🔥 OPTIONS handler for SSE stream endpoint - MUST come before GET handler
-app.options('/api/activities/stream', (c) => {
-  const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
-
-  const response = new Response(null, { status: 204 });
-
-  if (allowedOrigins.includes(origin) && origin) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  response.headers.set('Access-Control-Max-Age', '86400');
-
-  // Prevent Cloudflare edge caching
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
-});
-app.get('/api/activities/stream', activityStreamHandler.connect);
+// 活動記錄路由 - SSE stream 已在前面註冊 (lines 129-160)
+// Only register the main activities handler here
 app.route('/api/activities', activityHandler);
 
 // 隊列監控細粒度路由 - 保留 (queueMonitorHandler 需要特定方法映射)

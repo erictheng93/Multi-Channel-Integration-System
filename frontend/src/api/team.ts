@@ -11,12 +11,12 @@ import type {
 export const teamApi = {
   // 獲取團隊成員列表
   getMembers: async (): Promise<ApiResponse<TeamMember[]>> => {
-    return apiClient.get('/team/members')
+    return apiClient.get('/teams/members')
   },
 
   // 獲取待處理邀請列表
   getInvitations: async (): Promise<ApiResponse<Invitation[]>> => {
-    return apiClient.get('/team/invitations')
+    return apiClient.get('/teams/invitations')
   },
 
   // 直接新增成員
@@ -29,12 +29,12 @@ export const teamApi = {
     group?: string;
     isActive: boolean;
   }): Promise<ApiResponse<TeamMember>> => {
-    return apiClient.post('/team/members', request)
+    return apiClient.post('/teams/members', request)
   },
 
   // 邀請新成員
   inviteMember: async (request: InvitationRequest): Promise<ApiResponse<{ qrCode?: string; inviteLink?: string }>> => {
-    return apiClient.post('/team/invite', request)
+    return apiClient.post('/teams/invite', request)
   },
 
   // 重新發送邀請
@@ -96,7 +96,7 @@ export const teamApi = {
     pendingInvitations: number;
     adminCount: number;
   }>> => {
-    return apiClient.get('/team/stats')
+    return apiClient.get('/teams/stats')
   },
 
   // 接受邀請 (用於邀請頁面)
@@ -108,7 +108,7 @@ export const teamApi = {
     refreshToken?: string;
     agent: TeamMember;
   }>> => {
-    return apiClient.post('/team/invitations/accept', {
+    return apiClient.post('/teams/invitations/accept', {
       token,
       ...userData
     })
@@ -116,7 +116,7 @@ export const teamApi = {
 
   // 拒絕邀請
   declineInvitation: async (token: string): Promise<ApiResponse<void>> => {
-    return apiClient.post('/team/invitations/decline', { token })
+    return apiClient.post('/teams/invitations/decline', { token })
   },
 
   // 驗證邀請令牌
@@ -143,7 +143,7 @@ export const teamApi = {
     inviteLink: string;
     token: string;
   }>> => {
-    return apiClient.post('/team/qr-invite', request)
+    return apiClient.post('/teams/qr-invite', request)
   },
 
   // 遷移明文密碼到加密存儲 (臨時管理功能)
@@ -151,7 +151,7 @@ export const teamApi = {
     migrated: Array<{ username: string; status: string; error?: string }>;  // username 實際上是 displayName
     total: number;
   }>> => {
-    return apiClient.post('/team/migrate-passwords')
+    return apiClient.post('/teams/migrate-passwords')
   },
 
   // 團隊管理 API
@@ -287,7 +287,7 @@ export const teamApi = {
   // 獲取團隊成員（用於指派功能）
   getTeamMembers: async (teamId?: number): Promise<ApiResponse<TeamMember[]>> => {
     try {
-      const url = teamId ? `/teams/${teamId}/members` : '/team/members'
+      const url = teamId ? `/teams/${teamId}/members` : '/teams/members'
       const response = await apiClient.get<TeamMember[]>(url)
       
       if (response.success && response.data) {
@@ -307,7 +307,7 @@ export const teamApi = {
   // 獲取所有可用的指派對象（跨團隊，需要admin權限）
   getAvailableAssignees: async (): Promise<ApiResponse<TeamMember[]>> => {
     try {
-      const response = await apiClient.get<TeamMember[]>('/team/assignees')
+      const response = await apiClient.get<TeamMember[]>('/teams/assignees')
       
       if (response.success && response.data) {
         // 過濾出活躍的agent和team角色成員

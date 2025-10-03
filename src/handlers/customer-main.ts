@@ -5,6 +5,63 @@ import { handleApiError } from '../utils/api-response';
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 
+// 🔥 CORS Middleware - Add CORS headers to ALL responses
+customerHandler.use('*', async (c, next) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  // Check if origin matches Cloudflare Pages preview domains
+  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+
+  await next();
+
+  // Add CORS headers to response
+  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
+    c.header('Access-Control-Allow-Origin', origin);
+    c.header('Access-Control-Allow-Credentials', 'true');
+  }
+});
+
+// 🔥 CORS Preflight Handler - Handle OPTIONS requests
+customerHandler.options('*', (c) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  // Check if origin matches Cloudflare Pages preview domains
+  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+
+  const response = new Response(null, { status: 204 });
+
+  // Add CORS headers if origin is allowed
+  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  // Prevent Cloudflare edge caching of OPTIONS responses
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
+});
+
 // 客戶資訊查詢端點
 customerHandler.get('/', async (c) => {
   try {

@@ -160,6 +160,11 @@ watch(() => props.messages.length, (newLength, oldLength) => {
     })
   }
 })
+
+// Expose scrollToBottom method to parent component
+defineExpose({
+  scrollToBottom
+})
 </script>
 
 <style scoped>

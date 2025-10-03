@@ -14,9 +14,17 @@ const allowedOrigins = [
   'http://localhost:8787',
 ]
 
+// Helper function to check if origin is allowed
+function isOriginAllowed(origin: string): boolean {
+  if (allowedOrigins.includes(origin)) return true
+  // Check if origin matches Cloudflare Pages preview domains
+  if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) return true
+  return false
+}
+
 // Helper function to add CORS headers to any response
 function addCorsHeaders(response: Response, origin: string): Response {
-  if (allowedOrigins.includes(origin) && origin) {
+  if (isOriginAllowed(origin) && origin) {
     const newResponse = new Response(response.body, response)
     newResponse.headers.set('Access-Control-Allow-Origin', origin)
     newResponse.headers.set('Access-Control-Allow-Credentials', 'true')
@@ -72,7 +80,7 @@ export const activityStreamHandler = {
       }
 
       // Add CORS headers for SSE
-      if (allowedOrigins.includes(origin) && origin) {
+      if (isOriginAllowed(origin) && origin) {
         headers['Access-Control-Allow-Origin'] = origin
         headers['Access-Control-Allow-Credentials'] = 'true'
       }
@@ -88,9 +96,12 @@ export const activityStreamHandler = {
 
 // Helper functions for SSE stream management
 function createActivityStream(env: Bindings, payload: any) {
+  // Capture userId in closure scope to avoid reference errors
+  const userId = payload.userId
+
   return new ReadableStream({
     start(controller) {
-      console.log(`📡 Starting SSE stream for user: ${payload.userId}`)
+      console.log(`📡 Starting SSE stream for user: ${userId}`)
 
       const encoder = new TextEncoder()
       const sendMessage = (data: any) => {
@@ -102,19 +113,19 @@ function createActivityStream(env: Bindings, payload: any) {
         type: 'connected',
         message: 'Activity stream connected',
         timestamp: new Date().toISOString(),
-        userId: payload.userId
+        userId: userId
       })
 
       // Setup intervals
       const intervals = setupStreamIntervals(env, payload, sendMessage)
 
       return () => {
-        console.log(`🔌 Cleaning up SSE stream for user: ${payload.userId}`)
+        console.log(`🔌 Cleaning up SSE stream for user: ${userId}`)
         intervals.forEach(clearInterval)
       }
     },
     cancel() {
-      console.log(`❌ SSE stream cancelled for user: ${payload.userId}`)
+      console.log(`❌ SSE stream cancelled for user: ${userId}`)
     }
   })
 }

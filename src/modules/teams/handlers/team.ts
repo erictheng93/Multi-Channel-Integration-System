@@ -25,6 +25,42 @@ import {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// 🔥 CORS Middleware - Add CORS headers to ALL responses
+app.use('*', async (c, next) => {
+  const origin = c.req.header('Origin') || '';
+  const allowedOrigins = [
+    'https://multi-channel.imfinethankyouandyou.com',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8787',
+  ];
+
+  await next();
+
+  // Add CORS headers to response
+  if (allowedOrigins.includes(origin) && origin) {
+    c.header('Access-Control-Allow-Origin', origin);
+    c.header('Access-Control-Allow-Credentials', 'true');
+  }
+});
+
+// 🔥 CORS Preflight Handler - Handle OPTIONS requests
+app.options('*', (c) => {
+  const response = new Response(null, { status: 204 });
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  // Prevent Cloudflare edge caching of OPTIONS responses
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
+});
+
 // 健康檢查端點
 app.get('/health', (c) => {
   return c.json({
@@ -337,8 +373,9 @@ app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
 });
 
 // Add member to team
-app.post('/:id/members', async (c) => {
+app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
+    const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
     const body = await c.req.json() as TeamMemberAddRequest;
 
@@ -354,6 +391,15 @@ app.post('/:id/members', async (c) => {
         success: false,
         error: 'Agent ID is required'
       }, 400);
+    }
+
+    // Team 角色只能新增成員到自己的團隊
+    if (user.role === 'team' && user.teamId !== teamId) {
+      return c.json({
+        success: false,
+        error: 'Team leaders can only add members to their own team',
+        timestamp: new Date().toISOString()
+      }, 403);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -373,8 +419,9 @@ app.post('/:id/members', async (c) => {
 });
 
 // Update team member
-app.put('/:id/members/:agentId', async (c) => {
+app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
+    const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
     const agentId = c.req.param('agentId');
     const body = await c.req.json() as TeamMemberUpdateRequest;
@@ -384,6 +431,15 @@ app.put('/:id/members/:agentId', async (c) => {
         success: false,
         error: 'Invalid team ID or agent ID'
       }, 400);
+    }
+
+    // Team 角色只能更新自己團隊的成員
+    if (user.role === 'team' && user.teamId !== teamId) {
+      return c.json({
+        success: false,
+        error: 'Team leaders can only update members in their own team',
+        timestamp: new Date().toISOString()
+      }, 403);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -400,8 +456,9 @@ app.put('/:id/members/:agentId', async (c) => {
 });
 
 // Remove member from team
-app.delete('/:id/members/:agentId', async (c) => {
+app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
+    const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
     const agentId = c.req.param('agentId');
 
@@ -410,6 +467,15 @@ app.delete('/:id/members/:agentId', async (c) => {
         success: false,
         error: 'Invalid team ID or agent ID'
       }, 400);
+    }
+
+    // Team 角色只能移除自己團隊的成員
+    if (user.role === 'team' && user.teamId !== teamId) {
+      return c.json({
+        success: false,
+        error: 'Team leaders can only remove members from their own team',
+        timestamp: new Date().toISOString()
+      }, 403);
     }
 
     const teamService = new TeamService(c.env.DB);
