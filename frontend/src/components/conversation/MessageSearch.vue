@@ -24,10 +24,11 @@
             ref="searchInputRef"
             v-model="searchQuery"
             type="text"
-            placeholder="搜索消息內容..."
+            :placeholder="isAdvancedMode ? '高級搜索 (支持 AND, OR, NOT, *)' : '搜索消息內容...'"
             class="search-input"
             @input="handleSearch"
             @keydown="handleKeydown"
+            @focus="updateSuggestions"
           >
           <button
             v-if="searchQuery"
@@ -36,8 +37,33 @@
           >
             <XIcon />
           </button>
+
+          <!-- 搜索建議下拉菜單 -->
+          <div
+            v-if="showSuggestions && searchSuggestions.length > 0"
+            class="search-suggestions"
+          >
+            <div
+              v-for="(suggestion, index) in searchSuggestions"
+              :key="index"
+              class="suggestion-item"
+              @click="applySuggestion(suggestion)"
+            >
+              <SearchIcon class="suggestion-icon" />
+              <span>{{ suggestion }}</span>
+            </div>
+          </div>
         </div>
-        
+
+        <button
+          class="mode-toggle"
+          :class="{ active: isAdvancedMode }"
+          :title="isAdvancedMode ? '切換到普通搜索' : '切換到高級搜索'"
+          @click="toggleAdvancedMode"
+        >
+          {{ isAdvancedMode ? 'ADV' : 'STD' }}
+        </button>
+
         <button
           class="close-search"
           @click="closeSearch"
@@ -130,9 +156,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onUnmounted } from 'vue'
 import { SearchIcon, XIcon } from '@/components/icons'
 import type { Message } from '@/types'
+import { messageIndexService } from '@/services/messageIndexService'
+import { searchHistoryService } from '@/services/searchHistoryService'
+import { searchPerformanceMonitor } from '@/services/searchPerformanceMonitor'
+import { createDebouncedFunction } from '@/utils/debounce'
 
 interface SearchFilters {
   messageType: string
@@ -155,6 +185,9 @@ const emit = defineEmits<{
 const isExpanded = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref<HTMLInputElement>()
+const isAdvancedMode = ref(false)
+const showSuggestions = ref(false)
+const searchSuggestions = ref<string[]>([])
 
 const filters = ref<SearchFilters>({
   messageType: '',
@@ -172,24 +205,30 @@ const searchResults = computed(() => {
     return []
   }
 
-  return props.messages.filter(message => {
-    // 文本搜索
-    const matchesText = !searchQuery.value.trim() || 
-      message.content.toLowerCase().includes(searchQuery.value.toLowerCase())
+  // 根據模式選擇搜索方法
+  let results = searchQuery.value.trim()
+    ? (isAdvancedMode.value
+        ? messageIndexService.advancedSearch(searchQuery.value)
+        : messageIndexService.search(searchQuery.value))
+    : props.messages
 
-    // 消息類型過濾
-    const matchesType = !filters.value.messageType || 
-      message.messageType === filters.value.messageType
+  // 應用額外的過濾條件
+  // 消息類型過濾
+  if (filters.value.messageType) {
+    results = results.filter(m => m.messageType === filters.value.messageType)
+  }
 
-    // 發送者類型過濾
-    const matchesSender = !filters.value.senderType || 
-      message.senderType === filters.value.senderType
+  // 發送者類型過濾
+  if (filters.value.senderType) {
+    results = results.filter(m => m.senderType === filters.value.senderType)
+  }
 
-    // 日期範圍過濾
-    const matchesDate = matchesDateRange(message)
+  // 日期範圍過濾
+  if (filters.value.dateRange) {
+    results = results.filter(m => matchesDateRange(m))
+  }
 
-    return matchesText && matchesType && matchesSender && matchesDate
-  })
+  return results
 })
 
 // 方法
@@ -218,8 +257,71 @@ const matchesDateRange = (message: Message): boolean => {
   }
 }
 
+// 實際執行搜索的函數
+const performSearch = () => {
+  const startTime = performance.now()
+  const results = searchResults.value
+  const searchTime = performance.now() - startTime
+
+  emit('search-results', results)
+
+  // 保存搜索歷史（僅當有查詢時）
+  if (searchQuery.value.trim()) {
+    searchHistoryService.addSearch(
+      searchQuery.value,
+      results.length,
+      isAdvancedMode.value ? 'advanced' : 'basic'
+    )
+
+    // 記錄性能指標
+    searchPerformanceMonitor.recordSearch({
+      query: searchQuery.value,
+      searchType: isAdvancedMode.value ? 'advanced' : 'basic',
+      resultCount: results.length,
+      executionTime: searchTime
+    })
+  }
+
+  // 隱藏建議
+  showSuggestions.value = false
+}
+
+// 創建防抖搜索函數 (300ms 延遲)
+const debouncedSearch = createDebouncedFunction(performSearch, 300)
+
+// 處理搜索（對外暴露的接口）
 const handleSearch = () => {
-  emit('search-results', searchResults.value)
+  // 使用防抖搜索
+  debouncedSearch.debounced()
+}
+
+// 組件卸載時取消待執行的搜索
+onUnmounted(() => {
+  debouncedSearch.cancel()
+})
+
+// 更新搜索建議
+const updateSuggestions = () => {
+  if (searchQuery.value.trim()) {
+    searchSuggestions.value = searchHistoryService.getSuggestions(searchQuery.value, 5)
+    showSuggestions.value = searchSuggestions.value.length > 0
+  } else {
+    // 顯示最近搜索
+    searchSuggestions.value = searchHistoryService.getRecentSearches(5).map(item => item.query)
+    showSuggestions.value = searchSuggestions.value.length > 0
+  }
+}
+
+// 應用建議
+const applySuggestion = (suggestion: string) => {
+  searchQuery.value = suggestion
+  showSuggestions.value = false
+  handleSearch()
+}
+
+// 切換高級搜索模式
+const toggleAdvancedMode = () => {
+  isAdvancedMode.value = !isAdvancedMode.value
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -398,6 +500,88 @@ defineExpose({
 .close-search:hover {
   background: var(--gray-50);
   color: var(--gray-700);
+}
+
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--gray-300);
+  background: white;
+  color: var(--gray-600);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.mode-toggle:hover {
+  background: var(--gray-50);
+  color: var(--gray-800);
+  border-color: var(--gray-400);
+}
+
+.mode-toggle.active {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border-color: var(--primary-300);
+}
+
+.mode-toggle.active:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-400);
+}
+
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: var(--space-1);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.suggestion-item:hover {
+  background: var(--gray-50);
+}
+
+.suggestion-item:not(:last-child) {
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.suggestion-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.suggestion-item span {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-filters {

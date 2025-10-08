@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Message, MessageFilters, Platform } from '@/types'
 import { messageApi } from '@/api/message'
+import { messageIndexService } from '@/services/messageIndexService'
 
 export const useMessagesStore = defineStore('messages', () => {
   // State
@@ -155,8 +156,28 @@ export const useMessagesStore = defineStore('messages', () => {
         ...message,
         ...updates
       } as Message
+      // 更新索引
+      const updatedMessage = messages.value[messageIndex]
+      if (updatedMessage) {
+        messageIndexService.updateMessage(updatedMessage)
+      }
     }
   }
+
+  // 🔍 自动构建消息索引
+  // 当消息加载或更新时，自动重建搜索索引以支持高性能搜索
+  watch(
+    allMessages,
+    (newMessages) => {
+      if (newMessages && newMessages.length > 0) {
+        // 使用 setTimeout 避免阻塞主线程
+        setTimeout(() => {
+          messageIndexService.buildIndex(newMessages)
+        }, 0)
+      }
+    },
+    { immediate: true, deep: false } // immediate: true 确保初始加载时也构建索引
+  )
 
   return {
     // State
