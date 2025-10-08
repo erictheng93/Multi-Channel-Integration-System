@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterAll, vi } from 'vitest';
-import { PermissionService } from '@backend/services/permission-service';
+import { PermissionService } from '../../../src/services/permission-service';
 
 describe('PermissionService - Performance Tests', () => {
   const originalGetUserWithTeam = (PermissionService as any).getUserWithTeam;
@@ -17,7 +17,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 1,
         role: 'admin',
-        team_id: 1
+        teamId: 1
       });
 
       const startTime = Date.now();
@@ -30,8 +30,8 @@ describe('PermissionService - Performance Tests', () => {
     test('should check manager permissions with conditions quickly', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
-        role: 'manager',
-        team_id: 1
+        role: 'team',
+        teamId: 1
       });
 
       const startTime = Date.now();
@@ -50,7 +50,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 3,
         role: 'agent',
-        team_id: 1
+        teamId: 1
       });
 
       const startTime = Date.now();
@@ -71,7 +71,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 1,
         role: 'admin',
-        team_id: 1
+        teamId: 1
       });
 
       const startTime = Date.now();
@@ -90,11 +90,11 @@ describe('PermissionService - Performance Tests', () => {
 
     test('should handle mixed role bulk checks efficiently', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
-        const roles = ['admin', 'manager', 'agent'];
+        const roles = ['admin', 'team', 'agent'];
         return Promise.resolve({
           id: userId,
           role: roles[userId % 3],
-          team_id: 1
+          teamId: 1
         });
       });
 
@@ -117,7 +117,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 1,
         role: 'admin',
-        team_id: 1
+        teamId: 1
       });
 
       // Simulate memory usage monitoring
@@ -144,7 +144,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 1,
         role: 'admin',
-        team_id: 1
+        teamId: 1
       });
 
       const largeContext = {
@@ -176,7 +176,7 @@ describe('PermissionService - Performance Tests', () => {
         return Promise.resolve({
           id: 1,
           role: 'admin',
-          team_id: 1
+          teamId: 1
         });
       });
 
@@ -198,7 +198,7 @@ describe('PermissionService - Performance Tests', () => {
             resolve({
               id: 1,
               role: 'admin',
-              team_id: 1
+              teamId: 1
             });
           }, 100); // Simulate 100ms database delay
         });
@@ -219,8 +219,8 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         return Promise.resolve({
           id: userId,
-          role: userId <= 10 ? 'admin' : userId <= 50 ? 'manager' : 'agent',
-          team_id: Math.floor(userId / 10) + 1
+          role: userId <= 10 ? 'admin' : userId <= 50 ? 'team' : 'agent',
+          teamId: Math.floor(userId / 10) + 1
         });
       });
 
@@ -243,8 +243,8 @@ describe('PermissionService - Performance Tests', () => {
     test('should maintain performance with complex permission structures', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
-        role: 'manager',
-        team_id: 1
+        role: 'team',
+        teamId: 1
       });
 
       const complexContext = {
@@ -292,7 +292,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 1,
         role: 'invalid_role',
-        team_id: 1
+        teamId: 1
       });
 
       const startTime = Date.now();
