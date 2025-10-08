@@ -38,6 +38,7 @@
     "@vueuse/core": "^13.9.0",
     "date-fns": "^4.1.0",
     "js-cookie": "^3.0.5",
+    "lunr": "^2.3.9",
     "pinia": "^3.0.3",
     "vue": "^3.5.12",
     "vue-i18n": "^11.1.12",
@@ -46,6 +47,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/vue": "^8.1.0",
+    "@types/lunr": "^2.3.7",
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
