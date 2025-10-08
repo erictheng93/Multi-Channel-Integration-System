@@ -1,0 +1,33 @@
+#!/bin/bash
+# Unified Connection Migration Patch for ConversationDetail.vue
+# This script migrates from Legacy SSE + WebSocket dual system to Unified Connection
+
+cd "D:/Code/Multi_Channel_Integration_System/frontend/src/views"
+
+echo "🚀 Starting Unified Connection Migration..."
+
+# Step 1: Remove Legacy SSE import
+echo "Step 1: Removing Legacy SSE import..."
+sed -i "/^import { useSSEMessages } from '@\/composables\/useSSEMessages' \/\/ 🚀 New SSE system$/d" ConversationDetail.vue
+
+# Step 2: Remove Legacy SSE initialization (lines 275-281)
+echo "Step 2: Removing Legacy SSE initialization..."
+sed -i '/^\/\/ 🎯 Primary: SSE Messages System$/,/^})$/d' ConversationDetail.vue
+
+# Step 3: Remove WebSocket fallback initialization (lines 283-288)
+echo "Step 3: Removing WebSocket fallback initialization..."
+sed -i '/^\/\/ 🔄 Fallback: WebSocket System (currently disabled)$/,/^})$/d' ConversationDetail.vue
+
+# Step 4: Update unified connection comment to mark it as primary
+echo "Step 4: Updating unified connection to primary..."
+sed -i 's/^\/\/ 🚀 Phase 2\.1: Unified Connection Manager (Parallel Testing)$/\/\/ 🚀 Unified Connection Manager (Primary Real-time System)/' ConversationDetail.vue
+
+# Step 5: Update connection initialization in onMounted
+echo "Step 5: Updating connection initialization..."
+sed -i 's/\/\/ 🚀 Phase 2\.1: Initialize unified connection (parallel testing, non-blocking)/\/\/ 🚀 Initialize unified connection (primary real-time system)/' ConversationDetail.vue
+sed -i 's/initializeUnifiedConnection().catch(err => {/await initializeUnifiedConnection()/' ConversationDetail.vue
+sed -i '/console\.error(\[Phase 2\.1\] Unified connection initialization failed (non-blocking):/d' ConversationDetail.vue
+sed -i '/})$/d' ConversationDetail.vue
+
+echo "✅ Migration patch created successfully!"
+echo "Please review the changes before committing."

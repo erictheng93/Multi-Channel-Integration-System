@@ -25,7 +25,8 @@ import { dashboardHandler } from '@modules/analytics/handlers/dashboard-main';
 import { realtimeDashboardHandler } from '@modules/analytics/handlers/realtime-dashboard-main';
 import reportsHandler from '@modules/reports/handlers/reports-main';
 import { activityHandler } from '../handlers/activity';
-import { activityStreamHandler } from '../handlers/activity-stream';
+// REMOVED: activityStreamHandler (Phase 4 cleanup - SSE-based, replaced by WebSocket)
+// import { activityStreamHandler } from '../handlers/activity-stream';
 import websocketMainHandler from '../handlers/websocket-main';
 import delayedMessageBufferHandler from '../handlers/delayed-message-buffer';
 import websocketAnalyticsHandler from '../handlers/websocket-analytics-main';
@@ -33,7 +34,8 @@ import userExperienceHandler from '../handlers/user-experience-main';
 import phase2AuthHandler from '../handlers/phase2-auth-management';
 import alertConfigHandler from '../handlers/alert-config-management';
 import dataOptimizationHandler from '../handlers/data-optimization-main';
-import sseMonitoringHandler from '../handlers/sse-monitoring-main';
+// REMOVED: sseMonitoringHandler (Phase 5 cleanup - SSE removed, WebSocket monitoring in place)
+// import sseMonitoringHandler from '../handlers/sse-monitoring-main';
 import { realtime } from '@modules/realtime';
 import { queueMonitorHandler } from '../handlers/queue-monitor';
 import webhookRouter from '../handlers/webhook';
@@ -235,8 +237,8 @@ const monitoringGroup = createRouteGroup({
       dependencies: ['auth'],
       healthCheck: '/health'
     })
-    // NOTE: activities routes are registered explicitly in index.ts to support SSE stream with query token auth
-    // See index.ts lines 657-658 for /api/activities/stream and /api/activities routes
+    // REMOVED: SSE activity stream (Phase 4 cleanup - replaced by WebSocket)
+    // NOTE: /api/activities/stream was removed in Phase 4 (SSE-based, replaced by WebSocket real-time events)
   ]
 });
 
@@ -247,22 +249,23 @@ const realtimeGroup = createRouteGroup({
   prefix: '/api',
   description: 'WebSocket ?�即?�通�??�能',
   modules: [
-    createRouteModule({
-      name: 'websocket',
-      path: '/websocket',
-      handler: websocketMainHandler,
-      description: 'WebSocket Connection Handler',
-      version: '1.0.0',
-      dependencies: [], // Auth handled per-endpoint by websocketAuth middleware
-      healthCheck: '/health'
-    }),
+    // DISABLED: websocket is manually registered in index.ts to avoid route conflicts with websocketHealthApp
+    // createRouteModule({
+    //   name: 'websocket',
+    //   path: '/websocket',
+    //   handler: websocketMainHandler,
+    //   description: 'WebSocket Connection Handler',
+    //   version: '1.0.0',
+    //   dependencies: [], // Auth handled per-endpoint by websocketAuth middleware
+    //   healthCheck: '/health'
+    // }),
     createRouteModule({
       name: 'websocket-analytics',
       path: '/websocket/analytics',
       handler: websocketAnalyticsHandler,
       description: 'WebSocket Performance Monitoring',
       version: '1.0.0',
-      dependencies: ['auth', 'websocket'],
+      dependencies: ['auth'], // websocket dependency removed as it's manually registered
       healthCheck: '/health'
     }),
     createRouteModule({
@@ -284,15 +287,16 @@ const realtimeGroup = createRouteGroup({
     //   dependencies: ['auth'],
     //   healthCheck: '/health'
     // }),
-    createRouteModule({
-      name: 'sse-monitoring',
-      path: '/sse/monitoring',
-      handler: sseMonitoringHandler,
-      description: 'SSE Performance Monitoring',
-      version: '1.0.0',
-      dependencies: [], // Health endpoint is public, no auth dependency
-      // healthCheck: '/health' // Disabled - handler already provides /health endpoint
-    })
+    // REMOVED: SSE Monitoring route (Phase 5 cleanup - SSE removed, WebSocket monitoring in place)
+    // createRouteModule({
+    //   name: 'sse-monitoring',
+    //   path: '/sse/monitoring',
+    //   handler: sseMonitoringHandler,
+    //   description: 'SSE Performance Monitoring',
+    //   version: '1.0.0',
+    //   dependencies: [], // Health endpoint is public, no auth dependency
+    //   // healthCheck: '/health' // Disabled - handler already provides /health endpoint
+    // })
   ]
 });
 

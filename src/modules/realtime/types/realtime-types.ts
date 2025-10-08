@@ -100,7 +100,8 @@ export interface ConversationStatus {
 
 // 事件驅動處理器類型
 export interface EventDrivenHandler {
-  sse: (c: any) => Promise<Response>;
+  // REMOVED: sse is now optional (Phase 3 cleanup - SSE removed, WebSocket only)
+  sse?: (c: any) => Promise<Response>;
   sendTypingStatus: (c: any) => Promise<Response>;
   broadcastToConversation: (c: any) => Promise<Response>;
   getConversationStatus: (c: any) => Promise<Response>;

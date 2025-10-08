@@ -31,15 +31,15 @@ export { default as healthMainHandler } from './health-router'
 
 // Legacy notification handlers (已棄用，保留以防相容性問題)
 export {
-  createNotificationHandlerMethods as legacyNotificationHandler,
-  createNotificationSSEHandlerMethods as legacyNotificationSSEHandler
+  createNotificationHandlerMethods as legacyNotificationHandler
+  // REMOVED: createNotificationSSEHandlerMethods (Phase 5 cleanup - SSE removed)
 } from '../modules/notifications'
 
-// Real-time 模組處理器 (統一的即時通訊系統)
+// Real-time 模組處理器 (統一的即時通訊系統 - WebSocket only)
 export {
   realtimeMainHandler as realtimeHandler,
   realtimeManagementHandler,
-  sseHandler,
+  // REMOVED: sseHandler (Phase 3 cleanup - SSE removed, WebSocket only)
   eventHandler,
   realtime
 } from '../modules/realtime'

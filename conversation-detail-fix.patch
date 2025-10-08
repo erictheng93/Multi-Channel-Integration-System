@@ -1,0 +1,35 @@
+--- a/frontend/src/views/ConversationDetail.vue
++++ b/frontend/src/views/ConversationDetail.vue
+@@ -1126,24 +1126,9 @@ onMounted(() => {
+     console.error('[Phase 2.1] Unified connection initialization failed (non-blocking):', err)
+   })
+
+-  // Load conversation data asynchronously (don't await in onMounted)
+-  loadConversation().then(() => {
+-    // Mark initial loading as complete once WebSocket is set up
+-    if (isWebSocketEnabled.value) {
+-      // WebSocket will handle message loading
+-      hasLoadedInitially.value = true
+-      isInitialLoading.value = false
+-    }
+-
+-    // 🚀 智能預加載相鄰對話
+-    if (conversationId.value) {
+-      conversationsStore.preloadAdjacentConversationMessages(conversationId.value)
+-    }
+-
+-    measure('component-mount', 'component-mount-start')
+-  }).catch(error => {
+-    console.error('Failed to initialize ConversationDetail component:', error)
+-    // Handle critical initialization errors
+-    isInitialLoading.value = false
+-    router.push('/conversations')
+-  })
++  // CRITICAL FIX: Do NOT call loadConversation() here!
++  // The route watcher with immediate: true (line 1185-1211) already handles initial load
++  // Calling it twice causes race conditions and infinite reactive updates in AppLayout
++
++  // Simply mark mount complete - the route watcher will handle loading
++  measure('component-mount', 'component-mount-start')
++  console.log('✅ ConversationDetail mounted, route watcher will load conversation')
+ })

@@ -10,8 +10,15 @@ import {
 } from '@/utils/api-response';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
 import { RealtimeManager } from '@modules/realtime/services/realtime-manager';
-import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
+// REMOVED: sseManagerStub (Phase 3 cleanup - SSE removed, WebSocket only)
+// import { sseManagerStub } from '@modules/realtime/handlers/sse-handler';
 import { eventStats } from '@modules/realtime/handlers/event-handler';
+
+// Stub for removed SSE manager
+const sseManagerStub = {
+  getDetailedStats: () => Promise.resolve({ totalConnections: 0, connectionsByUser: {} }),
+  cleanupStaleConnections: () => 0
+};
 import { RealtimeVersionSelector } from '@modules/realtime/config/version-selector';
 
 // 儀表板處理器
@@ -34,7 +41,7 @@ export const dashboardHandler = {
       const serviceHealth = await manager.getServiceHealth();
 
       // 獲取 SSE 統計
-      const sseStats = await enhancedSSEManager.getDetailedStats();
+      const sseStats = await sseManagerStub.getDetailedStats();
 
       // 獲取事件統計
       const eventStatsData = eventStats.getStats();
@@ -183,7 +190,7 @@ export const dashboardHandler = {
         return unauthorizedResponse(c, 'Insufficient permissions');
       }
 
-      const sseStats = await enhancedSSEManager.getDetailedStats();
+      const sseStats = await sseManagerStub.getDetailedStats();
 
       // 獲取詳細連接信息
       const connectionDetails = {
@@ -319,7 +326,7 @@ export const dashboardHandler = {
 
         case 'sse':
           if (operation === 'cleanup') {
-            result = { cleanedConnections: enhancedSSEManager.cleanupStaleConnections() };
+            result = { cleanedConnections: sseManagerStub.cleanupStaleConnections() };
           }
           break;
 
@@ -397,7 +404,7 @@ export const dashboardHandler = {
 
   async checkSSEHealth(): Promise<{ status: 'healthy' | 'degraded' | 'down'; connections?: number }> {
     try {
-      const stats = await enhancedSSEManager.getDetailedStats();
+      const stats = await sseManagerStub.getDetailedStats();
       const connections = stats.totalConnections || 0;
 
       return {

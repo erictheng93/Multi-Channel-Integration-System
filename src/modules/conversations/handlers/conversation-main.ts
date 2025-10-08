@@ -1,6 +1,6 @@
 // 對話管理處理器 - 主要實現
 import { Hono } from 'hono';
-import { eq, inArray, desc, and, count, sql } from 'drizzle-orm';
+import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { conversations, customers, messages, agents, conversationTransfers } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -876,7 +876,7 @@ async function getMessagesAfterTimestamp(conversationId: string, afterTimestamp:
         and(
           eq(messages.conversationId, conversationId),
           eq(messages.isRecalled, false),  // 排除已撤回的訊息
-          sql`datetime(${messages.createdAt}) > datetime('${afterTimestamp}')`
+          gt(messages.createdAt, afterTimestamp)  // ✅ 修復：使用 Drizzle ORM 的 gt 操作符
         )
       )
       .orderBy(messages.createdAt);  // 時間升序
@@ -928,9 +928,14 @@ async function getMessagesAfter(conversationId: string, lastMessageId: string | 
 // 🎯 新的專用訊息流 SSE 端點
 conversationHandler.get('/:conversationId/messages/stream', async (c) => {
   try {
+    console.log('🔍 [SSE Debug] Starting SSE endpoint handler');
+
     // 手動驗證token（EventSource 無法設置自定義 headers）
     const authHeader = c.req.header('Authorization');
     const token = c.req.query('token'); // 從 query 參數獲取 token
+
+    console.log('🔍 [SSE Debug] Auth header:', authHeader ? 'Present' : 'Missing');
+    console.log('🔍 [SSE Debug] Token query:', token ? 'Present' : 'Missing');
 
     let authToken: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
@@ -940,15 +945,32 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     }
 
     if (!authToken) {
+      console.error('❌ [SSE Debug] No auth token found');
       return c.json({
         error: 'Missing authentication token',
         message: 'Please provide token via Authorization header or query parameter'
       }, 401);
     }
 
+    console.log('🔍 [SSE Debug] Verifying JWT...');
+
+    // 檢查環境變量
+    if (!c.env.JWT_SECRET) {
+      console.error('❌ [SSE Debug] JWT_SECRET is undefined');
+      throw new Error('JWT_SECRET environment variable is not configured');
+    }
+
+    if (!c.env.DB) {
+      console.error('❌ [SSE Debug] DB is undefined');
+      throw new Error('DB environment variable is not configured');
+    }
+
     // 驗證 JWT
     const payload = await verifyJWT(authToken, c.env.JWT_SECRET);
+    console.log('✅ [SSE Debug] JWT verified, userId:', payload.userId);
+
     const user = await getUserById(c.env.DB, payload.userId);
+    console.log('✅ [SSE Debug] User fetched:', user.id, user.displayName);
 
     if (!user || !user.isActive) {
       return c.json({ error: 'Invalid or inactive user account' }, 401);
@@ -958,14 +980,19 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     console.log(`📡 [SSE] Starting message stream for conversation: ${conversationId}, user: ${user.id}`);
 
     // 🔒 權限檢查：用戶是否可以訪問這個對話
+    console.log('🔍 [SSE Debug] Checking permissions...');
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
+    console.log(`✅ [SSE Debug] Visible conversations: ${visibleConversationIds.length} total`);
 
     if (!visibleConversationIds.includes(conversationId)) {
+      console.error(`❌ [SSE Debug] Access denied to conversation ${conversationId}`);
       return c.json({
         error: 'Access denied to conversation',
         conversationId: conversationId
       }, 403);
     }
+
+    console.log('✅ [SSE Debug] Permission check passed, creating SSE stream...');
 
     // 設置 SSE headers
     c.header('Content-Type', 'text/event-stream');
@@ -1129,6 +1156,12 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
   } catch (error) {
     console.error('❌ [SSE] Error setting up message stream:', error);
+    console.error('❌ [SSE Debug] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      name: error instanceof Error ? error.name : 'Unknown',
+      type: typeof error
+    });
     return c.json({
       success: false,
       error: 'Failed to establish message stream',

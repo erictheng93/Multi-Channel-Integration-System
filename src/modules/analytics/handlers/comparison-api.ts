@@ -7,27 +7,18 @@ import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
+import { isOriginAllowed, addCorsHeaders, createCorsPreflightResponse } from '@/config/cors';
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 
 // 🔥 CORS Middleware - Add CORS headers to ALL responses
 comparisonAPI.use('*', async (c, next) => {
-  const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
-
-  // Check if origin matches Cloudflare Pages preview domains
-  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+  const origin = c.req.header('Origin');
 
   await next();
 
   // Add CORS headers to response
-  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
+  if (origin && isOriginAllowed(origin)) {
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
   }
@@ -35,18 +26,8 @@ comparisonAPI.use('*', async (c, next) => {
 
 // 🔥 CORS Preflight Handler - Must come AFTER middleware
 comparisonAPI.options('*', (c) => {
-  const response = new Response(null, { status: 204 });
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  response.headers.set('Access-Control-Max-Age', '86400');
-
-  // 🔥 Prevent Cloudflare edge caching of OPTIONS responses
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
+  const origin = c.req.header('Origin');
+  return createCorsPreflightResponse(origin);
 });
 
 /**

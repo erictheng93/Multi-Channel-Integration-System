@@ -13,8 +13,9 @@ import {
   NotificationSettings
 } from '../types';
 
-// 導入所有適配器
-import { SSEAdapter } from '@modules/notifications/adapters/sse-adapter';
+// 導入所有適配器 (Phase 2: SSE removed)
+// REMOVED: SSEAdapter (Phase 2 cleanup - SSE removed)
+// import { SSEAdapter } from '@modules/notifications/adapters/sse-adapter';
 import { WebSocketAdapter } from '@modules/notifications/adapters/websocket-adapter';
 import { EmailAdapter } from '@modules/notifications/adapters/email-adapter';
 import { PushAdapter } from '@modules/notifications/adapters/push-adapter';
@@ -30,8 +31,9 @@ export class NotificationChannelService {
   }
 
   private initializeAdapters(): void {
-    // 初始化所有通道適配器
-    this.adapters.set('sse', new SSEAdapter());
+    // 初始化所有通道適配器 (Phase 2: SSE removed)
+    // REMOVED: SSEAdapter (Phase 2 cleanup - SSE removed)
+    // this.adapters.set('sse', new SSEAdapter());
     this.adapters.set('websocket', new WebSocketAdapter());
     this.adapters.set('email', new EmailAdapter());
     this.adapters.set('push', new PushAdapter());

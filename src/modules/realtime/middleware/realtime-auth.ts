@@ -2,9 +2,19 @@
 
 import { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
-import type { SSEAuthPayload } from '@modules/realtime/types';
+// REMOVED: SSEAuthPayload (Phase 3 cleanup - replaced with RealtimeAuthPayload)
+// import type { SSEAuthPayload } from '@modules/realtime/types';
 import { verifyJWT } from '@/utils/auth';
 import { unauthorizedResponse } from '@/utils/api-response';
+
+// Real-time 認證 Payload (替代 SSEAuthPayload)
+export interface RealtimeAuthPayload {
+  userId: number;
+  displayName: string;
+  role: string;
+  teamId?: number;
+  conversationAccess?: number[];
+}
 
 // Real-time 認證配置
 interface RealtimeAuthConfig {
@@ -29,7 +39,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
 
   return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
     try {
-      let authPayload: SSEAuthPayload | null = null;
+      let authPayload: RealtimeAuthPayload | null = null;
 
       // 1. 嘗試從現有的 JWT payload 獲取
       const existingPayload = c.get('jwtPayload');
@@ -246,13 +256,13 @@ export const managementAuth = realtimeAuth({
 });
 
 // 從 context 獲取 Real-time 認證信息的便利函數
-export function getRealtimeAuth(c: Context): SSEAuthPayload | null {
+export function getRealtimeAuth(c: Context): RealtimeAuthPayload | null {
   return c.get('realtimeAuth') || null;
 }
 
 // 檢查用戶是否有特定權限
 export function hasRealtimePermission(
-  auth: SSEAuthPayload,
+  auth: RealtimeAuthPayload,
   permission: 'read' | 'write' | 'manage' | 'admin'
 ): boolean {
   switch (permission) {

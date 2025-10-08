@@ -16,7 +16,8 @@ import type {
   CollaborationEvent
 } from '../types';
 
-import { SSECollaborationAdapter } from '@modules/collaboration/adapters/sse-adapter';
+// REMOVED: SSECollaborationAdapter (Phase 2 cleanup - SSE removed)
+// import { SSECollaborationAdapter } from '@modules/collaboration/adapters/sse-adapter';
 import { WebSocketCollaborationAdapter } from '@modules/collaboration/adapters/websocket-adapter';
 import { defaultCollaborationConfig, AdapterNotInitializedError } from '@modules/collaboration/types';
 import type { Bindings } from '@/types';
@@ -58,44 +59,32 @@ export class CollaborationManager {
       this.config = { ...this.config, ...config };
     }
 
-    console.log('[CollaborationManager] Initializing with config:', {
+    console.log('[CollaborationManager] Initializing with config (WebSocket-only):', {
       defaultProtocol: this.config.defaultProtocol,
       enableWebSocket: this.config.enableWebSocket
     });
 
-    // 始終初始化 SSE 適配器
-    const sseAdapter = new SSECollaborationAdapter();
-    await sseAdapter.initialize(env);
-    this.adapters.set('sse', sseAdapter);
-
-    // 如果啟用 WebSocket,初始化 WebSocket 適配器
-    if (this.config.enableWebSocket) {
-      try {
-        const wsAdapter = new WebSocketCollaborationAdapter();
-        await wsAdapter.initialize(env);
-        this.adapters.set('websocket', wsAdapter);
-        console.log('[CollaborationManager] WebSocket adapter initialized');
-      } catch (error) {
-        console.error('[CollaborationManager] Failed to initialize WebSocket adapter:', error);
-        console.log('[CollaborationManager] Falling back to SSE only');
-      }
+    // REMOVED: SSE 適配器初始化 (Phase 2 cleanup - WebSocket only)
+    // WebSocket-only initialization (100% rollout)
+    try {
+      const wsAdapter = new WebSocketCollaborationAdapter();
+      await wsAdapter.initialize(env);
+      this.adapters.set('websocket', wsAdapter);
+      console.log('[CollaborationManager] WebSocket adapter initialized');
+    } catch (error) {
+      console.error('[CollaborationManager] Failed to initialize WebSocket adapter:', error);
+      throw new Error('WebSocket initialization failed. No fallback available (SSE removed).');
     }
 
-    // 設置預設適配器（帶降級邏輯）
-    this.defaultAdapter = this.adapters.get(this.config.defaultProtocol);
+    // 設置預設適配器（WebSocket only）
+    this.defaultAdapter = this.adapters.get('websocket');
 
     if (!this.defaultAdapter) {
-      // 如果預設協議不可用，嘗試降級
-      if (this.config.defaultProtocol === 'websocket') {
-        console.warn('[CollaborationManager] WebSocket not available, falling back to SSE as default');
-        this.defaultAdapter = this.adapters.get('sse');
-        this.config.defaultProtocol = 'sse'; // 更新配置
-      }
-
-      if (!this.defaultAdapter) {
-        throw new Error(`No adapter available. At least SSE adapter should be initialized.`);
-      }
+      throw new Error('WebSocket adapter initialization failed');
     }
+
+    // Force WebSocket as default protocol
+    this.config.defaultProtocol = 'websocket';
 
     this.initialized = true;
     console.log('[CollaborationManager] Initialization complete');
@@ -255,7 +244,7 @@ export class CollaborationManager {
   // =================== 私有方法 ===================
 
   /**
-   * 獲取適配器（帶自動降級）
+   * 獲取適配器（WebSocket-only, SSE fallback removed）
    */
   private getAdapter(protocol?: CollaborationProtocol): CollaborationAdapter {
     if (!this.initialized) {
@@ -265,14 +254,7 @@ export class CollaborationManager {
     if (protocol) {
       const adapter = this.adapters.get(protocol);
       if (!adapter) {
-        // 如果請求的協議不可用，嘗試降級
-        if (protocol === 'websocket') {
-          console.warn('[CollaborationManager] WebSocket not available, falling back to SSE');
-          const fallbackAdapter = this.adapters.get('sse');
-          if (fallbackAdapter) {
-            return fallbackAdapter;
-          }
-        }
+        // REMOVED: SSE fallback (Phase 2 cleanup - WebSocket only)
         throw new AdapterNotInitializedError(protocol);
       }
       return adapter;

@@ -1,0 +1,282 @@
+/**
+ * 📝 Conversation Store 使用 Cloudflare Query Plugin 的範例
+ *
+ * 展示如何將現有的 Pinia store 升級為支持:
+ * - 自動租戶隔離
+ * - KV 緩存
+ * - 重試機制
+ * - 降級策略
+ */
+
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import type { Conversation, Message } from '@/types'
+import { conversationApi } from '@/api/conversations'
+
+export const useConversationsStore = defineStore('conversations', () => {
+  // ==================== State ====================
+
+  const conversations = ref<Conversation[]>([])
+  const currentConversation = ref<Conversation | null>(null)
+  const loading = ref(false)
+  const error = ref<Error | null>(null)
+
+  // ==================== Getters ====================
+
+  const conversationCount = computed(() => conversations.value.length)
+
+  const activeConversations = computed(() =>
+    conversations.value.filter(c => c.status === 'active')
+  )
+
+  // ==================== Actions (傳統方式 - 不推薦) ====================
+
+  /**
+   * ❌ 傳統方式: 手動處理緩存、錯誤、重試
+   * 問題:
+   * - 沒有租戶隔離
+   * - 沒有緩存機制
+   * - 沒有重試機制
+   * - 錯誤處理簡單
+   */
+  async function loadConversationsOldWay() {
+    loading.value = true
+    error.value = null
+
+    try {
+      const data = await conversationApi.getAll()
+      conversations.value = data
+    } catch (e) {
+      error.value = e as Error
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ==================== Actions (Cloudflare Query 方式 - 推薦) ====================
+
+  /**
+   * ✅ Cloudflare Query 方式: 自動處理一切
+   * 優勢:
+   * - ✅ 自動租戶隔離 (team:${teamId}:conversations:all)
+   * - ✅ KV 緩存 (5秒內直接返回緩存)
+   * - ✅ Stale-while-revalidate (背景更新)
+   * - ✅ 重試機制 (失敗自動重試 3 次)
+   * - ✅ 降級策略 (失敗時返回 stale cache)
+   */
+  async function loadConversations() {
+    loading.value = true
+    error.value = null
+
+    try {
+      // 使用 $cloudflareQuery 方法 (由 plugin 注入)
+      const data = await this.$cloudflareQuery<Conversation[]>({
+        queryKey: ['conversations', 'all'],
+        queryFn: () => conversationApi.getAll(),
+        staleTime: 5000,      // 5秒內認為數據是新鮮的
+        cacheTime: 300,       // KV 緩存 5 分鐘
+        retry: 3,             // 失敗重試 3 次
+        revalidateOnStale: true  // 使用舊數據時背景更新
+      })
+
+      conversations.value = data
+      return data
+    } catch (e) {
+      error.value = e as Error
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * ✅ 載入單一對話 (帶動態 queryKey)
+   */
+  async function loadConversation(id: string) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const data = await this.$cloudflareQuery<Conversation>({
+        // 動態 queryKey 包含對話 ID
+        queryKey: ['conversations', 'detail', id],
+        queryFn: () => conversationApi.getById(id),
+        staleTime: 3000,      // 3秒 (對話內容更新較頻繁)
+        cacheTime: 180,       // 3 分鐘
+        retry: 3
+      })
+
+      currentConversation.value = data
+      return data
+    } catch (e) {
+      error.value = e as Error
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * ✅ 載入對話訊息 (更短的緩存時間)
+   */
+  async function loadMessages(conversationId: string) {
+    try {
+      const messages = await this.$cloudflareQuery<Message[]>({
+        queryKey: ['conversations', conversationId, 'messages'],
+        queryFn: () => conversationApi.getMessages(conversationId),
+        staleTime: 2000,      // 2秒 (訊息更新非常頻繁)
+        cacheTime: 60,        // 1 分鐘
+        retry: 3,
+        revalidateOnStale: true  // 重要: 顯示舊訊息同時背景更新
+      })
+
+      return messages
+    } catch (e) {
+      console.error('Failed to load messages:', e)
+      throw e
+    }
+  }
+
+  /**
+   * ✅ 搜尋對話 (禁用緩存，因為搜尋條件動態)
+   */
+  async function searchConversations(query: string) {
+    try {
+      const results = await this.$cloudflareQuery<Conversation[]>({
+        // 將搜尋條件包含在 queryKey 中
+        queryKey: ['conversations', 'search', query],
+        queryFn: () => conversationApi.search(query),
+        staleTime: 10000,     // 10秒 (搜尋結果可以緩存久一點)
+        cacheTime: 600,       // 10 分鐘
+        retry: 2              // 搜尋失敗只重試 2 次
+      })
+
+      return results
+    } catch (e) {
+      console.error('Search failed:', e)
+      throw e
+    }
+  }
+
+  /**
+   * ✅ 創建對話 (Mutation - 不使用緩存)
+   * 注意: 寫操作不需要使用 $cloudflareQuery
+   */
+  async function createConversation(data: Partial<Conversation>) {
+    try {
+      const newConversation = await conversationApi.create(data)
+
+      // 直接更新本地狀態 (樂觀更新)
+      conversations.value.unshift(newConversation)
+
+      // 可選: 手動失效相關緩存
+      // 在真實場景中，後端應該通過 WebSocket 推送更新
+      // 或者在下次 loadConversations 時自動更新 (revalidate)
+
+      return newConversation
+    } catch (e) {
+      console.error('Create conversation failed:', e)
+      throw e
+    }
+  }
+
+  /**
+   * 🔍 獲取查詢性能指標
+   */
+  function getQueryMetrics() {
+    return this.$queryMetrics()
+  }
+
+  // ==================== Return ====================
+
+  return {
+    // State
+    conversations,
+    currentConversation,
+    loading,
+    error,
+
+    // Getters
+    conversationCount,
+    activeConversations,
+
+    // Actions
+    loadConversations,
+    loadConversation,
+    loadMessages,
+    searchConversations,
+    createConversation,
+
+    // Utils
+    getQueryMetrics
+  }
+})
+
+// ==================== 使用範例 ====================
+
+/**
+ * 在元件中使用
+ *
+ * ```vue
+ * <script setup lang="ts">
+ * import { useConversationsStore } from '@/stores/conversations'
+ * import { onMounted, watch } from 'vue'
+ * import { useRoute } from 'vue-router'
+ *
+ * const store = useConversationsStore()
+ * const route = useRoute()
+ *
+ * // 方式 1: 在 onMounted 中載入 (不推薦 - 會與 route watcher 衝突)
+ * // onMounted(() => {
+ * //   store.loadConversations()
+ * // })
+ *
+ * // 方式 2: 使用 route watcher with immediate (推薦 - 單一入口)
+ * watch(
+ *   () => route.params.id,
+ *   async (conversationId) => {
+ *     if (conversationId && typeof conversationId === 'string') {
+ *       // $cloudflareQuery 會自動:
+ *       // 1. 檢查 KV 緩存 (team:${teamId}:conversations:detail:${id})
+ *       // 2. 如果緩存新鮮，直接返回
+ *       // 3. 如果緩存過期，背景更新同時返回舊數據
+ *       // 4. 如果無緩存，執行查詢並寫入 KV
+ *       // 5. 如果查詢失敗，重試 3 次
+ *       // 6. 如果重試全失敗，返回 stale cache (如果有)
+ *       await store.loadConversation(conversationId)
+ *     }
+ *   },
+ *   { immediate: true, flush: 'post' }
+ * )
+ * </script>
+ *
+ * <template>
+ *   <div v-if="store.loading">載入中...</div>
+ *   <div v-else-if="store.error">錯誤: {{ store.error.message }}</div>
+ *   <div v-else>
+ *     <h1>{{ store.currentConversation?.title }}</h1>
+ *     <!-- ... -->
+ *   </div>
+ * </template>
+ * ```
+ */
+
+/**
+ * 📊 性能指標監控
+ *
+ * ```typescript
+ * // 在開發者工具中查看緩存性能
+ * const metrics = store.getQueryMetrics()
+ * console.table(metrics)
+ *
+ * // 輸出範例:
+ * // ┌─────────────────────────────────────┬──────┬────────┬────────┬───────────────┬─────────────────┐
+ * // │            Key                      │ Hits │ Misses │ Errors │ Revalidations │ Avg Latency (ms)│
+ * // ├─────────────────────────────────────┼──────┼────────┼────────┼───────────────┼─────────────────┤
+ * // │ team:1:conversations:all            │  15  │   3    │   0    │      2        │      45.3       │
+ * // │ team:1:conversations:detail:conv-1  │  8   │   1    │   0    │      1        │      32.1       │
+ * // │ team:1:conversations:conv-1:messages│  25  │   2    │   1    │      3        │      78.5       │
+ * // └─────────────────────────────────────┴──────┴────────┴────────┴───────────────┴─────────────────┘
+ * ```
+ */

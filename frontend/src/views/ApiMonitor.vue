@@ -33,6 +33,42 @@
         />
       </div>
 
+      <!-- WebSocket Migration Status -->
+      <div class="migration-status">
+        <div class="migration-card">
+          <div class="migration-header">
+            <h2>🚀 WebSocket 遷移狀態</h2>
+            <span class="migration-badge">已完成</span>
+          </div>
+          <div class="migration-progress">
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                :style="{ width: websocketRollout + '%' }"
+              />
+            </div>
+            <div class="progress-info">
+              <span>Rollout 進度: {{ websocketRollout }}%</span>
+              <span>更新時間: {{ formatTime(migrationLastCheck) }}</span>
+            </div>
+          </div>
+          <div class="migration-details">
+            <div class="detail-row">
+              <span>WebSocket 狀態:</span>
+              <span class="status-badge success">{{ websocketEnabled ? '✅ 已啟用' : '❌ 未啟用' }}</span>
+            </div>
+            <div class="detail-row">
+              <span>Durable Objects:</span>
+              <span class="status-badge success">{{ durableObjectsAvailable ? '✅ 可用' : '❌ 不可用' }}</span>
+            </div>
+            <div class="detail-row">
+              <span>遷移策略:</span>
+              <span>{{ migrationStrategy }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Stats Overview -->
       <div class="stats-overview">
         <div class="stats-grid">
@@ -513,6 +549,13 @@ const showStatModal = ref(false)
 const selectedStatType = ref<string>('')
 const statModalApis = ref<ApiEndpoint[]>([])
 
+// WebSocket Migration Status
+const websocketRollout = ref(0)
+const websocketEnabled = ref(false)
+const durableObjectsAvailable = ref(false)
+const migrationStrategy = ref('gradual')
+const migrationLastCheck = ref(new Date())
+
 let refreshInterval: number | null = null
 
 const filteredApis = computed(() => {
@@ -624,9 +667,17 @@ const initializeApis = (): ApiEndpoint[] => {
 
 const loadApiStatusFromBackend = async (): Promise<void> => {
   try {
-    const response = await fetch('/api/system/api-status')
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+    const response = await fetch(`${baseUrl}/api/system/api-status`)
+
+    // Check response status - MUST succeed for this project (remote-only)
+    if (!response.ok) {
+      console.error(`❌ API status endpoint failed with ${response.status}`)
+      throw new Error(`API status endpoint returned ${response.status}`)
+    }
+
     const data = await response.json()
-    
+
     if (data.success && data.data) {
       // 更新現有的API列表或創建新的
       const backendApis = data.data.endpoints.map((endpoint: Partial<ApiEndpoint>) => ({
@@ -645,13 +696,14 @@ const loadApiStatusFromBackend = async (): Promise<void> => {
         error: endpoint.error,
         errorTime: endpoint.errorTime ? new Date(endpoint.errorTime) : undefined
       }))
-      
+
       apis.value = backendApis
     }
   } catch (error) {
-    console.error('Failed to load API status from backend:', error)
-    // 如果後端失敗，使用前端檢查
-    await checkAllApisManually()
+    // This project uses REMOTE ONLY - no local fallback
+    console.error('❌ Failed to load API status from remote backend:', error)
+    // Re-throw to let caller handle the error
+    throw error
   }
 }
 
@@ -715,18 +767,38 @@ const checkApiStatus = async (api: ApiEndpoint): Promise<void> => {
   }
 }
 
-const checkAllApisManually = async (): Promise<void> => {
-  await Promise.all(apis.value.map(api => checkApiStatus(api)))
+const fetchWebSocketMigrationStatus = async (): Promise<void> => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+    const response = await fetch(`${baseUrl}/api/websocket/migration-status`)
+
+    if (response.ok) {
+      const data = await response.json()
+      websocketRollout.value = data.rolloutPercentage || 0
+      websocketEnabled.value = data.websocketEnabled || false
+      durableObjectsAvailable.value = data.durableObjectsAvailable || false
+      migrationStrategy.value = data.migrationStrategy || 'gradual'
+      migrationLastCheck.value = new Date()
+    }
+  } catch (error) {
+    console.error('Failed to fetch WebSocket migration status:', error)
+  }
 }
 
 const refreshAll = async (): Promise<void> => {
   if (isRefreshing.value) {return}
-  
+
   isRefreshing.value = true
-  
+
   try {
-    // 優先使用後端API獲取狀態
+    // 使用遠端後端API獲取狀態（此專案僅使用遠端資源）
     await loadApiStatusFromBackend()
+    // 同時獲取 WebSocket 遷移狀態
+    await fetchWebSocketMigrationStatus()
+  } catch (error) {
+    // 遠端API失敗 - 顯示錯誤（不回退到本地數據）
+    console.error('❌ 遠端API狀態載入失敗:', error)
+    // TODO: 可以在UI上顯示錯誤提示
   } finally {
     isRefreshing.value = false
   }
@@ -908,6 +980,95 @@ onUnmounted(() => {
 /* 頁面容器 */
 .api-monitor {
   padding: 0;
+}
+
+/* WebSocket Migration Status */
+.migration-status {
+  margin-bottom: 2rem;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.migration-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+  color: white;
+}
+
+.migration-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.migration-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.migration-badge {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.migration-progress {
+  margin-bottom: 1.5rem;
+}
+
+.progress-bar {
+  background: rgba(255, 255, 255, 0.2);
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  transition: width 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.migration-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.status-badge.success {
+  background: rgba(34, 197, 94, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
 }
 
 /* 頁面標題區域 */

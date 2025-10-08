@@ -110,23 +110,9 @@ export class DelayedMessageService {
         }
       );
 
-      // 3. Queue 排程延遲發送
-      if (this.env.AGENT_QUEUE) {
-        const queuePayload: QueueMessagePayload = {
-          type: 'delayed_send',
-          data: {
-            delayedMessageId: messageId,
-            conversationId: request.conversationId,
-          },
-          scheduledTime: scheduledAt.toISOString(),
-          retryCount: 0,
-          maxRetries: 3,
-        };
-
-        await this.env.AGENT_QUEUE.send(queuePayload, {
-          delaySeconds: request.delaySeconds
-        });
-      }
+      // ⚠️ REMOVED: AGENT_QUEUE scheduling is deprecated
+      // Delayed messages are now handled by DelayedMessageBuffer Durable Object
+      // Queue consumer no longer processes delayed messages
 
       return {
         success: true,

@@ -1,35 +1,38 @@
-// Real-time 模組類型統一導出
+// Real-time 模組類型統一導出 (Phase 3: WebSocket only)
 
 // 核心類型
 export * from './realtime-types';
-export * from './sse-types';
+// REMOVED: SSE types (Phase 3 cleanup - 100% WebSocket rollout)
+// export * from './sse-types';
 export * from './event-types';
 
-// 重新導出常用類型組合
+// 重新導出常用類型組合 (Phase 3: WebSocket only)
 export type {
   RealtimeEvent,
   RealtimeConfig,
   TypingStatus,
   ConversationStatus,
   QueueMessage,
-  SSEConnectionInfo,
-  SSEPushData,
-  SSEConnectionStats,
+  // REMOVED: SSE-specific types (Phase 3 cleanup)
+  // SSEConnectionInfo,
+  // SSEPushData,
+  // SSEConnectionStats,
   EventDrivenHandler,
-  SSEManager,
+  // REMOVED: SSEManager (Phase 3 cleanup)
   QueueHandler,
   RealtimeServiceConfig
 } from './realtime-types';
 
-export type {
-  SSEConnection,
-  SSEEvent,
-  SSEHeaders,
-  SSEConnectionMetrics,
-  SSEManagerStats,
-  SSEConfig,
-  SSEAuthPayload
-} from './sse-types';
+// REMOVED: SSE-specific types from sse-types.ts (Phase 3 cleanup - 100% WebSocket rollout)
+// export type {
+//   SSEConnection,
+//   SSEEvent,
+//   SSEHeaders,
+//   SSEConnectionMetrics,
+//   SSEManagerStats,
+//   SSEConfig,
+//   SSEAuthPayload
+// } from './sse-types';
 
 export type {
   EventType,

@@ -1,6 +1,7 @@
 // 主要入口點 - Handler-based 架構 + 統一路由管理
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { ALLOWED_ORIGINS, isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
 import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
 import { logger, createContextLogger } from './utils/logger';
@@ -49,7 +50,8 @@ console.log('🔍 [DEBUG] messagingMainHandler object:', messagingMainHandler);
 
 // Import additional handlers
 import { activityHandler } from './handlers/activity';
-import { activityStreamHandler } from './handlers/activity-stream';
+// REMOVED: activityStreamHandler (Phase 4 cleanup - SSE-based, replaced by WebSocket)
+// import { activityStreamHandler } from './handlers/activity-stream';
 import websocketMainHandler from './handlers/websocket-main';
 import delayedMessageBufferHandler from './handlers/delayed-message-buffer';
 
@@ -97,7 +99,7 @@ import {
 // Import middleware and utilities
 import { jwtAuth } from './middleware/auth';
 import { signJWT } from './utils/auth';
-import { getSecurityConfig, isOriginAllowed, getSecurityHeaders } from './config/security';
+import { getSecurityConfig, getSecurityHeaders } from './config/security';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -111,17 +113,25 @@ if (!routeValidation.valid) {
   throw new Error('Invalid route configuration');
 }
 
-// 🔧 Pre-register public WebSocket health check endpoints BEFORE unified route system
+// 🔧 Pre-register public WebSocket endpoints BEFORE unified route system
 // This ensures they are NOT covered by any auth middleware from the route system
 import websocketHealthApp from './handlers/websocket-health';
 import websocketDashboardApp from './handlers/websocket-dashboard';
 
+// Register health endpoints
 app.route('/api/websocket', websocketHealthApp);
 console.log('✅ Public WebSocket health endpoints registered:');
 console.log('   • GET /api/websocket/health');
 console.log('   • GET /api/websocket/migration-status');
 console.log('   • GET /api/websocket/readiness');
 console.log('   • GET /api/websocket/liveness');
+
+// ⚠️  CRITICAL: Register WebSocket main handler AFTER health app to avoid route conflicts
+// websocketMainHandler provides /connect endpoint with websocketAuth middleware
+app.route('/api/websocket', websocketMainHandler);
+console.log('✅ WebSocket connection endpoints registered:');
+console.log('   • GET /api/websocket/connect (with websocketAuth)');
+console.log('   • POST /api/websocket/disconnect (with websocketAuth)');
 
 // 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
 // This prevents auth middleware from being applied (SSE uses query token)
@@ -156,10 +166,11 @@ app.options('/api/activities/stream', (c) => {
 
   return response;
 });
-app.get('/api/activities/stream', activityStreamHandler.connect);
-console.log('✅ SSE activity stream endpoint registered:');
-console.log('   • OPTIONS /api/activities/stream');
-console.log('   • GET /api/activities/stream (query token auth)');
+// REMOVED: SSE activity stream endpoint (Phase 4 cleanup - replaced by WebSocket)
+// app.get('/api/activities/stream', activityStreamHandler.connect);
+// console.log('✅ SSE activity stream endpoint registered:');
+// console.log('   • OPTIONS /api/activities/stream');
+// console.log('   • GET /api/activities/stream (query token auth)');
 
 // 🔧 Pre-register Analytics Comparison API BEFORE unified route system
 // This prevents the /api/analytics/* catch-all from intercepting these routes
@@ -168,6 +179,8 @@ console.log('✅ Analytics Comparison API registered:');
 console.log('   • /api/analytics/comparison/* (with internal OPTIONS handler)');
 
 // Register P1 Optimization: WebSocket Dashboard (requires auth)
+// 🔒 添加 JWT 認證中間件保護所有 Dashboard 端點
+app.use('/api/websocket/dashboard/*', jwtAuth);
 app.route('/api/websocket/dashboard', websocketDashboardApp);
 console.log('✅ WebSocket Dashboard endpoints registered:');
 console.log('   • GET /api/websocket/dashboard/metrics (Admin/Team)');
@@ -406,26 +419,16 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// 安全的 CORS 配置
+// 安全的 CORS 配置 - 使用統一配置
 app.use('*', cors({
   origin: (origin) => {
-    // 🔥 修復 CORS 問題: 明確處理所有允許的origins
+    // 同源請求 (no Origin header) - 允許
     if (!origin) {
-      // 同源請求 (no Origin header) - 允許
       return '*';
     }
 
-    // 🔧 生產環境允許的origins（包含開發用localhost）
-    const allowedOrigins = [
-      'https://multi-channel.imfinethankyouandyou.com',
-      'http://localhost:3000',
-      'https://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://localhost:8787', // Wrangler dev server
-    ];
-
-    // 檢查origin是否在允許列表中
-    if (allowedOrigins.includes(origin)) {
+    // 使用統一的 CORS 檢查
+    if (isOriginAllowed(origin)) {
       console.log(`✅ CORS: Allowed origin: ${origin}`);
       return origin;
     }
@@ -434,50 +437,23 @@ app.use('*', cors({
     console.warn(`❌ CORS: Blocked origin: ${origin}`);
     return ''; // 返回空字串表示拒絕（Hono CORS 期望字串類型）
   },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   credentials: true, // 允許攜帶credentials
   maxAge: 86400
 }));
 
-// 🔥 手動處理 OPTIONS preflight 請求並設置 CORS headers
+// 🔥 手動處理 OPTIONS preflight 請求並設置 CORS headers - 使用統一配置
 app.options('*', (c) => {
-  const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
+  const origin = c.req.header('Origin');
 
-  // 檢查origin是否被允許
-  const isAllowed = allowedOrigins.includes(origin);
-
-  if (isAllowed) {
+  if (origin && isOriginAllowed(origin)) {
     console.log(`✅ CORS OPTIONS: Allowed origin: ${origin}`);
   } else {
     console.warn(`❌ CORS OPTIONS: Blocked origin: ${origin}`);
   }
 
-  // 創建響應並設置CORS headers
-  const response = new Response(null, { status: 204 });
-
-  if (isAllowed && origin) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  response.headers.set('Access-Control-Max-Age', '86400');
-
-  // 🔥 Prevent Cloudflare edge caching of OPTIONS responses
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
+  return createCorsPreflightResponse(origin);
 });
 
 // 🔥 全域錯誤處理中間件 (必須在 CORS 和 OPTIONS 之後)
@@ -649,7 +625,8 @@ console.log('✅ [Startup] WebSocket routes managed by Unified Route Registry');
 
 // 細粒度 Real-time 路由 - 保留以支援特定端點 (TODO: 考慮整合到 realtime handler)
 import { realtime } from '@modules/realtime';
-app.get('/api/realtime/sse', realtime.handlers.sse.connect);
+// REMOVED: SSE routes (Phase 3 cleanup - SSE removed, WebSocket only)
+// app.get('/api/realtime/sse', realtime.handlers.sse.connect);
 app.post('/api/realtime/typing', jwtAuth, realtime.handlers.main.sendTypingStatus);
 app.post('/api/realtime/broadcast', jwtAuth, realtime.handlers.main.broadcastToConversation);
 app.get('/api/realtime/conversation/:id/status', jwtAuth, realtime.handlers.main.getConversationStatus);
@@ -658,8 +635,9 @@ app.get('/api/realtime/config', jwtAuth, realtime.handlers.management.getConfig)
 app.put('/api/realtime/config', jwtAuth, realtime.handlers.management.updateConfig);
 app.get('/api/realtime/stats', jwtAuth, realtime.handlers.management.getStats);
 app.get('/api/realtime/health', realtime.handlers.management.healthCheck);
-app.get('/api/realtime/sse/stats', jwtAuth, realtime.handlers.sse.getStats);
-app.post('/api/realtime/sse/cleanup', jwtAuth, realtime.handlers.sse.cleanup);
+// REMOVED: SSE stats/cleanup routes (Phase 3 cleanup)
+// app.get('/api/realtime/sse/stats', jwtAuth, realtime.handlers.sse.getStats);
+// app.post('/api/realtime/sse/cleanup', jwtAuth, realtime.handlers.sse.cleanup);
 app.get('/api/realtime/monitoring/dashboard', jwtAuth, realtime.monitoring.dashboard as any);
 app.get('/api/realtime/monitoring/metrics', jwtAuth, realtime.monitoring.metricsHistory);
 app.get('/api/realtime/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
@@ -807,7 +785,8 @@ app.notFound((c) => {
 
 // ==================== Queue Consumer ====================
 
-import { AgentQueueService } from './services/agent-queue-service';
+// ⚠️ REMOVED: AgentQueueService has been deprecated
+// Delayed messages are now handled by DelayedMessageBuffer Durable Object
 // 使用統一的 Real-time 模組處理即時事件
 
 // ==================== 導出 ====================
@@ -874,9 +853,9 @@ export default {
         queueLogger.info('Realtime queue processed', { messageCount: batch.messages.length });
 
       } else if (queueName === 'agent-queue') {
-        // 處理代理隊列 (保留 - 延遲消息功能)
-        const agentService = new AgentQueueService(env);
-        await agentService.processMessageBatch(batch);
+        // ⚠️ DEPRECATED: agent-queue is no longer processed
+        // Delayed messages are now handled by DelayedMessageBuffer Durable Object
+        queueLogger.warn('agent-queue is deprecated and will be ignored', { queueName });
 
       } else {
         queueLogger.warn('Unknown queue', { queueName });

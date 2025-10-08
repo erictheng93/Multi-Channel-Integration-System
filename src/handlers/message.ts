@@ -372,15 +372,15 @@ export const messageHandler = {
                 });
 
                 if (activity) {
-                    console.log('✅ [Agent Message] Activity recorded, triggering SSE broadcast...');
+                    console.log('✅ [Agent Message] Activity recorded');
 
-                    // 🚨 關鍵：觸發 SSE 推送
-                    const { broadcastActivity } = await import('./activity-stream');
-                    await broadcastActivity(c.env as any, activity);
+                    // REMOVED: SSE broadcast (Phase 4 cleanup - replaced by WebSocket real-time events)
+                    // const { broadcastActivity } = await import('./activity-stream');
+                    // await broadcastActivity(c.env as any, activity);
 
-                    console.log('📢 [Agent Message] SSE broadcast triggered successfully');
+                    // Note: WebSocket real-time events are now handled by websocket-broadcast-service
                 } else {
-                    console.warn('⚠️ [Agent Message] Failed to create activity, skipping SSE broadcast');
+                    console.warn('⚠️ [Agent Message] Failed to create activity');
                 }
             } catch (activityError) {
                 console.warn('❌ [Agent Message] Failed to record activity:', activityError);

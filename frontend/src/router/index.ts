@@ -24,16 +24,16 @@ const router = createRouter({
       component: () => import('@/views/Dashboard.vue'),
       meta: { 
         requiresAuth: true,
-        title: '儀表板'
+        title: '?�表板'
       }
     },
     {
       path: '/conversations',
       name: 'Conversations',
-      component: () => import('@/views/ConversationsTable.vue'),  // 使用新的表格版本
+      component: () => import('@/views/ConversationsTable.vue'),  // 使用?��?表格?�本
       meta: { 
         requiresAuth: true,
-        title: '對話管理'
+        title: '對話管�?'
       }
     },
     {
@@ -42,7 +42,7 @@ const router = createRouter({
       component: () => import('@/views/ConversationDetail.vue'),
       meta: { 
         requiresAuth: true,
-        title: '對話詳情'
+        title: '對話詳�?'
       }
     },
     {
@@ -52,14 +52,14 @@ const router = createRouter({
       meta: { 
         requiresAuth: true,
         requiresAdmin: true,
-        title: '團隊管理'
+        title: '?��?管�?'
       }
     },
     {
       path: '/invite/:token',
       name: 'InviteAcceptance',
       component: () => import('@/views/InviteAcceptance.vue'),
-      meta: { 
+      meta: {
         requiresAuth: false,
         layout: 'blank',
         title: '接受邀請'
@@ -72,7 +72,7 @@ const router = createRouter({
       meta: { 
         requiresAuth: true,
         requiresAdmin: true,
-        title: '活動記錄'
+        title: '活�?記�?'
       }
     },
     {
@@ -82,7 +82,7 @@ const router = createRouter({
       meta: { 
         requiresAuth: true,
         requiresAdmin: true,
-        title: '系統設定'
+        title: '系統設�?'
       }
     },
     {
@@ -92,26 +92,46 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
-        title: 'API監控'
+        title: 'API??��'
       }
     },
-    // ==================== 客戶管理路由 ====================
+    // ==================== WebSocket 管�?路由 ====================
+    {
+      path: '/admin/websocket',
+      name: 'WebSocketAdmin',
+      component: () => import('@/views/WebSocketAdmin.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+        title: 'WebSocket ?�移管�?'
+      }
+    },
+    {
+      path: '/monitoring/websocket',
+      name: 'WebSocketMonitoring',
+      component: () => import('@/views/WebSocketMonitoring.vue'),
+      meta: {
+        requiresAuth: true,
+        title: 'WebSocket ?��???��'
+      }
+    },
+    // ==================== 客戶管�?路由 ====================
     {
       path: '/customers/tags',
       name: 'CustomerTags',
       component: () => import('@/views/CustomerTags.vue'),
       meta: {
         requiresAuth: true,
-        title: '標籤管理'
+        title: '標籤管�?'
       }
     },
-    // ==================== 報表系統路由 (嵌套結構 - 雙層 Sidebar) ====================
+    // ==================== ?�表系統路由 (嵌�?結�? - ?�層 Sidebar) ====================
     {
       path: '/reports',
       component: () => import('@/views/Reports.vue'),
       meta: {
         requiresAuth: true,
-        title: '報表系統'
+        title: '?�表系統'
       },
       children: [
         {
@@ -124,7 +144,7 @@ const router = createRouter({
           component: () => import('@/components/reports/ReportDashboard.vue'),
           meta: {
             requiresAuth: true,
-            title: '報表儀表板'
+            title: '?�表?�表板'
           }
         },
         {
@@ -133,7 +153,7 @@ const router = createRouter({
           component: () => import('@/components/reports/ReportTemplates.vue'),
           meta: {
             requiresAuth: true,
-            title: '報表模板'
+            title: '?�表模板'
           }
         },
         {
@@ -142,7 +162,7 @@ const router = createRouter({
           component: () => import('@/components/reports/ReportGenerator.vue'),
           meta: {
             requiresAuth: true,
-            title: '生成報表'
+            title: '?��??�表'
           }
         },
         {
@@ -151,7 +171,7 @@ const router = createRouter({
           component: () => import('@/components/reports/ReportViewer.vue'),
           meta: {
             requiresAuth: true,
-            title: '檢視報表'
+            title: '檢�??�表'
           }
         }
       ]
@@ -168,8 +188,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  // 簡化的調試日誌
-  console.log('🚦 Navigation:', from.path, '->', to.path)
+  // 簡�??�調試日�?
+  console.log('?�� Navigation:', from.path, '->', to.path)
   
   // Set page title
   if (to.meta.title) {
@@ -178,9 +198,9 @@ router.beforeEach(async (to, from, next) => {
     document.title = 'Multi-Channel Support'
   }
   
-  // 防止無限循環 - 如果已經在目標路徑，直接允許
+  // ?�止?��?循環 - 如�?已�??�目標路徑�??�接?�許
   if (to.path === from.path) {
-    console.log('⚠️ Same path navigation detected, allowing...')
+    console.log('?��? Same path navigation detected, allowing...')
     next()
     return
   }
@@ -190,19 +210,19 @@ router.beforeEach(async (to, from, next) => {
     await combinedAuthGuard(to, from, next)
   } catch (error) {
     console.error('Router guard error:', error)
-    // 確保即使出錯也能繼續導航
+    // 確�??�使?�錯也能繼�?導航
     next()
   }
 })
 
 // Handle navigation completion
 router.afterEach((to, from) => {
-  console.log('✅ Navigation completed:', from.path, '->', to.path)
+  console.log('??Navigation completed:', from.path, '->', to.path)
 })
 
 // Handle navigation errors
 router.onError((error) => {
-  console.error('❌ Router error:', error)
+  console.error('??Router error:', error)
 })
 
 export default router

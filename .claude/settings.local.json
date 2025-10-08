@@ -54,7 +54,12 @@
       "Bash(findstr:*)",
       "mcp__chrome-devtools__fill",
       "mcp__chrome-devtools__take_screenshot",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_click",
+      "Bash(git apply:*)",
+      "Bash(tasklist)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc1OTg4NzQ3MSwiZXhwIjoxNzU5ODk0NjcxfQ.8oCdZz5Sn_u-ucS1O2ectr6PPjWL3INEBlLiTwCGyWs\")"
     ],
     "deny": [],
     "ask": [],

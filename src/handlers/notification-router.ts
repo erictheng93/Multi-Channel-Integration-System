@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { createNotificationHandlerMethods } from '@modules/notifications/handlers/notification-main';
-import { createNotificationSSEHandlerMethods } from '@modules/notifications/handlers/notification-sse';
+// REMOVED: createNotificationSSEHandlerMethods (Phase 2 cleanup - SSE removed)
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -138,42 +138,13 @@ app.post('/system', jwtAuth, async (c) => {
   return handlers.notifySystem(c as any);
 });
 
-// ======================== SSE Routes ========================
-
-// SSE 連線端點
-app.get('/sse', async (c) => {
-  const handlers = createNotificationSSEHandlerMethods();
-  return handlers.connect(c as any);
-});
-
-// 發送 SSE 訊息
-app.post('/sse/send', jwtAuth, async (c) => {
-  const handlers = createNotificationSSEHandlerMethods();
-  return handlers.sendMessage(c as any);
-});
-
-// 廣播 SSE 訊息
-app.post('/sse/broadcast', jwtAuth, async (c) => {
-  const handlers = createNotificationSSEHandlerMethods();
-  return handlers.broadcast(c as any);
-});
-
-// SSE 統計
-app.get('/sse/stats', jwtAuth, async (c) => {
-  const handlers = createNotificationSSEHandlerMethods();
-  return handlers.getStats(c as any);
-});
-
-// 清理 SSE 連線
-app.post('/sse/cleanup', jwtAuth, async (c) => {
-  const handlers = createNotificationSSEHandlerMethods();
-  return handlers.cleanupConnections(c as any);
-});
-
-// SSE 連線數量
-app.get('/sse/connections/count', jwtAuth, async (c) => {
-  const handlers = createNotificationSSEHandlerMethods();
-  return handlers.getUserConnectionCount(c as any);
-});
+// ======================== SSE Routes REMOVED ========================
+// REMOVED: All SSE routes (Phase 2 cleanup - SSE removed, WebSocket only)
+// - app.get('/sse', ...)
+// - app.post('/sse/send', ...)
+// - app.post('/sse/broadcast', ...)
+// - app.get('/sse/stats', ...)
+// - app.post('/sse/cleanup', ...)
+// - app.get('/sse/connections/count', ...)
 
 export default app;

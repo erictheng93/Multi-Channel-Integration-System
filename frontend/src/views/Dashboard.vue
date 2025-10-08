@@ -148,7 +148,8 @@
                 活動動態
               </h2>
               <p class="card-subtitle">
-                {{ connectionStatus }}
+                <!-- REMOVED: SSE connection status (Phase 1 cleanup) -->
+                WebSocket 模式
               </p>
             </div>
             <div class="activity-actions">
@@ -158,14 +159,7 @@
               >
                 查看全部
               </router-link>
-              <button
-                v-if="activityStreamError"
-                class="btn btn-ghost btn-sm"
-                title="重新連線"
-                @click="reconnectActivityStream"
-              >
-                🔄 重連
-              </button>
+              <!-- REMOVED: SSE reconnect button (Phase 1 cleanup) -->
             </div>
           </div>
           <div class="card-body">
@@ -381,7 +375,8 @@ import { useConversations } from '@/composables/useConversations'
 import { useAsyncData } from '@/composables/useAsyncData'
 import { useTokenRefresh } from '@/composables/useTokenRefresh'
 import { useActivityTracker } from '@/composables/useActivityTracker'
-import { useActivityStream } from '@/composables/useActivityStream'
+// REMOVED: useActivityStream (SSE-based, replaced by WebSocket in Phase 1 cleanup)
+// import { useActivityStream } from '@/composables/useActivityStream'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -392,7 +387,6 @@ import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import { ChatIcon, UserIcon, MessageCircleIcon } from '@/components/icons'
 import MetricsComparisonDashboard from '@/components/analytics/MetricsComparisonDashboard.vue'
 import type { Conversation } from '@/types'
-import type { ActivityLog } from '@/api/activities'
 
 const router = useRouter()
 const { currentAgent } = useAuth()
@@ -428,11 +422,13 @@ const activityTrackerData = useActivityTracker()
 const startTracking = activityTrackerData.startTracking
 const stopTracking = activityTrackerData.stopTracking
 
-const activityStreamData = useActivityStream()
-const realtimeActivities = activityStreamData.activities
-const connectionStatus = activityStreamData.connectionStatus
-const activityStreamError = activityStreamData.error
-const reconnectActivityStream = activityStreamData.reconnect
+// REMOVED: SSE-based Activity Stream (Phase 1 cleanup)
+// TODO: Replace with WebSocket-based activity stream in future
+// const activityStreamData = useActivityStream()
+// const realtimeActivities = activityStreamData.activities
+// const connectionStatus = activityStreamData.connectionStatus
+// const activityStreamError = activityStreamData.error
+// const reconnectActivityStream = activityStreamData.reconnect
 
 // 使用 useAsyncData 獲取統計數據
 const { data: dashboardStats, pending: statsLoading, refresh: refreshStats } = useAsyncData(
@@ -450,42 +446,30 @@ const { data: dashboardStats, pending: statsLoading, refresh: refreshStats } = u
   { immediate: true }
 )
 
-// 活動優先級定義
-const activityPriority = {
-  high: [
-    'conversation_urgent',
-    'conversation_escalated', 
-    'system_error',
-    'platform_disconnect',
-    'platform_reconnect'
-  ],
-  medium: [
-    'conversation_assign',
-    'conversation_transfer',
-    'conversation_close',
-    'conversation_reopen',
-    'user_login',
-    'user_logout',
-    'settings_update_critical',
-    'system_maintenance',
-    'feature_release'
-  ],
-  low: [
-    'message_send',
-    'settings_update',
-    'user_profile_update'
-  ]
+// REMOVED: SSE-based Activity Stream (Phase 1 cleanup)
+// TODO: Restore with WebSocket-based activity stream
+// 篩選重要活動 - 只顯示最近2小時內的高優先級和中優先級活動
+interface ActivityItem {
+  id: string
+  type: string
+  priority: string
+  title: string
+  description: string
+  createdAt: Date
 }
 
-// 篩選重要活動 - 只顯示最近2小時內的高優先級和中優先級活動
-const importantActivities = computed(() => {
+const importantActivities = computed<ActivityItem[]>(() => {
+  // Temporarily return empty array until WebSocket activity stream is implemented
+  return []
+
+  /* ORIGINAL CODE (SSE-based, removed in Phase 1):
   const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000)
-  
+
   return realtimeActivities.value
     .filter((activity: ActivityLog) => {
       const activityTime = new Date(activity.createdAt).getTime()
       const isRecent = activityTime > twoHoursAgo
-      const isImportant = activityPriority.high.includes(activity.action) || 
+      const isImportant = activityPriority.high.includes(activity.action) ||
                          activityPriority.medium.includes(activity.action)
       return isRecent && isImportant
     })
@@ -498,113 +482,15 @@ const importantActivities = computed(() => {
       createdAt: new Date(activity.createdAt)
     }))
     .slice(0, 8) // 最多顯示 8 個重要活動
+  */
 })
 
-// 活動優先級判斷
-const getActivityPriority = (action: string): string => {
-  if (activityPriority.high.includes(action)) {return 'high'}
-  if (activityPriority.medium.includes(action)) {return 'medium'}
-  return 'low'
-}
-
-// 活動類型映射 - 擴展更多類型
-const mapActivityActionToType = (action: string): string => {
-  const typeMap: Record<string, string> = {
-    // 業務活動
-    'conversation_assign': 'assignment',
-    'conversation_transfer': 'assignment', 
-    'conversation_close': 'resolved',
-    'conversation_reopen': 'message',
-    'conversation_urgent': 'urgent',
-    'conversation_escalated': 'urgent',
-    
-    // 系統狀態
-    'platform_disconnect': 'system-error',
-    'platform_reconnect': 'system-success',
-    'system_error': 'system-error',
-    'system_maintenance': 'system-warning',
-    'feature_release': 'system-info',
-    
-    // 用戶活動
-    'user_login': 'user',
-    'user_logout': 'user',
-    
-    // 設定變更
-    'settings_update': 'settings',
-    'settings_update_critical': 'settings-critical',
-    
-    // 訊息
-    'message_send': 'message'
-  }
-  return typeMap[action] || 'message'
-}
-
-// 活動標題映射 - 擴展更多類型
-const getActivityTitle = (action: string): string => {
-  const titleMap: Record<string, string> = {
-    // 實時業務活動
-    'conversation_assign': '對話指派',
-    'conversation_transfer': '對話轉移',
-    'conversation_close': '對話結束',
-    'conversation_reopen': '對話重啟',
-    'conversation_urgent': '緊急對話',
-    'conversation_escalated': '對話升級',
-    
-    // 系統狀態更新
-    'platform_disconnect': 'LINE 平台斷線',
-    'platform_reconnect': 'LINE 平台重連',
-    'system_error': '系統錯誤',
-    'system_maintenance': '系統維護',
-    'feature_release': '新功能上線',
-    
-    // 用戶活動
-    'user_login': '客服上線',
-    'user_logout': '客服下線',
-    
-    // 設定變更
-    'settings_update': '設定更新',
-    'settings_update_critical': '重要設定變更',
-    
-    // 其他
-    'message_send': '新訊息'
-  }
-  return titleMap[action] || '系統活動'
-}
-
-// 活動描述生成 - 更詳細的描述
-const getActivityDescription = (activity: ActivityLog): string => {
-  const { action, userName, resourceId } = activity
-
-  const baseDescriptions: Record<string, string> = {
-    // 實時業務活動
-    'conversation_assign': `對話 #${resourceId} 已指派給 ${userName}`,
-    'conversation_transfer': `${userName} 將對話 #${resourceId} 轉移給其他客服`,
-    'conversation_close': `${userName} 結束了對話 #${resourceId}`,
-    'conversation_reopen': `${userName} 重新開啟對話 #${resourceId}`,
-    'conversation_urgent': `對話 #${resourceId} 被標記為緊急`,
-    'conversation_escalated': `對話 #${resourceId} 已升級處理`,
-    
-    // 系統狀態更新
-    'platform_disconnect': 'LINE 官方帳號連接中斷，請檢查網路狀態',
-    'platform_reconnect': 'LINE 官方帳號連接已恢復正常',
-    'system_error': '系統發生錯誤，技術團隊正在處理',
-    'system_maintenance': '系統將於今晚進行例行維護',
-    'feature_release': '新的訊息範本功能已上線',
-    
-    // 用戶活動
-    'user_login': `${userName} 已上線開始工作`,
-    'user_logout': `${userName} 已下線`,
-    
-    // 設定變更
-    'settings_update': `${userName} 更新了系統設定`,
-    'settings_update_critical': `${userName} 更新了重要的系統設定`,
-    
-    // 其他
-    'message_send': `${userName} 發送了訊息`
-  }
-
-  return baseDescriptions[action] || `${userName} 執行了 ${action}`
-}
+// REMOVED: Activity helper functions (Phase 1 cleanup)
+// TODO: Restore when WebSocket activity stream is implemented
+// - getActivityPriority(action: string): string
+// - mapActivityActionToType(action: string): string
+// - getActivityTitle(action: string): string
+// - getActivityDescription(activity: ActivityLog): string
 
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('zh-TW', {
