@@ -77,15 +77,15 @@ export class WebSocketBroadcastService {
         }
       };
 
-      // Primary: WebSocket broadcasting
+      // WebSocket broadcasting (100% rollout, SSE fallback removed in Phase 4)
       const wsSuccess = await this.broadcastToWebSocket(wsEvent);
 
-      // Fallback: SSE/Queue system
-      if (!wsSuccess) {
-        await this.fallbackToSSE(wsEvent);
-      }
+      // REMOVED: SSE fallback (Phase 4 cleanup - 100% WebSocket rollout)
+      // if (!wsSuccess) {
+      //   await this.fallbackToSSE(wsEvent);
+      // }
 
-      return true;
+      return wsSuccess;
     } catch (error) {
       console.error('❌ [WebSocket Broadcast] Message event error:', error);
       return false;
@@ -181,15 +181,15 @@ export class WebSocketBroadcastService {
         }
       };
 
-      // Primary: WebSocket broadcasting
+      // WebSocket broadcasting (100% rollout, SSE fallback removed in Phase 4)
       const wsSuccess = await this.broadcastToWebSocket(wsEvent);
 
-      // Fallback: SSE/Queue system for important conversation events
-      if (!wsSuccess && (event.type.includes('assigned') || event.type.includes('transferred'))) {
-        await this.fallbackToSSE(wsEvent);
-      }
+      // REMOVED: SSE fallback for conversation events (Phase 4 cleanup - 100% WebSocket rollout)
+      // if (!wsSuccess && (event.type.includes('assigned') || event.type.includes('transferred'))) {
+      //   await this.fallbackToSSE(wsEvent);
+      // }
 
-      return true;
+      return wsSuccess;
     } catch (error) {
       console.error('❌ [WebSocket Broadcast] Conversation event error:', error);
       return false;
@@ -485,56 +485,9 @@ export class WebSocketBroadcastService {
     }
   }
 
-  // =================== Fallback to SSE/Queue System ===================
-
-  /**
-   * Fallback to existing SSE/Queue system
-   */
-  private async fallbackToSSE(event: DurableObjectEvent): Promise<boolean> {
-    try {
-      // Convert DurableObjectEvent to RealtimeEvent for compatibility
-      // const realtimeEvent = { // Used for SSE fallback compatibility
-      //   id: event.id,
-      //   type: event.type,
-      //   timestamp: event.timestamp.toString(),
-      //   userId: event.userId,
-      //   conversationId: event.conversationId,
-      //   data: event.data,
-      //   priority: event.priority
-      // };
-
-      // Use existing activity service for SSE broadcasting
-      const { ActivityService } = await import('./activity-service');
-      const activityService = new ActivityService(this.env.DB);
-
-      // Log activity to trigger SSE updates
-      const activity = await activityService.logActivity({
-        userId: event.userId || 'system',
-        userName: 'WebSocket Service',
-        userRole: 'system',
-        action: 'websocket_fallback',
-        resourceType: 'conversation',
-        resourceId: event.conversationId || 'global',
-        details: {
-          originalEvent: event,
-          fallbackReason: 'WebSocket broadcast failed',
-          eventType: event.type
-        }
-      });
-
-      if (activity) {
-        // Trigger SSE broadcast using existing system
-        const { broadcastActivity } = await import('../handlers/activity-stream');
-        await broadcastActivity(this.env as any, activity);
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('❌ [WebSocket Broadcast] SSE fallback error:', error);
-      return false;
-    }
-  }
+  // REMOVED: SSE Fallback System (Phase 4 cleanup - 100% WebSocket rollout)
+  // The fallbackToSSE method has been removed as we are now at 100% WebSocket rollout
+  // All events are handled exclusively through WebSocket broadcasting via Durable Objects
 
   // =================== Configuration and Health ===================
 

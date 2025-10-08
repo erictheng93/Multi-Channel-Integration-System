@@ -21,29 +21,28 @@ export interface Bindings {
   // D1 Databases - Both environments bound
   DB_PROD: D1Database;
   DB_DEV: D1Database;
-  
+
   // KV Namespaces - Both environments bound
   SESSIONS_PROD: KVNamespace;
   SESSIONS_DEV: KVNamespace;
   CACHE_PROD: KVNamespace;
   CACHE_DEV: KVNamespace;
-  
+
   // R2 Storage - Both environments bound
   R2_BUCKET_PROD: R2Bucket;
   R2_BUCKET_DEV: R2Bucket;
-  
+
   // Queues - Both environments bound
-  AGENT_QUEUE_PROD: Queue;
-  AGENT_QUEUE_DEV: Queue;
+  // AGENT_QUEUE removed - deprecated, replaced by DelayedMessageBuffer Durable Object
   REALTIME_QUEUE_PROD: Queue;
   REALTIME_QUEUE_DEV: Queue;
-  
+
   // These are set by resourceMiddleware based on ENVIRONMENT
   DB: D1Database;
   SESSIONS: KVNamespace;
   CACHE: KVNamespace;
   R2_BUCKET: R2Bucket;
-  AGENT_QUEUE: Queue;
+  // AGENT_QUEUE removed - deprecated, replaced by DelayedMessageBuffer Durable Object
   REALTIME_QUEUE: Queue;
   KV: KVNamespace; // Alias for SESSIONS
   

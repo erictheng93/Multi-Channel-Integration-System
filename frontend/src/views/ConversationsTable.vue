@@ -272,7 +272,8 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
-import { useActivityStream } from '@/composables/useActivityStream'
+// REMOVED: useActivityStream (SSE-based, replaced by WebSocket in Phase 1 cleanup)
+// import { useActivityStream } from '@/composables/useActivityStream'
 import type { ConversationFilters, Conversation } from '@/types'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
@@ -283,8 +284,9 @@ import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor
 const router = useRouter()
 const conversationsStore = useConversationsStore()
 
-// 🚨 關鍵修復：添加 SSE 連接以實現實時更新
-const activityStreamData = useActivityStream()
+// REMOVED: SSE-based Activity Stream (Phase 1 cleanup)
+// TODO: Replace with WebSocket-based real-time updates
+// const activityStreamData = useActivityStream()
 
 const filters = ref<ConversationFilters>({
   status: '', // 預設為空字串以顯示「所有狀態」
@@ -352,6 +354,9 @@ const performSmoothUpdate = async () => {
   }
 }
 
+// REMOVED: SSE activity stream watcher (Phase 1 cleanup)
+// TODO: Replace with WebSocket event handler for real-time updates
+/* ORIGINAL CODE (SSE-based, removed in Phase 1):
 // 監聽 SSE 活動更新，使用平滑更新
 watch(() => activityStreamData.activities.value, (newActivities, oldActivities) => {
   if (newActivities.length !== oldActivities?.length) {
@@ -359,6 +364,7 @@ watch(() => activityStreamData.activities.value, (newActivities, oldActivities) 
     performSmoothUpdate()
   }
 }, { deep: true })
+*/
 
 // 刷新對話列表的函數
 const refreshConversations = () => {

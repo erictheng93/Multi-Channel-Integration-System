@@ -1,0 +1,509 @@
+{
+  "$schema": "./alert-thresholds-schema.json",
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-08",
+  "environment": "production",
+  "description": "WebSocket Performance Monitoring Alert Thresholds for 50% → 75% Rollout",
+
+  "alertChannels": {
+    "critical": {
+      "enabled": true,
+      "channels": ["email", "slack", "sms"],
+      "recipients": {
+        "email": ["admin@dacit.net", "ops@dacit.net"],
+        "slack": "#critical-alerts",
+        "sms": ["+886-XXX-XXX-XXX"]
+      },
+      "throttle": {
+        "enabled": true,
+        "maxAlertsPerHour": 10,
+        "cooldownMinutes": 5
+      }
+    },
+    "high": {
+      "enabled": true,
+      "channels": ["email", "slack"],
+      "recipients": {
+        "email": ["admin@dacit.net", "devops@dacit.net"],
+        "slack": "#high-priority-alerts"
+      },
+      "throttle": {
+        "enabled": true,
+        "maxAlertsPerHour": 20,
+        "cooldownMinutes": 3
+      }
+    },
+    "medium": {
+      "enabled": true,
+      "channels": ["slack"],
+      "recipients": {
+        "slack": "#monitoring-alerts"
+      },
+      "throttle": {
+        "enabled": true,
+        "maxAlertsPerHour": 50,
+        "cooldownMinutes": 1
+      }
+    },
+    "low": {
+      "enabled": false,
+      "channels": ["slack"],
+      "recipients": {
+        "slack": "#info-alerts"
+      }
+    }
+  },
+
+  "websocketThresholds": {
+    "connectionSuccessRate": {
+      "description": "WebSocket connection success rate percentage",
+      "unit": "percentage",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 90,
+        "operator": "lessThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: WebSocket connection success rate dropped below 90% for 5 minutes",
+        "action": "immediate_rollback_consideration",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 95,
+        "operator": "lessThan",
+        "duration": 180,
+        "message": "⚠️ HIGH: WebSocket connection success rate below 95% for 3 minutes",
+        "action": "investigate_connection_issues",
+        "severity": "high"
+      },
+      "medium": {
+        "enabled": true,
+        "threshold": 98,
+        "operator": "lessThan",
+        "duration": 120,
+        "message": "⚡ MEDIUM: WebSocket connection success rate below 98% for 2 minutes",
+        "action": "monitor_closely",
+        "severity": "medium"
+      }
+    },
+
+    "errorRate": {
+      "description": "WebSocket connection error rate percentage",
+      "unit": "percentage",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 5,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: WebSocket error rate exceeded 5% for 5 minutes",
+        "action": "emergency_rollback",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 3,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "⚠️ HIGH: WebSocket error rate exceeded 3% for 3 minutes",
+        "action": "pause_rollout_increase",
+        "severity": "high"
+      },
+      "medium": {
+        "enabled": true,
+        "threshold": 2,
+        "operator": "greaterThan",
+        "duration": 120,
+        "message": "⚡ MEDIUM: WebSocket error rate exceeded 2% for 2 minutes",
+        "action": "investigate_errors",
+        "severity": "medium"
+      }
+    },
+
+    "averageLatency": {
+      "description": "Average message latency (roundtrip time)",
+      "unit": "milliseconds",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 1000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: Average WebSocket latency exceeded 1000ms for 5 minutes",
+        "action": "investigate_performance_degradation",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 500,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: Average WebSocket latency exceeded 500ms for 5 minutes",
+        "action": "monitor_performance",
+        "severity": "high"
+      },
+      "medium": {
+        "enabled": true,
+        "threshold": 300,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "⚡ MEDIUM: Average WebSocket latency exceeded 300ms for 3 minutes",
+        "action": "log_performance_metric",
+        "severity": "medium"
+      }
+    },
+
+    "p95Latency": {
+      "description": "95th percentile message latency",
+      "unit": "milliseconds",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 2000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: P95 WebSocket latency exceeded 2000ms for 5 minutes",
+        "action": "investigate_tail_latency",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 1000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: P95 WebSocket latency exceeded 1000ms for 5 minutes",
+        "action": "monitor_tail_latency",
+        "severity": "high"
+      }
+    },
+
+    "p99Latency": {
+      "description": "99th percentile message latency",
+      "unit": "milliseconds",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 3000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: P99 WebSocket latency exceeded 3000ms for 5 minutes",
+        "action": "investigate_worst_case_latency",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 2000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: P99 WebSocket latency exceeded 2000ms for 5 minutes",
+        "action": "monitor_worst_case",
+        "severity": "high"
+      }
+    },
+
+    "averageConnectionTime": {
+      "description": "Average time to establish WebSocket connection",
+      "unit": "milliseconds",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 3000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: Average WebSocket connection time exceeded 3000ms for 5 minutes",
+        "action": "investigate_connection_delays",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 2000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: Average WebSocket connection time exceeded 2000ms for 5 minutes",
+        "action": "monitor_connection_performance",
+        "severity": "high"
+      },
+      "medium": {
+        "enabled": true,
+        "threshold": 1500,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "⚡ MEDIUM: Average WebSocket connection time exceeded 1500ms for 3 minutes",
+        "action": "log_slow_connections",
+        "severity": "medium"
+      }
+    },
+
+    "p95ConnectionTime": {
+      "description": "95th percentile connection establishment time",
+      "unit": "milliseconds",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 4000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: P95 connection time exceeded 4000ms for 5 minutes",
+        "action": "investigate_slow_connections",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 2500,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: P95 connection time exceeded 2500ms for 5 minutes",
+        "action": "monitor_connection_tail_latency",
+        "severity": "high"
+      }
+    },
+
+    "activeConnections": {
+      "description": "Number of active WebSocket connections",
+      "unit": "count",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 10,
+        "operator": "lessThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: Active WebSocket connections dropped below 10 for 5 minutes (possible mass disconnect)",
+        "action": "investigate_mass_disconnect",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": false,
+        "threshold": 1000,
+        "operator": "greaterThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: Active WebSocket connections exceeded 1000 for 5 minutes (capacity warning)",
+        "action": "prepare_for_scaling",
+        "severity": "high"
+      }
+    },
+
+    "reconnectionRate": {
+      "description": "Rate of reconnection attempts per minute",
+      "unit": "per_minute",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 50,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "🚨 CRITICAL: Reconnection rate exceeded 50/min for 3 minutes (connection instability)",
+        "action": "investigate_connection_stability",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 30,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "⚠️ HIGH: Reconnection rate exceeded 30/min for 3 minutes",
+        "action": "monitor_connection_stability",
+        "severity": "high"
+      },
+      "medium": {
+        "enabled": true,
+        "threshold": 10,
+        "operator": "greaterThan",
+        "duration": 120,
+        "message": "⚡ MEDIUM: Reconnection rate exceeded 10/min for 2 minutes",
+        "action": "log_reconnection_patterns",
+        "severity": "medium"
+      }
+    }
+  },
+
+  "systemHealthThresholds": {
+    "healthScore": {
+      "description": "Overall system health score (0-100)",
+      "unit": "score",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 50,
+        "operator": "lessThan",
+        "duration": 300,
+        "message": "🚨 CRITICAL: System health score dropped below 50 for 5 minutes",
+        "action": "emergency_investigation",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 70,
+        "operator": "lessThan",
+        "duration": 300,
+        "message": "⚠️ HIGH: System health score dropped below 70 for 5 minutes",
+        "action": "investigate_system_issues",
+        "severity": "high"
+      },
+      "medium": {
+        "enabled": true,
+        "threshold": 85,
+        "operator": "lessThan",
+        "duration": 180,
+        "message": "⚡ MEDIUM: System health score dropped below 85 for 3 minutes",
+        "action": "monitor_system_metrics",
+        "severity": "medium"
+      }
+    },
+
+    "systemStatus": {
+      "description": "Overall system status",
+      "unit": "enum",
+      "checkInterval": 30,
+      "critical": {
+        "enabled": true,
+        "threshold": "unhealthy",
+        "operator": "equals",
+        "duration": 60,
+        "message": "🚨 CRITICAL: System status is UNHEALTHY for 1 minute",
+        "action": "immediate_investigation",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": "degraded",
+        "operator": "equals",
+        "duration": 180,
+        "message": "⚠️ HIGH: System status is DEGRADED for 3 minutes",
+        "action": "investigate_degradation",
+        "severity": "high"
+      }
+    }
+  },
+
+  "durableObjectsThresholds": {
+    "conversationRoomErrors": {
+      "description": "Errors in ConversationRoom Durable Objects",
+      "unit": "count_per_minute",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 10,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "🚨 CRITICAL: ConversationRoom errors exceeded 10/min for 3 minutes",
+        "action": "investigate_durable_object_errors",
+        "severity": "critical"
+      },
+      "high": {
+        "enabled": true,
+        "threshold": 5,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "⚠️ HIGH: ConversationRoom errors exceeded 5/min for 3 minutes",
+        "action": "monitor_durable_objects",
+        "severity": "high"
+      }
+    },
+
+    "messageBroadcasterErrors": {
+      "description": "Errors in MessageBroadcaster Durable Objects",
+      "unit": "count_per_minute",
+      "checkInterval": 60,
+      "critical": {
+        "enabled": true,
+        "threshold": 10,
+        "operator": "greaterThan",
+        "duration": 180,
+        "message": "🚨 CRITICAL: MessageBroadcaster errors exceeded 10/min for 3 minutes",
+        "action": "investigate_broadcast_failures",
+        "severity": "critical"
+      }
+    }
+  },
+
+  "rolloutSpecificThresholds": {
+    "rolloutPercentage50to75": {
+      "description": "Thresholds for 50% → 75% rollout transition",
+      "enabled": true,
+      "successCriteria": {
+        "connectionSuccessRate": {
+          "min": 95,
+          "duration": 7,
+          "unit": "days"
+        },
+        "errorRate": {
+          "max": 2,
+          "duration": 7,
+          "unit": "days"
+        },
+        "averageLatency": {
+          "max": 300,
+          "duration": 7,
+          "unit": "days"
+        },
+        "p95Latency": {
+          "max": 500,
+          "duration": 7,
+          "unit": "days"
+        }
+      },
+      "failureCriteria": {
+        "anyHighAlertCount": {
+          "max": 5,
+          "duration": 1,
+          "unit": "days"
+        },
+        "anyCriticalAlert": {
+          "max": 1,
+          "duration": 1,
+          "unit": "days"
+        }
+      }
+    }
+  },
+
+  "alertActions": {
+    "emergency_rollback": {
+      "description": "Immediately execute emergency rollback to SSE",
+      "automated": false,
+      "manual": true,
+      "script": "./scripts/emergency-rollback.ps1 -RollbackLevel emergency",
+      "requiresConfirmation": true
+    },
+    "immediate_rollback_consideration": {
+      "description": "Consider immediate rollback, notify on-call team",
+      "automated": false,
+      "manual": true,
+      "script": null
+    },
+    "pause_rollout_increase": {
+      "description": "Pause any planned rollout percentage increases",
+      "automated": true,
+      "manual": false,
+      "script": null
+    },
+    "investigate_connection_issues": {
+      "description": "Team should investigate connection problems",
+      "automated": false,
+      "manual": true,
+      "script": null
+    },
+    "monitor_closely": {
+      "description": "Increase monitoring frequency and attention",
+      "automated": true,
+      "manual": false,
+      "script": null
+    }
+  },
+
+  "monitoringDashboards": {
+    "primary": "https://multi-channel.imfinethankyouandyou.com/websocket-monitoring",
+    "analytics": "https://multi-channel.imfinethankyouandyou.com/websocket-analytics",
+    "health": "https://multi-channel.imfinethankyouandyou.com/api/health/health"
+  },
+
+  "notes": [
+    "All thresholds are based on 50% → 75% rollout phase requirements",
+    "Critical alerts trigger immediate notifications to on-call team",
+    "Duration is in seconds unless specified otherwise",
+    "Thresholds will be reviewed and adjusted after 75% rollout stability",
+    "Emergency rollback requires manual confirmation",
+    "All metrics are evaluated over their specified duration window"
+  ]
+}

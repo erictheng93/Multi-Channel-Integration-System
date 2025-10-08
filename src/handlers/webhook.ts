@@ -615,15 +615,15 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
       });
 
       if (activity) {
-        console.log('✅ [LINE Webhook] Activity recorded, triggering SSE broadcast...');
-        
-        // 🚨 關鍵修復：觸發 SSE 推送
-        const { broadcastActivity } = await import('./activity-stream');
-        await broadcastActivity(env, activity);
-        
-        console.log('📢 [LINE Webhook] SSE broadcast triggered successfully');
+        console.log('✅ [LINE Webhook] Activity recorded');
+
+        // REMOVED: SSE broadcast (Phase 4 cleanup - replaced by WebSocket real-time events)
+        // const { broadcastActivity } = await import('./activity-stream');
+        // await broadcastActivity(env, activity);
+
+        // Note: WebSocket real-time events are now handled by websocket-broadcast-service
       } else {
-        console.warn('⚠️ [LINE Webhook] Failed to create activity, skipping SSE broadcast');
+        console.warn('⚠️ [LINE Webhook] Failed to create activity');
       }
     } catch (activityError) {
       console.warn('❌ [LINE Webhook] Failed to record activity:', activityError);
@@ -957,15 +957,15 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       });
 
       if (activity) {
-        console.log('✅ [Facebook Webhook] Activity recorded, triggering SSE broadcast...');
-        
-        // 🚨 關鍵修復：觸發 SSE 推送
-        const { broadcastActivity } = await import('./activity-stream');
-        await broadcastActivity(env, activity);
-        
-        console.log('📢 [Facebook Webhook] SSE broadcast triggered successfully');
+        console.log('✅ [Facebook Webhook] Activity recorded');
+
+        // REMOVED: SSE broadcast (Phase 4 cleanup - replaced by WebSocket real-time events)
+        // const { broadcastActivity } = await import('./activity-stream');
+        // await broadcastActivity(env, activity);
+
+        // Note: WebSocket real-time events are now handled by websocket-broadcast-service
       } else {
-        console.warn('⚠️ [Facebook Webhook] Failed to create activity, skipping SSE broadcast');
+        console.warn('⚠️ [Facebook Webhook] Failed to create activity');
       }
     } catch (activityError) {
       console.warn('❌ [Facebook Webhook] Failed to record activity:', activityError);

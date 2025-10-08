@@ -5,7 +5,7 @@
 import { Context } from 'hono';
 import type { Bindings } from '../types';
 import { successResponse, errorResponse, handleApiError } from '../utils/api-response';
-import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
+// REMOVED: enhancedSSEManager (Phase 3 cleanup - SSE removed, WebSocket only)
 
 export interface QueueStats {
   name: string;
@@ -55,9 +55,14 @@ export const queueMonitorHandler = {
   getUnifiedStats: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       console.log('📊 [Queue Monitor] Fetching unified queue statistics...');
-      
-      // 獲取 SSE 連接統計
-      const sseStats = enhancedSSEManager.getDetailedStats();
+
+      // REMOVED: SSE 連接統計 (Phase 3 cleanup - SSE removed, WebSocket only)
+      // const sseStats = enhancedSSEManager.getDetailedStats();
+      const sseStats = {
+        totalConnections: 0,
+        activeConnections: 0,
+        connectionsByUser: {} as Record<number, number>
+      }; // Placeholder for removed SSE
       
       // AGENT_QUEUE 統計  
       const agentQueueStats: QueueStats = {
@@ -157,10 +162,10 @@ export const queueMonitorHandler = {
           }
         },
         realtimeQueue: {
-          status: 'healthy', 
+          status: 'healthy',
           checks: {
             queueAvailable: true,
-            sseConnections: enhancedSSEManager.getDetailedStats().totalConnections,
+            sseConnections: 0, // REMOVED: SSE removed (Phase 3 cleanup)
             processingLatency: '< 100ms'
           }
         },
@@ -205,9 +210,9 @@ export const queueMonitorHandler = {
             retryRate: 0.05
           },
           sseMetrics: {
-            activeConnections: enhancedSSEManager.getDetailedStats().totalConnections,
-            connectionUptime: '95%',
-            eventDeliveryRate: 99.5
+            activeConnections: 0, // REMOVED: SSE removed (Phase 3 cleanup)
+            connectionUptime: 'N/A',
+            eventDeliveryRate: 0
           }
         },
         timestamp: new Date().toISOString()
@@ -227,12 +232,13 @@ export const queueMonitorHandler = {
 
       switch (operation) {
         case 'cleanup_stale_connections':
-          enhancedSSEManager.cleanupStaleConnections();
-          return successResponse(c, { operation: 'cleanup_stale_connections', completed: true }, 'Stale connections cleaned up');
+          // REMOVED: SSE cleanup (Phase 3 cleanup - SSE removed, WebSocket only)
+          return successResponse(c, { operation: 'cleanup_stale_connections', completed: true, note: 'SSE removed' }, 'SSE removed, no cleanup needed');
 
         case 'get_connection_details':
-          const connectionStats = enhancedSSEManager.getDetailedStats();
-          return successResponse(c, connectionStats, 'Connection details retrieved');
+          // REMOVED: SSE stats (Phase 3 cleanup - SSE removed, WebSocket only)
+          const connectionStats = { totalConnections: 0, note: 'SSE removed, use WebSocket monitoring' };
+          return successResponse(c, connectionStats, 'SSE removed, use WebSocket monitoring');
 
         default:
           return errorResponse(c, 'Unknown maintenance operation', 400);

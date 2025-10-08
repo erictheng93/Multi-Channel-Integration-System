@@ -26,10 +26,12 @@ export { RealtimeVersionSelector } from './config/version-selector';
 
 // === 主要功能快速訪問 ===
 import { realtimeMainHandler, realtimeManagementHandler } from '@modules/realtime/handlers/realtime-main';
-import { sseHandler } from '@modules/realtime/handlers/sse-handler';
+// REMOVED: sseHandler (Phase 3 cleanup - SSE removed, WebSocket only)
+// import { sseHandler } from '@modules/realtime/handlers/sse-handler';
 import { eventHandler } from '@modules/realtime/handlers/event-handler';
 import { RealtimeManager } from '@modules/realtime/services/realtime-manager';
-import { SSEConnectionPool } from '@modules/realtime/services/sse-connection-service';
+// REMOVED: SSEConnectionPool (Phase 3 cleanup - SSE removed, WebSocket only)
+// import { SSEConnectionPool } from '@modules/realtime/services/sse-connection-service';
 import { EventQueueService } from '@modules/realtime/services/event-queue-service';
 import { getRealtimeMiddleware } from '@modules/realtime/middleware';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
@@ -48,14 +50,14 @@ export const realtime = {
   handlers: {
     main: realtimeMainHandler,
     management: realtimeManagementHandler,
-    sse: sseHandler,
+    // REMOVED: sse: sseHandler (Phase 3 cleanup - SSE removed, WebSocket only)
     event: eventHandler
   },
 
   // 服務實例
   services: {
     manager: RealtimeManager.getInstance(),
-    createPool: (config?: any) => new SSEConnectionPool(config),
+    // REMOVED: createPool (Phase 3 cleanup - SSEConnectionPool removed)
     createQueue: (env: any) => new EventQueueService(env)
   },
 
@@ -102,7 +104,7 @@ export const realtime = {
 // === 主要類別導出（方便直接使用）===
 export {
   RealtimeManager,
-  SSEConnectionPool,
+  // REMOVED: SSEConnectionPool (Phase 3 cleanup - SSE removed, WebSocket only)
   EventQueueService
 };
 
@@ -135,10 +137,10 @@ export const defaultRealtimeConfig = {
 export const realtimeModuleInfo = {
   name: 'Real-time Module',
   version: '2.0.0',
-  description: '統一的即時通訊模組，支援 SSE、事件驅動和隊列處理',
+  description: '統一的即時通訊模組，支援 WebSocket、事件驅動和隊列處理',
   features: [
     '事件驅動架構',
-    'SSE 連接管理',
+    'WebSocket 連接管理',
     '隊列處理系統',
     '智能版本選擇',
     '完整的認證和驗證',

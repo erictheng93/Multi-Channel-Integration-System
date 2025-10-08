@@ -24,7 +24,8 @@ import {
   unauthorizedResponse,
   handleApiError
 } from '@/utils/api-response';
-import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
+// REMOVED: enhancedSSEManager (Phase 3 cleanup - SSE removed, WebSocket only)
+// import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
 import { createRealtimeEvent } from '@modules/realtime/handlers/realtime-main';
 
 // 事件處理統計
@@ -243,25 +244,14 @@ export const eventHandler = {
         'user'
       );
 
-      // 立即發送到活躍的 SSE 連接
-      const sseCount = enhancedSSEManager.sendToConversation(
-        eventData.conversationId,
-        {
-          type: 'data',
-          data: {
-            type: 'new_message',
-            data: eventData
-          },
-          timestamp: new Date().toISOString()
-        }
-      );
+      // REMOVED: SSE delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const sseCount = enhancedSSEManager.sendToConversation(...)
 
       const processingTime = Date.now() - startTime;
       eventStats.recordEvent('message', 'high', processingTime, true);
 
       return successResponse(c, {
         eventId,
-        sseDelivered: sseCount,
         processingTime
       }, 'Message event sent');
 
@@ -301,26 +291,14 @@ export const eventHandler = {
         'user'
       );
 
-      // 立即發送到 SSE 連接
-      const sseCount = enhancedSSEManager.sendToConversation(
-        eventData.conversationId,
-        {
-          type: 'data',
-          data: {
-            type: 'typing_status',
-            data: eventData
-          },
-          timestamp: new Date().toISOString()
-        },
-        [eventData.userId]
-      );
+      // REMOVED: SSE delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const sseCount = enhancedSSEManager.sendToConversation(...)
 
       const processingTime = Date.now() - startTime;
       eventStats.recordEvent(eventType, 'low', processingTime, true);
 
       return successResponse(c, {
         eventId,
-        sseDelivered: sseCount,
         processingTime
       }, 'Typing event sent');
 
@@ -359,25 +337,14 @@ export const eventHandler = {
         'user'
       );
 
-      // 立即發送到 SSE 連接
-      const sseCount = enhancedSSEManager.sendToConversation(
-        eventData.conversationId,
-        {
-          type: 'data',
-          data: {
-            type: 'conversation_updated',
-            data: eventData
-          },
-          timestamp: new Date().toISOString()
-        }
-      );
+      // REMOVED: SSE delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const sseCount = enhancedSSEManager.sendToConversation(...)
 
       const processingTime = Date.now() - startTime;
       eventStats.recordEvent('status_changed', 'normal', processingTime, true);
 
       return successResponse(c, {
         eventId,
-        sseDelivered: sseCount,
         processingTime
       }, 'Status event sent');
 
@@ -425,25 +392,14 @@ export const eventHandler = {
         'user'
       );
 
-      // 立即發送到 SSE 連接
-      const sseCount = enhancedSSEManager.sendToConversation(
-        eventData.conversationId,
-        {
-          type: 'data',
-          data: {
-            type: 'assignment_changed',
-            data: eventData
-          },
-          timestamp: new Date().toISOString()
-        }
-      );
+      // REMOVED: SSE delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const sseCount = enhancedSSEManager.sendToConversation(...)
 
       const processingTime = Date.now() - startTime;
       eventStats.recordEvent('assignment_changed', 'high', processingTime, true);
 
       return successResponse(c, {
         eventId,
-        sseDelivered: sseCount,
         processingTime
       }, 'Assignment event sent');
 
@@ -482,25 +438,15 @@ export const eventHandler = {
         'system'
       );
 
-      // 立即發送到目標用戶的 SSE 連接
-      let sseCount = 0;
-      for (const userId of eventData.targetUsers) {
-        sseCount += enhancedSSEManager.sendToUser(userId, {
-          type: 'data',
-          data: {
-            type: 'notification',
-            data: eventData
-          },
-          timestamp: new Date().toISOString()
-        });
-      }
+      // REMOVED: SSE delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // let sseCount = 0;
+      // for (const userId of eventData.targetUsers) { enhancedSSEManager.sendToUser(...) }
 
       const processingTime = Date.now() - startTime;
       eventStats.recordEvent('notification', 'normal', processingTime, true);
 
       return successResponse(c, {
         eventId,
-        sseDelivered: sseCount,
         targetUsers: eventData.targetUsers.length,
         processingTime
       }, 'Notification event sent');
@@ -543,36 +489,16 @@ export const eventHandler = {
         'system'
       );
 
-      // 廣播到所有 SSE 連接或特定用戶
-      let sseCount = 0;
-      if (eventData.affectedUsers && eventData.affectedUsers.length > 0) {
-        for (const userId of eventData.affectedUsers) {
-          sseCount += enhancedSSEManager.sendToUser(userId, {
-            type: 'data',
-            data: {
-              type: 'system_announcement',
-              data: eventData
-            },
-            timestamp: new Date().toISOString()
-          });
-        }
-      } else {
-        sseCount = enhancedSSEManager.broadcast({
-          type: 'data',
-          data: {
-            type: 'system_announcement',
-            data: eventData
-          },
-          timestamp: new Date().toISOString()
-        });
-      }
+      // REMOVED: SSE delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // let sseCount = 0;
+      // if (eventData.affectedUsers) { enhancedSSEManager.sendToUser(...) }
+      // else { enhancedSSEManager.broadcast(...) }
 
       const processingTime = Date.now() - startTime;
       eventStats.recordEvent('system_announcement', priority, processingTime, true);
 
       return successResponse(c, {
         eventId,
-        sseDelivered: sseCount,
         processingTime
       }, 'System event sent');
 
@@ -623,28 +549,11 @@ export const eventHandler = {
         return errorResponse(c, 'Conversation ID is required', 400);
       }
 
-      const { enhancedSSEManager } = await import('./sse-handler');
+      // REMOVED: SSE handler import and delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const { enhancedSSEManager } = await import('./sse-handler');
+      // const successCount = enhancedSSEManager.sendToConversation(...)
 
-      const eventData = {
-        type: 'data' as const,
-        data: {
-          type: isTyping ? 'typing_started' : 'typing_stopped',
-          userId: payload.userId,
-          userName: payload.displayName || `User ${payload.userId}`,
-          conversationId: parseInt(conversationId),
-          isTyping
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      // 發送到對話中的其他用戶
-      const successCount = enhancedSSEManager.sendToConversation(
-        parseInt(conversationId),
-        eventData,
-        [Number(payload.userId)] // 排除自己
-      );
-
-      return successResponse(c, { success: true, delivered: successCount }, 'Typing status updated');
+      return successResponse(c, { success: true }, 'Typing status updated (WebSocket only)');
     } catch (error) {
       return handleApiError(error, c);
     }
@@ -659,18 +568,11 @@ export const eventHandler = {
         return errorResponse(c, 'Conversation ID and event are required', 400);
       }
 
-      const { enhancedSSEManager } = await import('./sse-handler');
+      // REMOVED: SSE handler import and delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const { enhancedSSEManager } = await import('./sse-handler');
+      // const successCount = enhancedSSEManager.sendToConversation(...)
 
-      const successCount = enhancedSSEManager.sendToConversation(
-        parseInt(conversationId),
-        {
-          type: 'data',
-          data: event,
-          timestamp: new Date().toISOString()
-        }
-      );
-
-      return successResponse(c, { success: true, delivered: successCount }, 'Event broadcasted');
+      return successResponse(c, { success: true }, 'Event broadcasted (WebSocket only)');
     } catch (error) {
       return handleApiError(error, c);
     }
@@ -682,37 +584,16 @@ export const eventHandler = {
       const payload = c.get('jwtPayload');
       const { conversationId, isOnline } = await c.req.json();
 
-      const { enhancedSSEManager } = await import('./sse-handler');
-
-      const eventData = {
-        type: 'data' as const,
-        data: {
-          type: isOnline ? 'user_online' : 'user_offline',
-          userId: payload.userId,
-          userName: payload.displayName || `User ${payload.userId}`,
-          conversationId: conversationId ? parseInt(conversationId) : undefined,
-          isOnline
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      let successCount = 0;
-      if (conversationId) {
-        successCount = enhancedSSEManager.sendToConversation(
-          parseInt(conversationId),
-          eventData,
-          [Number(payload.userId)] // 排除自己
-        );
-      } else {
-        // 廣播到所有連接
-        successCount = enhancedSSEManager.broadcast(eventData);
-      }
+      // REMOVED: SSE handler import and delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
+      // const { enhancedSSEManager } = await import('./sse-handler');
+      // let successCount = 0;
+      // if (conversationId) { enhancedSSEManager.sendToConversation(...) }
+      // else { enhancedSSEManager.broadcast(...) }
 
       return successResponse(c, {
         success: true,
-        delivered: successCount,
         isOnline
-      }, 'Online status updated');
+      }, 'Online status updated (WebSocket only)');
     } catch (error) {
       return handleApiError(error, c);
     }

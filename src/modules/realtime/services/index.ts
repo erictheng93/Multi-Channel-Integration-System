@@ -1,4 +1,4 @@
-// Real-time 模組服務層統一導出
+// Real-time 模組服務層統一導出 (Phase 3: WebSocket only)
 
 // 主要服務
 export {
@@ -7,41 +7,40 @@ export {
   type ServiceHealth
 } from './realtime-manager';
 
-export {
-  SSEConnectionPool
-} from './sse-connection-service';
+// REMOVED: SSE connection service (Phase 3 cleanup - 100% WebSocket rollout)
+// export {
+//   SSEConnectionPool
+// } from './sse-connection-service';
 
 export {
   EventQueueService,
   ProcessingStrategy
 } from './event-queue-service';
 
-// 服務實例創建工具
+// 服務實例創建工具 (Phase 3: WebSocket only)
 export const createRealtimeServices = async (env: any) => {
   const { RealtimeManager } = await import('./realtime-manager');
-  const { SSEConnectionPool } = await import('./sse-connection-service');
   const { EventQueueService } = await import('./event-queue-service');
 
   const realtimeManager = RealtimeManager.getInstance();
-  const sseConnectionPool = new SSEConnectionPool();
+  // REMOVED: SSE connection pool (Phase 3 cleanup)
   const eventQueueService = new EventQueueService(env);
 
   return {
     realtimeManager,
-    sseConnectionPool,
+    // REMOVED: sseConnectionPool (Phase 3 cleanup)
     eventQueueService
   };
 };
 
-// 便利函數
+// 便利函數 (Phase 3: WebSocket only)
 export async function getRealtimeServices() {
   const { RealtimeManager } = await import('./realtime-manager');
-  const { SSEConnectionPool } = await import('./sse-connection-service');
   const { EventQueueService } = await import('./event-queue-service');
 
   return {
     manager: RealtimeManager.getInstance,
-    createPool: (config?: any) => new SSEConnectionPool(config),
+    // REMOVED: createPool (Phase 3 cleanup)
     createQueue: (env: any) => new EventQueueService(env)
   };
 }

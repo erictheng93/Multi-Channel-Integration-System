@@ -85,7 +85,8 @@ app.notFound((c) => {
 
 // ==================== Queue Consumer ====================
 
-import { AgentQueueService } from './services/agent-queue-service';
+// ⚠️ REMOVED: AgentQueueService has been deprecated
+// Delayed messages are now handled by DelayedMessageBuffer Durable Object
 
 export default {
   fetch: app.fetch,
@@ -101,9 +102,9 @@ export default {
         console.log('Realtime events processed');
 
       } else if (queueName === 'agent-queue') {
-        // Handle agent queue
-        const agentService = new AgentQueueService(env);
-        await agentService.processMessageBatch(batch);
+        // ⚠️ DEPRECATED: agent-queue is no longer processed
+        // Delayed messages are now handled by DelayedMessageBuffer Durable Object
+        console.warn('⚠️ [DEPRECATED] agent-queue is deprecated. Messages will be ignored.');
       } else {
         console.warn(`Unknown queue: ${queueName}`);
       }

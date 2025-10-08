@@ -114,7 +114,8 @@ export class ConversationSyncService {
     }
 
     try {
-      const baseURL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+      // REMOTE-ONLY: Always use remote API
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
       const baseUrl = baseURL.endsWith('/api') 
         ? `${baseURL}/realtime/sse`
         : `${baseURL}/api/realtime/sse`;

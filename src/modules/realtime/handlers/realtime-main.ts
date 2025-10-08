@@ -75,22 +75,11 @@ class RealtimeConfigManager {
 
 // 統一的 Real-time 處理器
 export const realtimeMainHandler: EventDrivenHandler = {
-  // SSE 端點 - 智能版本選擇
-  sse: async (c: Context<{ Bindings: Bindings }>) => {
-    try {
-      const configManager = RealtimeConfigManager.getInstance();
-      const selectedVersion = configManager.selectVersion(c);
-
-      console.log(`🎯 [Realtime Main] 使用版本: ${selectedVersion}`);
-
-      // 使用統一的 SSE 處理器
-      const { sseHandler } = await import('./sse-handler');
-      return await sseHandler.connect(c);
-    } catch (error) {
-      console.error('❌ [Realtime Main] SSE 錯誤:', error);
-      return errorResponse(c, 'Failed to establish SSE connection', 500);
-    }
-  },
+  // REMOVED: SSE 端點 (Phase 3 cleanup - SSE removed, WebSocket only)
+  // sse: async (c: Context<{ Bindings: Bindings }>) => {
+  //   const { sseHandler } = await import('./sse-handler');
+  //   return await sseHandler.connect(c);
+  // },
 
   // 發送打字狀態 - 優先使用 v2
   sendTypingStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
@@ -123,12 +112,14 @@ export const realtimeMainHandler: EventDrivenHandler = {
   // 獲取對話狀態 - 統一接口
   getConversationStatus: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const configManager = RealtimeConfigManager.getInstance();
-      const selectedVersion = configManager.selectVersion(c);
+      // REMOVED: SSE handler (Phase 3 cleanup - WebSocket only)
+      // const { sseHandler } = await import('./sse-handler');
+      // return await sseHandler.getStats(c);
 
-      // 使用統一的 SSE 處理器獲取對話狀態
-      const { sseHandler } = await import('./sse-handler');
-      return await sseHandler.getStats(c);
+      return successResponse(c, {
+        message: 'SSE removed, use WebSocket for real-time status',
+        timestamp: new Date().toISOString()
+      }, 'Use WebSocket instead');
     } catch (error) {
       return handleApiError(error, c);
     }
@@ -191,13 +182,13 @@ export const realtimeManagementHandler = {
         return unauthorizedResponse(c, 'Insufficient permissions');
       }
 
-      // 獲取 SSE 管理器實例
-      const { enhancedSSEManager } = await import('./sse-handler');
-      const sseStats = enhancedSSEManager.getDetailedStats();
+      // REMOVED: SSE stats (Phase 3 cleanup - WebSocket only)
+      // const { enhancedSSEManager } = await import('./sse-handler');
+      // const sseStats = enhancedSSEManager.getDetailedStats();
 
       const stats = {
         currentConfig: RealtimeConfigManager.getInstance().getConfig(),
-        sseConnections: sseStats,
+        note: 'SSE removed, use WebSocket monitoring endpoints',
         timestamp: new Date().toISOString()
       };
 
@@ -211,15 +202,17 @@ export const realtimeManagementHandler = {
   healthCheck: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const config = RealtimeConfigManager.getInstance().getConfig();
-      const { enhancedSSEManager } = await import('./sse-handler');
-      const sseStats = enhancedSSEManager.getDetailedStats();
+
+      // REMOVED: SSE stats (Phase 3 cleanup - WebSocket only)
+      // const { enhancedSSEManager } = await import('./sse-handler');
+      // const sseStats = enhancedSSEManager.getDetailedStats();
 
       const health = {
         status: 'healthy',
         version: config.version,
         eventDriven: config.enableEventDriven,
         queueProcessing: config.enableQueueProcessing,
-        activeConnections: sseStats.totalConnections || 0,
+        note: 'SSE removed, use WebSocket monitoring',
         timestamp: new Date().toISOString()
       };
 

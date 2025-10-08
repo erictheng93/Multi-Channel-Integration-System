@@ -1,0 +1,39 @@
+    // 🛡️ Phase 1: 全局錯誤處理器 - 捕獲所有未處理的錯誤
+    app.config.errorHandler = (err, instance, info) => {
+      console.error('🚨 [Global Error Handler] Caught unhandled error:', {
+        error: err,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        errorStack: err instanceof Error ? err.stack : undefined,
+        component: instance?.$options?.name || instance?.$?.type?.name || 'Unknown Component',
+        componentFile: instance?.$?.type?.__file || 'Unknown File',
+        errorInfo: info,
+        timestamp: new Date().toISOString(),
+        route: router.currentRoute.value.fullPath
+      })
+
+      // 防止錯誤繼續向上拋出，導致應用崩潰
+      // 在 Phase 3 會集成錯誤追蹤服務
+
+      // 顯示用戶友善的錯誤提示
+      if (import.meta.env.PROD) {
+        // 生產環境：靜默處理，避免暴露技術細節
+        console.error('應用發生錯誤，請嘗試重新整理頁面')
+      } else {
+        // 開發環境：顯示詳細錯誤信息以便調試
+        console.error('詳細錯誤信息:', err)
+      }
+    }
+
+    // 🛡️ Phase 1: 處理 Promise 未捕獲的 rejection
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('🚨 [Unhandled Promise Rejection]:', {
+        reason: event.reason,
+        reasonMessage: event.reason instanceof Error ? event.reason.message : String(event.reason),
+        promise: event.promise,
+        timestamp: new Date().toISOString()
+      })
+
+      // 防止錯誤在控制台顯示重複的警告
+      event.preventDefault()
+    })
+

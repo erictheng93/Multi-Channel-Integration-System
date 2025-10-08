@@ -273,8 +273,8 @@ async function collectRealtimeMetrics(env: Bindings): Promise<RealtimeMetrics> {
       resourceUsage: await collectResourceMetrics(env)
     };
 
-    // 緩存到 KV (10 秒過期)
-    await env.SESSIONS.put(statsKey, JSON.stringify(metrics), { expirationTtl: 10 });
+    // 緩存到 KV (60 秒過期，KV 最小TTL要求)
+    await env.SESSIONS.put(statsKey, JSON.stringify(metrics), { expirationTtl: 60 });
 
     return metrics;
   } catch (error) {

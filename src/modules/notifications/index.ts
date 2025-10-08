@@ -13,7 +13,8 @@ export { NotificationRepository } from './repositories/notification-repository';
 export { NotificationCache } from './repositories/notification-cache';
 
 // 通道適配器匯出
-export { SSEAdapter } from './adapters/sse-adapter';
+// REMOVED: SSEAdapter (Phase 2 cleanup - 100% WebSocket rollout)
+// export { SSEAdapter } from './adapters/sse-adapter';
 export { WebSocketAdapter } from './adapters/websocket-adapter';
 export { EmailAdapter } from './adapters/email-adapter';
 export { PushAdapter } from './adapters/push-adapter';
@@ -25,11 +26,12 @@ export {
   createNotificationHandlerMethods
 } from './handlers/notification-main';
 
-export {
-  NotificationSSEHandler,
-  createNotificationSSEHandler,
-  createNotificationSSEHandlerMethods
-} from './handlers/notification-sse';
+// REMOVED: NotificationSSEHandler (Phase 2 cleanup - 100% WebSocket rollout)
+// export {
+//   NotificationSSEHandler,
+//   createNotificationSSEHandler,
+//   createNotificationSSEHandlerMethods
+// } from './handlers/notification-sse';
 
 // 工具類匯出
 export {
@@ -80,18 +82,19 @@ export { NotificationFactory } from './utils/notification-factory';
 //   };
 // }
 
-// 默認配置
+// 默認配置 (Phase 2: 100% WebSocket rollout)
 export const DEFAULT_NOTIFICATION_CONFIG = {
   channels: {
-    sse: {
-      enabled: true,
-      retryAttempts: 3,
-      retryDelay: 1000,
-      timeout: 30000,
-      batchSize: 50
-    },
+    // REMOVED: SSE configuration (Phase 2 cleanup)
+    // sse: {
+    //   enabled: true,
+    //   retryAttempts: 3,
+    //   retryDelay: 1000,
+    //   timeout: 30000,
+    //   batchSize: 50
+    // },
     websocket: {
-      enabled: false, // 等待 WebSocket 實作完成
+      enabled: true, // ✅ 100% WebSocket rollout complete
       retryAttempts: 3,
       retryDelay: 1000,
       timeout: 30000,
@@ -113,9 +116,9 @@ export const DEFAULT_NOTIFICATION_CONFIG = {
     }
   },
   routing: {
-    defaultChannels: ['sse'],
+    defaultChannels: ['websocket'], // Updated to WebSocket (Phase 2 cleanup)
     fallbackEnabled: true,
-    fallbackChannels: ['sse']
+    fallbackChannels: ['websocket'] // Updated to WebSocket (Phase 2 cleanup)
   },
   cache: {
     defaultTTL: 300, // 5 minutes
@@ -132,11 +135,10 @@ export const NOTIFICATIONS_MODULE_NAME = 'Multi-Channel Notifications';
 export const NOTIFICATIONS_MODULE_INFO = {
   name: NOTIFICATIONS_MODULE_NAME,
   version: NOTIFICATIONS_MODULE_VERSION,
-  description: 'Unified multi-channel notification system with SSE, WebSocket, Email, and Push support',
+  description: 'Unified multi-channel notification system with WebSocket, Email, and Push support',
   features: [
     'Multi-channel notification delivery',
-    'Real-time SSE notifications',
-    'WebSocket support (prepared)',
+    'Real-time WebSocket notifications', // Updated (Phase 2 cleanup)
     'Email notifications (prepared)',
     'Push notifications (prepared)',
     'Advanced caching with KV',
@@ -147,8 +149,9 @@ export const NOTIFICATIONS_MODULE_INFO = {
     'Statistics and monitoring'
   ],
   channels: {
-    sse: 'Server-Sent Events (Active)',
-    websocket: 'WebSocket (Prepared)',
+    // REMOVED: SSE (Phase 2 cleanup)
+    // sse: 'Server-Sent Events (Active)',
+    websocket: 'WebSocket (Active - 100% rollout)', // Updated (Phase 2 cleanup)
     email: 'Email (Prepared)',
     push: 'Push Notifications (Prepared)'
   }

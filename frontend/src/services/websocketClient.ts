@@ -309,7 +309,8 @@ export class WebSocketClient {
 
   private buildWebSocketUrl(): string {
     const authStore = useAuthStore()
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+    // REMOTE-ONLY: Always use remote API, never localhost
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
     const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws'
     const wsBaseUrl = baseUrl.replace(/^https?/, wsProtocol)
 

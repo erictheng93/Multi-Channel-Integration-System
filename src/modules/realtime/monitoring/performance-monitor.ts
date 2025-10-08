@@ -153,9 +153,13 @@ export class RealtimePerformanceMonitor {
     const startTime = Date.now();
 
     try {
-      // 收集 SSE 連接統計
-      const { enhancedSSEManager } = await import('../handlers/sse-handler');
-      const sseStats = await enhancedSSEManager.getDetailedStats();
+      // REMOVED: SSE 連接統計 (Phase 3 cleanup - SSE removed, WebSocket only)
+      // const { enhancedSSEManager } = await import('../handlers/sse-handler');
+      // const sseStats = await enhancedSSEManager.getDetailedStats();
+      const sseStats = {
+        totalConnections: 0,
+        connectionsByUser: {} as Record<number, number>
+      }; // Placeholder for removed SSE
 
       // 收集事件統計
       const { eventStats } = await import('../handlers/event-handler');

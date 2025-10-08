@@ -18,63 +18,32 @@ import { drizzle } from 'drizzle-orm/d1';
 import { agents } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '../utils/logger';
+import { isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
-// 🔥 CORS middleware: 為所有響應添加 CORS headers
+// 🔥 CORS middleware: 為所有響應添加 CORS headers - 使用統一配置
 authHandler.use('*', async (c, next) => {
-  const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
-
-  // Check if origin matches Cloudflare Pages preview domains
-  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+  const origin = c.req.header('Origin');
 
   await next();
 
   // 添加CORS headers到響應
-  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
+  if (origin && isOriginAllowed(origin)) {
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
   }
 });
 
-// 🔥 CORS修復: 處理所有 OPTIONS preflight 請求並設置正確的 CORS headers
+// 🔥 CORS修復: 處理所有 OPTIONS preflight 請求並設置正確的 CORS headers - 使用統一配置
 authHandler.options('*', (c) => {
-  const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
+  const origin = c.req.header('Origin');
+  const allowed = origin && isOriginAllowed(origin);
 
-  // Check if origin matches Cloudflare Pages preview domains
-  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
-  const isAllowed = allowedOrigins.includes(origin) || isPagesPreview;
+  console.log(`🔧 [Auth OPTIONS] Origin: ${origin}, Allowed: ${allowed}`);
 
-  // 創建響應並設置CORS headers
-  const response = new Response(null, { status: 204 });
-
-  if (isAllowed && origin) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  response.headers.set('Access-Control-Max-Age', '86400');
-
-  console.log(`🔧 [Auth OPTIONS] Origin: ${origin}, Allowed: ${isAllowed}`);
-
-  return response;
+  return createCorsPreflightResponse(origin);
 });
 
 // 用戶登入

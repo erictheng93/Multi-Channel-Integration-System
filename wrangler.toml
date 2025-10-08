@@ -43,17 +43,10 @@ binding = "R2_BUCKET"
 bucket_name = "multi-channel-platform-attachments"
 preview_bucket_name = "multi-channel-platform-attachments"
 
-# 生產環境 Queue - 代理延遲消息處理
-# ⚠️ DEPRECATED: 延遲訊息已遷移到 Durable Objects (DelayedMessageBuffer)
-# 保留此配置僅用於向後兼容，未來版本將移除
-[[queues.producers]]
-binding = "AGENT_QUEUE"
-queue = "agent-queue"
-
-[[queues.consumers]]
-queue = "agent-queue"
-max_batch_size = 10
-max_batch_timeout = 5
+# ⚠️ REMOVED: AGENT_QUEUE has been fully deprecated and removed (2025-10-07)
+# Delayed messages are now handled by DelayedMessageBuffer Durable Object
+# Migration completed: 2025-09-30
+# See: docs/reports/migration/MIGRATION_TO_DURABLE_OBJECTS_COMPLETE.md
 
 # Real-time events queue
 [[queues.producers]]

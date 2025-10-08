@@ -3,10 +3,8 @@
 // Phase 2.2 - Frontend Feature Toggle Implementation
 // Project: Multi-Channel Support MVP
 
-import { ref, computed, watch, type Ref } from 'vue'
-import { createWebSocketClient } from './websocketClient'
-import { useSSEMessages } from '@/composables/useSSEMessages'
-import { useAuthStore } from '@/stores/auth'
+import { ref, computed, type Ref } from 'vue'
+import { createWebSocketClient, type WebSocketMessage, type WebSocketConnectionState as WsConnectionState } from './websocketClient'
 import type { Message } from '@/types'
 
 // =================== Type Definitions ===================
@@ -21,14 +19,14 @@ export interface RealtimeConnection {
   reconnect(): void
 
   // Messaging
-  send(message: any): boolean
-  addMessage(message: Message): void
+  send(_message: unknown): boolean
+  addMessage(_message: Message): void
   clearMessages(): void
 
   // Event Handlers
-  onMessage(handler: (message: any) => void): void
-  onStateChange(handler: (state: ConnectionState) => void): void
-  onError(handler: (error: Error) => void): void
+  onMessage(_handler: (_message: unknown) => void): void
+  onStateChange(_handler: (_state: ConnectionState) => void): void
+  onError(_handler: (_error: Error) => void): void
 
   // State
   readonly type: ConnectionType
@@ -66,7 +64,8 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
   }
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+    // REMOTE-ONLY: Always use remote API
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
     const response = await fetch(`${baseUrl}/api/websocket/migration-status`, {
       method: 'GET',
       headers: {
@@ -126,58 +125,25 @@ export function refreshMigrationConfig(): void {
 }
 
 // =================== User Bucketing Algorithm ===================
-
-/**
- * Consistent hash-based user bucketing
- * Ensures same user always gets same result for given percentage
- */
-function shouldUserGetWebSocket(rolloutPercentage: number): boolean {
-  if (rolloutPercentage <= 0) return false
-  if (rolloutPercentage >= 100) return true
-
-  const authStore = useAuthStore()
-  const userId = authStore.currentAgent?.id || 'anonymous'
-
-  // Simple hash function (djb2)
-  let hash = 5381
-  for (let i = 0; i < userId.length; i++) {
-    hash = ((hash << 5) + hash) + userId.charCodeAt(i)
-  }
-
-  const bucket = Math.abs(hash % 100)
-  const result = bucket < rolloutPercentage
-
-  console.log(`[RealtimeConnectionManager] User bucketing: userId=${userId}, bucket=${bucket}, rollout=${rolloutPercentage}%, result=${result ? 'WebSocket' : 'SSE'}`)
-
-  return result
-}
+// REMOVED: _shouldUserGetWebSocket function (WebSocket is at 100% rollout)
 
 // =================== Connection Factory ===================
 
 /**
- * Creates appropriate real-time connection based on migration config
- * Automatically selects WebSocket or SSE
+ * Creates WebSocket real-time connection
+ * 100% WebSocket rollout - SSE support removed
  */
 export async function createRealtimeConnection(
   conversationId: string
 ): Promise<RealtimeConnection> {
-  console.log(`[RealtimeConnectionManager] Creating connection for conversation: ${conversationId}`)
+  console.log(`[RealtimeConnectionManager] Creating WebSocket connection for conversation: ${conversationId}`)
 
   // Fetch migration config
   const config = await fetchMigrationConfig()
 
-  // Determine connection type
-  const shouldUseWebSocket = config.enableWebSocket &&
-    config.featureFlags.websocketConnections &&
-    shouldUserGetWebSocket(config.rolloutPercentage)
-
-  if (shouldUseWebSocket) {
-    console.log(`?? [RealtimeConnectionManager] Using WebSocket connection (rollout: ${config.rolloutPercentage}%)`)
-    return createWebSocketConnection(conversationId, config)
-  } else {
-    console.log(`?�� [RealtimeConnectionManager] Using SSE connection (fallback)`)
-    return createSSEConnection(conversationId)
-  }
+  // Always use WebSocket (100% rollout)
+  console.log(`🚀 [RealtimeConnectionManager] Using WebSocket connection (rollout: ${config.rolloutPercentage}%)`)
+  return createWebSocketConnection(conversationId, config)
 }
 
 // =================== WebSocket Connection Wrapper ===================
@@ -223,144 +189,39 @@ function createWebSocketConnection(
       setTimeout(() => wsClient.connect(), 1000)
     },
 
-    send(message: any): boolean {
-      return wsClient.send(message)
+    send(_message: unknown): boolean {
+      return wsClient.send(_message as WebSocketMessage)
     },
 
-    addMessage(message: Message) {
+    addMessage(_message: Message) {
       // Messages are typically managed by parent component
-      console.log('[WebSocket] Message added (handled by parent):', message)
+      console.log('[WebSocket] Message added (handled by parent):', _message)
     },
 
     clearMessages() {
       console.log('[WebSocket] Clear messages (handled by parent)')
     },
 
-    onMessage(handler: (message: any) => void) {
+    onMessage(_handler: (_message: unknown) => void) {
       wsClient.setEventHandlers({
-        onMessage: handler
+        onMessage: _handler
       })
     },
 
-    onStateChange(handler: (state: ConnectionState) => void) {
+    onStateChange(_handler: (_state: ConnectionState) => void) {
       wsClient.setEventHandlers({
-        onConnectionChange: handler as any
+        onConnectionChange: (_state: WsConnectionState) => {
+          // Map WebSocketConnectionState to ConnectionState
+          const mappedState: ConnectionState = _state === 'closed' ? 'disconnected' : _state as ConnectionState
+          _handler(mappedState)
+        }
       })
     },
 
-    onError(handler: (error: Error) => void) {
+    onError(_handler: (_error: Error) => void) {
       wsClient.setEventHandlers({
-        onError: handler
+        onError: _handler
       })
-    }
-  }
-}
-
-// =================== SSE Connection Wrapper ===================
-
-function createSSEConnection(conversationId: string): RealtimeConnection {
-  const conversationIdRef = ref(conversationId)
-
-  const sseConnection = useSSEMessages(conversationIdRef, {
-    autoConnect: false,
-    reconnectOnError: true,
-    maxReconnectAttempts: 5
-  })
-
-  // Map SSE connection state to unified state
-  const mappedState = ref<ConnectionState>('disconnected')
-
-  // Store registered handlers
-  let stateChangeHandler: ((state: ConnectionState) => void) | null = null
-
-  // Watch SSE state and map to unified state
-  const updateMappedState = () => {
-    const previousState = mappedState.value
-
-    if (sseConnection.isConnected.value) {
-      mappedState.value = 'connected'
-    } else if (sseConnection.isConnecting.value) {
-      mappedState.value = 'connecting'
-    } else if (sseConnection.isReconnecting.value) {
-      mappedState.value = 'reconnecting'
-    } else if (sseConnection.hasError.value) {
-      mappedState.value = 'error'
-    } else {
-      mappedState.value = 'disconnected'
-    }
-
-    // Call registered handler when state changes
-    if (stateChangeHandler && previousState !== mappedState.value) {
-      console.log(`[SSE Wrapper] State changed: ${previousState} -> ${mappedState.value}`)
-      stateChangeHandler(mappedState.value)
-    }
-  }
-
-  // CRITICAL FIX: Use Vue watch instead of setInterval to prevent infinite updates
-  // Watch all SSE state properties and update mappedState reactively
-  watch(
-    [
-      sseConnection.isConnected,
-      sseConnection.isConnecting,
-      sseConnection.isReconnecting,
-      sseConnection.hasError
-    ],
-    updateMappedState,
-    { immediate: true }
-  )
-
-  return {
-    type: 'sse',
-    connectionState: mappedState as Readonly<Ref<ConnectionState>>,
-    isConnected: sseConnection.isConnected,
-    messages: sseConnection.messages,
-    messageCount: sseConnection.messageCount,
-
-    async connect() {
-      await sseConnection.connect()
-      updateMappedState()
-    },
-
-    disconnect() {
-      sseConnection.disconnect()
-      updateMappedState()
-    },
-
-    reconnect() {
-      sseConnection.reconnect()
-      updateMappedState()
-    },
-
-    send(_message: any): boolean {
-      // SSE is unidirectional, cannot send messages
-      console.warn('[SSE] Cannot send messages via SSE (use HTTP POST instead)')
-      return false
-    },
-
-    addMessage(message: Message) {
-      sseConnection.addMessage(message)
-    },
-
-    clearMessages() {
-      sseConnection.clearMessages()
-    },
-
-    onMessage(_handler: (message: any) => void) {
-      // SSE messages are automatically handled by useSSEMessages
-      console.log('[SSE] Message handler registered (automatic)')
-    },
-
-    onStateChange(handler: (state: ConnectionState) => void) {
-      // Store the handler and call immediately with current state
-      stateChangeHandler = handler
-      console.log(`[SSE] State change handler registered, current state: ${mappedState.value}`)
-      // Immediately notify of current state
-      handler(mappedState.value)
-    },
-
-    onError(_handler: (error: Error) => void) {
-      // Errors are automatically handled by useSSEMessages
-      console.log('[SSE] Error handler registered (automatic)')
     }
   }
 }
@@ -368,45 +229,34 @@ function createSSEConnection(conversationId: string): RealtimeConnection {
 // =================== Utility Functions ===================
 
 /**
- * Get current connection type for debugging
+ * Get current connection type (always WebSocket at 100% rollout)
  */
 export async function getCurrentConnectionType(): Promise<ConnectionType> {
-  const config = await fetchMigrationConfig()
-  const shouldUseWebSocket = config.enableWebSocket &&
-    config.featureFlags.websocketConnections &&
-    shouldUserGetWebSocket(config.rolloutPercentage)
-
-  return shouldUseWebSocket ? 'websocket' : 'sse'
+  return 'websocket'
 }
 
 /**
- * Check if user is in WebSocket rollout
+ * Check if user is in WebSocket rollout (always true at 100%)
  */
 export async function isUserInWebSocketRollout(): Promise<boolean> {
-  const config = await fetchMigrationConfig()
-  return config.enableWebSocket &&
-    config.featureFlags.websocketConnections &&
-    shouldUserGetWebSocket(config.rolloutPercentage)
+  return true
 }
 
 /**
- * Get migration statistics
+ * Get migration statistics (100% WebSocket)
  */
 export async function getMigrationStats(): Promise<{
   currentType: ConnectionType
   rolloutPercentage: number
   websocketEnabled: boolean
-  sseEnabled: boolean
   featureFlags: MigrationConfig['featureFlags']
 }> {
   const config = await fetchMigrationConfig()
-  const currentType = await getCurrentConnectionType()
 
   return {
-    currentType,
+    currentType: 'websocket',
     rolloutPercentage: config.rolloutPercentage,
     websocketEnabled: config.enableWebSocket,
-    sseEnabled: config.enableSSE,
     featureFlags: config.featureFlags
   }
 }

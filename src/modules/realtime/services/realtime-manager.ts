@@ -12,8 +12,19 @@ import type {
   RealtimeServiceConfig
 } from '../types';
 import { EventQueueService } from '@modules/realtime/services/event-queue-service';
-import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
+// REMOVED: sseManagerStub (Phase 3 cleanup - SSE removed, WebSocket only)
+// import { sseManagerStub } from '@modules/realtime/handlers/sse-handler';
 import { eventStats } from '@modules/realtime/handlers/event-handler';
+
+// Stub for removed SSE manager
+const sseManagerStub = {
+  setEnv: (_env: any) => {},
+  broadcast: (_data: any) => 0,
+  sendToConversation: (_id: number, _data: any, _exclude?: number[]) => 0,
+  sendToUser: (_userId: number, _data: any) => 0,
+  getDetailedStats: () => ({ totalConnections: 0, connectionsByUser: {} as Record<number, number> }),
+  cleanupStaleConnections: () => 0
+};
 import { RealtimeConfigManager } from '@modules/realtime/handlers/realtime-main';
 
 // 服務狀態枚舉
@@ -71,7 +82,7 @@ export class RealtimeManager {
       this.queueService = new EventQueueService(env);
 
       // 設置 SSE 管理器環境
-      enhancedSSEManager.setEnv(env);
+      sseManagerStub.setEnv(env);
 
       // 更新配置
       if (config) {
@@ -154,7 +165,7 @@ export class RealtimeManager {
       let sseDelivered = 0;
       try {
         if (targets.broadcast) {
-          sseDelivered = enhancedSSEManager.broadcast({
+          sseDelivered = sseManagerStub.broadcast({
             type: 'data',
             data: {
               type: eventType,
@@ -163,7 +174,7 @@ export class RealtimeManager {
             timestamp: new Date().toISOString()
           });
         } else if (targets.conversationId) {
-          sseDelivered = enhancedSSEManager.sendToConversation(
+          sseDelivered = sseManagerStub.sendToConversation(
             targets.conversationId,
             {
               type: 'data',
@@ -177,7 +188,7 @@ export class RealtimeManager {
           );
         } else if (targets.userIds) {
           for (const userId of targets.userIds) {
-            sseDelivered += enhancedSSEManager.sendToUser(userId, {
+            sseDelivered += sseManagerStub.sendToUser(userId, {
               type: 'data',
               data: {
                 type: eventType,
@@ -283,7 +294,7 @@ export class RealtimeManager {
   // 獲取服務健康狀態
   async getServiceHealth(): Promise<ServiceHealth> {
     const uptime = Date.now() - this.startTime;
-    const sseStats = enhancedSSEManager.getDetailedStats();
+    const sseStats = sseManagerStub.getDetailedStats();
     const eventStatsData = eventStats.getStats();
 
     // 檢查各組件健康狀態
@@ -347,7 +358,7 @@ export class RealtimeManager {
     config: RealtimeConfig;
   }> {
     const serviceHealth = await this.getServiceHealth();
-    const sseStats = enhancedSSEManager.getDetailedStats();
+    const sseStats = sseManagerStub.getDetailedStats();
     const eventStatsData = eventStats.getStats();
     const queueStats = this.queueService ? await this.queueService.getProcessingStats() : undefined;
     const config = RealtimeConfigManager.getInstance().getConfig();
@@ -366,7 +377,7 @@ export class RealtimeManager {
     try {
       switch (operation) {
         case 'cleanup':
-          enhancedSSEManager.cleanupStaleConnections();
+          sseManagerStub.cleanupStaleConnections();
           console.log('🧹 [Realtime Manager] 清理操作完成');
           return true;
 

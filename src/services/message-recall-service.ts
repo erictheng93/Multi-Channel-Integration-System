@@ -99,16 +99,9 @@ export class MessageRecallService {
         expirationTtl: request.delaySeconds + 60 // 稍長於延遲時間，確保清理
       });
 
-      // 3. Queue 排程延遲發送
-      if (this.env.AGENT_QUEUE) {
-        await this.env.AGENT_QUEUE.send({
-          messageId,
-          action: 'send_delayed_message',
-          timestamp: now.toISOString()
-        }, {
-          delaySeconds: request.delaySeconds
-        });
-      }
+      // ⚠️ REMOVED: AGENT_QUEUE scheduling is deprecated
+      // This entire service is deprecated - use DelayedMessageBuffer Durable Object instead
+      // Queue consumer no longer processes delayed messages
 
       return {
         success: true,

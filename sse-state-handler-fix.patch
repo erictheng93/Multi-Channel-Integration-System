@@ -1,0 +1,43 @@
+--- a/frontend/src/services/realtimeConnectionManager.ts
++++ b/frontend/src/services/realtimeConnectionManager.ts
+@@ -262,6 +262,9 @@ function createSSEConnection(conversationId: string): RealtimeConnection {
+   // Map SSE connection state to unified state
+   const mappedState = ref<ConnectionState>('disconnected')
+
++  // Store registered handlers
++  let stateChangeHandler: ((state: ConnectionState) => void) | null = null
++
+   // Watch SSE state and map to unified state
+   const updateMappedState = () => {
++    const previousState = mappedState.value
++
+     if (sseConnection.isConnected.value) {
+       mappedState.value = 'connected'
+     } else if (sseConnection.isConnecting.value) {
+@@ -274,6 +277,12 @@ function createSSEConnection(conversationId: string): RealtimeConnection {
+     } else {
+       mappedState.value = 'disconnected'
+     }
++
++    // Call registered handler when state changes
++    if (stateChangeHandler && previousState !== mappedState.value) {
++      console.log(`[SSE Wrapper] State changed: ${previousState} -> ${mappedState.value}`)
++      stateChangeHandler(mappedState.value)
++    }
+   }
+
+   // CRITICAL FIX: Use Vue watch instead of setInterval to prevent infinite updates
+@@ -333,8 +342,11 @@ function createSSEConnection(conversationId: string): RealtimeConnection {
+     },
+
+     onStateChange(handler: (state: ConnectionState) => void) {
+-      // State changes are automatically tracked
+-      console.log('[SSE] State change handler registered (automatic)')
++      // Store the handler and call immediately with current state
++      stateChangeHandler = handler
++      console.log(`[SSE] State change handler registered, current state: ${mappedState.value}`)
++      // Immediately notify of current state
++      handler(mappedState.value)
+     },
+
+     onError(_handler: (error: Error) => void) {

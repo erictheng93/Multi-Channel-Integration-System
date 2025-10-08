@@ -752,17 +752,13 @@ const loadMoreMessages = async () => {
 
 // WebSocket typing functions
 const startWebSocketTyping = () => {
-  if (false) {
-    // TODO: Implement WebSocket typing start when method is available
-    console.debug('WebSocket typing start requested')
-  }
+  // TODO: Implement WebSocket typing start when method is available
+  console.debug('WebSocket typing start requested (not yet implemented)')
 }
 
 const stopWebSocketTyping = () => {
-  if (false) {
-    // TODO: Implement WebSocket typing stop when method is available
-    console.debug('WebSocket typing stop requested')
-  }
+  // TODO: Implement WebSocket typing stop when method is available
+  console.debug('WebSocket typing stop requested (not yet implemented)')
 }
 
 // Refresh messages function
@@ -1081,8 +1077,9 @@ function handleUnifiedStateChange(newState: ConnectionState) {
   unifiedIsConnected.value = newState === 'connected'
 }
 
-function handleUnifiedMessage(message: any) {
-  console.log('[Phase 2.1] Unified connection received message:', message.type, message)
+function handleUnifiedMessage(message: unknown) {
+  const msg = message as { type?: string }
+  console.log('[Phase 2.1] Unified connection received message:', msg.type, message)
 
   // 🔧 CRITICAL FIX: Force reactivity update when messages arrive
   // The SSE connection internally updates its messages ref, but Vue's computed
