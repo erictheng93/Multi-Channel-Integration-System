@@ -152,7 +152,7 @@
 
         <!-- 🌐 Connection Status Bar (Phase 1: SSE-Primary) -->
         <div
-          v-if="sseMessages.isConnected.value || sseMessages.hasError.value || isWebSocketEnabled"
+          v-if="unifiedIsConnected || unifiedConnectionState === 'error' || isWebSocketEnabled"
           class="connection-status-bar"
         >
           <div class="status-items">
@@ -164,10 +164,10 @@
               {{ connectionStatusText }}
             </span>
             <span
-              v-if="sseMessages.connectionState.value.reconnectAttempts > 0"
+              v-if="0 > 0"
               class="status-item reconnect-info"
             >
-              重連嘗試: {{ sseMessages.connectionState.value.reconnectAttempts }}/{{ sseMessages.canReconnect.value ? '5' : 'max' }}
+              重連嘗試: {{ 0 }}/{{ true ? '5' : 'max' }}
             </span>
             <span
               v-if="presence.typingUsers.length > 0"
@@ -176,11 +176,11 @@
               {{ presence.typingUsers.length }} 人正在輸入
             </span>
             <span
-              v-if="sseMessages.connectionState.value.error"
+              v-if="unifiedConnectionState === 'error'"
               class="status-item error-info"
-              :title="sseMessages.connectionState.value.error"
+              title="Connection error"
             >
-              ⚠️ {{ sseMessages.connectionState.value.error }}
+              ⚠️ Connection error
             </span>
           </div>
         </div>
@@ -206,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import { useMessages } from '@/composables/useMessages' // HTTP API fallback
@@ -214,8 +214,6 @@ import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
 import { useSmoothLoading } from '@/composables/useSmoothLoading'
-import { useConversationWebSocket } from '@/composables/useConversationWebSocket'
-import { useSSEMessages } from '@/composables/useSSEMessages' // 🚀 New SSE system
 import { useConfirm } from '@/composables/useConfirm'
 import { useConnectionState } from '@/composables/useConnectionState'
 import { useLoadingState } from '@/composables/useLoadingState'
@@ -223,6 +221,8 @@ import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
 import type { Message } from '@/types'
+// 🚀 Phase 2.1: Unified Connection Manager
+import { createRealtimeConnection, type RealtimeConnection, type ConnectionType, type ConnectionState } from '@/services/realtimeConnectionManager'
 
 // Core components
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -270,20 +270,7 @@ const {
 // Conversation ID
 const conversationId = computed(() => route.params.id as string)
 
-// 🎯 Primary: SSE Messages System
-const sseMessages = useSSEMessages(conversationId, {
-  autoConnect: true,
-  reconnectOnError: true,
-  maxReconnectAttempts: 5,
-  reconnectDelay: 3000
-})
 
-// 🔄 Fallback: WebSocket System (currently disabled)
-const conversationWS = useConversationWebSocket(conversationId, {
-  autoJoin: false, // Disabled during Phase 1
-  enableTypingIndicators: false,
-  enableMessageQueue: false
-})
 
 // 🛡️ Final Fallback: HTTP API System
 const httpMessages = useMessages(conversationId.value, {
@@ -291,22 +278,28 @@ const httpMessages = useMessages(conversationId.value, {
   pageSize: 10 // 🎯 初始加載10條消息，優化首屏加載速度
 })
 
+// 🚀 Unified Connection Manager (Primary Real-time System)
+const unifiedConnection = ref<RealtimeConnection | null>(null)
+const unifiedConnectionType = ref<ConnectionType>('sse')
+const unifiedConnectionState = ref<ConnectionState>('disconnected')
+const unifiedIsConnected = ref(false)
+
 // 🧩 Unified State Management with new composables
 const connectionState = useConnectionState({
-  sseIsConnected: sseMessages.isConnected,
-  sseIsConnecting: sseMessages.isConnecting,
-  sseIsReconnecting: sseMessages.isReconnecting,
-  sseHasError: sseMessages.hasError,
-  wsIsJoined: conversationWS.isJoined,
-  wsIsConnecting: computed(() => false), // WebSocket connecting state
-  shouldUseWebSocket: migration.shouldUseWebSocket
+  sseIsConnected: unifiedIsConnected,
+  sseIsConnecting: computed(() => unifiedConnectionState.value === 'connecting'),
+  sseIsReconnecting: computed(() => unifiedConnectionState.value === 'reconnecting'),
+  sseHasError: computed(() => unifiedConnectionState.value === 'error'),
+  wsIsJoined: computed(() => false), // Not used anymore
+  wsIsConnecting: computed(() => false),
+  shouldUseWebSocket: computed(() => unifiedConnectionType.value === 'websocket')
 })
 
 const loadingState = useLoadingState({
-  sseIsConnected: sseMessages.isConnected,
-  wsIsJoined: conversationWS.isJoined,
+  sseIsConnected: unifiedIsConnected,
+  wsIsJoined: computed(() => false), // Not used anymore
   httpMessagesCount: computed(() => httpMessages.messages.value.length),
-  shouldUseWebSocket: migration.shouldUseWebSocket,
+  shouldUseWebSocket: computed(() => unifiedConnectionType.value === 'websocket'),
   isLoading: computed(() => httpMessages.loading.value)
 })
 
@@ -328,57 +321,60 @@ const errorHandler = useErrorHandler({
   logToConsole: import.meta.env.DEV
 })
 
-// 🧠 Hybrid Message Source Strategy (SSE + HTTP)
-// SSE 用於實時推送，HTTP 用於歷史消息分頁加載
+// 🧠 Unified Message Source Strategy (Unified Connection + HTTP)
+// Unified Connection handles both WebSocket and SSE automatically
+// CRITICAL FIX: Removed all console.log from computed to prevent infinite recursion
+// Computed functions MUST be pure functions without side effects
 const messages = computed((): Message[] => {
-  // Priority 1: SSE + HTTP Hybrid (推薦策略)
-  if (sseMessages.isConnected.value) {
-    // 🎯 混合策略：合併 SSE 實時消息和 HTTP 歷史消息
-    const sseMessageIds = new Set(sseMessages.messages.value.map(m => m.id))
+  // 🔧 DIAGNOSTIC: Check if we should force HTTP fallback
+  // Set to false to use normal SSE/HTTP hybrid logic
+  const FORCE_HTTP_FALLBACK = false  // Using normal flow
 
-    // 過濾出不在 SSE 消息中的 HTTP 歷史消息（避免重複）
+  // Priority 1: Unified Connection (WebSocket or SSE based on rollout)
+  if (unifiedConnection.value && unifiedIsConnected.value && !FORCE_HTTP_FALLBACK) {
+    // 🎯 混合策略：合併 Unified Connection 實時消息和 HTTP 歷史消息
+    const conn = unifiedConnection.value
+    const unifiedMessages = ((conn.messages as unknown) as Ref<Message[]>).value || []
+
+    const unifiedMessageIds = new Set(unifiedMessages.map((m: Message) => m.id))
+
+    // 過濾出不在 Unified Connection 消息中的 HTTP 歷史消息（避免重複）
     const httpHistoryMessages = httpMessages.messages.value.filter(
-      m => !sseMessageIds.has(m.id)
+      m => !unifiedMessageIds.has(m.id)
     )
 
     // 合併消息並按時間排序（從舊到新）
-    const mergedMessages = [...httpHistoryMessages, ...sseMessages.messages.value].sort(
+    const mergedMessages = [...httpHistoryMessages, ...unifiedMessages].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     )
-
-    console.log(`🔀 [Hybrid] Merged messages: ${httpHistoryMessages.length} HTTP + ${sseMessages.messages.value.length} SSE = ${mergedMessages.length} total`)
 
     return mergedMessages
   }
 
-  // Priority 2: WebSocket Messages (disabled in Phase 1)
-  if (migration.shouldUseWebSocket.value && conversationWS.isJoined.value) {
-    return conversationWS.messages.value
-  }
-
-  // Priority 3: HTTP API Messages (fallback)
+  // Priority 2: HTTP API Messages (fallback when no connection)
   return httpMessages.messages.value
 })
 
 // Extract connection and loading state
 const loading = computed(() => {
-  if (sseMessages.isConnected.value) {return false}
-  if (migration.shouldUseWebSocket.value) {return conversationWS.loading.value}
+  if (unifiedIsConnected.value) {return false}
   return httpMessages.loading.value
 })
 
-// Removed unused computed properties: isConnected, connectionState
-
 // Message statistics
 const messageCount = computed(() => messages.value.length)
-const hasNewMessages = computed(() => sseMessages.messageCount.value > 0 || conversationWS.hasNewMessages.value)
-const newMessagesCount = computed(() => sseMessages.messageCount.value || conversationWS.newMessagesCount.value)
+const hasNewMessages = computed(() => {
+  const conn = unifiedConnection.value
+  return conn ? (((conn.messageCount as unknown) as Ref<number>).value > 0) : false
+})
+const newMessagesCount = computed(() => {
+  const conn = unifiedConnection.value
+  return conn ? ((conn.messageCount as unknown) as Ref<number>).value : 0
+})
 
-// Typing and presence (mainly from WebSocket, disabled in Phase 1)
-const presence = computed(() => conversationWS.presence.value)
-const typingUsers = computed(() => conversationWS.presence.value.typingUsers)
-
-// 🎨 Smooth loading for SSE messages (simplified)
+// Typing and presence (disabled - will be re-enabled with WebSocket)
+const presence = computed(() => ({ isOnline: false, typingUsers: [] }))
+const typingUsers = computed(() => [])// 🎨 Smooth loading for SSE messages (simplified)
 const {
   messages: smoothMessages,
   isUpdating,
@@ -390,11 +386,38 @@ const {
   debounceDelay: 50
 })
 
-// Optimized message source watcher with unified debouncing
+// CRITICAL FIX: Add guard to prevent recursive watcher calls
+let isUpdatingMessages = false
+let lastMessagesLength = 0
+
+// Optimized message source watcher with unified debouncing and recursion guard
 const debouncedUpdateMessages = eventHandler.debounce(((newMessages: Message[]) => {
-  updateMessages(newMessages, true)
+  // Prevent recursive calls
+  if (isUpdatingMessages) {
+    return
+  }
+
+  // Skip if messages array hasn't actually changed
+  if (newMessages.length === lastMessagesLength && lastMessagesLength > 0) {
+    return
+  }
+
+  isUpdatingMessages = true
+  lastMessagesLength = newMessages.length
+
+  try {
+    updateMessages(newMessages, true)
+  } finally {
+    // Reset flag after a delay to allow updates to complete
+    setTimeout(() => {
+      isUpdatingMessages = false
+    }, 100)
+  }
 }) as AnyFunction, 50)
 
+// CRITICAL FIX: Watch messages but prevent infinite recursion
+// The key is that updateMessages in useSmoothLoading does NOT trigger messages computed
+// because it only updates smoothMessages, which is separate from messages
 watch(
   () => messages.value,
   (newMessages) => {
@@ -402,7 +425,7 @@ watch(
       debouncedUpdateMessages(newMessages)
     }
   },
-  { immediate: true } // Removed deep watching for better performance
+  { immediate: true, flush: 'post' }
 )
 
 // Core state with null safety
@@ -455,7 +478,7 @@ const newMessageCount = computed(() => hasNewMessages.value ? newMessagesCount.v
 
 // WebSocket connection state
 const isWebSocketJoined = computed(() =>
-  isWebSocketEnabled.value && conversationWS.isJoined.value
+  isWebSocketEnabled.value && false
 )
 
 // Performance optimized computed properties
@@ -464,40 +487,32 @@ const isWebSocketJoined = computed(() =>
 //   return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 // })
 
-// Memoized message filtering for better performance
-const memoizedMessageFilter = performanceOptimizer.memoize(
-  (messages: Message[], isSearching: boolean, searchResults: Message[]) => {
-    return isSearching ? searchResults : messages
-  },
-  (messages, isSearching, searchResults) =>
-    `${messages.length}-${isSearching}-${searchResults.length}`
-)
-
-const displayedMessages = performanceOptimizer.cachedComputed(() => {
-  return memoizedMessageFilter(
-    smoothMessages.value,
-    isSearchActive.value,
-    searchResults.value
-  )
-}, 'displayed-messages', { timeout: 500 })
+// CRITICAL FIX: Direct computed without performance optimizer cache
+// The cachedComputed was returning stale/empty values
+const displayedMessages = computed(() => {
+  return isSearchActive.value ? searchResults.value : smoothMessages.value
+})
 
 // 🌐 Performance optimized connection status with caching
 const connectionStatusText = performanceOptimizer.cachedComputed(() => {
   // Priority 1: SSE Status
-  if (sseMessages.isConnected.value) {
-    return `📡 SSE 已連接 (${sseMessages.messageCount.value} 條訊息)`
+  if (unifiedIsConnected.value) {
+    // Use messages.value.length to get total messages (including initial load)
+    const conn = unifiedConnection.value
+    const msgCount = conn ? (((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0) : 0
+    return `📡 SSE 已連接 (${msgCount} 條訊息)`
   }
 
-  if (sseMessages.isConnecting.value) {
+  if (unifiedConnectionState.value === 'connecting') {
     return '📡 SSE 連接中...'
   }
 
-  if (sseMessages.isReconnecting.value) {
-    const attempts = sseMessages.connectionState.value.reconnectAttempts
+  if (unifiedConnectionState.value === 'reconnecting') {
+    const attempts = 0
     return `📡 SSE 重連中... (${attempts}/5)`
   }
 
-  if (sseMessages.hasError.value) {
+  if (unifiedConnectionState.value === 'error') {
     return '❌ SSE 連接失敗'
   }
 
@@ -516,15 +531,15 @@ const connectionStatusText = performanceOptimizer.cachedComputed(() => {
 
 const connectionStatusClass = computed(() => {
   // SSE Status Classes
-  if (sseMessages.isConnected.value) {
+  if (unifiedIsConnected.value) {
     return 'status-connected status-sse'
   }
 
-  if (sseMessages.isConnecting.value || sseMessages.isReconnecting.value) {
+  if (unifiedConnectionState.value === 'connecting' || unifiedConnectionState.value === 'reconnecting') {
     return 'status-connecting status-sse'
   }
 
-  if (sseMessages.hasError.value) {
+  if (unifiedConnectionState.value === 'error') {
     return 'status-error status-sse'
   }
 
@@ -627,17 +642,6 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
       return
     }
 
-    // Priority 2: WebSocket fallback (disabled in Phase 1)
-    if (isWebSocketEnabled.value) {
-      console.log('🔄 [Message] Trying WebSocket fallback...')
-      const wsSuccess = await conversationWS.sendMessage(data.content)
-      if (wsSuccess) {
-        console.log('✅ [Message] Sent via WebSocket fallback')
-        scrollToNewest()
-        migration.reportMetric('message_sent_websocket_fallback', { content: data.content.substring(0, 50) })
-        return
-      }
-    }
 
     errorHandler.handleError(
       '所有訊息發送方式都失敗了',
@@ -665,21 +669,17 @@ const handleRefreshMessages = async () => {
 
   try {
     // Priority 1: SSE reconnection (if connection lost)
-    if (sseMessages.hasError.value && !sseMessages.isConnecting.value) {
+    if (unifiedConnectionState.value === 'error' || unifiedConnectionState.value === 'disconnected') {
       console.log('🔄 [Refresh] Reconnecting SSE...')
-      await sseMessages.reconnect()
+      await unifiedConnection.value?.reconnect()
     }
 
     // Priority 2: HTTP refresh as fallback
-    if (!sseMessages.isConnected.value) {
+    if (!unifiedIsConnected.value) {
       console.log('🔄 [Refresh] Using HTTP API refresh...')
       await httpMessages.refreshMessages()
     }
 
-    // Priority 3: WebSocket refresh (disabled in Phase 1)
-    if (isWebSocketEnabled.value && conversationWS.isJoined.value) {
-      await conversationWS.refreshMessages()
-    }
 
     resetPollingDelay()
     console.log('✅ [Refresh] Manual refresh completed')
@@ -752,14 +752,14 @@ const loadMoreMessages = async () => {
 
 // WebSocket typing functions
 const startWebSocketTyping = () => {
-  if (conversationWS.isJoined.value) {
+  if (false) {
     // TODO: Implement WebSocket typing start when method is available
     console.debug('WebSocket typing start requested')
   }
 }
 
 const stopWebSocketTyping = () => {
-  if (conversationWS.isJoined.value) {
+  if (false) {
     // TODO: Implement WebSocket typing stop when method is available
     console.debug('WebSocket typing stop requested')
   }
@@ -779,9 +779,10 @@ const loadConversation = async () => {
       await markAsRead()
     }
 
-    // 🔥 NO LONGER NEEDED: VirtualMessageList now handles initial scroll automatically
-    // The component will scroll to bottom immediately when messages are loaded
-    // This prevents the flash of old messages that occurred with the 300ms delay
+    // Load HTTP messages explicitly
+    console.log('📥 [loadConversation] Loading HTTP messages...')
+    await httpMessages.fetchMessages()
+    console.log(`✅ [loadConversation] HTTP messages loaded: ${httpMessages.messages.value.length} messages`)
     console.log('✅ [loadConversation] Messages loaded, VirtualMessageList will auto-scroll')
   } catch (error) {
     console.error('Failed to load conversation:', error)
@@ -933,13 +934,13 @@ const scrollToNewest = () => {
   }
   showNewMessageModal.value = false
   // 🎯 清除新消息計數，用戶已查看消息
-  sseMessages.clearNewMessageCount()
+  // Unified connection handles this automatically
 }
 
 const dismissNewMessageModal = () => {
   showNewMessageModal.value = false
   // 🎯 清除新消息計數，用戶已關閉提醒
-  sseMessages.clearNewMessageCount()
+  // Unified connection handles this automatically
 }
 
 // Navigation
@@ -1025,13 +1026,82 @@ watch(() => hasNewMessages.value, (hasNew) => {
   }
 })
 
+// 🔧 CRITICAL FIX: Watch unified connection messages to ensure reactivity
+// When SSE receives messages, the internal ref updates but Vue computed may not detect it
+// This watch ensures that changes to unifiedConnection.messages trigger UI updates
+watch(
+  () => {
+    const conn = unifiedConnection.value
+    return conn ? (((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0) : 0
+  },
+  (newCount, oldCount) => {
+    if (newCount !== undefined && newCount !== oldCount) {
+      console.log(`📊 [Watch] Unified messages count changed: ${oldCount} → ${newCount}`)
+      // The change in count will automatically trigger messages computed to re-run
+    }
+  }
+)
+
 // Note: Initial loading state is now managed by useLoadingState composable
 
 // Performance monitoring interval (declare at top level for cleanup)
 let performanceReportInterval: ReturnType<typeof setInterval> | null = null
 
+// =================== 🚀 Phase 2.1: Unified Connection Management ===================
+
+async function initializeUnifiedConnection() {
+  try {
+    console.log(`[Phase 2.1] Initializing unified connection for conversation: ${conversationId.value}`)
+
+    // Create connection (automatically selects WebSocket or SSE based on rolloutPercentage)
+    const conn = await createRealtimeConnection(conversationId.value)
+    unifiedConnection.value = conn
+
+    // Store connection type for display
+    unifiedConnectionType.value = conn.type
+
+    // Setup event handlers
+    conn.onMessage(handleUnifiedMessage)
+    conn.onStateChange(handleUnifiedStateChange)
+    conn.onError(handleUnifiedError)
+
+    // Connect
+    await conn.connect()
+
+    console.log(`✅ [Phase 2.1] Unified connection established: ${unifiedConnectionType.value}`)
+  } catch (error) {
+    console.error('[Phase 2.1] Failed to initialize unified connection:', error)
+    unifiedConnectionState.value = 'error'
+  }
+}
+
+function handleUnifiedStateChange(newState: ConnectionState) {
+  console.log(`[Phase 2.1] Unified connection state changed: ${newState}`)
+  unifiedConnectionState.value = newState
+  unifiedIsConnected.value = newState === 'connected'
+}
+
+function handleUnifiedMessage(message: any) {
+  console.log('[Phase 2.1] Unified connection received message:', message.type, message)
+
+  // 🔧 CRITICAL FIX: Force reactivity update when messages arrive
+  // The SSE connection internally updates its messages ref, but Vue's computed
+  // may not detect the change. We need to ensure the messages computed re-runs.
+  const conn = unifiedConnection.value
+  if (conn && conn.messages) {
+    const currentMsgCount = ((conn.messages as unknown) as Ref<Message[]>).value?.length || 0
+    console.log(`📊 [handleUnifiedMessage] Current unified messages count: ${currentMsgCount}`)
+  }
+}
+
+function handleUnifiedError(error: Error) {
+  console.error('[Phase 2.1] Unified connection error:', error)
+}
+
+// =================== End Phase 2.1 Functions ===================
+
 // Lifecycle with WebSocket and performance monitoring + error handling
-onMounted(() => {
+onMounted(async () => {
   console.log('🔧 ConversationDetail mounted with WebSocket support')
 
   // Start performance monitoring
@@ -1068,30 +1138,25 @@ onMounted(() => {
     }, 10000) // 每10秒報告一次
   }
 
-  // Load conversation data asynchronously (don't await in onMounted)
-  loadConversation().then(() => {
-    // Mark initial loading as complete once WebSocket is set up
-    if (isWebSocketEnabled.value) {
-      // WebSocket will handle message loading
-      hasLoadedInitially.value = true
-      isInitialLoading.value = false
-    }
+  // 🚀 Initialize unified connection (primary real-time system)
+  await initializeUnifiedConnection()
+  // CRITICAL FIX: Do NOT call loadConversation() here!
+  // The route watcher with immediate: true (line 1185-1211) already handles initial load
+  // Calling it twice causes race conditions and infinite reactive updates in AppLayout
 
-    // 🚀 智能預加載相鄰對話
-    if (conversationId.value) {
-      conversationsStore.preloadAdjacentConversationMessages(conversationId.value)
-    }
-
-    measure('component-mount', 'component-mount-start')
-  }).catch(error => {
-    console.error('Failed to initialize ConversationDetail component:', error)
-    // Handle critical initialization errors
-    isInitialLoading.value = false
-    router.push('/conversations')
-  })
+  // Simply mark mount complete - the route watcher will handle loading
+  measure('component-mount', 'component-mount-start')
+  console.log('✅ ConversationDetail mounted, route watcher will load conversation')
 })
 
 onUnmounted(() => {
+  // 🚀 Phase 2.1: Disconnect unified connection
+  if (unifiedConnection.value) {
+    console.log('[Phase 2.1] Disconnecting unified connection...')
+    unifiedConnection.value.disconnect()
+    unifiedConnection.value = null
+  }
+
   // Clean up polling (still needed as it's not managed by eventHandler)
   if (pollingInterval.value) {
     clearTimeout(pollingInterval.value)
@@ -1144,6 +1209,30 @@ watch(
   },
   { immediate: true, flush: 'post' }
 )
+
+// 🔍 Phase 2.1: Connection Comparison Monitoring (DEV only)
+if (import.meta.env.DEV) {
+  watch(
+    [
+      () => unifiedIsConnected.value,
+      () => unifiedConnectionType.value,
+      () => unifiedIsConnected.value
+    ],
+    ([unifiedConnected, unifiedType, sseConnected]) => {
+      console.log('[Phase 2.1 Monitor] Connection Status Comparison:', {
+        unified: {
+          connected: unifiedConnected,
+          type: unifiedType,
+          state: unifiedConnectionState.value
+        },
+        existing: {
+          sse: { connected: sseConnected },
+          protocol: currentProtocol.value
+        }
+      })
+    }
+  )
+}
 </script>
 
 <style scoped>

@@ -205,8 +205,14 @@ export class PermissionService {
 
   // Check if one role has higher or equal authority than another
   static hasRoleAuthority(userRole: string, requiredRole: string): boolean {
-    const userLevel = this.roleHierarchy[userRole as keyof typeof this.roleHierarchy] || 0;
-    const requiredLevel = this.roleHierarchy[requiredRole as keyof typeof this.roleHierarchy] || 0;
+    const userLevel = this.roleHierarchy[userRole as keyof typeof this.roleHierarchy];
+    const requiredLevel = this.roleHierarchy[requiredRole as keyof typeof this.roleHierarchy];
+
+    // Both roles must be valid
+    if (userLevel === undefined || requiredLevel === undefined) {
+      return false;
+    }
+
     return userLevel >= requiredLevel;
   }
 
@@ -309,49 +315,52 @@ export class PermissionService {
         const result = await drizzleDb
           .select({ id: conversations.id })
           .from(conversations)
-          .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
           .where(
             or(
-              eq(agents.teamId, user.teamId),
-              isNull(conversations.assignedUserId)
+              // 未指派 (搶單池) - 兩個欄位都必須是 NULL
+              and(
+                isNull(conversations.assignedTeamId),
+                isNull(conversations.assignedUserId)
+              ),
+              // 指派給本團隊 (直接檢查 assignedTeamId，不依賴 JOIN)
+              eq(conversations.assignedTeamId, user.teamId)
             )
           )
           .orderBy(desc(conversations.updatedAt));
         return result.map(row => row.id);
       }
 
-      // Agent 只能看到指派給自己的對話或未指派的對話
+      // Agent 可以看到：1) 搶單池 2) 指派給自己 3) 本團隊對話(如果有團隊)
       if (user.role === 'agent') {
         const userIdStr = typeof userId === 'string' ? userId : userId.toString();
-        console.log(`🔍 Agent ${userIdStr} (role: ${user.role}) searching for conversations`);
-        
+        console.log(`🔍 Agent ${userIdStr} (role: ${user.role}, teamId: ${user.teamId}) searching for conversations`);
+
         const drizzleDb = drizzle(database);
-        
-        // First, let's see ALL conversations in the database
-        const allConversations = await drizzleDb
-          .select({ 
-            id: conversations.id, 
-            assignedUserId: conversations.assignedUserId,
-            status: conversations.status,
-            updatedAt: conversations.updatedAt
-          })
-          .from(conversations)
-          .orderBy(desc(conversations.updatedAt));
-        
-        console.log(`🗂️  All conversations in database:`, allConversations);
-        console.log(`🔍 Looking for conversations assigned to: "${userIdStr}" or unassigned (null)`);
-        
+
+        // 建立查詢條件
+        const conditions = [
+          // 條件1: 未指派 (搶單池) - 兩個欄位都必須是 NULL
+          and(
+            isNull(conversations.assignedTeamId),
+            isNull(conversations.assignedUserId)
+          ),
+          // 條件2: 指派給我個人
+          eq(conversations.assignedUserId, userIdStr)
+        ];
+
+        // 條件3: 如果我有團隊，可以看團隊對話
+        if (user.teamId) {
+          conditions.push(
+            eq(conversations.assignedTeamId, user.teamId)
+          );
+        }
+
         const result = await drizzleDb
           .select({ id: conversations.id })
           .from(conversations)
-          .where(
-            or(
-              eq(conversations.assignedUserId, userIdStr),
-              isNull(conversations.assignedUserId)
-            )
-          )
+          .where(or(...conditions))
           .orderBy(desc(conversations.updatedAt));
-        
+
         console.log(`📋 Found ${result.length} conversations for agent ${userIdStr}:`, result.map(r => r.id));
         return result.map(row => row.id);
       }

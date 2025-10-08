@@ -387,20 +387,40 @@ const navigationItems = computed(() => {
   return isAdmin ? adminNavigationItems : baseNavigationItems
 })
 
+// CRITICAL FIX: Pure functions without ANY side effects
+// Computed functions must be completely pure - no console.log, no console.error
 const currentPageTitle = computed(() => {
-  const item = navigationItems.value.find(item => item.path === route.path)
-  
+  const currentPath = route.path
+
   // 特殊处理对话详情页面
-  if (route.path.startsWith('/conversations/') && route.params.id) {
+  if (currentPath.startsWith('/conversations/') && route.params.id) {
     return '對話'
   }
-  
+
+  const item = navigationItems.value.find(item => item.path === currentPath)
   return item?.label || '頁面'
 })
 
+// Pure function - no external state mutation, no side effects
 const userInitials = computed(() => {
-  const name = authStore.currentAgent?.name || 'User'
-  return name.split(' ').map(n => n[0]).join('').toUpperCase()
+  const agent = authStore?.currentAgent
+
+  if (!agent || !agent.name) {
+    return 'U'
+  }
+
+  const name = String(agent.name)
+  if (!name || name.length === 0) {
+    return 'U'
+  }
+
+  const parts = name.split(' ').filter(n => n && n.length > 0)
+  if (!parts || parts.length === 0) {
+    return 'U'
+  }
+
+  const initials = parts.map(n => n[0]).join('').toUpperCase()
+  return initials || 'U'
 })
 
 const unreadCount = computed(() => {
@@ -420,35 +440,84 @@ const toggleReportsSubmenu = () => {
   isReportsExpanded.value = !isReportsExpanded.value
 }
 
+// Fix: Enhanced resize handler with re-entrant guard and state snapshot
+let resizeTimeout: ReturnType<typeof setTimeout> | null = null
+let isResizing = false
+
 const handleResize = () => {
-  const width = window.innerWidth
-  const wasMobile = isMobile.value
-  
-  isMobile.value = width <= 768
-  
-  if (width >= 1025) {
-    // 大屏幕 - 恢復展開狀態（除非用戶手動摺疊）
-    if (isAutoCollapsed.value) {
-      sidebarCollapsed.value = false
-      isAutoCollapsed.value = false
-    }
-    showMobileMenu.value = false
-  } else if (width >= 769 && width <= 1024) {
-    // 中等屏幕 - 自動摺疊
-    if (!sidebarCollapsed.value || isAutoCollapsed.value) {
-      sidebarCollapsed.value = true
-      isAutoCollapsed.value = true
-    }
-    showMobileMenu.value = false
-  } else {
-    // 小屏幕 - 隱藏側邊欄
-    showMobileMenu.value = false
+  // Prevent re-entrant calls
+  if (isResizing) {
+    return
   }
-  
-  // 移動端切換時關閉菜單
-  if (wasMobile !== isMobile.value) {
-    showMobileMenu.value = false
+
+  // Clear any pending resize operations
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
   }
+
+  // Throttle resize operations with state snapshot
+  resizeTimeout = setTimeout(() => {
+    isResizing = true
+
+    try {
+      const width = window.innerWidth
+
+      // Snapshot current state
+      const oldState = {
+        isMobile: isMobile.value,
+        sidebarCollapsed: sidebarCollapsed.value,
+        isAutoCollapsed: isAutoCollapsed.value,
+        showMobileMenu: showMobileMenu.value
+      }
+
+      // Calculate new state
+      const newState = { ...oldState }
+      newState.isMobile = width <= 768
+
+      if (width >= 1025) {
+        // 大屏幕 - 恢復展開狀態（除非用戶手動摺疊）
+        if (oldState.isAutoCollapsed) {
+          newState.sidebarCollapsed = false
+          newState.isAutoCollapsed = false
+        }
+        newState.showMobileMenu = false
+      } else if (width >= 769 && width <= 1024) {
+        // 中等屏幕 - 自動摺疊
+        if (!oldState.sidebarCollapsed || oldState.isAutoCollapsed) {
+          newState.sidebarCollapsed = true
+          newState.isAutoCollapsed = true
+        }
+        newState.showMobileMenu = false
+      } else {
+        // 小屏幕 - 隱藏側邊欄
+        newState.showMobileMenu = false
+      }
+
+      // 移動端切換時關閉菜單
+      if (oldState.isMobile !== newState.isMobile && newState.showMobileMenu) {
+        newState.showMobileMenu = false
+      }
+
+      // Apply only changed values
+      if (oldState.isMobile !== newState.isMobile) {
+        isMobile.value = newState.isMobile
+      }
+      if (oldState.sidebarCollapsed !== newState.sidebarCollapsed) {
+        sidebarCollapsed.value = newState.sidebarCollapsed
+      }
+      if (oldState.isAutoCollapsed !== newState.isAutoCollapsed) {
+        isAutoCollapsed.value = newState.isAutoCollapsed
+      }
+      if (oldState.showMobileMenu !== newState.showMobileMenu) {
+        showMobileMenu.value = newState.showMobileMenu
+      }
+    } finally {
+      // Reset flag after a brief delay to allow DOM updates
+      setTimeout(() => {
+        isResizing = false
+      }, 50)
+    }
+  }, 150) // Increased throttle for stability
 }
 
 const handleUserProfileClick = () => {
@@ -515,14 +584,14 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
-// 監聽路由變化，確保組件正確更新
+// Watch route changes to update UI state
 watch(() => route.path, (newPath) => {
-  // 自動展開報表系統子菜單
+  // Auto-expand reports submenu when navigating to reports
   if (newPath.startsWith('/reports/')) {
     isReportsExpanded.value = true
   }
 
-  // 關閉任何打開的菜單
+  // Close any open menus when route changes
   showUserMenu.value = false
   showNotifications.value = false
 })
