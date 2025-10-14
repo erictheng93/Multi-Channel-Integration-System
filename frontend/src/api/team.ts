@@ -9,6 +9,14 @@ import type {
 } from '@/types'
 
 export const teamApi = {
+  // 檢查邀請功能是否啟用
+  // 注意：邀請功能已暫時禁用，等待郵件服務集成
+  isInvitationEnabled: (): boolean => {
+    // 從環境變數檢查是否啟用邀請功能
+    // 預設為 false，因為後端已禁用此功能
+    return import.meta.env.VITE_ENABLE_INVITATION === 'true' || false
+  },
+
   // 獲取團隊成員列表
   getMembers: async (): Promise<ApiResponse<TeamMember[]>> => {
     return apiClient.get('/teams/members')
@@ -34,16 +42,34 @@ export const teamApi = {
 
   // 邀請新成員
   inviteMember: async (request: InvitationRequest): Promise<ApiResponse<{ qrCode?: string; inviteLink?: string }>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用，請使用直接添加成員功能 (Direct Member Add)'
+      }
+    }
     return apiClient.post('/teams/invite', request)
   },
 
   // 重新發送邀請
   resendInvitation: async (invitationId: string): Promise<ApiResponse<void>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用'
+      }
+    }
     return apiClient.post(`/team/invitations/${invitationId}/resend`)
   },
 
   // 取消邀請
   cancelInvitation: async (invitationId: string): Promise<ApiResponse<void>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用'
+      }
+    }
     return apiClient.delete(`/team/invitations/${invitationId}`)
   },
 
@@ -108,6 +134,12 @@ export const teamApi = {
     refreshToken?: string;
     agent: TeamMember;
   }>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用'
+      }
+    }
     return apiClient.post('/teams/invitations/accept', {
       token,
       ...userData
@@ -116,6 +148,12 @@ export const teamApi = {
 
   // 拒絕邀請
   declineInvitation: async (token: string): Promise<ApiResponse<void>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用'
+      }
+    }
     return apiClient.post('/teams/invitations/decline', { token })
   },
 
@@ -130,6 +168,12 @@ export const teamApi = {
       expiresAt: string;
     };
   }>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用'
+      }
+    }
     return apiClient.get(`/team/invitations/validate/${token}`)
   },
 
@@ -143,6 +187,12 @@ export const teamApi = {
     inviteLink: string;
     token: string;
   }>> => {
+    if (!teamApi.isInvitationEnabled()) {
+      return {
+        success: false,
+        error: '邀請功能暫時不可用，請使用團隊 QR 碼功能'
+      }
+    }
     return apiClient.post('/teams/qr-invite', request)
   },
 
