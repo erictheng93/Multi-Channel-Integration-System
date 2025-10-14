@@ -98,7 +98,10 @@
     "analyze:performance": "npm run benchmark && npm run profile:memory",
     "setup:test-env": "mkdir -p test-results && mkdir -p memory-profiles && mkdir -p benchmark-results",
     "clean:test-results": "rm -rf test-results/* memory-profiles/* benchmark-results/*",
-    "validate:config": "npx tsx scripts/validate-configuration.ts"
+    "validate:config": "npx tsx scripts/validate-configuration.ts",
+    "validate:routes": "npx tsx scripts/validate-route-order.ts",
+    "validate:routes:ci": "npx tsx scripts/validate-route-order.ts || (echo 'Route validation failed!' && exit 1)",
+    "validate:all": "npm run validate:config && npm run validate:routes"
   },
   "overrides": {
     "esbuild": "^0.25.9",

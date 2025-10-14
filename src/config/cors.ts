@@ -105,3 +105,63 @@ export function logCorsRequest(origin: string | undefined, allowed: boolean, con
     console.warn(`❌ CORS ${prefix}: Blocked origin: ${origin}`);
   }
 }
+
+/**
+ * SSE 專用 CORS 標頭配置
+ *
+ * SSE 使用 EventSource API，有特殊要求：
+ * 1. EventSource 不支持自定義標頭，只能通過 URL 參數傳遞 token
+ * 2. 如果 origin 在允許列表中，返回該 origin (支持 credentials)
+ * 3. 如果 origin 不在列表中，返回 '*' (允許連接但無 credentials)
+ *
+ * @param origin - Request Origin header
+ * @param additionalHeaders - 額外的允許標頭 (如 Authorization)
+ * @returns SSE CORS headers object
+ */
+export function getSSECorsHeaders(
+  origin: string | undefined,
+  additionalHeaders?: string[]
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  };
+
+  if (origin && isOriginAllowed(origin)) {
+    // ✅ 允許的來源：返回具體 origin，支持 credentials
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+    console.log(`✅ [SSE CORS] Allowed origin: ${origin}`);
+  } else {
+    // ⚠️ 未知來源：返回 '*'，允許連接但不支持 credentials
+    headers['Access-Control-Allow-Origin'] = '*';
+    if (origin) {
+      console.warn(`⚠️ [SSE CORS] Unknown origin (wildcard fallback): ${origin}`);
+    }
+  }
+
+  // 設置允許的標頭
+  const allowedHeaders = ['Cache-Control', ...(additionalHeaders || [])];
+  headers['Access-Control-Allow-Headers'] = allowedHeaders.join(', ');
+
+  return headers;
+}
+
+/**
+ * 工具函數：應用 SSE CORS 標頭到 Hono Context
+ *
+ * @param c - Hono Context
+ * @param additionalHeaders - 額外的允許標頭
+ */
+export function applySSECorsHeaders(
+  c: any, // Context type from hono
+  additionalHeaders?: string[]
+): void {
+  const origin = c.req.header('Origin');
+  const headers = getSSECorsHeaders(origin, additionalHeaders);
+
+  Object.entries(headers).forEach(([key, value]) => {
+    c.header(key, value);
+  });
+}

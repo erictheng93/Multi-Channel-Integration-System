@@ -217,9 +217,38 @@ export class ResponseOptimizer {
     }
   }
 
-  // 設置 CORS 優化標頭
+  // 設置 CORS 優化標頭（統一配置版本）
   static setCORSHeaders(c: Context): void {
-    c.header('Access-Control-Allow-Origin', '*');
+    // ✅ 使用統一的 CORS 配置，不再使用硬編碼的 wildcard
+    // 動態導入以避免循環依賴
+    const origin = c.req.header('Origin');
+
+    // 檢查來源是否在允許列表中
+    // 注意：這裡需要手動實現 isOriginAllowed 邏輯以避免循環依賴
+    const allowedOrigins = [
+      'https://multi-channel.imfinethankyouandyou.com',
+      'https://multi-channel-platform-frontend.pages.dev',
+      'https://mcp.imfinethankyouandyou.com',
+      'http://localhost:3000',
+      'https://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:8787',
+    ];
+
+    const isAllowed = origin && (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.multi-channel-platform-frontend.pages.dev')
+    );
+
+    if (isAllowed) {
+      c.header('Access-Control-Allow-Origin', origin!);
+      c.header('Access-Control-Allow-Credentials', 'true');
+      console.log(`✅ [Performance CORS] Allowed origin: ${origin}`);
+    } else if (origin) {
+      console.warn(`⚠️ [Performance CORS] Rejected origin: ${origin}`);
+      // 不設置 CORS 標頭，讓瀏覽器阻止請求
+    }
+
     c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     c.header('Access-Control-Max-Age', '86400'); // 24 小時

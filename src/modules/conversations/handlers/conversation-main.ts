@@ -14,6 +14,7 @@ import { verifyJWT, getUserById } from '@modules/auth/services/auth';
 import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-service';
 import { successResponse, errorResponse } from '@shared/utils/api-response';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
+import { getSSECorsHeaders } from '@/config/cors';
 
 const conversationHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -702,12 +703,11 @@ conversationHandler.get('/stream', async (c) => {
     
     console.log('🔄 [SSE Stream] Starting SSE connection for user:', user.id);
     
-    // 設定SSE headers
-    c.header('Content-Type', 'text/event-stream');
-    c.header('Cache-Control', 'no-cache');
-    c.header('Connection', 'keep-alive');
-    c.header('Access-Control-Allow-Origin', '*');
-    c.header('Access-Control-Allow-Headers', 'Cache-Control');
+    // 設定SSE headers（使用統一 CORS 配置）
+    const sseCorsHeaders1 = getSSECorsHeaders(c.req.header('Origin'));
+    Object.entries(sseCorsHeaders1).forEach(([key, value]) => {
+      c.header(key, value);
+    });
 
     let isConnected = true;
     
@@ -861,15 +861,9 @@ conversationHandler.get('/stream', async (c) => {
       }
     });
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      }
-    });
+    // 使用統一的 SSE CORS 配置
+    const sseCorsHeaders = getSSECorsHeaders(c.req.header('Origin'));
+    return new Response(stream, { headers: sseCorsHeaders });
 
   } catch (error) {
     console.error('❌ [SSE Stream] Error setting up SSE:', error);
@@ -1075,12 +1069,11 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
     console.log('✅ [SSE Debug] Permission check passed, creating SSE stream...');
 
-    // 設置 SSE headers
-    c.header('Content-Type', 'text/event-stream');
-    c.header('Cache-Control', 'no-cache');
-    c.header('Connection', 'keep-alive');
-    c.header('Access-Control-Allow-Origin', '*');
-    c.header('Access-Control-Allow-Headers', 'Cache-Control');
+    // 設置 SSE headers（使用統一 CORS 配置）
+    const sseCorsHeaders3 = getSSECorsHeaders(c.req.header('Origin'));
+    Object.entries(sseCorsHeaders3).forEach(([key, value]) => {
+      c.header(key, value);
+    });
 
     let isConnected = true;
     let lastMessageId: string | null = null;
@@ -1225,15 +1218,9 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       }
     });
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      }
-    });
+    // 使用統一的 SSE CORS 配置
+    const sseResponseHeaders = getSSECorsHeaders(c.req.header('Origin'));
+    return new Response(stream, { headers: sseResponseHeaders });
 
   } catch (error) {
     console.error('❌ [SSE] Error setting up message stream:', error);

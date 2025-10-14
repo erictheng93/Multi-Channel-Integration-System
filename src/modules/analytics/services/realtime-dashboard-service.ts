@@ -12,6 +12,7 @@ import type {
   DashboardConfig
 } from '../types/dashboard-types';
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
+import { getSSECorsHeaders } from '@/config/cors';
 
 /**
  * 實時更新事件類型
@@ -161,15 +162,9 @@ export class RealtimeDashboardService {
         }
       });
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Cache-Control'
-        }
-      });
+      // 使用統一的 SSE CORS 配置
+      const sseCorsHeaders = getSSECorsHeaders(undefined); // Service level, origin from request context
+      return new Response(stream, { headers: sseCorsHeaders });
 
     } catch (error) {
       console.error('Failed to create SSE connection:', error);
