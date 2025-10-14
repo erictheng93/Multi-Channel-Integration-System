@@ -3,7 +3,9 @@
   <AppLayout>
     <div class="reports-main">
       <div class="reports-header">
-        <h1 class="page-title">報表系統</h1>
+        <h1 class="page-title">
+          報表系統
+        </h1>
         <nav class="sub-navigation">
           <router-link
             v-for="item in navItems"
@@ -37,7 +39,7 @@ const navItems = [
 ]
 
 const isActive = (path: string) => {
-  return route.path === path || route.path.startsWith(path + '/')
+  return route.path === path || route.path.startsWith(`${path  }/`)
 }
 </script>
 

@@ -61,9 +61,21 @@ export class MessageService implements MessageServiceInterface {
         })
         .where(eq(conversations.id, request.conversationId));
 
+      // ✅ Query back the complete message object to ensure consistency
+      const [insertedMessage] = await this.db
+        .select()
+        .from(messages)
+        .where(eq(messages.id, messageId))
+        .limit(1);
+
+      if (!insertedMessage) {
+        throw new Error('Failed to retrieve inserted message');
+      }
+
       return {
         success: true,
         messageId,
+        message: insertedMessage,  // ✅ Return complete message object
         conversationId: request.conversationId,
         content: request.content,
         timestamp,

@@ -230,8 +230,26 @@ export const useAuthStore = defineStore('auth', () => {
   // 驗證會話是否有效
   function validateSession(): boolean {
     if (!token.value) {return false;}
+
+    // 🔧 增強：檢查 Token 格式和內容有效性
+    if (!isTokenValid()) {
+      console.warn('[Auth] Invalid token detected during session validation');
+      // 清除無效 Token
+      setTimeout(() => {
+        logout(false);
+      }, 0);
+      return false;
+    }
+
     if (!sessionExpiry.value) {return true;}
-    return Date.now() < sessionExpiry.value;
+
+    // 檢查是否過期
+    const isValid = Date.now() < sessionExpiry.value;
+    if (!isValid) {
+      console.warn('[Auth] Session has expired');
+    }
+
+    return isValid;
   }
 
   // 延長會話時間
@@ -254,10 +272,57 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // 🔧 新增：檢查 Token 是否已完全過期
+  function isTokenExpired(): boolean {
+    if (!token.value) {return true;}
+    if (!sessionExpiry.value) {return false;} // 如果沒有過期時間，假設有效
+
+    return Date.now() >= sessionExpiry.value;
+  }
+
+  // 🔧 新增：驗證 Token 格式和內容
+  function isTokenValid(): boolean {
+    if (!token.value) {return false;}
+
+    try {
+      // 檢查 Token 格式（JWT 應該有 3 部分）
+      const parts = token.value.split('.');
+      if (parts.length !== 3 || !parts[1]) {return false;}
+
+      // 嘗試解析 payload
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.userId || !payload.role) {return false;}
+
+      // 檢查 Token 是否過期
+      if (payload.exp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload.exp <= currentTime) {
+          console.warn('[Auth] Token has expired');
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[Auth] Token validation failed:', error);
+      return false;
+    }
+  }
+
   // 檢查是否需要刷新 token
   function shouldRefreshToken(): boolean {
     if (!token.value || !sessionExpiry.value) {return false;}
-    
+
+    // 🔧 增強：先檢查 Token 是否已經完全過期
+    if (isTokenExpired()) {
+      console.warn('[Auth] Token has expired, cannot refresh');
+      // 自動觸發登出
+      setTimeout(() => {
+        logout(false);
+      }, 0);
+      return false;
+    }
+
     // 如果 token 在 30 分鐘內過期，就刷新
     return (sessionExpiry.value - Date.now()) < TOKEN_REFRESH_THRESHOLD;
   }
@@ -399,14 +464,14 @@ export const useAuthStore = defineStore('auth', () => {
     // 計算屬性
     isAuthenticated: computed(() => {
       const result = !!token.value && validateSession() && !!currentAgent.value;
-      
+
       // 自動清除過時錯誤
       if (result && error.value) {
         setTimeout(() => {
           if (error.value) {error.value = null;}
         }, 0);
       }
-      
+
       return result;
     }),
     isAdmin,
@@ -427,6 +492,9 @@ export const useAuthStore = defineStore('auth', () => {
     clearError,
     // 🔧 新增：會話恢復相關方法
     setSessionStatus,
-    initializeSession
+    initializeSession,
+    // 🔧 新增：Token 有效性檢查方法
+    isTokenExpired,
+    isTokenValid
   };
 });

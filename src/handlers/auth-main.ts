@@ -23,28 +23,8 @@ import { isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
-// 🔥 CORS middleware: 為所有響應添加 CORS headers - 使用統一配置
-authHandler.use('*', async (c, next) => {
-  const origin = c.req.header('Origin');
-
-  await next();
-
-  // 添加CORS headers到響應
-  if (origin && isOriginAllowed(origin)) {
-    c.header('Access-Control-Allow-Origin', origin);
-    c.header('Access-Control-Allow-Credentials', 'true');
-  }
-});
-
-// 🔥 CORS修復: 處理所有 OPTIONS preflight 請求並設置正確的 CORS headers - 使用統一配置
-authHandler.options('*', (c) => {
-  const origin = c.req.header('Origin');
-  const allowed = origin && isOriginAllowed(origin);
-
-  console.log(`🔧 [Auth OPTIONS] Origin: ${origin}, Allowed: ${allowed}`);
-
-  return createCorsPreflightResponse(origin);
-});
+// ✅ CORS 處理已移至 src/index.ts 統一管理
+// 不再需要 handler 級別的 CORS middleware
 
 // 用戶登入
 authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {

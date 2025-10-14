@@ -361,12 +361,29 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
 
 // 發送訊息 - Simplified with extracted services
 conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
+  // 🔵 Phase 1 Emergency Debug Logging
+  console.log('🔵 [ENTRY] ========== MESSAGE HANDLER REACHED ==========');
+  console.log('🔵 [ENTRY] Timestamp:', new Date().toISOString());
+  console.log('🔵 [ENTRY] Conversation ID:', c.req.param('id'));
+  console.log('🔵 [ENTRY] Method:', c.req.method);
+  console.log('🔵 [ENTRY] Path:', c.req.path);
+
   try {
+    console.log('🔵 [AUTH] Checking user context...');
+    const user = c.get('user');
+    console.log('🔵 [AUTH] User ID:', user?.id);
+    console.log('🔵 [AUTH] User Role:', user?.role);
+    console.log('🔵 [AUTH] User Name:', user?.displayName);
+
     // 1. Validate and parse request
+    console.log('🔵 [PARSE] Starting request validation...');
     const request = await MessageRequestService.validateAndParse(c);
+    console.log('🔵 [PARSE] Request validated successfully');
+    console.log('🔵 [PARSE] Content length:', request.content?.length);
+    console.log('🔵 [PARSE] Sender ID:', request.senderId);
 
     // 2. Check permissions
-    const user = c.get('user');
+    console.log('🔵 [PERMISSION] Checking permissions...');
     const hasPermission = await PermissionService.checkPermission(
       user.id,
       'message',
@@ -379,21 +396,31 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       c.env.DB
     );
 
+    console.log('🔵 [PERMISSION] Permission check result:', hasPermission);
+
     if (!hasPermission) {
+      console.log('🔴 [PERMISSION] Permission denied for user:', user.id);
       return errorResponse(c, user.role === 'agent'
         ? '權限不足，您無權對此訊息進行任何操作。只有指派給您的對話或團隊負責人能夠回覆未指派的對話。'
         : 'Permission denied', 403);
     }
 
     // 3. Send message through service
+    console.log('🔵 [SERVICE] Creating MessageService instance...');
     const messageService = new MessageService(c.env);
+    console.log('🔵 [SERVICE] Calling sendMessage...');
     const result = await messageService.sendMessage(request);
+    console.log('🔵 [SERVICE] sendMessage result:', result.success);
 
     if (!result.success) {
+      console.log('🔴 [SERVICE] Send message failed:', result.error);
       return errorResponse(c, result.error || 'Failed to send message', 400);
     }
 
+    console.log('🔵 [SERVICE] Message sent successfully, ID:', result.messageId);
+
     // 4. Broadcast WebSocket event
+    console.log('🔵 [WEBSOCKET] Starting WebSocket broadcast...');
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
       await broadcastService.broadcastMessageEvent({
@@ -414,19 +441,73 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
         },
         priority: 'normal'
       });
+      console.log('🔵 [WEBSOCKET] Broadcast successful');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Message broadcast failed:', broadcastError);
+      console.warn('⚠️ [WEBSOCKET] Message broadcast failed:', broadcastError);
     }
 
-    return successResponse(c, {
-      messageId: result.messageId,
-      conversationId: request.conversationId,
-      content: request.content,
-      messageType: request.messageType,
-      deliveryStatus: 'sent'
-    }, 'Message sent successfully');
+    // ✅ 5. Return complete Message object formatted for frontend
+    console.log('🔵 [RESPONSE] Preparing response...');
+    console.log('🔵 [RESPONSE] Has result.message:', !!result.message);
+
+    if (!result.message) {
+      console.log('🔵 [RESPONSE] Using fallback message format');
+      // Fallback: construct minimal message if query failed
+      return successResponse(c, {
+        id: result.messageId,
+        conversationId: request.conversationId,
+        senderType: 'agent' as const,
+        senderId: request.senderId,
+        senderName: user.displayName,
+        content: request.content,
+        messageType: request.messageType || 'text',
+        platform: 'line' as const,
+        createdAt: Date.now(),
+        deliveryStatus: 'sent'
+      }, 'Message sent successfully');
+    }
+
+    // Transform database message to frontend Message format
+    // ✅ Safe metadata parsing with error handling
+    let parsedMetadata = {};
+    if (result.message.metadata) {
+      try {
+        parsedMetadata = JSON.parse(result.message.metadata as string);
+      } catch (parseError) {
+        console.warn('⚠️ Failed to parse message metadata:', parseError);
+        parsedMetadata = {};
+      }
+    }
+
+    const formattedMessage = {
+      id: result.message.id,
+      conversationId: result.message.conversationId,
+      senderType: 'agent' as const,
+      senderId: result.message.agentSenderId || request.senderId,
+      senderName: user.displayName,
+      content: result.message.content,
+      mediaUrl: '',
+      mediaType: result.message.messageType as 'text' | 'image' | 'video' | 'file',
+      platform: 'line' as const,
+      createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
+      timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
+      deliveryStatus: result.message.deliveryStatus || 'sent',
+      isSent: result.message.isSent,
+      platformMessageId: result.message.platformMessageId,
+      metadata: parsedMetadata
+    };
+
+    console.log('🔵 [RESPONSE] Formatted message prepared');
+    console.log('🔵 [RESPONSE] Calling successResponse...');
+    const response = successResponse(c, formattedMessage, 'Message sent successfully');
+    console.log('🔵 [RESPONSE] ========== SUCCESS - RETURNING RESPONSE ==========');
+    return response;
 
   } catch (error) {
+    console.error('🔴 [ERROR] ========== EXCEPTION CAUGHT ==========');
+    console.error('🔴 [ERROR] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('🔴 [ERROR] Error message:', error instanceof Error ? error.message : String(error));
+    console.error('🔴 [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack');
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to send message', 500);
   }
 });

@@ -62,6 +62,39 @@
     </div>
 
     <div class="header-actions">
+      <!-- 指派管理按鈕 -->
+      <div
+        v-if="conversation && conversation.status !== 'closed'"
+        class="assign-action-wrapper"
+      >
+        <button
+          class="assign-action-btn"
+          :class="{ 'has-assignment': conversation.assignedTo }"
+          @click="toggleAssignPanel"
+        >
+          <UserPlusIcon class="action-icon" />
+          <span v-if="conversation.assignedTo">已指派</span>
+          <span v-else>指派管理</span>
+          <ChevronDownIcon
+            class="dropdown-icon"
+            :class="showAssignPanel ? 'rotated' : ''"
+          />
+        </button>
+
+        <!-- 指派面板 -->
+        <div
+          v-if="showAssignPanel"
+          class="assign-panel-dropdown"
+        >
+          <AdvancedAssignActions
+            :conversation="conversation"
+            @assigned="handleAssigned"
+            @unassigned="handleUnassigned"
+            @error="handleAssignError"
+          />
+        </div>
+      </div>
+
       <!-- 標籤管理按鈕 -->
       <div
         v-if="conversation?.customer?.id && customerIdNumber"
@@ -95,11 +128,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
-import { ArrowLeftIcon, XCircleIcon, RefreshIcon } from '@/components/icons'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ArrowLeftIcon, XCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import TagSelector from '@/components/customer/TagSelector.vue'
+import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, addTagsToCustomer, type Tag } from '@/api/tags'
 
@@ -120,6 +154,7 @@ defineEmits<{
 const customerTags = ref<Tag[]>([])
 const selectedTagIds = ref<number[]>([])
 const showAllTags = ref(false)
+const showAssignPanel = ref(false)
 
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
@@ -164,6 +199,53 @@ const handleTagsChange = async (tags: Tag[]) => {
     }
   }
 }
+
+// 指派管理功能
+const toggleAssignPanel = () => {
+  showAssignPanel.value = !showAssignPanel.value
+}
+
+const handleAssigned = (conversation: Conversation, assignedTo: string) => {
+  console.log('Conversation assigned:', { conversationId: conversation.id, assignedTo })
+  showAssignPanel.value = false
+  // 刷新對話以獲取最新狀態
+  setTimeout(() => {
+    if (props.conversation?.id) {
+      // 通知父組件刷新
+      // emit('refresh') // 如果需要的話可以添加這個事件
+    }
+  }, 500)
+}
+
+const handleUnassigned = (conversation: Conversation) => {
+  console.log('Conversation unassigned:', conversation.id)
+  showAssignPanel.value = false
+}
+
+const handleAssignError = (message: string) => {
+  console.error('Assignment error:', message)
+  // 可以在這裡顯示toast通知
+  window.alert(message) // 簡單的錯誤提示
+}
+
+// 點擊外部關閉指派面板
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  const assignWrapper = document.querySelector('.assign-action-wrapper')
+
+  if (showAssignPanel.value && assignWrapper && !assignWrapper.contains(target)) {
+    showAssignPanel.value = false
+  }
+}
+
+// 監聽全局點擊事件
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 // 監聽對話變化
 watch(() => props.conversation?.customer?.id, (newId) => {
@@ -344,5 +426,108 @@ onMounted(() => {
 
 .tag-selector-wrapper {
   position: relative;
+}
+
+/* 指派功能樣式 */
+.assign-action-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.assign-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--gray-700, #374151);
+  background-color: white;
+  border: 1px solid var(--gray-300, #d1d5db);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.assign-action-btn:hover {
+  background-color: var(--gray-50, #f9fafb);
+  border-color: var(--gray-400, #9ca3af);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.assign-action-btn.has-assignment {
+  background-color: var(--green-50, #f0fdf4);
+  border-color: var(--green-300, #86efac);
+  color: var(--green-700, #15803d);
+}
+
+.assign-action-btn.has-assignment:hover {
+  background-color: var(--green-100, #dcfce7);
+  border-color: var(--green-400, #4ade80);
+}
+
+.action-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.dropdown-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: transform 0.2s ease;
+}
+
+.dropdown-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.assign-panel-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 50;
+  min-width: 24rem;
+  max-width: 32rem;
+  background: white;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  animation: dropdown-appear 0.2s ease-out;
+}
+
+@keyframes dropdown-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .assign-panel-dropdown {
+    right: auto;
+    left: 0;
+    min-width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+  }
+
+  .assign-action-btn span {
+    display: none;
+  }
+
+  .assign-action-btn .action-icon {
+    margin-right: 0;
+  }
 }
 </style>

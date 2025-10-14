@@ -59,7 +59,21 @@
       "mcp__playwright__browser_click",
       "Bash(git apply:*)",
       "Bash(tasklist)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc1OTg4NzQ3MSwiZXhwIjoxNzU5ODk0NjcxfQ.8oCdZz5Sn_u-ucS1O2ectr6PPjWL3INEBlLiTwCGyWs\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc1OTg4NzQ3MSwiZXhwIjoxNzU5ODk0NjcxfQ.8oCdZz5Sn_u-ucS1O2ectr6PPjWL3INEBlLiTwCGyWs\")",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_wait_for",
+      "Bash($TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc1OTg4NzQ3MSwiZXhwIjoxNzU5ODk0NjcxfQ.8oCdZz5Sn_u-ucS1O2ectr6PPjWL3INEBlLiTwCGyWs\")",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_evaluate",
+      "Read(//c/Users/DAC/**)",
+      "Bash(Select-String -Pattern \"< HTTP|{\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(__NEW_LINE__ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/conversations/1e9f56c8-b6e3-4c1b-96cf-6e87f46dc5a5/messages )",
+      "Bash(/dev/null)",
+      "Bash(Select-String -Pattern \"< HTTP|Access-Control|204\")"
     ],
     "deny": [],
     "ask": [],
@@ -68,5 +82,9 @@
       "D:\\d D:\\Code\\Multi_Channel_Integration_System"
     ]
   },
+  "enabledMcpjsonServers": [
+    "chrome-devtools",
+    "playwright"
+  ],
   "outputStyle": "visual-explanation"
 }
