@@ -278,7 +278,11 @@ export class WebSocketClient {
 
         if (response.ok) {
           const healthData = await response.json()
-          if (healthData.websocketEnabled) {
+          // ✅ Fix: Check correct nested path with fallback for backward compatibility
+          const isWebSocketEnabled = healthData.configuration?.websocketEnabled ??
+                                     healthData.websocketEnabled ??
+                                     false
+          if (isWebSocketEnabled) {
             checks.push('WebSocket service available')
           } else {
             return { success: false, error: 'WebSocket service disabled on server' }
