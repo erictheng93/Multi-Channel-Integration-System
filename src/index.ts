@@ -563,12 +563,51 @@ app.delete('/api/credentials/:platform', jwtAuth, clearPlatformCredentials);
 app.get('/api/credentials/backup', jwtAuth, backupCredentials);
 
 // 新的團隊管理 API 路由 - 細粒度控制 (保留)
-app.get('/api/team/members', jwtAuth, getTeamMembers);
+app.get('/api/team/members', jwtAuth, getTeamMembers);  // 單數形式（向後兼容）
+app.get('/api/teams/members', jwtAuth, getTeamMembers); // 複數形式（RESTful 標準）✨
 app.post('/api/team/members', jwtAuth, addTeamMember);
 app.post('/api/team/invite', jwtAuth, inviteMember);
 app.put('/api/team/members/:id/status', jwtAuth, updateMemberStatus);
 app.put('/api/team/members/:id/role', jwtAuth, updateMemberRole);
 app.get('/api/team/members/:id/password', jwtAuth, getMemberPassword);
+app.get('/api/team/members/:id', jwtAuth, async (c) => {
+  // Get single team member details
+  try {
+    const { drizzle } = await import('drizzle-orm/d1');
+    const { agents } = await import('./db/schema');
+    const { eq, sql } = await import('drizzle-orm');
+    const { successResponse, handleApiError } = await import('./utils/api-response');
+
+    const memberId = c.req.param('id');
+    const drizzleDb = drizzle(c.env.DB);
+
+    const member = await drizzleDb
+      .select({
+        id: agents.id,
+        loginId: agents.displayName,
+        email: agents.email,
+        name: agents.displayName,
+        role: agents.role,
+        teamId: agents.teamId,
+        status: sql`CASE WHEN ${agents.isActive} = 1 THEN 'active' ELSE 'inactive' END`.as('status'),
+        isActive: agents.isActive,
+        createdAt: agents.createdAt,
+        lastActive: agents.lastLoginAt
+      })
+      .from(agents)
+      .where(eq(agents.id, memberId))
+      .get();
+
+    if (!member) {
+      return c.json({ success: false, error: 'Member not found' }, 404);
+    }
+
+    return successResponse(c, member, 'Member retrieved successfully');
+  } catch (error) {
+    const { handleApiError } = await import('./utils/api-response');
+    return handleApiError(error, c);
+  }
+});
 app.put('/api/team/members/:id', jwtAuth, updateMember);
 app.post('/api/team/members/:id/reset-password', jwtAuth, resetMemberPassword);
 app.post('/api/team/members/:id/reset-password-policy', jwtAuth, resetPasswordWithPolicy);

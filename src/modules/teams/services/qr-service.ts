@@ -63,6 +63,20 @@ export class TeamQRService {
     }));
   }
 
+  // Deactivate QR code
+  async deactivateQRCode(teamId: number, qrCodeId: string): Promise<void> {
+    // First, get the QR code to verify ownership and get token
+    const qrCodes = await QRCodeServiceImpl.getTeamQRCodes(this.db, teamId);
+    const qrCode = qrCodes.find(qr => qr.id === qrCodeId);
+
+    if (!qrCode) {
+      throw new Error('QR code not found or does not belong to this team');
+    }
+
+    // Deactivate using the token
+    await QRCodeServiceImpl.deactivateQRCode(this.db, qrCode.token);
+  }
+
   // Generate test QR code (for testing purposes)
   async generateTestQRCode() {
     return {

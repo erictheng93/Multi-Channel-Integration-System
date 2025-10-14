@@ -541,6 +541,37 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
   }
 });
 
+// Deactivate QR code
+app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+    const qrCodeId = c.req.param('qrCodeId');
+
+    if (!teamId || !qrCodeId?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID or QR code ID'
+      }, 400);
+    }
+
+    const qrService = new TeamQRService(c.env.DB);
+    await qrService.deactivateQRCode(teamId, qrCodeId);
+
+    return c.json({
+      success: true,
+      message: 'QR code deactivated successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Deactivate QR code error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to deactivate QR code',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
 // Test QR code generation
 app.post('/:id/qr-code-test', async (c) => {
   try {
