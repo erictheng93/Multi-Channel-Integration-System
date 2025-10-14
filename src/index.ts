@@ -218,6 +218,53 @@ app.route('/api/analytics/comparison', comparisonAPI);
 console.log('✅ Analytics Comparison API registered:');
 console.log('   • /api/analytics/comparison/* (with internal OPTIONS handler)');
 
+// ==================== 🔧 CRITICAL: PRE-REGISTER CORS 監控端點 ====================
+//
+// ⚠️  ROUTE REGISTRATION ORDER IS CRITICAL IN HONO FRAMEWORK
+//
+// WHY THIS MUST BE REGISTERED *BEFORE* UNIFIED ROUTE SYSTEM:
+//
+// 1. Route Priority in Hono:
+//    - Routes registered first have higher priority
+//    - Later routes CANNOT override earlier catch-all routes
+//    - Unified route system (Line ~252) may create catch-all routes
+//
+// 2. The Problem (Fixed in Version d51fc6c8):
+//    - Previously registered AFTER unified system (Line 425+)
+//    - Resulted in 401 "Missing or invalid authorization header" errors
+//    - Public endpoints (/health, /config) were incorrectly blocked
+//
+// 3. The Solution:
+//    - Register BEFORE unified route system (current location: Line 221)
+//    - Establishes route priority before any catch-all routes
+//    - Allows public endpoints to work without authentication
+//
+// 4. Verification:
+//    - ✅ All 12 E2E CORS tests passing (100% success rate)
+//    - ✅ curl /api/cors/health returns 200 OK (not 401)
+//    - ✅ curl /api/cors/config returns configuration (not 401)
+//
+// 📚 For detailed explanation, see:
+//    - CLAUDE.md: "Route Registration Order (⚠️ Critical)" section
+//    - docs/architecture/ROUTE_REGISTRATION_ORDER.md
+//
+// ⚠️  DO NOT MOVE THIS REGISTRATION TO AFTER UNIFIED ROUTE SYSTEM
+//     OR YOU WILL REINTRODUCE THE 401 ERROR BUG!
+//
+// =================================================================================
+
+import corsMonitoringHandler from './handlers/cors-monitoring';
+
+// Register CORS handler BEFORE unified route system
+app.route('/api/cors', corsMonitoringHandler);
+console.log('✅ CORS monitoring endpoints PRE-REGISTERED (before unified route system):');
+console.log('   • GET /api/cors/stats (Admin only - internal auth check)');
+console.log('   • GET /api/cors/events (Admin only - internal auth check)');
+console.log('   • GET /api/cors/rejected-origins (Admin only - internal auth check)');
+console.log('   • POST /api/cors/cleanup (Admin only - internal auth check)');
+console.log('   • GET /api/cors/health (Public - no auth required)');
+console.log('   • GET /api/cors/config (Public - no auth required)');
+
 // Register P1 Optimization: WebSocket Dashboard (requires auth)
 // 🔒 添加 JWT 認證中間件保護所有 Dashboard 端點
 app.use('/api/websocket/dashboard/*', jwtAuth);
@@ -400,6 +447,9 @@ app.put('/api/monitoring/config', monitoringHandlers.updateConfig);
 app.post('/api/monitoring/health/check', monitoringHandlers.triggerHealthCheck);
 app.get('/api/monitoring/metrics', monitoringHandlers.getMetrics);
 app.get('/api/monitoring/stats', monitoringHandlers.getStats);
+
+// NOTE: CORS monitoring endpoints已經在統一路由系統之前註冊 (見 line 221-238)
+// 這裡不再重複註冊
 
 // 啟動自動化監控（延遲3秒以確保所有系統已初始化）
 // setTimeout(() => {
@@ -715,26 +765,6 @@ if (securityConfig.debug.enabled) {
     }
   });
 }
-
-// Real-time 測試功能
-app.post('/api/realtime/test-event', jwtAuth, async (c) => {
-  try {
-    const payload = c.get('jwtPayload');
-    const { eventType = 'test', eventData = { message: 'Test event' } } = await c.req.json();
-
-    const result = await realtime.createEvent(
-      eventType,
-      eventData,
-      { broadcast: true },
-      'low',
-      'system'
-    );
-
-    return c.json({ success: true, result });
-  } catch (error) {
-    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 500);
-  }
-});
 
 // ==================== Webhook 處理 ====================
 

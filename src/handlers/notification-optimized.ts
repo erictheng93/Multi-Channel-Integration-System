@@ -3,15 +3,16 @@
 
 import { Context } from 'hono';
 import type { Bindings } from '../types';
-import { 
-  successResponse, 
+import {
+  successResponse,
   paginatedResponse,
-  errorResponse, 
-  validationErrorResponse, 
+  errorResponse,
+  validationErrorResponse,
   unauthorizedResponse,
   // notFoundResponse,
-  handleApiError 
+  handleApiError
 } from '../utils/api-response';
+import { getSSECorsHeaders } from '../config/cors';
 import { notifications } from '../db/schema';
 import { CacheManager, QueryOptimizer } from '../utils/performance';
 import { drizzle } from 'drizzle-orm/d1';
@@ -255,13 +256,11 @@ export const optimizedNotificationHandler = {
         return unauthorizedResponse(c, 'Authentication required for SSE');
       }
 
-      // 設置優化的 SSE 標頭
+      // 設置優化的 SSE 標頭（使用統一 CORS 配置）
+      const baseSseCorsHeaders = getSSECorsHeaders(c.req.header('Origin'), ['Authorization']);
       const headers = {
-        'Content-Type': 'text/event-stream',
+        ...baseSseCorsHeaders,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control, Authorization',
         'X-Accel-Buffering': 'no',
       };
 

@@ -8,6 +8,7 @@ import { RealtimeDashboardService } from '@modules/analytics/services/realtime-d
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
+import { getSSECorsHeaders } from '@/config/cors';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -349,15 +350,9 @@ const createRealtimeDashboardApp = (
       }
     });
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      }
-    });
+    // ✅ 使用統一的 SSE CORS 配置
+    const sseCorsHeaders = getSSECorsHeaders(c.req.header('Origin'));
+    return new Response(stream, { headers: sseCorsHeaders });
   });
 
   /**

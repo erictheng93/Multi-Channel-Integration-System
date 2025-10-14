@@ -2,23 +2,24 @@
 // 即時通知系統 - WebSocket/SSE 和通知管理
 
 import { Context } from 'hono';
-import type { 
-  Bindings, 
+import type {
+  Bindings,
   // AuthPayload,
   // NotificationData,
   // D1Result
 } from '../types';
 import { notifications } from '../db/schema';
 import { hasChanges } from '../types';
-import { 
-  successResponse, 
+import {
+  successResponse,
   paginatedResponse,
-  // errorResponse, 
-  // validationErrorResponse, 
+  // errorResponse,
+  // validationErrorResponse,
   unauthorizedResponse,
   notFoundResponse,
-  handleApiError 
+  handleApiError
 } from '../utils/api-response';
+import { getSSECorsHeaders } from '../config/cors';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
 
@@ -395,14 +396,8 @@ export const notificationHandler = {
         return unauthorizedResponse(c, 'Authentication required for SSE');
       }
 
-      // 設置 SSE 標頭
-      const headers = {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      };
+      // 設置 SSE 標頭（使用統一 CORS 配置）
+      const headers = getSSECorsHeaders(c.req.header('Origin'));
 
       // 創建 SSE 連接
       const encoder = new TextEncoder();
