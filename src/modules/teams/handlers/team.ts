@@ -25,41 +25,8 @@ import {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// 🔥 CORS Middleware - Add CORS headers to ALL responses
-app.use('*', async (c, next) => {
-  const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
-
-  await next();
-
-  // Add CORS headers to response
-  if (allowedOrigins.includes(origin) && origin) {
-    c.header('Access-Control-Allow-Origin', origin);
-    c.header('Access-Control-Allow-Credentials', 'true');
-  }
-});
-
-// 🔥 CORS Preflight Handler - Handle OPTIONS requests
-app.options('*', (c) => {
-  const response = new Response(null, { status: 204 });
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  response.headers.set('Access-Control-Max-Age', '86400');
-
-  // Prevent Cloudflare edge caching of OPTIONS responses
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
-});
+// ✅ CORS 處理已移至 src/index.ts 統一管理
+// 不再需要模組級別的 CORS middleware
 
 // 健康檢查端點
 app.get('/health', (c) => {

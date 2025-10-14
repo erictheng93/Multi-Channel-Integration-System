@@ -103,6 +103,46 @@ import { getSecurityConfig, getSecurityHeaders } from './config/security';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// ==================== 🔥 CORS 中間件 - 必須在所有路由之前註冊 ====================
+// 統一的 CORS 配置，使用 @/config/cors.ts 中的配置
+console.log('🛡️ Registering global CORS middleware...');
+
+app.use('*', async (c, next) => {
+  const origin = c.req.header('Origin');
+  console.log(`[CORS Middleware] Method: ${c.req.method}, Origin: ${origin}, Path: ${c.req.path}`);
+
+  // 檢查是否允許該 origin
+  const allowed = origin && isOriginAllowed(origin);
+  console.log(`[CORS Middleware] Origin allowed: ${allowed}`);
+
+  // 處理 OPTIONS preflight 請求
+  if (c.req.method === 'OPTIONS') {
+    console.log(`[CORS Middleware] Handling OPTIONS request`);
+
+    if (allowed) {
+      console.log(`✅ CORS OPTIONS: Allowed origin: ${origin}`);
+      return createCorsPreflightResponse(origin);
+    } else {
+      console.warn(`❌ CORS OPTIONS: Blocked origin: ${origin}`);
+      return c.json({ error: 'CORS policy violation' }, 403);
+    }
+  }
+
+  // 處理實際請求 - 先執行業務邏輯
+  await next();
+
+  // 添加 CORS headers 到響應
+  if (allowed) {
+    c.header('Access-Control-Allow-Origin', origin!);
+    c.header('Access-Control-Allow-Credentials', 'true');
+    console.log(`✅ CORS: Allowed origin: ${origin}`);
+  } else if (origin) {
+    console.warn(`❌ CORS: Blocked origin: ${origin}`);
+  }
+});
+
+console.log('✅ Global CORS middleware registered successfully');
+
 // ==================== 統一路由管理系統初始化 ====================
 console.log('🚀 Initializing Unified Route Management System...');
 
@@ -419,44 +459,7 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// 安全的 CORS 配置 - 使用統一配置
-app.use('*', cors({
-  origin: (origin) => {
-    // 同源請求 (no Origin header) - 允許
-    if (!origin) {
-      return '*';
-    }
-
-    // 使用統一的 CORS 檢查
-    if (isOriginAllowed(origin)) {
-      console.log(`✅ CORS: Allowed origin: ${origin}`);
-      return origin;
-    }
-
-    // 不在白名單的 origin - 記錄並拒絕
-    console.warn(`❌ CORS: Blocked origin: ${origin}`);
-    return ''; // 返回空字串表示拒絕（Hono CORS 期望字串類型）
-  },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  credentials: true, // 允許攜帶credentials
-  maxAge: 86400
-}));
-
-// 🔥 手動處理 OPTIONS preflight 請求並設置 CORS headers - 使用統一配置
-app.options('*', (c) => {
-  const origin = c.req.header('Origin');
-
-  if (origin && isOriginAllowed(origin)) {
-    console.log(`✅ CORS OPTIONS: Allowed origin: ${origin}`);
-  } else {
-    console.warn(`❌ CORS OPTIONS: Blocked origin: ${origin}`);
-  }
-
-  return createCorsPreflightResponse(origin);
-});
-
-// 🔥 全域錯誤處理中間件 (必須在 CORS 和 OPTIONS 之後)
+// 🔥 全域錯誤處理中間件 (在其他 middleware 之後)
 app.use('*', errorHandlingMiddleware());
 
 // 安全標頭中間件

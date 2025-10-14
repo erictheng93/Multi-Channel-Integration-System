@@ -2,7 +2,6 @@
 // 提供 SSE 和 WebSocket 支持的實時數據推送 API 端點
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { RealtimeDashboardService } from '@modules/analytics/services/realtime-dashboard-service';
@@ -44,13 +43,9 @@ const createRealtimeDashboardApp = (
 ) => {
   const app = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>();
 
-  // CORS 設置
-  app.use('/*', cors({
-    origin: ['http://localhost:3000', 'https://*.pages.dev'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
-    credentials: true
-  }));
+  // ✅ CORS 處理已移至 src/index.ts 統一管理
+  // 不再需要模組級別的 CORS middleware
+  // SSE 端點會自動繼承全局 CORS 設置（包含生產環境域名）
 
   // 驗證中間件（對部分端點除外）
   app.use('/sse/*', analyticsAuthMiddleware);

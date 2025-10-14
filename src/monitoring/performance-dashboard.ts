@@ -7,7 +7,6 @@
  */
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import type { Bindings } from '../types';
 import type {
   DashboardData,
@@ -22,12 +21,8 @@ import { PerformanceMonitor } from './performance-monitor';
 
 const dashboardHandler = new Hono<{ Bindings: Bindings }>();
 
-// Enable CORS for dashboard access
-dashboardHandler.use('*', cors({
-  origin: ['http://localhost:3000', 'https://*.pages.dev'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowHeaders: ['Content-Type', 'Authorization']
-}));
+// ✅ CORS 處理已移至 src/index.ts 統一管理
+// 不再需要模組級別的 CORS middleware
 
 // Dashboard data endpoint
 dashboardHandler.get('/api/dashboard/data', async (c) => {

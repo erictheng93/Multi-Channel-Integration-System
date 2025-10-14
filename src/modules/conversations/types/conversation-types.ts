@@ -72,6 +72,7 @@ export interface MessageSendRequest {
 export interface MessageSendResponse {
   success: boolean;
   messageId?: string;
+  message?: Message;  // ✅ Complete message object from database
   conversationId?: string;
   content?: string;
   timestamp?: string;

@@ -2,7 +2,6 @@
 // 提供統一報表生成、模板管理和分發的 REST API 端點
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { ReportsService } from '@modules/analytics/services/reports-service';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
@@ -35,13 +34,8 @@ import { AnalyticsError } from '@modules/analytics/types/analytics-types';
 const createReportsApp = (reportsService: ReportsService) => {
   const app = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>();
 
-  // CORS 設置
-  app.use('/*', cors({
-    origin: ['http://localhost:3000', 'https://*.pages.dev'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-  }));
+  // ✅ CORS 處理已移至 src/index.ts 統一管理
+  // 不再需要模組級別的 CORS middleware
 
   // 驗證中間件
   app.use('/*', analyticsAuthMiddleware);

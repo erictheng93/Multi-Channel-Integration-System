@@ -7,28 +7,11 @@ import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
-import { isOriginAllowed, addCorsHeaders, createCorsPreflightResponse } from '@/config/cors';
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 
-// 🔥 CORS Middleware - Add CORS headers to ALL responses
-comparisonAPI.use('*', async (c, next) => {
-  const origin = c.req.header('Origin');
-
-  await next();
-
-  // Add CORS headers to response
-  if (origin && isOriginAllowed(origin)) {
-    c.header('Access-Control-Allow-Origin', origin);
-    c.header('Access-Control-Allow-Credentials', 'true');
-  }
-});
-
-// 🔥 CORS Preflight Handler - Must come AFTER middleware
-comparisonAPI.options('*', (c) => {
-  const origin = c.req.header('Origin');
-  return createCorsPreflightResponse(origin);
-});
+// ✅ CORS 處理已移至 src/index.ts 統一管理
+// 不再需要模組級別的 CORS middleware
 
 /**
  * GET /api/analytics/comparison/metric
