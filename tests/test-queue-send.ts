@@ -1,3 +1,9 @@
+// ⚠️ DEPRECATED: This file tests AGENT_QUEUE which has been replaced by DelayedMessageBuffer Durable Object
+// This test worker is no longer relevant for the current architecture (migrated 2025-09-30)
+// For testing delayed messages, use the new Durable Objects-based tests instead
+// See: src/durable-objects/DelayedMessageBuffer.ts
+// See: docs/DELAYED_MESSAGING_GUIDE.md
+
 // 測試直接發送訊息到 Queue
 export default {
   async fetch(request: Request, env: any): Promise<Response> {

@@ -23,9 +23,7 @@ describe('MessageRecallService Edge Cases', () => {
         get: vi.fn().mockResolvedValue(null),
         delete: vi.fn().mockResolvedValue(undefined)
       } as any,
-      AGENT_QUEUE: {
-        send: vi.fn().mockResolvedValue(undefined)
-      } as any,
+      // REMOVED: AGENT_QUEUE (replaced by DelayedMessageBuffer Durable Object)
       LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
       FB_PAGE_ACCESS_TOKEN: 'test-fb-token'
     } as any;

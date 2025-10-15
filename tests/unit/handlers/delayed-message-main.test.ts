@@ -91,7 +91,7 @@ describe('DelayedMessage Main Handler', () => {
       c.env = {
         DB: {} as any,
         JWT_SECRET: 'test-secret',
-        AGENT_QUEUE: {} as any,
+        // REMOVED: AGENT_QUEUE (replaced by Durable Objects)
         SESSIONS: {} as any,
         CACHE: {} as any,
         // 🎯 添加 Durable Objects 綁定
