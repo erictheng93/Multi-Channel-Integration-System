@@ -1,11 +1,11 @@
 # WebSocket Migration Deployment Runbook
-**專案名稱：Multi-Channel Support MVP - Production Deployment Guide**
+**Multi-Channel Support MVP - Production Deployment Guide**
 
 ## Overview
 
 This runbook provides comprehensive procedures for deploying the WebSocket + Durable Objects migration to production safely and efficiently. It includes pre-deployment checks, step-by-step deployment procedures, monitoring guidelines, and emergency response protocols.
 
-**⚠️ CRITICAL: This is a production deployment affecting all customer communications. Follow ALL procedures exactly.**
+** CRITICAL: This is a production deployment affecting all customer communications. Follow ALL procedures exactly.**
 
 ---
 
@@ -26,7 +26,7 @@ This runbook provides comprehensive procedures for deploying the WebSocket + Dur
 
 ### Technical Prerequisites
 
-#### ✅ Code Quality Validation
+#### Code Quality Validation
 - [ ] All unit tests passing (132/132 tests)
 - [ ] Integration tests passing
 - [ ] TypeScript compilation successful (0 errors)
@@ -34,7 +34,7 @@ This runbook provides comprehensive procedures for deploying the WebSocket + Dur
 - [ ] Security vulnerability scan clean
 - [ ] Performance benchmarks met
 
-#### ✅ Infrastructure Validation
+#### Infrastructure Validation
 - [ ] Cloudflare Workers environment ready
 - [ ] D1 database connectivity verified
 - [ ] KV namespace access confirmed
@@ -42,21 +42,21 @@ This runbook provides comprehensive procedures for deploying the WebSocket + Dur
 - [ ] Durable Objects namespace created
 - [ ] DNS configurations verified
 
-#### ✅ Feature Flag Preparation
+#### Feature Flag Preparation
 - [ ] WebSocket feature flags configured
 - [ ] Rollout percentages set correctly
 - [ ] A/B testing framework ready
 - [ ] Emergency disable switches prepared
 - [ ] Targeting rules validated
 
-#### ✅ Monitoring and Alerting
+#### Monitoring and Alerting
 - [ ] Monitoring dashboards operational
 - [ ] Alert thresholds configured
 - [ ] Notification channels tested
 - [ ] Emergency contacts updated
 - [ ] On-call rotation confirmed
 
-#### ✅ Backup and Recovery
+#### Backup and Recovery
 - [ ] Database backup completed
 - [ ] Configuration backups stored
 - [ ] Previous deployment artifacts preserved
@@ -65,14 +65,14 @@ This runbook provides comprehensive procedures for deploying the WebSocket + Dur
 
 ### Team Readiness
 
-#### ✅ Personnel
+#### Personnel
 - [ ] Deployment lead assigned
 - [ ] Technical team on standby
 - [ ] Customer support team briefed
 - [ ] Product management informed
 - [ ] Executive stakeholders notified
 
-#### ✅ Communication
+#### Communication
 - [ ] Deployment communication plan ready
 - [ ] Customer notification templates prepared
 - [ ] Internal status page configured
@@ -81,14 +81,14 @@ This runbook provides comprehensive procedures for deploying the WebSocket + Dur
 
 ### Business Validation
 
-#### ✅ Timing
+#### Timing
 - [ ] No conflicting deployments scheduled
 - [ ] Customer support coverage confirmed
 - [ ] Peak usage hours avoided
 - [ ] Maintenance window approved
 - [ ] Rollback window available
 
-#### ✅ Impact Assessment
+#### Impact Assessment
 - [ ] Customer impact analysis completed
 - [ ] Business continuity plan reviewed
 - [ ] Service level agreements considered
@@ -183,13 +183,13 @@ npm run test:integration
 ```bash
 # Configure development feature flags
 curl -X POST https://your-api.com/api/admin/feature-flags \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{
-    "flag": "websocket_connections",
-    "enabled": true,
-    "rolloutPercentage": 100,
-    "targeting": {"includeRoles": ["admin"]}
-  }'
+ -H "Authorization: Bearer $ADMIN_TOKEN" \
+ -d '{
+ "flag": "websocket_connections",
+ "enabled": true,
+ "rolloutPercentage": 100,
+ "targeting": {"includeRoles": ["admin"]}
+ }'
 ```
 
 #### Step 1.3: Validation
@@ -383,27 +383,27 @@ curl -X GET https://your-api.com/api/admin/deployment/performance-report?phase=m
 
 ## Emergency Procedures
 
-### 🚨 CRITICAL ALERT RESPONSE
+### CRITICAL ALERT RESPONSE
 
 #### Immediate Actions (0-2 minutes)
 1. **Acknowledge Alert**
-   ```bash
-   # Log into monitoring dashboard
-   # Verify alert is not false positive
-   # Acknowledge alert to stop notifications
-   ```
+ ```bash
+ # Log into monitoring dashboard
+ # Verify alert is not false positive
+ # Acknowledge alert to stop notifications
+ ```
 
 2. **Assess Severity**
-   - Critical: Error rate > 5% OR Complete service failure
-   - High: Error rate 3-5% OR Significant performance degradation
-   - Medium: Error rate 2-3% OR Minor performance issues
+ - Critical: Error rate > 5% OR Complete service failure
+ - High: Error rate 3-5% OR Significant performance degradation
+ - Medium: Error rate 2-3% OR Minor performance issues
 
 3. **Notify Team**
-   ```bash
-   # Send immediate notification to on-call team
-   # Escalate to deployment lead if critical
-   # Inform customer support of potential impact
-   ```
+ ```bash
+ # Send immediate notification to on-call team
+ # Escalate to deployment lead if critical
+ # Inform customer support of potential impact
+ ```
 
 #### Critical Severity Response (2-5 minutes)
 ```bash
@@ -423,7 +423,7 @@ curl -X GET https://your-api.com/api/admin/deployment/performance-report?phase=m
 .\scripts\deployment\rollback-websocket-migration.ps1 -RollbackType partial -TargetUsers @(affected_user_list) -Reason "Medium severity alert: [description]"
 ```
 
-### 🔄 ROLLBACK DECISION MATRIX
+### ROLLBACK DECISION MATRIX
 
 | Condition | Action | Timeline | Approval Required |
 |-----------|--------|----------|-------------------|
@@ -436,7 +436,7 @@ curl -X GET https://your-api.com/api/admin/deployment/performance-report?phase=m
 | User complaints > 15 | Gradual Rollback | 30 minutes | Product Manager |
 | System unavailable | Instant Rollback | Immediate | None |
 
-### 📞 ESCALATION PROCEDURES
+### ESCALATION PROCEDURES
 
 #### Level 1: On-Call Engineer (0-15 minutes)
 - Monitor alerts and metrics
@@ -498,7 +498,7 @@ curl -X GET https://your-api.com/api/admin/deployment/performance-report?phase=m
 
 ## Rollback Procedures
 
-### 🔴 INSTANT ROLLBACK (Emergency)
+### INSTANT ROLLBACK (Emergency)
 **When:** Critical system failure, error rate > 5%
 **Timeline:** 30-60 seconds
 **Impact:** All users immediately reverted to SSE
@@ -514,7 +514,7 @@ curl -X GET https://your-api.com/api/admin/deployment/performance-report?phase=m
 4. Begin incident investigation
 5. Plan recovery strategy
 
-### 🟡 GRADUAL ROLLBACK (Controlled)
+### GRADUAL ROLLBACK (Controlled)
 **When:** Performance degradation, error rate 3-5%
 **Timeline:** 15-30 minutes
 **Impact:** Progressive reduction of WebSocket usage
@@ -529,7 +529,7 @@ curl -X GET https://your-api.com/api/admin/deployment/performance-report?phase=m
 - Ensure user experience improving
 - Monitor for additional issues
 
-### 🔵 PARTIAL ROLLBACK (Targeted)
+### PARTIAL ROLLBACK (Targeted)
 **When:** Specific user/team issues
 **Timeline:** 2-5 minutes
 **Impact:** Only affected users reverted

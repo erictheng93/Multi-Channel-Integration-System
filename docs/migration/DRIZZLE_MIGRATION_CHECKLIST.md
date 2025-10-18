@@ -1,21 +1,21 @@
 # Drizzle ORM Migration Checklist
 
-## 🎯 Goal: Achieve 100% Drizzle ORM compliance in production code
+## Goal: Achieve 100% Drizzle ORM compliance in production code
 
-### ✅ Completed Migrations
+### Completed Migrations
 
 - [x] `src/handlers/auth.ts` - Authentication handlers
-- [x] `src/handlers/team.ts` - Team management  
+- [x] `src/handlers/team.ts` - Team management
 - [x] `src/handlers/system.ts` - System settings and health
 - [x] `src/services/activity-service.ts` - Activity logging
 - [x] `src/services/database.ts` - Core database service
 - [x] `src/db/schema.ts` - Added metrics table for analytics
 - [x] Fixed analytics.ts metrics table issue
 
-### 🚨 Priority Files (Production Critical)
+### Priority Files (Production Critical)
 
 #### Handler Files
-- [ ] `src/handlers/conversation.ts` - **HIGH PRIORITY** 
+- [ ] `src/handlers/conversation.ts` - **HIGH PRIORITY**
 - [ ] `src/handlers/message.ts` - **HIGH PRIORITY** (partially done)
 - [ ] `src/handlers/notification.ts` - **HIGH PRIORITY**
 - [ ] `src/handlers/customer.ts` - **MEDIUM PRIORITY**
@@ -32,7 +32,7 @@
 
 #### Enterprise Files
 - [ ] `src/enterprise/analytics.ts` - **MEDIUM PRIORITY** (partially done)
-- [ ] `src/enterprise/audit-logger.ts` - **MEDIUM PRIORITY** 
+- [ ] `src/enterprise/audit-logger.ts` - **MEDIUM PRIORITY**
 - [ ] `src/enterprise/rbac.ts` - **MEDIUM PRIORITY**
 
 #### Utility Files
@@ -43,35 +43,35 @@
 #### Route Files
 - [ ] `src/routes/enhanced-routes.ts` - **MEDIUM PRIORITY**
 
-### 🔧 Migration Process for Each File
+### Migration Process for Each File
 
 #### Phase 1: Analysis
 1. [ ] Scan file for native D1 patterns:
-   - `c.env.DB.prepare()`
-   - `drizzle(c.env.DB).run(sql\`...)`
-   - `.bind().all()`, `.bind().first()`, `.bind().run()`
-   - Raw SQL template literals
+ - `c.env.DB.prepare()`
+ - `drizzle(c.env.DB).run(sql\`...)`
+ - `.bind().all()`, `.bind().first()`, `.bind().run()`
+ - Raw SQL template literals
 
 2. [ ] Identify tables used:
-   - Extract table names from SQL
-   - Map to schema imports needed
+ - Extract table names from SQL
+ - Map to schema imports needed
 
 3. [ ] Note complex patterns:
-   - Dynamic queries
-   - Complex JOINs
-   - Search functionality
-   - Pagination
+ - Dynamic queries
+ - Complex JOINs
+ - Search functionality
+ - Pagination
 
 #### Phase 2: Import Setup
 1. [ ] Add required Drizzle imports:
-   ```typescript
-   import { eq, and, or, desc, asc, like, count, sum, avg, inArray } from 'drizzle-orm';
-   ```
+ ```typescript
+ import { eq, and, or, desc, asc, like, count, sum, avg, inArray } from 'drizzle-orm';
+ ```
 
 2. [ ] Add schema imports:
-   ```typescript
-   import { tableName1, tableName2 } from '../db/schema';
-   ```
+ ```typescript
+ import { tableName1, tableName2 } from '../db/schema';
+ ```
 
 #### Phase 3: Pattern Conversion
 
@@ -108,9 +108,9 @@
 
 #### Phase 4: Field Mapping
 Convert database field names to schema camelCase:
-- `user_id` → `userId`
-- `created_at` → `createdAt`  
-- `is_active` → `isActive`
+- `user_id` `userId`
+- `created_at` `createdAt`
+- `is_active` `isActive`
 
 #### Phase 5: Result Processing
 Update result handling:
@@ -118,11 +118,11 @@ Update result handling:
 // OLD: result.results || []
 // NEW: result (Drizzle returns array directly)
 
-// OLD: result.meta.changes  
+// OLD: result.meta.changes
 // NEW: Drizzle doesn't return change count - need alternative approach
 ```
 
-### 🛠 Common Migration Patterns
+### Common Migration Patterns
 
 #### Pattern 1: Context Issues
 **Problem:** `c.env.DB` used outside request context
@@ -131,7 +131,7 @@ Update result handling:
 // NEW: const db = drizzle(this.db)
 ```
 
-#### Pattern 2: Dynamic SQL  
+#### Pattern 2: Dynamic SQL
 **Problem:** Complex search with dynamic WHERE clauses
 ```typescript
 // Solution: Build conditions array, use and()/or()
@@ -153,16 +153,16 @@ const query = db.select().from(table).where(and(...conditions));
 // NEW: .leftJoin(), .innerJoin() with proper conditions
 ```
 
-### 🧪 Testing Strategy
+### Testing Strategy
 
 For each migrated file:
 1. [ ] **Syntax Check:** `npm run build`
-2. [ ] **Type Check:** `npm run lint:check` 
+2. [ ] **Type Check:** `npm run lint:check`
 3. [ ] **Unit Tests:** Run relevant test files
 4. [ ] **Integration Tests:** Test API endpoints
 5. [ ] **Manual Testing:** Test functionality in UI
 
-### 🚀 Automated Tools
+### Automated Tools
 
 #### Migration Helper Script
 ```bash
@@ -172,11 +172,11 @@ npx ts-node scripts/drizzle-migration-helper.ts
 
 #### Validation Script
 ```bash
-# Check for remaining native D1 patterns  
+# Check for remaining native D1 patterns
 npx ts-node scripts/validate-drizzle-compliance.ts
 ```
 
-### 📊 Progress Tracking
+### Progress Tracking
 
 **Overall Progress:** ~25% Complete (5/20 files)
 
@@ -189,7 +189,7 @@ npx ts-node scripts/validate-drizzle-compliance.ts
 
 **Estimated Time Remaining:** 8-10 hours
 
-### ⚠️ Known Issues & Gotchas
+### Known Issues & Gotchas
 
 1. **Metrics Table:** Added to schema, migration needed in production
 2. **Field Name Mismatches:** Schema uses camelCase, DB uses snake_case
@@ -197,26 +197,26 @@ npx ts-node scripts/validate-drizzle-compliance.ts
 4. **Change Counts:** Drizzle doesn't return affected row counts like native D1
 5. **Complex Search:** Dynamic query building needs complete rewrite
 
-### 🎉 Definition of Done
+### Definition of Done
 
 A file is considered "100% Drizzle compliant" when:
 - [ ] No `c.env.DB.prepare()` calls
-- [ ] No `drizzle().run(sql\`...`)` with parameters  
+- [ ] No `drizzle().run(sql\`...`)` with parameters
 - [ ] All queries use Drizzle query builder
 - [ ] All field references use schema camelCase
 - [ ] TypeScript compiles without errors
 - [ ] All tests pass
 - [ ] Manual testing confirms functionality
 
-### 📝 Next Steps
+### Next Steps
 
 1. **Run Migration Script:** Apply automated patterns
 2. **Focus on HIGH PRIORITY files first**
-3. **Test each file after migration**  
+3. **Test each file after migration**
 4. **Create database migration for metrics table**
 5. **Final validation and testing**
 
 ---
 
-*Last Updated: 2025-01-31*  
+*Last Updated: 2025-01-31*
 *Progress tracked in: `DRIZZLE_MIGRATION_CHECKLIST.md`*

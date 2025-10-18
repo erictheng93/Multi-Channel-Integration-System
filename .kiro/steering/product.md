@@ -30,9 +30,9 @@ This is a multi-channel customer support platform that integrates LINE OA and Fa
 - `src/index-simple.ts` for basic use cases only
 
 ### Data Flow Patterns
-1. **Webhook → Handler → Service → Database**: Incoming messages
-2. **Frontend → API → Service → Platform**: Outgoing messages
-3. **Database → Converter → Frontend**: Data presentation
+1. **Webhook Handler Service Database**: Incoming messages
+2. **Frontend API Service Platform**: Outgoing messages
+3. **Database Converter Frontend**: Data presentation
 
 ### Type System Guidelines
 - Use modern types from `src/types/shared.ts` for new features

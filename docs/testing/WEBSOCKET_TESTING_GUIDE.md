@@ -15,26 +15,26 @@ The testing infrastructure provides complete coverage for:
 
 ```
 tests/
-├── helpers/websocket/           # Test utilities and helpers
-│   ├── websocket-test-client.ts        # WebSocket client simulator
-│   ├── durable-objects-test-env.ts     # Mock DO environment
-│   ├── websocket-test-utils.ts         # Testing utilities
-│   ├── websocket-test-setup.ts         # Global test setup
-│   └── global-test-setup.ts            # Environment configuration
-├── unit/durable-objects/        # Unit tests for Durable Objects
-│   ├── ConversationRoom.test.ts        # ConversationRoom DO tests
-│   ├── MessageBroadcaster.test.ts      # MessageBroadcaster DO tests
-│   └── DelayedMessageProcessor.test.ts # DelayedMessageProcessor DO tests
-├── integration/websocket/       # Integration tests
-│   ├── websocket-connection-lifecycle.test.ts
-│   └── real-time-message-broadcasting.test.ts
-├── performance/websocket/       # Performance tests
-│   ├── connection-scalability.test.ts
-│   └── message-broadcasting-performance.test.ts
-├── e2e/websocket/              # End-to-end tests
-│   └── real-time-conversation-flow.test.ts
-└── stress/websocket/           # Stress tests
-    └── high-load-scenarios.test.ts
+ helpers/websocket/ # Test utilities and helpers
+ websocket-test-client.ts # WebSocket client simulator
+ durable-objects-test-env.ts # Mock DO environment
+ websocket-test-utils.ts # Testing utilities
+ websocket-test-setup.ts # Global test setup
+ global-test-setup.ts # Environment configuration
+ unit/durable-objects/ # Unit tests for Durable Objects
+ ConversationRoom.test.ts # ConversationRoom DO tests
+ MessageBroadcaster.test.ts # MessageBroadcaster DO tests
+ DelayedMessageProcessor.test.ts # DelayedMessageProcessor DO tests
+ integration/websocket/ # Integration tests
+ websocket-connection-lifecycle.test.ts
+ real-time-message-broadcasting.test.ts
+ performance/websocket/ # Performance tests
+ connection-scalability.test.ts
+ message-broadcasting-performance.test.ts
+ e2e/websocket/ # End-to-end tests
+ real-time-conversation-flow.test.ts
+ stress/websocket/ # Stress tests
+ high-load-scenarios.test.ts
 ```
 
 ## Running Tests
@@ -82,9 +82,9 @@ import { WebSocketTestClientFactory } from '@tests/helpers/websocket/websocket-t
 
 // Create a test client
 const client = WebSocketTestClientFactory.createClient({
-  conversationId: 'test_conversation',
-  role: 'agent',
-  userId: 'test_user'
+ conversationId: 'test_conversation',
+ role: 'agent',
+ userId: 'test_user'
 });
 
 // Connect and send messages
@@ -107,8 +107,8 @@ const controller = new WebSocketRoomTestController('conversation_id');
 
 // Add clients
 const clients = WebSocketTestClientFactory.createClients(5, {
-  conversationId: 'conversation_id',
-  role: 'agent'
+ conversationId: 'conversation_id',
+ role: 'agent'
 });
 
 clients.forEach(client => controller.addClient(client));
@@ -138,8 +138,8 @@ await TestAssertions.assertAllClientsReceivedEvent(controller, 'conversation_ass
 
 // Assert performance metrics
 TestAssertions.assertPerformanceMetrics(metrics, {
-  maxAverage: 500,
-  maxP95: 1000
+ maxAverage: 500,
+ maxP95: 1000
 });
 ```
 
@@ -149,25 +149,25 @@ TestAssertions.assertPerformanceMetrics(metrics, {
 
 ```typescript
 describe('ConversationRoom Durable Object', () => {
-  let conversationRoom: ConversationRoom;
-  let mockState: MockDurableObjectState;
-  let mockEnv: any;
+ let conversationRoom: ConversationRoom;
+ let mockState: MockDurableObjectState;
+ let mockEnv: any;
 
-  beforeEach(() => {
-    testEnv.reset();
-    // Setup mock environment
-    mockEnv = { /* mock bindings */ };
-    mockState = new MockDurableObjectState(id);
-    conversationRoom = new ConversationRoom(mockState, mockEnv);
-  });
+ beforeEach(() => {
+ testEnv.reset();
+ // Setup mock environment
+ mockEnv = { /* mock bindings */ };
+ mockState = new MockDurableObjectState(id);
+ conversationRoom = new ConversationRoom(mockState, mockEnv);
+ });
 
-  it('should handle WebSocket connections', async () => {
-    // Test WebSocket upgrade and connection management
-  });
+ it('should handle WebSocket connections', async () => {
+ // Test WebSocket upgrade and connection management
+ });
 
-  it('should broadcast messages to participants', async () => {
-    // Test message broadcasting logic
-  });
+ it('should broadcast messages to participants', async () => {
+ // Test message broadcasting logic
+ });
 });
 ```
 
@@ -175,31 +175,31 @@ describe('ConversationRoom Durable Object', () => {
 
 ```typescript
 describe('WebSocket Connection Lifecycle', () => {
-  it('should establish connections and handle real-time events', async () => {
-    const client = WebSocketTestClientFactory.createClient({
-      conversationId: 'integration_test',
-      role: 'agent'
-    });
+ it('should establish connections and handle real-time events', async () => {
+ const client = WebSocketTestClientFactory.createClient({
+ conversationId: 'integration_test',
+ role: 'agent'
+ });
 
-    await client.connect();
+ await client.connect();
 
-    // Test real broadcasting
-    await broadcastService.broadcastMessageEvent({
-      type: 'message_sent',
-      conversationId: 'integration_test',
-      messageId: 'test_msg',
-      userId: 'test_user',
-      data: { content: 'Integration test message' }
-    });
+ // Test real broadcasting
+ await broadcastService.broadcastMessageEvent({
+ type: 'message_sent',
+ conversationId: 'integration_test',
+ messageId: 'test_msg',
+ userId: 'test_user',
+ data: { content: 'Integration test message' }
+ });
 
-    const event = await TestAssertions.assertEventReceived(
-      client,
-      'message_sent',
-      2000
-    );
+ const event = await TestAssertions.assertEventReceived(
+ client,
+ 'message_sent',
+ 2000
+ );
 
-    expect(event.data.content).toBe('Integration test message');
-  });
+ expect(event.data.content).toBe('Integration test message');
+ });
 });
 ```
 
@@ -207,25 +207,25 @@ describe('WebSocket Connection Lifecycle', () => {
 
 ```typescript
 describe('Connection Scalability', () => {
-  it('should handle 100 concurrent connections', async () => {
-    const connectionCount = 100;
-    const clients = LoadTestHelper.createLoadTestClients(
-      connectionCount,
-      'perf_test_conversation',
-      'agent'
-    );
+ it('should handle 100 concurrent connections', async () => {
+ const connectionCount = 100;
+ const clients = LoadTestHelper.createLoadTestClients(
+ connectionCount,
+ 'perf_test_conversation',
+ 'agent'
+ );
 
-    const startTime = Date.now();
+ const startTime = Date.now();
 
-    // Connect in batches
-    await LoadTestHelper.connectInBatches(clients, 10, 100);
+ // Connect in batches
+ await LoadTestHelper.connectInBatches(clients, 10, 100);
 
-    const connectionTime = Date.now() - startTime;
-    const connectionRate = connectionCount / (connectionTime / 1000);
+ const connectionTime = Date.now() - startTime;
+ const connectionRate = connectionCount / (connectionTime / 1000);
 
-    expect(connectionRate).toBeGreaterThan(5); // > 5 connections/sec
-    expect(connectionTime).toBeLessThan(20000); // < 20 seconds
-  });
+ expect(connectionRate).toBeGreaterThan(5); // > 5 connections/sec
+ expect(connectionTime).toBeLessThan(20000); // < 20 seconds
+ });
 });
 ```
 
@@ -233,36 +233,36 @@ describe('Connection Scalability', () => {
 
 ```typescript
 describe('Complete Conversation Flow', () => {
-  it('should handle full customer conversation lifecycle', async () => {
-    // Create participants
-    const customer = WebSocketTestClientFactory.createClient({
-      conversationId: 'e2e_conversation',
-      role: 'agent',
-      userId: 'customer_123'
-    });
+ it('should handle full customer conversation lifecycle', async () => {
+ // Create participants
+ const customer = WebSocketTestClientFactory.createClient({
+ conversationId: 'e2e_conversation',
+ role: 'agent',
+ userId: 'customer_123'
+ });
 
-    const agent = WebSocketTestClientFactory.createClient({
-      conversationId: 'e2e_conversation',
-      role: 'agent',
-      userId: 'agent_456'
-    });
+ const agent = WebSocketTestClientFactory.createClient({
+ conversationId: 'e2e_conversation',
+ role: 'agent',
+ userId: 'agent_456'
+ });
 
-    // Test complete workflow
-    await controller.connectAllClients();
+ // Test complete workflow
+ await controller.connectAllClients();
 
-    // Customer sends message
-    await customer.sendChatMessage('I need help');
+ // Customer sends message
+ await customer.sendChatMessage('I need help');
 
-    // Agent receives and responds
-    const customerMessage = await TestAssertions.assertEventReceived(
-      agent,
-      'message_sent'
-    );
+ // Agent receives and responds
+ const customerMessage = await TestAssertions.assertEventReceived(
+ agent,
+ 'message_sent'
+ );
 
-    await agent.sendChatMessage('How can I help you?');
+ await agent.sendChatMessage('How can I help you?');
 
-    // Continue conversation flow...
-  });
+ // Continue conversation flow...
+ });
 });
 ```
 
@@ -296,7 +296,7 @@ TEST_MODE=websocket
 WEBSOCKET_TEST_TIMEOUT=120000
 
 # Performance testing
-PERFORMANCE_TEST_MODE=benchmark  # normal|benchmark
+PERFORMANCE_TEST_MODE=benchmark # normal|benchmark
 MEMORY_MONITORING=true
 TEST_PARALLEL=false
 
@@ -311,13 +311,13 @@ The WebSocket tests use a specialized Vitest configuration:
 ```typescript
 // tests/websocket.vitest.config.ts
 export default defineConfig({
-  test: {
-    include: ['tests/**/*websocket*/**/*.test.ts'],
-    testTimeout: 120000,
-    threads: false,
-    maxConcurrency: 1,
-    // ... detailed configuration
-  }
+ test: {
+ include: ['tests/**/*websocket*/**/*.test.ts'],
+ testTimeout: 120000,
+ threads: false,
+ maxConcurrency: 1,
+ // ... detailed configuration
+ }
 });
 ```
 
@@ -353,20 +353,20 @@ PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
 
 ```yaml
 - name: Run WebSocket Tests
-  run: |
-    npm run test:websocket:unit
-    npm run test:websocket:integration
+ run: |
+ npm run test:websocket:unit
+ npm run test:websocket:integration
 
 - name: Performance Tests (on main branch)
-  if: github.ref == 'refs/heads/main'
-  run: |
-    PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
+ if: github.ref == 'refs/heads/main'
+ run: |
+ PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
 
 - name: Upload Test Results
-  uses: actions/upload-artifact@v3
-  with:
-    name: websocket-test-results
-    path: test-results/
+ uses: actions/upload-artifact@v3
+ with:
+ name: websocket-test-results
+ path: test-results/
 ```
 
 ## Best Practices

@@ -19,78 +19,78 @@ If the tech stack is mentioned in the project context (such as from CLAUDE.md), 
 **Core Implementation Guidelines:**
 
 1. **Business Logic & Service Layer:**
-   - Implement business logic in dedicated service classes/modules separate from controllers
-   - Follow SOLID principles and maintain single responsibility for each component
-   - Handle edge cases, error scenarios, and data validation comprehensively
-   - Implement proper error handling with meaningful error messages and appropriate status codes
-   - Use dependency injection patterns where applicable
-   - Implement caching strategies using appropriate tools (Redis, Cloudflare KV, etc.)
+ - Implement business logic in dedicated service classes/modules separate from controllers
+ - Follow SOLID principles and maintain single responsibility for each component
+ - Handle edge cases, error scenarios, and data validation comprehensively
+ - Implement proper error handling with meaningful error messages and appropriate status codes
+ - Use dependency injection patterns where applicable
+ - Implement caching strategies using appropriate tools (Redis, Cloudflare KV, etc.)
 
 2. **API Development Standards:**
-   - Design RESTful APIs following REST conventions (GET, POST, PUT, PATCH, DELETE)
-   - Implement proper URL structure with resource-based routing
-   - Use appropriate HTTP status codes (200, 201, 204, 400, 401, 403, 404, 409, 500, etc.)
-   - Implement comprehensive request validation using schema validators (Joi, Zod, class-validator)
-   - Structure responses consistently with proper data envelopes
-   - Implement pagination, filtering, and sorting for list endpoints
-   - Add rate limiting and request throttling where necessary
-   - Generate OpenAPI/Swagger documentation comments inline with code
+ - Design RESTful APIs following REST conventions (GET, POST, PUT, PATCH, DELETE)
+ - Implement proper URL structure with resource-based routing
+ - Use appropriate HTTP status codes (200, 201, 204, 400, 401, 403, 404, 409, 500, etc.)
+ - Implement comprehensive request validation using schema validators (Joi, Zod, class-validator)
+ - Structure responses consistently with proper data envelopes
+ - Implement pagination, filtering, and sorting for list endpoints
+ - Add rate limiting and request throttling where necessary
+ - Generate OpenAPI/Swagger documentation comments inline with code
 
 3. **Database Operations:**
-   - Design normalized database schemas following proper normalization forms
-   - Create appropriate indexes for query optimization
-   - Implement database migrations with rollback capabilities
-   - Use transactions for operations requiring atomicity
-   - Implement soft deletes where data retention is important
-   - Add proper timestamps (created_at, updated_at) to all tables
-   - Use UUIDs or appropriate ID strategies based on requirements
-   - Implement database connection pooling and query optimization
+ - Design normalized database schemas following proper normalization forms
+ - Create appropriate indexes for query optimization
+ - Implement database migrations with rollback capabilities
+ - Use transactions for operations requiring atomicity
+ - Implement soft deletes where data retention is important
+ - Add proper timestamps (created_at, updated_at) to all tables
+ - Use UUIDs or appropriate ID strategies based on requirements
+ - Implement database connection pooling and query optimization
 
 4. **Security Implementation:**
-   - Implement JWT or session-based authentication as required
-   - Use bcrypt or argon2 for password hashing
-   - Implement role-based access control (RBAC) with proper middleware
-   - Sanitize all user inputs to prevent SQL injection and XSS attacks
-   - Implement CORS policies appropriately
-   - Use environment variables for sensitive configuration
-   - Implement API key management for service-to-service communication
-   - Add request signing and verification where necessary
+ - Implement JWT or session-based authentication as required
+ - Use bcrypt or argon2 for password hashing
+ - Implement role-based access control (RBAC) with proper middleware
+ - Sanitize all user inputs to prevent SQL injection and XSS attacks
+ - Implement CORS policies appropriately
+ - Use environment variables for sensitive configuration
+ - Implement API key management for service-to-service communication
+ - Add request signing and verification where necessary
 
 5. **Code Organization:**
-   - Follow MVC or similar architectural patterns consistently
-   - Organize code into logical modules: routes, controllers, services, models, middleware, utils
-   - Create reusable utility functions and helper modules
-   - Implement proper logging with appropriate log levels
-   - Add comprehensive error handling and custom error classes
+ - Follow MVC or similar architectural patterns consistently
+ - Organize code into logical modules: routes, controllers, services, models, middleware, utils
+ - Create reusable utility functions and helper modules
+ - Implement proper logging with appropriate log levels
+ - Add comprehensive error handling and custom error classes
 
 **Output Requirements:**
 
 1. **File Structure:** Provide complete, organized code files with clear naming:
-   - Routes/Controllers: `[resource].routes.ts`, `[resource].controller.ts`
-   - Services: `[resource].service.ts`
-   - Models/Schemas: `[resource].model.ts` or `schema/[resource].ts`
-   - Middleware: `auth.middleware.ts`, `validation.middleware.ts`
-   - Types/Interfaces: `[resource].types.ts`
-   - Utils/Helpers: Descriptive names for utility functions
+ - Routes/Controllers: `[resource].routes.ts`, `[resource].controller.ts`
+ - Services: `[resource].service.ts`
+ - Models/Schemas: `[resource].model.ts` or `schema/[resource].ts`
+ - Middleware: `auth.middleware.ts`, `validation.middleware.ts`
+ - Types/Interfaces: `[resource].types.ts`
+ - Utils/Helpers: Descriptive names for utility functions
 
 2. **Code Quality:**
-   - Write production-ready code with no placeholders or TODOs
-   - Include proper TypeScript types if using TypeScript
-   - Add meaningful comments for complex logic
-   - Follow the project's established coding standards from CLAUDE.md if available
-   - Ensure all code is immediately runnable without modifications
+ - Write production-ready code with no placeholders or TODOs
+ - Include proper TypeScript types if using TypeScript
+ - Add meaningful comments for complex logic
+ - Follow the project's established coding standards from CLAUDE.md if available
+ - Ensure all code is immediately runnable without modifications
 
 3. **Documentation:**
-   - Include brief inline comments explaining complex logic
-   - Add JSDoc/docstring comments for public functions
-   - Provide setup instructions if specific environment variables or dependencies are required
-   - Include example API requests/responses for testing
+ - Include brief inline comments explaining complex logic
+ - Add JSDoc/docstring comments for public functions
+ - Provide setup instructions if specific environment variables or dependencies are required
+ - Include example API requests/responses for testing
 
 4. **Testing Considerations:**
-   - Structure code to be easily testable
-   - Separate business logic from framework-specific code
-   - Use dependency injection to facilitate mocking
-   - Include basic test examples if specifically requested
+ - Structure code to be easily testable
+ - Separate business logic from framework-specific code
+ - Use dependency injection to facilitate mocking
+ - Include basic test examples if specifically requested
 
 **Quality Assurance Checklist:**
 Before providing code, verify:

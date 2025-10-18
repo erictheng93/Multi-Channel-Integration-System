@@ -1,10 +1,10 @@
 # WebSocket + Durable Objects Architecture Guide
 
-## 🏗️ Comprehensive Durable Objects Architecture for Real-time Customer Service
+## Comprehensive Durable Objects Architecture for Real-time Customer Service
 
 This document outlines the complete architecture for migrating from SSE + polling to WebSocket + Durable Objects for real-time customer service chat system.
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
 2. [Durable Object Classes](#durable-object-classes)
@@ -17,24 +17,24 @@ This document outlines the complete architecture for migrating from SSE + pollin
 
 ---
 
-## 🌐 Architecture Overview
+## Architecture Overview
 
 ### Current vs. New Architecture
 
 **Current Architecture (SSE + Polling):**
 ```
-Client → HTTP API → Cloudflare Queue → SSE Connection Manager → Server-Sent Events
-                 ↘                  ↗
-                   Cloudflare KV (backup storage)
+Client HTTP API Cloudflare Queue SSE Connection Manager Server-Sent Events
+
+ Cloudflare KV (backup storage)
 ```
 
 **New Architecture (WebSocket + Durable Objects):**
 ```
-Client ↔ WebSocket Handler ↔ UserConnection DO ↔ ConversationRoom DO
-                           ↘                  ↗
-                             MessageBroadcaster DO
-                           ↗                  ↘
-DelayedMessageProcessor DO ↔ DistributedLock DO ↔ Database & External APIs
+Client WebSocket Handler UserConnection DO ConversationRoom DO
+
+ MessageBroadcaster DO
+
+DelayedMessageProcessor DO DistributedLock DO Database & External APIs
 ```
 
 ### Key Benefits
@@ -48,7 +48,7 @@ DelayedMessageProcessor DO ↔ DistributedLock DO ↔ Database & External APIs
 
 ---
 
-## 🏛️ Durable Object Classes
+## Durable Object Classes
 
 ### 1. ConversationRoom
 **Purpose**: Manages WebSocket connections for a specific conversation
@@ -147,11 +147,11 @@ DelayedMessageProcessor DO ↔ DistributedLock DO ↔ Database & External APIs
 
 ---
 
-## 🔒 Distributed Locking System
+## Distributed Locking System
 
 ### Architecture
 ```
-Any Durable Object → DistributedLockService → LockCoordinator DO → Persistent Storage
+Any Durable Object DistributedLockService LockCoordinator DO Persistent Storage
 ```
 
 ### Lock Types
@@ -166,35 +166,35 @@ const lockService = new DistributedLockService(env);
 
 // Acquire lock with timeout
 const lockId = await lockService.acquireLock('conversation:123', {
-  ttl: 30000,      // 30 seconds
-  timeout: 5000    // 5 second acquisition timeout
+ ttl: 30000, // 30 seconds
+ timeout: 5000 // 5 second acquisition timeout
 });
 
 try {
-  // Critical section - guaranteed exclusive access
-  await performCriticalOperation();
+ // Critical section - guaranteed exclusive access
+ await performCriticalOperation();
 } finally {
-  // Always release lock
-  await lockService.releaseLock(lockId);
+ // Always release lock
+ await lockService.releaseLock(lockId);
 }
 
 // Or use convenience method
 await lockService.withLock('user:456', async () => {
-  // Critical section with automatic cleanup
-  await updateUserState();
+ // Critical section with automatic cleanup
+ await updateUserState();
 });
 ```
 
 ---
 
-## 🔌 WebSocket Connection Lifecycle
+## WebSocket Connection Lifecycle
 
 ### Connection Flow
 ```
-1. Client → WebSocket Handler (authentication & upgrade)
-2. WebSocket Handler → UserConnection DO (register user connection)
-3. UserConnection DO → ConversationRoom DO (if specific conversation)
-4. All DOs → MessageBroadcaster DO (register for global events)
+1. Client WebSocket Handler (authentication & upgrade)
+2. WebSocket Handler UserConnection DO (register user connection)
+3. UserConnection DO ConversationRoom DO (if specific conversation)
+4. All DOs MessageBroadcaster DO (register for global events)
 ```
 
 ### Connection States
@@ -213,7 +213,7 @@ await lockService.withLock('user:456', async () => {
 
 ---
 
-## 🚀 Migration Strategy
+## Migration Strategy
 
 ### Progressive Rollout System
 
@@ -226,7 +226,7 @@ await lockService.withLock('user:456', async () => {
 - High-activity users
 - Users with specific feature flags
 
-#### 2. Gradual Phase (5% → 100%)
+#### 2. Gradual Phase (5% 100%)
 - Percentage-based rollout with smart criteria
 - Boost factors for compatible browsers/devices
 - Team-based rollout coordination
@@ -240,22 +240,22 @@ await lockService.withLock('user:456', async () => {
 const migrationService = new MigrationService(env);
 
 const decision = await migrationService.shouldUseWebSocket(
-  userId,
-  userAgent,
-  {
-    role: 'admin',
-    conversationId: 'conv_123',
-    previousConnectionType: 'websocket',
-    connectionFailures: 0
-  }
+ userId,
+ userAgent,
+ {
+ role: 'admin',
+ conversationId: 'conv_123',
+ previousConnectionType: 'websocket',
+ connectionFailures: 0
+ }
 );
 
 // Returns:
 // {
-//   useWebSocket: true,
-//   reason: 'User in rollout group (15% < 75%) with boosts: admin role, modern browser',
-//   fallbackAvailable: true,
-//   migrationPhase: 'gradual'
+// useWebSocket: true,
+// reason: 'User in rollout group (15% < 75%) with boosts: admin role, modern browser',
+// fallbackAvailable: true,
+// migrationPhase: 'gradual'
 // }
 ```
 
@@ -268,7 +268,7 @@ const decision = await migrationService.shouldUseWebSocket(
 
 ---
 
-## 📖 Implementation Guide
+## Implementation Guide
 
 ### 1. Update wrangler.toml
 Copy configuration from `wrangler-websocket.toml`:
@@ -303,33 +303,33 @@ app.route('/api/websocket', websocketHandler);
 ```typescript
 // WebSocket connection with fallback
 const connectToRealtime = async () => {
-  try {
-    // Try WebSocket first
-    const ws = new WebSocket(`wss://api.yourdomain.com/api/websocket/connect?token=${token}`);
+ try {
+ // Try WebSocket first
+ const ws = new WebSocket(`wss://api.yourdomain.com/api/websocket/connect?token=${token}`);
 
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      // Subscribe to conversations
-      ws.send(JSON.stringify({
-        type: 'subscribe',
-        data: { type: 'conversation', target: conversationId }
-      }));
-    };
+ ws.onopen = () => {
+ console.log('WebSocket connected');
+ // Subscribe to conversations
+ ws.send(JSON.stringify({
+ type: 'subscribe',
+ data: { type: 'conversation', target: conversationId }
+ }));
+ };
 
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      handleRealtimeMessage(message);
-    };
+ ws.onmessage = (event) => {
+ const message = JSON.parse(event.data);
+ handleRealtimeMessage(message);
+ };
 
-    ws.onerror = () => {
-      // Fallback to SSE
-      connectToSSE();
-    };
+ ws.onerror = () => {
+ // Fallback to SSE
+ connectToSSE();
+ };
 
-  } catch (error) {
-    // Fallback to SSE
-    connectToSSE();
-  }
+ } catch (error) {
+ // Fallback to SSE
+ connectToSSE();
+ }
 };
 ```
 
@@ -345,7 +345,7 @@ Set these via `wrangler secret put`:
 
 ---
 
-## ⚡ Performance Considerations
+## Performance Considerations
 
 ### Durable Objects Scaling
 - **Automatic Scaling**: Each conversation gets its own DO instance
@@ -373,7 +373,7 @@ Set these via `wrangler secret put`:
 
 ---
 
-## 📊 Monitoring & Troubleshooting
+## Monitoring & Troubleshooting
 
 ### Health Endpoints
 - `GET /api/websocket/health` - Overall system health
@@ -382,22 +382,22 @@ Set these via `wrangler secret put`:
 
 ### Key Metrics
 1. **Connection Metrics**:
-   - Total WebSocket connections
-   - Connection success rate
-   - Average connection latency
-   - Reconnection frequency
+ - Total WebSocket connections
+ - Connection success rate
+ - Average connection latency
+ - Reconnection frequency
 
 2. **Message Metrics**:
-   - Messages per second throughput
-   - Message delivery success rate
-   - Average message latency
-   - Queue depth and processing time
+ - Messages per second throughput
+ - Message delivery success rate
+ - Average message latency
+ - Queue depth and processing time
 
 3. **Migration Metrics**:
-   - WebSocket adoption rate
-   - Fallback usage rate
-   - Migration success rate
-   - User satisfaction scores
+ - WebSocket adoption rate
+ - Fallback usage rate
+ - Migration success rate
+ - User satisfaction scores
 
 ### Common Issues & Solutions
 
@@ -406,7 +406,7 @@ Set these via `wrangler secret put`:
 // Implement connection limits
 const MAX_CONNECTIONS_PER_ROOM = 100;
 if (this.connections.size >= MAX_CONNECTIONS_PER_ROOM) {
-  return new Response('Room full', { status: 429 });
+ return new Response('Room full', { status: 429 });
 }
 ```
 
@@ -421,8 +421,8 @@ setTimeout(() => retryMessage(message), retryDelay);
 ```typescript
 // Use shorter lock TTLs and retry intervals
 const lockId = await lockService.acquireLock(resource, {
-  ttl: 5000,        // Shorter TTL
-  retryInterval: 50  // Faster retries
+ ttl: 5000, // Shorter TTL
+ retryInterval: 50 // Faster retries
 });
 ```
 
@@ -430,9 +430,9 @@ const lockId = await lockService.acquireLock(resource, {
 ```typescript
 // Implement automatic fallback
 ws.onerror = (error) => {
-  console.warn('WebSocket error, falling back to SSE');
-  migrationService.emergencyFallbackToSSE('WebSocket connection failed');
-  connectToSSE();
+ console.warn('WebSocket error, falling back to SSE');
+ migrationService.emergencyFallbackToSSE('WebSocket connection failed');
+ connectToSSE();
 };
 ```
 
@@ -450,7 +450,7 @@ await lockService.cleanupExpiredLocks();
 
 ---
 
-## 🚀 Deployment Steps
+## Deployment Steps
 
 ### 1. Development Testing
 ```bash
@@ -483,11 +483,11 @@ wrangler deploy --env production
 
 # Gradually increase rollout percentage
 curl -X POST https://api.yourdomain.com/api/websocket/migration-config \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"rolloutPercentage": 10}'
+ -H "Authorization: Bearer $ADMIN_TOKEN" \
+ -d '{"rolloutPercentage": 10}'
 
 # Monitor and increase gradually
-# 10% → 25% → 50% → 75% → 100%
+# 10% 25% 50% 75% 100%
 ```
 
 ### 4. Monitoring Dashboard
@@ -500,16 +500,16 @@ Set up monitoring for:
 
 ---
 
-## 📝 Summary
+## Summary
 
 This comprehensive WebSocket + Durable Objects architecture provides:
 
-✅ **Real-time bidirectional communication**
-✅ **Strong consistency with distributed locking**
-✅ **Efficient batch processing**
-✅ **Progressive migration with fallback**
-✅ **Production-ready scalability**
-✅ **Comprehensive monitoring**
+ **Real-time bidirectional communication**
+ **Strong consistency with distributed locking**
+ **Efficient batch processing**
+ **Progressive migration with fallback**
+ **Production-ready scalability**
+ **Comprehensive monitoring**
 
 The system is designed for gradual rollout with minimal risk, providing significant performance improvements while maintaining backward compatibility with the existing SSE system.
 

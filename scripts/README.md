@@ -1,42 +1,173 @@
-# 腳本目錄
 
-此目錄包含多通道平台的實用工具腳本。
+# Scripts Directory
 
-## 密碼雜湊生成器
+本目錄包含專案的自動化腳本和工具。
 
-### 使用方法
+## 文檔維護腳本
 
-生成預設密碼 (`admin123`) 的雜湊：
+### remove-emoji.py
+
+自動移除 Markdown 文件中的 emoji 字符。
+
+**用法：**
+
 ```bash
-npm run hash
+# 移除所有文檔中的 emoji
+python scripts/remove-emoji.py --root .
+
+# Dry-run 模式（預覽但不修改）
+python scripts/remove-emoji.py --root . --dry-run
+
+# 檢查特定文件
+python scripts/remove-emoji.py --root docs/
 ```
 
-生成指定密碼的雜湊：
+**功能：**
+- 支援多種編碼（UTF-8, GBK, Big5 等）
+- 自動清理空白標題
+- 修正多餘的空格和換行
+- Dry-run 預覽模式
+
+### check-docs.py
+
+檢查文檔質量和標準合規性。
+
+**用法：**
+
 ```bash
-npm run hash mypassword123
+# 檢查所有文檔
+python scripts/check-docs.py --all
+
+# 檢查特定文件
+python scripts/check-docs.py docs/README.md docs/guides/QUICK_START.md
+
+# 檢查特定目錄
+python scripts/check-docs.py docs/api/*.md
 ```
 
-批量生成多個密碼的雜湊：
+**檢查項目：**
+- Emoji 字符檢查
+- 中文文件名檢查
+- 文件命名規範
+- 文檔結構檢查（H1 標題、元數據）
+- 空白行和格式問題
+- 尾隨空格
+
+### docs-pre-commit-hook.sh
+
+Git pre-commit hook，自動在提交前檢查文檔質量。
+
+**安裝：**
+
 ```bash
-npm run hash:batch
+# 複製到 Git hooks 目錄
+cp scripts/docs-pre-commit-hook.sh .git/hooks/pre-commit
+
+# 給予執行權限
+chmod +x .git/hooks/pre-commit
 ```
 
-### TypeScript 模組
+**功能：**
+- 自動檢查即將提交的 Markdown 文件
+- 檢查 emoji 字符
+- 檢查中文文件名
+- 運行文檔質量檢查器
+- 發現問題時阻止提交
 
-你也可以在 TypeScript 代碼中使用密碼雜湊工具：
+## 部署腳本
 
-```typescript
-import { generatePasswordHash, verifyPassword } from '../src/utils/password-hash';
+### developer-deploy.ps1
 
-// 生成雜湊
-const hash = await generatePasswordHash('mypassword');
+開發者快速部署腳本（PowerShell）。
 
-// 驗證密碼
-const isValid = await verifyPassword('mypassword', hash);
+**用法：**
+
+```powershell
+# 完整部署（後端 + 前端）
+.\scripts\developer-deploy.ps1
+
+# 只部署後端
+.\scripts\developer-deploy.ps1 -BackendOnly
+
+# 只部署前端
+.\scripts\developer-deploy.ps1 -FrontendOnly
+
+# 跳過構建，強制部署
+.\scripts\developer-deploy.ps1 -SkipBuild -Force
+
+# 查看幫助
+.\scripts\developer-deploy.ps1 -Help
 ```
 
-### 安全性說明
+### user-deploy.ps1
 
-- 使用 bcrypt 搭配 12 輪鹽值進行強密碼雜湊
-- 密碼長度驗證（8-128 字元）
-- 適用於認證系統的生產環境使用
+用戶部署腳本（使用 Terraform）。
+
+**用法：**
+
+```powershell
+# 預覽部署計劃
+.\scripts\user-deploy.ps1 -PlanOnly
+
+# 自動批准並部署
+.\scripts\user-deploy.ps1 -AutoApprove
+
+# 查看幫助
+.\scripts\user-deploy.ps1 -Help
+```
+
+## 使用流程
+
+### 日常開發工作流
+
+1. **編輯文檔**
+   ```bash
+   # 編輯 Markdown 文件
+   code docs/guides/MY_GUIDE.md
+   ```
+
+2. **清理 Emoji**
+   ```bash
+   # 自動移除 emoji
+   python scripts/remove-emoji.py --root docs/
+   ```
+
+3. **檢查文檔質量**
+   ```bash
+   # 運行質量檢查
+   python scripts/check-docs.py docs/guides/MY_GUIDE.md
+   ```
+
+4. **提交更改**
+   ```bash
+   # Git pre-commit hook 會自動運行檢查
+   git add docs/
+   git commit -m "docs: update guide"
+   ```
+
+## 故障排除
+
+### Python 腳本無法運行
+
+**問題：** `python: command not found`
+
+**解決方案：**
+```bash
+# 嘗試使用 python3
+python3 scripts/remove-emoji.py --root .
+
+# 或檢查 Python 安裝
+which python
+which python3
+```
+
+## 相關文檔
+
+- [文檔貢獻指南](../docs/CONTRIBUTING.md)
+- [文檔索引](../docs/DOCUMENTATION_INDEX.md)
+- [專案 README](../README.md)
+
+---
+
+最後更新: 2025-10-18
+維護者: Development Team

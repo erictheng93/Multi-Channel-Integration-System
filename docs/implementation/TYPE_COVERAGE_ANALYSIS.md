@@ -1,52 +1,49 @@
-# TypeScript 類型覆蓋分析
+# TypeScript
 
-## 當前狀態概述
 
-基於 TypeScript 建置輸出，我們在程式碼庫中識別出 **198 個類型錯誤**。此分析提供了類型安全缺口的全面分解。
+ TypeScript **198 **
 
-## 錯誤類別
 
-### 1. 嚴格空值檢查問題（高優先級）
-- **TS18048**: 'X' 可能為 'undefined' - 31 次出現
-- **TS2532**: 物件可能為 'undefined' - 12 次出現
-- **TS2322**: undefined 的類型指派問題 - 23 次出現
+### 1.
+- **TS18048**: 'X' 'undefined' - 31
+- **TS2532**: 'undefined' - 12
+- **TS2322**: undefined - 23
 
-### 2. 未使用變數/匯入問題（中優先級）
-- **TS6133**: 已宣告但從未讀取 - 45 次出現
-- **TS6196**: 已宣告但從未使用 - 18 次出現
+### 2. /
+- **TS6133**: - 45
+- **TS6196**: - 18
 
-### 3. 類型相容性問題（高優先級）
-- **TS2375**: exactOptionalPropertyTypes 違規 - 15 次出現
-- **TS2345**: 參數類型無法指派 - 8 次出現
-- **TS2339**: 類型上不存在該屬性 - 6 次出現
+### 3.
+- **TS2375**: exactOptionalPropertyTypes - 15
+- **TS2345**: - 8
+- **TS2339**: - 6
 
-### 4. 未知類型問題（高優先級）
-- **TS18046**: 'error' 為 'unknown' 類型 - 8 次出現
-- **TS2345**: 'unknown' 類型無法指派 - 4 次出現
+### 4.
+- **TS18046**: 'error' 'unknown' - 8
+- **TS2345**: 'unknown' - 4
 
-## 需要立即關注的關鍵檔案
 
-### 高影響檔案（每個 >10 個錯誤）
-1. **src/enterprise/analytics.ts** - 35+ 個錯誤
-   - TimeSeriesData 類型相容性問題
-   - 需要清理未使用的匯入
-   - 'any' 類型斷言問題
+### >10
+1. **src/enterprise/analytics.ts** - 35+
+ - TimeSeriesData
+ -
+ - 'any'
 
-2. **src/durable-objects/conversation-room.ts** - 15+ 個錯誤
-   - WebSocket undefined 處理
-   - Response 初始化問題
-   - Server 可能為 undefined
+2. **src/durable-objects/conversation-room.ts** - 15+
+ - WebSocket undefined
+ - Response
+ - Server undefined
 
-3. **src/utils/api-response.ts** - 12+ 個錯誤
-   - 錯誤處理類型安全
-   - 可選屬性類型問題
-   - 未知錯誤類型處理
+3. **src/utils/api-response.ts** - 12+
+ -
+ -
+ -
 
-### 中等影響檔案（每個 5-10 個錯誤）
-4. **src/types/converters.ts** - 8 個錯誤
-5. **src/utils/auth.ts** - 6 個錯誤
-6. **src/utils/file-storage.ts** - 8 個錯誤
-7. **src/utils/session.ts** - 4 個錯誤
+### 5-10
+4. **src/types/converters.ts** - 8
+5. **src/utils/auth.ts** - 6
+6. **src/utils/file-storage.ts** - 8
+7. **src/utils/session.ts** - 4
 
 ## Type Safety Gaps Identified
 

@@ -87,7 +87,7 @@ npm run test:validation
 ```typescript
 // Test invalid token handling
 const invalidTokenResponse = await makeRequest('/api/protected', {
-  headers: { 'Authorization': 'Bearer invalid-token' }
+ headers: { 'Authorization': 'Bearer invalid-token' }
 });
 expect(invalidTokenResponse.status).toBe(401);
 ```
@@ -96,7 +96,7 @@ expect(invalidTokenResponse.status).toBe(401);
 ```typescript
 // Test cross-user data access
 const userAData = await makeRequest('/api/user/B/data', {
-  headers: { 'Authorization': `Bearer ${userAToken}` }
+ headers: { 'Authorization': `Bearer ${userAToken}` }
 });
 expect(userAData.status).toBe(403);
 ```
@@ -106,8 +106,8 @@ expect(userAData.status).toBe(403);
 // Test SQL injection prevention
 const maliciousInput = "'; DROP TABLE users; --";
 const response = await makeRequest('/api/search', {
-  method: 'POST',
-  body: JSON.stringify({ query: maliciousInput })
+ method: 'POST',
+ body: JSON.stringify({ query: maliciousInput })
 });
 expect(response.status).toBe(400);
 ```

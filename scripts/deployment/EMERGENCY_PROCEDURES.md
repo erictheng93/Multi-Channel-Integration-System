@@ -1,7 +1,7 @@
 # Emergency Procedures for WebSocket Migration
-**專案名稱：Multi-Channel Support MVP - Emergency Response Guide**
+**Multi-Channel Support MVP - Emergency Response Guide**
 
-## 🚨 CRITICAL INCIDENT RESPONSE
+## CRITICAL INCIDENT RESPONSE
 
 ### Immediate Response (0-5 minutes)
 
@@ -56,7 +56,7 @@ curl -f https://your-api.com/api/admin/rollback/status
 
 ---
 
-## 🔴 EMERGENCY ROLLBACK PROCEDURES
+## EMERGENCY ROLLBACK PROCEDURES
 
 ### Instant Rollback (< 60 seconds)
 
@@ -116,7 +116,7 @@ curl -f https://your-api.com/api/admin/rollback/status
 
 ---
 
-## 📞 ESCALATION PROCEDURES
+## ESCALATION PROCEDURES
 
 ### Level 1: On-Call Engineer (0-15 minutes)
 **Responsibilities:**
@@ -186,30 +186,30 @@ curl -f https://your-api.com/api/admin/rollback/status
 
 ---
 
-## 🔧 EMERGENCY SYSTEM CONTROLS
+## EMERGENCY SYSTEM CONTROLS
 
 ### Feature Flag Emergency Controls
 
 **Disable WebSocket Globally:**
 ```bash
 curl -X PUT https://your-api.com/api/admin/feature-flags/websocket_connections \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"enabled": false, "reason": "Emergency disable"}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"enabled": false, "reason": "Emergency disable"}'
 ```
 
 **Force All Users to SSE:**
 ```bash
 curl -X POST https://your-api.com/api/admin/emergency/force-sse-all \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"reason": "Emergency fallback"}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"reason": "Emergency fallback"}'
 ```
 
 **Emergency User Targeting:**
 ```bash
 # Remove all user targeting
 curl -X PUT https://your-api.com/api/admin/feature-flags/websocket_connections/targeting \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"includeRoles": [], "includeUsers": [], "includeTeams": []}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"includeRoles": [], "includeUsers": [], "includeTeams": []}'
 ```
 
 ### Database Emergency Controls
@@ -217,8 +217,8 @@ curl -X PUT https://your-api.com/api/admin/feature-flags/websocket_connections/t
 **Enable Read-Only Mode:**
 ```bash
 curl -X POST https://your-api.com/api/admin/database/read-only \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"enabled": true, "reason": "Emergency protection"}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"enabled": true, "reason": "Emergency protection"}'
 ```
 
 **Force Database Backup:**
@@ -229,7 +229,7 @@ npm run db:emergency-backup
 **Check Database Health:**
 ```bash
 curl -X GET https://your-api.com/api/admin/database/health \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN"
+ -H "Authorization: Bearer $EMERGENCY_TOKEN"
 ```
 
 ### System Circuit Breakers
@@ -237,19 +237,19 @@ curl -X GET https://your-api.com/api/admin/database/health \
 **Activate Emergency Circuit Breaker:**
 ```bash
 curl -X POST https://your-api.com/api/admin/circuit-breaker/emergency \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"component": "websocket", "action": "open"}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"component": "websocket", "action": "open"}'
 ```
 
 **Check Circuit Breaker Status:**
 ```bash
 curl -X GET https://your-api.com/api/admin/circuit-breaker/status \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN"
+ -H "Authorization: Bearer $EMERGENCY_TOKEN"
 ```
 
 ---
 
-## 📊 EMERGENCY MONITORING
+## EMERGENCY MONITORING
 
 ### Critical Metrics Dashboard
 
@@ -282,24 +282,24 @@ curl -X GET https://your-api.com/api/admin/metrics/resources/critical
 **Activate Enhanced Monitoring:**
 ```bash
 curl -X POST https://your-api.com/api/admin/monitoring/emergency-mode \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"enabled": true, "interval": 30}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"enabled": true, "interval": 30}'
 ```
 
 **Send Emergency Notification:**
 ```bash
 curl -X POST https://your-api.com/api/admin/notifications/emergency \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{
-    "severity": "critical",
-    "message": "Emergency rollback executed",
-    "channels": ["slack", "email", "sms"]
-  }'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{
+ "severity": "critical",
+ "message": "Emergency rollback executed",
+ "channels": ["slack", "email", "sms"]
+ }'
 ```
 
 ---
 
-## 🗣️ COMMUNICATION PROCEDURES
+## COMMUNICATION PROCEDURES
 
 ### Internal Communications
 
@@ -308,7 +308,7 @@ curl -X POST https://your-api.com/api/admin/notifications/emergency \
 **Channels:** Slack #emergency, email, phone
 **Template:**
 ```
-🚨 EMERGENCY ALERT 🚨
+ EMERGENCY ALERT
 Incident: WebSocket Migration Issue
 Severity: [P0/P1/P2/P3]
 Status: [Investigating/Rollback in Progress/Resolved]
@@ -363,7 +363,7 @@ For questions, contact support@[company].com
 
 ---
 
-## 🛠️ EMERGENCY RECOVERY PROCEDURES
+## EMERGENCY RECOVERY PROCEDURES
 
 ### System Recovery Steps
 
@@ -413,24 +413,24 @@ npm run db:check-consistency
 ```bash
 # Clear potentially corrupted cache
 curl -X DELETE https://your-api.com/api/admin/cache/clear-all \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN"
+ -H "Authorization: Bearer $EMERGENCY_TOKEN"
 
 # Rebuild critical caches
 curl -X POST https://your-api.com/api/admin/cache/rebuild \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN"
+ -H "Authorization: Bearer $EMERGENCY_TOKEN"
 ```
 
 **Session Recovery:**
 ```bash
 # Invalidate potentially affected sessions
 curl -X POST https://your-api.com/api/admin/sessions/invalidate-affected \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN" \
-  -d '{"reason": "Emergency recovery"}'
+ -H "Authorization: Bearer $EMERGENCY_TOKEN" \
+ -d '{"reason": "Emergency recovery"}'
 ```
 
 ---
 
-## 📋 POST-INCIDENT PROCEDURES
+## POST-INCIDENT PROCEDURES
 
 ### Immediate Post-Incident (0-24 hours)
 
@@ -491,7 +491,7 @@ curl -X POST https://your-api.com/api/admin/sessions/invalidate-affected \
 
 ---
 
-## 🔐 SECURITY CONSIDERATIONS
+## SECURITY CONSIDERATIONS
 
 ### Emergency Access Controls
 
@@ -521,16 +521,16 @@ curl -X POST https://your-api.com/api/admin/sessions/invalidate-affected \
 ```bash
 # Enable enhanced audit logging
 curl -X POST https://your-api.com/api/admin/security/enhanced-logging \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN"
+ -H "Authorization: Bearer $EMERGENCY_TOKEN"
 
 # Check for potential data exposure
 curl -X GET https://your-api.com/api/admin/security/exposure-check \
-  -H "Authorization: Bearer $EMERGENCY_TOKEN"
+ -H "Authorization: Bearer $EMERGENCY_TOKEN"
 ```
 
 ---
 
-## 📞 EMERGENCY CONTACTS
+## EMERGENCY CONTACTS
 
 ### Primary Contacts
 - **On-Call Engineer:** [Name] - [Phone] - [Email] - [Slack]
@@ -555,7 +555,7 @@ curl -X GET https://your-api.com/api/admin/security/exposure-check \
 
 ---
 
-## 📖 REFERENCE DOCUMENTATION
+## REFERENCE DOCUMENTATION
 
 ### Quick Reference Cards
 - [Emergency Command Cheat Sheet](./emergency-commands.md)

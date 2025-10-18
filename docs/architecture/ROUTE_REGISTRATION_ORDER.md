@@ -1,6 +1,6 @@
 # Route Registration Order Guide
 
-> **⚠️ CRITICAL**: This document explains why route registration order matters in Hono framework and how to avoid route interception issues.
+> ** CRITICAL**: This document explains why route registration order matters in Hono framework and how to avoid route interception issues.
 
 ## Table of Contents
 
@@ -24,13 +24,13 @@ In the Hono web framework used by this application, **route registration order d
 **Routes registered later CANNOT override routes registered earlier with catch-all patterns.**
 
 ```typescript
-// ❌ PROBLEM: Later registration gets intercepted
-app.use('/api/*', someMiddleware);  // Catch-all registered first
-app.route('/api/cors', corsHandler); // ❌ Never reached!
+// PROBLEM: Later registration gets intercepted
+app.use('/api/*', someMiddleware); // Catch-all registered first
+app.route('/api/cors', corsHandler); // Never reached!
 
-// ✅ SOLUTION: Register specific routes first
-app.route('/api/cors', corsHandler); // ✅ Registered first, has priority
-app.use('/api/*', someMiddleware);  // Catch-all registered later
+// SOLUTION: Register specific routes first
+app.route('/api/cors', corsHandler); // Registered first, has priority
+app.use('/api/*', someMiddleware); // Catch-all registered later
 ```
 
 ---
@@ -46,13 +46,13 @@ Our application uses a **Unified Route Registry System** (`src/core/route-regist
 **Before Fix** (Version < d51fc6c8):
 ```bash
 $ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
-{"error":"Missing or invalid authorization header"}  # ❌ 401 Error
+{"error":"Missing or invalid authorization header"} # 401 Error
 ```
 
 **After Fix** (Version d51fc6c8+):
 ```bash
 $ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
-{"status":"healthy","timestamp":"...","service":"cors-monitoring"}  # ✅ 200 OK
+{"status":"healthy","timestamp":"...","service":"cors-monitoring"} # 200 OK
 ```
 
 ---
@@ -62,99 +62,93 @@ $ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
 Routes in `src/index.ts` MUST be registered in this specific order:
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ Priority 1 (HIGHEST): Public Endpoints Without Auth           │
-│ Lines: ~156-267                                                │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│ ✅ WebSocket health endpoints                                 │
-│    • /api/websocket/health                                    │
-│    • /api/websocket/migration-status                          │
-│    • /api/websocket/readiness                                 │
-│    • /api/websocket/liveness                                  │
-│                                                                │
-│ ✅ CORS monitoring endpoints                                  │
-│    • /api/cors/health (Public)                                │
-│    • /api/cors/config (Public)                                │
-│    • /api/cors/stats (Admin - internal auth)                  │
-│    • /api/cors/events (Admin - internal auth)                 │
-│    • /api/cors/rejected-origins (Admin - internal auth)       │
-│    • /api/cors/cleanup (Admin - internal auth)                │
-│                                                                │
-│ ✅ Analytics comparison API                                   │
-│    • /api/analytics/comparison/*                              │
-│                                                                │
-│ 📋 WHY:                                                        │
-│    These endpoints need direct access without any middleware  │
-│    interception from the unified route system. Public health  │
-│    endpoints must be accessible for monitoring.               │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-                         ↓
-┌────────────────────────────────────────────────────────────────┐
-│ Priority 2: Explicit Auth Middleware + Handler                │
-│ Lines: ~268-279                                                │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│ ✅ WebSocket Dashboard (with explicit jwtAuth)                │
-│    app.use('/api/websocket/dashboard/*', jwtAuth)             │
-│    app.route('/api/websocket/dashboard', handler)             │
-│                                                                │
-│ 📋 WHY:                                                        │
-│    Explicit middleware declaration ensures authentication is  │
-│    applied correctly and makes security requirements clear.   │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-                         ↓
-┌────────────────────────────────────────────────────────────────┐
-│ Priority 3: Unified Route System                              │
-│ Lines: ~280-286                                                │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│ const routeRegistry = new RouteRegistry(app);                 │
-│ routeGroups.forEach(group => {                                │
-│   routeRegistry.registerGroup(group);                         │
-│ });                                                            │
-│                                                                │
-│ 📦 Registered Modules:                                        │
-│    • Authentication (/api/auth/*)                             │
-│    • Conversations (/api/conversations/*)                     │
-│    • Messages (/api/messages/*)                               │
-│    • Delayed Messages (/api/delayed-messages/*)               │
-│    • Teams (/api/teams/*)                                     │
-│    • Customers (/api/customers/*)                             │
-│    • Sessions (/api/sessions/*)                               │
-│    • Agents (/api/agents/*)                                   │
-│    • Notifications (/api/notifications/*)                     │
-│    • Analytics (/api/analytics/*) [May create catch-all]     │
-│    • Reports (/api/reports/*)                                 │
-│    • Activities (/api/activities/*)                           │
-│    • ... and more                                             │
-│                                                                │
-│ 📋 WHY:                                                        │
-│    Centralized route management for most endpoints. This      │
-│    system may create catch-all routes that intercept later    │
-│    registrations.                                              │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-                         ↓
-┌────────────────────────────────────────────────────────────────┐
-│ Priority 4 (LOWEST): Fine-grained Individual Routes           │
-│ Lines: ~546+                                                   │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│ • System settings endpoints                                    │
-│ • Credentials management                                       │
-│ • Team management endpoints                                    │
-│ • Webhook handlers                                             │
-│ • Queue monitoring                                             │
-│                                                                │
-│ 📋 WHY:                                                        │
-│    These are specific endpoints that don't conflict with       │
-│    catch-all routes from the unified system. They can be       │
-│    registered after without issues.                            │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
+
+ Priority 1 (HIGHEST): Public Endpoints Without Auth
+ Lines: ~156-267
+
+
+ WebSocket health endpoints
+ /api/websocket/health
+ /api/websocket/migration-status
+ /api/websocket/readiness
+ /api/websocket/liveness
+
+ CORS monitoring endpoints
+ /api/cors/health (Public)
+ /api/cors/config (Public)
+ /api/cors/stats (Admin - internal auth)
+ /api/cors/events (Admin - internal auth)
+ /api/cors/rejected-origins (Admin - internal auth)
+ /api/cors/cleanup (Admin - internal auth)
+
+ Analytics comparison API
+ /api/analytics/comparison/*
+
+ WHY:
+ These endpoints need direct access without any middleware
+ interception from the unified route system. Public health
+ endpoints must be accessible for monitoring.
+
+
+ Priority 2: Explicit Auth Middleware + Handler
+ Lines: ~268-279
+
+
+ WebSocket Dashboard (with explicit jwtAuth)
+ app.use('/api/websocket/dashboard/*', jwtAuth)
+ app.route('/api/websocket/dashboard', handler)
+
+ WHY:
+ Explicit middleware declaration ensures authentication is
+ applied correctly and makes security requirements clear.
+
+
+ Priority 3: Unified Route System
+ Lines: ~280-286
+
+
+ const routeRegistry = new RouteRegistry(app);
+ routeGroups.forEach(group => {
+ routeRegistry.registerGroup(group);
+ });
+
+ Registered Modules:
+ Authentication (/api/auth/*)
+ Conversations (/api/conversations/*)
+ Messages (/api/messages/*)
+ Delayed Messages (/api/delayed-messages/*)
+ Teams (/api/teams/*)
+ Customers (/api/customers/*)
+ Sessions (/api/sessions/*)
+ Agents (/api/agents/*)
+ Notifications (/api/notifications/*)
+ Analytics (/api/analytics/*) [May create catch-all]
+ Reports (/api/reports/*)
+ Activities (/api/activities/*)
+ ... and more
+
+ WHY:
+ Centralized route management for most endpoints. This
+ system may create catch-all routes that intercept later
+ registrations.
+
+
+ Priority 4 (LOWEST): Fine-grained Individual Routes
+ Lines: ~546+
+
+
+ System settings endpoints
+ Credentials management
+ Team management endpoints
+ Webhook handlers
+ Queue monitoring
+
+ WHY:
+ These are specific endpoints that don't conflict with
+ catch-all routes from the unified system. They can be
+ registered after without issues.
+
+
 ```
 
 ---
@@ -166,7 +160,7 @@ Routes in `src/index.ts` MUST be registered in this specific order:
 **Symptoms:**
 ```bash
 $ curl https://your-domain.com/api/myendpoint
-{"error":"Missing or invalid authorization header"}  # ❌ 401
+{"error":"Missing or invalid authorization header"} # 401
 ```
 
 **Even though:**
@@ -181,16 +175,16 @@ The endpoint is registered AFTER the unified route system, which has a catch-all
 Move the registration to BEFORE the unified route system (Priority 1).
 
 ```typescript
-// ❌ BAD: Registered after unified system
+// BAD: Registered after unified system
 const routeRegistry = new RouteRegistry(app);
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 // This will be intercepted!
-app.route('/api/myendpoint', myHandler); // ❌ TOO LATE
+app.route('/api/myendpoint', myHandler); // TOO LATE
 
-// ✅ GOOD: Pre-register before unified system
+// GOOD: Pre-register before unified system
 // Register public endpoint first
-app.route('/api/myendpoint', myHandler); // ✅ PRIORITY
+app.route('/api/myendpoint', myHandler); // PRIORITY
 
 const routeRegistry = new RouteRegistry(app);
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
@@ -201,7 +195,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 **Symptoms:**
 ```bash
 $ curl https://your-domain.com/api/myendpoint
-{"error":"Not Found","message":"The requested endpoint was not found"}  # ❌ 404
+{"error":"Not Found","message":"The requested endpoint was not found"} # 404
 ```
 
 **Possible Causes:**
@@ -242,8 +236,8 @@ Follow this checklist:
 ```typescript
 // Question: Does this endpoint need public access (no auth)?
 //
-// YES → Register at Priority 1 (BEFORE unified system)
-// NO  → Can register in unified system (Priority 3) or after (Priority 4)
+// YES Register at Priority 1 (BEFORE unified system)
+// NO Can register in unified system (Priority 3) or after (Priority 4)
 ```
 
 #### Step 2: Choose Registration Location
@@ -254,18 +248,18 @@ Follow this checklist:
 
 // Add BEFORE unified route system initialization
 app.route('/api/myendpoint', myHandler);
-console.log('✅ My endpoint registered (before unified system)');
+console.log(' My endpoint registered (before unified system)');
 
 // For AUTHENTICATED endpoints (Priority 3 or 4)
 // Location: Either in route-config.ts or after line 546
 
 // Option A: Add to unified route system (src/core/route-config.ts)
 {
-  name: 'mymodule',
-  handler: myHandler,
-  path: '/api/mymodule',
-  requiresAuth: true,
-  enabled: true
+ name: 'mymodule',
+ handler: myHandler,
+ path: '/api/mymodule',
+ requiresAuth: true,
+ enabled: true
 }
 
 // Option B: Register individually after unified system
@@ -275,17 +269,17 @@ app.route('/api/myendpoint', jwtAuth, myHandler);
 #### Step 3: Add Documentation Comments
 
 ```typescript
-// ==================== 🔧 PRE-REGISTER My Endpoint ====================
+// ==================== PRE-REGISTER My Endpoint ====================
 //
-// ⚠️  MUST BE REGISTERED *BEFORE* UNIFIED ROUTE SYSTEM
+// MUST BE REGISTERED *BEFORE* UNIFIED ROUTE SYSTEM
 //
 // WHY:
 // This endpoint must be publicly accessible for [reason].
 // Registering before unified system prevents auth middleware interception.
 //
 // ROUTES:
-// • GET /api/myendpoint/action1 (Public)
-// • POST /api/myendpoint/action2 (Public)
+// GET /api/myendpoint/action1 (Public)
+// POST /api/myendpoint/action2 (Public)
 //
 // =======================================================================
 
@@ -297,8 +291,8 @@ app.route('/api/myendpoint', myHandler);
 
 ```typescript
 // Add both production and diagnostic routes
-app.route('/api/myendpoint', myHandler);     // Production
-app.route('/test-myendpoint', myHandler);    // Diagnostic
+app.route('/api/myendpoint', myHandler); // Production
+app.route('/test-myendpoint', myHandler); // Diagnostic
 
 // Test diagnostic route first
 // $ curl https://your-domain.com/test-myendpoint
@@ -326,7 +320,7 @@ npm run test:api
 
 ```typescript
 // Remove diagnostic route before deployment
-// app.route('/test-myendpoint', myHandler); // ✂️ Remove this line
+// app.route('/test-myendpoint', myHandler); // Remove this line
 ```
 
 ---
@@ -351,30 +345,30 @@ npm run validate:all
 ### Tool Output Example
 
 ```
-╔═══════════════════════════════════════════════════════════════╗
-║     Route Registration Order Validation Report               ║
-╚═══════════════════════════════════════════════════════════════╝
 
-ℹ️  Unified Route System found at line 280
+ Route Registration Order Validation Report
 
-❌ ERRORS:
 
-   Line 450: /api/myendpoint
-   ├─ Issue: Public endpoint registered AFTER Unified Route System
-   └─ Fix: Move this registration to BEFORE line 280
+ Unified Route System found at line 280
 
-⚠️  WARNINGS:
+ ERRORS:
 
-   Line 770: /api/test-myendpoint
-   ├─ Issue: Test/debug route found in production code
-   └─ Suggestion: Remove diagnostic routes before deployment
+ Line 450: /api/myendpoint
+ Issue: Public endpoint registered AFTER Unified Route System
+ Fix: Move this registration to BEFORE line 280
 
-─────────────────────────────────────────────────────────────────
-📊 Summary:
-   • Errors:   1  ← Must fix before deployment
-   • Warnings: 1  ← Consider addressing
-   • Info:     0
-─────────────────────────────────────────────────────────────────
+ WARNINGS:
+
+ Line 770: /api/test-myendpoint
+ Issue: Test/debug route found in production code
+ Suggestion: Remove diagnostic routes before deployment
+
+
+ Summary:
+ Errors: 1 Must fix before deployment
+ Warnings: 1 Consider addressing
+ Info: 0
+
 ```
 
 ### Manual Testing
@@ -408,7 +402,7 @@ After deployment, public endpoints returned 401 errors:
 
 ```bash
 $ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
-{"error":"Missing or invalid authorization header"}  # ❌ Should be public!
+{"error":"Missing or invalid authorization header"} # Should be public!
 ```
 
 ### Investigation Process
@@ -417,10 +411,10 @@ $ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
 2. **Searched for global middleware** - No `/api/*` auth middleware found
 3. **Added diagnostic route** - Registered same handler at `/test-cors/*`
 4. **Critical discovery**:
-   ```bash
-   $ curl .../test-cors/health  # ✅ 200 OK
-   $ curl .../api/cors/health   # ❌ 401 Error
-   ```
+ ```bash
+ $ curl .../test-cors/health # 200 OK
+ $ curl .../api/cors/health # 401 Error
+ ```
 
 This proved the handler was fine, but the route was being intercepted!
 
@@ -435,13 +429,13 @@ The CORS handler was registered at line 425+, AFTER the unified route system ini
 Moved CORS handler registration from line 425 to line 221 (BEFORE unified system):
 
 ```typescript
-// BEFORE (Line 425+) - ❌ Wrong position
+// BEFORE (Line 425+) - Wrong position
 const routeRegistry = new RouteRegistry(app);
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 // ... many lines ...
 app.route('/api/cors', corsMonitoringHandler); // TOO LATE!
 
-// AFTER (Line 221) - ✅ Correct position
+// AFTER (Line 221) - Correct position
 app.route('/api/cors', corsMonitoringHandler); // FIRST!
 // ...
 const routeRegistry = new RouteRegistry(app);
@@ -453,11 +447,11 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 ```bash
 # After fix
 $ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
-{"status":"healthy","timestamp":"2025-10-14T07:54:49.695Z"}  # ✅ 200 OK
+{"status":"healthy","timestamp":"2025-10-14T07:54:49.695Z"} # 200 OK
 
 # E2E tests
 $ npm run test:cors
-✅ 12/12 tests passing (100% success rate)
+ 12/12 tests passing (100% success rate)
 ```
 
 ### Lessons Learned
@@ -481,14 +475,14 @@ Always register routes according to the priority levels documented above. Don't 
 Add detailed comments explaining WHY a route needs to be registered at a specific location:
 
 ```typescript
-// ✅ GOOD: Clear explanation
-// ==================== 🔧 CRITICAL: PRE-REGISTER CORS 監控端點 ====================
+// GOOD: Clear explanation
+// ==================== CRITICAL: PRE-REGISTER CORS ====================
 // MUST be registered BEFORE unified route system to prevent auth interception.
 // Public endpoints (/health, /config) need direct access for monitoring.
 // =================================================================================
 app.route('/api/cors', corsMonitoringHandler);
 
-// ❌ BAD: No explanation
+// BAD: No explanation
 app.route('/api/cors', corsMonitoringHandler);
 ```
 
@@ -499,12 +493,12 @@ When adding a new handler, test it in both positions:
 ```typescript
 // Test 1: Register AFTER unified system
 // ... register after ...
-// curl test → Does it work? If yes, no special handling needed.
+// curl test Does it work? If yes, no special handling needed.
 // If no, proceed to Test 2.
 
 // Test 2: Register BEFORE unified system
 // ... move to before ...
-// curl test → Does it work now? If yes, keep it there and document why.
+// curl test Does it work now? If yes, keep it there and document why.
 ```
 
 ### 4. Use the Validation Tool
@@ -520,11 +514,11 @@ Add it to your pre-commit hook:
 ```json
 // package.json
 {
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run validate:routes && npm run lint:check"
-    }
-  }
+ "husky": {
+ "hooks": {
+ "pre-commit": "npm run validate:routes && npm run lint:check"
+ }
+ }
 }
 ```
 
@@ -533,7 +527,7 @@ Add it to your pre-commit hook:
 Always remove test/diagnostic routes before production deployment:
 
 ```typescript
-// ✂️ REMOVE before deployment
+// REMOVE before deployment
 // app.route('/test-cors', corsMonitoringHandler);
 // app.route('/debug-myendpoint', myHandler);
 ```
@@ -613,7 +607,7 @@ If you encounter route registration issues:
 
 1. **Run the validation tool**: `npm run validate:routes`
 2. **Check this document** for your specific problem
-3. **Review CLAUDE.md** "Route Registration Order (⚠️ Critical)" section
+3. **Review CLAUDE.md** "Route Registration Order ( Critical)" section
 4. **Use diagnostic routes** to isolate the issue
 5. **Check recent commits** for similar fixes (search for "route registration" or "d51fc6c8")
 

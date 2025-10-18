@@ -1,414 +1,1105 @@
-# 延遲發送訊息功能指南
+# (Durable Objects )
 
-## 功能概述
+> ****: **Durable Objects** 2025-09-30
+> Queue-based 2025-10-07
 
-延遲發送訊息功能允許用戶設定 1-120 秒的延遲時間，在指定時間後自動發送訊息。在延遲期間，用戶可以撤回尚未發送的訊息。
 
-## 核心特性
+ 1-120 **** <100ms
 
-- ⏰ **靈活延遲時間**: 支援 1-120 秒的延遲設定
-- 🔄 **撤回機制**: 在發送前可以撤回訊息
-- 📱 **多平台支援**: 支援 LINE 和 Facebook Messenger
-- 🎯 **即時狀態更新**: 實時顯示倒數計時和發送狀態
-- 📊 **完整記錄**: 記錄所有延遲發送和撤回操作
 
-## 技術架構
+- ****: <100ms 100%
+- ****: ±10ms Alarm API
+- ****: Durable Object Queue + KV
+- ****: Prometheus
+- ****: ( 3 )
+- **Dead Letter Queue**:
+- ****: LINE Facebook Messenger
 
-### 後端架構
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   API Handler   │───▶│  Cloudflare KV   │    │ Cloudflare D1   │
-│                 │    │  (撤回標記)      │    │ (訊息記錄)      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │
-         ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Cloudflare      │───▶│  Queue Consumer  │───▶│  Platform API   │
-│ Queue           │    │  (延遲處理)      │    │  (LINE/FB)      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+---
+
+
 ```
 
-### 前端架構
-```
-┌─────────────────┐    ┌──────────────────┐
-│ DelayedMessage  │───▶│  useDelayedMsg   │
-│ Sender.vue      │    │  Composable      │
-└─────────────────┘    └──────────────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────┐    ┌──────────────────┐
-│   UI 元件       │    │   API Client     │
-│ (輸入/倒數)     │    │  (HTTP 請求)     │
-└─────────────────┘    └──────────────────┘
-```
+ (Vue 3)
+ DelayedMessageSender.vue
+ useDelayedMessage.ts
 
-## 資料庫結構
 
-### pending_messages 表
-```sql
-CREATE TABLE pending_messages (
-    id TEXT PRIMARY KEY,                    -- 訊息 UUID
-    conversation_id INTEGER NOT NULL,       -- 對話 ID
-    sender_id INTEGER NOT NULL,             -- 發送者 ID
-    content TEXT NOT NULL,                  -- 訊息內容
-    message_type TEXT DEFAULT 'text',       -- 訊息類型
-    recipient_platform_id TEXT NOT NULL,    -- 接收者平台 ID
-    platform TEXT NOT NULL,                -- 平台 (line/facebook)
-    delay_seconds INTEGER DEFAULT 0,        -- 延遲秒數
-    scheduled_send_time TEXT NOT NULL,      -- 預定發送時間
-    recall_deadline TEXT,                   -- 撤回截止時間
-    status TEXT DEFAULT 'pending',          -- 狀態
-    metadata TEXT,                          -- 額外資訊 (JSON)
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now')),
-    sent_at TEXT,
-    cancelled_at TEXT
-);
-```
+ HTTP Request
 
-### message_recall_logs 表
-```sql
-CREATE TABLE message_recall_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    message_id TEXT NOT NULL,               -- 訊息 ID
-    user_id INTEGER NOT NULL,               -- 操作用戶 ID
-    action TEXT NOT NULL,                   -- 操作類型
-    reason TEXT,                            -- 操作原因
-    created_at TEXT DEFAULT (datetime('now'))
-);
+
+ API Handler (Hono)
+ src/handlers/delayed-message-buffer.ts
+
+ POST /api/delayed-messages-v2/send
+ DELETE /api/delayed-messages-v2/cancel/:messageId
+ GET /api/delayed-messages-v2/status/:messageId
+ GET /api/delayed-messages-v2/pending
+ GET /api/delayed-messages-v2/metrics
+ GET /api/delayed-messages-v2/dlq
+
+
+ Durable Object
+
+
+ DelayedMessageBuffer (Durable Object)
+ src/durable-objects/DelayedMessageBuffer.ts
+
+ conversation DO
+
+
+ pendingMessages: Map<id, PendingMessage>
+ nextAlarmTime: number
+ metrics: { sent, failed, cancelled, ... }
+
+
+ (Durable Object Storage)
+ msg:{messageId} PendingMessage
+ dlq:{messageId} FailedMessage
+
+
+ Alarm API ()
+
+
+ API
+ LINE Messaging API
+ Facebook Messenger API
+
 ```
 
-## API 端點
 
-### 1. 發送延遲訊息
-```http
-POST /api/messages/delayed/send
-Content-Type: application/json
-Authorization: Bearer <token>
+#### ****
 
-{
-  "conversationId": 123,
-  "content": "這是延遲發送的訊息",
-  "delaySeconds": 30,
-  "messageType": "text"
-}
+```
+1. + (1-120)
+
+2. POST /api/delayed-messages-v2/send
+
+3. API Handler
+
+4. DelayedMessageBuffer DO
+ ( conversationId DO )
+
+5. DO schedule() :
+ Map (<10ms)
+ DO Storage
+ Alarm API ()
+
+6. (<50ms )
+ {
+ "messageId": "uuid",
+ "scheduledAt": timestamp,
+ "canCancelUntil": timestamp,
+ "delaySeconds": 30
+ }
+
+7.
 ```
 
-**回應:**
+#### ** (Alarm )**
+
+```
+1. Alarm API DO.alarm()
+
+2.
+
+3. (Promise.allSettled):
+
+ (1s, 2s, 4s)
+ 10 API
+
+4. :
+ D1 messages
+ conversations.lastMessageAt
+ DO
+
+
+5. :
+ Dead Letter Queue
+
+
+6. Alarm
+```
+
+#### ****
+
+```
+1.
+
+2. DELETE /api/delayed-messages-v2/cancel/:messageId
+
+3. API Handler
+
+4. DO.cancel() :
+ pending
+
+ Map (<10ms)
+ DO Storage
+ Alarm ()
+
+5. (<100ms )
+ {
+ "success": true,
+ "messageId": "uuid",
+ "cancelledAt": timestamp
+ }
+
+6.
+```
+
+---
+
+## API
+
+### 1.
+
+****: `POST /api/delayed-messages-v2/send`
+
+****:
 ```json
 {
-  "success": true,
-  "data": {
-    "messageId": "uuid-here",
-    "canRecall": true,
-    "recallDeadline": "2024-01-01T12:00:30Z",
-    "delaySeconds": 30,
-    "scheduledSendTime": "2024-01-01T12:00:30Z"
-  }
+ "conversationId": "123",
+ "content": "",
+ "delaySeconds": 30,
+ "messageType": "text",
+ "platform": "line",
+ "recipientPlatformId": "U1234567890abcdef"
 }
 ```
 
-### 2. 撤回延遲訊息
-```http
-POST /api/messages/delayed/recall
-Content-Type: application/json
-Authorization: Bearer <token>
+****:
+- `conversationId` (): ID
+- `content` ():
+- `delaySeconds` (): (1-120)
+- `messageType` (): "text"
+- `platform` (): ("line" | "facebook")
+- `recipientPlatformId` (): ID
 
-{
-  "messageId": "uuid-here"
-}
-```
-
-**回應:**
+**** (200):
 ```json
 {
-  "success": true,
-  "data": {
-    "messageId": "uuid-here",
-    "recalled": true,
-    "recalledAt": "2024-01-01T12:00:15Z"
-  }
+ "success": true,
+ "data": {
+ "messageId": "550e8400-e29b-41d4-a716-446655440000",
+ "scheduledAt": 1704067830000,
+ "canCancelUntil": 1704067830000,
+ "delaySeconds": 30,
+ "conversationId": "123"
+ },
+ "timestamp": "2024-01-01T12:00:00.000Z"
 }
 ```
 
-### 3. 獲取待發送訊息列表
-```http
-GET /api/messages/delayed/list?status=pending&page=1&pageSize=20
-Authorization: Bearer <token>
-```
-
-**回應:**
+**** (400/403/500):
 ```json
 {
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "uuid-here",
-        "conversationId": 123,
-        "customerName": "客戶名稱",
-        "content": "訊息內容",
-        "delaySeconds": 30,
-        "scheduledSendTime": "2024-01-01T12:00:30Z",
-        "canRecall": true,
-        "status": "pending"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "pageSize": 20,
-      "total": 5,
-      "totalPages": 1
-    }
-  }
+ "success": false,
+ "error": "Delay seconds must be between 1 and 120"
 }
 ```
 
-## 前端使用方式
+---
 
-### 1. 引入元件
+### 2.
+
+****: `DELETE /api/delayed-messages-v2/cancel/:messageId`
+
+** Body**:
+```json
+{
+ "conversationId": "123",
+ "reason": ""
+}
+```
+
+****:
+- `:messageId` (URL ): ID
+- `conversationId` (): ID
+- `reason` ():
+
+**** (200):
+```json
+{
+ "success": true,
+ "data": {
+ "messageId": "550e8400-e29b-41d4-a716-446655440000",
+ "cancelledAt": 1704067815000,
+ "cancelledBy": "Agent Name"
+ },
+ "timestamp": "2024-01-01T12:00:15.000Z"
+}
+```
+
+**** (400):
+```json
+{
+ "success": false,
+ "error": "Message not found or already processed"
+}
+```
+
+---
+
+### 3.
+
+****: `GET /api/delayed-messages-v2/status/:messageId?conversationId=xxx`
+
+****:
+- `:messageId` (URL ): ID
+- `conversationId` (): ID
+
+**** (200):
+```json
+{
+ "success": true,
+ "data": {
+ "exists": true,
+ "status": "pending",
+ "timeRemaining": 15,
+ "canCancel": true,
+ "scheduledAt": 1704067830000
+ },
+ "timestamp": "2024-01-01T12:00:15.000Z"
+}
+```
+
+****:
+- `pending`:
+- `sent`:
+- `cancelled`:
+- `failed`:
+- `not_found`:
+
+---
+
+### 4.
+
+****: `GET /api/delayed-messages-v2/pending?conversationId=xxx`
+
+****:
+- `conversationId` (): ID
+
+**** (200):
+```json
+{
+ "success": true,
+ "data": {
+ "conversationId": "123",
+ "count": 3,
+ "messages": [
+ {
+ "id": "msg-1",
+ "content": "...",
+ "scheduledAt": 1704067830000,
+ "timeRemaining": 15000
+ },
+ {
+ "id": "msg-2",
+ "content": "...",
+ "scheduledAt": 1704067860000,
+ "timeRemaining": 45000
+ }
+ ]
+ },
+ "timestamp": "2024-01-01T12:00:15.000Z"
+}
+```
+
+---
+
+### 5.
+
+****: `GET /api/delayed-messages-v2/metrics`
+
+****:
+
+**** (200):
+```json
+{
+ "counters": {
+ "messages_scheduled_total": 1523,
+ "messages_sent_total": 1450,
+ "messages_failed_total": 23,
+ "messages_cancelled_total": 50,
+ "retry_attempts_total": 45,
+ "dlq_writes_total": 23,
+ "alarm_triggers_total": 1200
+ },
+ "platform_metrics": {
+ "line": {
+ "successes": 1200,
+ "failures": 15,
+ "success_rate_percent": "98.77"
+ },
+ "facebook": {
+ "successes": 250,
+ "failures": 8,
+ "success_rate_percent": "96.90"
+ }
+ },
+ "gauges": {
+ "pending_messages_count": 5,
+ "dlq_size": 23,
+ "next_alarm_scheduled": "2024-01-01T12:05:30.000Z"
+ },
+ "histograms": {
+ "send_duration_ms": {
+ "p50": 150,
+ "p95": 450,
+ "p99": 850
+ }
+ },
+ "derived": {
+ "overall_success_rate_percent": "98.44",
+ "total_messages_processed": 1473
+ }
+}
+```
+
+---
+
+### 6. Dead Letter Queue
+
+****: `GET /api/delayed-messages-v2/dlq`
+
+****:
+
+**** (200):
+```json
+{
+ "success": true,
+ "count": 23,
+ "messages": [
+ {
+ "id": "failed-msg-1",
+ "content": "...",
+ "platform": "line",
+ "failedAt": 1704067800000,
+ "failureReason": "LINE API request timeout after 10s",
+ "retryCount": 3,
+ "scheduledAt": 1704067770000,
+ "conversationId": "123"
+ }
+ ],
+ "timestamp": 1704067900000
+}
+```
+
+---
+
+
+### 1. Composable ()
+
+```typescript
+// Vue
+import { useDelayedMessage } from '@/composables/useDelayedMessage'
+
+const {
+ sendDelayedMessage,
+ cancelMessage,
+ getMessageStatus,
+ getPendingMessages,
+ isLoading,
+ error
+} = useDelayedMessage()
+
+//
+const sendMessage = async () => {
+ const result = await sendDelayedMessage({
+ conversationId: '123',
+ content: '',
+ delaySeconds: 15,
+ platform: 'line',
+ recipientPlatformId: 'U1234567890'
+ })
+
+ if (result.success) {
+ console.log(':', result.data.messageId)
+ }
+}
+
+//
+const cancel = async (messageId: string) => {
+ const result = await cancelMessage(messageId, '123', '')
+
+ if (result.success) {
+ console.log('')
+ }
+}
+
+// ()
+const checkStatus = async (messageId: string) => {
+ const status = await getMessageStatus(messageId, '123')
+
+ if (status.exists && status.canCancel) {
+ console.log(`: ${status.timeRemaining} `)
+ }
+}
+```
+
+### 2. UI
+
 ```vue
 <template>
-  <div class="conversation-detail">
-    <!-- 其他內容 -->
-    
-    <DelayedMessageSender
-      :conversation-id="conversationId"
-      @message-sent="handleMessageSent"
-      @message-recalled="handleMessageRecalled"
-    />
-  </div>
+ <div class="conversation-detail">
+ <!-- -->
+ <MessageList :messages="messages" />
+
+ <!-- -->
+ <DelayedMessageSender
+ :conversation-id="conversationId"
+ :platform="platform"
+ :recipient-platform-id="recipientPlatformId"
+ @message-sent="handleMessageSent"
+ @message-cancelled="handleMessageCancelled"
+ @error="handleError"
+ />
+ </div>
 </template>
 
 <script setup lang="ts">
-import DelayedMessageSender from '@/components/DelayedMessageSender.vue'
+import DelayedMessageSender from '@/components/messaging/DelayedMessageSender.vue'
+import MessageList from '@/components/messaging/MessageList.vue'
 
-const handleMessageSent = (message: any) => {
-  console.log('訊息已發送:', message)
-  // 重新載入對話訊息
+const conversationId = ref('123')
+const platform = ref('line')
+const recipientPlatformId = ref('U1234567890')
+
+const handleMessageSent = (data: any) => {
+ console.log(':', data)
+ //
 }
 
-const handleMessageRecalled = (messageId: string) => {
-  console.log('訊息已撤回:', messageId)
-  // 更新 UI 狀態
+const handleMessageCancelled = (messageId: string) => {
+ console.log(':', messageId)
+ // UI
+}
+
+const handleError = (error: Error) => {
+ console.error(':', error)
+ //
 }
 </script>
 ```
 
-### 2. 使用組合式函數
-```typescript
-import { useDelayedMessage } from '../composables/useDelayedMessage'
+---
 
-const {
-  sendDelayedMessage,
-  recallMessage,
-  getPendingMessages,
-  pendingMessages,
-  isLoading
-} = useDelayedMessage()
 
-// 發送延遲訊息
-const sendMessage = async () => {
-  const result = await sendDelayedMessage({
-    conversationId: 123,
-    content: '測試訊息',
-    delaySeconds: 15
-  })
-  
-  if (result.success) {
-    console.log('延遲訊息已排程')
-  }
-}
+- Cloudflare Workers
+- Wrangler CLI
+- D1
 
-// 撤回訊息
-const recall = async (messageId: string) => {
-  const result = await recallMessage(messageId)
-  
-  if (result.success) {
-    console.log('訊息已撤回')
-  }
-}
-```
+### 1. wrangler.toml
 
-## 部署設置
+ `wrangler.toml` Durable Objects
 
-### 1. 執行設置腳本
-```powershell
-# 執行自動設置腳本
-.\scripts\setup-delayed-messaging.ps1
-```
-
-### 2. 手動設置步驟
-
-#### 資料庫遷移
-```bash
-npx wrangler d1 execute multi-channel-platform --file=database/migrations/001_add_delayed_messages.sql
-```
-
-#### 創建 KV 命名空間
-```bash
-npx wrangler kv:namespace create "multi-channel-platform-kv"
-npx wrangler kv:namespace create "multi-channel-platform-kv" --preview
-```
-
-#### 創建 Queue
-```bash
-npx wrangler queues create delayed-messages
-```
-
-#### 部署 Worker
-```bash
-npx wrangler deploy --config wrangler-delayed-message.toml
-```
-
-### 3. 更新 wrangler.toml
 ```toml
-[[kv_namespaces]]
-binding = "KV"
-id = "your-actual-kv-id"
-preview_id = "your-actual-preview-kv-id"
+# Durable Objects
+[[durable_objects.bindings]]
+name = "DELAYED_MESSAGE_BUFFER"
+class_name = "DelayedMessageBuffer"
 
-[[queues]]
-binding = "MESSAGE_QUEUE"
-queue = "delayed-messages"
+# Migrations
+[[migrations]]
+tag = "v2"
+new_classes = ["DelayedMessageBuffer"]
 ```
 
-## 測試方式
+### 2.
 
-### 1. 單元測試
-```typescript
-// 測試延遲發送
-describe('Delayed Message', () => {
-  test('should schedule delayed message', async () => {
-    const result = await sendDelayedMessage({
-      conversationId: 1,
-      content: 'Test message',
-      delaySeconds: 10
-    })
-    
-    expect(result.success).toBe(true)
-    expect(result.data?.canRecall).toBe(true)
-  })
-  
-  test('should recall pending message', async () => {
-    const result = await recallMessage('test-message-id')
-    
-    expect(result.success).toBe(true)
-    expect(result.data?.recalled).toBe(true)
-  })
-})
+```bash
+# Worker ( Durable Objects)
+npm run deploy
+
+# Wrangler
+npx wrangler deploy
 ```
 
-### 2. 整合測試
-```javascript
-// 測試完整流程
-const testDelayedFlow = async () => {
-  // 1. 發送延遲訊息
-  const sendResult = await fetch('/api/messages/delayed/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    },
-    body: JSON.stringify({
-      conversationId: 1,
-      content: '測試延遲訊息',
-      delaySeconds: 5
-    })
-  })
-  
-  const sendData = await sendResult.json()
-  console.log('發送結果:', sendData)
-  
-  // 2. 等待 2 秒後撤回
-  setTimeout(async () => {
-    const recallResult = await fetch('/api/messages/delayed/recall', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({
-        messageId: sendData.data.messageId
-      })
-    })
-    
-    const recallData = await recallResult.json()
-    console.log('撤回結果:', recallData)
-  }, 2000)
+### 3.
+
+```bash
+
+curl https://your-domain.com/api/delayed-messages-v2/health
+
+# :
+{
+ "success": true,
+ "service": "delayed-message-buffer",
+ "status": "healthy",
+ "features": {
+ "instantCancel": true,
+ "preciseScheduling": true,
+ "durableObjects": true
+ }
 }
 ```
 
-## 監控和日誌
+---
 
-### 1. Cloudflare Dashboard
-- 監控 Queue 處理狀態
-- 查看 KV 存儲使用量
-- 檢查 Worker 執行日誌
 
-### 2. 資料庫查詢
-```sql
--- 查看待發送訊息統計
-SELECT status, COUNT(*) as count 
-FROM pending_messages 
-GROUP BY status;
+### 1.
 
--- 查看撤回操作記錄
-SELECT action, COUNT(*) as count 
-FROM message_recall_logs 
-WHERE created_at >= datetime('now', '-1 day')
-GROUP BY action;
+```bash
+
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+ https://your-domain.com/api/delayed-messages-v2/metrics
+
+# (DLQ)
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+ https://your-domain.com/api/delayed-messages-v2/dlq
 ```
 
-### 3. 錯誤處理
-- Queue 重試機制：最多 3 次重試
-- 失敗訊息記錄到 dead letter queue
-- 詳細錯誤日誌記錄到資料庫
+### 2. Cloudflare Dashboard
 
-## 最佳實踐
+ Cloudflare Dashboard
+- **Durable Objects**: DO CPU
+- **Analytics**:
+- **Logs**:
 
-### 1. 效能優化
-- 使用批次處理減少 API 調用
-- 適當設置 Queue 批次大小
-- 定期清理過期的 KV 記錄
-
-### 2. 安全考量
-- 驗證用戶權限
-- 限制延遲時間範圍
-- 記錄所有操作日誌
-
-### 3. 用戶體驗
-- 提供即時倒數計時
-- 清楚的狀態指示
-- 友好的錯誤提示
-
-## 故障排除
-
-### 常見問題
-
-1. **訊息未按時發送**
-   - 檢查 Queue Consumer 是否正常運行
-   - 確認 KV 中沒有撤回標記
-   - 查看 Worker 執行日誌
-
-2. **撤回功能無效**
-   - 確認在撤回期限內
-   - 檢查 KV 寫入權限
-   - 驗證訊息狀態
-
-3. **前端倒數計時不準確**
-   - 檢查系統時間同步
-   - 確認定時器正常運行
-   - 驗證 API 回應時間格式
-
-### 調試工具
 ```bash
-# 查看 Queue 狀態
-npx wrangler queues list
 
-# 檢查 KV 內容
-npx wrangler kv:key list --binding=KV
-
-# 查看 Worker 日誌
 npx wrangler tail
 ```
+
+### 3.
+
+
+| | | |
+|------|--------|------|
+| `overall_success_rate_percent` | < 95% | |
+| `dlq_size` | > 100 | DLQ |
+| `platform_failures.line` | > 10/ | LINE API |
+| `alarm_triggers_total` | 0 (1) | Alarm |
+
+---
+
+
+#### 1.
+
+****:
+
+****:
+- Alarm API
+- Durable Object
+
+****:
+```bash
+# 1.
+curl https://your-domain.com/api/delayed-messages-v2/status/MESSAGE_ID?conversationId=CONV_ID
+
+# 2.
+curl https://your-domain.com/api/delayed-messages-v2/metrics
+
+# 3. Cloudflare Dashboard
+# - Durable Objects
+# - Workers
+```
+
+****:
+- Alarm DO
+- `next_alarm_scheduled`
+-
+
+---
+
+#### 2.
+
+****:
+
+****:
+-
+- conversationId
+
+****:
+```bash
+
+curl https://your-domain.com/api/delayed-messages-v2/status/MESSAGE_ID?conversationId=CONV_ID
+
+# :
+{
+ "exists": true,
+ "status": "pending", # pending
+ "canCancel": true # true
+}
+```
+
+****:
+- `canCancel` `true`
+- `conversationId`
+-
+
+---
+
+#### 3. DLQ
+
+****: DLQ
+
+****:
+- API LINE/Facebook
+-
+- Token
+
+****:
+```bash
+# DLQ
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+ https://your-domain.com/api/delayed-messages-v2/dlq
+
+
+# failureReason
+```
+
+****:
+- API LINE/Facebook Status Page
+- Access Token
+- `LINE_CHANNEL_ACCESS_TOKEN` `FB_PAGE_ACCESS_TOKEN`
+-
+
+---
+
+#### 4.
+
+****: metrics
+
+****:
+- Durable Object
+-
+
+****:
+```bash
+# Worker ( DO )
+npx wrangler deploy
+
+# Cloudflare Dashboard
+# - Durable Objects CPU/Memory
+```
+
+---
+
+
+### 1.
+
+ APIDurable Objects
+
+```typescript
+// :
+const messages = [msg1, msg2, msg3]
+const results = await Promise.allSettled(
+ messages.map(msg => sendDelayedMessage(msg))
+)
+
+// : API ()
+```
+
+### 2.
+
+
+```typescript
+// :
+const countdown = ref(delaySeconds)
+const timer = setInterval(() => {
+ countdown.value--
+ if (countdown.value <= 0) {
+ clearInterval(timer)
+ }
+}, 1000)
+
+// : API
+```
+
+### 3.
+
+Durable Objects
+
+```typescript
+// :
+const result = await sendDelayedMessage(data)
+if (!result.success) {
+ //
+}
+
+// : ()
+```
+
+---
+
+
+### Queue-based
+
+> `AGENT_QUEUE`
+
+#### 1: API
+
+| | |
+|--------|--------|
+| `POST /api/messages/delayed/send` | `POST /api/delayed-messages-v2/send` |
+| `POST /api/messages/delayed/recall` | `DELETE /api/delayed-messages-v2/cancel/:messageId` |
+| `GET /api/messages/delayed/list` | `GET /api/delayed-messages-v2/pending?conversationId=xxx` |
+
+#### 2:
+
+ `platform` `recipientPlatformId`
+
+```diff
+{
+ "conversationId": "123",
+ "content": "",
+ "delaySeconds": 30,
++ "platform": "line",
++ "recipientPlatformId": "U1234567890"
+}
+```
+
+#### 3:
+
+```diff
+- POST /api/messages/delayed/recall
++ DELETE /api/delayed-messages-v2/cancel/:messageId
+
+// Body
+{
+- "messageId": "xxx"
++ "conversationId": "123",
++ "reason": ""
+}
+```
+
+#### 4:
+
+```bash
+
+curl -X POST https://your-domain.com/api/delayed-messages-v2/send \
+ -H "Authorization: Bearer YOUR_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "conversationId": "123",
+ "content": "",
+ "delaySeconds": 10,
+ "platform": "line",
+ "recipientPlatformId": "U1234567890"
+ }'
+
+
+curl -X DELETE https://your-domain.com/api/delayed-messages-v2/cancel/MESSAGE_ID \
+ -H "Authorization: Bearer YOUR_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "conversationId": "123",
+ "reason": ""
+ }'
+```
+
+---
+
+
+### Durable Objects
+
+ Queue-based Durable Objects
+
+| | Queue | Durable Objects |
+|------|-----------|---------------------|
+| | 100-500ms | <100ms |
+| | | 100% |
+| | ±500ms | ±10ms |
+| | (Queue+KV+DB) | ( DO) |
+| | | ( metrics) |
+
+### Alarm API
+
+Durable Objects Alarm API
+- ****:
+- ****: Alarm
+- ****: DO Alarm
+
+
+ Durable Object
+1. Storage `pendingMessages` Map
+2. Alarm
+3.
+
+---
+
+
+### 1.
+
+ API JWT
+
+```typescript
+//
+const hasPermission = await PermissionService.checkPermission(
+ user.id,
+ 'message',
+ 'send',
+ { conversationId }
+)
+```
+
+### 2.
+
+ 1-120
+- < 1
+- > 120
+
+### 3. DLQ
+
+DLQ
+
+---
+
+
+### A.
+
+#### Vue 3
+
+```vue
+<template>
+ <div class="delayed-message-sender">
+ <textarea
+ v-model="messageContent"
+ placeholder="..."
+ class="message-input"
+ />
+
+ <div class="delay-selector">
+ <label>:</label>
+ <select v-model="delaySeconds">
+ <option :value="5">5 </option>
+ <option :value="10">10 </option>
+ <option :value="15">15 </option>
+ <option :value="30">30 </option>
+ <option :value="60">60 </option>
+ </select>
+ </div>
+
+ <button
+ @click="handleSend"
+ :disabled="isLoading || !messageContent"
+ class="send-button"
+ >
+
+ </button>
+
+ <!-- -->
+ <div v-if="pendingMessages.length > 0" class="pending-messages">
+ <h3></h3>
+ <div
+ v-for="msg in pendingMessages"
+ :key="msg.id"
+ class="pending-message"
+ >
+ <p>{{ msg.content }}</p>
+ <div class="countdown">
+ : {{ msg.timeRemaining }}
+ </div>
+ <button
+ @click="handleCancel(msg.id)"
+ class="cancel-button"
+ >
+
+ </button>
+ </div>
+ </div>
+
+ <!-- -->
+ <div v-if="error" class="error-message">
+ {{ error }}
+ </div>
+ </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useDelayedMessage } from '@/composables/useDelayedMessage'
+
+const props = defineProps<{
+ conversationId: string
+ platform: 'line' | 'facebook'
+ recipientPlatformId: string
+}>()
+
+const emit = defineEmits<{
+ (e: 'message-sent', data: any): void
+ (e: 'message-cancelled', messageId: string): void
+}>()
+
+const {
+ sendDelayedMessage,
+ cancelMessage,
+ getPendingMessages,
+ isLoading,
+ error
+} = useDelayedMessage()
+
+const messageContent = ref('')
+const delaySeconds = ref(15)
+const pendingMessages = ref<any[]>([])
+let countdownTimer: NodeJS.Timeout | null = null
+
+const handleSend = async () => {
+ if (!messageContent.value) return
+
+ const result = await sendDelayedMessage({
+ conversationId: props.conversationId,
+ content: messageContent.value,
+ delaySeconds: delaySeconds.value,
+ platform: props.platform,
+ recipientPlatformId: props.recipientPlatformId
+ })
+
+ if (result.success) {
+ messageContent.value = ''
+ emit('message-sent', result.data)
+ await refreshPendingMessages()
+ }
+}
+
+const handleCancel = async (messageId: string) => {
+ const result = await cancelMessage(
+ messageId,
+ props.conversationId,
+ ''
+ )
+
+ if (result.success) {
+ emit('message-cancelled', messageId)
+ await refreshPendingMessages()
+ }
+}
+
+const refreshPendingMessages = async () => {
+ const result = await getPendingMessages(props.conversationId)
+ if (result.success) {
+ pendingMessages.value = result.data.messages
+ }
+}
+
+//
+const startCountdown = () => {
+ countdownTimer = setInterval(() => {
+ pendingMessages.value = pendingMessages.value.map(msg => ({
+ ...msg,
+ timeRemaining: Math.max(0, Math.ceil((msg.scheduledAt - Date.now()) / 1000))
+ })).filter(msg => msg.timeRemaining > 0)
+ }, 1000)
+}
+
+onMounted(() => {
+ refreshPendingMessages()
+ startCountdown()
+})
+
+onUnmounted(() => {
+ if (countdownTimer) {
+ clearInterval(countdownTimer)
+ }
+})
+</script>
+
+<style scoped>
+.delayed-message-sender {
+ padding: 1rem;
+ border: 1px solid #e0e0e0;
+ border-radius: 8px;
+}
+
+.message-input {
+ width: 100%;
+ min-height: 80px;
+ padding: 0.5rem;
+ border: 1px solid #ccc;
+ border-radius: 4px;
+ resize: vertical;
+}
+
+.delay-selector {
+ margin: 1rem 0;
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+}
+
+.send-button {
+ padding: 0.5rem 1rem;
+ background: #4CAF50;
+ color: white;
+ border: none;
+ border-radius: 4px;
+ cursor: pointer;
+}
+
+.send-button:disabled {
+ background: #ccc;
+ cursor: not-allowed;
+}
+
+.pending-messages {
+ margin-top: 1rem;
+ padding-top: 1rem;
+ border-top: 1px solid #e0e0e0;
+}
+
+.pending-message {
+ padding: 0.5rem;
+ margin-bottom: 0.5rem;
+ background: #f5f5f5;
+ border-radius: 4px;
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+}
+
+.countdown {
+ font-weight: bold;
+ color: #ff5722;
+}
+
+.cancel-button {
+ padding: 0.25rem 0.5rem;
+ background: #f44336;
+ color: white;
+ border: none;
+ border-radius: 4px;
+ cursor: pointer;
+}
+
+.error-message {
+ margin-top: 1rem;
+ padding: 0.5rem;
+ background: #ffebee;
+ color: #c62828;
+ border-radius: 4px;
+}
+</style>
+```
+
+### B.
+
+```
+Queue-Based ()
+ (Queue + KV + DB + Consumer)
+
+ (±500ms)
+
+
+Durable Objects ()
+ DO
+ 100% (<100ms)
+ (±10ms)
+ DLQ
+ +
+```
+
+---
+
+
+- [Cloudflare Durable Objects ](https://developers.cloudflare.com/durable-objects/)
+- [Cloudflare Alarms API ](https://developers.cloudflare.com/durable-objects/api/alarms/)
+- [LINE Messaging API ](https://developers.line.biz/en/docs/messaging-api/)
+- [Facebook Messenger API ](https://developers.facebook.com/docs/messenger-platform)
+
+---
+
+****: v2.0 ( Durable Objects)
+****: 2025-10-15
+****: 2025-09-30
+****: 2025-10-07
