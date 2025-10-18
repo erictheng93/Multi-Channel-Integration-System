@@ -9,21 +9,21 @@ This document summarizes the WebSocket + Durable Objects integration that has be
 ### Core Components
 
 1. **WebSocketBroadcastService** (`src/services/websocket-broadcast-service.ts`)
-   - Central service for all WebSocket broadcasting operations
-   - Integrates with Durable Objects (ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageProcessor)
-   - Provides fallback to existing SSE/Queue system
-   - Supports progressive migration with feature flags
+ - Central service for all WebSocket broadcasting operations
+ - Integrates with Durable Objects (ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageProcessor)
+ - Provides fallback to existing SSE/Queue system
+ - Supports progressive migration with feature flags
 
 2. **Updated Handlers**
-   - `conversation-main.ts` - Conversation assignment/transfer events
-   - `message.ts` - Real-time message broadcasting and typing indicators
-   - `delayed-message-main.ts` - Delayed message countdown and recall events
-   - `delayed-message-drizzle.ts` - Drizzle-based delayed message processing
+ - `conversation-main.ts` - Conversation assignment/transfer events
+ - `message.ts` - Real-time message broadcasting and typing indicators
+ - `delayed-message-main.ts` - Delayed message countdown and recall events
+ - `delayed-message-drizzle.ts` - Drizzle-based delayed message processing
 
 3. **Integration Test Handler** (`src/handlers/websocket-integration-test.ts`)
-   - Comprehensive testing endpoints for all WebSocket events
-   - Health monitoring and diagnostics
-   - Integration test scenarios
+ - Comprehensive testing endpoints for all WebSocket events
+ - Health monitoring and diagnostics
+ - Integration test scenarios
 
 ## WebSocket Event Types
 
@@ -63,17 +63,17 @@ This document summarizes the WebSocket + Durable Objects integration that has be
 // After successful assignment/transfer
 const broadcastService = new WebSocketBroadcastService(c.env);
 await broadcastService.broadcastConversationEvent({
-  type: 'conversation_assigned',
-  conversationId,
-  userId: user.id,
-  data: {
-    assignedTeamId: teamId,
-    assignedUserId: userId,
-    assignedBy: { id: user.id, name: user.displayName, role: user.role },
-    reason,
-    timestamp
-  },
-  priority: 'normal'
+ type: 'conversation_assigned',
+ conversationId,
+ userId: user.id,
+ data: {
+ assignedTeamId: teamId,
+ assignedUserId: userId,
+ assignedBy: { id: user.id, name: user.displayName, role: user.role },
+ reason,
+ timestamp
+ },
+ priority: 'normal'
 });
 ```
 
@@ -83,19 +83,19 @@ await broadcastService.broadcastConversationEvent({
 // After message is sent
 const broadcastService = new WebSocketBroadcastService(c.env);
 await broadcastService.broadcastMessageEvent({
-  type: 'message_sent',
-  conversationId,
-  messageId,
-  agentId: agent.id,
-  data: {
-    content,
-    messageType,
-    sender: { id: agent.id, name: agent.displayName, role: agent.role },
-    platform: conversationWithCustomer.platform,
-    deliveryStatus: 'sent',
-    timestamp: new Date().toISOString()
-  },
-  priority: 'normal'
+ type: 'message_sent',
+ conversationId,
+ messageId,
+ agentId: agent.id,
+ data: {
+ content,
+ messageType,
+ sender: { id: agent.id, name: agent.displayName, role: agent.role },
+ platform: conversationWithCustomer.platform,
+ deliveryStatus: 'sent',
+ timestamp: new Date().toISOString()
+ },
+ priority: 'normal'
 });
 ```
 
@@ -104,19 +104,19 @@ await broadcastService.broadcastMessageEvent({
 ```typescript
 // When delayed message is scheduled
 await broadcastService.broadcastDelayedMessageEvent({
-  type: 'delayed_message_countdown',
-  conversationId,
-  messageId,
-  agentId: user.id,
-  data: {
-    delaySeconds,
-    scheduledSendTime,
-    recallDeadline,
-    countdownStarted: true,
-    canRecall: true,
-    scheduledBy: { id: user.id, name: user.displayName, role: user.role }
-  },
-  priority: 'normal'
+ type: 'delayed_message_countdown',
+ conversationId,
+ messageId,
+ agentId: user.id,
+ data: {
+ delaySeconds,
+ scheduledSendTime,
+ recallDeadline,
+ countdownStarted: true,
+ canRecall: true,
+ scheduledBy: { id: user.id, name: user.displayName, role: user.role }
+ },
+ priority: 'normal'
 });
 ```
 
@@ -127,17 +127,17 @@ The system supports progressive migration through feature flags stored in Cloudf
 
 ```typescript
 interface MigrationConfig {
-  enableWebSocket: boolean;
-  enableSSE: boolean;
-  migrationStrategy: 'gradual' | 'immediate' | 'canary';
-  rolloutPercentage: number;
-  featureFlags: {
-    websocketConnections: boolean;
-    durableObjectMessaging: boolean;
-    distributedLocking: boolean;
-    batchMessageProcessing: boolean;
-    realTimeTypingIndicators: boolean;
-  };
+ enableWebSocket: boolean;
+ enableSSE: boolean;
+ migrationStrategy: 'gradual' | 'immediate' | 'canary';
+ rolloutPercentage: number;
+ featureFlags: {
+ websocketConnections: boolean;
+ durableObjectMessaging: boolean;
+ distributedLocking: boolean;
+ batchMessageProcessing: boolean;
+ realTimeTypingIndicators: boolean;
+ };
 }
 ```
 
@@ -150,7 +150,7 @@ const wsSuccess = await this.broadcastToWebSocket(wsEvent);
 
 // Fallback: SSE/Queue system
 if (!wsSuccess) {
-  await this.fallbackToSSE(wsEvent);
+ await this.fallbackToSSE(wsEvent);
 }
 ```
 
@@ -181,36 +181,36 @@ The integration includes comprehensive testing endpoints at `/api/websocket-test
 
 ```bash
 curl -X POST http://localhost:8787/api/websocket-test/test-message-broadcast \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "conversationId": "conv_123",
-    "content": "Test message",
-    "messageType": "text"
-  }'
+ -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "conversationId": "conv_123",
+ "content": "Test message",
+ "messageType": "text"
+ }'
 ```
 
 ### 2. Test Typing Indicators
 
 ```bash
 curl -X POST http://localhost:8787/api/websocket-test/test-typing-indicator \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "conversationId": "conv_123",
-    "action": "start"
-  }'
+ -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "conversationId": "conv_123",
+ "action": "start"
+ }'
 ```
 
 ### 3. Run Integration Test
 
 ```bash
 curl -X POST http://localhost:8787/api/websocket-test/run-integration-test \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "conversationId": "conv_123"
-  }'
+ -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "conversationId": "conv_123"
+ }'
 ```
 
 ## Error Handling and Monitoring

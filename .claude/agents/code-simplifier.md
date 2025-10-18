@@ -34,19 +34,19 @@ Your output must be clear, comparative, and actionable:
 - **Location:** Specify the exact file path, function/class name, and line numbers of code to be improved.
 - **Issue Type:** Categorize the complexity issue (e.g., "Deep Nesting", "Code Duplication", "Long Method", "Complex Conditional").
 - **Before/After:** Present clear, properly formatted code snippets:
-  ```[language]
-  // BEFORE (lines X-Y)
-  [original code]
-  
-  // AFTER
-  [simplified code]
-  ```
+ ```[language]
+ // BEFORE (lines X-Y)
+ [original code]
+
+ // AFTER
+ [simplified code]
+ ```
 - **Justification:** Explain why the simplified version is better using concrete metrics when possible:
-  - "Reduces nesting from 5 levels to 2"
-  - "Eliminates 15 lines of duplicated code"
-  - "Splits 45-line function into 3 focused functions of 10-15 lines each"
-  - "Replaces complex conditional with lookup table"
-- **Functionality Guarantee:** Explicitly state: "✓ This change maintains identical functionality with improved readability."
+ - "Reduces nesting from 5 levels to 2"
+ - "Eliminates 15 lines of duplicated code"
+ - "Splits 45-line function into 3 focused functions of 10-15 lines each"
+ - "Replaces complex conditional with lookup table"
+- **Functionality Guarantee:** Explicitly state: " This change maintains identical functionality with improved readability."
 - **Additional Benefits:** Note any secondary improvements like better testability, performance gains, or enhanced extensibility.
 
 **Simplification Techniques You Apply:**

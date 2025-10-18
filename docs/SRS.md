@@ -1,10 +1,10 @@
 # System Requirements Specification (SRS)
 ## Multi-Channel Customer Support System
 
-**Document Version:** 1.0  
-**Date:** August 25, 2025  
-**Prepared for:** Multi-Channel Integration System  
-**Prepared by:** System Development Team  
+**Document Version:** 1.0
+**Date:** August 25, 2025
+**Prepared for:** Multi-Channel Integration System
+**Prepared by:** System Development Team
 
 ---
 
@@ -41,23 +41,23 @@ The SRS covers all technical aspects of the system including:
 The system implements a modern serverless architecture leveraging Cloudflare's edge computing platform:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Global Edge Network                       │
-├─────────────────┬─────────────────┬─────────────────────────┤
-│   Vue 3 SPA     │  Cloudflare     │    External APIs        │
-│   Frontend      │  Workers        │   (LINE, Facebook)      │
-│                 │  Runtime        │                         │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│  Static Assets  │  Edge Functions │   Webhook Endpoints     │
-│  (Pages)        │  (Hono.js)      │   (Platform Events)     │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│                 │  Data Layer     │                         │
-│                 ├─────────────────┤                         │
-│                 │ D1 (SQLite)     │                         │
-│                 │ KV (Sessions)   │                         │
-│                 │ R2 (Files)      │                         │
-│                 │ Queues (Async)  │                         │
-└─────────────────┴─────────────────┴─────────────────────────┘
+
+ Global Edge Network
+
+ Vue 3 SPA Cloudflare External APIs
+ Frontend Workers (LINE, Facebook)
+ Runtime
+
+ Static Assets Edge Functions Webhook Endpoints
+ (Pages) (Hono.js) (Platform Events)
+
+ Data Layer
+
+ D1 (SQLite)
+ KV (Sessions)
+ R2 (Files)
+ Queues (Async)
+
 ```
 
 #### 2.1.2 Technology Stack Summary
@@ -98,29 +98,29 @@ The system implements a modern serverless architecture leveraging Cloudflare's e
 **Core Structure**:
 ```
 src/
-├── index.ts                 # Main entry point and request router
-├── handlers/                # Request handlers (modular architecture)
-│   ├── auth-main.ts        # Authentication and authorization
-│   ├── conversation-main.ts # Conversation management
-│   ├── delayed-message-main.ts # Delayed messaging system
-│   ├── team-main.ts        # Team and member management
-│   ├── system-main.ts      # System configuration and health
-│   └── customer-main.ts    # Customer data management
-├── middleware/             # Request middleware
-│   ├── auth.ts            # JWT authentication middleware
-│   └── database.ts        # Database connection middleware
-├── services/              # Business logic services
-│   ├── permission-service.ts # Role-based access control
-│   ├── activity-service.ts   # Activity logging and audit
-│   └── message-recall-service.ts # Delayed message management
-├── utils/                 # Utility functions
-│   ├── auth.ts           # Authentication utilities
-│   ├── database.ts       # Database helpers
-│   └── performance.ts    # Performance optimization
-└── types/                # TypeScript type definitions
-    ├── bindings.ts       # Cloudflare bindings
-    ├── database.ts       # Database entity types
-    └── handlers.ts       # Handler interface types
+ index.ts # Main entry point and request router
+ handlers/ # Request handlers (modular architecture)
+ auth-main.ts # Authentication and authorization
+ conversation-main.ts # Conversation management
+ delayed-message-main.ts # Delayed messaging system
+ team-main.ts # Team and member management
+ system-main.ts # System configuration and health
+ customer-main.ts # Customer data management
+ middleware/ # Request middleware
+ auth.ts # JWT authentication middleware
+ database.ts # Database connection middleware
+ services/ # Business logic services
+ permission-service.ts # Role-based access control
+ activity-service.ts # Activity logging and audit
+ message-recall-service.ts # Delayed message management
+ utils/ # Utility functions
+ auth.ts # Authentication utilities
+ database.ts # Database helpers
+ performance.ts # Performance optimization
+ types/ # TypeScript type definitions
+ bindings.ts # Cloudflare bindings
+ database.ts # Database entity types
+ handlers.ts # Handler interface types
 ```
 
 #### 2.2.3 Database Layer (Drizzle ORM + D1)
@@ -144,10 +144,10 @@ src/
 **Requirements**:
 - Compatibility Date: `2025-07-31`
 - Compatibility Flags: `["nodejs_compat"]`
-- Runtime Limits: 
-  - CPU Time: 50ms per request (Free tier) / 15 minutes (Paid)
-  - Memory: 128MB per request
-  - Request Size: 100MB
+- Runtime Limits:
+ - CPU Time: 50ms per request (Free tier) / 15 minutes (Paid)
+ - Memory: 128MB per request
+ - Request Size: 100MB
 
 **Configuration**: `wrangler.toml`
 ```toml
@@ -272,30 +272,30 @@ zone_name = "imfinethankyouandyou.com"
 #### 4.1.1 Core Entity Relationships
 ```sql
 -- Users (Customers from external platforms)
-users ├── conversations (1:N)
-      └── messages (1:N via conversations)
+users conversations (1:N)
+ messages (1:N via conversations)
 
 -- Enterprise 3-Role System
-teams ├── agents (1:N, for team/agent roles)
-      ├── conversations (1:N, team assignment)
-      └── invitations (1:N, team-specific invites)
+teams agents (1:N, for team/agent roles)
+ conversations (1:N, team assignment)
+ invitations (1:N, team-specific invites)
 
--- Conversation Management  
-conversations ├── messages (1:N)
-              ├── file_attachments (1:N via messages)
-              ├── delayed_messages (1:N)
-              └── agents (N:1, assignment)
+-- Conversation Management
+conversations messages (1:N)
+ file_attachments (1:N via messages)
+ delayed_messages (1:N)
+ agents (N:1, assignment)
 
 -- Message Processing
-messages ├── file_attachments (1:N)
-         └── delayed_messages (references for scheduling)
+messages file_attachments (1:N)
+ delayed_messages (references for scheduling)
 ```
 
 #### 4.1.2 Table Specifications
 
 **Users Table** (`users`):
 - Primary Key: `id` (TEXT)
-- Platform Integration: `platform_id`, `platform` 
+- Platform Integration: `platform_id`, `platform`
 - Profile Data: `display_name`, `avatar_url`, `email`, `phone`
 - Extensibility: `metadata` (JSON string for platform-specific data)
 - Timestamps: `created_at`, `updated_at`
@@ -360,16 +360,16 @@ messages ├── file_attachments (1:N)
 **Drizzle ORM Configuration** (`drizzle.config.ts`):
 ```typescript
 export default {
-  schema: "./src/db/schema.ts",
-  driver: 'wrangler',
-  out: "./drizzle",
-  schemaFilter: ["public"],
-  breakpoints: true,
-  strict: true,
-  verbose: true,
-  dbCredentials: {
-    databaseName: "multi-channel-platform"
-  }
+ schema: "./src/db/schema.ts",
+ driver: 'wrangler',
+ out: "./drizzle",
+ schemaFilter: ["public"],
+ breakpoints: true,
+ strict: true,
+ verbose: true,
+ dbCredentials: {
+ databaseName: "multi-channel-platform"
+ }
 } satisfies Config;
 ```
 
@@ -446,12 +446,12 @@ export default {
 **Implementation**: `src/utils/auth.ts`
 ```typescript
 interface JWTPayload {
-  userId: string;
-  username: string;
-  role: 'admin' | 'team' | 'agent';
-  teamId?: number;
-  exp: number;
-  iat: number;
+ userId: string;
+ username: string;
+ role: 'admin' | 'team' | 'agent';
+ teamId?: number;
+ exp: number;
+ iat: number;
 }
 ```
 
@@ -465,9 +465,9 @@ interface JWTPayload {
 **Role Hierarchy**:
 ```typescript
 enum RoleLevel {
-  AGENT = 1,
-  TEAM = 2,
-  ADMIN = 3
+ AGENT = 1,
+ TEAM = 2,
+ ADMIN = 3
 }
 ```
 
@@ -486,11 +486,11 @@ enum RoleLevel {
 **Session Data**:
 ```typescript
 interface SessionData {
-  agentId: string;
-  username: string;
-  role: string;
-  loginAt: string;
-  expiresAt: string;
+ agentId: string;
+ username: string;
+ role: string;
+ loginAt: string;
+ expiresAt: string;
 }
 ```
 
@@ -574,13 +574,13 @@ interface SessionData {
 **Activity Logging**: `src/services/activity-service.ts`
 ```typescript
 interface ActivityLog {
-  id: string;
-  userId: string;
-  action: string;
-  resource: string;
-  metadata: object;
-  timestamp: string;
-  ipAddress?: string;
+ id: string;
+ userId: string;
+ action: string;
+ resource: string;
+ metadata: object;
+ timestamp: string;
+ ipAddress?: string;
 }
 ```
 
@@ -680,11 +680,11 @@ interface ActivityLog {
 **Multi-level Caching**:
 ```
 Browser Cache (24h)
-    ↓
+
 CDN Cache (7d)
-    ↓  
+
 KV Cache (1h)
-    ↓
+
 Database
 ```
 
@@ -745,20 +745,20 @@ Database
 ```typescript
 // Vite configuration for optimization
 export default defineConfig({
-  build: {
-    target: 'es2022',
-    minify: 'terser',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router'],
-          'pinia-vendor': ['pinia'],
-          'conversation': ['./src/views/ConversationList.vue'],
-          'dashboard': ['./src/views/Dashboard.vue']
-        }
-      }
-    }
-  }
+ build: {
+ target: 'es2022',
+ minify: 'terser',
+ rollupOptions: {
+ output: {
+ manualChunks: {
+ 'vue-vendor': ['vue', 'vue-router'],
+ 'pinia-vendor': ['pinia'],
+ 'conversation': ['./src/views/ConversationList.vue'],
+ 'dashboard': ['./src/views/Dashboard.vue']
+ }
+ }
+ }
+ }
 });
 ```
 
@@ -791,14 +791,14 @@ export default defineConfig({
 ```typescript
 // LINE webhook signature validation
 const validateLineSignature = (
-  body: string,
-  signature: string,
-  channelSecret: string
+ body: string,
+ signature: string,
+ channelSecret: string
 ): boolean => {
-  const hash = crypto.createHmac('sha256', channelSecret)
-    .update(body)
-    .digest('base64');
-  return signature === hash;
+ const hash = crypto.createHmac('sha256', channelSecret)
+ .update(body)
+ .digest('base64');
+ return signature === hash;
 };
 ```
 
@@ -825,14 +825,14 @@ const validateLineSignature = (
 ```typescript
 // Facebook webhook verification
 const verifyFacebookWebhook = (
-  mode: string,
-  token: string,
-  challenge: string
+ mode: string,
+ token: string,
+ challenge: string
 ): string | null => {
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    return challenge;
-  }
-  return null;
+ if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+ return challenge;
+ }
+ return null;
 };
 ```
 
@@ -846,10 +846,10 @@ const verifyFacebookWebhook = (
 **Unified Interface**: `src/integrations/platform-adapter.ts`
 ```typescript
 interface PlatformAdapter {
-  sendMessage(conversation: Conversation, message: Message): Promise<void>;
-  validateWebhook(request: Request): boolean;
-  processIncomingMessage(payload: any): Promise<Message>;
-  getUserProfile(platformUserId: string): Promise<UserProfile>;
+ sendMessage(conversation: Conversation, message: Message): Promise<void>;
+ validateWebhook(request: Request): boolean;
+ processIncomingMessage(payload: any): Promise<Message>;
+ getUserProfile(platformUserId: string): Promise<UserProfile>;
 }
 ```
 
@@ -865,12 +865,12 @@ interface PlatformAdapter {
 **Configuration**: `drizzle.config.ts`
 ```typescript
 export default {
-  schema: "./src/db/schema.ts",
-  driver: 'wrangler',
-  out: "./drizzle",
-  dbCredentials: {
-    databaseName: "multi-channel-platform"
-  }
+ schema: "./src/db/schema.ts",
+ driver: 'wrangler',
+ out: "./drizzle",
+ dbCredentials: {
+ databaseName: "multi-channel-platform"
+ }
 } satisfies Config;
 ```
 
@@ -878,10 +878,10 @@ export default {
 ```typescript
 // Example query with full type safety
 const conversations = await db
-  .select()
-  .from(conversationsTable)
-  .where(eq(conversationsTable.agentId, agentId))
-  .orderBy(desc(conversationsTable.lastMessageAt));
+ .select()
+ .from(conversationsTable)
+ .where(eq(conversationsTable.agentId, agentId))
+ .orderBy(desc(conversationsTable.lastMessageAt));
 ```
 
 **Migration Management**:
@@ -895,21 +895,21 @@ const conversations = await db
 ```typescript
 // Queue message scheduling
 await env.MESSAGE_QUEUE.send({
-  conversationId,
-  messageContent,
-  scheduledAt: Date.now() + delayMs
+ conversationId,
+ messageContent,
+ scheduledAt: Date.now() + delayMs
 });
 ```
 
 **Consumer Implementation**: `src/queue-consumer.ts`
 ```typescript
 export default {
-  async queue(batch: MessageBatch, env: Bindings): Promise<void> {
-    for (const message of batch.messages) {
-      await processDelayedMessage(message.body, env);
-      message.ack();
-    }
-  }
+ async queue(batch: MessageBatch, env: Bindings): Promise<void> {
+ for (const message of batch.messages) {
+ await processDelayedMessage(message.body, env);
+ message.ack();
+ }
+ }
 };
 ```
 
@@ -924,19 +924,19 @@ export default {
 ```typescript
 // Secure file upload with metadata
 const uploadFile = async (
-  file: File,
-  metadata: FileMetadata,
-  env: Bindings
+ file: File,
+ metadata: FileMetadata,
+ env: Bindings
 ): Promise<FileUploadResult> => {
-  const key = generateSecureKey(file.name);
-  await env.R2_BUCKET.put(key, file.stream(), {
-    metadata: {
-      originalName: file.name,
-      contentType: file.type,
-      uploadedBy: metadata.userId
-    }
-  });
-  return { key, url: generatePublicURL(key) };
+ const key = generateSecureKey(file.name);
+ await env.R2_BUCKET.put(key, file.stream(), {
+ metadata: {
+ originalName: file.name,
+ contentType: file.type,
+ uploadedBy: metadata.userId
+ }
+ });
+ return { key, url: generatePublicURL(key) };
 };
 ```
 
@@ -952,33 +952,33 @@ const uploadFile = async (
 **Base API Client**: `frontend/src/api/base.ts`
 ```typescript
 class APIClient {
-  private baseURL: string;
-  private authToken: string | null = null;
+ private baseURL: string;
+ private authToken: string | null = null;
 
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
-  }
+ constructor(baseURL: string) {
+ this.baseURL = baseURL;
+ }
 
-  async request<T>(
-    method: string,
-    endpoint: string,
-    data?: any
-  ): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` })
-      },
-      body: data ? JSON.stringify(data) : undefined
-    });
+ async request<T>(
+ method: string,
+ endpoint: string,
+ data?: any
+ ): Promise<T> {
+ const response = await fetch(`${this.baseURL}${endpoint}`, {
+ method,
+ headers: {
+ 'Content-Type': 'application/json',
+ ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` })
+ },
+ body: data ? JSON.stringify(data) : undefined
+ });
 
-    if (!response.ok) {
-      throw new APIError(response.status, await response.text());
-    }
+ if (!response.ok) {
+ throw new APIError(response.status, await response.text());
+ }
 
-    return response.json();
-  }
+ return response.json();
+ }
 }
 ```
 
@@ -994,16 +994,16 @@ class APIClient {
 ```typescript
 // Auth store with API integration
 export const useAuthStore = defineStore('auth', () => {
-  const currentAgent = ref<Agent | null>(null);
-  const apiClient = new APIClient('/api');
+ const currentAgent = ref<Agent | null>(null);
+ const apiClient = new APIClient('/api');
 
-  const login = async (credentials: LoginCredentials) => {
-    const response = await apiClient.login(credentials);
-    currentAgent.value = response.agent;
-    apiClient.setAuthToken(response.token);
-  };
+ const login = async (credentials: LoginCredentials) => {
+ const response = await apiClient.login(credentials);
+ currentAgent.value = response.agent;
+ apiClient.setAuthToken(response.token);
+ };
 
-  return { currentAgent, login };
+ return { currentAgent, login };
 });
 ```
 
@@ -1018,14 +1018,14 @@ export const useAuthStore = defineStore('auth', () => {
 ```typescript
 // Real-time conversation updates
 const useConversationUpdates = () => {
-  const socket = new WebSocket('/api/ws/conversations');
-  
-  socket.onmessage = (event) => {
-    const update = JSON.parse(event.data);
-    updateConversationStore(update);
-  };
-  
-  return { socket };
+ const socket = new WebSocket('/api/ws/conversations');
+
+ socket.onmessage = (event) => {
+ const update = JSON.parse(event.data);
+ updateConversationStore(update);
+ };
+
+ return { socket };
 };
 ```
 
@@ -1033,8 +1033,8 @@ const useConversationUpdates = () => {
 ```typescript
 // Polling-based updates for conversation changes
 const pollForUpdates = async () => {
-  const updates = await api.getConversationUpdates(lastUpdateTime);
-  updateLocalState(updates);
+ const updates = await api.getConversationUpdates(lastUpdateTime);
+ updateLocalState(updates);
 };
 ```
 
@@ -1081,23 +1081,23 @@ cd frontend && npm install && cd ..
 
 # Setup database
 npm run db:migrate
-npm run db:studio:local  # Optional: Database GUI
+npm run db:studio:local # Optional: Database GUI
 ```
 
 **Development Workflow**:
 ```bash
 # Start backend development server
-npm run dev  # Wrangler dev server on localhost:8787
+npm run dev # Wrangler dev server on localhost:8787
 
 # Start frontend development server
-cd frontend && npm run dev  # Vite dev server on localhost:3000
+cd frontend && npm run dev # Vite dev server on localhost:3000
 
 # Run tests
-cd frontend && npm run test  # 132 tests, 100% coverage
+cd frontend && npm run test # 132 tests, 100% coverage
 
 # Type checking
-npm run build  # Backend TypeScript check
-cd frontend && npm run type-check  # Frontend TypeScript check
+npm run build # Backend TypeScript check
+cd frontend && npm run type-check # Frontend TypeScript check
 ```
 
 #### 8.1.3 Development Configuration
@@ -1120,15 +1120,15 @@ bucket_name = "attachments-dev"
 **Frontend Configuration** (`vite.config.ts`):
 ```typescript
 export default defineConfig({
-  server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8787',
-        changeOrigin: true
-      }
-    }
-  }
+ server: {
+ port: 3000,
+ proxy: {
+ '/api': {
+ target: 'http://localhost:8787',
+ changeOrigin: true
+ }
+ }
+ }
 });
 ```
 
@@ -1139,11 +1139,11 @@ export default defineConfig({
 ```typescript
 // vitest.config.ts
 export default defineConfig({
-  test: {
-    environment: 'happy-dom',
-    globals: true,
-    setupFiles: ['./vitest.setup.ts']
-  }
+ test: {
+ environment: 'happy-dom',
+ globals: true,
+ setupFiles: ['./vitest.setup.ts']
+ }
 });
 ```
 
@@ -1156,7 +1156,7 @@ export default defineConfig({
 #### 8.2.2 Test Categories
 **Unit Tests**:
 - Component testing (Vue components)
-- Store testing (Pinia stores)  
+- Store testing (Pinia stores)
 - Utility function testing
 - Handler testing (backend logic)
 
@@ -1177,12 +1177,12 @@ export default defineConfig({
 ```typescript
 // Consistent test data generation
 export const createMockConversation = (): Conversation => ({
-  id: 'test-conv-' + Math.random(),
-  userId: 'test-user-123',
-  agentId: 'test-agent-456',
-  platform: 'line',
-  status: 'pending',
-  createdAt: new Date().toISOString()
+ id: 'test-conv-' + Math.random(),
+ userId: 'test-user-123',
+ agentId: 'test-agent-456',
+ platform: 'line',
+ status: 'pending',
+ createdAt: new Date().toISOString()
 });
 ```
 
@@ -1198,7 +1198,7 @@ export const createMockConversation = (): Conversation => ({
 **Backend Build** (TypeScript):
 ```bash
 # Type checking only (no build output for Workers)
-npm run build  # tsc --noEmit
+npm run build # tsc --noEmit
 
 # Deployment build
 wrangler deploy --env production
@@ -1208,24 +1208,24 @@ wrangler deploy --env production
 ```typescript
 // Production build with optimization
 export default defineConfig({
-  build: {
-    target: 'es2022',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router'],
-          'pinia-vendor': ['pinia']
-        }
-      }
-    }
-  }
+ build: {
+ target: 'es2022',
+ minify: 'terser',
+ terserOptions: {
+ compress: {
+ drop_console: true,
+ drop_debugger: true
+ }
+ },
+ rollupOptions: {
+ output: {
+ manualChunks: {
+ 'vue-vendor': ['vue', 'vue-router'],
+ 'pinia-vendor': ['pinia']
+ }
+ }
+ }
+ }
 });
 ```
 
@@ -1245,8 +1245,8 @@ cd frontend && npm run build && npm run deploy:pages
 .\quick-deploy.ps1
 
 # Manual production deployment
-npm run deploy  # Backend
-cd frontend && npm run deploy:pages  # Frontend
+npm run deploy # Backend
+cd frontend && npm run deploy:pages # Frontend
 ```
 
 #### 8.3.3 Environment Promotion
@@ -1279,17 +1279,17 @@ npm run db:migrate:prod --dry-run
 ```typescript
 // System health monitoring
 app.get('/api/health', async (c) => {
-  const health = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    services: {
-      database: await checkDatabaseHealth(c.env.DB),
-      cache: await checkKVHealth(c.env.CACHE),
-      queue: await checkQueueHealth(c.env.MESSAGE_QUEUE),
-      storage: await checkR2Health(c.env.R2_BUCKET)
-    }
-  };
-  return c.json(health);
+ const health = {
+ status: 'healthy',
+ timestamp: new Date().toISOString(),
+ services: {
+ database: await checkDatabaseHealth(c.env.DB),
+ cache: await checkKVHealth(c.env.CACHE),
+ queue: await checkQueueHealth(c.env.MESSAGE_QUEUE),
+ storage: await checkR2Health(c.env.R2_BUCKET)
+ }
+ };
+ return c.json(health);
 });
 ```
 
@@ -1315,7 +1315,7 @@ app.get('/api/health', async (c) => {
 - Database connection failures
 - Queue processing failures
 
-# Warning alerts  
+# Warning alerts
 - Error rate > 1% for 10 minutes
 - Response time > 2s for 95th percentile
 - High memory usage (>80%)
@@ -1333,14 +1333,14 @@ app.get('/api/health', async (c) => {
 ```typescript
 // Consistent log format across the system
 const logger = {
-  info: (message: string, metadata?: object) => {
-    console.log(JSON.stringify({
-      level: 'info',
-      timestamp: new Date().toISOString(),
-      message,
-      ...metadata
-    }));
-  }
+ info: (message: string, metadata?: object) => {
+ console.log(JSON.stringify({
+ level: 'info',
+ timestamp: new Date().toISOString(),
+ message,
+ ...metadata
+ }));
+ }
 };
 ```
 
@@ -1454,7 +1454,7 @@ npm run test:all
 - Security compliance reviews
 
 **Feature Updates**:
-- Staged deployment process (dev → staging → production)
+- Staged deployment process (dev staging production)
 - Feature flag management for gradual rollouts
 - A/B testing for significant changes
 - Rollback procedures for failed deployments
@@ -1495,19 +1495,19 @@ npm run test:all
 ```typescript
 // GDPR-compliant data handling
 class GDPRDataHandler {
-  async requestDataExport(userId: string): Promise<UserDataExport> {
-    return {
-      personalData: await this.getUserPersonalData(userId),
-      conversationHistory: await this.getUserConversations(userId),
-      preferences: await this.getUserPreferences(userId)
-    };
-  }
+ async requestDataExport(userId: string): Promise<UserDataExport> {
+ return {
+ personalData: await this.getUserPersonalData(userId),
+ conversationHistory: await this.getUserConversations(userId),
+ preferences: await this.getUserPreferences(userId)
+ };
+ }
 
-  async deleteUserData(userId: string): Promise<void> {
-    // Anonymize rather than delete to maintain conversation integrity
-    await this.anonymizeUserData(userId);
-    await this.removePersonallyIdentifiableInformation(userId);
-  }
+ async deleteUserData(userId: string): Promise<void> {
+ // Anonymize rather than delete to maintain conversation integrity
+ await this.anonymizeUserData(userId);
+ await this.removePersonallyIdentifiableInformation(userId);
+ }
 }
 ```
 
@@ -1556,13 +1556,13 @@ class GDPRDataHandler {
 ```typescript
 // Strict TypeScript configuration
 {
-  "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
-  }
+ "compilerOptions": {
+ "strict": true,
+ "noUncheckedIndexedAccess": true,
+ "noImplicitReturns": true,
+ "noUnusedLocals": true,
+ "noUnusedParameters": true
+ }
 }
 ```
 
@@ -1691,12 +1691,12 @@ class GDPRDataHandler {
 |---|---|---|---|---|
 | users | id (TEXT) | - | platform_id | Customer records |
 | teams | id (INTEGER) | - | name | Team organization |
-| agents | id (TEXT) | team_id → teams | username, email | System users |
-| conversations | id (TEXT) | user_id → users, agent_id → agents | status, platform | Conversation tracking |
-| messages | id (TEXT) | conversation_id → conversations | created_at | Message storage |
-| file_attachments | id (TEXT) | message_id → messages | r2_key | File references |
+| agents | id (TEXT) | team_id teams | username, email | System users |
+| conversations | id (TEXT) | user_id users, agent_id agents | status, platform | Conversation tracking |
+| messages | id (TEXT) | conversation_id conversations | created_at | Message storage |
+| file_attachments | id (TEXT) | message_id messages | r2_key | File references |
 | delayed_messages | id (TEXT) | conversation_id, agent_id | scheduled_at, status | Scheduled messages |
-| invitations | id (TEXT) | team_id → teams | token, email | User invitations |
+| invitations | id (TEXT) | team_id teams | token, email | User invitations |
 
 ### 11.2 Configuration Templates
 
@@ -1747,20 +1747,20 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
-  plugins: [vue()],
-  server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8787',
-        changeOrigin: true
-      }
-    }
-  },
-  build: {
-    target: 'es2022',
-    minify: 'terser'
-  }
+ plugins: [vue()],
+ server: {
+ port: 3000,
+ proxy: {
+ '/api': {
+ target: process.env.VITE_API_BASE_URL || 'http://localhost:8787',
+ changeOrigin: true
+ }
+ }
+ },
+ build: {
+ target: 'es2022',
+ minify: 'terser'
+ }
 });
 ```
 
@@ -1865,11 +1865,11 @@ curl https://your-domain.com/api/health
 ### 12.2 Approval Matrix
 | Role | Reviewer | Approval Date | Signature |
 |---|---|---|---|
-| System Architect | Technical Lead | 2025-08-25 | ✅ Approved |
-| Development Manager | Project Manager | 2025-08-25 | ✅ Approved |
-| DevOps Engineer | Infrastructure Lead | 2025-08-25 | ✅ Approved |
-| Security Engineer | Security Lead | 2025-08-25 | ✅ Approved |
-| Quality Assurance | QA Manager | 2025-08-25 | ✅ Approved |
+| System Architect | Technical Lead | 2025-08-25 | Approved |
+| Development Manager | Project Manager | 2025-08-25 | Approved |
+| DevOps Engineer | Infrastructure Lead | 2025-08-25 | Approved |
+| Security Engineer | Security Lead | 2025-08-25 | Approved |
+| Quality Assurance | QA Manager | 2025-08-25 | Approved |
 
 ### 12.3 Change History
 | Version | Date | Author | Changes |
@@ -1886,6 +1886,6 @@ curl https://your-domain.com/api/health
 
 ---
 
-**Document Status**: Approved and Active  
-**Next Review Date**: November 25, 2025  
+**Document Status**: Approved and Active
+**Next Review Date**: November 25, 2025
 **Distribution**: Development Team, DevOps Team, Security Team, Management

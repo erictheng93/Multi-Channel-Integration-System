@@ -1,8 +1,8 @@
-# 🚀 Cloudflare Query Plugin 設置指南
+# Cloudflare Query Plugin
 
-## 一、快速開始 (5 分鐘內完成)
+## (5 )
 
-### Step 1: 在 main.ts 中註冊 Plugin
+### Step 1: main.ts Plugin
 
 ```typescript
 // frontend/src/main.ts
@@ -13,62 +13,62 @@ import App from './App.vue'
 
 const app = createApp(App)
 
-// 創建 Pinia
+// Pinia
 const pinia = createPinia()
 
-// ✅ 註冊 Cloudflare Query Plugin
+// Cloudflare Query Plugin
 pinia.use(createCloudflareQueryPlugin({
-  // 在前端環境，KV 通過 API proxy 訪問，所以為 undefined
-  // 在後端 Workers 環境，傳入 env.CACHE_KV
-  kvNamespace: undefined,
-  verbose: import.meta.env.DEV  // 開發環境啟用詳細日誌
+ // KV API proxy undefined
+ // Workers env.CACHE_KV
+ kvNamespace: undefined,
+ verbose: import.meta.env.DEV //
 }))
 
 app.use(pinia)
 app.mount('#app')
 ```
 
-### Step 2: 在現有 Store 中使用
+### Step 2: Store
 
 ```typescript
-// frontend/src/stores/conversations.ts (修改現有檔案)
+// frontend/src/stores/conversations.ts ()
 import { defineStore } from 'pinia'
 
 export const useConversationsStore = defineStore('conversations', () => {
-  // ... 現有的 state
+ // ... state
 
-  // ✅ 將現有的 action 改用 $cloudflareQuery
-  async function loadConversations() {
-    loading.value = true
+ // action $cloudflareQuery
+ async function loadConversations() {
+ loading.value = true
 
-    try {
-      // 原本: const data = await api.getConversations()
-      // 新版: 使用 $cloudflareQuery 包裝
-      const data = await this.$cloudflareQuery({
-        queryKey: ['conversations', 'all'],
-        queryFn: () => api.getConversations(),
-        staleTime: 5000,   // 5秒內使用緩存
-        cacheTime: 300,    // KV 緩存 5 分鐘
-        retry: 3           // 失敗重試 3 次
-      })
+ try {
+ // : const data = await api.getConversations()
+ // : $cloudflareQuery
+ const data = await this.$cloudflareQuery({
+ queryKey: ['conversations', 'all'],
+ queryFn: () => api.getConversations(),
+ staleTime: 5000, // 5
+ cacheTime: 300, // KV 5
+ retry: 3 // 3
+ })
 
-      conversations.value = data
-      return data
-    } catch (e) {
-      error.value = e as Error
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
+ conversations.value = data
+ return data
+ } catch (e) {
+ error.value = e as Error
+ throw e
+ } finally {
+ loading.value = false
+ }
+ }
 
-  return { loadConversations }
+ return { loadConversations }
 })
 ```
 
-### Step 3: 驗證功能
+### Step 3:
 
-打開瀏覽器 Console，你應該會看到:
+ Console:
 
 ```
 [CloudflareQuery] Plugin installed on store: conversations
@@ -78,43 +78,43 @@ export const useConversationsStore = defineStore('conversations', () => {
 [KV Write] team:1:conversations:all (TTL: 300s)
 ```
 
-再次載入同一個對話:
+:
 
 ```
 [KV Hit] team:1:conversations:all (5.67ms)
 [Fresh Cache] team:1:conversations:all
 ```
 
-🎉 **完成！** 你已經成功啟用了 Cloudflare Query Plugin！
+ **** Cloudflare Query Plugin
 
 ---
 
-## 二、後端 Workers 整合 (完整的 KV 支持)
+## Workers ( KV )
 
-### 在 Cloudflare Workers 中使用
+### Cloudflare Workers
 
 ```typescript
 // src/index.ts (Workers entry point)
 import { createCloudflareQueryPlugin } from '../frontend/src/stores/plugins/cloudflareQueryPlugin'
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Workers 環境中，我們可以直接傳入 KV namespace
-    const pinia = createPinia()
+ async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+ // Workers KV namespace
+ const pinia = createPinia()
 
-    pinia.use(createCloudflareQueryPlugin({
-      kvNamespace: env.CACHE_KV,  // ✅ 傳入實際的 KV namespace
-      verbose: false  // 生產環境關閉詳細日誌
-    }))
+ pinia.use(createCloudflareQueryPlugin({
+ kvNamespace: env.CACHE_KV, // KV namespace
+ verbose: false //
+ }))
 
-    // ... rest of your handler logic
-  }
+ // ... rest of your handler logic
+ }
 }
 ```
 
-### wrangler.toml 配置
+### wrangler.toml
 
-確保你的 `wrangler.toml` 有 KV namespace 綁定:
+ `wrangler.toml` KV namespace :
 
 ```toml
 # wrangler.toml
@@ -126,32 +126,29 @@ preview_id = "your-preview-kv-namespace-id"
 
 ---
 
-## 三、租戶隔離驗證
-
-### 測試多租戶隔離
 
 ```typescript
-// 登入為 Team 1
+// Team 1
 const auth = useAuthStore()
 await auth.login({ teamId: 'team-1', ... })
 
 const store = useConversationsStore()
 await store.loadConversations()
-// → KV Key: team:team-1:conversations:all
+// KV Key: team:team-1:conversations:all
 
-// 切換到 Team 2
+// Team 2
 await auth.switchTeam('team-2')
 await store.loadConversations()
-// → KV Key: team:team-2:conversations:all
-// ✅ 完全隔離，不會互相污染
+// KV Key: team:team-2:conversations:all
+//
 ```
 
-### 在 Cloudflare Dashboard 驗證
+### Cloudflare Dashboard
 
-1. 前往 Cloudflare Dashboard
-2. 選擇你的 Workers & Pages 應用
-3. 點擊 KV Namespaces → 選擇 `CACHE_KV`
-4. 查看 Keys，你應該會看到:
+1. Cloudflare Dashboard
+2. Workers & Pages
+3. KV Namespaces `CACHE_KV`
+4. Keys:
 
 ```
 team:1:conversations:all
@@ -161,312 +158,298 @@ team:2:conversations:all
 team:2:conversations:detail:conv-456
 ```
 
-✅ **每個 team 的數據都有獨立的 key prefix**
+ ** team key prefix**
 
 ---
 
-## 四、性能優化最佳實踐
 
-### 1. 根據數據更新頻率調整 staleTime
+### 1. staleTime
 
 ```typescript
-// 靜態數據 (很少變化)
+// ()
 await this.$cloudflareQuery({
-  queryKey: ['system', 'config'],
-  queryFn: () => api.getSystemConfig(),
-  staleTime: 3600000,  // 1 小時
-  cacheTime: 86400     // 24 小時
+ queryKey: ['system', 'config'],
+ queryFn: () => api.getSystemConfig(),
+ staleTime: 3600000, // 1
+ cacheTime: 86400 // 24
 })
 
-// 動態數據 (頻繁變化)
+// ()
 await this.$cloudflareQuery({
-  queryKey: ['messages', 'realtime'],
-  queryFn: () => api.getRealtimeMessages(),
-  staleTime: 1000,     // 1 秒
-  cacheTime: 60        // 1 分鐘
+ queryKey: ['messages', 'realtime'],
+ queryFn: () => api.getRealtimeMessages(),
+ staleTime: 1000, // 1
+ cacheTime: 60 // 1
 })
 ```
 
-### 2. 使用 stale-while-revalidate 提升 UX
+### 2. stale-while-revalidate UX
 
 ```typescript
 await this.$cloudflareQuery({
-  queryKey: ['conversations', 'list'],
-  queryFn: () => api.getConversations(),
-  staleTime: 5000,
-  revalidateOnStale: true  // ✅ 啟用 SWR
+ queryKey: ['conversations', 'list'],
+ queryFn: () => api.getConversations(),
+ staleTime: 5000,
+ revalidateOnStale: true // SWR
 })
 
-// 用戶體驗:
-// 1. 立即顯示緩存數據 (即使過期)
-// 2. 背景靜默更新
-// 3. 更新完成後自動刷新 UI
+// :
+// 1. ()
+// 2.
+// 3. UI
 ```
 
-### 3. 合理設置重試策略
+### 3.
 
 ```typescript
-// 關鍵業務操作 - 多次重試
+// -
 await this.$cloudflareQuery({
-  queryKey: ['payment', 'process'],
-  queryFn: () => api.processPayment(),
-  retry: 5,  // 重試 5 次
-  retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 60000)  // exponential backoff
+ queryKey: ['payment', 'process'],
+ queryFn: () => api.processPayment(),
+ retry: 5, // 5
+ retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 60000) // exponential backoff
 })
 
-// 非關鍵操作 - 少量重試
+// -
 await this.$cloudflareQuery({
-  queryKey: ['analytics', 'stats'],
-  queryFn: () => api.getAnalytics(),
-  retry: 1,  // 只重試 1 次
-  retryDelay: () => 1000  // 固定 1 秒
+ queryKey: ['analytics', 'stats'],
+ queryFn: () => api.getAnalytics(),
+ retry: 1, // 1
+ retryDelay: () => 1000 // 1
 })
 ```
 
 ---
 
-## 五、容錯測試
 
-### 測試場景 1: 網路斷線
+### 1:
 
 ```typescript
-// 1. 正常載入數據 (寫入 KV)
+// 1. ( KV)
 await store.loadConversations()
 
-// 2. 模擬網路斷線 (在 DevTools Network tab 設置 Offline)
+// 2. ( DevTools Network tab Offline)
 
-// 3. 再次載入
+// 3.
 await store.loadConversations()
-// → 應該立即返回 KV 緩存，無需等待網路
+// KV
 
-// Console 輸出:
+// Console :
 // [KV Hit] team:1:conversations:all (3.45ms)
 // [Fresh Cache] team:1:conversations:all
-// ✅ 即使離線也能正常使用
+//
 ```
 
-### 測試場景 2: API 錯誤
+### 2: API
 
 ```typescript
-// 1. 正常載入數據 (寫入 KV 和 stale cache)
+// 1. ( KV stale cache)
 await store.loadConversations()
 
-// 2. 等待 10 秒 (超過 staleTime)
+// 2. 10 ( staleTime)
 
-// 3. 模擬 API 失敗 (在後端返回 500 錯誤)
+// 3. API ( 500 )
 
-// 4. 再次載入
+// 4.
 await store.loadConversations()
 
-// Console 輸出:
+// Console :
 // [KV Hit] team:1:conversations:all (3.45ms)
 // [Stale Cache] team:1:conversations:all, revalidating in background
 // [Query Execute] team:1:conversations:all (attempt 1/4)
 // [Query Error] team:1:conversations:all, retrying in 1000ms
 // [Query Execute] team:1:conversations:all (attempt 2/4)
 // [Query Error] team:1:conversations:all, retrying in 2000ms
-// ... (重試 3 次)
+// ... ( 3 )
 // [Query Failed] team:1:conversations:all, attempting degradation
 // [Degraded Mode] Using stale cache for team:1:conversations:all
-// ✅ 顯示舊數據 + 錯誤提示，而不是白屏
+// +
 ```
 
-### 測試場景 3: 多租戶隔離
+### 3:
 
 ```typescript
-// 1. 登入 Team 1
+// 1. Team 1
 await auth.login({ teamId: 'team-1', ... })
 await store.loadConversations()
-// → 載入 Team 1 的數據
+// Team 1
 
-// 2. 登入 Team 2
+// 2. Team 2
 await auth.login({ teamId: 'team-2', ... })
 await store.loadConversations()
-// → 載入 Team 2 的數據
+// Team 2
 
-// 3. 驗證 Team 2 沒有看到 Team 1 的數據
+// 3. Team 2 Team 1
 const team2Conversations = store.conversations
 expect(team2Conversations).not.toContainAnyFrom(team1Conversations)
-// ✅ 完全隔離
+//
 ```
 
 ---
 
-## 六、性能指標監控
-
-### 在開發者工具中查看性能
 
 ```typescript
-// 在瀏覽器 Console 中執行
+// Console
 const store = useConversationsStore()
 const metrics = store.getQueryMetrics()
 
 console.table(metrics)
 ```
 
-輸出範例:
+:
 
 ```
-┌─────────────────────────────────────┬──────┬────────┬────────┬───────────────┬─────────────────┐
-│            Key                      │ Hits │ Misses │ Errors │ Revalidations │ Avg Latency (ms)│
-├─────────────────────────────────────┼──────┼────────┼────────┼───────────────┼─────────────────┤
-│ team:1:conversations:all            │  15  │   3    │   0    │      2        │      45.3       │
-│ team:1:conversations:detail:conv-1  │  8   │   1    │   0    │      1        │      32.1       │
-└─────────────────────────────────────┴──────┴────────┴────────┴───────────────┴─────────────────┘
+
+ Key Hits Misses Errors Revalidations Avg Latency (ms)
+
+ team:1:conversations:all 15 3 0 2 45.3
+ team:1:conversations:detail:conv-1 8 1 0 1 32.1
+
 ```
 
-### 指標解讀
 
-- **High Hit Rate (>80%)**: ✅ 緩存策略良好
-- **High Miss Rate (>50%)**: ⚠️ 考慮增加 staleTime
-- **Errors > 0**: ⚠️ 檢查 API 穩定性或網路問題
-- **High Avg Latency**: ⚠️ 考慮優化 API 或增加緩存時間
+- **High Hit Rate (>80%)**:
+- **High Miss Rate (>50%)**: staleTime
+- **Errors > 0**: API
+- **High Avg Latency**: API
 
 ---
 
-## 七、與現有系統整合
 
-### 與 SSE/WebSocket 實時更新整合
+### SSE/WebSocket
 
 ```typescript
-// 當收到 SSE 更新時，手動失效緩存
+// SSE
 sseClient.on('conversation-updated', (conversationId) => {
-  // 方式 1: 重新載入 (會檢查緩存)
-  store.loadConversation(conversationId)
+ // 1: ()
+ store.loadConversation(conversationId)
 
-  // 方式 2: 手動更新本地狀態 (樂觀更新)
-  const conversation = store.conversations.find(c => c.id === conversationId)
-  if (conversation) {
-    Object.assign(conversation, newData)
-  }
+ // 2: ()
+ const conversation = store.conversations.find(c => c.id === conversationId)
+ if (conversation) {
+ Object.assign(conversation, newData)
+ }
 })
 ```
 
-### 與 Durable Objects 整合
+### Durable Objects
 
 ```typescript
-// 在 Durable Object 中使用相同的緩存 key pattern
+// Durable Object key pattern
 class ConversationRoom {
-  async fetch(request: Request): Promise<Response> {
-    const teamId = new URL(request.url).searchParams.get('teamId')
-    const cacheKey = `team:${teamId}:conversations:all`
+ async fetch(request: Request): Promise<Response> {
+ const teamId = new URL(request.url).searchParams.get('teamId')
+ const cacheKey = `team:${teamId}:conversations:all`
 
-    // 更新 KV 緩存
-    await this.env.CACHE_KV.put(cacheKey, JSON.stringify(updatedData))
+ // KV
+ await this.env.CACHE_KV.put(cacheKey, JSON.stringify(updatedData))
 
-    // 廣播 WebSocket 更新
-    this.broadcast({ type: 'conversation-updated', data: updatedData })
+ // WebSocket
+ this.broadcast({ type: 'conversation-updated', data: updatedData })
 
-    return new Response('OK')
-  }
+ return new Response('OK')
+ }
 }
 ```
 
 ---
 
-## 八、故障排除
 
-### 問題 1: "No active team context" 錯誤
+### 1: "No active team context"
 
-**原因**: 用戶未登入或 authStore 沒有 currentTeam
+****: authStore currentTeam
 
-**解決**:
+****:
 ```typescript
-// 在需要 auth 的頁面添加守衛
+// auth
 import { useAuthStore } from '@/stores/auth'
 
 onBeforeMount(() => {
-  const auth = useAuthStore()
-  if (!auth.currentTeam) {
-    router.push('/login')
-  }
+ const auth = useAuthStore()
+ if (!auth.currentTeam) {
+ router.push('/login')
+ }
 })
 ```
 
-### 問題 2: KV 緩存沒有命中
+### 2: KV
 
-**可能原因**:
-1. `staleTime` 設置太短
-2. `queryKey` 不一致
+****:
+1. `staleTime`
+2. `queryKey`
 
-**檢查**:
+****:
 ```typescript
-// 開啟 verbose 日誌
+// verbose
 pinia.use(createCloudflareQueryPlugin({ verbose: true }))
 
-// 檢查 Console 輸出
-// [KV Miss] team:1:conversations:all  ← 應該出現
-// [KV Hit] team:1:conversations:all   ← 下次應該命中
+// Console
+// [KV Miss] team:1:conversations:all
+// [KV Hit] team:1:conversations:all
 ```
 
-### 問題 3: Workers 環境中 KV 未定義
+### 3: Workers KV
 
-**檢查 wrangler.toml**:
+** wrangler.toml**:
 ```toml
 [[kv_namespaces]]
-binding = "CACHE_KV"  # ← 必須與代碼中的綁定名稱一致
+binding = "CACHE_KV" #
 id = "..."
 ```
 
-**檢查 TypeScript 類型**:
+** TypeScript **:
 ```typescript
 // src/types/bindings.ts
 export interface Env {
-  CACHE_KV: KVNamespace  // ← 確保有定義
+ CACHE_KV: KVNamespace //
 }
 ```
 
 ---
 
-## 九、漸進式遷移策略
 
-### 階段 1: 試驗 (1 週)
+### 1: (1 )
 
-- ✅ 在 1-2 個非關鍵 store 中測試
-- ✅ 開發環境驗證功能
-- ✅ 收集性能指標
+- 1-2 store
+-
+-
 
-### 階段 2: 擴展 (2-3 週)
+### 2: (2-3 )
 
-- ✅ 遷移所有讀操作到 $cloudflareQuery
-- ✅ 保留寫操作的傳統方式
-- ✅ 灰度發佈到生產環境 (10% 用戶)
+- $cloudflareQuery
+-
+- (10% )
 
-### 階段 3: 全面部署 (4-6 週)
+### 3: (4-6 )
 
-- ✅ 100% 流量使用新方式
-- ✅ 移除舊的緩存邏輯
-- ✅ 優化緩存策略
-- ✅ 建立監控儀表板
-
----
-
-## 十、總結
-
-### ✅ 你獲得了什麼
-
-1. **自動租戶隔離**: 無需手動管理 team prefix
-2. **智能緩存**: KV 緩存 + stale-while-revalidate
-3. **強大容錯**: 重試 + 降級策略
-4. **Edge 優化**: 專為 Cloudflare Workers 設計
-5. **零遷移成本**: 基於現有 Pinia 架構
-6. **性能提升**: 減少 API 調用 80%+
-
-### 📊 預期效果
-
-- **首次載入**: ~200ms (API 調用)
-- **後續載入**: ~5ms (KV 緩存命中)
-- **緩存命中率**: >85%
-- **API 調用減少**: 80-90%
-- **用戶體驗提升**: 顯著減少載入時間
-
-### 🚀 下一步
-
-1. 閱讀完整的評估報告: `MULTI_TENANT_ARCHITECTURE_EVALUATION.md`
-2. 查看範例代碼: `frontend/src/stores/examples/conversations-with-cloudflare-query.ts`
-3. 開始在你的第一個 store 中試用
-4. 監控性能指標並調整參數
+- 100%
+-
+-
+-
 
 ---
 
-**準備好了嗎？開始你的 Cloudflare Query 之旅！** 🎉
+
+1. ****: team prefix
+2. ****: KV + stale-while-revalidate
+3. ****: +
+4. **Edge **: Cloudflare Workers
+5. ****: Pinia
+6. ****: API 80%+
+
+
+- ****: ~200ms (API )
+- ****: ~5ms (KV )
+- ****: >85%
+- **API **: 80-90%
+- ****:
+
+
+1. : `MULTI_TENANT_ARCHITECTURE_EVALUATION.md`
+2. : `frontend/src/stores/examples/conversations-with-cloudflare-query.ts`
+3. store
+4.
+
+---
+
+** Cloudflare Query **

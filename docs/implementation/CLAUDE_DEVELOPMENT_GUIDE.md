@@ -19,61 +19,61 @@ This is a multi-channel customer support system built on Cloudflare Workers and 
 ### Backend (Worker)
 ```bash
 # Development with local D1
-npm run dev                    # Start Wrangler dev server
-npm run build                  # TypeScript compilation check
-npm run deploy                 # Deploy to Cloudflare Workers
-npm run cf-typegen            # Generate Cloudflare types
+npm run dev # Start Wrangler dev server
+npm run build # TypeScript compilation check
+npm run deploy # Deploy to Cloudflare Workers
+npm run cf-typegen # Generate Cloudflare types
 
 # Database management
-npm run db:migrate            # Apply migrations locally
-npm run db:migrate:prod       # Apply migrations to production
-npm run db:seed               # Seed local database
+npm run db:migrate # Apply migrations locally
+npm run db:migrate:prod # Apply migrations to production
+npm run db:seed # Seed local database
 ```
 
-### Frontend 
+### Frontend
 ```bash
 cd frontend/
-npm run dev                   # Start Vite dev server
-npm run build                 # Build for production (includes vue-tsc)
-npm run preview               # Preview production build
+npm run dev # Start Vite dev server
+npm run build # Build for production (includes vue-tsc)
+npm run preview # Preview production build
 ```
 
 ### Testing
 ```bash
 cd tests/
-npm run test                  # Run all Vitest tests
-npm run test:run              # Single test run
-npm run test:coverage         # Run with coverage
-npm run test:watch            # Watch mode
+npm run test # Run all Vitest tests
+npm run test:run # Single test run
+npm run test:coverage # Run with coverage
+npm run test:watch # Watch mode
 
 # Specific test suites
-npm run test:database         # Database layer tests
-npm run test:line             # LINE integration tests
-npm run test:conversation     # Conversation handler tests
-npm run test:message          # Message handler tests
-npm run test:services         # Service layer tests
+npm run test:database # Database layer tests
+npm run test:line # LINE integration tests
+npm run test:conversation # Conversation handler tests
+npm run test:message # Message handler tests
+npm run test:services # Service layer tests
 ```
 
 #### Test Infrastructure Notes
-- **✅ Pinia Timing Issues SOLVED**: Use `setupDirectStoreTest()` for store testing - no more "getActivePinia" errors
-- **Direct Store Creation**: Core solution using `directStoreCreation.ts` - bypasses module import timing issues  
+- ** Pinia Timing Issues SOLVED**: Use `setupDirectStoreTest()` for store testing - no more "getActivePinia" errors
+- **Direct Store Creation**: Core solution using `directStoreCreation.ts` - bypasses module import timing issues
 - **Global Setup**: Triple-layered setup via `global-pinia-setup.ts`, `setup.ts`, `vitest.setup.ts`
 - **Test Utilities**: Use `setupBasicTest()` or `setupDirectStoreTest()` from helper files
-- **⚠️ Critical**: Never import store modules directly in tests - use direct creation strategy
+- ** Critical**: Never import store modules directly in tests - use direct creation strategy
 - **Performance**: Complex tests run efficiently (under 1 second) with the new infrastructure
 
 ### PowerShell Development Scripts
 ```powershell
 # Main development startup
-.\start-dev.ps1              # Starts both backend and frontend
+.\start-dev.ps1 # Starts both backend and frontend
 
 # Database utilities
-.\database\init-database.ps1  # Initialize database
-.\database\status.ps1         # Check database status
+.\database\init-database.ps1 # Initialize database
+.\database\status.ps1 # Check database status
 
 # Testing utilities
-.\tests\run-tests.ps1         # Run comprehensive test suite
-.\tests\test-webhook.ps1      # Test webhook endpoints
+.\tests\run-tests.ps1 # Run comprehensive test suite
+.\tests\test-webhook.ps1 # Test webhook endpoints
 ```
 
 ## Project Structure
@@ -129,7 +129,7 @@ npm run test:services         # Service layer tests
 ## Authentication & Security
 
 - JWT tokens for API authentication
-- Session management with KV storage  
+- Session management with KV storage
 - LINE webhook signature verification required
 - RBAC with admin/agent roles
 - Rate limiting middleware available
@@ -138,5 +138,5 @@ npm run test:services         # Service layer tests
 
 - **LINE**: Full Messaging API support with customer data collection
 - **Facebook**: Partial implementation (webhook structure ready)
-- Webhook endpoint: `/api/webhook` (統一端點)
+- Webhook endpoint: `/api/webhook` ()
 - Platform adapters abstract integration complexity
