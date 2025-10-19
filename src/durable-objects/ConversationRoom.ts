@@ -8,6 +8,7 @@ import type {
   DurableObjectEvent
 } from '../types/websocket-types';
 import type { RealtimeEvent } from '../types';
+import type { WebSocketAuthChallenge, WebSocketAuthResponse } from '../services/websocket-auth-service';
 
 /**
  * Architecture Overview:
@@ -33,11 +34,13 @@ export class ConversationRoom implements DurableObject {
   private lastActivity = Date.now();
   private conversationId: string;
   private messageCounter = 0; // Simple counter for message ordering
+  private challenges = new Map<string, WebSocketAuthChallenge>(); // Store auth challenges
 
   // Configuration
   private readonly MAX_CONNECTIONS = 100;
   private readonly MAX_MESSAGE_HISTORY = 50;
   private readonly INACTIVITY_TIMEOUT = 300000; // 5 minutes
+  private readonly CHALLENGE_TTL = 30000; // 30 seconds for challenge expiration
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
@@ -65,6 +68,8 @@ export class ConversationRoom implements DurableObject {
 
       // Handle HTTP API requests
       switch (pathname) {
+        case '/challenge':
+          return this.handleGenerateChallenge(request);
         case '/connect':
           return this.handleConnect(request);
         case '/disconnect':
@@ -88,13 +93,12 @@ export class ConversationRoom implements DurableObject {
   private async handleWebSocketUpgrade(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
-      const userId = url.searchParams.get('userId');
-      const token = url.searchParams.get('token');
-      const role = url.searchParams.get('role') as 'admin' | 'team' | 'agent';
+      const challengeId = url.searchParams.get('challengeId');
+      const signature = url.searchParams.get('signature');
       const conversationId = url.searchParams.get('conversationId');
 
-      if (!userId || !token || !role) {
-        return new Response('Missing required parameters', { status: 400 });
+      if (!challengeId || !signature) {
+        return new Response('Missing authentication parameters. Use challenge-response flow.', { status: 400 });
       }
 
       // 🔧 設定 conversationId
@@ -102,11 +106,13 @@ export class ConversationRoom implements DurableObject {
         this.conversationId = conversationId;
       }
 
-      // Verify authentication token (would integrate with existing JWT auth)
-      const isAuthenticated = await this.verifyAuthToken(token, userId);
-      if (!isAuthenticated) {
-        return new Response('Unauthorized', { status: 401 });
+      // Verify challenge-response authentication
+      const authResult = await this.verifyAuthResponse(challengeId, signature);
+      if (!authResult.isValid || !authResult.userId || !authResult.role) {
+        return new Response('Unauthorized - Invalid challenge response', { status: 401 });
       }
+
+      const { userId, role } = authResult;
 
       // Check connection limits
       if (this.connections.size >= this.MAX_CONNECTIONS) {
@@ -452,24 +458,158 @@ export class ConversationRoom implements DurableObject {
     }
   }
 
-  private async verifyAuthToken(token: string, userId: string): Promise<boolean> {
+  /**
+   * Generate authentication challenge for WebSocket connection
+   * Called via HTTP before WebSocket upgrade
+   */
+  private async handleGenerateChallenge(request: Request): Promise<Response> {
     try {
-      if (!token || !userId) return false;
+      // Verify the request contains a valid JWT token
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Missing or invalid authorization header' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
 
-      // Use verifyJWT from utils/auth.ts
+      const token = authHeader.substring(7);
+
+      // Verify JWT token
       const { verifyJWT } = await import('../utils/auth');
       const payload = await verifyJWT(token, this.env.JWT_SECRET);
 
-      if (!payload) return false;
+      if (!payload || !payload.userId) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
 
-      // Verify token matches user and is not expired
-      const tokenUserId = (payload as any).userId;
-      const isExpired = payload.exp && payload.exp < Math.floor(Date.now() / 1000);
+      // Generate challenge
+      const challengeId = crypto.randomUUID();
+      const challenge: WebSocketAuthChallenge = {
+        challengeId,
+        expiresAt: Date.now() + this.CHALLENGE_TTL
+      };
 
-      return tokenUserId === userId && !isExpired;
+      // Store challenge in Durable Object storage for persistence
+      await this.state.storage.put(`challenge:${challengeId}`, {
+        ...challenge,
+        userId: payload.userId,
+        role: payload.role,
+        token // Store the JWT token securely for later verification
+      });
+
+      // Also keep in memory for fast access
+      this.challenges.set(challengeId, challenge);
+
+      // Clean up expired challenges
+      this.cleanupExpiredChallenges();
+
+      console.log(`🔐 [ConversationRoom] Challenge generated for user ${payload.userId}: ${challengeId}`);
+
+      return new Response(JSON.stringify({
+        challengeId,
+        expiresAt: challenge.expiresAt,
+        ttl: this.CHALLENGE_TTL
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+
     } catch (error) {
-      console.error('❌ [ConversationRoom] Token verification failed:', error);
-      return false;
+      console.error('❌ [ConversationRoom] Challenge generation error:', error);
+      return new Response(JSON.stringify({ error: 'Failed to generate challenge' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  /**
+   * Verify authentication response during WebSocket handshake
+   */
+  private async verifyAuthResponse(challengeId: string, signature: string): Promise<{
+    isValid: boolean;
+    userId?: string;
+    role?: 'admin' | 'team' | 'agent';
+    teamId?: number;
+  }> {
+    try {
+      // Check if challenge exists in storage
+      const challengeData = await this.state.storage.get(`challenge:${challengeId}`) as any;
+
+      if (!challengeData) {
+        console.log(`❌ [ConversationRoom] Invalid challenge ID: ${challengeId}`);
+        return { isValid: false };
+      }
+
+      // Check if challenge is expired
+      if (Date.now() > challengeData.expiresAt) {
+        console.log(`❌ [ConversationRoom] Expired challenge: ${challengeId}`);
+        await this.state.storage.delete(`challenge:${challengeId}`);
+        this.challenges.delete(challengeId);
+        return { isValid: false };
+      }
+
+      // Verify signature (HMAC of challengeId + token)
+      const expectedSignature = await this.generateSignature(challengeId, challengeData.token);
+      if (signature !== expectedSignature) {
+        console.log(`❌ [ConversationRoom] Invalid signature for challenge ${challengeId}`);
+        return { isValid: false };
+      }
+
+      // Clean up used challenge
+      await this.state.storage.delete(`challenge:${challengeId}`);
+      this.challenges.delete(challengeId);
+
+      console.log(`✅ [ConversationRoom] Authentication successful for user ${challengeData.userId}`);
+
+      return {
+        isValid: true,
+        userId: String(challengeData.userId),
+        role: challengeData.role || 'agent',
+        teamId: challengeData.teamId
+      };
+
+    } catch (error) {
+      console.error('❌ [ConversationRoom] Auth verification error:', error);
+      return { isValid: false };
+    }
+  }
+
+  /**
+   * Generate HMAC signature for challenge + token
+   */
+  private async generateSignature(challengeId: string, token: string): Promise<string> {
+    const data = challengeId + ':' + token;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(this.env.JWT_SECRET);
+    const messageData = encoder.encode(data);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    return btoa(String.fromCharCode(...new Uint8Array(signature)));
+  }
+
+  /**
+   * Clean up expired challenges
+   */
+  private cleanupExpiredChallenges(): void {
+    const now = Date.now();
+    for (const [challengeId, challenge] of this.challenges.entries()) {
+      if (now > challenge.expiresAt) {
+        this.challenges.delete(challengeId);
+        // Also clean up from storage (fire and forget)
+        this.state.storage.delete(`challenge:${challengeId}`).catch(() => {});
+      }
     }
   }
 
@@ -498,11 +638,13 @@ export class ConversationRoom implements DurableObject {
   }
 
   private generateConnectionId(): string {
-    return `conn_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    // Use crypto.randomUUID() for cryptographically secure IDs
+    return `conn_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
   }
 
   private generateEventId(): string {
-    return `event_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    // Use crypto.randomUUID() for cryptographically secure IDs
+    return `event_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
   }
 
 
