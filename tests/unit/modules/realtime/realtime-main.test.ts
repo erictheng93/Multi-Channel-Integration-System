@@ -5,22 +5,8 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Context } from 'hono';
 import { realtimeMainHandler, realtimeManagementHandler } from '@modules/realtime/handlers/realtime-main';
 
-// Mock dependencies
-vi.mock('../../../../src/modules/realtime/handlers/sse-handler', () => ({
-  sseHandler: {
-    connect: vi.fn().mockResolvedValue(new Response('mocked sse response')),
-    getStats: vi.fn().mockResolvedValue(new Response(JSON.stringify({ totalConnections: 5 })))
-  },
-  enhancedSSEManager: {
-    getDetailedStats: vi.fn().mockReturnValue({
-      totalConnections: 0,
-      connectionsByUser: {},
-      connectionsByConversation: {},
-      averageUptime: 0,
-      totalEventsSent: 0
-    })
-  }
-}));
+// REMOVED: SSE handler mocks (Phase 3 cleanup - SSE removed, WebSocket only)
+// vi.mock('../../../../src/modules/realtime/handlers/sse-handler', ...)
 
 vi.mock('../../../../src/modules/realtime/handlers/event-handler', () => ({
   eventHandler: {
@@ -65,9 +51,7 @@ describe('Realtime Main Handler', () => {
         put: vi.fn().mockResolvedValue(undefined),
         get: vi.fn().mockResolvedValue(null)
       },
-      REALTIME_QUEUE: {
-        send: vi.fn().mockResolvedValue(undefined)
-      },
+      // Phase 2: REALTIME_QUEUE removed (replaced by Durable Objects)
       JWT_SECRET: 'test-secret'
     };
 
@@ -90,48 +74,8 @@ describe('Realtime Main Handler', () => {
     vi.restoreAllMocks();
   });
 
-  describe('SSE Connection', () => {
-    it('should handle SSE connection request', async () => {
-      const response = await realtimeMainHandler.sse(mockContext);
-
-      expect(response).toBeInstanceOf(Response);
-
-      // 驗證是否調用了正確的 SSE 處理器
-      const { sseHandler } = await import('../../../../src/modules/realtime/handlers/sse-handler');
-      expect(sseHandler.connect).toHaveBeenCalledWith(mockContext);
-    });
-
-    it('should handle SSE connection errors gracefully', async () => {
-      // Mock SSE handler to throw error
-      const { sseHandler } = await import('../../../../src/modules/realtime/handlers/sse-handler');
-      (sseHandler.connect as any).mockRejectedValueOnce(new Error('Connection failed'));
-
-      const response = await realtimeMainHandler.sse(mockContext);
-
-      expect(response).toBeInstanceOf(Response);
-      const responseBody = await response.json();
-      expect(responseBody.success).toBe(false);
-    });
-
-    it('should select appropriate version based on headers', async () => {
-      // Reset sseHandler mock to ensure fresh mock state
-      const { sseHandler } = await import('../../../../src/modules/realtime/handlers/sse-handler');
-      (sseHandler.connect as any).mockResolvedValueOnce(new Response('mocked sse v2 response'));
-
-      mockContext.req.header.mockImplementation((name: string) => {
-        if (name === 'Accept') return 'text/event-stream';
-        if (name === 'User-Agent') return 'Mozilla/5.0';
-        return undefined;
-      });
-
-      const response = await realtimeMainHandler.sse(mockContext);
-
-      expect(response).toBeInstanceOf(Response);
-
-      // 應該根據 Accept header 選擇版本
-      expect(sseHandler.connect).toHaveBeenCalledWith(mockContext);
-    });
-  });
+  // REMOVED: SSE Connection tests (Phase 3 cleanup - SSE removed, WebSocket only)
+  // The realtimeMainHandler.sse() method no longer exists
 
   describe('Typing Status', () => {
     it('should send typing status successfully', async () => {
@@ -185,17 +129,14 @@ describe('Realtime Main Handler', () => {
   });
 
   describe('Conversation Status', () => {
-    it('should get conversation status successfully', async () => {
-      // Mock sseHandler.getStats to return proper response
-      const { sseHandler } = await import('../../../../src/modules/realtime/handlers/sse-handler');
-      (sseHandler.getStats as any).mockResolvedValueOnce(
-        new Response(JSON.stringify({ success: true, data: { totalConnections: 5 } }))
-      );
-
+    it('should return deprecation message for SSE removal', async () => {
+      // Phase 3: getConversationStatus now returns deprecation message instead of SSE stats
       const response = await realtimeMainHandler.getConversationStatus(mockContext);
 
       expect(response).toBeInstanceOf(Response);
-      expect(sseHandler.getStats).toHaveBeenCalled();
+      const responseBody = await response.json();
+      expect(responseBody.success).toBe(true);
+      expect(responseBody.message).toContain('WebSocket');
     });
   });
 
@@ -301,35 +242,18 @@ describe('Realtime Management Handler', () => {
 
   describe('Health Check', () => {
     it('should perform health check successfully', async () => {
-      // Ensure enhancedSSEManager mock returns valid stats
-      const { enhancedSSEManager } = await import('../../../../src/modules/realtime/handlers/sse-handler');
-      (enhancedSSEManager.getDetailedStats as any).mockReturnValueOnce({
-        totalConnections: 5,
-        connectionsByUser: {},
-        connectionsByConversation: {},
-        averageUptime: 1000,
-        totalEventsSent: 100
-      });
-
+      // Phase 3: Health check no longer depends on SSE stats
       const response = await realtimeManagementHandler.healthCheck(mockContext);
 
       expect(response).toBeInstanceOf(Response);
       const responseBody = await response.json();
       expect(responseBody.success).toBe(true);
       expect(responseBody.data.status).toBe('healthy');
+      expect(responseBody.data.note).toContain('WebSocket');
     });
 
-    it('should handle health check errors', async () => {
-      // Mock SSE manager import to fail
-      vi.doMock('../../../../src/modules/realtime/handlers/sse-handler', () => {
-        throw new Error('Import failed');
-      });
-
-      const response = await realtimeManagementHandler.healthCheck(mockContext);
-
-      expect(response).toBeInstanceOf(Response);
-      expect(response.status).toBe(500);
-    });
+    // REMOVED: SSE import error test (Phase 3 cleanup - SSE removed, WebSocket only)
+    // Health check no longer imports SSE handler
   });
 });
 
