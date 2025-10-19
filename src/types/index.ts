@@ -31,8 +31,6 @@ export interface LegacyBindings {
   DB: D1Database;
   SESSIONS: KVNamespace;
   KV: KVNamespace;
-  AGENT_QUEUE: Queue;
-  REALTIME_QUEUE: Queue;
 
   // Optional services
   ENCRYPTION_KEY?: string;
@@ -58,6 +56,7 @@ export interface LegacyBindings {
   MESSAGE_BROADCASTER?: DurableObjectNamespace;
   DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
   DISTRIBUTED_LOCK?: DurableObjectNamespace;
+  LATEST_MESSAGE_COORDINATOR?: DurableObjectNamespace; // Phase 1.4b: Batch cache updates via alarm
 }
 
 // LINE Webhook 相關類型定義

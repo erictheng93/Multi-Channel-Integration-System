@@ -10,15 +10,9 @@ import {
 } from '@/utils/api-response';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
 import { RealtimeManager } from '@modules/realtime/services/realtime-manager';
-// REMOVED: sseManagerStub (Phase 3 cleanup - SSE removed, WebSocket only)
-// import { sseManagerStub } from '@modules/realtime/handlers/sse-handler';
+// Phase 3: SSE completely removed (2025-10-17) - WebSocket only
+// SSE Manager removed, all connections now via WebSocket (ConversationRoom DO)
 import { eventStats } from '@modules/realtime/handlers/event-handler';
-
-// Stub for removed SSE manager
-const sseManagerStub = {
-  getDetailedStats: () => Promise.resolve({ totalConnections: 0, connectionsByUser: {} }),
-  cleanupStaleConnections: () => 0
-};
 import { RealtimeVersionSelector } from '@modules/realtime/config/version-selector';
 
 // 儀表板處理器
@@ -40,8 +34,8 @@ export const dashboardHandler = {
       const manager = RealtimeManager.getInstance();
       const serviceHealth = await manager.getServiceHealth();
 
-      // 獲取 SSE 統計
-      const sseStats = await sseManagerStub.getDetailedStats();
+      // Phase 3: SSE removed - WebSocket connections managed by Durable Objects
+      // No centralized connection stats available (each ConversationRoom DO manages its own)
 
       // 獲取事件統計
       const eventStatsData = eventStats.getStats();
@@ -58,9 +52,10 @@ export const dashboardHandler = {
         },
         performance: performanceSummary,
         connections: {
-          total: sseStats.totalConnections || 0,
-          byUser: Object.keys(sseStats.connectionsByUser || {}).length,
-          details: sseStats.connectionsByUser || {}
+          type: 'websocket', // Phase 3: WebSocket only
+          note: 'SSE removed - connections managed by ConversationRoom Durable Objects',
+          total: 0, // No centralized counter available
+          byUser: 0
         },
         events: {
           total: eventStatsData.totalEvents,
@@ -183,6 +178,7 @@ export const dashboardHandler = {
   },
 
   // 獲取連接詳情
+  // Phase 3: DEPRECATED - SSE removed, use WebSocket Durable Objects metrics instead
   getConnections: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const payload = c.get('jwtPayload');
@@ -190,25 +186,21 @@ export const dashboardHandler = {
         return unauthorizedResponse(c, 'Insufficient permissions');
       }
 
-      const sseStats = await sseManagerStub.getDetailedStats();
-
-      // 獲取詳細連接信息
+      // Phase 3: SSE removed - WebSocket connections managed by Durable Objects
       const connectionDetails = {
+        deprecated: true,
+        message: 'SSE connections removed in Phase 3. WebSocket connections are now managed by ConversationRoom Durable Objects.',
+        recommendation: 'Use /api/websocket/dashboard/stats for WebSocket connection metrics',
         summary: {
-          total: sseStats.totalConnections || 0,
-          byUser: sseStats.connectionsByUser || {},
-          byConversation: (sseStats as any).connectionsByConversation || {}
+          type: 'websocket',
+          total: 0, // No centralized connection counter
+          byUser: {},
+          byConversation: {}
         },
-        metrics: (sseStats as any).connectionMetrics ? {
-          totalEventsSent: (sseStats as any).connectionMetrics.totalEventsSent,
-          totalErrorsCount: (sseStats as any).connectionMetrics.totalErrorsCount,
-          averageUptime: (sseStats as any).connectionMetrics.averageUptime,
-          averageEventsPerConnection: (sseStats as any).connectionMetrics.averageEventsPerConnection
-        } : null,
         timestamp: new Date().toISOString()
       };
 
-      return successResponse(c, connectionDetails, 'Connection details retrieved');
+      return successResponse(c, connectionDetails, 'SSE endpoint deprecated - use WebSocket metrics');
 
     } catch (error) {
       return handleApiError(error, c);
@@ -244,7 +236,8 @@ export const dashboardHandler = {
         kvHealth = { status: 'down' as const };
       }
 
-      if (env?.REALTIME_QUEUE) {
+      // Phase 2: Check Durable Objects instead of Queue
+      if (env?.MESSAGE_BROADCASTER && env?.LATEST_MESSAGE_COORDINATOR) {
         queueHealth = await dashboardHandler.checkQueueHealth(env as Bindings);
       } else {
         queueHealth = { status: 'down' as const };
@@ -325,9 +318,12 @@ export const dashboardHandler = {
           break;
 
         case 'sse':
-          if (operation === 'cleanup') {
-            result = { cleanedConnections: sseManagerStub.cleanupStaleConnections() };
-          }
+          // Phase 3: SSE removed - operation no longer supported
+          result = {
+            deprecated: true,
+            message: 'SSE maintenance operations removed in Phase 3',
+            cleanedConnections: 0
+          };
           break;
 
         case 'monitor':
@@ -390,12 +386,16 @@ export const dashboardHandler = {
     }
   },
 
+  // Phase 2: Check Durable Objects health instead of Queue
   async checkQueueHealth(env: Bindings): Promise<{ status: 'healthy' | 'degraded' | 'down' }> {
-    if (!env?.REALTIME_QUEUE) return { status: 'down' };
+    // Queue replaced by Durable Objects (MessageBroadcaster, LatestMessageCacheCoordinator)
+    if (!env?.MESSAGE_BROADCASTER || !env?.LATEST_MESSAGE_COORDINATOR) {
+      return { status: 'down' };
+    }
 
     try {
-      // 簡單檢查隊列是否可用
-      // 在實際環境中可能需要更複雜的檢查
+      // Check if Durable Objects are available
+      // In production, this could involve more complex checks
       return { status: 'healthy' };
     } catch (error) {
       return { status: 'down' };
@@ -403,17 +403,12 @@ export const dashboardHandler = {
   },
 
   async checkSSEHealth(): Promise<{ status: 'healthy' | 'degraded' | 'down'; connections?: number }> {
-    try {
-      const stats = await sseManagerStub.getDetailedStats();
-      const connections = stats.totalConnections || 0;
-
-      return {
-        status: 'healthy',
-        connections
-      };
-    } catch (error) {
-      return { status: 'down' };
-    }
+    // Phase 3: SSE removed - always return 'down' status
+    // SSE infrastructure no longer exists, replaced by WebSocket
+    return {
+      status: 'down',
+      connections: 0
+    };
   }
 };
 

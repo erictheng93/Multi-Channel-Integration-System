@@ -173,6 +173,24 @@ console.log('✅ WebSocket connection endpoints registered:');
 console.log('   • GET /api/websocket/connect (with websocketAuth)');
 console.log('   • POST /api/websocket/disconnect (with websocketAuth)');
 
+// 🔧 Pre-register DelayedMessageBuffer health endpoint BEFORE unified route system
+// This ensures /health endpoint is public (no auth required)
+app.get('/api/delayed-messages-v2/health', async (c) => {
+  return c.json({
+    success: true,
+    service: 'delayed-message-buffer',
+    status: 'healthy',
+    features: {
+      instantCancel: true,
+      preciseScheduling: true,
+      durableObjects: true
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+console.log('✅ DelayedMessageBuffer public endpoint registered:');
+console.log('   • GET /api/delayed-messages-v2/health (public, no auth)');
+
 // 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
 // This prevents auth middleware from being applied (SSE uses query token)
 app.options('/api/activities/stream', (c) => {
@@ -873,6 +891,7 @@ import { UserConnection } from './durable-objects/UserConnection';
 import { MessageBroadcaster } from './durable-objects/MessageBroadcaster';
 import { DelayedMessageProcessor } from './durable-objects/DelayedMessageProcessor';
 import { DelayedMessageBuffer } from './durable-objects/DelayedMessageBuffer';
+import { LatestMessageCacheCoordinator } from './durable-objects/LatestMessageCacheCoordinator';
 import { LockCoordinator } from './services/distributed-lock-service';
 
 // Export Durable Objects (must match wrangler.toml class_name exactly)
@@ -882,61 +901,21 @@ export {
   MessageBroadcaster,
   DelayedMessageProcessor,
   DelayedMessageBuffer,
+  LatestMessageCacheCoordinator,
   LockCoordinator
 };
 
 // ==================== 導出 Worker 處理器 ====================
+// Phase 2.1: Queue Consumer 已移除 (2025-10-17)
+// - REALTIME_QUEUE 由 LatestMessageCacheCoordinator Durable Object 替代
+// - AGENT_QUEUE 已在 Phase 1 移除，由 DelayedMessageBuffer DO 替代
+// - Queue 现在完全可选，仅用于大规模广播和背景任务
 
+// ✅ Queue handler removed (2025-10-17)
+// All queue consumers successfully unbound from worker:
+//   - agent-queue: 0 consumers
+//   - realtime-events: 0 consumers
+// Queue functionality fully migrated to Durable Objects
 export default {
-  fetch: app.fetch,
-  queue: async (batch: MessageBatch<any>, env: Bindings) => {
-    // 檢查隊列名稱並路由到對應處理器
-    const queueName = batch.queue;
-    const queueLogger = createContextLogger('QueueRouter');
-    queueLogger.info('Processing queue', { queueName, messageCount: batch.messages.length });
-
-    try {
-      if (queueName === 'realtime-events') {
-        // Handle latest message cache updates and other realtime events
-        const { handleLatestMessageQueue } = await import('./workers/latest-message-worker');
-        await handleLatestMessageQueue(batch, env);
-        queueLogger.info('Realtime events processed including latest message cache updates');
-
-      } else if (queueName === 'REALTIME_QUEUE') {
-        // 處理統一的 Real-time 隊列事件
-        const { realtime } = await import('./modules/realtime');
-        const realtimeManager = realtime.services.manager;
-        await realtimeManager.initialize(env);
-
-        for (const message of batch.messages) {
-          try {
-            const queueMessage = message.body;
-            await realtimeManager.createEvent(
-              queueMessage.event.type,
-              queueMessage.event.data,
-              queueMessage.targets,
-              queueMessage.priority,
-              'queue'
-            );
-          } catch (error) {
-            queueLogger.error('Error processing realtime message', { error });
-          }
-        }
-        queueLogger.info('Realtime queue processed', { messageCount: batch.messages.length });
-
-      } else if (queueName === 'agent-queue') {
-        // ⚠️ DEPRECATED: agent-queue is no longer processed
-        // Delayed messages are now handled by DelayedMessageBuffer Durable Object
-        queueLogger.warn('agent-queue is deprecated and will be ignored', { queueName });
-
-      } else {
-        queueLogger.warn('Unknown queue', { queueName });
-      }
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      queueLogger.error('Error processing queue', { queueName, error: errorMessage });
-      throw error; // 重新抛出錯誤以觸發隊列重試機制
-    }
-  }
+  fetch: app.fetch
 };

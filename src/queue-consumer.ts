@@ -42,13 +42,6 @@ async function handleQueueMessage(
 
       console.log(`Processing queue message: ${messageId}, action: ${action}`);
 
-      if (action === 'send_delayed_message') {
-        // ⚠️ DEPRECATED: 延遲訊息現在由 Durable Objects 處理
-        console.warn('⚠️ [DEPRECATED] Delayed message processing via Queue is deprecated. Use Durable Objects instead.');
-        message.ack(); // 直接確認，不再處理
-        continue;
-      }
-
       // 其他未知 action
       console.warn(`Unknown action: ${action} for message ${messageId}`);
       message.ack();

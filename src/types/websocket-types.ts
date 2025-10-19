@@ -172,7 +172,6 @@ export interface DurableObjectEvent {
 
 export interface MigrationConfig {
   enableWebSocket: boolean;
-  enableSSE: boolean;
   migrationStrategy: 'gradual' | 'immediate' | 'canary';
   rolloutPercentage: number;
   featureFlags: {
@@ -185,8 +184,8 @@ export interface MigrationConfig {
 }
 
 export interface ConnectionFallback {
-  primary: 'websocket' | 'sse';
-  fallback: 'websocket' | 'sse';
+  primary: 'websocket';
+  fallback: 'websocket';
   retryAttempts: number;
   retryDelay: number;
   healthCheckInterval: number;
@@ -198,7 +197,7 @@ export interface ConnectionMetrics {
   connectionId?: string;
   totalConnections: number;
   activeConnections: number;
-  connectionsByType: Record<'websocket' | 'sse', number>;
+  connectionsByType: Record<'websocket', number>;
   connectionsByRole: Record<string, number>;
   averageLatency: number;
   messagesThroughput: {

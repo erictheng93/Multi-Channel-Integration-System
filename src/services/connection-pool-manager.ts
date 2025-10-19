@@ -110,7 +110,7 @@ export class ConnectionPoolManager {
       connectionId,
       totalConnections: 1,
       activeConnections: 1,
-      connectionsByType: { websocket: 1, sse: 0 },
+      connectionsByType: { websocket: 1 },
       connectionsByRole: { [connection.role]: 1 },
       averageLatency: 0,
       messagesThroughput: { inbound: 0, outbound: 0 },

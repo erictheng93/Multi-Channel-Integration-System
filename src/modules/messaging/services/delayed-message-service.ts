@@ -110,10 +110,6 @@ export class DelayedMessageService {
         }
       );
 
-      // ⚠️ REMOVED: AGENT_QUEUE scheduling is deprecated
-      // Delayed messages are now handled by DelayedMessageBuffer Durable Object
-      // Queue consumer no longer processes delayed messages
-
       return {
         success: true,
         delayedMessageId: messageId,

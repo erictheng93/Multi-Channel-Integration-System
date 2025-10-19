@@ -328,6 +328,7 @@ export const realtimeQueueHandler = {
   },
 
   // 創建事件並推送到隊列
+  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 MessageBroadcaster DO
   async createAndQueueEvent(
     eventType: RealtimeEvent['type'],
     eventData: RealtimeEvent['data'],
@@ -337,7 +338,7 @@ export const realtimeQueueHandler = {
     source = 'system'
   ): Promise<string> {
     const eventId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
-    
+
     const event: RealtimeEvent = {
       id: eventId,
       type: eventType,
@@ -346,20 +347,37 @@ export const realtimeQueueHandler = {
       data: eventData
     } as RealtimeEvent;
 
-    const queueMessage: QueueMessage = {
-      event,
-      targets,
-      priority,
-      retryCount: 0,
-      maxRetries: 3
-    };
-
     try {
-      await env.REALTIME_QUEUE.send(queueMessage);
-      console.log(`📤 [Queue Handler] Event queued: ${eventId} (${eventType})`);
+      // ✅ 新架構: 使用 MessageBroadcaster DO 替代 Queue
+      const broadcasterId = env.MESSAGE_BROADCASTER.idFromName('global');
+      const broadcaster = env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+      // 轉換目標格式為 MessageBroadcaster 格式
+      const broadcastTargets = [{
+        type: targets.conversationId ? 'conversation' as const :
+              targets.broadcast ? 'global' as const : 'user' as const,
+        targets: targets.conversationId ? [targets.conversationId] :
+                targets.userIds || ['all']
+      }];
+
+      const response = await broadcaster.fetch(new Request('https://broadcaster/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({
+          event,
+          targets: broadcastTargets,
+          options: { priority }
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      if (!response.ok) {
+        throw new Error(`MessageBroadcaster failed: ${response.status}`);
+      }
+
+      console.log(`📤 [Queue Handler] Event broadcast (WebSocket/DO): ${eventId} (${eventType})`);
       return eventId;
     } catch (error) {
-      console.error('❌ [Queue Handler] Failed to queue event:', error);
+      console.error('❌ [Queue Handler] Failed to broadcast event:', error);
       throw error;
     }
   }

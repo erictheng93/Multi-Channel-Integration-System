@@ -304,9 +304,9 @@ conversations.post('/:id/mark-read', async (c) => {
     const agent = c.get('agent');
 
     if (!conversationId) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation ID is required' 
+      return c.json({
+        success: false,
+        error: 'Conversation ID is required'
       }, 400);
     }
 
@@ -317,9 +317,9 @@ conversations.post('/:id/mark-read', async (c) => {
     // 檢查權限 - 確保代理可以存取此對話
     const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
     if (!canAccess) {
-      return c.json({ 
-        success: false, 
-        error: 'Access denied' 
+      return c.json({
+        success: false,
+        error: 'Access denied'
       }, 403);
     }
 
@@ -328,6 +328,125 @@ conversations.post('/:id/mark-read', async (c) => {
     return c.json({
       success: true,
       message: 'Messages marked as read'
+    });
+
+  } catch (error) {
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// 分配對話
+conversations.post('/:id/assign', async (c) => {
+  const drizzleDb = drizzle(c.env.DB);
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const { teamId, userId, reason } = await c.req.json();
+
+    // 檢查權限 - 需要 assign 權限
+    const { PermissionService } = await import('../services/permission-service');
+    const hasPermission = await PermissionService.checkPermission(
+      agent!.id,
+      'conversation',
+      'assign'
+    );
+
+    if (!hasPermission) {
+      return c.json({
+        success: false,
+        error: 'Permission denied'
+      }, 403);
+    }
+
+    // 更新對話指派
+    await drizzleDb.update(conversationTable)
+      .set({
+        assignedTeamId: teamId || null,
+        assignedUserId: userId || null,
+        status: 'assigned',
+        updatedAt: sql`datetime('now')`
+      })
+      .where(eq(conversationTable.id, conversationId));
+
+    return c.json({
+      success: true,
+      message: 'Conversation assigned successfully'
+    });
+
+  } catch (error) {
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// 轉移對話
+conversations.post('/:id/transfer', async (c) => {
+  const drizzleDb = drizzle(c.env.DB);
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const {
+      fromTeamId,
+      toTeamId,
+      fromUserId,
+      toUserId,
+      reason,
+      transferType = 'manual'
+    } = await c.req.json();
+    const payload = c.get('jwtPayload');
+
+    // 檢查權限 - 需要 transfer 權限
+    const { PermissionService } = await import('../services/permission-service');
+    const hasPermission = await PermissionService.checkPermission(
+      agent!.id,
+      'conversation',
+      'transfer'
+    );
+
+    if (!hasPermission) {
+      return c.json({
+        success: false,
+        error: 'Permission denied'
+      }, 403);
+    }
+
+    // 獲取當前對話資訊
+    const conversation = await drizzleDb.select()
+      .from(conversationTable)
+      .where(eq(conversationTable.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return notFoundResponse(c, 'Conversation');
+    }
+
+    // 記錄轉移歷史
+    await drizzleDb.insert(conversationTransfers)
+      .values({
+        conversationId: conversationId,
+        fromTeamId: fromTeamId || conversation.assignedTeamId,
+        toTeamId: toTeamId || null,
+        fromUserId: fromUserId || conversation.assignedUserId,
+        toUserId: toUserId || null,
+        transferReason: reason || null,
+        transferredBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system',
+        transferType: transferType
+      });
+
+    // 更新對話指派
+    await drizzleDb.update(conversationTable)
+      .set({
+        assignedTeamId: toTeamId || null,
+        assignedUserId: toUserId || null,
+        status: 'transferred',
+        updatedAt: sql`datetime('now')`
+      })
+      .where(eq(conversationTable.id, conversationId));
+
+    return c.json({
+      success: true,
+      message: 'Conversation transferred successfully'
     });
 
   } catch (error) {

@@ -212,18 +212,18 @@
             </div>
 
             <div class="card">
-                <h3>🚀 代理隊列監控</h3>
-                <div class="stat-number" id="agent-queue-status">
+                <h3>🚀 延遲訊息系統 (Durable Objects)</h3>
+                <div class="stat-number" id="delayed-message-buffer-status">
                     <span class="status-indicator status-online"></span>
                     載入中...
                 </div>
-                <div id="agent-queue-details">
-                    <p>延遲消息和撤回功能</p>
-                    <small id="agent-queue-metrics">載入中...</small>
+                <div id="delayed-message-buffer-details">
+                    <p>即時撤回 (<100ms) · 精確延遲 (±10ms)</p>
+                    <small id="delayed-message-buffer-metrics">載入中...</small>
                 </div>
                 <div class="quick-actions">
-                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
-                    <button class="btn btn-secondary" onclick="viewQueueDetails()">詳細資訊</button>
+                    <button class="btn" onclick="refreshDelayedMessageStats()">重新整理</button>
+                    <button class="btn btn-secondary" onclick="viewDelayedMessageMetrics()">詳細指標</button>
                 </div>
             </div>
 
