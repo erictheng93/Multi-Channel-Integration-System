@@ -36,10 +36,7 @@ describe('Message Recall Integration Tests', () => {
         })
       } as any,
       SESSIONS: {} as any, // KV 接口對象
-      AGENT_QUEUE: {
-        send: vi.fn().mockResolvedValue(undefined),
-        messages: [] as any[] // 模擬佇列
-      } as any,
+      // REMOVED: AGENT_QUEUE (replaced by DelayedMessageBuffer Durable Object)
       LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
       FB_PAGE_ACCESS_TOKEN: 'test-fb-token'
     } as any;
@@ -398,12 +395,8 @@ describe('Message Recall Integration Tests', () => {
         expect(result.success).toBe(true);
       });
 
-      // 3. 驗證佇列調用順序
-      expect(mockBindings.AGENT_QUEUE.send).toHaveBeenCalledTimes(2);
-      
-      const queueCalls = mockBindings.AGENT_QUEUE.send.mock.calls;
-      expect(queueCalls[0][1].delaySeconds).toBe(30);
-      expect(queueCalls[1][1].delaySeconds).toBe(60);
+      // REMOVED: AGENT_QUEUE 驗證 (現由 DelayedMessageBuffer Durable Object 處理)
+      // 延遲訊息現在通過 Durable Objects + Alarm API 實現，不再使用 Queue
     });
 
     it('should handle queue processing failures gracefully', async () => {
@@ -416,16 +409,14 @@ describe('Message Recall Integration Tests', () => {
         platform: 'line' as const
       };
 
-      // Mock 佇列失敗
-      mockBindings.AGENT_QUEUE.send = vi.fn().mockRejectedValue(
-        new Error('Queue service unavailable')
-      );
+      // REMOVED: AGENT_QUEUE 測試 (現由 DelayedMessageBuffer Durable Object 處理)
+      // 延遲訊息現在由 Durable Objects 管理，不再依賴 Cloudflare Queue
 
-      // 發送應該仍然成功（佇列是可選的）
+      // 發送應該成功
       const result = await recallService.sendDelayedMessage(request);
       expect(result.success).toBe(true);
 
-      // 但 KV 和 D1 應該仍然被更新
+      // KV 和 D1 應該被更新
       expect(mockBindings.SESSIONS.put).toHaveBeenCalled();
       expect(mockBindings.DB.prepare).toHaveBeenCalled();
     });

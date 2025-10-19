@@ -1,7 +1,73 @@
 // 對話管理主要處理器測試 - Handler-based 架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import conversationMainHandler from '../../../src/handlers/conversation-main';
-import { PermissionService } from '../../../src/services/permission-service';
+
+// Mock problematic imports FIRST
+vi.mock('@modules/realtime', () => ({
+  realtime: {
+    route: vi.fn().mockReturnValue({}),
+    createEvent: vi.fn().mockResolvedValue({})
+  }
+}));
+
+vi.mock('@shared/database/schema', () => ({
+  conversations: {},
+  agents: {},
+  conversationTransfers: {},
+  customers: {},
+  teams: {},
+  conversationTags: {}
+}));
+
+// Mock middleware - IMPORTANT: Mock the correct middleware used by the handler
+vi.mock('../../../src/middleware/database', () => ({
+  databaseMiddleware: vi.fn((c, next) => {
+    // Mock database and kv
+    c.set('db', {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue(null)
+    });
+    c.set('kv', {
+      get: vi.fn().mockResolvedValue(null),
+      put: vi.fn().mockResolvedValue(undefined)
+    });
+    return next();
+  }),
+  authMiddleware: vi.fn((c, next) => {
+    // Mock agent data
+    c.set('agent', {
+      id: 'user-123',
+      role: 'agent',
+      username: 'test-user',
+      displayName: 'Test Agent',
+      teamId: 1,
+      isActive: true
+    });
+    return next();
+  })
+}));
+
+// Export mock methods to module scope so tests can control them
+export const mockDbMethods = {
+  getConversationsByRole: vi.fn().mockResolvedValue([]),
+  canAgentAccessConversation: vi.fn().mockResolvedValue(true),
+  getConversationById: vi.fn().mockResolvedValue({ id: '123', status: 'active' }),
+  getMessagesByConversationId: vi.fn().mockResolvedValue([]),
+  createMessage: vi.fn().mockResolvedValue({ id: 'msg-1', content: 'test' }),
+  updateConversation: vi.fn().mockResolvedValue({}),
+  markMessagesAsRead: vi.fn().mockResolvedValue(undefined)
+};
+
+// Mock DatabaseService - return exported methods so tests can modify them
+vi.mock('../../../src/services/database', () => ({
+  DatabaseService: vi.fn(function() {
+    return mockDbMethods;
+  })
+}));
+
+import conversationMainHandler from '@backend/handlers/conversation';
+import { PermissionService } from '@backend/services/permission-service';
 import { setupHandlerTest } from '../../helpers/handler-test-setup';
 
 // Global mock data management
@@ -14,18 +80,6 @@ vi.mock('../../../src/services/permission-service', () => ({
     checkPermission: vi.fn(),
     getVisibleConversations: vi.fn()
   }
-}));
-
-// Mock middleware
-vi.mock('../../../src/middleware/auth', () => ({
-  jwtAuth: vi.fn((c, next) => {
-    c.set('user', { 
-      id: 'user-123', 
-      role: 'agent',
-      username: 'test-user'
-    });
-    return next();
-  })
 }));
 
 // Mock Drizzle ORM with proper query chain support
@@ -75,7 +129,7 @@ describe('Conversation Main Handler', () => {
   beforeEach(async () => {
     const testSetup = setupHandlerTest();
     app = testSetup.app;
-    
+
     // Create mock DB that will be used by the handler
     mockDB = {
       prepare: vi.fn().mockReturnValue({
@@ -87,7 +141,7 @@ describe('Conversation Main Handler', () => {
         })
       })
     };
-    
+
     // Override the app's environment with our mock DB
     app.use('*', (c, next) => {
       c.env = {
@@ -96,26 +150,35 @@ describe('Conversation Main Handler', () => {
       } as any;
       return next();
     });
-    
+
     // Add the conversation handler routes after setting up the environment
     app.route('/api/conversations', conversationMainHandler);
 
     // Setup service mocks - access the mocked service
     const { PermissionService: MockedPermissionService } = await import('../../../src/services/permission-service');
-    
+
     mockPermissionService = {
       checkPermission: vi.fn().mockResolvedValue(true),
       getVisibleConversations: vi.fn().mockResolvedValue([])
     };
-    
-    // Configure the mocked static methods
-    vi.mocked(MockedPermissionService.checkPermission).mockImplementation(mockPermissionService.checkPermission);
-    vi.mocked(MockedPermissionService.getVisibleConversations).mockImplementation(mockPermissionService.getVisibleConversations);
 
     // Reset mock state
     mockConversationData = [];
     mockError = null;
     vi.clearAllMocks();
+
+    // Configure the mocked static methods AFTER clearing
+    vi.mocked(MockedPermissionService.checkPermission).mockImplementation(mockPermissionService.checkPermission);
+    vi.mocked(MockedPermissionService.getVisibleConversations).mockImplementation(mockPermissionService.getVisibleConversations);
+
+    // Reset DatabaseService mock methods to default behavior
+    mockDbMethods.getConversationsByRole.mockResolvedValue([]);
+    mockDbMethods.canAgentAccessConversation.mockResolvedValue(true);
+    mockDbMethods.getConversationById.mockResolvedValue({ id: '123', status: 'active' });
+    mockDbMethods.getMessagesByConversationId.mockResolvedValue([]);
+    mockDbMethods.createMessage.mockResolvedValue({ id: 'msg-1', content: 'test' });
+    mockDbMethods.updateConversation.mockResolvedValue({});
+    mockDbMethods.markMessagesAsRead.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -200,6 +263,15 @@ describe('Conversation Main Handler', () => {
     it('should successfully transfer conversation', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
 
+      // Mock drizzle查詢返回conversation數據
+      mockConversationData = [{
+        id: conversationId,
+        status: 'active',
+        assignedTeamId: 1,
+        assignedUserId: 'user-123'
+      }];
+      mockError = null;
+
       const response = await app.request(`/api/conversations/${conversationId}/transfer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -267,10 +339,9 @@ describe('Conversation Main Handler', () => {
         }
       ];
 
-      // Mock 權限服務返回可見的對話 ID
-      mockPermissionService.getVisibleConversations.mockResolvedValue([1, 2]);
-      vi.mocked(PermissionService.getVisibleConversations).mockResolvedValue([1, 2]);
-      
+      // Mock DatabaseService 返回對話列表
+      mockDbMethods.getConversationsByRole.mockResolvedValue(mockConversations);
+
       // 設置全局mock數據 - 確保數組格式
       mockConversationData = mockConversations;
       mockError = null;
@@ -282,11 +353,13 @@ describe('Conversation Main Handler', () => {
       const result = await response.json();
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
-      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data.conversations).toBeDefined();
+      expect(Array.isArray(result.data.conversations)).toBe(true);
       // 檢查返回的數據結構
-      expect(result.data.length).toBeGreaterThan(0);
+      expect(result.data.conversations.length).toBeGreaterThan(0);
 
-      expect(vi.mocked(PermissionService.getVisibleConversations)).toHaveBeenCalledWith('user-123', expect.anything());
+      // Verify DatabaseService method was called
+      expect(mockDbMethods.getConversationsByRole).toHaveBeenCalled();
     });
 
     it('should return empty list when no visible conversations', async () => {
@@ -298,14 +371,14 @@ describe('Conversation Main Handler', () => {
 
       const result = await response.json();
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([]);
+      expect(result.data.conversations).toEqual([]);
     });
 
     it('should handle database errors', async () => {
-      mockPermissionService.getVisibleConversations.mockResolvedValue([1, 2]);
-      
-      // 設置錯誤狀態，讓Drizzle查詢拋出錯誤
+      // Mock DatabaseService 拋出錯誤
       const dbError = new Error('Failed query: select "conversations"."id", "conversations"."customer_id", "conversations"."assigned_team_id", "conversations"."assigned_user_id", "conversations"."status", "conversations"."last_message_at", "conversations"."created_at", "conversations"."updated_at", "customers"."display_name", "customers"."platform", "customers"."platform_user_id" from "conversations" left join "customers" on "conversations"."customer_id" = "customers"."id" where "conversations"."id" in (?, ?) order by "conversations"."updated_at" desc\nparams: 1,2');
+      mockDbMethods.getConversationsByRole.mockRejectedValue(dbError);
+
       mockError = dbError;
       mockConversationData = []; // 這個不會被使用到，因為會先拋出錯誤
 
@@ -340,7 +413,12 @@ describe('Conversation Main Handler', () => {
       // 確保權限檢查通過
       mockPermissionService.checkPermission.mockResolvedValue(true);
       vi.mocked(PermissionService.checkPermission).mockResolvedValue(true);
-      
+
+      // Mock DatabaseService 方法返回conversation數據
+      mockDbMethods.canAgentAccessConversation.mockResolvedValue(true);
+      mockDbMethods.getConversationById.mockResolvedValue(mockConversation);
+      mockDbMethods.getMessagesByConversationId.mockResolvedValue([]);
+
       // 設置對話詳情數據
       mockConversationData = [mockConversation];
       mockError = null;
@@ -351,34 +429,38 @@ describe('Conversation Main Handler', () => {
 
       const result = await response.json();
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockConversation);
+      expect(result.data).toBeDefined();
+      expect(result.data.conversation).toEqual(mockConversation);
+      expect(result.data.messages).toBeDefined();
 
-      expect(vi.mocked(PermissionService.checkPermission)).toHaveBeenCalledWith(
-        'user-123',
-        'conversation',
-        'view',
-        {
-          userId: NaN, // Number('user-123') 的結果確實是NaN
-          role: 'agent',
-          resourceId: '123' // URL參數是字串格式
-        },
-        expect.anything()
+      // Verify DatabaseService methods were called
+      expect(mockDbMethods.canAgentAccessConversation).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-123' }),
+        conversationId.toString()
       );
+      expect(mockDbMethods.getConversationById).toHaveBeenCalledWith(conversationId.toString());
+      expect(mockDbMethods.getMessagesByConversationId).toHaveBeenCalled();
     });
 
     it('should reject access without permission', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(false);
+      // Mock: access denied
+      mockDbMethods.canAgentAccessConversation.mockResolvedValue(false);
 
       const response = await app.request(`/api/conversations/${conversationId}`);
 
       expect(response.status).toBe(403);
 
       const result = await response.json();
-      expect(result.error).toBe('Permission denied');
+      expect(result.error).toBe('Access denied');
     });
 
     it('should return 404 for non-existent conversation', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
+      // Mock: conversation not found
+      mockDbMethods.canAgentAccessConversation.mockResolvedValue(true);
+      mockDbMethods.getConversationById.mockResolvedValue(null);
+      mockDbMethods.getMessagesByConversationId.mockResolvedValue([]);
       mockConversationData = [];
       mockError = null;
 

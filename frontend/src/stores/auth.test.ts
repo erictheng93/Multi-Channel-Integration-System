@@ -29,6 +29,18 @@ vi.mock('@/api/auth', () => ({
   }
 }))
 
+// Helper function to create valid JWT token
+function createValidJWT(userId: string = 'test-agent-id', role: string = 'agent'): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = btoa(JSON.stringify({
+    userId,
+    role,
+    exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 days
+  }))
+  const signature = btoa('test-signature')
+  return `${header}.${payload}.${signature}`
+}
+
 describe('Auth Store', () => {
   beforeEach(() => {
     // 重置所有mock
@@ -79,18 +91,18 @@ describe('Auth Store', () => {
   })
 
   it('should handle successful login', async () => {
-    const mockToken = 'test-token'
+    const mockToken = createValidJWT('1', 'agent')
     const mockAgent = { id: '1', name: 'Test Agent', email: 'test@example.com' }
-    
+
     mockLogin.mockResolvedValue({
       success: true,
       data: { token: mockToken, agent: mockAgent }
     })
-    
+
     const { useAuthStore } = await import('./auth')
     const store = useAuthStore()
     const result = await store.login({ email: 'test@example.com', password: 'password' })
-    
+
     expect(result).toBe(true)
     expect(store.token).toBe(mockToken)
     expect(store.isAuthenticated).toBe(true)
@@ -121,15 +133,15 @@ describe('Auth Store', () => {
 
   it('should handle logout', async () => {
     mockLogout.mockResolvedValue({ success: true })
-    
+
     const { useAuthStore } = await import('./auth')
     const store = useAuthStore()
-    
+
     // Setup initial authenticated state
-    store.token = 'test-token'
-    store.currentAgent = { 
-      id: '1', 
-      name: 'Test Agent', 
+    store.token = createValidJWT('1', 'agent')
+    store.currentAgent = {
+      id: '1',
+      name: 'Test Agent',
       displayName: 'Test Agent',
       email: 'test@example.com',
       isOnline: true,
@@ -138,9 +150,9 @@ describe('Auth Store', () => {
       createdAt: Date.now(),
       role: 'agent'
     }
-    
+
     await store.logout()
-    
+
     expect(store.token).toBe(null)
     expect(store.isAuthenticated).toBe(false)
     expect(store.currentAgent).toBe(null)
@@ -151,15 +163,15 @@ describe('Auth Store', () => {
   it('should validate session correctly', async () => {
     const { useAuthStore } = await import('./auth')
     const store = useAuthStore()
-    
+
     // Test invalid session (no token)
     expect(store.validateSession()).toBe(false)
-    
+
     // Test valid session (with token)
-    store.token = 'valid-token'
+    store.token = createValidJWT('1', 'agent')
     store.sessionExpiry = Date.now() + 10000 // 10 seconds in future
     expect(store.validateSession()).toBe(true)
-    
+
     // Test expired session
     store.sessionExpiry = Date.now() - 10000 // 10 seconds in past
     expect(store.validateSession()).toBe(false)
@@ -167,35 +179,35 @@ describe('Auth Store', () => {
 
   it('should fetch current agent', async () => {
     const mockAgent = { id: '1', name: 'Test Agent', email: 'test@example.com' }
-    
+
     mockGetCurrentAgent.mockResolvedValue({
       success: true,
       data: mockAgent
     })
-    
+
     const { useAuthStore } = await import('./auth')
     const store = useAuthStore()
-    store.token = 'test-token' // Set token so fetchCurrentAgent will execute
+    store.token = createValidJWT('1', 'agent') // Set token so fetchCurrentAgent will execute
     await store.fetchCurrentAgent()
-    
+
     expect(store.currentAgent).toEqual(mockAgent)
   })
 
   it('should handle token refresh', async () => {
-    const newToken = 'new-token'
-    
+    const newToken = createValidJWT('1', 'agent')
+
     mockRefreshToken.mockResolvedValue({
       success: true,
       data: { token: newToken }
     })
-    
+
     const { useAuthStore } = await import('./auth')
     const store = useAuthStore()
-    store.token = 'old-token'
-    store.refreshToken = 'old-refresh-token'
-    
+    store.token = createValidJWT('1', 'agent')
+    store.refreshToken = createValidJWT('1', 'agent')
+
     const result = await store.refreshAuthToken()
-    
+
     expect(result.success).toBe(true)
     expect(store.token).toBe(newToken)
     expect(mockSetAuthHeader).toHaveBeenCalledWith(newToken, undefined)

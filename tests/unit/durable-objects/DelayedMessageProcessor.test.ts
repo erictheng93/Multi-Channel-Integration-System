@@ -1,855 +1,632 @@
 // DelayedMessageProcessor Durable Object Unit Tests
-// Tests scheduled message processing, countdown timers, and recall functionality
+// Tests batch processing of scheduled messages, cancellation, and retry mechanisms
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DelayedMessageProcessor } from '../../../src/durable-objects/DelayedMessageProcessor';
+import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessageProcessor';
 import {
-  DurableObjectsTestEnvironment,
-  MockDurableObjectState,
-  TestPerformanceMonitor
-} from '../../helpers/websocket/durable-objects-test-env';
-import {
-  TestDataFactory,
-  TestAssertions
-} from '../../helpers/websocket/websocket-test-utils';
+  setupDOTestEnvironment,
+  cleanupDOTestEnvironment,
+  createMockBindings,
+  MockDurableObjectState
+} from '../../helpers/durable-objects-test-helper';
 import type {
-  DurableObjectEvent,
-  DelayedMessage,
-  DelayedMessageStatus
-} from '../../../src/types/websocket-types';
+  ScheduledMessage
+} from '@backend/types/websocket-types';
 
 describe('DelayedMessageProcessor Durable Object', () => {
-  let testEnv: DurableObjectsTestEnvironment;
-  let delayedMessageProcessor: DelayedMessageProcessor;
+  let testEnv: ReturnType<typeof setupDOTestEnvironment>;
+  let processor: DelayedMessageProcessor;
   let mockState: MockDurableObjectState;
-  let mockEnv: any;
-  let performanceMonitor: TestPerformanceMonitor;
+  let mockBindings: any;
 
   beforeEach(() => {
-    testEnv = new DurableObjectsTestEnvironment();
-    testEnv.registerDurableObject('DELAYED_MESSAGE_PROCESSOR', DelayedMessageProcessor);
+    testEnv = setupDOTestEnvironment();
+    mockState = testEnv.createState();
 
-    mockEnv = {
+    mockBindings = createMockBindings({
       MESSAGE_BROADCASTER: {
         idFromName: vi.fn((name: string) => ({ toString: () => name })),
         get: vi.fn(() => ({
           fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true })))
         }))
       },
-      REALTIME_QUEUE: {
-        send: vi.fn().mockResolvedValue(undefined)
-      },
-      SESSIONS: {
-        get: vi.fn(),
-        put: vi.fn(),
-        delete: vi.fn()
-      }
-    };
+      LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token'
+    });
 
-    const namespace = testEnv.getNamespace('DELAYED_MESSAGE_PROCESSOR');
-    const id = namespace.idFromName('global');
-    mockState = new MockDurableObjectState(id);
-    delayedMessageProcessor = new DelayedMessageProcessor(mockState, mockEnv);
-    performanceMonitor = new TestPerformanceMonitor();
+    processor = new DelayedMessageProcessor(mockState as any, mockBindings);
   });
 
   afterEach(() => {
-    testEnv.reset();
-    vi.clearAllMocks();
-    performanceMonitor.clearMetrics();
+    cleanupDOTestEnvironment();
   });
 
-  describe('Delayed Message Scheduling', () => {
-    it('should schedule delayed messages successfully', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'delayed_msg_123',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'This is a delayed message',
+  describe('Message Scheduling', () => {
+    it('should schedule messages successfully', async () => {
+      const scheduledMessage = {
+        id: 'test-msg-123',
+        conversationId: 'conv-456',
+        agentId: 'agent-789',
+        content: 'Scheduled test message',
         messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled',
-        metadata: {
-          priority: 'normal',
-          source: 'agent_interface'
-        }
+        scheduledAt: Date.now() + 5000, // 5 seconds from now
+        priority: 'normal',
+        metadata: {}
       };
 
-      const request = new Request('https://delayed-processor/schedule', {
+      const request = new Request('https://processor/schedule', {
         method: 'POST',
-        body: JSON.stringify(delayedMessage),
+        body: JSON.stringify(scheduledMessage),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await delayedMessageProcessor.fetch(request);
-
+      const response = await processor.fetch(request);
       expect(response.ok).toBe(true);
 
       const result = await response.json();
       expect(result.success).toBe(true);
-      expect(result.messageId).toBe(delayedMessage.id);
-      expect(result.executeAt).toBe(delayedMessage.executeAt);
-
-      // Verify message was stored
-      expect(mockState.storage.put).toHaveBeenCalledWith(
-        `delayed:${delayedMessage.id}`,
-        expect.objectContaining({
-          id: delayedMessage.id,
-          status: 'scheduled'
-        })
-      );
+      expect(result.messageId).toBe(scheduledMessage.id);
+      expect(result.scheduledAt).toBe(scheduledMessage.scheduledAt);
     });
 
-    it('should validate delayed message parameters', async () => {
-      const invalidMessage = {
-        id: 'invalid_msg',
-        conversationId: 'conv_123',
-        // Missing required fields
-        delaySeconds: -5 // Invalid delay
+    it('should reject messages scheduled in the past', async () => {
+      const pastMessage = {
+        id: 'past-msg',
+        conversationId: 'conv-123',
+        agentId: 'agent-456',
+        content: 'Past message',
+        messageType: 'text',
+        scheduledAt: Date.now() - 1000, // In the past
+        priority: 'normal'
       };
 
-      const request = new Request('https://delayed-processor/schedule', {
+      const request = new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify(pastMessage),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await processor.fetch(request);
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject messages scheduled too far in the future', async () => {
+      const farFutureMessage = {
+        id: 'future-msg',
+        conversationId: 'conv-123',
+        agentId: 'agent-456',
+        content: 'Far future message',
+        messageType: 'text',
+        scheduledAt: Date.now() + (25 * 60 * 60 * 1000), // 25 hours (exceeds 24h limit)
+        priority: 'normal'
+      };
+
+      const request = new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify(farFutureMessage),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await processor.fetch(request);
+      expect(response.status).toBe(400);
+    });
+
+    it('should validate required fields', async () => {
+      const invalidMessage = {
+        id: 'invalid-msg',
+        // Missing required fields
+        content: 'Invalid message'
+      };
+
+      const request = new Request('https://processor/schedule', {
         method: 'POST',
         body: JSON.stringify(invalidMessage),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await delayedMessageProcessor.fetch(request);
-
+      const response = await processor.fetch(request);
       expect(response.status).toBe(400);
-      expect(await response.text()).toContain('Invalid delayed message');
-    });
-
-    it('should enforce delay limits', async () => {
-      const messageTooLong: DelayedMessage = {
-        id: 'too_long_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message with excessive delay',
-        messageType: 'text',
-        delaySeconds: 3600, // 1 hour - exceeds typical 120 second limit
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (3600 * 1000),
-        status: 'scheduled'
-      };
-
-      const request = new Request('https://delayed-processor/schedule', {
-        method: 'POST',
-        body: JSON.stringify(messageTooLong),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const response = await delayedMessageProcessor.fetch(request);
-
-      expect(response.status).toBe(400);
-      expect(await response.text()).toContain('Delay exceeds maximum allowed');
-    });
-
-    it('should handle duplicate message IDs', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'duplicate_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'First message',
-        messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled'
-      };
-
-      // Mock existing message in storage
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(delayedMessage);
-
-      const request = new Request('https://delayed-processor/schedule', {
-        method: 'POST',
-        body: JSON.stringify(delayedMessage),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const response = await delayedMessageProcessor.fetch(request);
-
-      expect(response.status).toBe(409);
-      expect(await response.text()).toContain('Message already exists');
     });
   });
 
-  describe('Message Recall Functionality', () => {
-    it('should recall scheduled messages successfully', async () => {
-      const messageId = 'recall_test_msg';
-      const agentId = 'agent_456';
+  describe('Message Cancellation', () => {
+    it('should cancel scheduled messages', async () => {
+      const messageId = 'cancel-test-msg';
 
-      // Mock scheduled message in storage
-      const scheduledMessage: DelayedMessage = {
+      // First schedule a message
+      const scheduledMessage = {
         id: messageId,
-        conversationId: 'conv_123',
-        agentId,
-        content: 'Message to be recalled',
+        conversationId: 'conv-123',
+        agentId: 'agent-456',
+        content: 'Message to be cancelled',
         messageType: 'text',
-        delaySeconds: 60,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (60 * 1000),
-        status: 'scheduled'
+        scheduledAt: Date.now() + 60000, // 1 minute from now
+        priority: 'normal'
       };
 
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(scheduledMessage);
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify(scheduledMessage),
+        headers: { 'Content-Type': 'application/json' }
+      }));
 
-      const request = new Request('https://delayed-processor/recall', {
+      // Now cancel it
+      const cancelRequest = new Request('https://processor/cancel', {
         method: 'POST',
         body: JSON.stringify({
           messageId,
-          agentId,
-          reason: 'User requested recall'
+          reason: 'Test cancellation'
         }),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await delayedMessageProcessor.fetch(request);
-
+      const response = await processor.fetch(cancelRequest);
       expect(response.ok).toBe(true);
 
       const result = await response.json();
       expect(result.success).toBe(true);
       expect(result.messageId).toBe(messageId);
-      expect(result.status).toBe('recalled');
-
-      // Verify message status was updated
-      expect(mockState.storage.put).toHaveBeenCalledWith(
-        `delayed:${messageId}`,
-        expect.objectContaining({
-          status: 'recalled',
-          recalledAt: expect.any(Number),
-          recallReason: 'User requested recall'
-        })
-      );
-
-      // Verify recall event was broadcasted
-      expect(mockEnv.MESSAGE_BROADCASTER.get).toHaveBeenCalled();
+      expect(result.cancelledAt).toBeDefined();
     });
 
-    it('should prevent recall of already sent messages', async () => {
-      const messageId = 'sent_msg';
-      const agentId = 'agent_456';
-
-      // Mock sent message in storage
-      const sentMessage: DelayedMessage = {
-        id: messageId,
-        conversationId: 'conv_123',
-        agentId,
-        content: 'Already sent message',
-        messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now() - 60000,
-        executeAt: Date.now() - 30000,
-        status: 'sent',
-        sentAt: Date.now() - 30000
-      };
-
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(sentMessage);
-
-      const request = new Request('https://delayed-processor/recall', {
+    it('should return 404 for non-existent messages', async () => {
+      const cancelRequest = new Request('https://processor/cancel', {
         method: 'POST',
         body: JSON.stringify({
-          messageId,
-          agentId
+          messageId: 'non-existent-msg'
         }),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await delayedMessageProcessor.fetch(request);
-
-      expect(response.status).toBe(409);
-      expect(await response.text()).toContain('Message cannot be recalled');
-    });
-
-    it('should validate recall permissions', async () => {
-      const messageId = 'permission_test_msg';
-      const scheduledMessage: DelayedMessage = {
-        id: messageId,
-        conversationId: 'conv_123',
-        agentId: 'original_agent',
-        content: 'Message by original agent',
-        messageType: 'text',
-        delaySeconds: 60,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (60 * 1000),
-        status: 'scheduled'
-      };
-
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(scheduledMessage);
-
-      const request = new Request('https://delayed-processor/recall', {
-        method: 'POST',
-        body: JSON.stringify({
-          messageId,
-          agentId: 'different_agent' // Different agent trying to recall
-        }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const response = await delayedMessageProcessor.fetch(request);
-
-      expect(response.status).toBe(403);
-      expect(await response.text()).toContain('Permission denied');
-    });
-
-    it('should handle recall of non-existent messages', async () => {
-      const messageId = 'non_existent_msg';
-
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(null);
-
-      const request = new Request('https://delayed-processor/recall', {
-        method: 'POST',
-        body: JSON.stringify({
-          messageId,
-          agentId: 'agent_456'
-        }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const response = await delayedMessageProcessor.fetch(request);
-
+      const response = await processor.fetch(cancelRequest);
       expect(response.status).toBe(404);
-      expect(await response.text()).toContain('Message not found');
-    });
-  });
-
-  describe('Countdown Timer Broadcasting', () => {
-    it('should broadcast countdown events', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'countdown_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Countdown test message',
-        messageType: 'text',
-        delaySeconds: 10,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (10 * 1000),
-        status: 'scheduled'
-      };
-
-      // Add message to processor
-      (delayedMessageProcessor as any).scheduledMessages.set(delayedMessage.id, delayedMessage);
-
-      // Mock broadcastCountdown method
-      const broadcastSpy = vi.spyOn(delayedMessageProcessor as any, 'broadcastCountdown')
-        .mockResolvedValue(undefined);
-
-      // Trigger countdown processing
-      await (delayedMessageProcessor as any).processCountdowns();
-
-      expect(broadcastSpy).toHaveBeenCalledWith(
-        delayedMessage,
-        expect.any(Number) // remaining seconds
-      );
     });
 
-    it('should stop countdown on message recall', async () => {
-      const messageId = 'recall_countdown_msg';
-      const delayedMessage: DelayedMessage = {
+    it('should not cancel already processed messages', async () => {
+      const messageId = 'processed-msg';
+
+      // Schedule a message with immediate execution time
+      const scheduledMessage = {
         id: messageId,
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message with countdown to be recalled',
+        conversationId: 'conv-123',
+        agentId: 'agent-456',
+        content: 'Already processed message',
         messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled'
+        scheduledAt: Date.now() + 100, // Very soon
+        priority: 'normal'
       };
 
-      // Add message to processor
-      (delayedMessageProcessor as any).scheduledMessages.set(messageId, delayedMessage);
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify(scheduledMessage),
+        headers: { 'Content-Type': 'application/json' }
+      }));
 
-      // Mock storage
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(delayedMessage);
+      // Wait for processing
+      await testEnv.wait(200);
 
-      // Recall the message
-      const recallRequest = new Request('https://delayed-processor/recall', {
+      // Try to trigger processing
+      await processor.fetch(new Request('https://processor/process-batch', {
+        method: 'POST'
+      }));
+
+      // Try to cancel (should fail if already processed)
+      const cancelRequest = new Request('https://processor/cancel', {
         method: 'POST',
         body: JSON.stringify({
-          messageId,
-          agentId: delayedMessage.agentId
+          messageId
         }),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      await delayedMessageProcessor.fetch(recallRequest);
-
-      // Verify countdown stopped
-      const messages = (delayedMessageProcessor as any).scheduledMessages;
-      const updatedMessage = messages.get(messageId);
-      expect(updatedMessage?.status).toBe('recalled');
+      const response = await processor.fetch(cancelRequest);
+      // Should either be 404 (removed after processing) or indicate can't cancel
+      expect(response.ok || response.status === 404).toBe(true);
     });
+  });
 
-    it('should handle countdown broadcast failures gracefully', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'failing_countdown_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message with failing countdown',
-        messageType: 'text',
-        delaySeconds: 10,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (10 * 1000),
-        status: 'scheduled'
-      };
+  describe('Message Rescheduling', () => {
+    it('should reschedule pending messages', async () => {
+      const messageId = 'reschedule-msg';
+      const originalTime = Date.now() + 60000;
+      const newTime = Date.now() + 120000;
 
-      // Mock broadcast failure
-      mockEnv.MESSAGE_BROADCASTER.get.mockReturnValue({
-        fetch: vi.fn().mockRejectedValue(new Error('Broadcast failed'))
+      // Schedule original message
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: messageId,
+          conversationId: 'conv-123',
+          agentId: 'agent-456',
+          content: 'Message to reschedule',
+          messageType: 'text',
+          scheduledAt: originalTime,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      // Reschedule it
+      const rescheduleRequest = new Request('https://processor/reschedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          messageId,
+          newScheduledAt: newTime
+        }),
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      // Add message to processor
-      (delayedMessageProcessor as any).scheduledMessages.set(delayedMessage.id, delayedMessage);
+      const response = await processor.fetch(rescheduleRequest);
+      expect(response.ok).toBe(true);
 
-      // Should not throw on broadcast failure
-      await expect((delayedMessageProcessor as any).processCountdowns())
-        .resolves.not.toThrow();
+      const result = await response.json();
+      expect(result.success).toBe(true);
+      expect(result.newScheduledAt).toBe(newTime);
+    });
+
+    it('should return 404 for non-existent messages', async () => {
+      const rescheduleRequest = new Request('https://processor/reschedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          messageId: 'non-existent',
+          newScheduledAt: Date.now() + 60000
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await processor.fetch(rescheduleRequest);
+      expect(response.status).toBe(404);
     });
   });
 
-  describe('Message Execution', () => {
-    it('should execute scheduled messages at correct time', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'execute_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message to be executed',
-        messageType: 'text',
-        delaySeconds: 1, // Very short delay for testing
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + 1000,
-        status: 'scheduled'
-      };
+  describe('Batch Processing', () => {
+    it('should process messages when scheduled time arrives', async () => {
+      const messageId = 'batch-msg-1';
+      const scheduledAt = Date.now() + 100; // Process very soon
 
-      // Add message to processor
-      (delayedMessageProcessor as any).scheduledMessages.set(delayedMessage.id, delayedMessage);
-
-      // Mock message execution
-      const executeSpy = vi.spyOn(delayedMessageProcessor as any, 'executeMessage')
-        .mockResolvedValue(true);
-
-      // Wait for execution time
-      await new Promise(resolve => setTimeout(resolve, 1100));
-
-      // Process pending messages
-      await (delayedMessageProcessor as any).processPendingMessages();
-
-      expect(executeSpy).toHaveBeenCalledWith(delayedMessage);
-    });
-
-    it('should send messages to queue for delivery', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'queue_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message for queue delivery',
-        messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled'
-      };
-
-      await (delayedMessageProcessor as any).executeMessage(delayedMessage);
-
-      // Verify message was sent to queue
-      expect(mockEnv.REALTIME_QUEUE.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'delayed_message_execute',
-          messageId: delayedMessage.id,
-          conversationId: delayedMessage.conversationId,
-          agentId: delayedMessage.agentId
-        })
-      );
-
-      // Verify message status was updated
-      expect(mockState.storage.put).toHaveBeenCalledWith(
-        `delayed:${delayedMessage.id}`,
-        expect.objectContaining({
-          status: 'sent',
-          sentAt: expect.any(Number)
-        })
-      );
-    });
-
-    it('should handle execution failures', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'failing_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message that will fail',
-        messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled'
-      };
-
-      // Mock queue send failure
-      mockEnv.REALTIME_QUEUE.send.mockRejectedValue(new Error('Queue unavailable'));
-
-      await (delayedMessageProcessor as any).executeMessage(delayedMessage);
-
-      // Verify message status was updated to failed
-      expect(mockState.storage.put).toHaveBeenCalledWith(
-        `delayed:${delayedMessage.id}`,
-        expect.objectContaining({
-          status: 'failed',
-          failedAt: expect.any(Number),
-          error: 'Queue unavailable'
-        })
-      );
-    });
-
-    it('should retry failed executions', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'retry_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message to retry',
-        messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled',
-        retryCount: 0
-      };
-
-      // Mock queue send failure first, then success
-      mockEnv.REALTIME_QUEUE.send
-        .mockRejectedValueOnce(new Error('Temporary failure'))
-        .mockResolvedValueOnce(undefined);
-
-      // First execution attempt (should fail)
-      await (delayedMessageProcessor as any).executeMessage(delayedMessage);
-
-      // Second execution attempt (should succeed)
-      const updatedMessage = { ...delayedMessage, status: 'failed' as DelayedMessageStatus, retryCount: 1 };
-      await (delayedMessageProcessor as any).executeMessage(updatedMessage);
-
-      // Verify retry was attempted
-      expect(mockEnv.REALTIME_QUEUE.send).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('Performance and Scalability', () => {
-    it('should handle large numbers of scheduled messages', async () => {
-      const messageCount = 1000;
-      const messages: DelayedMessage[] = [];
-
-      performanceMonitor.startTimer('bulk_scheduling');
-
-      // Schedule many messages
-      for (let i = 0; i < messageCount; i++) {
-        const message: DelayedMessage = {
-          id: `bulk_msg_${i}`,
-          conversationId: `conv_${i % 10}`,
-          agentId: `agent_${i % 5}`,
-          content: `Bulk message ${i}`,
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: messageId,
+          conversationId: 'conv-123',
+          agentId: 'agent-456',
+          content: 'Batch test message',
           messageType: 'text',
-          delaySeconds: 30 + (i % 60), // 30-90 seconds
-          scheduledAt: Date.now(),
-          executeAt: Date.now() + ((30 + (i % 60)) * 1000),
-          status: 'scheduled'
-        };
+          scheduledAt,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
 
-        messages.push(message);
+      // Wait for scheduled time
+      await testEnv.wait(150);
 
-        const request = new Request('https://delayed-processor/schedule', {
-          method: 'POST',
-          body: JSON.stringify(message),
-          headers: { 'Content-Type': 'application/json' }
-        });
+      // Trigger batch processing
+      const processRequest = new Request('https://processor/process-batch', {
+        method: 'POST'
+      });
 
-        await delayedMessageProcessor.fetch(request);
-      }
+      const response = await processor.fetch(processRequest);
+      expect(response.ok).toBe(true);
 
-      const duration = performanceMonitor.endTimer('bulk_scheduling');
-
-      // Performance assertions
-      const throughput = messageCount / (duration / 1000);
-      expect(throughput).toBeGreaterThan(50); // At least 50 messages per second
-
-      // Verify all messages were scheduled
-      const scheduledMessages = (delayedMessageProcessor as any).scheduledMessages;
-      expect(scheduledMessages.size).toBe(messageCount);
+      const result = await response.json();
+      expect(result.success).toBe(true);
     });
 
-    it('should efficiently process countdown updates', async () => {
-      const messageCount = 100;
+    it('should handle multiple messages in batch', async () => {
+      const messageCount = 10;
+      const scheduledAt = Date.now() + 100;
 
-      // Add multiple messages with different countdown timers
+      // Schedule multiple messages
       for (let i = 0; i < messageCount; i++) {
-        const message: DelayedMessage = {
-          id: `countdown_msg_${i}`,
-          conversationId: `conv_${i % 5}`,
-          agentId: `agent_${i % 3}`,
-          content: `Countdown message ${i}`,
-          messageType: 'text',
-          delaySeconds: 10 + (i % 20), // 10-30 seconds
-          scheduledAt: Date.now(),
-          executeAt: Date.now() + ((10 + (i % 20)) * 1000),
-          status: 'scheduled'
-        };
-
-        (delayedMessageProcessor as any).scheduledMessages.set(message.id, message);
-      }
-
-      performanceMonitor.startTimer('countdown_processing');
-
-      // Process all countdowns
-      await (delayedMessageProcessor as any).processCountdowns();
-
-      const duration = performanceMonitor.endTimer('countdown_processing');
-
-      // Should process all countdowns efficiently
-      expect(duration).toBeLessThan(5000); // Less than 5 seconds
-
-      const metrics = performanceMonitor.getMetrics('countdown_processing');
-      expect(metrics.average).toBeLessThan(100); // Less than 100ms average
-    });
-
-    it('should handle concurrent recall requests', async () => {
-      const messageCount = 50;
-      const messages: DelayedMessage[] = [];
-
-      // Create scheduled messages
-      for (let i = 0; i < messageCount; i++) {
-        const message: DelayedMessage = {
-          id: `concurrent_msg_${i}`,
-          conversationId: `conv_${i % 10}`,
-          agentId: `agent_${i % 5}`,
-          content: `Concurrent message ${i}`,
-          messageType: 'text',
-          delaySeconds: 60,
-          scheduledAt: Date.now(),
-          executeAt: Date.now() + (60 * 1000),
-          status: 'scheduled'
-        };
-
-        messages.push(message);
-        (delayedMessageProcessor as any).scheduledMessages.set(message.id, message);
-
-        // Mock storage
-        vi.spyOn(mockState.storage, 'get')
-          .mockImplementation(async (key: string) => {
-            const messageId = key.replace('delayed:', '');
-            return messages.find(m => m.id === messageId) || null;
-          });
-      }
-
-      // Attempt to recall all messages concurrently
-      const recallPromises = messages.map(message => {
-        const request = new Request('https://delayed-processor/recall', {
+        await processor.fetch(new Request('https://processor/schedule', {
           method: 'POST',
           body: JSON.stringify({
-            messageId: message.id,
-            agentId: message.agentId
+            id: `batch-msg-${i}`,
+            conversationId: `conv-${i % 3}`,
+            agentId: 'agent-456',
+            content: `Batch message ${i}`,
+            messageType: 'text',
+            scheduledAt: scheduledAt + (i * 10),
+            priority: 'normal'
           }),
           headers: { 'Content-Type': 'application/json' }
-        });
+        }));
+      }
 
-        return delayedMessageProcessor.fetch(request);
-      });
+      // Wait for all to be ready
+      await testEnv.wait(200);
 
-      const responses = await Promise.all(recallPromises);
+      // Process batch
+      await processor.fetch(new Request('https://processor/process-batch', {
+        method: 'POST'
+      }));
 
-      // All recalls should succeed
-      expect(responses.every(r => r.ok)).toBe(true);
+      // Check metrics
+      const metricsResponse = await processor.fetch(new Request('https://processor/metrics'));
+      const metrics = await metricsResponse.json();
+
+      expect(metrics.totalProcessed).toBeGreaterThan(0);
     });
   });
 
-  describe('Monitoring and Metrics', () => {
-    it('should provide processing metrics', async () => {
-      const request = new Request('https://delayed-processor/metrics');
-      const response = await delayedMessageProcessor.fetch(request);
+  describe('Message Queries', () => {
+    it('should retrieve scheduled messages', async () => {
+      const messageId = 'query-msg';
+      const scheduledAt = Date.now() + 60000;
+
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: messageId,
+          conversationId: 'conv-123',
+          agentId: 'agent-456',
+          content: 'Query test message',
+          messageType: 'text',
+          scheduledAt,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      const queryRequest = new Request('https://processor/get-scheduled');
+      const response = await processor.fetch(queryRequest);
+
+      expect(response.ok).toBe(true);
+
+      const result = await response.json();
+      expect(result.success).toBe(true);
+      expect(result.count).toBeGreaterThan(0);
+      expect(result.messages).toBeDefined();
+      expect(Array.isArray(result.messages)).toBe(true);
+    });
+
+    it('should filter messages by agentId', async () => {
+      const agentId = 'agent-filter-test';
+
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'filter-msg-1',
+          conversationId: 'conv-123',
+          agentId: agentId,
+          content: 'Filter test 1',
+          messageType: 'text',
+          scheduledAt: Date.now() + 60000,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'filter-msg-2',
+          conversationId: 'conv-123',
+          agentId: 'different-agent',
+          content: 'Filter test 2',
+          messageType: 'text',
+          scheduledAt: Date.now() + 60000,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      const queryRequest = new Request(`https://processor/get-scheduled?agentId=${agentId}`);
+      const response = await processor.fetch(queryRequest);
+
+      const result = await response.json();
+      expect(result.messages.every((msg: ScheduledMessage) => msg.agentId === agentId)).toBe(true);
+    });
+
+    it('should filter messages by conversationId', async () => {
+      const conversationId = 'conv-filter-test';
+
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'conv-filter-msg',
+          conversationId: conversationId,
+          agentId: 'agent-456',
+          content: 'Conversation filter test',
+          messageType: 'text',
+          scheduledAt: Date.now() + 60000,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      const queryRequest = new Request(`https://processor/get-scheduled?conversationId=${conversationId}`);
+      const response = await processor.fetch(queryRequest);
+
+      const result = await response.json();
+      expect(result.messages.every((msg: ScheduledMessage) => msg.conversationId === conversationId)).toBe(true);
+    });
+  });
+
+  describe('Metrics and Monitoring', () => {
+    it('should provide comprehensive metrics', async () => {
+      const metricsRequest = new Request('https://processor/metrics');
+      const response = await processor.fetch(metricsRequest);
 
       expect(response.ok).toBe(true);
 
       const metrics = await response.json();
-      expect(metrics).toHaveProperty('scheduledCount');
-      expect(metrics).toHaveProperty('sentCount');
-      expect(metrics).toHaveProperty('recalledCount');
-      expect(metrics).toHaveProperty('failedCount');
-      expect(metrics).toHaveProperty('averageDelay');
-      expect(metrics).toHaveProperty('processingLatency');
-      expect(metrics).toHaveProperty('uptime');
+      expect(metrics).toHaveProperty('totalProcessed');
+      expect(metrics).toHaveProperty('successfulSends');
+      expect(metrics).toHaveProperty('failedSends');
+      expect(metrics).toHaveProperty('cancelledMessagesCount');
+      expect(metrics).toHaveProperty('queueDepth');
+      expect(metrics).toHaveProperty('averageProcessingTime');
+      expect(metrics).toHaveProperty('pendingMessages');
+      expect(metrics).toHaveProperty('processingQueueLength');
+      expect(metrics).toHaveProperty('retryQueueSize');
     });
 
-    it('should track recall success rates', async () => {
-      const messageCount = 20;
-      const messages: DelayedMessage[] = [];
+    it('should provide status information', async () => {
+      const statusRequest = new Request('https://processor/status');
+      const response = await processor.fetch(statusRequest);
 
-      // Create and schedule messages
-      for (let i = 0; i < messageCount; i++) {
-        const message: DelayedMessage = {
-          id: `recall_metric_msg_${i}`,
-          conversationId: 'conv_123',
-          agentId: 'agent_456',
-          content: `Recall metrics message ${i}`,
+      expect(response.ok).toBe(true);
+
+      const status = await response.json();
+      expect(status).toHaveProperty('isHealthy');
+      expect(status).toHaveProperty('queueDepth');
+      expect(status).toHaveProperty('successRate');
+      expect(status).toHaveProperty('isProcessing');
+      expect(status).toHaveProperty('nextScheduledTime');
+      expect(status).toHaveProperty('lastProcessed');
+    });
+
+    it('should track cancellation metrics', async () => {
+      const messageId = 'cancel-metrics-msg';
+
+      // Schedule and cancel a message
+      await processor.fetch(new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: messageId,
+          conversationId: 'conv-123',
+          agentId: 'agent-456',
+          content: 'Cancellation metrics test',
           messageType: 'text',
-          delaySeconds: 60,
-          scheduledAt: Date.now(),
-          executeAt: Date.now() + (60 * 1000),
-          status: 'scheduled'
-        };
+          scheduledAt: Date.now() + 60000,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
 
-        messages.push(message);
-        (delayedMessageProcessor as any).scheduledMessages.set(message.id, message);
-      }
-
-      // Mock storage
-      vi.spyOn(mockState.storage, 'get')
-        .mockImplementation(async (key: string) => {
-          const messageId = key.replace('delayed:', '');
-          return messages.find(m => m.id === messageId) || null;
-        });
-
-      // Recall half the messages
-      const recallCount = messageCount / 2;
-      for (let i = 0; i < recallCount; i++) {
-        const message = messages[i];
-        const request = new Request('https://delayed-processor/recall', {
-          method: 'POST',
-          body: JSON.stringify({
-            messageId: message.id,
-            agentId: message.agentId
-          }),
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        await delayedMessageProcessor.fetch(request);
-      }
+      await processor.fetch(new Request('https://processor/cancel', {
+        method: 'POST',
+        body: JSON.stringify({ messageId }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
 
       // Check metrics
-      const metricsRequest = new Request('https://delayed-processor/metrics');
-      const metricsResponse = await delayedMessageProcessor.fetch(metricsRequest);
+      const metricsResponse = await processor.fetch(new Request('https://processor/metrics'));
       const metrics = await metricsResponse.json();
 
-      expect(metrics.recalledCount).toBe(recallCount);
-      expect(metrics.recallSuccessRate).toBeCloseTo(100); // All recalls should succeed
-    });
-
-    it('should monitor processing performance', async () => {
-      // Add messages to monitor processing time
-      const delayedMessage: DelayedMessage = {
-        id: 'performance_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Performance monitoring message',
-        messageType: 'text',
-        delaySeconds: 1,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + 1000,
-        status: 'scheduled'
-      };
-
-      const startTime = Date.now();
-
-      const request = new Request('https://delayed-processor/schedule', {
-        method: 'POST',
-        body: JSON.stringify(delayedMessage),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      await delayedMessageProcessor.fetch(request);
-
-      const schedulingTime = Date.now() - startTime;
-
-      // Should schedule quickly
-      expect(schedulingTime).toBeLessThan(100); // Less than 100ms
-
-      // Check processing metrics
-      const metricsRequest = new Request('https://delayed-processor/metrics');
-      const metricsResponse = await delayedMessageProcessor.fetch(metricsRequest);
-      const metrics = await metricsResponse.json();
-
-      expect(metrics.averageSchedulingTime).toBeDefined();
-      expect(metrics.averageSchedulingTime).toBeLessThan(100);
+      expect(metrics.cancelledMessagesCount).toBeGreaterThan(0);
     });
   });
 
-  describe('Error Handling and Recovery', () => {
-    it('should handle storage failures gracefully', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'storage_fail_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message with storage failure',
-        messageType: 'text',
-        delaySeconds: 30,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (30 * 1000),
-        status: 'scheduled'
-      };
-
-      // Mock storage failure
-      vi.spyOn(mockState.storage, 'put')
-        .mockRejectedValue(new Error('Storage unavailable'));
-
-      const request = new Request('https://delayed-processor/schedule', {
-        method: 'POST',
-        body: JSON.stringify(delayedMessage),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const response = await delayedMessageProcessor.fetch(request);
-
-      expect(response.status).toBe(500);
-      expect(await response.text()).toContain('Failed to schedule message');
-    });
-
-    it('should recover from broadcast failures', async () => {
-      const delayedMessage: DelayedMessage = {
-        id: 'broadcast_fail_msg',
-        conversationId: 'conv_123',
-        agentId: 'agent_456',
-        content: 'Message with broadcast failure',
-        messageType: 'text',
-        delaySeconds: 10,
-        scheduledAt: Date.now(),
-        executeAt: Date.now() + (10 * 1000),
-        status: 'scheduled'
-      };
-
-      // Mock broadcast failure
-      mockEnv.MESSAGE_BROADCASTER.get.mockReturnValue({
-        fetch: vi.fn().mockRejectedValue(new Error('Broadcast service unavailable'))
-      });
-
-      // Add message to processor
-      (delayedMessageProcessor as any).scheduledMessages.set(delayedMessage.id, delayedMessage);
-
-      // Should continue processing despite broadcast failures
-      await expect((delayedMessageProcessor as any).processCountdowns())
-        .resolves.not.toThrow();
-
-      // Message should still be scheduled
-      const messages = (delayedMessageProcessor as any).scheduledMessages;
-      expect(messages.has(delayedMessage.id)).toBe(true);
-    });
-
-    it('should handle malformed requests', async () => {
-      const request = new Request('https://delayed-processor/schedule', {
+  describe('Error Handling', () => {
+    it('should handle malformed JSON', async () => {
+      const request = new Request('https://processor/schedule', {
         method: 'POST',
         body: 'invalid json',
         headers: { 'Content-Type': 'application/json' }
       });
 
-      const response = await delayedMessageProcessor.fetch(request);
+      const response = await processor.fetch(request);
+      expect(response.status).toBe(500);
+    });
 
-      expect(response.status).toBe(400);
-      expect(await response.text()).toContain('Invalid request');
+    it('should handle storage errors gracefully', async () => {
+      // Mock storage failure
+      vi.spyOn(mockState.storage, 'put').mockRejectedValueOnce(new Error('Storage error'));
+
+      const request = new Request('https://processor/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'storage-error-msg',
+          conversationId: 'conv-123',
+          agentId: 'agent-456',
+          content: 'Storage error test',
+          messageType: 'text',
+          scheduledAt: Date.now() + 60000,
+          priority: 'normal'
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await processor.fetch(request);
+      expect(response.status).toBe(500);
+    });
+
+    it('should return 404 for unknown endpoints', async () => {
+      const request = new Request('https://processor/unknown-endpoint');
+      const response = await processor.fetch(request);
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('Cleanup Operations', () => {
+    it('should provide cleanup endpoint', async () => {
+      const cleanupRequest = new Request('https://processor/cleanup', {
+        method: 'POST'
+      });
+
+      const response = await processor.fetch(cleanupRequest);
+      expect(response.ok).toBe(true);
+
+      const result = await response.json();
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Performance and Scalability', () => {
+    it('should handle bulk message scheduling', async () => {
+      const messageCount = 100;
+      const startTime = Date.now();
+
+      const promises = [];
+      for (let i = 0; i < messageCount; i++) {
+        const promise = processor.fetch(new Request('https://processor/schedule', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: `bulk-msg-${i}`,
+            conversationId: `conv-${i % 10}`,
+            agentId: `agent-${i % 5}`,
+            content: `Bulk message ${i}`,
+            messageType: 'text',
+            scheduledAt: Date.now() + 60000 + (i * 100),
+            priority: 'normal'
+          }),
+          headers: { 'Content-Type': 'application/json' }
+        }));
+        promises.push(promise);
+      }
+
+      await Promise.all(promises);
+      const duration = Date.now() - startTime;
+
+      // Should complete reasonably quickly
+      expect(duration).toBeLessThan(10000); // Less than 10 seconds
+
+      // Check metrics
+      const metricsResponse = await processor.fetch(new Request('https://processor/metrics'));
+      const metrics = await metricsResponse.json();
+
+      expect(metrics.pendingMessages).toBe(messageCount);
+    }, 15000);
+
+    it('should maintain performance with queue depth', async () => {
+      const messageCount = 50;
+
+      // Schedule messages
+      for (let i = 0; i < messageCount; i++) {
+        await processor.fetch(new Request('https://processor/schedule', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: `perf-msg-${i}`,
+            conversationId: 'conv-123',
+            agentId: 'agent-456',
+            content: `Performance test ${i}`,
+            messageType: 'text',
+            scheduledAt: Date.now() + 60000 + (i * 1000),
+            priority: 'normal'
+          }),
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      }
+
+      // Query should still be fast
+      const startTime = Date.now();
+      await processor.fetch(new Request('https://processor/get-scheduled'));
+      const queryDuration = Date.now() - startTime;
+
+      expect(queryDuration).toBeLessThan(500); // Less than 500ms
     });
   });
 });

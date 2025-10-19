@@ -20,9 +20,7 @@ describe('Realtime Module Integration', () => {
         get: vi.fn().mockResolvedValue(null),
         delete: vi.fn().mockResolvedValue(undefined)
       },
-      REALTIME_QUEUE: {
-        send: vi.fn().mockResolvedValue(undefined)
-      },
+      // Phase 2: REALTIME_QUEUE removed (replaced by Durable Objects)
       DB: {
         prepare: vi.fn().mockReturnValue({
           bind: vi.fn().mockReturnValue({
@@ -308,18 +306,9 @@ describe('Realtime Module Integration', () => {
       )).rejects.toThrow();
     });
 
-    it('should handle queue failures when queue processing enabled', async () => {
-      mockEnv.REALTIME_QUEUE.send.mockRejectedValue(new Error('Queue unavailable'));
-
-      await realtime.initialize(mockEnv, { enableQueueProcessing: true });
-
-      // 應該處理隊列錯誤
-      await expect(realtime.createEvent(
-        'message',
-        { content: 'test' },
-        { conversationId: 'conv-123' }
-      )).rejects.toThrow();
-    });
+    // Phase 2: Test removed - REALTIME_QUEUE no longer exists
+    // Queue functionality replaced by Durable Objects (MessageBroadcaster, LatestMessageCacheCoordinator)
+    // Error handling for Durable Objects tested in separate DO-specific test files
 
     it('should provide fallback mechanisms', async () => {
       await realtime.initialize(mockEnv);

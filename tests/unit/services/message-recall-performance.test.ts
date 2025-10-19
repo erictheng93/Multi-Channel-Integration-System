@@ -1,7 +1,7 @@
 // MessageRecallService 性能測試
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { MessageRecallService } from '../../../src/services/message-recall-service';
-import type { Bindings } from '../../../src/types';
+import { MessageRecallService } from '@backend/services/message-recall-service';
+import type { Bindings } from '@backend/types';
 
 describe('MessageRecallService Performance Tests', () => {
   let service: MessageRecallService;
@@ -23,9 +23,7 @@ describe('MessageRecallService Performance Tests', () => {
         get: vi.fn().mockResolvedValue(null),
         delete: vi.fn().mockResolvedValue(undefined)
       } as any,
-      AGENT_QUEUE: {
-        send: vi.fn().mockResolvedValue(undefined)
-      } as any,
+      // REMOVED: AGENT_QUEUE (replaced by DelayedMessageBuffer Durable Object)
       LINE_CHANNEL_ACCESS_TOKEN: 'test-token',
       FB_PAGE_ACCESS_TOKEN: 'test-token'
     } as any;
@@ -72,8 +70,7 @@ describe('MessageRecallService Performance Tests', () => {
       // 驗證 KV 調用次數
       expect(mockBindings.SESSIONS.put).toHaveBeenCalledTimes(batchSize);
 
-      // 驗證 Queue 調用次數
-      expect(mockBindings.AGENT_QUEUE.send).toHaveBeenCalledTimes(batchSize);
+      // REMOVED: AGENT_QUEUE 驗證 (現由 DelayedMessageBuffer Durable Object 處理)
 
       console.log(`Batch send performance: ${batchSize} messages in ${duration.toFixed(2)}ms`);
     });

@@ -10,7 +10,7 @@ import type {
   PerformanceAnalyticsQuery,
   CustomAnalyticsQuery,
   ExportQuery
-} from '../../../src/modules/analytics/types/analytics-types';
+} from '@backend/modules/analytics/types/analytics-types';
 
 // Mock D1 Database
 const createMockDB = () => ({

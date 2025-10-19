@@ -8,7 +8,7 @@ import type {
   ConversationListRequest,
   ConversationAssignRequest,
   NewMessage
-} from '../../../src/modules/conversations/types/conversation-types';
+} from '@backend/modules/conversations/types/conversation-types';
 
 // Mock Drizzle ORM
 vi.mock('drizzle-orm/d1', () => ({

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterAll, vi } from 'vitest';
-import { PermissionService } from '../../../src/services/permission-service';
+import { PermissionService } from '@backend/services/permission-service';
 
 describe('PermissionService - Integration Tests', () => {
   const originalGetUserWithTeam = (PermissionService as any).getUserWithTeam;

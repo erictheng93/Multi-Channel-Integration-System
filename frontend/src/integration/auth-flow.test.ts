@@ -22,6 +22,18 @@ vi.mock('vue-router', () => ({
   })
 }))
 
+// Helper function to create valid JWT token
+function createValidJWT(userId: string = 'test-agent-id', role: string = 'agent'): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = btoa(JSON.stringify({
+    userId,
+    role,
+    exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 days
+  }))
+  const signature = btoa('test-signature')
+  return `${header}.${payload}.${signature}`
+}
+
 describe('Integration: Authentication Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,11 +57,13 @@ describe('Integration: Authentication Flow', () => {
   })
 
   it('should complete full login flow', async () => {
+    const authToken = createValidJWT('1', 'agent')
+
     // Mock successful login response
     mockLogin.mockResolvedValue({
       success: true,
       data: {
-        token: 'auth-token',
+        token: authToken,
         agent: { id: '1', name: 'Test Agent', email: 'test@example.com' }
       }
     })
@@ -72,7 +86,7 @@ describe('Integration: Authentication Flow', () => {
     // Verify login success
     expect(loginResult).toBe(true)
     expect(authStore.isAuthenticated).toBe(true)
-    expect(authStore.token).toBe('auth-token')
+    expect(authStore.token).toBe(authToken)
     expect(authStore.currentAgent).toEqual({
       id: '1',
       name: 'Test Agent',
@@ -85,7 +99,7 @@ describe('Integration: Authentication Flow', () => {
       password: 'password123'
     })
     expect(mockSetAuthHeader).toHaveBeenCalled()
-    expect(global.localStorage.setItem).toHaveBeenCalledWith('token', 'auth-token')
+    expect(global.localStorage.setItem).toHaveBeenCalledWith('token', authToken)
   })
 
   it('should handle complete logout flow', async () => {
@@ -95,10 +109,10 @@ describe('Integration: Authentication Flow', () => {
     const authStore = useAuthStore()
 
     // Setup authenticated state
-    authStore.token = 'auth-token'
-    authStore.currentAgent = { 
-      id: '1', 
-      name: 'Test Agent', 
+    authStore.token = createValidJWT('1', 'agent')
+    authStore.currentAgent = {
+      id: '1',
+      name: 'Test Agent',
       displayName: 'Test Agent',
       email: 'test@example.com',
       isOnline: true,
@@ -155,7 +169,7 @@ describe('Integration: Authentication Flow', () => {
     const authStore = useAuthStore()
 
     // Test session validation with valid token
-    authStore.token = 'valid-token'
+    authStore.token = createValidJWT('1', 'agent')
     authStore.sessionExpiry = Date.now() + 10000 // 10 seconds in future
     expect(authStore.validateSession()).toBe(true)
 

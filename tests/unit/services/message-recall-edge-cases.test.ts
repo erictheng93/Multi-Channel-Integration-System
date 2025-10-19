@@ -1,7 +1,7 @@
 // MessageRecallService 邊界情況和錯誤處理測試
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { MessageRecallService } from '../../../src/services/message-recall-service';
-import type { Bindings } from '../../../src/types';
+import { MessageRecallService } from '@backend/services/message-recall-service';
+import type { Bindings } from '@backend/types';
 
 describe('MessageRecallService Edge Cases', () => {
   let service: MessageRecallService;

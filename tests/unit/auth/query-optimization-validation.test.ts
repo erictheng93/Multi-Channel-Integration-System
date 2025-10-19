@@ -3,7 +3,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { authenticateUser } from '../../../src/utils/auth'
+import { authenticateUser } from '@backend/utils/auth'
 
 // Mock drizzle ORM
 vi.mock('drizzle-orm/d1', () => ({

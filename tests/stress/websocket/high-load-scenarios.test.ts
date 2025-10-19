@@ -17,12 +17,12 @@ import {
   TestDataFactory,
   LoadTestHelper
 } from '../../helpers/websocket/websocket-test-utils';
-import { ConversationRoom } from '../../../src/durable-objects/ConversationRoom';
-import { UserConnection } from '../../../src/durable-objects/UserConnection';
-import { MessageBroadcaster } from '../../../src/durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from '../../../src/durable-objects/DelayedMessageProcessor';
-import { WebSocketBroadcastService } from '../../../src/services/websocket-broadcast-service';
-import type { DurableObjectEvent } from '../../../src/types/websocket-types';
+import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
+import { UserConnection } from '@backend/durable-objects/UserConnection';
+import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
+import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessageProcessor';
+import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
+import type { DurableObjectEvent } from '@backend/types/websocket-types';
 
 describe('WebSocket High-Load Stress Tests', () => {
   let broadcastService: WebSocketBroadcastService;

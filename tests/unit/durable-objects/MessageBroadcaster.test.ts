@@ -2,7 +2,7 @@
 // Tests efficient event distribution, batch processing, and performance monitoring
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { MessageBroadcaster } from '../../../src/durable-objects/MessageBroadcaster';
+import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
 import {
   DurableObjectsTestEnvironment,
   MockDurableObjectState,
@@ -17,7 +17,7 @@ import type {
   DurableObjectEvent,
   BroadcastTarget,
   WebSocketMessage
-} from '../../../src/types/websocket-types';
+} from '@backend/types/websocket-types';
 
 describe('MessageBroadcaster Durable Object', () => {
   let testEnv: DurableObjectsTestEnvironment;

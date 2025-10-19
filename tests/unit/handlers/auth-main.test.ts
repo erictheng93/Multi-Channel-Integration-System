@@ -1,8 +1,8 @@
 // 認證主要處理器測試 - Handler-based 架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
-import authMainHandler from '../../../src/handlers/auth-main';
-import type { Bindings } from '../../../src/types';
+import authMainHandler from '@backend/handlers/auth-main';
+import type { Bindings } from '@backend/types';
 
 // Mock utilities
 vi.mock('../../../src/utils/auth', () => ({

@@ -94,6 +94,8 @@
     "test:benchmark": "npm run test:all -- --category benchmark",
     "test:production-readiness": "npm run test:all -- --suites websocket-load-test,durable-objects-stress-test,benchmark-suite",
     "monitor:start": "npx tsx src/monitoring/performance-monitor.ts",
+    "monitor:phase1.4": "npx tsx scripts/monitoring/queue-monitor-phase1-4.ts",
+    "monitor:phase1.4:status": "tail -f QUEUE_MONITORING_PHASE1_4_*.md",
     "dashboard": "echo 'Dashboard available at http://localhost:8787/dashboard'",
     "analyze:performance": "npm run benchmark && npm run profile:memory",
     "setup:test-env": "mkdir -p test-results && mkdir -p memory-profiles && mkdir -p benchmark-results",

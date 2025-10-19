@@ -48,15 +48,10 @@ preview_bucket_name = "multi-channel-platform-attachments"
 # Migration completed: 2025-09-30
 # See: docs/reports/migration/MIGRATION_TO_DURABLE_OBJECTS_COMPLETE.md
 
-# Real-time events queue
-[[queues.producers]]
-binding = "REALTIME_QUEUE"
-queue = "realtime-events"
-
-[[queues.consumers]]
-queue = "realtime-events"
-max_batch_size = 5
-max_batch_timeout = 1
+# ⚠️ REMOVED: REALTIME_QUEUE has been fully deprecated and removed (Phase 2: 2025-10-17)
+# Real-time events are now handled by Durable Objects (MessageBroadcaster, ConversationRoom)
+# Latest message cache updates are handled by LatestMessageCacheCoordinator Durable Object
+# Migration completed: Phase 1.4b (2025-10-17)
 
 # =================== DURABLE OBJECTS (WebSocket) ===================
 
@@ -90,6 +85,11 @@ class_name = "DelayedMessageBuffer"
 name = "DISTRIBUTED_LOCK"
 class_name = "LockCoordinator"
 
+# LatestMessageCacheCoordinator - Batch cache updates via alarm (replaces REALTIME_QUEUE)
+[[durable_objects.bindings]]
+name = "LATEST_MESSAGE_COORDINATOR"
+class_name = "LatestMessageCacheCoordinator"
+
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
 # Initial migration - Original Durable Objects
@@ -107,6 +107,11 @@ new_classes = [
 [[migrations]]
 tag = "v2"
 new_classes = ["DelayedMessageBuffer"]
+
+# Migration v3 - Add LatestMessageCacheCoordinator (Phase 1.4b: REALTIME_QUEUE → DO)
+[[migrations]]
+tag = "v3"
+new_classes = ["LatestMessageCacheCoordinator"]
 
 # Development environment
 [env.development]
