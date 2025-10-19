@@ -16,26 +16,26 @@ The `AppLayout.vue` component is a comprehensive layout component for the Multi-
 ### Key Features Implemented
 
 1. **Sidebar Management**
-   - Collapsible sidebar (280px → 80px)
-   - Logo with chat icon (💬) and "Multi-Channel" branding
-   - Navigation items: Dashboard (儀表板) and Conversations (對話管理)
-   - User profile section with avatar, name, role, and logout button
+ - Collapsible sidebar (280px 80px)
+ - Logo with chat icon () and "Multi-Channel" branding
+ - Navigation items: Dashboard () and Conversations ()
+ - User profile section with avatar, name, role, and logout button
 
 2. **Notification System**
-   - Notification bell icon with badge count
-   - Slide-out notification panel
-   - Default notification: "新訊息" from LINE user
-   - Close functionality (button and click outside)
+ - Notification bell icon with badge count
+ - Slide-out notification panel
+ - Default notification: "" from LINE user
+ - Close functionality (button and click outside)
 
 3. **Status Indicators**
-   - Online status dot (green)
-   - Status text: "線上"
-   - Breadcrumb showing current page title
+ - Online status dot (green)
+ - Status text: ""
+ - Breadcrumb showing current page title
 
 4. **Responsive Features**
-   - Mobile-friendly design with CSS media queries
-   - Sidebar transforms to overlay on mobile
-   - Notification panel becomes full-width on mobile
+ - Mobile-friendly design with CSS media queries
+ - Sidebar transforms to overlay on mobile
+ - Notification panel becomes full-width on mobile
 
 ## Dependencies and Integration
 
@@ -71,39 +71,39 @@ The `AppLayout.vue` component is a comprehensive layout component for the Multi-
 
 ## Test Coverage Analysis
 
-### ✅ Successfully Testable Features
+### Successfully Testable Features
 1. **Static Content Rendering**
-   - Logo and branding display
-   - Navigation item structure
-   - Status indicators
-   - Basic layout structure
+ - Logo and branding display
+ - Navigation item structure
+ - Status indicators
+ - Basic layout structure
 
 2. **Interactive Elements**
-   - Sidebar toggle functionality
-   - Notification panel toggle
-   - Button click events
+ - Sidebar toggle functionality
+ - Notification panel toggle
+ - Button click events
 
 3. **Computed Properties**
-   - User initials calculation
-   - Unread notification count
-   - Page title determination
+ - User initials calculation
+ - Unread notification count
+ - Page title determination
 
 4. **Time Formatting**
-   - Date/time display formatting
+ - Date/time display formatting
 
-### ❌ Currently Blocked Features
+### Currently Blocked Features
 1. **Auth Store Integration**
-   - User profile display
-   - Logout functionality
-   - Authentication state display
+ - User profile display
+ - Logout functionality
+ - Authentication state display
 
 2. **Route-dependent Features**
-   - Active navigation highlighting
-   - Breadcrumb title updates
+ - Active navigation highlighting
+ - Breadcrumb title updates
 
 ## Recommended Testing Approach
 
-### Phase 1: Component Structure Tests ✅
+### Phase 1: Component Structure Tests
 Focus on testing the component's static structure and basic interactivity without store dependencies.
 
 ### Phase 2: Mock Store Integration
@@ -125,7 +125,7 @@ Test the component in a full application context where Pinia and router are prop
 
 ## Code Quality Assessment
 
-### ✅ Strengths
+### Strengths
 1. **Well-structured Vue 3 Composition API usage**
 2. **Comprehensive feature set with good UX**
 3. **Proper TypeScript integration**
@@ -133,7 +133,7 @@ Test the component in a full application context where Pinia and router are prop
 5. **Clean separation of concerns**
 6. **Good accessibility considerations**
 
-### ⚠️ Areas for Improvement
+### Areas for Improvement
 1. **Store dependency injection**: Consider making auth store injectable for better testability
 2. **Component size**: Large component could be split into smaller sub-components
 3. **Hard-coded data**: Notification data is currently hard-coded
@@ -154,7 +154,7 @@ Test the component in a full application context where Pinia and router are prop
 
 ## Performance Considerations
 
-### ✅ Good Practices
+### Good Practices
 1. **Efficient reactivity**: Uses `ref` and `computed` appropriately
 2. **Event handling**: Proper event listener management
 3. **Conditional rendering**: Uses `v-if` for performance-critical elements
@@ -166,7 +166,7 @@ Test the component in a full application context where Pinia and router are prop
 
 ## Security Considerations
 
-### ✅ Implemented
+### Implemented
 1. **XSS Protection**: Proper text interpolation
 2. **CSRF Protection**: Logout functionality uses proper API calls
 
