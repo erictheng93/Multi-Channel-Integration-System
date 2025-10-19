@@ -56,3 +56,8 @@ crash.*.log
 create_admin.sql
 "frontend/nul"  
 frontend/nul 
+
+# 測試和臨時文件
+.playwright-mcp/
+backups/
+monitoring/
