@@ -60,6 +60,59 @@ const ALLOWED_MIME_TYPES = {
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILENAME_LENGTH = 255; // Maximum filename length
+
+/**
+ * Sanitize filename for Content-Disposition header to prevent injection attacks
+ * Removes dangerous characters and ensures proper encoding
+ *
+ * @param filename - Original filename from user upload
+ * @returns Sanitized filename safe for Content-Disposition header
+ */
+function sanitizeFilename(filename: string): string {
+  if (!filename) {
+    return 'download';
+  }
+
+  // Remove path separators and null bytes
+  let sanitized = filename.replace(/[\/\\:\0]/g, '_');
+
+  // Remove control characters and quotes that could break the header
+  sanitized = sanitized.replace(/[\x00-\x1F\x7F"';]/g, '_');
+
+  // Limit length to prevent buffer overflow or excessive header size
+  if (sanitized.length > MAX_FILENAME_LENGTH) {
+    const extension = sanitized.split('.').pop() || '';
+    const nameWithoutExt = sanitized.substring(0, sanitized.lastIndexOf('.'));
+    const maxNameLength = MAX_FILENAME_LENGTH - extension.length - 1;
+    sanitized = nameWithoutExt.substring(0, maxNameLength) + '.' + extension;
+  }
+
+  // Fallback if sanitization results in empty string
+  if (!sanitized || sanitized.trim() === '') {
+    return 'download';
+  }
+
+  return sanitized;
+}
+
+/**
+ * Generate RFC 5987 encoded Content-Disposition header
+ * Supports international characters while preventing injection
+ *
+ * @param filename - Sanitized filename
+ * @returns Properly formatted Content-Disposition value
+ */
+function generateContentDisposition(filename: string): string {
+  const sanitized = sanitizeFilename(filename);
+
+  // Use RFC 5987 encoding for UTF-8 filenames
+  // Format: attachment; filename="ascii-fallback"; filename*=UTF-8''encoded-name
+  const asciiFilename = sanitized.replace(/[^\x20-\x7E]/g, '_'); // ASCII-safe fallback
+  const encodedFilename = encodeURIComponent(sanitized);
+
+  return `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`;
+}
 
 export const attachmentHandler = {
   // 上傳檔案附件
@@ -131,11 +184,11 @@ export const attachmentHandler = {
 
       try {
         if (c.env.R2_BUCKET) {
-          // 上傳到 R2
+          // 上傳到 R2 with sanitized filename to prevent Content-Disposition injection
           await c.env.R2_BUCKET.put(storagePath, fileContent, {
             httpMetadata: {
               contentType: file.type,
-              contentDisposition: `attachment; filename="${file.name}"`
+              contentDisposition: generateContentDisposition(file.name)
             }
           });
           
@@ -276,7 +329,7 @@ export const attachmentHandler = {
         return new Response(object.body, {
           headers: {
             'Content-Type': attachment.mimeType,
-            'Content-Disposition': `attachment; filename="${attachment.filename}"`,
+            'Content-Disposition': generateContentDisposition(attachment.filename),
             'Content-Length': attachment.fileSize.toString()
           }
         });

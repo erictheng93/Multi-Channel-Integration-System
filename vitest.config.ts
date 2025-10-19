@@ -13,6 +13,7 @@ export default defineConfig({
     alias: {
       // Backend source aliases
       '@': path.resolve(__dirname, './src'),
+      '@backend': path.resolve(__dirname, './src'), // ✅ Added for test imports
       '@modules': path.resolve(__dirname, './src/modules'),
       '@shared': path.resolve(__dirname, './src/shared'),
       '@infrastructure': path.resolve(__dirname, './src/infrastructure'),

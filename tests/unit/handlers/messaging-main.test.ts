@@ -9,7 +9,8 @@ vi.mock('@shared/database/schema', () => ({
   messages: {},
   conversations: {},
   customers: {},
-  agents: {}
+  agents: {},
+  fileAttachments: {} // ✅ Added missing export
 }));
 
 // Mock the correct path that matches the handler's import

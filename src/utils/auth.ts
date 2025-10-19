@@ -147,13 +147,23 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 }
 
-// 生成隨機字符串
+// 生成隨機字符串 - 使用加密安全的隨機數生成器 (CSPRNG)
 export function generateRandomString(length: number = 32): string {
+  // 使用 crypto.getRandomValues() 生成加密安全的隨機字節
+  // 每個字符需要 ~6 bits (log2(62) ≈ 5.95)，但我們使用字節 (8 bits) 來確保均勻分布
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charsLength = chars.length; // 62
+
+  // 生成足夠的隨機字節（每個字符至少需要 1 字節）
+  const randomBytes = new Uint8Array(length);
+  crypto.getRandomValues(randomBytes);
+
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    // 使用模運算將字節映射到字符集，確保均勻分布
+    result += chars.charAt(randomBytes[i] % charsLength);
   }
+
   return result;
 }
 
