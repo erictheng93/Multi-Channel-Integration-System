@@ -247,11 +247,11 @@ const route = useRoute()
 const router = useRouter()
 const conversationsStore = useConversationsStore()
 
-// 🚀 Phase 1: SSE-Primary Migration Strategy
+// 🚀 WebSocket-Only Strategy (Backend 100% Support)
 const migration = useWebSocketMigration({
-  strategy: 'sse_only', // 暫時強制使用 SSE，直到 WebSocket 修復
-  fallbackToSSE: true,
-  rolloutPercentage: 0 // 0% WebSocket rollout during Phase 1
+  strategy: 'websocket_only', // 使用 100% WebSocket (后端已完全支持)
+  fallbackToSSE: false,
+  rolloutPercentage: 100 // 100% WebSocket rollout
 })
 
 // WebSocket Status Monitoring (保留供未來使用)
@@ -280,7 +280,7 @@ const httpMessages = useMessages(conversationId.value, {
 
 // 🚀 Unified Connection Manager (Primary Real-time System)
 const unifiedConnection = ref<RealtimeConnection | null>(null)
-const unifiedConnectionType = ref<ConnectionType>('sse')
+const unifiedConnectionType = ref<ConnectionType>('websocket')
 const unifiedConnectionState = ref<ConnectionState>('disconnected')
 const unifiedIsConnected = ref(false)
 
@@ -495,28 +495,28 @@ const displayedMessages = computed(() => {
 
 // 🌐 Performance optimized connection status with caching
 const connectionStatusText = performanceOptimizer.cachedComputed(() => {
-  // Priority 1: SSE Status
+  // Priority 1: WebSocket Status
   if (unifiedIsConnected.value) {
     // Use messages.value.length to get total messages (including initial load)
     const conn = unifiedConnection.value
     const msgCount = conn ? (((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0) : 0
-    return `📡 SSE 已連接 (${msgCount} 條訊息)`
+    return `🔌 WebSocket 已連接 (${msgCount} 條訊息)`
   }
 
   if (unifiedConnectionState.value === 'connecting') {
-    return '📡 SSE 連接中...'
+    return '🔌 WebSocket 連接中...'
   }
 
   if (unifiedConnectionState.value === 'reconnecting') {
     const attempts = 0
-    return `📡 SSE 重連中... (${attempts}/5)`
+    return `🔌 WebSocket 重連中... (${attempts}/5)`
   }
 
   if (unifiedConnectionState.value === 'error') {
-    return '❌ SSE 連接失敗'
+    return '❌ WebSocket 連接失敗'
   }
 
-  // Priority 2: WebSocket Status (disabled in Phase 1)
+  // Priority 2: Fallback to HTTP polling if WebSocket fails
   if (currentProtocol.value === 'websocket') {
     return websocketStatus.statusIndicator.value.label
   }

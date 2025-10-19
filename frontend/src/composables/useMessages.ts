@@ -1,9 +1,25 @@
 // 現代化訊息管理 Composable with 分頁載入支持
 import { ref, computed, watch } from 'vue'
 import { useMessagesStore } from '@/stores/messages'
+import { useAuthStore } from '@/stores/auth'
 import { useError } from './useError'
 import { messageApi } from '@/api/message'
 import type { Message, PaginatedResponse } from '@/types'
+
+// Helper function to extract userId from JWT token
+function getUserIdFromToken(): string | null {
+  const token = localStorage.getItem('token')
+  if (!token) {return null}
+
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3 || !parts[1]) {return null}
+    const payload = JSON.parse(atob(parts[1]))
+    return payload.userId || payload.id || null
+  } catch {
+    return null
+  }
+}
 
 // 🔧 簡化消息處理工具函數 - 只分為最舊和最新兩種
 const messageOrderUtils = {
@@ -46,8 +62,9 @@ export function useMessages(conversationId?: string, options?: {
   pageSize?: number
 }) {
   const messagesStore = useMessagesStore()
+  const authStore = useAuthStore()
   const { error, handleError, clearError } = useError()
-  
+
   // 配置
   const enablePagination = options?.enablePagination ?? false
   const pageSize = options?.pageSize ?? 30
@@ -357,9 +374,13 @@ export function useMessages(conversationId?: string, options?: {
     try {
       if (enablePagination) {
         // 使用 API 直接發送
+        // Get senderId from JWT token or authStore
+        const senderId = getUserIdFromToken() || authStore.currentAgent?.id
+
         const response = await messageApi.send(currentConversationId.value, {
           content,
-          messageType: 'text'
+          messageType: 'text',
+          senderId
         })
         
         if (response.success && response.data) {

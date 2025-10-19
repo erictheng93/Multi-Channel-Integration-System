@@ -313,6 +313,7 @@ onMounted(() => {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
+  color: #111827; /* Force dark text for contrast with light background */
 }
 
 .customer-badges {

@@ -9,6 +9,7 @@ export interface SendMessageRequest {
   content: string;
   messageType?: 'text' | 'image' | 'file';
   platform?: Platform;
+  senderId?: string;
   replyToId?: string;
   metadata?: Record<string, unknown>;
   attachmentIds?: string[];
@@ -71,20 +72,21 @@ export const messageApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    
+
     if (!data.content?.trim()) {
       return { success: false, error: '訊息內容不能為空' };
     }
-    
+
     const payload = {
       content: data.content.trim(),
       messageType: data.messageType || 'text',
       platform: data.platform,
+      senderId: data.senderId,
       replyToId: data.replyToId,
       metadata: data.metadata,
       attachmentIds: data.attachmentIds
     };
-    
+
     return apiClient.post(`/conversations/${conversationId}/messages`, payload);
   },
 

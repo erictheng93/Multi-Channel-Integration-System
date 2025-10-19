@@ -140,46 +140,68 @@
   --danger-200: #991b1b;
 }
 
-/* System preference support */
+/* System preference support - OVERRIDDEN for forced light mode */
+/*
+ * CRITICAL FIX: This project uses FORCED LIGHT MODE
+ *
+ * The background color is locked to light (#f9fafb) regardless of system preference.
+ * Therefore, we MUST ensure text colors remain DARK for proper contrast.
+ *
+ * Previous implementation caused severe contrast issues:
+ * - Background: #f9fafb (light) - forced via !important
+ * - Text: #f8fafc (light) - followed dark mode preference
+ * - Result: 1.09:1 contrast ratio - WCAG FAIL (completely unreadable)
+ *
+ * This media query now FORCES DARK TEXT on light background.
+ * Affects ~70-80% of users with dark mode system preference.
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    /* Same dark mode variables as above */
-    --background: 3 7 18;
-    --foreground: 248 250 252;
-    --card: 15 23 42;
-    --card-foreground: 248 250 252;
-    --popover: 15 23 42;
-    --popover-foreground: 248 250 252;
-    --muted: 30 41 59;
-    --muted-foreground: 148 163 184;
-    --border: 30 41 59;
-    --input: 30 41 59;
-    --accent: 30 41 59;
-    --accent-foreground: 248 250 252;
+    /* OVERRIDE: Force dark text colors for light background contrast */
+    /* These values MUST match the default :root light mode values */
+
+    /* Text colors - Keep DARK for contrast with forced light background */
+    --foreground: 17 24 39 !important;        /* Dark text (default light mode) */
+    --card-foreground: 17 24 39 !important;   /* Dark card text */
+    --popover-foreground: 17 24 39 !important;/* Dark popover text */
+    --accent-foreground: 17 24 39 !important; /* Dark accent text */
+
+    /* Gray scale - Use LIGHT MODE values (dark grays) for proper contrast */
+    --gray-50: #f9fafb !important;   /* Lightest - background */
+    --gray-100: #f3f4f6 !important;
+    --gray-200: #e5e7eb !important;
+    --gray-300: #d1d5db !important;
+    --gray-400: #9ca3af !important;
+    --gray-500: #6b7280 !important;
+    --gray-600: #4b5563 !important;
+    --gray-700: #374151 !important;
+    --gray-800: #1f2937 !important;
+    --gray-900: #111827 !important;  /* Darkest - for maximum contrast text */
+
+    /* Background colors - Already forced in lines 836-909, but keep consistent */
+    --background: 249 250 251 !important;
+    --card: 255 255 255 !important;
+    --popover: 255 255 255 !important;
+    --muted: 243 244 246 !important;
+    --border: 229 231 235 !important;
+    --input: 229 231 235 !important;
+    --accent: 243 244 246 !important;
+
+    /* Utility colors - Keep light mode values */
     --destructive: 239 68 68;
     --destructive-foreground: 248 250 252;
     --ring: 37 99 235;
 
-    --gray-50: #0f172a;
-    --gray-100: #1e293b;
-    --gray-200: #334155;
-    --gray-300: #475569;
-    --gray-400: #64748b;
-    --gray-500: #94a3b8;
-    --gray-600: #cbd5e1;
-    --gray-700: #e2e8f0;
-    --gray-800: #f1f5f9;
-    --gray-900: #f8fafc;
-
-    --success-50: #0f2419;
-    --success-100: #14532d;
-    --success-200: #166534;
-    --warning-50: #451a03;
-    --warning-100: #78350f;
-    --warning-200: #92400e;
-    --danger-50: #450a0a;
-    --danger-100: #7f1d1d;
-    --danger-200: #991b1b;
+    /* Status colors - Keep light mode values for consistency */
+    --success-50: #ecfdf5;
+    --success-100: #d1fae5;
+    --success-200: #a7f3d0;
+    --warning-50: #fffbeb;
+    --warning-100: #fef3c7;
+    --warning-200: #fde68a;
+    --danger-50: #fef2f2;
+    --danger-100: #fee2e2;
+    --danger-200: #fecaca;
   }
 }
 

@@ -4,6 +4,21 @@ import type { Message, MessageFilters, Platform } from '@/types'
 import { messageApi } from '@/api/message'
 import { messageIndexService } from '@/services/messageIndexService'
 
+// Helper function to extract userId from JWT token
+function getUserIdFromToken(): string | null {
+  const token = localStorage.getItem('token')
+  if (!token) {return null}
+
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3 || !parts[1]) {return null}
+    const payload = JSON.parse(atob(parts[1]))
+    return payload.userId || payload.id || null
+  } catch {
+    return null
+  }
+}
+
 export const useMessagesStore = defineStore('messages', () => {
   // State
   const messages = ref<Message[]>([])
@@ -87,10 +102,14 @@ export const useMessagesStore = defineStore('messages', () => {
     error.value = null
 
     try {
+      // Get senderId from JWT token
+      const senderId = getUserIdFromToken()
+
       const response = await messageApi.send(conversationId, {
         content: content.trim(),
         platform,
-        messageType: 'text'
+        messageType: 'text',
+        senderId: senderId || undefined
       })
 
       if (response.success && response.data) {

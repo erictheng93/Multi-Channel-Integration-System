@@ -77,17 +77,6 @@ resource "cloudflare_workers_kv_namespace" "cache" {
   title      = "CACHE${local.env_suffix}"
 }
 
-# Queues - 訊息佇列
-resource "cloudflare_queue" "message_queue" {
-  account_id = local.account_id
-  name       = "message-queue${local.env_suffix}"
-}
-
-resource "cloudflare_queue" "delayed_message_queue" {
-  account_id = local.account_id
-  name       = "delayed-message-queue${local.env_suffix}"
-}
-
 # Workers Script - 主應用
 resource "cloudflare_worker_script" "main" {
   account_id = local.account_id
@@ -153,23 +142,12 @@ resource "cloudflare_worker_script" "main" {
     name         = "SESSIONS"
     namespace_id = cloudflare_workers_kv_namespace.sessions.id
   }
-  
+
   kv_namespace_binding {
     name         = "CACHE"
     namespace_id = cloudflare_workers_kv_namespace.cache.id
   }
-  
-  # Queue 綁定
-  queue_binding {
-    binding = "MESSAGE_QUEUE"
-    queue   = cloudflare_queue.message_queue.name
-  }
-  
-  queue_binding {
-    binding = "DELAYED_MESSAGE_QUEUE"
-    queue   = cloudflare_queue.delayed_message_queue.name
-  }
-  
+
   # Durable Objects 綁定
   durable_object_namespace_binding {
     name         = "CONVERSATION_ROOM"
@@ -181,9 +159,7 @@ resource "cloudflare_worker_script" "main" {
     cloudflare_d1_database.main,
     cloudflare_r2_bucket.attachments,
     cloudflare_workers_kv_namespace.sessions,
-    cloudflare_workers_kv_namespace.cache,
-    cloudflare_queue.message_queue,
-    cloudflare_queue.delayed_message_queue
+    cloudflare_workers_kv_namespace.cache
   ]
 }
 

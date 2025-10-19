@@ -322,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -585,6 +585,7 @@ const handleClickOutside = (event: Event) => {
 }
 
 // Watch route changes to update UI state
+// Use flush: 'post' to prevent recursive updates during render
 watch(() => route.path, (newPath) => {
   // Auto-expand reports submenu when navigating to reports
   if (newPath.startsWith('/reports/')) {
@@ -594,12 +595,15 @@ watch(() => route.path, (newPath) => {
   // Close any open menus when route changes
   showUserMenu.value = false
   showNotifications.value = false
-})
+}, { flush: 'post' })
 
-onMounted(() => {
+onMounted(async () => {
   // Load notifications or other initialization
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
+
+  // Wait for next tick to ensure DOM is fully rendered before initial resize
+  await nextTick()
   handleResize() // 初始化時檢查屏幕尺寸
 })
 
