@@ -1,6 +1,6 @@
 # ConversationCard Component - Code Quality Analysis
 
-## ✅ Strengths
+## Strengths
 
 ### 1. Type Safety
 - Full TypeScript integration with proper interface definitions
@@ -27,7 +27,7 @@
 - Null-safe property access with optional chaining
 - Default values for undefined states
 
-## ⚠️ Potential Issues & Improvements
+## Potential Issues & Improvements
 
 ### 1. **CRITICAL: Missing Keyboard Accessibility**
 ```vue
@@ -35,14 +35,14 @@
 <div class="conversation-card" @click="$emit('select', conversation)">
 
 <!-- Recommended -->
-<div 
-  class="conversation-card" 
-  tabindex="0"
-  role="button"
-  :aria-selected="selected"
-  @click="$emit('select', conversation)"
-  @keydown.enter="$emit('select', conversation)"
-  @keydown.space.prevent="$emit('select', conversation)"
+<div
+ class="conversation-card"
+ tabindex="0"
+ role="button"
+ :aria-selected="selected"
+ @click="$emit('select', conversation)"
+ @keydown.enter="$emit('select', conversation)"
+ @keydown.space.prevent="$emit('select', conversation)"
 >
 ```
 
@@ -50,22 +50,22 @@
 ```typescript
 // Current implementation doesn't handle invalid dates
 const formatTime = (date: Date | string | number) => {
-  let messageDate: Date
-  
-  if (typeof date === 'number') {
-    messageDate = new Date(date)
-  } else if (typeof date === 'string') {
-    messageDate = new Date(date)
-  } else {
-    messageDate = date
-  }
-  
-  // Add validation
-  if (isNaN(messageDate.getTime())) {
-    return '時間未知'
-  }
-  
-  // Rest of the logic...
+ let messageDate: Date
+
+ if (typeof date === 'number') {
+ messageDate = new Date(date)
+ } else if (typeof date === 'string') {
+ messageDate = new Date(date)
+ } else {
+ messageDate = date
+ }
+
+ // Add validation
+ if (isNaN(messageDate.getTime())) {
+ return ''
+ }
+
+ // Rest of the logic...
 }
 ```
 
@@ -73,16 +73,16 @@ const formatTime = (date: Date | string | number) => {
 ```vue
 <!-- Current logic could be simplified -->
 <PlatformBadge
-  v-if="conversation.platform || conversation.user?.platform"
-  :platform="conversation.platform || conversation.user?.platform || 'line'"
-  show-icon
+ v-if="conversation.platform || conversation.user?.platform"
+ :platform="conversation.platform || conversation.user?.platform || 'line'"
+ show-icon
 />
 
 <!-- Consider extracting to computed property -->
 <PlatformBadge
-  v-if="displayPlatform"
-  :platform="displayPlatform"
-  show-icon
+ v-if="displayPlatform"
+ :platform="displayPlatform"
+ show-icon
 />
 ```
 
@@ -90,19 +90,19 @@ const formatTime = (date: Date | string | number) => {
 ```typescript
 // Current implementation could handle edge cases better
 const customerInitials = computed(() => {
-  const name = props.conversation.customer?.name || props.conversation.user?.name || 'U'
-  
-  // Handle empty strings and whitespace
-  const cleanName = name.trim()
-  if (!cleanName) return 'U'
-  
-  return cleanName
-    .split(' ')
-    .filter(n => n.length > 0) // Filter empty strings
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+ const name = props.conversation.customer?.name || props.conversation.user?.name || 'U'
+
+ // Handle empty strings and whitespace
+ const cleanName = name.trim()
+ if (!cleanName) return 'U'
+
+ return cleanName
+ .split(' ')
+ .filter(n => n.length > 0) // Filter empty strings
+ .map(n => n[0])
+ .join('')
+ .toUpperCase()
+ .slice(0, 2)
 })
 ```
 
@@ -111,47 +111,47 @@ The component relies heavily on CSS custom properties that may not be defined:
 ```css
 /* Add fallbacks for better resilience */
 .conversation-card {
-  background: white;
-  border: 1px solid var(--gray-200, #e5e7eb);
-  border-radius: var(--radius-lg, 0.5rem);
-  padding: var(--space-4, 1rem);
-  /* ... */
+ background: white;
+ border: 1px solid var(--gray-200, #e5e7eb);
+ border-radius: var(--radius-lg, 0.5rem);
+ padding: var(--space-4, 1rem);
+ /* ... */
 }
 ```
 
-## 🔧 Recommended Fixes
+## Recommended Fixes
 
 ### 1. Enhanced Accessibility
 ```vue
 <template>
-  <div 
-    class="conversation-card"
-    :class="{ 'selected': selected, 'unread': hasUnreadMessages }"
-    tabindex="0"
-    role="button"
-    :aria-selected="selected"
-    :aria-label="conversationAriaLabel"
-    @click="handleSelect"
-    @keydown.enter="handleSelect"
-    @keydown.space.prevent="handleSelect"
-  >
-    <!-- ... -->
-  </div>
+ <div
+ class="conversation-card"
+ :class="{ 'selected': selected, 'unread': hasUnreadMessages }"
+ tabindex="0"
+ role="button"
+ :aria-selected="selected"
+ :aria-label="conversationAriaLabel"
+ @click="handleSelect"
+ @keydown.enter="handleSelect"
+ @keydown.space.prevent="handleSelect"
+ >
+ <!-- ... -->
+ </div>
 </template>
 
 <script setup lang="ts">
-const hasUnreadMessages = computed(() => 
-  Boolean(props.conversation.unreadCount && props.conversation.unreadCount > 0)
+const hasUnreadMessages = computed(() =>
+ Boolean(props.conversation.unreadCount && props.conversation.unreadCount > 0)
 )
 
 const conversationAriaLabel = computed(() => {
-  const customerName = props.conversation.customer?.name || props.conversation.user?.name || '未知用戶'
-  const unreadText = hasUnreadMessages.value ? `，${props.conversation.unreadCount} 則未讀訊息` : ''
-  return `與 ${customerName} 的對話${unreadText}`
+ const customerName = props.conversation.customer?.name || props.conversation.user?.name || ''
+ const unreadText = hasUnreadMessages.value ? `${props.conversation.unreadCount} ` : ''
+ return ` ${customerName} ${unreadText}`
 })
 
 const handleSelect = () => {
-  emit('select', props.conversation)
+ emit('select', props.conversation)
 }
 </script>
 ```
@@ -159,69 +159,69 @@ const handleSelect = () => {
 ### 2. Improved Error Handling
 ```typescript
 const formatTime = (date: Date | string | number) => {
-  try {
-    let messageDate: Date
-    
-    if (typeof date === 'number') {
-      messageDate = new Date(date)
-    } else if (typeof date === 'string') {
-      messageDate = new Date(date)
-    } else {
-      messageDate = date
-    }
-    
-    if (isNaN(messageDate.getTime())) {
-      console.warn('Invalid date provided to formatTime:', date)
-      return '時間未知'
-    }
-    
-    const now = new Date()
-    const diffInHours = (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60)
-    
-    if (diffInHours < 0) {
-      return '剛剛' // Handle future dates
-    }
-    
-    if (diffInHours < 1) {
-      const minutes = Math.max(0, Math.floor(diffInHours * 60))
-      return minutes === 0 ? '剛剛' : `${minutes}分鐘前`
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}小時前`
-    } else {
-      return messageDate.toLocaleDateString('zh-TW', {
-        month: 'short',
-        day: 'numeric'
-      })
-    }
-  } catch (error) {
-    console.error('Error formatting time:', error)
-    return '時間未知'
-  }
+ try {
+ let messageDate: Date
+
+ if (typeof date === 'number') {
+ messageDate = new Date(date)
+ } else if (typeof date === 'string') {
+ messageDate = new Date(date)
+ } else {
+ messageDate = date
+ }
+
+ if (isNaN(messageDate.getTime())) {
+ console.warn('Invalid date provided to formatTime:', date)
+ return ''
+ }
+
+ const now = new Date()
+ const diffInHours = (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60)
+
+ if (diffInHours < 0) {
+ return '' // Handle future dates
+ }
+
+ if (diffInHours < 1) {
+ const minutes = Math.max(0, Math.floor(diffInHours * 60))
+ return minutes === 0 ? '' : `${minutes}`
+ } else if (diffInHours < 24) {
+ return `${Math.floor(diffInHours)}`
+ } else {
+ return messageDate.toLocaleDateString('zh-TW', {
+ month: 'short',
+ day: 'numeric'
+ })
+ }
+ } catch (error) {
+ console.error('Error formatting time:', error)
+ return ''
+ }
 }
 ```
 
 ### 3. Performance Optimization
 ```typescript
 // Memoize expensive computations
-const displayPlatform = computed(() => 
-  props.conversation.platform || props.conversation.user?.platform || 'line'
+const displayPlatform = computed(() =>
+ props.conversation.platform || props.conversation.user?.platform || 'line'
 )
 
-const shouldShowPlatformBadge = computed(() => 
-  Boolean(props.conversation.platform || props.conversation.user?.platform)
+const shouldShowPlatformBadge = computed(() =>
+ Boolean(props.conversation.platform || props.conversation.user?.platform)
 )
 ```
 
-## 📊 Test Coverage Analysis
+## Test Coverage Analysis
 
-### Current Test Coverage: ✅ Excellent (28 tests)
-- Component rendering: ✅ Complete
-- Customer information display: ✅ Complete
-- Message display: ✅ Complete
-- Time formatting: ✅ Complete
-- Event handling: ✅ Complete
-- Edge cases: ✅ Complete
-- Accessibility: ⚠️ Basic (could be enhanced)
+### Current Test Coverage: Excellent (28 tests)
+- Component rendering: Complete
+- Customer information display: Complete
+- Message display: Complete
+- Time formatting: Complete
+- Event handling: Complete
+- Edge cases: Complete
+- Accessibility: Basic (could be enhanced)
 
 ### Missing Test Scenarios:
 1. Invalid date handling
@@ -230,7 +230,7 @@ const shouldShowPlatformBadge = computed(() =>
 4. Error boundary behavior
 5. Performance under rapid prop changes
 
-## 🎯 Priority Recommendations
+## Priority Recommendations
 
 ### High Priority
 1. **Add keyboard accessibility** - Critical for users with disabilities
@@ -244,7 +244,7 @@ const shouldShowPlatformBadge = computed(() =>
 5. **Enhanced test coverage** - Cover edge cases and accessibility
 6. **Performance optimizations** - Memoization for expensive operations
 
-## 📈 Overall Assessment
+## Overall Assessment
 
 **Score: 8.5/10**
 

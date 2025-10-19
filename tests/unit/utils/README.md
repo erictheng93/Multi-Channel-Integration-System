@@ -4,15 +4,15 @@ This directory contains comprehensive unit tests for utility functions, focusing
 
 ## Test Categories Overview
 
-### 🗄️ Database Utils Tests (HIGHEST PRIORITY - Core Business Logic)
+### Database Utils Tests (HIGHEST PRIORITY - Core Business Logic)
 Critical tests for database operations that form the backbone of the application.
 
-### 📱 LINE API Integration Tests  
+### LINE API Integration Tests
 Comprehensive tests for LINE API integration and webhook processing.
 
 ## Database Utils Tests (HIGHEST PRIORITY)
 
-### 🔥 `database.test.ts` - Core Business Logic
+### `database.test.ts` - Core Business Logic
 **Priority: CRITICAL** - Essential CRUD operations that the application depends on:
 - Customer management (create, update, retrieve)
 - Conversation lifecycle management
@@ -20,9 +20,9 @@ Comprehensive tests for LINE API integration and webhook processing.
 - System configuration management
 - Analytics and reporting functions
 
-**Status**: ⚠️ Original version needs mock fixes - Use `database-fixed.test.ts` instead
+**Status**: Original version needs mock fixes - Use `database-fixed.test.ts` instead
 
-### ⚡ `database-edge-cases.test.ts` - Boundary Conditions
+### `database-edge-cases.test.ts` - Boundary Conditions
 **Priority: CRITICAL** - Edge cases where production bugs typically occur:
 - String length limits and Unicode handling
 - Numeric boundaries and overflow scenarios
@@ -30,9 +30,9 @@ Comprehensive tests for LINE API integration and webhook processing.
 - Concurrent access and race conditions
 - Special character and SQL injection prevention
 
-**Status**: ✅ Working correctly with proper mock setup
+**Status**: Working correctly with proper mock setup
 
-### 🛡️ `database-error-handling.test.ts` - Error Recovery
+### `database-error-handling.test.ts` - Error Recovery
 **Priority: HIGH** - Robust error handling for production stability:
 - Database connection failures
 - SQL constraint violations
@@ -40,9 +40,9 @@ Comprehensive tests for LINE API integration and webhook processing.
 - Resource limit scenarios
 - Security and permission errors
 
-**Status**: ⚠️ Original version needs mock fixes - Use `database-error-handling-fixed.test.ts` instead
+**Status**: Original version needs mock fixes - Use `database-error-handling-fixed.test.ts` instead
 
-### 📊 `database-performance.test.ts` - Scalability Testing
+### `database-performance.test.ts` - Scalability Testing
 **Priority: MEDIUM** - Performance and stress testing:
 - Bulk operations (thousands of records)
 - Large dataset queries
@@ -50,14 +50,14 @@ Comprehensive tests for LINE API integration and webhook processing.
 - Concurrent operation handling
 - Resource cleanup verification
 
-### 🔧 `database-test-runner.ts` - Test Orchestration
+### `database-test-runner.ts` - Test Orchestration
 Comprehensive test runner for all database tests with priority ordering.
 
 ## LINE API Integration Tests
 
 ### Test Files Overview
 
-### 🔐 `line-signature.test.ts` - Security Critical
+### `line-signature.test.ts` - Security Critical
 **Priority: HIGHEST**
 - Advanced signature verification testing
 - Security edge cases and timing attack prevention
@@ -65,7 +65,7 @@ Comprehensive test runner for all database tests with priority ordering.
 - Real-world webhook payload scenarios
 - Malformed signature handling
 
-### 📤 `line.test.ts` - Core API Functions
+### `line.test.ts` - Core API Functions
 **Priority: HIGH**
 - Basic LINE API function testing
 - Message sending (reply and push)
@@ -74,7 +74,7 @@ Comprehensive test runner for all database tests with priority ordering.
 - Network error handling
 - API response validation
 
-### 📝 `line-message-formatting.test.ts` - Message Validation
+### `line-message-formatting.test.ts` - Message Validation
 **Priority: HIGH**
 - Text message creation and validation
 - Sticker message formatting
@@ -83,7 +83,7 @@ Comprehensive test runner for all database tests with priority ordering.
 - Real-world message scenarios
 - LINE API format compliance
 
-### 🔗 `line-integration.test.ts` - End-to-End Scenarios
+### `line-integration.test.ts` - End-to-End Scenarios
 **Priority: MEDIUM**
 - Complete webhook processing flows
 - Customer service conversation patterns
@@ -91,7 +91,7 @@ Comprehensive test runner for all database tests with priority ordering.
 - Performance and scalability testing
 - Production-like integration scenarios
 
-### ⚠️ `line-error-handling.test.ts` - Comprehensive Error Coverage
+### `line-error-handling.test.ts` - Comprehensive Error Coverage
 **Priority: MEDIUM**
 - HTTP error status codes (400, 401, 403, 404, 429, 500, 503)
 - Network and connection errors
@@ -99,7 +99,7 @@ Comprehensive test runner for all database tests with priority ordering.
 - Edge case error scenarios
 - Service degradation handling
 
-### 📊 `line-test-suite.test.ts` - Test Coverage Overview
+### `line-test-suite.test.ts` - Test Coverage Overview
 **Priority: LOW**
 - Test suite organization validation
 - Coverage area verification
@@ -158,7 +158,7 @@ npx vitest unit/utils/line-integration.test.ts --coverage
 
 ## Critical Database Test Areas
 
-### 🚨 Why Database Tests Are Highest Priority
+### Why Database Tests Are Highest Priority
 Database operations are the foundation of the application. Failures here cause:
 - **Data Loss**: Customer messages and conversations lost
 - **Service Outages**: Application becomes unusable
@@ -166,33 +166,33 @@ Database operations are the foundation of the application. Failures here cause:
 - **Security Breaches**: SQL injection and data exposure
 - **Performance Degradation**: Slow queries affecting all users
 
-### 🎯 Most Critical Test Scenarios
+### Most Critical Test Scenarios
 1. **Boundary Conditions** - Where 90% of production bugs occur:
-   - Empty strings, null values, undefined parameters
-   - Maximum string lengths (VARCHAR limits)
-   - Integer overflow and underflow
-   - Unicode characters and emoji handling
-   - Special characters that could break SQL
+ - Empty strings, null values, undefined parameters
+ - Maximum string lengths (VARCHAR limits)
+ - Integer overflow and underflow
+ - Unicode characters and emoji handling
+ - Special characters that could break SQL
 
 2. **Concurrent Access** - Multi-user scenarios:
-   - Race conditions in customer creation
-   - Simultaneous message insertion
-   - Conversation state conflicts
-   - Database deadlocks and timeouts
+ - Race conditions in customer creation
+ - Simultaneous message insertion
+ - Conversation state conflicts
+ - Database deadlocks and timeouts
 
 3. **Error Recovery** - Graceful failure handling:
-   - Connection timeouts and network issues
-   - Constraint violations (UNIQUE, FOREIGN KEY)
-   - Transaction rollbacks and partial failures
-   - Resource exhaustion (memory, disk space)
+ - Connection timeouts and network issues
+ - Constraint violations (UNIQUE, FOREIGN KEY)
+ - Transaction rollbacks and partial failures
+ - Resource exhaustion (memory, disk space)
 
 4. **Data Integrity** - Ensuring consistent state:
-   - Customer-conversation relationships
-   - Message threading and replies
-   - JSON metadata validation
-   - Timestamp consistency
+ - Customer-conversation relationships
+ - Message threading and replies
+ - JSON metadata validation
+ - Timestamp consistency
 
-### 📋 Database Test Coverage Requirements
+### Database Test Coverage Requirements
 - **Core CRUD Operations**: 100% coverage (critical path)
 - **Error Handling**: 95% coverage (failure scenarios)
 - **Edge Cases**: 90% coverage (boundary conditions)
@@ -200,25 +200,25 @@ Database operations are the foundation of the application. Failures here cause:
 
 ## Test Categories
 
-### 🔒 Security Tests
+### Security Tests
 - **Signature Verification**: HMAC-SHA256 validation
 - **Timing Attack Prevention**: Consistent execution time
 - **Input Validation**: Malformed data handling
 - **Crypto API Robustness**: Error scenario coverage
 
-### 🚀 Performance Tests
+### Performance Tests
 - **Concurrent Requests**: Multiple simultaneous API calls
 - **Large Payloads**: Maximum message size handling
 - **Rate Limiting**: 429 error handling and retry logic
 - **Memory Usage**: Efficient resource utilization
 
-### 🔧 Integration Tests
+### Integration Tests
 - **Webhook Processing**: Complete LINE webhook flow
 - **Customer Service**: Real conversation patterns
 - **Multi-platform**: Group and individual messaging
 - **Error Recovery**: Graceful failure handling
 
-### 📋 Business Logic Tests
+### Business Logic Tests
 - **Message Formatting**: Content validation and encoding
 - **API Compliance**: LINE API specification adherence
 - **User Experience**: Response time and reliability
@@ -229,11 +229,11 @@ Database operations are the foundation of the application. Failures here cause:
 ### Mock Configuration
 ```typescript
 const mockConfig = {
-  accessToken: 'test-channel-access-token-123',
-  channelSecret: 'test-channel-secret-456',
-  replyToken: 'reply-token-789',
-  userId: 'U1234567890abcdef1234567890abcdef',
-  groupId: 'G1234567890abcdef1234567890abcdef'
+ accessToken: 'test-channel-access-token-123',
+ channelSecret: 'test-channel-secret-456',
+ replyToken: 'reply-token-789',
+ userId: 'U1234567890abcdef1234567890abcdef',
+ groupId: 'G1234567890abcdef1234567890abcdef'
 };
 ```
 
@@ -258,10 +258,10 @@ const mockConfig = {
 - **Integration Flows**: 80%+ coverage
 
 ### Critical Path Coverage
-- ✅ Signature verification (100%)
-- ✅ Message sending (95%+)
-- ✅ Error handling (90%+)
-- ✅ API response parsing (95%+)
+- Signature verification (100%)
+- Message sending (95%+)
+- Error handling (90%+)
+- API response parsing (95%+)
 
 ## Best Practices
 
@@ -341,19 +341,19 @@ vi.restoreAllMocks()
 - [Vitest Testing Framework](https://vitest.dev/)
 - [Project Testing Guide](../../TESTING_GUIDE.md)
 - [LINE Integration Guide](../../../docs/LINE_INTEGRATION.md)
-##
-# 🔧 Fixed Test Files (Recommended)
+
+# Fixed Test Files (Recommended)
 **Priority: CRITICAL** - Use these instead of original versions:
 
 #### `database-fixed.test.ts` - Core Business Logic (Fixed)
-✅ **Fully working** - Comprehensive mock setup for all database operations:
+ **Fully working** - Comprehensive mock setup for all database operations:
 - Proper `mockDb.prepare` implementation pattern
 - Handles multiple query scenarios correctly
-- Fixed type issues (`null` → `undefined`)
+- Fixed type issues (`null` `undefined`)
 - Covers all core CRUD operations
 
 #### `database-error-handling-fixed.test.ts` - Error Recovery (Fixed)
-✅ **Fully working** - Complete error scenario coverage:
+ **Fully working** - Complete error scenario coverage:
 - Database connection errors
 - SQL constraint violations
 - Transaction rollback scenarios
@@ -361,7 +361,7 @@ vi.restoreAllMocks()
 - Network and timeout issues
 
 #### `database-performance-fixed.test.ts` - Performance Testing (Fixed)
-✅ **Fully working** - Scalability and performance validation:
+ **Fully working** - Scalability and performance validation:
 - Bulk operations testing
 - Concurrent access scenarios
 - Memory usage optimization
@@ -371,30 +371,30 @@ vi.restoreAllMocks()
 ```typescript
 // Correct mock pattern used in all fixed files
 mockDb.prepare = vi.fn().mockImplementation((query: string) => {
-  if (query.includes('SELECT * FROM customers')) {
-    return {
-      bind: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(mockData)
-    }
-  } else if (query.includes('INSERT INTO customers')) {
-    return {
-      bind: vi.fn().mockReturnThis(),
-      run: vi.fn().mockResolvedValue({ success: true })
-    }
-  }
-  // Default fallback
-  return {
-    bind: vi.fn().mockReturnThis(),
-    run: vi.fn().mockResolvedValue({ success: true }),
-    first: vi.fn().mockResolvedValue(null),
-    all: vi.fn().mockResolvedValue({ results: [] })
-  }
+ if (query.includes('SELECT * FROM customers')) {
+ return {
+ bind: vi.fn().mockReturnThis(),
+ first: vi.fn().mockResolvedValue(mockData)
+ }
+ } else if (query.includes('INSERT INTO customers')) {
+ return {
+ bind: vi.fn().mockReturnThis(),
+ run: vi.fn().mockResolvedValue({ success: true })
+ }
+ }
+ // Default fallback
+ return {
+ bind: vi.fn().mockReturnThis(),
+ run: vi.fn().mockResolvedValue({ success: true }),
+ first: vi.fn().mockResolvedValue(null),
+ all: vi.fn().mockResolvedValue({ results: [] })
+ }
 })
 ```
 
 This pattern ensures:
-- ✅ Complete method coverage (`bind`, `first`, `run`, `all`)
-- ✅ Proper chaining with `mockReturnThis()`
-- ✅ Query-specific responses
-- ✅ Fallback for unmatched queries
-- ✅ Consistent async behavior
+- Complete method coverage (`bind`, `first`, `run`, `all`)
+- Proper chaining with `mockReturnThis()`
+- Query-specific responses
+- Fallback for unmatched queries
+- Consistent async behavior
