@@ -89,9 +89,10 @@ export class EmergencyRollbackService {
       operation.steps[0]!.status = 'in_progress';
       await this.updateRollbackProgress(operation);
 
+      // ⚠️ Phase 4 Note: SSE rollback removed - this disables WebSocket without fallback
+      // TODO: Refactor emergency rollback to handle WebSocket-only architecture
       await this.migrationService.updateMigrationConfig({
         enableWebSocket: false,
-        enableSSE: true,
         rolloutPercentage: 0,
         migrationStrategy: 'gradual'
       });
@@ -584,10 +585,8 @@ export class EmergencyRollbackService {
         return { success: false, details: 'WebSocket still enabled in config' };
       }
 
-      // Check that SSE is enabled
-      if (!config.enableSSE) {
-        return { success: false, details: 'SSE not enabled as fallback' };
-      }
+      // ⚠️ Phase 4 Note: SSE verification removed - WebSocket-only architecture
+      // Previously checked: if (!config.enableSSE) return { success: false, details: 'SSE not enabled as fallback' }
 
       // Check rollout percentage is 0
       if (config.rolloutPercentage > 0) {
@@ -857,7 +856,8 @@ export class EmergencyRollbackService {
       // This would check various system health indicators
       const config = await this.migrationService.getMigrationConfig();
 
-      if (!config.enableWebSocket && !config.enableSSE) {
+      // ⚠️ Phase 4 Note: SSE check removed - WebSocket-only architecture
+      if (!config.enableWebSocket) {
         return 'critical';
       }
 
@@ -874,14 +874,20 @@ export class EmergencyRollbackService {
 
   private async assessRollbackReadiness(): Promise<'ready' | 'degraded' | 'unavailable' | 'unknown'> {
     try {
-      // Check if rollback capabilities are available
+      // ⚠️ Phase 4 Note: Emergency rollback in WebSocket-only architecture
+      // Previously: Checked if SSE was available as rollback target
+      // Now: Can only disable WebSocket, no SSE fallback available
+      // TODO: Refactor to support graceful WebSocket degradation instead of full rollback
+
       const config = await this.migrationService.getMigrationConfig();
 
-      if (!config.enableSSE) {
-        return 'unavailable'; // Can't rollback if SSE is not available
+      // Rollback capability is 'unavailable' in WebSocket-only mode
+      // This service needs refactoring for Phase 4 architecture
+      if (!config.enableWebSocket) {
+        return 'degraded'; // WebSocket already disabled
       }
 
-      return 'ready';
+      return 'unavailable'; // Cannot rollback without SSE fallback
 
     } catch (error) {
       return 'unknown';

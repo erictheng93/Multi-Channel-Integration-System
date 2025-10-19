@@ -38,7 +38,6 @@ export interface RealtimeConnection {
 
 export interface MigrationConfig {
   enableWebSocket: boolean
-  enableSSE: boolean
   rolloutPercentage: number
   migrationStrategy: 'gradual' | 'complete'
   featureFlags: {
@@ -80,16 +79,15 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
     const config = await response.json()
 
     configCache = {
-      enableWebSocket: config.websocketEnabled || false,
-      enableSSE: config.sseEnabled !== false, // Default to true
-      rolloutPercentage: config.rolloutPercentage || 0,
-      migrationStrategy: config.migrationStrategy || 'gradual',
+      enableWebSocket: config.websocketEnabled !== false,
+      rolloutPercentage: config.rolloutPercentage || 100,
+      migrationStrategy: config.migrationStrategy || 'complete',
       featureFlags: config.featureFlags || {
-        websocketConnections: false,
-        durableObjectMessaging: false,
-        distributedLocking: false,
-        batchMessageProcessing: false,
-        realTimeTypingIndicators: false
+        websocketConnections: true,
+        durableObjectMessaging: true,
+        distributedLocking: true,
+        batchMessageProcessing: true,
+        realTimeTypingIndicators: true
       }
     }
 
@@ -101,18 +99,17 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
   } catch (error) {
     console.error('[RealtimeConnectionManager] Failed to fetch migration config:', error)
 
-    // Return safe defaults on error (fallback to SSE)
+    // Return safe defaults on error (WebSocket only)
     return {
-      enableWebSocket: false,
-      enableSSE: true,
-      rolloutPercentage: 0,
-      migrationStrategy: 'gradual',
+      enableWebSocket: true,
+      rolloutPercentage: 100,
+      migrationStrategy: 'complete',
       featureFlags: {
-        websocketConnections: false,
-        durableObjectMessaging: false,
-        distributedLocking: false,
-        batchMessageProcessing: false,
-        realTimeTypingIndicators: false
+        websocketConnections: true,
+        durableObjectMessaging: true,
+        distributedLocking: true,
+        batchMessageProcessing: true,
+        realTimeTypingIndicators: true
       }
     }
   }

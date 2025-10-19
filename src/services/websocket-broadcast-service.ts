@@ -510,11 +510,11 @@ export class WebSocketBroadcastService {
     }
 
     // Default configuration
+    // ✅ Phase 4 Complete: 100% WebSocket rollout with Durable Objects
     this.migrationConfig = {
       enableWebSocket: true,
-      enableSSE: true,
-      migrationStrategy: 'gradual',
-      rolloutPercentage: 50,
+      migrationStrategy: 'immediate', // All users get WebSocket immediately
+      rolloutPercentage: 100,         // 100% WebSocket adoption
       featureFlags: {
         websocketConnections: true,
         durableObjectMessaging: true,
@@ -541,7 +541,6 @@ export class WebSocketBroadcastService {
   async getHealthStatus(): Promise<{
     status: 'healthy' | 'degraded' | 'unhealthy';
     websocketEnabled: boolean;
-    sseEnabled: boolean;
     durableObjectsAvailable: boolean;
     lastError?: string;
     timestamp: number;
@@ -571,7 +570,8 @@ export class WebSocketBroadcastService {
 
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
 
-      if (!config.enableWebSocket && !config.enableSSE) {
+      // ⚠️ Phase 4 Note: SSE check removed - WebSocket-only architecture
+      if (!config.enableWebSocket) {
         status = 'unhealthy';
       } else if (!durableObjectsAvailable && config.enableWebSocket) {
         status = 'degraded';
@@ -580,7 +580,6 @@ export class WebSocketBroadcastService {
       return {
         status,
         websocketEnabled: config.enableWebSocket,
-        sseEnabled: config.enableSSE,
         durableObjectsAvailable,
         timestamp: Date.now()
       };
@@ -588,7 +587,6 @@ export class WebSocketBroadcastService {
       return {
         status: 'unhealthy',
         websocketEnabled: false,
-        sseEnabled: false,
         durableObjectsAvailable: false,
         lastError: error instanceof Error ? error.message : 'Unknown error',
         timestamp: Date.now()

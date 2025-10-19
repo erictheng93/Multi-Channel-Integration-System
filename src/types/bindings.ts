@@ -32,18 +32,16 @@ export interface Bindings {
   R2_BUCKET_PROD: R2Bucket;
   R2_BUCKET_DEV: R2Bucket;
 
-  // Queues - Both environments bound
-  // AGENT_QUEUE removed - deprecated, replaced by DelayedMessageBuffer Durable Object
-  REALTIME_QUEUE_PROD: Queue;
-  REALTIME_QUEUE_DEV: Queue;
+  // Queues - Removed (Phase 2: 2025-10-17)
+  // AGENT_QUEUE removed - replaced by DelayedMessageBuffer Durable Object
+  // REALTIME_QUEUE removed - replaced by Durable Objects (MessageBroadcaster, ConversationRoom, LatestMessageCacheCoordinator)
+  // All queue functionality now handled by Durable Objects architecture
 
   // These are set by resourceMiddleware based on ENVIRONMENT
   DB: D1Database;
   SESSIONS: KVNamespace;
   CACHE: KVNamespace;
   R2_BUCKET: R2Bucket;
-  // AGENT_QUEUE removed - deprecated, replaced by DelayedMessageBuffer Durable Object
-  REALTIME_QUEUE: Queue;
   KV: KVNamespace; // Alias for SESSIONS
   
   // Durable Objects - WebSocket + Durable Objects Architecture
@@ -53,6 +51,7 @@ export interface Bindings {
   DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
   DELAYED_MESSAGE_BUFFER?: DurableObjectNamespace; // Instant-cancel undo buffer
   DISTRIBUTED_LOCK?: DurableObjectNamespace;
+  LATEST_MESSAGE_COORDINATOR?: DurableObjectNamespace; // Phase 1.4b: Batch cache updates via alarm
   
   // Environment variables - LINE
   LINE_CHANNEL_ACCESS_TOKEN: string;

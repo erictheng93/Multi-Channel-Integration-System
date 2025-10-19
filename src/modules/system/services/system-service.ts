@@ -78,7 +78,7 @@ export class SystemService implements SystemServiceInterface {
           },
           queue: {
             status: 'available',
-            name: 'AGENT_QUEUE'
+            name: 'REALTIME_QUEUE'
           }
         },
         environment: this.env.ENVIRONMENT || 'development'

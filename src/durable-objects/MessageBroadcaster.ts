@@ -85,6 +85,16 @@ export class MessageBroadcaster implements DurableObject {
       switch (pathname) {
         case '/broadcast':
           return this.handleBroadcast(request);
+        case '/broadcast-to-conversations':
+          return this.handleBroadcastToConversations(request);
+        case '/broadcast-to-users':
+          return this.handleBroadcastToUsers(request);
+        case '/broadcast-to-teams':
+          return this.handleBroadcastToTeams(request);
+        case '/broadcast-global':
+          return this.handleBroadcastGlobal(request);
+        case '/batch-broadcast':
+          return this.handleBatchBroadcast(request);
         case '/register-connection':
           return this.handleRegisterConnection(request);
         case '/unregister-connection':
@@ -98,6 +108,7 @@ export class MessageBroadcaster implements DurableObject {
         case '/metrics':
           return this.handleGetMetrics(request);
         case '/status':
+        case '/health': // Alias for /status
           return this.handleGetStatus(request);
         case '/system-broadcast':
           return this.handleSystemBroadcast(request);
@@ -552,15 +563,36 @@ export class MessageBroadcaster implements DurableObject {
     }
   }
 
-  private async getTeamMembers(_teamId: string): Promise<string[]> {
+  private async getTeamMembers(teamId: string): Promise<string[]> {
     // Integration with existing database to get team members
     // This would query the agents table for team members
     try {
-      // Placeholder - would integrate with existing database service
-      return []; // Return array of user IDs
+      if (!this.env.DB) {
+        console.warn('⚠️ [MessageBroadcaster] Database not available');
+        return [];
+      }
+
+      // Query database for team members
+      const result = await this.env.DB.select()
+        .from('agents')
+        .where('teamId', teamId)
+        .execute();
+
+      return result.map((member: any) => member.id || member.userId);
     } catch (error) {
       console.error('❌ [MessageBroadcaster] Error getting team members:', error);
       return [];
+    }
+  }
+
+  private updateAverageLatency(processingTime: number): void {
+    // Update average latency with exponential moving average
+    if (this.distributionStats.averageLatency === 0) {
+      this.distributionStats.averageLatency = processingTime;
+    } else {
+      // 70% weight to existing average, 30% weight to new measurement
+      this.distributionStats.averageLatency =
+        (this.distributionStats.averageLatency * 0.7) + (processingTime * 0.3);
     }
   }
 
@@ -686,6 +718,281 @@ export class MessageBroadcaster implements DurableObject {
 
   // =================== HTTP API Handlers ===================
 
+  private async handleBroadcastToConversations(request: Request): Promise<Response> {
+    try {
+      const startTime = Date.now();
+      const { event, targets } = await request.json() as { event: DurableObjectEvent; targets: string[] };
+
+      if (!event || !targets || !Array.isArray(targets)) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+
+      // Process immediately for single-event broadcasts (better for testing and real-time needs)
+      let successful = 0;
+      let failed = 0;
+
+      for (const conversationId of targets) {
+        try {
+          await this.deliverToConversation(conversationId, [{ ...event, targets: [{ type: 'conversation', targets: [conversationId] }] }]);
+          successful++;
+        } catch (error) {
+          console.error(`❌ Failed to deliver to conversation ${conversationId}:`, error);
+          failed++;
+        }
+      }
+
+      // Update stats with latency tracking
+      const processingTime = Date.now() - startTime;
+      this.distributionStats.totalEvents++;
+      this.distributionStats.successfulDeliveries += successful;
+      this.distributionStats.failedDeliveries += failed;
+      this.updateAverageLatency(processingTime);
+
+      return new Response(JSON.stringify({
+        success: true,
+        eventId: event.id,
+        targetCount: targets.length,
+        successful,
+        failed
+      }));
+    } catch (error) {
+      console.error('❌ [MessageBroadcaster] Broadcast to conversations error:', error);
+      if (error instanceof SyntaxError) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
+    }
+  }
+
+  private async handleBroadcastToUsers(request: Request): Promise<Response> {
+    try {
+      const { event, userIds } = await request.json() as { event: DurableObjectEvent; userIds: string[] };
+
+      if (!event || !userIds || !Array.isArray(userIds)) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+
+      // Process immediately for single-event broadcasts
+      let successful = 0;
+      let failed = 0;
+
+      for (const userId of userIds) {
+        try {
+          await this.deliverToUser(userId, [{ ...event, targets: [{ type: 'user', targets: [userId] }] }]);
+          successful++;
+        } catch (error) {
+          console.error(`❌ Failed to deliver to user ${userId}:`, error);
+          failed++;
+        }
+      }
+
+      // Update stats
+      this.distributionStats.totalEvents++;
+      this.distributionStats.successfulDeliveries += successful;
+      this.distributionStats.failedDeliveries += failed;
+
+      return new Response(JSON.stringify({
+        success: true,
+        eventId: event.id,
+        targetCount: userIds.length,
+        successful,
+        failed
+      }));
+    } catch (error) {
+      console.error('❌ [MessageBroadcaster] Broadcast to users error:', error);
+      if (error instanceof SyntaxError) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
+    }
+  }
+
+  private async handleBroadcastToTeams(request: Request): Promise<Response> {
+    try {
+      const { event, teamIds } = await request.json() as { event: DurableObjectEvent; teamIds: number[] };
+
+      if (!event || !teamIds || !Array.isArray(teamIds)) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+
+      // Process immediately for single-event broadcasts
+      let successful = 0;
+      let failed = 0;
+
+      for (const teamId of teamIds) {
+        try {
+          await this.deliverToTeam(String(teamId), [{ ...event, targets: [{ type: 'team', targets: [String(teamId)] }] }]);
+          successful++;
+        } catch (error) {
+          console.error(`❌ Failed to deliver to team ${teamId}:`, error);
+          failed++;
+        }
+      }
+
+      // Update stats
+      this.distributionStats.totalEvents++;
+      this.distributionStats.successfulDeliveries += successful;
+      this.distributionStats.failedDeliveries += failed;
+
+      return new Response(JSON.stringify({
+        success: true,
+        eventId: event.id,
+        targetCount: teamIds.length,
+        successful,
+        failed
+      }));
+    } catch (error) {
+      console.error('❌ [MessageBroadcaster] Broadcast to teams error:', error);
+      if (error instanceof SyntaxError) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
+    }
+  }
+
+  private async handleBroadcastGlobal(request: Request): Promise<Response> {
+    try {
+      const { event, target } = await request.json() as { event: DurableObjectEvent; target?: BroadcastTarget };
+
+      if (!event) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+
+      // Process immediately for single-event broadcasts
+      let successful = 0;
+      let failed = 0;
+
+      try {
+        const deliveredCount = await this.deliverGlobalBroadcast([{ ...event, targets: [target || { type: 'global', targets: ['all'] }] }]);
+        successful = deliveredCount;
+      } catch (error) {
+        console.error(`❌ Failed global broadcast:`, error);
+        failed = 1;
+      }
+
+      // Update stats
+      this.distributionStats.totalEvents++;
+      this.distributionStats.successfulDeliveries += successful;
+      this.distributionStats.failedDeliveries += failed;
+
+      return new Response(JSON.stringify({
+        success: true,
+        eventId: event.id,
+        successful,
+        failed
+      }));
+    } catch (error) {
+      console.error('❌ [MessageBroadcaster] Global broadcast error:', error);
+      if (error instanceof SyntaxError) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
+    }
+  }
+
+  private async handleBatchBroadcast(request: Request): Promise<Response> {
+    try {
+      const startTime = Date.now();
+      const { events, targets } = await request.json() as { events: DurableObjectEvent[]; targets: BroadcastTarget[] };
+
+      if (!events || !Array.isArray(events) || !targets || !Array.isArray(targets)) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+
+      let processed = 0;
+      let successful = 0;
+      let failed = 0;
+
+      // Process events immediately with batch optimization
+      // Group events by target for efficient delivery
+      const eventsByTarget = new Map<string, any[]>();
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        const eventTargets = targets[i] || targets[0]; // Use corresponding target or first target
+
+        if (eventTargets.type === 'conversation') {
+          for (const conversationId of eventTargets.targets) {
+            const key = String(conversationId); // Ensure string type
+            if (!eventsByTarget.has(key)) {
+              eventsByTarget.set(key, []);
+            }
+            eventsByTarget.get(key)!.push(event);
+          }
+        } else if (eventTargets.type === 'user') {
+          for (const userId of eventTargets.targets) {
+            const key = `user:${String(userId)}`; // Ensure string type
+            if (!eventsByTarget.has(key)) {
+              eventsByTarget.set(key, []);
+            }
+            eventsByTarget.get(key)!.push(event);
+          }
+        } else if (eventTargets.type === 'team') {
+          for (const teamId of eventTargets.targets) {
+            const key = `team:${String(teamId)}`; // Ensure string type
+            if (!eventsByTarget.has(key)) {
+              eventsByTarget.set(key, []);
+            }
+            eventsByTarget.get(key)!.push(event);
+          }
+        }
+        processed++;
+      }
+
+      // Deliver to each target
+      const deliveryPromises = Array.from(eventsByTarget.entries()).map(async ([targetKey, targetEvents]) => {
+        try {
+          if (targetKey.startsWith('user:')) {
+            const userId = targetKey.substring(5);
+            await this.deliverToUser(userId, targetEvents);
+            return { success: targetEvents.length, failed: 0 };
+          } else if (targetKey.startsWith('team:')) {
+            const teamId = targetKey.substring(5);
+            await this.deliverToTeam(teamId, targetEvents);
+            return { success: targetEvents.length, failed: 0 };
+          } else {
+            // Conversation
+            await this.deliverToConversation(targetKey, targetEvents);
+            return { success: targetEvents.length, failed: 0 };
+          }
+        } catch (error) {
+          console.error(`❌ Failed to deliver to ${targetKey}:`, error);
+          return { success: 0, failed: targetEvents.length };
+        }
+      });
+
+      const results = await Promise.allSettled(deliveryPromises);
+      results.forEach(result => {
+        if (result.status === 'fulfilled') {
+          successful += result.value.success;
+          failed += result.value.failed;
+        } else {
+          failed += 1;
+        }
+      });
+
+      // Update stats
+      const processingTime = Date.now() - startTime;
+      this.distributionStats.totalEvents += processed;
+      this.distributionStats.successfulDeliveries += successful;
+      this.distributionStats.failedDeliveries += failed;
+      this.updateAverageLatency(processingTime);
+
+      return new Response(JSON.stringify({
+        success: true,
+        processed,
+        successful,
+        failed
+      }));
+    } catch (error) {
+      console.error('❌ [MessageBroadcaster] Batch broadcast error:', error);
+      if (error instanceof SyntaxError) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ error: 'Batch broadcast failed' }), { status: 500 });
+    }
+  }
+
   private async handleQueueEvent(request: Request): Promise<Response> {
     return this.handleBroadcast(request);
   }
@@ -738,26 +1045,49 @@ export class MessageBroadcaster implements DurableObject {
 
   private async handleGetMetrics(_request: Request): Promise<Response> {
     const metrics = {
-      ...this.distributionStats,
+      totalEvents: this.distributionStats.totalEvents,
+      successfulBroadcasts: this.distributionStats.successfulDeliveries, // Alias for test compatibility
+      successfulDeliveries: this.distributionStats.successfulDeliveries,
+      failedBroadcasts: this.distributionStats.failedDeliveries, // Alias for test compatibility
+      failedDeliveries: this.distributionStats.failedDeliveries,
+      averageLatency: this.distributionStats.averageLatency,
+      eventsPerSecond: this.distributionStats.eventsPerSecond,
+      lastProcessed: this.distributionStats.lastProcessed,
+      queueDepth: this.distributionStats.queueDepth,
       activeConnections: this.activeConnections,
       conversationRooms: this.conversationRooms.size,
       userConnections: this.userConnections.size,
       eventQueueDepth: this.eventQueue.length,
       highPriorityQueueDepth: this.highPriorityQueue.length,
       activeLocks: this.locks.size,
-      uptime: Date.now() - (this.distributionStats.lastProcessed - 3600000)
+      uptime: Date.now() - (this.distributionStats.lastProcessed - 3600000),
+      memoryUsage: (process as any).memoryUsage?.() || { heapUsed: 0, heapTotal: 0 }
     };
 
     return new Response(JSON.stringify(metrics));
   }
 
   private async handleGetStatus(_request: Request): Promise<Response> {
+    const isHealthy = this.eventQueue.length < this.MAX_QUEUE_SIZE * 0.8;
+    const errorRate = this.distributionStats.totalEvents > 0
+      ? this.distributionStats.failedDeliveries / this.distributionStats.totalEvents
+      : 0;
+
     const status = {
-      isHealthy: this.eventQueue.length < this.MAX_QUEUE_SIZE * 0.8,
+      // /status fields
+      isHealthy,
       queueDepth: this.distributionStats.queueDepth,
       processingRate: this.distributionStats.eventsPerSecond,
       lastProcessed: this.distributionStats.lastProcessed,
-      activeConnections: this.activeConnections
+      activeConnections: this.activeConnections,
+      // /health fields (for test compatibility)
+      status: isHealthy ? 'healthy' : 'degraded',
+      uptime: Date.now() - (this.distributionStats.lastProcessed - 3600000),
+      eventProcessingRate: this.distributionStats.eventsPerSecond,
+      errorRate: errorRate,
+      averageLatency: this.distributionStats.averageLatency,
+      memoryUsage: (process as any).memoryUsage?.() || { heapUsed: 0, heapTotal: 0 },
+      timestamp: Date.now()
     };
 
     return new Response(JSON.stringify(status));

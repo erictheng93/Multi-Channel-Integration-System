@@ -76,8 +76,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
     // Validate WebSocket upgrade request
     if (c.req.header('Upgrade') !== 'websocket') {
       return c.json({
-        error: 'WebSocket upgrade required',
-        fallback: migrationConfig.enableSSE ? '/api/conversations/stream' : null
+        error: 'WebSocket upgrade required'
       }, 400);
     }
 
@@ -152,16 +151,6 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
 
   } catch (error) {
     console.error('❌ [WebSocket] Connection error:', error);
-
-    // Check if fallback to SSE is available
-    const migrationConfig = await getMigrationConfig(c.env);
-    if (migrationConfig.enableSSE) {
-      return c.json({
-        error: 'WebSocket connection failed',
-        fallback: '/api/conversations/stream',
-        reason: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
-    }
 
     return c.json({
       error: 'Connection failed',
@@ -258,7 +247,6 @@ websocketHandler.get('/health', async (c) => {
     const health = {
       status: 'healthy',
       websocketEnabled: migrationConfig.enableWebSocket,
-      sseEnabled: migrationConfig.enableSSE,
       totalConnections: metrics.totalConnections,
       activeConnections: metrics.activeConnections,
       connectionsByType: metrics.connectionsByType,
@@ -290,18 +278,17 @@ websocketHandler.get('/health', async (c) => {
   }
 });
 
-websocketHandler.get('/metrics', async (c) => {
-  try {
-    const metrics = await getDetailedMetrics(c.env);
-    return c.json(metrics);
-  } catch (error) {
-    console.error('❌ [WebSocket] Metrics error:', error);
-    return c.json({
-      error: 'Failed to get metrics',
-      reason: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
-  }
-});
+// ⚠️ REMOVED: /metrics endpoint (migrated to websocket-health.ts)
+// The /metrics endpoint has been consolidated into websocket-health.ts for better organization
+// and to provide a unified, comprehensive metrics endpoint that includes:
+// - WebSocket configuration and feature flags
+// - Durable Objects bindings and instances
+// - Real-time connection metrics (from MessageBroadcaster)
+// - Distributed lock metrics (from LockCoordinator)
+// - Performance metrics (latency, throughput, reliability)
+//
+// Access unified metrics at: GET /api/websocket/metrics (public, no auth)
+// See: src/handlers/websocket-health.ts:165-242
 
 async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
   try {
@@ -318,8 +305,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
           totalConnections: (data.userConnections || 0) + (data.conversationRooms || 0),
           activeConnections: data.activeConnections || 0,
           connectionsByType: {
-            websocket: data.activeConnections || 0,
-            sse: 0 // Would need to integrate with SSE metrics
+            websocket: data.activeConnections || 0
           },
           connectionsByRole: {}, // Would be populated from UserConnection metrics
           averageLatency: data.averageLatency || 0,
@@ -337,7 +323,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
     return {
       totalConnections: 0,
       activeConnections: 0,
-      connectionsByType: { websocket: 0, sse: 0 },
+      connectionsByType: { websocket: 0 },
       connectionsByRole: {},
       averageLatency: 0,
       messagesThroughput: { inbound: 0, outbound: 0 },
@@ -427,11 +413,11 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
     }
 
     // Default configuration
+    // ✅ Phase 4 Complete: 100% WebSocket rollout with Durable Objects
     const defaultConfig: MigrationConfig = {
       enableWebSocket: true,
-      enableSSE: true,
-      migrationStrategy: 'gradual',
-      rolloutPercentage: 50, // Start with 50% rollout
+      migrationStrategy: 'immediate', // All users get WebSocket immediately
+      rolloutPercentage: 100,         // 100% WebSocket adoption
       featureFlags: {
         websocketConnections: true,
         durableObjectMessaging: true,
@@ -449,16 +435,15 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
     console.error('❌ [WebSocket] Error getting migration config:', error);
     // Return safe defaults on error
     return {
-      enableWebSocket: false,
-      enableSSE: true,
-      migrationStrategy: 'gradual',
-      rolloutPercentage: 0,
+      enableWebSocket: true,
+      migrationStrategy: 'immediate',
+      rolloutPercentage: 100,
       featureFlags: {
-        websocketConnections: false,
-        durableObjectMessaging: false,
-        distributedLocking: false,
-        batchMessageProcessing: false,
-        realTimeTypingIndicators: false
+        websocketConnections: true,
+        durableObjectMessaging: true,
+        distributedLocking: true,
+        batchMessageProcessing: true,
+        realTimeTypingIndicators: true
       }
     };
   }

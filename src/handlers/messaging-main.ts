@@ -482,11 +482,14 @@ app.get('/export', jwtAuth, async (c) => {
 
       const csvContent = [csvHeaders, ...csvRows].join('\n');
 
-      // 設置CSV回應標頭
-      c.header('Content-Type', 'text/csv; charset=utf-8');
-      c.header('Content-Disposition', `attachment; filename="messages_export_${Date.now()}.csv"`);
-
-      return c.text(csvContent);
+      // Return Response directly with correct CSV headers
+      return new Response(csvContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="messages_export_${Date.now()}.csv"`
+        }
+      });
     }
 
   } catch (error) {

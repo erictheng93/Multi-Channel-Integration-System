@@ -1,6 +1,6 @@
 // 隊列統一監控處理器
 // Queue Unified Monitoring Handler
-// 提供兩個隊列（AGENT_QUEUE 和 REALTIME_QUEUE）的統一監控介面
+// 提供 REALTIME_QUEUE 隊列的監控介面
 
 import { Context } from 'hono';
 import type { Bindings } from '../types';
@@ -34,7 +34,6 @@ export interface UnifiedMonitoringData {
     overallStatus: 'healthy' | 'warning' | 'error';
   };
   queues: {
-    agentQueue: QueueStats;
     realtimeQueue: QueueStats;
   };
   realtimeConnections: {
@@ -63,26 +62,8 @@ export const queueMonitorHandler = {
         activeConnections: 0,
         connectionsByUser: {} as Record<number, number>
       }; // Placeholder for removed SSE
-      
-      // AGENT_QUEUE 統計  
-      const agentQueueStats: QueueStats = {
-        name: 'Agent Queue',
-        binding: 'AGENT_QUEUE',
-        purpose: '代理延遲消息處理和消息撤回功能',
-        status: 'healthy', // 這裡可以根據實際指標動態判斷
-        metrics: {
-          messagesInQueue: 0, // 實際環境中從 Cloudflare Queue API 獲取
-          processingRate: 0,
-          errorRate: 0,
-          avgProcessingTime: 2000
-        },
-        configuration: {
-          maxBatchSize: 10,
-          maxBatchTimeout: 5,
-          retryPolicy: 'exponential-backoff'
-        },
-        lastActivity: new Date().toISOString()
-      };
+
+      // REMOVED: AGENT_QUEUE 統計 (Queue cleanup - no longer needed)
 
       // REALTIME_QUEUE 統計
       const realtimeQueueStats: QueueStats = {
@@ -115,13 +96,12 @@ export const queueMonitorHandler = {
       // 統一監控數據
       const unifiedData: UnifiedMonitoringData = {
         summary: {
-          totalQueues: 2,
-          healthyQueues: [agentQueueStats, realtimeQueueStats].filter(q => q.status === 'healthy').length,
-          totalMessages: agentQueueStats.metrics.messagesInQueue! + realtimeQueueStats.metrics.messagesInQueue!,
+          totalQueues: 1,
+          healthyQueues: realtimeQueueStats.status === 'healthy' ? 1 : 0,
+          totalMessages: realtimeQueueStats.metrics.messagesInQueue!,
           overallStatus: sseStats.totalConnections > 0 ? 'healthy' : 'warning'
         },
         queues: {
-          agentQueue: agentQueueStats,
           realtimeQueue: realtimeQueueStats
         },
         realtimeConnections: {
@@ -153,14 +133,6 @@ export const queueMonitorHandler = {
   getHealthCheck: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const healthChecks = {
-        agentQueue: {
-          status: 'healthy',
-          checks: {
-            queueAvailable: true,
-            processingNormal: true,
-            errorRate: '< 1%'
-          }
-        },
         realtimeQueue: {
           status: 'healthy',
           checks: {
@@ -186,18 +158,8 @@ export const queueMonitorHandler = {
   getPerformanceMetrics: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const metrics = {
-        agentQueue: {
-          throughput: {
-            messagesPerSecond: 0.5,
-            peakThroughput: 2.0,
-            avgProcessingTime: 2000
-          },
-          reliability: {
-            successRate: 99.8,
-            errorRate: 0.2,
-            retryRate: 0.1
-          }
-        },
+        // REMOVED: agentQueue metrics (replaced by DelayedMessageBuffer Durable Object)
+        // Use GET /api/delayed-messages-v2/metrics for delayed message metrics
         realtimeQueue: {
           throughput: {
             eventsPerSecond: 10.5,

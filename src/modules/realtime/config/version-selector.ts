@@ -122,7 +122,8 @@ export class RealtimeVersionSelector {
   // 檢測環境能力
   async detectEnvironmentCapabilities(env: Bindings, context?: any): Promise<EnvironmentCapabilities> {
     const capabilities: EnvironmentCapabilities = {
-      hasCloudflareQueue: !!env.REALTIME_QUEUE,
+      // Phase 2: Queue replaced by Durable Objects (MessageBroadcaster, LatestMessageCacheCoordinator)
+      hasCloudflareQueue: !!env.MESSAGE_BROADCASTER && !!env.LATEST_MESSAGE_COORDINATOR,
       hasKVStorage: !!env.SESSIONS,
       hasD1Database: !!env.DB,
       hasR2Storage: !!env.R2_BUCKET,

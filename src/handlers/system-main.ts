@@ -107,7 +107,18 @@ systemHandler.get('/system/status', async (c) => {
         },
         queue: {
           status: 'available',
-          name: 'AGENT_QUEUE'
+          name: 'REALTIME_QUEUE'
+        },
+        durableObjects: {
+          status: 'available',
+          objects: [
+            'DELAYED_MESSAGE_BUFFER',
+            'CONVERSATION_ROOM',
+            'USER_CONNECTION',
+            'MESSAGE_BROADCASTER',
+            'DELAYED_MESSAGE_PROCESSOR',
+            'DISTRIBUTED_LOCK'
+          ]
         }
       },
       environment: c.env.ENVIRONMENT || 'development'

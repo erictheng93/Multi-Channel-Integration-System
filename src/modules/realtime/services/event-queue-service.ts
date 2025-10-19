@@ -225,17 +225,65 @@ export class EventQueueService extends QueueBaseService {
   }
 
   // 立即處理事件
+  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 WebSocket/DO 架構
   private async processImmediate(queueMessage: QueueMessage): Promise<number> {
     try {
-      // 直接發送到隊列
-      await this.env.REALTIME_QUEUE.send(queueMessage);
+      const { event, targets } = queueMessage;
+      const conversationId = targets.conversationId;
 
-      this.logInfo('立即處理事件', {
-        eventId: queueMessage.event.id,
-        eventType: queueMessage.event.type
-      });
+      // ✅ 新架構: 直接通過 ConversationRoom DO 廣播
+      if (conversationId) {
+        // 對話級事件 → ConversationRoom DO
+        const roomKey = String(conversationId); // Ensure string type for idFromName
+        const roomId = this.env.CONVERSATION_ROOM.idFromName(roomKey);
+        const room = this.env.CONVERSATION_ROOM.get(roomId);
 
-      return 1; // 假設成功發送到隊列就算 1 個目標
+        const response = await room.fetch(new Request('https://conversation-room/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({ event }),
+          headers: { 'Content-Type': 'application/json' }
+        }));
+
+        if (!response.ok) {
+          throw new Error(`ConversationRoom broadcast failed: ${response.status}`);
+        }
+
+        this.logInfo('立即處理事件 (WebSocket/DO)', {
+          eventId: event.id,
+          eventType: event.type,
+          conversationId
+        });
+
+        return 1;
+      } else {
+        // 全局事件 → MessageBroadcaster DO
+        const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
+        const broadcaster = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+        const response = await broadcaster.fetch(new Request('https://broadcaster/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            event,
+            targets: [{
+              type: targets.broadcast ? 'global' : 'user',
+              targets: targets.userIds || ['all']
+            }]
+          }),
+          headers: { 'Content-Type': 'application/json' }
+        }));
+
+        if (!response.ok) {
+          throw new Error(`MessageBroadcaster broadcast failed: ${response.status}`);
+        }
+
+        this.logInfo('立即處理事件 (WebSocket/DO 全局)', {
+          eventId: event.id,
+          eventType: event.type,
+          broadcast: targets.broadcast
+        });
+
+        return 1;
+      }
     } catch (error) {
       this.logError('立即處理失敗', error, {
         eventId: queueMessage.event.id
@@ -263,14 +311,37 @@ export class EventQueueService extends QueueBaseService {
   }
 
   // 延遲處理事件
+  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 MessageBroadcaster DO
   private async processDelayed(queueMessage: QueueMessage, delay: number = 5000): Promise<number> {
     setTimeout(async () => {
       try {
-        await this.env.REALTIME_QUEUE.send(queueMessage);
-        this.logInfo('延遲處理事件完成', {
-          eventId: queueMessage.event.id,
-          delay
-        });
+        const { event, targets } = queueMessage;
+
+        // ✅ 新架構: 使用 MessageBroadcaster DO 處理延遲事件
+        const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
+        const broadcaster = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+        const response = await broadcaster.fetch(new Request('https://broadcaster/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            event,
+            targets: [{
+              type: targets.conversationId ? 'conversation' : 'global',
+              targets: targets.conversationId ? [targets.conversationId] : ['all']
+            }],
+            options: { delayed: true, originalDelay: delay }
+          }),
+          headers: { 'Content-Type': 'application/json' }
+        }));
+
+        if (response.ok) {
+          this.logInfo('延遲處理事件完成 (WebSocket/DO)', {
+            eventId: event.id,
+            delay
+          });
+        } else {
+          throw new Error(`MessageBroadcaster delayed broadcast failed: ${response.status}`);
+        }
       } catch (error) {
         this.logError('延遲處理失敗', error, {
           eventId: queueMessage.event.id
@@ -282,24 +353,45 @@ export class EventQueueService extends QueueBaseService {
   }
 
   // 處理批量隊列
+  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 MessageBroadcaster DO 批處理
   private async processBatchQueue(): Promise<void> {
     if (this.batchQueue.length === 0) return;
 
     const batch = [...this.batchQueue];
     this.batchQueue = [];
 
-    this.logInfo('開始處理批量隊列', { batchSize: batch.length });
+    this.logInfo('開始處理批量隊列 (WebSocket/DO)', { batchSize: batch.length });
 
     try {
-      // 並行發送所有事件
-      const promises = batch.map(queueMessage =>
-        this.env.REALTIME_QUEUE.send(queueMessage)
-      );
+      // ✅ 新架構: 使用 MessageBroadcaster DO 批處理
+      const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
+      const broadcaster = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
-      await Promise.all(promises);
+      // 將 batch 轉換為 MessageBroadcaster 格式
+      const events = batch.map(qm => qm.event);
+      const targets = batch.map(qm => ({
+        type: qm.targets.conversationId ? 'conversation' :
+              qm.targets.broadcast ? 'global' : 'user',
+        targets: qm.targets.conversationId ? [qm.targets.conversationId] :
+                qm.targets.userIds || ['all']
+      }));
 
-      this.logSuccess('批量隊列處理完成', {
-        processedCount: batch.length
+      // 批量廣播
+      const response = await broadcaster.fetch(new Request('https://broadcaster/batch-events', {
+        method: 'POST',
+        body: JSON.stringify({ events, targets }),
+        headers: { 'Content-Type': 'application/json' }
+      }));
+
+      if (!response.ok) {
+        throw new Error(`MessageBroadcaster batch failed: ${response.status}`);
+      }
+
+      const result = await response.json() as { deliveredCount?: number };
+
+      this.logSuccess('批量隊列處理完成 (WebSocket/DO)', {
+        processedCount: batch.length,
+        deliveredCount: result.deliveredCount || batch.length
       });
 
     } catch (error) {

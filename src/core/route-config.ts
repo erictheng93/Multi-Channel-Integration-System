@@ -312,9 +312,9 @@ const advancedFeaturesGroup = createRouteGroup({
       name: 'delayed-messages-v2',
       path: '/delayed-messages-v2',
       handler: delayedMessageBufferHandler,
-      description: '延遲訊息緩�??�?��? (Durable Objects)',
+      description: '延遲訊息緩衝區 (Durable Objects)',
       version: '2.0.0',
-      dependencies: ['auth', 'messages'],
+      dependencies: [], // Auth handled per-endpoint by jwtAuth middleware
       healthCheck: '/health'
     }),
     createRouteModule({

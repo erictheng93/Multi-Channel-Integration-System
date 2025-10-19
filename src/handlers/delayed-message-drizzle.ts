@@ -75,10 +75,6 @@ delayedMessages.post('/send', async (c) => {
       }),
     });
 
-    // ⚠️ REMOVED: AGENT_QUEUE is deprecated and replaced by Durable Objects
-    // Delayed messages are now handled by DelayedMessageBuffer Durable Object
-    // The queue consumer no longer processes delayed messages (it just acks them)
-
     // 🚀 WebSocket Broadcasting: Delayed Message Scheduled
     const messageId = delayedMessage[0]?.id || '';
     if (messageId) {

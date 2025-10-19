@@ -1,11 +1,11 @@
 /**
  * 即時通訊 Composable
- * 動態選擇 WebSocket 或 SSE 連線
+ * Phase 3: WebSocket-only real-time communication
  */
 
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-// REMOVED: shouldFallbackToSSE (Phase 1-2 cleanup - SSE removed, WebSocket only)
-import { realtimeConfig, shouldUseWebSocket, getCurrentProtocol } from '@/config/realtime'
+// Phase 3: SSE removed - WebSocket only, no feature detection needed
+import { realtimeConfig, getCurrentProtocol } from '@/config/realtime'
 import { useAuthStore } from '@/stores/auth'
 
 // WebSocket 客戶端 (動態導入)
@@ -21,8 +21,8 @@ let WebSocketManager: WebSocketManagerType | null = null
 export function useRealtime(conversationId?: string) {
   const authStore = useAuthStore()
 
-  // 連線狀態
-  const protocol = ref<'websocket' | 'sse' | null>(null)
+  // 連線狀態 (Phase 3: WebSocket only, no SSE)
+  const protocol = ref<'websocket' | null>(null)
   const isConnected = ref(false)
   const isConnecting = ref(false)
   const lastError = ref<Error | null>(null)
@@ -35,6 +35,7 @@ export function useRealtime(conversationId?: string) {
 
   /**
    * 連線到即時通訊服務
+   * Phase 3: WebSocket only, no SSE fallback
    */
   async function connect() {
     if (isConnecting.value || isConnected.value) {
@@ -46,29 +47,21 @@ export function useRealtime(conversationId?: string) {
     lastError.value = null
 
     try {
-      // 決定使用的協議
-      const useWebSocket = shouldUseWebSocket()
-      protocol.value = useWebSocket ? 'websocket' : 'sse'
+      // Phase 3: WebSocket only (SSE removed)
+      protocol.value = 'websocket'
 
-      console.log(`🔌 [Realtime] Connecting using ${protocol.value}...`)
+      console.log(`🔌 [Realtime] Connecting using WebSocket...`)
 
-      if (useWebSocket) {
-        await connectWebSocket()
-      } else {
-        await connectSSE()
-      }
+      await connectWebSocket()
 
       isConnected.value = true
       isConnecting.value = false
 
-      console.log(`✅ [Realtime] Connected successfully using ${protocol.value}`)
+      console.log(`✅ [Realtime] Connected successfully using WebSocket`)
     } catch (error) {
       console.error(`❌ [Realtime] Connection failed:`, error)
       lastError.value = error instanceof Error ? error : new Error('Connection failed')
       isConnecting.value = false
-
-      // REMOVED: SSE fallback logic (Phase 1-2 cleanup - SSE removed, WebSocket only)
-      // WebSocket is now the only option, no fallback needed
       throw error
     }
   }
@@ -111,26 +104,16 @@ export function useRealtime(conversationId?: string) {
     }
   }
 
-  /**
-   * 連線到 SSE
-   * REMOVED: (Phase 1-2 cleanup - SSE removed, WebSocket only)
-   */
-  async function connectSSE() {
-    // REMOVED: SSE connection logic (Phase 1-2 cleanup - SSE removed, WebSocket only)
-    // This function is kept as a stub for backward compatibility during migration
-    console.warn('⚠️ [Realtime] SSE is no longer supported. Use WebSocket instead.')
-    throw new Error('SSE connection not supported. Please use WebSocket.')
-  }
 
   /**
    * 斷開連線
+   * Phase 3: WebSocket only
    */
   function disconnect() {
-    if (protocol.value === 'websocket' && wsManager) {
+    if (wsManager) {
       wsManager.disconnect()
       wsManager = null
     }
-    // REMOVED: SSE disconnect logic (Phase 1-2 cleanup - SSE removed, WebSocket only)
 
     isConnected.value = false
     protocol.value = null

@@ -1,10 +1,13 @@
 /**
  * Latest Message Background Worker
  * Processes queue jobs to update latest message cache
+ *
+ * Migration: Phase 1.4b (REALTIME_QUEUE → LatestMessageCacheCoordinator DO)
  */
 
 import type { Bindings } from '../types';
 import { LatestMessageCache } from '../services/latest-message-cache';
+import type { DurableObjectStub } from '@cloudflare/workers-types';
 
 export interface LatestMessageJobPayload {
   type: 'update_latest_message' | 'invalidate_cache' | 'warmup_cache';
@@ -248,17 +251,29 @@ export async function handleLatestMessageQueue(
 }
 
 /**
- * Utility functions for enqueuing jobs
+ * Utility functions for scheduling cache updates via Durable Object
+ *
+ * Migration: Phase 1.4b (REALTIME_QUEUE → LatestMessageCacheCoordinator DO)
  */
 export class LatestMessageJobQueue {
-  private readonly queue: Queue<LatestMessageJobPayload>;
+  private readonly coordinator: any; // DurableObjectStub type causes recursion issues
 
   constructor(env: Bindings) {
-    this.queue = env.REALTIME_QUEUE; // Reuse existing queue
+    // Use Durable Object instead of Queue
+    // Type assertion needed as Bindings type might not be fully updated
+    const envWithDO = env as Bindings & { LATEST_MESSAGE_COORDINATOR: DurableObjectNamespace };
+
+    if (!envWithDO.LATEST_MESSAGE_COORDINATOR) {
+      throw new Error('LATEST_MESSAGE_COORDINATOR binding not found');
+    }
+
+    this.coordinator = envWithDO.LATEST_MESSAGE_COORDINATOR.get(
+      envWithDO.LATEST_MESSAGE_COORDINATOR.idFromName('global')
+    );
   }
 
   /**
-   * Enqueue job to update latest message cache
+   * Schedule cache update for conversation
    */
   async updateLatestMessage(
     conversationId: string,
@@ -266,57 +281,68 @@ export class LatestMessageJobQueue {
     priority: 'low' | 'normal' | 'high' = 'normal'
   ): Promise<void> {
     try {
-      const payload: LatestMessageJobPayload = {
-        type: 'update_latest_message',
-        conversationId,
-        priority,
-        timestamp: new Date().toISOString()
-      };
+      const response = await this.coordinator.fetch('http://localhost/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          priority
+        })
+      });
 
-      if (messageId) {
-        payload.messageId = messageId;
+      if (!response.ok) {
+        throw new Error(`Coordinator responded with ${response.status}: ${await response.text()}`);
       }
 
-      await this.queue.send(payload);
-
-      console.log(`📤 [LatestMessageJobQueue] Enqueued update job for conversation ${conversationId}`);
+      const result = await response.json() as { queueSize: number };
+      console.log(`📤 [LatestMessageJobQueue] Scheduled update for conversation ${conversationId} (queue size: ${result.queueSize})`);
     } catch (error) {
-      console.error(`❌ [LatestMessageJobQueue] Failed to enqueue update job:`, error);
+      console.error(`❌ [LatestMessageJobQueue] Failed to schedule update:`, error);
       throw error;
     }
   }
 
   /**
-   * Enqueue job to invalidate cache
+   * Invalidate cache for conversation
    */
   async invalidateCache(conversationId: string): Promise<void> {
     try {
-      await this.queue.send({
-        type: 'invalidate_cache',
-        conversationId,
-        timestamp: new Date().toISOString()
+      const response = await this.coordinator.fetch('http://localhost/invalidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId })
       });
 
-      console.log(`📤 [LatestMessageJobQueue] Enqueued invalidation job for conversation ${conversationId}`);
+      if (!response.ok) {
+        throw new Error(`Coordinator responded with ${response.status}: ${await response.text()}`);
+      }
+
+      console.log(`📤 [LatestMessageJobQueue] Invalidated cache for conversation ${conversationId}`);
     } catch (error) {
-      console.error(`❌ [LatestMessageJobQueue] Failed to enqueue invalidation job:`, error);
+      console.error(`❌ [LatestMessageJobQueue] Failed to invalidate cache:`, error);
       // Don't throw - invalidation is not critical
     }
   }
 
   /**
-   * Enqueue cache warmup job
+   * Trigger cache warmup
    */
-  async warmupCache(): Promise<void> {
+  async warmupCache(limit: number = 100): Promise<void> {
     try {
-      await this.queue.send({
-        type: 'warmup_cache',
-        timestamp: new Date().toISOString()
+      const response = await this.coordinator.fetch('http://localhost/warmup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit })
       });
 
-      console.log(`📤 [LatestMessageJobQueue] Enqueued cache warmup job`);
+      if (!response.ok) {
+        throw new Error(`Coordinator responded with ${response.status}: ${await response.text()}`);
+      }
+
+      const result = await response.json() as { warmedUp: number };
+      console.log(`📤 [LatestMessageJobQueue] Cache warmup completed: ${result.warmedUp} conversations`);
     } catch (error) {
-      console.error(`❌ [LatestMessageJobQueue] Failed to enqueue warmup job:`, error);
+      console.error(`❌ [LatestMessageJobQueue] Failed to warmup cache:`, error);
       throw error;
     }
   }
