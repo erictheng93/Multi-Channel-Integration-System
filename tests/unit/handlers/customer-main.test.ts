@@ -1,6 +1,6 @@
 // 客戶管理主要處理器測試 - Handler-based 架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import customerMainHandler from '../../../src/handlers/customer-main';
+import customerMainHandler from '@backend/handlers/customer-main';
 import { setupHandlerTest } from '../../helpers/handler-test-setup';
 
 // Mock utilities

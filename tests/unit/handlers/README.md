@@ -140,15 +140,15 @@ Each test file follows this structure:
 
 ```typescript
 describe('conversationHandler', () => {
-  describe('methodName', () => {
-    it('should handle normal case', async () => {
-      // Test implementation
-    })
-    
-    it('should handle error case', async () => {
-      // Error handling test
-    })
-  })
+ describe('methodName', () => {
+ it('should handle normal case', async () => {
+ // Test implementation
+ })
+
+ it('should handle error case', async () => {
+ // Error handling test
+ })
+ })
 })
 ```
 
@@ -163,57 +163,57 @@ Tests use standardized mock data from:
 ### Conversation Handler Scenarios
 
 #### List Conversations
-- ✅ Default pagination (page=1, pageSize=20)
-- ✅ Custom pagination parameters
-- ✅ Status filtering
-- ✅ Permission-based filtering (admin vs agent)
-- ✅ Unread count calculation
-- ✅ Empty result sets
-- ✅ Database errors
+- Default pagination (page=1, pageSize=20)
+- Custom pagination parameters
+- Status filtering
+- Permission-based filtering (admin vs agent)
+- Unread count calculation
+- Empty result sets
+- Database errors
 
 ### Get Single Conversation
-- ✅ Valid conversation retrieval
-- ✅ Conversation not found (404)
-- ✅ Unread count calculation
-- ✅ Null timestamp handling
-- ✅ Database errors
+- Valid conversation retrieval
+- Conversation not found (404)
+- Unread count calculation
+- Null timestamp handling
+- Database errors
 
 ### Assign Conversation
-- ✅ Assign to specific agent
-- ✅ Assign to current user (default)
-- ✅ Invalid agent ID handling
-- ✅ Missing JWT payload
-- ✅ Database errors
+- Assign to specific agent
+- Assign to current user (default)
+- Invalid agent ID handling
+- Missing JWT payload
+- Database errors
 
 ### Close Conversation
-- ✅ Successful closure
-- ✅ Status update verification
-- ✅ Timestamp updates
-- ✅ Database errors
+- Successful closure
+- Status update verification
+- Timestamp updates
+- Database errors
 
 ### Message Handler Scenarios
 
 #### List Messages
-- ✅ Default pagination (page=1, pageSize=50)
-- ✅ Custom pagination parameters
-- ✅ Message type transformation (customer->user, agent->agent)
-- ✅ Media type handling (text, image, video, file)
-- ✅ Chronological ordering (ASC by created_at)
-- ✅ Sender name resolution (JOIN with customers/users)
-- ✅ Empty message lists
-- ✅ Database errors
+- Default pagination (page=1, pageSize=50)
+- Custom pagination parameters
+- Message type transformation (customer->user, agent->agent)
+- Media type handling (text, image, video, file)
+- Chronological ordering (ASC by created_at)
+- Sender name resolution (JOIN with customers/users)
+- Empty message lists
+- Database errors
 
 #### Send Message
-- ✅ Text message sending
-- ✅ Media message sending (with URL and type)
-- ✅ Content validation (content OR media required)
-- ✅ Conversation lookup and validation
-- ✅ Platform detection (LINE, Facebook)
-- ✅ Message UUID generation
-- ✅ Database transaction handling
-- ✅ Conversation timestamp updates
-- ✅ Message status tracking
-- ✅ Platform-specific sending logic
+- Text message sending
+- Media message sending (with URL and type)
+- Content validation (content OR media required)
+- Conversation lookup and validation
+- Platform detection (LINE, Facebook)
+- Message UUID generation
+- Database transaction handling
+- Conversation timestamp updates
+- Message status tracking
+- Platform-specific sending logic
 
 ## Performance Benchmarks
 

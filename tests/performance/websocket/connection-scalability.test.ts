@@ -17,10 +17,10 @@ import {
   LoadTestHelper,
   TestAssertions
 } from '../../helpers/websocket/websocket-test-utils';
-import { ConversationRoom } from '../../../src/durable-objects/ConversationRoom';
-import { UserConnection } from '../../../src/durable-objects/UserConnection';
-import { MessageBroadcaster } from '../../../src/durable-objects/MessageBroadcaster';
-import { WebSocketBroadcastService } from '../../../src/services/websocket-broadcast-service';
+import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
+import { UserConnection } from '@backend/durable-objects/UserConnection';
+import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
+import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 
 describe('WebSocket Connection Scalability Performance', () => {
   let broadcastService: WebSocketBroadcastService;

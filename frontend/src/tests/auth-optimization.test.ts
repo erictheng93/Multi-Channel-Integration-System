@@ -11,9 +11,23 @@ vi.mock('@/api/auth', () => ({
   authApi: {
     login: vi.fn(),
     me: vi.fn(),
-    setAuthHeader: vi.fn()
+    logout: vi.fn(),
+    setAuthHeader: vi.fn(),
+    removeAuthHeader: vi.fn()
   }
 }))
+
+// Helper function to create valid JWT token
+function createValidJWT(userId: string = 'test-agent-id', role: string = 'agent'): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = btoa(JSON.stringify({
+    userId,
+    role,
+    exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 days
+  }))
+  const signature = btoa('test-signature')
+  return `${header}.${payload}.${signature}`
+}
 
 // Mock localStorage
 const mockLocalStorage = {
@@ -48,12 +62,15 @@ describe('前端狀態管理優化測試', () => {
 
   describe('登入成功後狀態更新', () => {
     it('應該立即設定所有認證狀態', async () => {
+      const validToken = createValidJWT('test-agent-id', 'agent')
+      const validRefreshToken = createValidJWT('test-agent-id', 'agent')
+
       // 模擬登入成功響應
       const mockLoginResponse = {
         success: true,
         data: {
-          token: 'test-token',
-          refreshToken: 'test-refresh-token',
+          token: validToken,
+          refreshToken: validRefreshToken,
           agent: mockAgent
         }
       }
@@ -61,32 +78,34 @@ describe('前端狀態管理優化測試', () => {
       vi.mocked(authApi.login).mockResolvedValue(mockLoginResponse)
 
       // 執行登入
-      const result = await authStore.login({ 
-        email: 'test@example.com', 
-        password: 'password' 
+      const result = await authStore.login({
+        email: 'test@example.com',
+        password: 'password'
       })
 
       // 驗證狀態立即更新
       expect(result).toBe(true)
-      expect(authStore.token).toBe('test-token')
-      expect(authStore.refreshToken).toBe('test-refresh-token')
+      expect(authStore.token).toBe(validToken)
+      expect(authStore.refreshToken).toBe(validRefreshToken)
       expect(authStore.currentAgent).toEqual(mockAgent)
       expect(authStore.sessionStatus).toBe('authenticated')
 
       // 驗證 localStorage 同步
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', 'test-token')
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refreshToken', 'test-refresh-token')
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', validToken)
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refreshToken', validRefreshToken)
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith('currentAgent', JSON.stringify(mockAgent))
-      
+
       // 驗證 API 客戶端認證標頭設定
-      expect(authApi.setAuthHeader).toHaveBeenCalledWith('test-token', 'test-refresh-token')
+      expect(authApi.setAuthHeader).toHaveBeenCalledWith(validToken, validRefreshToken)
     })
   })
 
   describe('智能會話初始化 - 避免額外 API 請求', () => {
     it('當有有效快取資料時，應該跳過 /auth/me 請求', async () => {
+      const validToken = createValidJWT('test-agent-id', 'agent')
+
       // 設定已有的認證狀態（模擬從 localStorage 恢復）
-      authStore.token = 'existing-token'
+      authStore.token = validToken
       authStore.currentAgent = mockAgent
       authStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天後過期
 
@@ -99,8 +118,10 @@ describe('前端狀態管理優化測試', () => {
     })
 
     it('當沒有快取資料時，才應該發送 /auth/me 請求', async () => {
+      const validToken = createValidJWT('test-agent-id', 'agent')
+
       // 設定只有 token，沒有 currentAgent
-      authStore.token = 'existing-token'
+      authStore.token = validToken
       authStore.currentAgent = null
       authStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
 
@@ -120,16 +141,18 @@ describe('前端狀態管理優化測試', () => {
     })
 
     it('當 agent 資料無效時，應該發送 /auth/me 請求', async () => {
+      const validToken = createValidJWT('test-agent-id', 'agent')
+
       // 設定無效的 agent 資料
-      authStore.token = 'existing-token'
-      authStore.currentAgent = { 
-        id: '', 
-        email: '', 
-        name: '', 
-        displayName: '', 
-        role: 'agent' as const, 
-        isActive: false, 
-        createdAt: 0 
+      authStore.token = validToken
+      authStore.currentAgent = {
+        id: '',
+        email: '',
+        name: '',
+        displayName: '',
+        role: 'agent' as const,
+        isActive: false,
+        createdAt: 0
       }
       authStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
 
@@ -149,7 +172,8 @@ describe('前端狀態管理優化測試', () => {
 
   describe('智能 fetchCurrentAgent 函數', () => {
     beforeEach(() => {
-      authStore.token = 'test-token'
+      const validToken = createValidJWT('test-agent-id', 'agent')
+      authStore.token = validToken
     })
 
     it('當已有有效資料時，應該跳過 API 請求', async () => {
@@ -193,12 +217,15 @@ describe('前端狀態管理優化測試', () => {
 
   describe('性能指標驗證', () => {
     it('完整的登入->初始化流程應該最多只發送 1 次 /auth/me', async () => {
+      const validToken = createValidJWT('test-agent-id', 'agent')
+      const validRefreshToken = createValidJWT('test-agent-id', 'agent')
+
       // 1. 模擬登入成功
       const mockLoginResponse = {
         success: true,
         data: {
-          token: 'test-token',
-          refreshToken: 'test-refresh-token',
+          token: validToken,
+          refreshToken: validRefreshToken,
           agent: mockAgent
         }
       }
@@ -206,14 +233,14 @@ describe('前端狀態管理優化測試', () => {
       vi.mocked(authApi.login).mockResolvedValue(mockLoginResponse)
 
       // 執行登入
-      await authStore.login({ 
-        email: 'test@example.com', 
-        password: 'password' 
+      await authStore.login({
+        email: 'test@example.com',
+        password: 'password'
       })
 
       // 2. 模擬應用重啟後的會話初始化（有快取資料）
       const newStore = useAuthStore()
-      newStore.token = 'test-token'
+      newStore.token = validToken
       newStore.currentAgent = mockAgent
       newStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
 

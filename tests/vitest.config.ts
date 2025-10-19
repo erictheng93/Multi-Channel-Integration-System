@@ -4,6 +4,17 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '../frontend/src'),
+      '~': path.resolve(__dirname, '../'),
+      '@backend': path.resolve(__dirname, '../src'),
+      '@shared': path.resolve(__dirname, '../src/shared'),
+      '@modules': path.resolve(__dirname, '../src/modules'),
+      '@tests': path.resolve(__dirname, './'),
+      '@helpers': path.resolve(__dirname, './helpers')
+    }
+  },
   test: {
     globals: true,
     environment: 'jsdom',
@@ -53,16 +64,6 @@ export default defineConfig({
     // 增加超時時間
     testTimeout: 10000,
     hookTimeout: 10000
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, '../frontend/src'),
-      '~': path.resolve(__dirname, '../'),
-      '@backend': path.resolve(__dirname, '../src'),
-      '@shared': path.resolve(__dirname, '../shared'),
-      '@tests': path.resolve(__dirname, './'),
-      '@helpers': path.resolve(__dirname, './helpers')
-    }
   },
   // 增加 esbuild 選項以支援舊版語法
   esbuild: {

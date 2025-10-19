@@ -1,7 +1,7 @@
 // MessageRecallService 單元測試
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { MessageRecallService } from '../../../src/services/message-recall-service';
-import type { Bindings } from '../../../src/types';
+import { MessageRecallService } from '@backend/services/message-recall-service';
+import type { Bindings } from '@backend/types';
 
 // Mock Bindings
 const createMockBindings = (): Bindings => ({
@@ -19,9 +19,7 @@ const createMockBindings = (): Bindings => ({
     get: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(undefined)
   } as any,
-  AGENT_QUEUE: {
-    send: vi.fn().mockResolvedValue(undefined)
-  } as any,
+  // REMOVED: AGENT_QUEUE (replaced by DelayedMessageBuffer Durable Object)
   LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
   FB_PAGE_ACCESS_TOKEN: 'test-fb-token'
 } as any);
@@ -71,14 +69,8 @@ describe('MessageRecallService', () => {
         expect.objectContaining({ expirationTtl: expect.any(Number) })
       );
 
-      // 驗證 Queue 排程
-      expect(mockBindings.AGENT_QUEUE.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'send_delayed_message',
-          messageId: expect.any(String)
-        }),
-        expect.objectContaining({ delaySeconds: 30 })
-      );
+      // REMOVED: AGENT_QUEUE 驗證 (現由 DelayedMessageBuffer Durable Object 處理)
+      // 延遲訊息現在通過 Durable Objects + Alarm API 實現，不再使用 Queue
     });
 
     it('should handle database error gracefully', async () => {
@@ -105,16 +97,9 @@ describe('MessageRecallService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle missing AGENT_QUEUE gracefully', async () => {
-      mockBindings.AGENT_QUEUE = undefined as any;
-
-      const result = await service.sendDelayedMessage(validRequest);
-
-      expect(result.success).toBe(true);
-      // 應該仍然儲存到 D1 和 KV
-      expect(mockBindings.DB.prepare).toHaveBeenCalled();
-      expect(mockBindings.SESSIONS.put).toHaveBeenCalled();
-    });
+    // REMOVED: AGENT_QUEUE 測試已移除
+    // 延遲訊息現在由 DelayedMessageBuffer Durable Object 處理
+    // 不再依賴 Cloudflare Queue
   });
 
   describe('recallMessage', () => {

@@ -35,7 +35,7 @@ vi.mock('../../../src/utils/drizzle-converters', () => ({
 }))
 
 // Import after mocking
-import { authenticateUser, verifyPassword } from '../../../src/utils/auth'
+import { authenticateUser, verifyPassword } from '@backend/utils/auth'
 
 describe('資料庫查詢優化測試', () => {
   let mockDb: any

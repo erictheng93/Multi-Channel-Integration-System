@@ -17,10 +17,10 @@ import {
   TestDataFactory,
   LoadTestHelper
 } from '../../helpers/websocket/websocket-test-utils';
-import { ConversationRoom } from '../../../src/durable-objects/ConversationRoom';
-import { MessageBroadcaster } from '../../../src/durable-objects/MessageBroadcaster';
-import { WebSocketBroadcastService } from '../../../src/services/websocket-broadcast-service';
-import type { DurableObjectEvent } from '../../../src/types/websocket-types';
+import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
+import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
+import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
+import type { DurableObjectEvent } from '@backend/types/websocket-types';
 
 describe('Message Broadcasting Performance', () => {
   let broadcastService: WebSocketBroadcastService;

@@ -1,10 +1,10 @@
 // 延遲訊息主要處理器測試 - Handler-based 架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
-import delayedMessageMainHandler from '../../../src/handlers/delayed-message-main';
-import { MessageRecallService } from '../../../src/services/message-recall-service';
-import { PermissionService } from '../../../src/services/permission-service';
-import type { Bindings } from '../../../src/types';
+import delayedMessageMainHandler from '@backend/handlers/delayed-message-main';
+import { MessageRecallService } from '@backend/services/message-recall-service';
+import { PermissionService } from '@backend/services/permission-service';
+import type { Bindings } from '@backend/types';
 
 // Mock services
 vi.mock('../../../src/services/message-recall-service');

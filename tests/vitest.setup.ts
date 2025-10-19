@@ -8,6 +8,31 @@ import { globalPinia } from './global-pinia-setup'
 import { config } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 
+// Setup WebSocketPair globally BEFORE any tests run
+if (typeof globalThis.WebSocketPair === 'undefined') {
+  (globalThis as any).WebSocketPair = class WebSocketPair {
+    0: any;
+    1: any;
+    constructor() {
+      // Create two mock WebSocket objects
+      const createMockWebSocket = () => ({
+        send: vi.fn(),
+        close: vi.fn(),
+        accept: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        readyState: 1, // OPEN
+        CONNECTING: 0,
+        OPEN: 1,
+        CLOSING: 2,
+        CLOSED: 3
+      });
+      this[0] = createMockWebSocket();
+      this[1] = createMockWebSocket();
+    }
+  };
+}
+
 // 創建測試用的 i18n 實例
 const i18n = createI18n({
   legacy: false,

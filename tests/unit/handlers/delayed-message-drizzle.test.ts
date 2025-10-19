@@ -1,8 +1,8 @@
 // DelayedMessage API 端點測試
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
-import delayedMessages from '../../../src/handlers/delayed-message-drizzle';
-import type { HonoContext } from '../../../src/types/bindings';
+import delayedMessages from '@backend/handlers/delayed-message-drizzle';
+import type { HonoContext } from '@backend/types/bindings';
 
 // Mock DatabaseService at module level
 vi.mock('../../../src/services/database', () => ({

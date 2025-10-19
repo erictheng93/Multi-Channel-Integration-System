@@ -1,6 +1,6 @@
 // 系統主要處理器測試 - Handler-based 架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import systemMainHandler from '../../../src/handlers/system-main';
+import systemMainHandler from '@backend/handlers/system-main';
 import { setupHandlerTest } from '../../helpers/handler-test-setup';
 
 // Mock Drizzle ORM

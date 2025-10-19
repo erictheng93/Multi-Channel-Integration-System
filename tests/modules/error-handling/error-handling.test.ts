@@ -9,12 +9,12 @@ import {
   NotFoundError,
   ErrorMapper,
   ErrorSeverity
-} from '../../../src/shared/error-handling/module-errors';
+} from '@backend/shared/error-handling/module-errors';
 import {
   ModuleErrorHandler,
   createErrorHandlingMiddleware,
   withErrorHandling
-} from '../../../src/shared/error-handling/error-handlers';
+} from '@backend/shared/error-handling/error-handlers';
 import { ErrorLogger } from '@shared/error-handling/error-logger';
 
 describe('Module Errors', () => {

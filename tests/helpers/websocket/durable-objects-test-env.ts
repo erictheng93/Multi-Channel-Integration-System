@@ -9,13 +9,13 @@ import type {
   DurableObjectEvent,
   DistributedLock,
   MigrationConfig
-} from '../../../src/types/websocket-types';
+} from '@backend/types/websocket-types';
 
 /**
  * Mock DurableObjectState for testing
  */
 export class MockDurableObjectState implements DurableObjectState {
-  private storage: Map<string, any> = new Map();
+  private _internalStorage: Map<string, any> = new Map();
   private transactionDepth = 0;
   private transactionChanges: Map<string, any> = new Map();
 
@@ -23,35 +23,36 @@ export class MockDurableObjectState implements DurableObjectState {
 
   // Storage operations
   get storage(): DurableObjectStorage {
+    const self = this;
     return {
-      get: async (key: string) => {
-        if (this.transactionDepth > 0) {
-          if (this.transactionChanges.has(key)) {
-            return this.transactionChanges.get(key);
+      async get(keyOrKeys: string | string[]): Promise<any> {
+        if (typeof keyOrKeys === 'string') {
+          // Single key
+          if (self.transactionDepth > 0 && self.transactionChanges.has(keyOrKeys)) {
+            return self.transactionChanges.get(keyOrKeys);
           }
-        }
-        return this.storage.get(key);
-      },
-
-      get: async (keys: string[]) => {
-        const result = new Map<string, any>();
-        for (const key of keys) {
-          const value = this.transactionDepth > 0 && this.transactionChanges.has(key)
-            ? this.transactionChanges.get(key)
-            : this.storage.get(key);
-          if (value !== undefined) {
-            result.set(key, value);
+          return self._internalStorage.get(keyOrKeys);
+        } else {
+          // Multiple keys
+          const result = new Map<string, any>();
+          for (const key of keyOrKeys) {
+            const value = self.transactionDepth > 0 && self.transactionChanges.has(key)
+              ? self.transactionChanges.get(key)
+              : self._internalStorage.get(key);
+            if (value !== undefined) {
+              result.set(key, value);
+            }
           }
+          return result;
         }
-        return result;
       },
 
       list: async (options?: { start?: string; end?: string; prefix?: string; reverse?: boolean; limit?: number }) => {
-        let entries = Array.from(this.storage.entries());
+        let entries = Array.from(self._internalStorage.entries());
 
         // Apply transaction changes
-        if (this.transactionDepth > 0) {
-          for (const [key, value] of this.transactionChanges) {
+        if (self.transactionDepth > 0) {
+          for (const [key, value] of self.transactionChanges) {
             const index = entries.findIndex(([k]) => k === key);
             if (index >= 0) {
               if (value === undefined) {
@@ -90,93 +91,97 @@ export class MockDurableObjectState implements DurableObjectState {
         return new Map(entries);
       },
 
-      put: async (key: string, value: any) => {
-        if (this.transactionDepth > 0) {
-          this.transactionChanges.set(key, value);
-        } else {
-          this.storage.set(key, value);
-        }
-      },
-
-      put: async (entries: Record<string, any>) => {
-        for (const [key, value] of Object.entries(entries)) {
-          if (this.transactionDepth > 0) {
-            this.transactionChanges.set(key, value);
+      async put(keyOrEntries: string | Record<string, any>, value?: any): Promise<void> {
+        if (typeof keyOrEntries === 'string') {
+          // Single key-value
+          if (self.transactionDepth > 0) {
+            self.transactionChanges.set(keyOrEntries, value);
           } else {
-            this.storage.set(key, value);
+            self._internalStorage.set(keyOrEntries, value);
           }
-        }
-      },
-
-      delete: async (key: string) => {
-        if (this.transactionDepth > 0) {
-          this.transactionChanges.set(key, undefined);
         } else {
-          this.storage.delete(key);
-          return true;
-        }
-        return true;
-      },
-
-      delete: async (keys: string[]) => {
-        let deletedCount = 0;
-        for (const key of keys) {
-          if (this.transactionDepth > 0) {
-            this.transactionChanges.set(key, undefined);
-            deletedCount++;
-          } else {
-            if (this.storage.delete(key)) {
-              deletedCount++;
+          // Multiple entries
+          for (const [key, val] of Object.entries(keyOrEntries)) {
+            if (self.transactionDepth > 0) {
+              self.transactionChanges.set(key, val);
+            } else {
+              self._internalStorage.set(key, val);
             }
           }
         }
-        return deletedCount;
+      },
+
+      async delete(keyOrKeys: string | string[]): Promise<boolean | number> {
+        if (typeof keyOrKeys === 'string') {
+          // Single key
+          if (self.transactionDepth > 0) {
+            self.transactionChanges.set(keyOrKeys, undefined);
+          } else {
+            self._internalStorage.delete(keyOrKeys);
+          }
+          return true;
+        } else {
+          // Multiple keys
+          let deletedCount = 0;
+          for (const key of keyOrKeys) {
+            if (self.transactionDepth > 0) {
+              self.transactionChanges.set(key, undefined);
+              deletedCount++;
+            } else {
+              if (self._internalStorage.delete(key)) {
+                deletedCount++;
+              }
+            }
+          }
+          return deletedCount;
+        }
       },
 
       deleteAll: async () => {
-        if (this.transactionDepth > 0) {
-          for (const key of this.storage.keys()) {
-            this.transactionChanges.set(key, undefined);
+        if (self.transactionDepth > 0) {
+          for (const key of self._internalStorage.keys()) {
+            self.transactionChanges.set(key, undefined);
           }
         } else {
-          this.storage.clear();
+          self._internalStorage.clear();
         }
       },
 
       transaction: async <T>(closure: (txn: DurableObjectTransaction) => Promise<T>): Promise<T> => {
-        this.transactionDepth++;
-        this.transactionChanges.clear();
+        self.transactionDepth++;
+        self.transactionChanges.clear();
 
         try {
+          const txnStorage = self.storage;
           const result = await closure({
-            get: this.storage.get.bind(this),
-            list: this.storage.list.bind(this),
-            put: this.storage.put.bind(this),
-            delete: this.storage.delete.bind(this),
-            deleteAll: this.storage.deleteAll.bind(this),
+            get: txnStorage.get.bind(txnStorage),
+            list: txnStorage.list.bind(txnStorage),
+            put: txnStorage.put.bind(txnStorage),
+            delete: txnStorage.delete.bind(txnStorage),
+            deleteAll: txnStorage.deleteAll.bind(txnStorage),
             rollback: () => {
               throw new Error('Transaction rolled back');
             }
           } as any);
 
           // Commit transaction changes
-          for (const [key, value] of this.transactionChanges) {
+          for (const [key, value] of self.transactionChanges) {
             if (value === undefined) {
-              this.storage.delete(key);
+              self._internalStorage.delete(key);
             } else {
-              this.storage.set(key, value);
+              self._internalStorage.set(key, value);
             }
           }
 
           return result;
         } catch (error) {
           // Rollback - discard transaction changes
-          this.transactionChanges.clear();
+          self.transactionChanges.clear();
           throw error;
         } finally {
-          this.transactionDepth--;
-          if (this.transactionDepth === 0) {
-            this.transactionChanges.clear();
+          self.transactionDepth--;
+          if (self.transactionDepth === 0) {
+            self.transactionChanges.clear();
           }
         }
       }
@@ -413,18 +418,18 @@ export class MockWebSocketPair {
   1: MockWebSocket;
 
   constructor() {
-    this.0 = new MockWebSocket('ws://test-client');
-    this.1 = new MockWebSocket('ws://test-server');
+    this[0] = new MockWebSocket('ws://test-client');
+    this[1] = new MockWebSocket('ws://test-server');
 
     // Connect the pair
-    this.0.send = (data: string | ArrayBuffer | Blob) => {
+    this[0].send = (data: string | ArrayBuffer | Blob) => {
       const message = typeof data === 'string' ? data : data.toString();
-      setTimeout(() => this.1.simulateMessage(message), 0);
+      setTimeout(() => this[1].simulateMessage(message), 0);
     };
 
-    this.1.send = (data: string | ArrayBuffer | Blob) => {
+    this[1].send = (data: string | ArrayBuffer | Blob) => {
       const message = typeof data === 'string' ? data : data.toString();
-      setTimeout(() => this.0.simulateMessage(message), 0);
+      setTimeout(() => this[0].simulateMessage(message), 0);
     };
   }
 }
