@@ -204,7 +204,7 @@ export interface DbUser {
   id: number | string;
   email: string;
   displayName: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier (admin/team/agent) to 2-tier (admin/agent)
   teamId?: number | null | undefined;
   teamName?: string | null | undefined;
   isActive: boolean;
@@ -248,7 +248,7 @@ export interface JWTPayload {
   username?: string;
   displayName: string;
   email?: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier (admin/team/agent) to 2-tier (admin/agent)
   teamId?: number | undefined;
   teamName?: string | undefined;
   iat: number;

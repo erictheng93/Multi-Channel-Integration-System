@@ -382,23 +382,6 @@ async function getSystemPermissions(userPayload: JWTPayload): Promise<SystemPerm
         canAccessAdvanced: true,
       };
 
-    case 'team':
-      return {
-        canViewHealth: true,
-        canViewStatus: true,
-        canViewInfo: true,
-        canViewStats: true,
-        canViewSettings: true,
-        canUpdateSettings: false,
-        canManageIntegrations: false,
-        canViewMetrics: true,
-        canCreateBackups: false,
-        canRestoreBackups: false,
-        canManageCache: false,
-        canRestartSystem: false,
-        canAccessAdvanced: false,
-      };
-
     default:
       return {
         canViewHealth: true,
@@ -426,15 +409,6 @@ async function getSystemAccessScope(userPayload: JWTPayload): Promise<SystemAcce
   if (userPayload.role === 'admin') {
     return {
       isGlobalAccess: true,
-    };
-  }
-
-  // Team 角色有部分功能限制
-  if (userPayload.role === 'team') {
-    return {
-      isGlobalAccess: false,
-      restrictedFeatures: ['settings', 'integrations', 'backups', 'cache', 'restart'],
-      allowedOperations: ['view', 'read', 'monitor'],
     };
   }
 

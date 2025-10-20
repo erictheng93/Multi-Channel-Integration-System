@@ -9,7 +9,7 @@ This is a **Multi-Channel Customer Support System** built with Cloudflare Worker
 ### Key Characteristics
 - **Modern Vue 3 + TypeScript** frontend with comprehensive testing (132+ tests)
 - **Cloudflare Worker backend** with Hono framework and Drizzle ORM
-- **Enterprise role system** with Admin, Team, and Agent hierarchies
+- **Simplified role system** with Admin and Agent (2-tier hierarchy)
 - **LINE OA integration** with complete webhook handling
 - **Delayed messaging system** with Cloudflare Queues integration
 - **File upload support** with Cloudflare R2 storage
@@ -388,7 +388,7 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 ### **Enterprise Customer Support System**
 - **Multi-channel Integration**: Complete LINE OA webhook integration with planned Facebook Messenger support
 - **Real-time Communication**: **100% WebSocket** for live message updates with Durable Objects architecture
-- **Enterprise Architecture**: Production-ready deployment on Cloudflare Workers and Pages
+- **Simplified Role Architecture**: 2-tier role system (Admin/Agent) for streamlined permission management
 - **Type-safe Development**: Full TypeScript implementation with strict mode and comprehensive testing
 - **Scalable Infrastructure**: Production WebSocket infrastructure with five Durable Objects classes
 
@@ -404,11 +404,12 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 - **Real-time Updates**: **WebSocket-based** live message delivery, status updates, and presence
 
 ### **Enterprise Team Management**
-- **3-Role Hierarchy**: Admin, Team, and Agent roles with inheritance-based permissions
-- **Team Organization**: Complete team lifecycle management with leader delegation
+- **2-Tier Role System**: Admin and Agent roles with simplified permission hierarchy
+- **Team Organization**: Complete team lifecycle management with admin oversight
 - **Role-Based Access Control**: Database-level permission enforcement and team-scoped access
 - **User Management**: JWT authentication with KV-based session management
 - **Activity Tracking**: Comprehensive logging and monitoring of team activities
+- **Note**: Team functionality preserved - agents can still be assigned to teams
 
 ### **Customer Management**
 - **Multi-platform Customer Data**: Unified customer profiles across LINE OA and planned channels
@@ -480,9 +481,10 @@ The system is production-ready and deployed on Cloudflare infrastructure:
 ## Enterprise Documentation
 
 ### Role System Documentation
-- `docs/enterprise/ENTERPRISE_ROLES_SYSTEM.md` - Comprehensive 3-role system guide
-- `drizzle/0004_add_enterprise_roles_team_support.sql` - Database migration for role system
-- Permission matrix, team management, and deployment guides included
+- **Role system simplified**: From 3-tier (admin/team/agent) to 2-tier (admin/agent)
+- `drizzle/0017_remove_team_role.sql` - Database migration removing team role
+- Team functionality preserved - agents can still be organized into teams
+- Permission matrix and management guides updated for simplified hierarchy
 
 ### Key Documentation Files
 - Role hierarchy and permission system

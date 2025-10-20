@@ -138,6 +138,17 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'QR code ID is required', 400);
       }
 
+      // 🔒 ROUTE CONFLICT PREVENTION: Reject reserved paths
+      // These paths are static endpoints that should NOT be treated as QR code IDs
+      const RESERVED_PATHS = [
+        'health', 'stats', 'search', 'advanced-search', 'type',
+        'tags', 'batch', 'templates', 'export', 'scan', 'public', 'admin'
+      ];
+
+      if (RESERVED_PATHS.includes(id.toLowerCase())) {
+        return errorResponse(c, `Invalid QR code ID - "${id}" is a reserved endpoint path`, 400);
+      }
+
       // 使用 QRCode 服務獲取詳情
       const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.findById(id, userId);
@@ -167,6 +178,12 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'QR code ID is required', 400);
       }
 
+      // 🔒 ROUTE CONFLICT PREVENTION: Reject reserved paths
+      const RESERVED_PATHS = ['health', 'stats', 'search', 'advanced-search', 'type', 'tags', 'batch', 'templates', 'export', 'scan', 'public', 'admin'];
+      if (RESERVED_PATHS.includes(id.toLowerCase())) {
+        return errorResponse(c, `Invalid QR code ID - "${id}" is a reserved endpoint path`, 400);
+      }
+
       // 使用 QRCode 服務更新
       const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.update(id, data, userId);
@@ -189,6 +206,12 @@ export class QRCodeMainHandler {
 
       if (!id) {
         return errorResponse(c, 'QR code ID is required', 400);
+      }
+
+      // 🔒 ROUTE CONFLICT PREVENTION: Reject reserved paths
+      const RESERVED_PATHS = ['health', 'stats', 'search', 'advanced-search', 'type', 'tags', 'batch', 'templates', 'export', 'scan', 'public', 'admin'];
+      if (RESERVED_PATHS.includes(id.toLowerCase())) {
+        return errorResponse(c, `Invalid QR code ID - "${id}" is a reserved endpoint path`, 400);
       }
 
       // 使用 QRCode 服務刪除

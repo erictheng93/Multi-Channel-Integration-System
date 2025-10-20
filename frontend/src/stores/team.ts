@@ -66,7 +66,7 @@ export const useTeamStore = defineStore('team', () => {
     name?: string
     email?: string
     password: string
-    role: 'admin' | 'team' | 'agent'
+    role: 'admin' | 'agent' // Simplified from 3-tier to 2-tier role system
     group?: string
     isActive: boolean
   }) => {
@@ -92,7 +92,7 @@ export const useTeamStore = defineStore('team', () => {
 
   const inviteMember = async (request: {
     email: string
-    role: 'admin' | 'team' | 'agent'
+    role: 'admin' | 'agent' // Simplified from 3-tier to 2-tier role system
     message?: string
     useQR?: boolean
   }) => {
@@ -116,7 +116,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  const updateMemberRole = async (memberId: string, role: 'admin' | 'team' | 'agent') => {
+  const updateMemberRole = async (memberId: string, role: 'admin' | 'agent') => { // Simplified from 3-tier to 2-tier
     try {
       loading.value = true
       error.value = null

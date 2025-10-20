@@ -192,11 +192,7 @@ export class PermissionService {
       return true
     }
 
-    // Team 可以取消團隊內的指派
-    if (this.hasPermission(user, Permission.UNASSIGN_CONVERSATIONS) && user.role === 'team') {
-      // Team conversation validation will be implemented when required
-      return true
-    }
+    // Note: 'team' role removed - simplified to 2-tier (admin/agent)
 
     // Agent 可以取消自己的指派
     if (conversation.assignedAgentId === user.id) {
@@ -221,11 +217,7 @@ export class PermissionService {
         return true
       }
 
-      // Team 可以關閉團隊對話
-      if (user.role === 'team') {
-        // Team conversation validation will be implemented when required
-        return true
-      }
+      // Note: 'team' role removed - simplified to 2-tier (admin/agent)
 
       // Agent 只能關閉指派給自己的對話
       if (user.role === 'agent') {
@@ -275,10 +267,8 @@ export class PermissionService {
       return true
     }
 
-    // Team 只能移除 agent 角色的成員
-    if (user.role === 'team') {
-      return targetMember.role === 'agent'
-    }
+    // Note: 'team' role removed - simplified to 2-tier (admin/agent)
+    // Only admins can remove members
 
     return false
   }
@@ -286,7 +276,7 @@ export class PermissionService {
   /**
    * 檢查用戶是否可以更改成員角色
    */
-  static canChangeMemberRole(user: TeamMember | null, targetMember: TeamMember, newRole: string): boolean {
+  static canChangeMemberRole(user: TeamMember | null, targetMember: TeamMember, _newRole: string): boolean {
     if (!user || !this.hasPermission(user, Permission.CHANGE_MEMBER_ROLES)) {
       return false
     }
@@ -301,11 +291,8 @@ export class PermissionService {
       return true
     }
 
-    // Team 只能在 agent 和 team 之間更改
-    if (user.role === 'team') {
-      const allowedRoles = ['agent', 'team']
-      return allowedRoles.includes(targetMember.role) && allowedRoles.includes(newRole)
-    }
+    // Note: 'team' role removed - simplified to 2-tier (admin/agent)
+    // Only admins can change roles
 
     return false
   }

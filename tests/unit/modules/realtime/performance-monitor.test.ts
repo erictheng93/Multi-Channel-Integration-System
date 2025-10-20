@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
 
 // Mock dependencies
-vi.mock('../../../../src/modules/realtime/handlers/sse-handler', () => ({
+vi.mock('@real-time/handlers/sse-handler', () => ({
   enhancedSSEManager: {
     getDetailedStats: vi.fn().mockReturnValue({
       totalConnections: 10,
@@ -17,7 +17,7 @@ vi.mock('../../../../src/modules/realtime/handlers/sse-handler', () => ({
   }
 }));
 
-vi.mock('../../../../src/modules/realtime/handlers/event-handler', () => ({
+vi.mock('@real-time/handlers/event-handler', () => ({
   eventStats: {
     getStats: vi.fn().mockReturnValue({
       totalEvents: 200,
@@ -37,7 +37,7 @@ vi.mock('../../../../src/modules/realtime/handlers/event-handler', () => ({
   }
 }));
 
-vi.mock('../../../../src/modules/realtime/services/realtime-manager', () => {
+vi.mock('@real-time/services/realtime-manager', () => {
   const mockInstance = {
     getComprehensiveStats: vi.fn().mockResolvedValue({
       queue: {
@@ -82,9 +82,9 @@ describe('RealtimePerformanceMonitor', () => {
     (monitor as any).isMonitoring = false;
 
     // Reset mocks to default values after clearing
-    const { enhancedSSEManager } = await import('../../../../src/modules/realtime/handlers/sse-handler');
-    const { eventStats } = await import('../../../../src/modules/realtime/handlers/event-handler');
-    const { RealtimeManager } = await import('../../../../src/modules/realtime/services/realtime-manager');
+    const { enhancedSSEManager } = await import('@real-time/handlers/sse-handler');
+    const { eventStats } = await import('@real-time/handlers/event-handler');
+    const { RealtimeManager } = await import('@real-time/services/realtime-manager');
 
     vi.mocked(enhancedSSEManager.getDetailedStats).mockReturnValue({
       totalConnections: 10,
@@ -160,7 +160,7 @@ describe('RealtimePerformanceMonitor', () => {
 
     it('should handle missing queue stats gracefully', async () => {
       // Mock RealtimeManager to throw error
-      const { RealtimeManager } = await import('../../../../src/modules/realtime/services/realtime-manager');
+      const { RealtimeManager } = await import('@real-time/services/realtime-manager');
       const mockManager = RealtimeManager.getInstance();
       (mockManager.getComprehensiveStats as any).mockRejectedValueOnce(new Error('Queue not available'));
 
@@ -188,7 +188,7 @@ describe('RealtimePerformanceMonitor', () => {
   describe('Threshold Monitoring', () => {
     it('should generate alerts when thresholds are exceeded', async () => {
       // Mock high error rate
-      const { eventStats } = await import('../../../../src/modules/realtime/handlers/event-handler');
+      const { eventStats } = await import('@real-time/handlers/event-handler');
       vi.mocked(eventStats.getStats).mockReturnValueOnce({
         totalEvents: 100,
         averageProcessingTime: 250,
@@ -210,7 +210,7 @@ describe('RealtimePerformanceMonitor', () => {
 
     it('should generate queue depth alerts', async () => {
       // Mock high queue depth
-      const { RealtimeManager } = await import('../../../../src/modules/realtime/services/realtime-manager');
+      const { RealtimeManager } = await import('@real-time/services/realtime-manager');
       const mockManager = RealtimeManager.getInstance();
       vi.mocked(mockManager.getComprehensiveStats).mockResolvedValueOnce({
         queue: {
@@ -441,7 +441,7 @@ describe('RealtimePerformanceMonitor', () => {
   describe('Recommendations', () => {
     it('should generate performance recommendations', async () => {
       // Create high connection scenario by temporarily overriding mock
-      const { enhancedSSEManager } = await import('../../../../src/modules/realtime/handlers/sse-handler');
+      const { enhancedSSEManager } = await import('@real-time/handlers/sse-handler');
       const originalMock = vi.mocked(enhancedSSEManager.getDetailedStats);
 
       vi.mocked(enhancedSSEManager.getDetailedStats).mockReturnValue({

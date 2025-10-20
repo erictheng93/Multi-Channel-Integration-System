@@ -18,8 +18,8 @@ export const agents = sqliteTable('agents', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
-  role: text('role').notNull().default('agent'), // 'admin', 'team', 'agent'
-  teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table
+  role: text('role').notNull().default('agent'), // 'admin', 'agent' (simplified from 3-tier to 2-tier system)
+  teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table (team functionality preserved)
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   passwordPolicy: text('password_policy').default('changeable'),
   lastActive: text('last_active'),

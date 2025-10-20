@@ -111,7 +111,7 @@ export class UserConnection implements DurableObject {
     try {
       const url = new URL(request.url);
       const token = url.searchParams.get('token');
-      const role = url.searchParams.get('role') as 'admin' | 'team' | 'agent';
+      const role = url.searchParams.get('role') as 'admin' | 'agent';
       const deviceId = url.searchParams.get('deviceId') || 'unknown';
 
       if (!token || !role) {

@@ -74,6 +74,62 @@ chmod +x .git/hooks/pre-commit
 - 運行文檔質量檢查器
 - 發現問題時阻止提交
 
+## 路由衝突檢測工具
+
+### route-conflict-detector.cjs
+
+自動檢測handler文件中的路由衝突，防止路由錯誤。
+
+**用法：**
+
+```bash
+# 基本掃描
+node scripts/route-conflict-detector.cjs
+
+# 詳細輸出
+node scripts/route-conflict-detector.cjs --verbose
+
+# JSON 輸出（用於 CI/CD）
+node scripts/route-conflict-detector.cjs --json > report.json
+```
+
+**退出代碼：**
+- `0` - 未發現衝突
+- `1` - 發現衝突（中等/低嚴重性）
+- `2` - 發現嚴重衝突
+
+**檢測內容：**
+- ✅ 靜態路由 vs 動態路由衝突（如 `/search` vs `/:id`）
+- ✅ 重複路由註冊
+- ✅ 跨模組路由衝突
+- ✅ 註冊順序問題
+
+**詳細文檔：** `docs/tools/ROUTE_CONFLICT_DETECTOR.md`
+
+### route-conflict-analysis.md
+
+初始路由模式掃描的手動分析報告
+
+### route-conflict-fix-summary.md
+
+已應用的路由衝突修復摘要
+
+## 團隊處理器遷移
+
+### team-handler-migration-summary.md
+
+團隊處理器模組化架構的完整遷移報告
+- 部署版本: `e0a1cd14-1fc9-42c6-8d30-fb50fc80f212`
+- 狀態: ✅ 成功部署
+
+## 測試腳本
+
+### test-route-conflicts-fix.js
+
+驗證路由衝突修復的測試腳本
+- 測試 Session 模組和 QRCode 模組的保留路徑驗證
+- 預期結果: 10/11 測試通過（91%）
+
 ## 部署腳本
 
 ### developer-deploy.ps1

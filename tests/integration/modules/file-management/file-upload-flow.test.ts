@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileService } from '@modules/file-management/services/file-service';
 import { FileManagementError } from '@modules/file-management/utils/error-handler';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
-import type { Bindings } from '../../../../src/types';
+import type { Bindings } from '@/types';
 import type { FileUploadRequest } from '@modules/file-management/types/file-types';
 
 // Mock環境

@@ -96,12 +96,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 計算屬性
+  // 計算屬性 - Simplified from 3-tier to 2-tier role system
   const isAdmin = computed(() => currentAgent.value?.role === 'admin');
-  const isTeam = computed(() => currentAgent.value?.role === 'team');
   const isAgent = computed(() => currentAgent.value?.role === 'agent');
-  const isTeamOrAdmin = computed(() => 
-    currentAgent.value?.role === 'admin' || currentAgent.value?.role === 'team'
+  const isTeamOrAdmin = computed(() =>
+    currentAgent.value?.role === 'admin' // Note: 'team' role removed
   );
 
   // Simplified login method
@@ -475,7 +474,6 @@ export const useAuthStore = defineStore('auth', () => {
       return result;
     }),
     isAdmin,
-    isTeam,
     isAgent,
     isTeamOrAdmin,
     // 方法

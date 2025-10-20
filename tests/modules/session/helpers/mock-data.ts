@@ -6,7 +6,7 @@ import type {
   SessionStats,
   SessionActivityStats,
   BatchOperationResult
-} from '../../../../src/modules/session/types/session-types';
+} from '@session/types/session-types';
 
 // ======================== Mock 會話資料 ========================
 

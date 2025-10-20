@@ -232,11 +232,11 @@ export class ConnectionPoolManager {
   }
 
   private shouldAllowConnectionUnderHighLoad(userId: string): boolean {
-    // Allow admin/team users even under high load
+    // Allow admin users even under high load
     const userConnections = this.getUserConnections(userId);
     if (userConnections.length > 0 && userConnections[0]) {
       const role = userConnections[0].role;
-      if (role === 'admin' || role === 'team') {
+      if (role === 'admin') {
         return true;
       }
     }

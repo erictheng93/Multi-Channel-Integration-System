@@ -10,7 +10,7 @@ export interface WebSocketUser {
   id: number | string;
   email: string;
   displayName: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent';
   teamId?: number | null;
   teamName?: string | null;
   isActive: boolean;
@@ -142,7 +142,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     const userId = payload.userId?.toString() || String(payload.userId) || '0';
     const email = payload.email || `${userId}@example.com`;
     const displayName = payload.displayName || payload.email?.split('@')[0] || userId;
-    const role = (payload.role as 'admin' | 'team' | 'agent') || 'agent';
+    const role = (payload.role as 'admin' | 'agent') || 'agent';
 
     // 驗證關鍵欄位
     if (!userId || userId === '0') {
@@ -164,14 +164,14 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     }
 
     // 檢查角色有效性
-    if (!['admin', 'team', 'agent'].includes(role)) {
+    if (!['admin', 'agent'].includes(role)) {
       console.log(`❌ [WebSocket Auth] Invalid role in token from ${clientIP}: ${role}`);
       return new Response(JSON.stringify({
         error: 'Invalid role',
         code: 4407,
         message: 'Token contains invalid user role',
         providedRole: role,
-        validRoles: ['admin', 'team', 'agent'],
+        validRoles: ['admin', 'agent'],
         timestamp: Date.now(),
         suggestedAction: 'refresh_token'
       }), {

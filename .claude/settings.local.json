@@ -77,7 +77,9 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nfix: resolve TypeScript errors in websocket-health handler\n\nFixed type inference issues and return type mismatches:\n- Updated avgScore calculation to handle empty arrays with explicit number type\n- Fixed getDistributedLockMetrics return type to match actual DistributedLockService response\n- Removed deprecated SSE-related code and metrics\n- Enhanced health check endpoints with detailed metrics\n\nChanges:\n- Line 281: Added proper type annotation for reduce function\n- Line 847-854: Corrected return type to match getLockMetrics interface\n- Added new endpoints: /metrics, /health-detail, /comparison\n- Improved WebSocket monitoring and performance tracking\n\nDeployment Status:\n✅ TypeScript checks passing\n✅ ESLint checks passing\n✅ Frontend tests: 415/422 passing (98.3%)\n✅ Worker deployed: e51b34b0-a1b2-4ab7-916a-fb28b411f73e\n✅ Pages deployed: 54fa1abf.multi-channel-platform-frontend.pages.dev\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push origin main)",
       "Bash(bash:*)",
-      "Bash(git config core.autocrlf)"
+      "Bash(git config core.autocrlf)",
+      "Bash(npm audit --audit-level=moderate)",
+      "Bash(npm ls tar-fs)"
     ],
     "deny": [],
     "ask": [],
@@ -88,7 +90,9 @@
   },
   "enabledMcpjsonServers": [
     "chrome-devtools",
-    "playwright"
+    "playwright",
+    "context7"
   ],
-  "outputStyle": "visual-explanation"
+  "outputStyle": "visual-explanation",
+  "enableAllProjectMcpServers": true
 }

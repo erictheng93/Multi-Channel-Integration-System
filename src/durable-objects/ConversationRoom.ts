@@ -532,7 +532,7 @@ export class ConversationRoom implements DurableObject {
   private async verifyAuthResponse(challengeId: string, signature: string): Promise<{
     isValid: boolean;
     userId?: string;
-    role?: 'admin' | 'team' | 'agent';
+    role?: 'admin' | 'agent';
     teamId?: number;
   }> {
     try {

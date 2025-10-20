@@ -2,7 +2,7 @@
 export type Platform = 'line' | 'facebook';
 export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker';
 export type ConversationStatus = 'active' | 'closed' | 'pending';
-export type UserRole = 'admin' | 'team' | 'agent';
+export type UserRole = 'admin' | 'agent';
 export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed';
 
 // =================== Core Entities ===================

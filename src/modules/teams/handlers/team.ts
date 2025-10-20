@@ -44,16 +44,17 @@ app.get('/info', (c) => {
     success: true,
     data: {
       module: 'teams',
-      version: '1.0.0',
+      version: '1.1.0',
       endpoints: [
         'GET /health - Health check',
         'GET /info - Module information',
         'GET / - List teams',
+        'GET /members - Get all team members (admin/team only) ✨ NEW',
         'GET /:id - Get team details',
         'POST / - Create team',
         'PUT /:id - Update team',
         'DELETE /:id - Delete team',
-        'GET /:id/members - Get team members',
+        'GET /:id/members - Get specific team members',
         'POST /:id/members - Add team member',
         'GET /:id/stats - Get team statistics'
       ]
@@ -191,15 +192,6 @@ app.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
       }, 400);
     }
 
-    // 檢查權限：team 角色只能更新自己的團隊
-    if (user.role === 'team' && user.teamId !== teamId) {
-      return c.json({
-        success: false,
-        error: 'Team leaders can only update their own team',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
-
     const teamService = new TeamService(c.env.DB);
     const team = await teamService.updateTeam(teamId, body);
 
@@ -314,15 +306,19 @@ app.get('/search/:query', async (c) => {
   }
 });
 
-// Get team members
+// ✅ MOVED: GET /members route moved to src/modules/teams/handlers/members.ts
+// This prevents route conflict with /:id/members pattern
+// GET /api/teams/members is now handled by membersHandler at index.ts:17
+
+// Get team members (specific team)
 app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
 
-    if (!teamId) {
+    if (!teamId || isNaN(teamId)) {
       return c.json({
         success: false,
-        error: 'Invalid team ID'
+        error: 'Invalid team ID - must be a number'
       }, 400);
     }
 
@@ -360,15 +356,6 @@ app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
       }, 400);
     }
 
-    // Team 角色只能新增成員到自己的團隊
-    if (user.role === 'team' && user.teamId !== teamId) {
-      return c.json({
-        success: false,
-        error: 'Team leaders can only add members to their own team',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
-
     const teamService = new TeamService(c.env.DB);
     const member = await teamService.addMember(teamId, body);
 
@@ -400,15 +387,6 @@ app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       }, 400);
     }
 
-    // Team 角色只能更新自己團隊的成員
-    if (user.role === 'team' && user.teamId !== teamId) {
-      return c.json({
-        success: false,
-        error: 'Team leaders can only update members in their own team',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
-
     const teamService = new TeamService(c.env.DB);
     const member = await teamService.updateMember(teamId, agentId, body);
 
@@ -434,15 +412,6 @@ app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) 
         success: false,
         error: 'Invalid team ID or agent ID'
       }, 400);
-    }
-
-    // Team 角色只能移除自己團隊的成員
-    if (user.role === 'team' && user.teamId !== teamId) {
-      return c.json({
-        success: false,
-        error: 'Team leaders can only remove members from their own team',
-        timestamp: new Date().toISOString()
-      }, 403);
     }
 
     const teamService = new TeamService(c.env.DB);

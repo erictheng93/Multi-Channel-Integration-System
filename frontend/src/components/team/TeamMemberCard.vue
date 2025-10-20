@@ -262,12 +262,12 @@ const passwordFieldStatus = computed(() => {
   return { type: 'empty', message: '留空則不更改密碼' }
 })
 
-// Edit form data
+// Edit form data - Simplified from 3-tier to 2-tier role system
 const editForm = reactive({
   name: '',
   email: '',
   password: '',
-  role: 'agent' as 'admin' | 'team' | 'agent',
+  role: 'agent' as 'admin' | 'agent',
   group: '',
   isActive: true
 })
@@ -335,7 +335,7 @@ const submitEdit = async () => {
     const updateData: {
       name: string;
       email: string;
-      role: 'admin' | 'team' | 'agent';
+      role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
       group: string;
       status: 'active' | 'inactive';
       password?: string;

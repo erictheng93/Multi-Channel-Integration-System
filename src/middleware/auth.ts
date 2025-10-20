@@ -159,8 +159,9 @@ export async function sessionAuth(c: Context<{ Bindings: Bindings }>, next: Next
 
 /**
  * 角色權限中間件
+ * Simplified from 3-tier to 2-tier role system
  */
-export function requireRole(requiredRole: 'admin' | 'team' | 'agent') {
+export function requireRole(requiredRole: 'admin' | 'agent') {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     const user = c.get('user');
     
@@ -189,8 +190,9 @@ export function requireRole(requiredRole: 'admin' | 'team' | 'agent') {
 
 /**
  * 角色層級權限中間件 - 檢查用戶是否有足夠的角色層級
+ * Simplified from 3-tier to 2-tier role system
  */
-export function requireRoleLevel(requiredRole: 'admin' | 'team' | 'agent') {
+export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     const user = c.get('user');
     
@@ -215,10 +217,12 @@ export function requireRoleLevel(requiredRole: 'admin' | 'team' | 'agent') {
 }
 
 /**
- * 管理員或團隊負責人權限中間件
+ * 管理員權限中間件（簡化版）
+ * 注意：從 3-tier (admin/team/agent) 簡化為 2-tier (admin/agent) 系統
+ * 原本 team 角色的管理權限現在統一由 admin 處理
  */
 export function requireManagerOrAdmin() {
-  return requireRoleLevel('team');
+  return requireRoleLevel('admin');
 }
 
 /**
@@ -246,7 +250,7 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
     }
 
     const teamId = parseInt(c.req.param(teamIdParam));
-    
+
     if (isNaN(teamId)) {
       return c.json({ error: 'Invalid team ID' }, 400);
     }

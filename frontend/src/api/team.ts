@@ -33,11 +33,20 @@ export const teamApi = {
     name?: string;
     email?: string;
     password: string;
-    role: 'admin' | 'team' | 'agent';
+    role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
     group?: string;
     isActive: boolean;
   }): Promise<ApiResponse<TeamMember>> => {
-    return apiClient.post('/teams/members', request)
+    // 轉換前端數據格式為後端期望的格式
+    const backendRequest = {
+      email: request.email || request.loginId, // email 是必填，如果沒有則使用 loginId
+      password: request.password,
+      displayName: request.name || request.loginId, // displayName 是必填，如果沒有則使用 loginId
+      role: request.role,
+      isActive: request.isActive
+    };
+
+    return apiClient.post('/teams/members', backendRequest)
   },
 
   // 邀請新成員
@@ -59,7 +68,7 @@ export const teamApi = {
         error: '邀請功能暫時不可用'
       }
     }
-    return apiClient.post(`/team/invitations/${invitationId}/resend`)
+    return apiClient.post(`/teams/invitations/${invitationId}/resend`)
   },
 
   // 取消邀請
@@ -70,27 +79,27 @@ export const teamApi = {
         error: '邀請功能暫時不可用'
       }
     }
-    return apiClient.delete(`/team/invitations/${invitationId}`)
+    return apiClient.delete(`/teams/invitations/${invitationId}`)
   },
 
   // 移除團隊成員
   removeMember: async (memberId: string): Promise<ApiResponse<void>> => {
-    return apiClient.delete(`/team/members/${memberId}`)
+    return apiClient.delete(`/teams/members/${memberId}`)
   },
 
   // 更新成員角色
-  updateMemberRole: async (memberId: string, role: 'admin' | 'team' | 'agent'): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/team/members/${memberId}/role`, { role })
+  updateMemberRole: async (memberId: string, role: 'admin' | 'agent'): Promise<ApiResponse<void>> => { // Simplified from 3-tier to 2-tier
+    return apiClient.put(`/teams/members/${memberId}/role`, { role })
   },
 
   // 更新成員狀態
   updateMemberStatus: async (memberId: string, status: 'active' | 'inactive'): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/team/members/${memberId}/status`, { status })
+    return apiClient.put(`/teams/members/${memberId}/status`, { status })
   },
 
   // 重設成員密碼
   resetPassword: async (memberId: string): Promise<ApiResponse<void>> => {
-    return apiClient.post(`/team/members/${memberId}/reset-password`)
+    return apiClient.post(`/teams/members/${memberId}/reset-password`)
   },
 
   // 重設成員密碼帶政策
@@ -98,7 +107,8 @@ export const teamApi = {
     newPassword: string;
     policy: 'changeable' | 'unchangeable' | 'must_change';
   }): Promise<ApiResponse<void>> => {
-    return apiClient.post(`/team/members/${memberId}/reset-password-policy`, data)
+    // Fixed: Updated path from /team to /teams and endpoint from reset-password-policy to reset
+    return apiClient.post(`/teams/members/${memberId}/reset`, data)
   },
 
   // 獲取成員密碼
@@ -107,12 +117,12 @@ export const teamApi = {
     username: string;  // 保留作為向後兼容，但實際上會使用 displayName 的值
     displayName: string;
   }>> => {
-    return apiClient.get(`/team/members/${memberId}/password`)
+    return apiClient.get(`/teams/members/${memberId}/password`)
   },
 
   // 更新成員資訊
   updateMember: async (memberId: string, data: Partial<TeamMember>): Promise<ApiResponse<TeamMember>> => {
-    return apiClient.put(`/team/members/${memberId}`, data)
+    return apiClient.put(`/teams/members/${memberId}`, data)
   },
 
   // 獲取團隊統計資訊
@@ -174,7 +184,7 @@ export const teamApi = {
         error: '邀請功能暫時不可用'
       }
     }
-    return apiClient.get(`/team/invitations/validate/${token}`)
+    return apiClient.get(`/teams/invitations/validate/${token}`)
   },
 
   // 產生 QR 碼邀請連結
@@ -385,7 +395,7 @@ export const teamApi = {
         return { success: false, error: '成員 ID 不能為空' }
       }
 
-      const response = await apiClient.get<TeamMember>(`/team/members/${memberId}`)
+      const response = await apiClient.get<TeamMember>(`/teams/members/${memberId}`)
       
       if (response.success && response.data) {
         return {

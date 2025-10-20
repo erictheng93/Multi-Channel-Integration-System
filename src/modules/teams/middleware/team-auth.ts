@@ -97,15 +97,6 @@ export const checkTeamAccess = (): MiddlewareHandler<{ Bindings: Bindings }> => 
         return;
       }
 
-      // 團隊領導只能操作自己的團隊
-      if (user.role === 'team') {
-        if (targetTeamId && parseInt(targetTeamId) !== user.teamId) {
-          return c.json({ error: 'Cannot access other teams' }, 403);
-        }
-        await next();
-        return;
-      }
-
       // 一般代理可以查看自己所屬團隊的資訊
       if (user.role === 'agent') {
         if (targetTeamId && parseInt(targetTeamId) !== user.teamId) {
@@ -135,15 +126,6 @@ export const checkTeamManagementAccess = (): MiddlewareHandler<{ Bindings: Bindi
 
       // 管理員可以管理所有團隊
       if (user.role === 'admin') {
-        await next();
-        return;
-      }
-
-      // 團隊領導只能管理自己的團隊
-      if (user.role === 'team') {
-        if (targetTeamId && parseInt(targetTeamId) !== user.teamId) {
-          return c.json({ error: 'Cannot manage other teams' }, 403);
-        }
         await next();
         return;
       }
@@ -205,10 +187,6 @@ export const createTeamPermissionMiddleware = (
 
       // 檢查角色權限
       if (requiredRoles.includes(user.role)) {
-        // 如果是團隊領導，還需檢查團隊權限
-        if (user.role === 'team' && targetTeamId && parseInt(targetTeamId) !== user.teamId) {
-          return c.json({ error: 'Cannot access other teams' }, 403);
-        }
         await next();
         return;
       }

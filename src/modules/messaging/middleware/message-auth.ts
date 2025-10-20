@@ -264,16 +264,6 @@ async function getMessagePermissions(userPayload: JWTPayload): Promise<MessagePe
         canAccessStats: true,
       };
 
-    case 'team':
-      return {
-        canSend: true,
-        canRecall: true,
-        canViewHistory: true,
-        canSendDelayed: true,
-        canBatchOperation: true,
-        canAccessStats: true,
-      };
-
     case 'agent':
       return {
         canSend: true,
@@ -297,15 +287,6 @@ async function getMessageAccessScope(userPayload: JWTPayload): Promise<MessageAc
   if (userPayload.role === 'admin') {
     return {
       isGlobalAccess: true,
-    };
-  }
-
-  // Team 角色有團隊範圍的存取權限
-  if (userPayload.role === 'team' && userPayload.teamId) {
-    // TODO: 從資料庫取得團隊的對話清單
-    return {
-      teamIds: [userPayload.teamId],
-      isGlobalAccess: false,
     };
   }
 

@@ -91,14 +91,6 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
     // 獲取目標用戶信息
     const targetUser = await getUserById(c.env.DB, targetUserId);
 
-    // 團隊成員只能為自己團隊的用戶生成令牌
-    if (user.role === 'team' && targetUser.teamId !== user.teamId) {
-      return c.json({
-        error: 'Access denied',
-        message: 'Can only generate tokens for users in your team'
-      }, 403);
-    }
-
     const token = await generateSystemToken(
       targetUser.id.toString(),
       targetUser.role,
@@ -282,7 +274,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
     // 刷新用戶令牌
     const newToken = await generateSystemToken(
       String(payload.userId),
-      payload.role as 'admin' | 'team' | 'agent',
+      payload.role as 'admin' | 'agent',
       payload.displayName,
       payload.teamId || 0,
       c.env.JWT_SECRET
