@@ -370,8 +370,8 @@ export interface {{MODULE_NAME}}Response {
           type: 'typescript',
           content: `// {{MODULE_NAME}} 模組測試
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { {{MODULE_NAME}}ModuleInstance } from '../../../../src/modules/{{MODULE_NAME}}';
-import { globalModuleLoader } from '../../../../src/core/module-architecture';
+import { {{MODULE_NAME}}ModuleInstance } from '@modules/{{MODULE_NAME}}';
+import { globalModuleLoader } from '@/core/module-architecture';
 
 describe('{{MODULE_NAME}} Module', () => {
   beforeEach(async () => {

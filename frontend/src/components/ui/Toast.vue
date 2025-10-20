@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, h } from 'vue'
 
 // 導出類型供外部使用
 export interface ToastProps {
@@ -100,34 +100,108 @@ const emit = defineEmits<{
   action: []
 }>()
 
-// Icons - 您可以替換為項目中使用的圖標庫
-const CheckCircleIcon = { template: `
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-    <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-` }
+// Icons - 使用 h() 函數避免運行時模板編譯
+const CheckCircleIcon = {
+  render: () => h('svg', {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none'
+  }, [
+    h('circle', {
+      cx: 12,
+      cy: 12,
+      r: 10,
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      fill: 'none'
+    }),
+    h('path', {
+      d: 'm9 12 2 2 4-4',
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
+    })
+  ])
+}
 
-const AlertCircleIcon = { template: `
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-    <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  </svg>
-` }
+const AlertCircleIcon = {
+  render: () => h('svg', {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none'
+  }, [
+    h('circle', {
+      cx: 12,
+      cy: 12,
+      r: 10,
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      fill: 'none'
+    }),
+    h('line', {
+      x1: 12,
+      y1: 8,
+      x2: 12,
+      y2: 12,
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      'stroke-linecap': 'round'
+    }),
+    h('line', {
+      x1: 12,
+      y1: 16,
+      x2: 12.01,
+      y2: 16,
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      'stroke-linecap': 'round'
+    })
+  ])
+}
 
-const InfoIcon = { template: `
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-    <path d="m9,12 l3,-3 l3,3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-` }
+const InfoIcon = {
+  render: () => h('svg', {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none'
+  }, [
+    h('circle', {
+      cx: 12,
+      cy: 12,
+      r: 10,
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      fill: 'none'
+    }),
+    h('path', {
+      d: 'm9,12 l3,-3 l3,3',
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
+    })
+  ])
+}
 
-const CloseIcon = { template: `
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  </svg>
-` }
+const CloseIcon = {
+  render: () => h('svg', {
+    width: 16,
+    height: 16,
+    viewBox: '0 0 24 24',
+    fill: 'none'
+  }, [
+    h('path', {
+      d: 'M18 6L6 18M6 6l12 12',
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      'stroke-linecap': 'round'
+    })
+  ])
+}
 
 // 狀態管理
 const visible = ref(true)

@@ -6,9 +6,9 @@ import { Context } from 'hono';
 import { realtimeMainHandler, realtimeManagementHandler } from '@modules/realtime/handlers/realtime-main';
 
 // REMOVED: SSE handler mocks (Phase 3 cleanup - SSE removed, WebSocket only)
-// vi.mock('../../../../src/modules/realtime/handlers/sse-handler', ...)
+// vi.mock('@real-time/handlers/sse-handler', ...)
 
-vi.mock('../../../../src/modules/realtime/handlers/event-handler', () => ({
+vi.mock('@real-time/handlers/event-handler', () => ({
   eventHandler: {
     sendTypingStatus: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }))),
     broadcastToConversation: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }))),
@@ -84,12 +84,12 @@ describe('Realtime Main Handler', () => {
       expect(response).toBeInstanceOf(Response);
 
       // 驗證是否調用了事件處理器
-      const { eventHandler } = await import('../../../../src/modules/realtime/handlers/event-handler');
+      const { eventHandler } = await import('@real-time/handlers/event-handler');
       expect(eventHandler.sendTypingStatus).toHaveBeenCalledWith(mockContext);
     });
 
     it('should handle typing status errors', async () => {
-      const { eventHandler } = await import('../../../../src/modules/realtime/handlers/event-handler');
+      const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.sendTypingStatus as any).mockRejectedValueOnce(new Error('Typing status failed'));
 
       const response = await realtimeMainHandler.sendTypingStatus(mockContext);
@@ -103,7 +103,7 @@ describe('Realtime Main Handler', () => {
   describe('Broadcast Events', () => {
     it('should broadcast to conversation successfully', async () => {
       // Reset eventHandler mock to ensure fresh mock state
-      const { eventHandler } = await import('../../../../src/modules/realtime/handlers/event-handler');
+      const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.broadcastToConversation as any).mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true }))
       );
@@ -117,7 +117,7 @@ describe('Realtime Main Handler', () => {
     });
 
     it('should handle broadcast errors gracefully', async () => {
-      const { eventHandler } = await import('../../../../src/modules/realtime/handlers/event-handler');
+      const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.broadcastToConversation as any).mockRejectedValueOnce(new Error('Broadcast failed'));
 
       const response = await realtimeMainHandler.broadcastToConversation(mockContext);
@@ -143,7 +143,7 @@ describe('Realtime Main Handler', () => {
   describe('Online Status', () => {
     it('should update online status successfully', async () => {
       // Mock eventHandler.updateOnlineStatus to return proper response
-      const { eventHandler } = await import('../../../../src/modules/realtime/handlers/event-handler');
+      const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.updateOnlineStatus as any).mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true }))
       );
@@ -260,7 +260,7 @@ describe('Realtime Management Handler', () => {
 describe('Configuration Manager', () => {
   beforeEach(async () => {
     // Reset configuration to default before each test
-    const { RealtimeConfigManager } = await import('../../../../src/modules/realtime/handlers/realtime-main');
+    const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
     manager.updateConfig({
       version: 'auto',
@@ -274,7 +274,7 @@ describe('Configuration Manager', () => {
   });
 
   it('should initialize with default configuration', async () => {
-    const { RealtimeConfigManager } = await import('../../../../src/modules/realtime/handlers/realtime-main');
+    const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
     const config = manager.getConfig();
@@ -285,7 +285,7 @@ describe('Configuration Manager', () => {
   });
 
   it('should update configuration correctly', async () => {
-    const { RealtimeConfigManager } = await import('../../../../src/modules/realtime/handlers/realtime-main');
+    const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
     manager.updateConfig({ version: 'v2', heartbeatInterval: 10000 });
@@ -296,7 +296,7 @@ describe('Configuration Manager', () => {
   });
 
   it('should select version based on context', async () => {
-    const { RealtimeConfigManager } = await import('../../../../src/modules/realtime/handlers/realtime-main');
+    const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
     // Ensure config is set to 'auto' for this test
@@ -316,7 +316,7 @@ describe('Configuration Manager', () => {
   });
 
   it('should fallback to v1 when EventSource not supported', async () => {
-    const { RealtimeConfigManager } = await import('../../../../src/modules/realtime/handlers/realtime-main');
+    const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
     // Ensure config is set to 'auto' for this test

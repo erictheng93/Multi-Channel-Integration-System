@@ -13,12 +13,6 @@
             </p>
           </div>
           <div class="header-actions">
-            <PrimaryActionButton
-              text="新增成員"
-              :icon="PlusIcon"
-              :loading="loading"
-              @click="showAddMemberModal = true"
-            />
             <RefreshButton
               :loading="loading"
               @refresh="() => loadData(true)"
@@ -83,6 +77,14 @@
             <UsersIcon />
             人員管理 Staff Management ({{ teamMembers.length }})
           </h2>
+          <div class="header-actions">
+            <PrimaryActionButton
+              text="新增成員"
+              :icon="PlusIcon"
+              :loading="loading"
+              @click="showAddMemberModal = true"
+            />
+          </div>
         </div>
 
         <!-- Content -->
@@ -263,9 +265,6 @@
                 <option value="agent">
                   客服
                 </option>
-                <option value="team">
-                  團隊負責人
-                </option>
                 <option value="admin">
                   管理員
                 </option>
@@ -395,52 +394,11 @@
                 placeholder="請再次輸入新密碼"
                 class="password-input"
               >
-              <div 
-                v-if="passwordMismatch" 
+              <div
+                v-if="passwordMismatch"
                 class="error-message"
               >
                 密碼不一致
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="section-label">密碼政策</label>
-              <div class="password-policy-options">
-                <label class="radio-option">
-                  <input
-                    v-model="passwordResetForm.policy"
-                    type="radio"
-                    value="changeable"
-                  >
-                  <span class="radio-text">
-                    <strong>可更改</strong>
-                    <small>用戶可以自行更改此密碼</small>
-                  </span>
-                </label>
-                
-                <label class="radio-option">
-                  <input
-                    v-model="passwordResetForm.policy"
-                    type="radio"
-                    value="unchangeable"
-                  >
-                  <span class="radio-text">
-                    <strong>不可更改</strong>
-                    <small>用戶無法更改此密碼</small>
-                  </span>
-                </label>
-                
-                <label class="radio-option">
-                  <input
-                    v-model="passwordResetForm.policy"
-                    type="radio"
-                    value="must_change"
-                  >
-                  <span class="radio-text">
-                    <strong>登入時必須更改</strong>
-                    <small>用戶首次登入時必須設定新密碼</small>
-                  </span>
-                </label>
               </div>
             </div>
           </form>
@@ -894,7 +852,7 @@ const addMemberForm = reactive({
   name: '',
   email: '',
   password: '',
-  role: 'agent' as 'admin' | 'team' | 'agent',
+  role: 'agent' as 'admin' | 'agent', // Simplified from 3-tier to 2-tier role system
   group: '',
   isActive: true
 })
@@ -902,8 +860,7 @@ const addMemberForm = reactive({
 // 密碼重設表單
 const passwordResetForm = reactive({
   newPassword: '',
-  confirmPassword: '',
-  policy: 'changeable' as 'changeable' | 'unchangeable' | 'must_change'
+  confirmPassword: ''
 })
 
 // 團隊表單數據
@@ -932,10 +889,9 @@ const passwordMismatch = computed(() => {
 })
 
 const isPasswordFormValid = computed(() => {
-  return passwordResetForm.newPassword.length >= 6 && 
-         passwordResetForm.confirmPassword && 
-         !passwordMismatch.value &&
-         passwordResetForm.policy
+  return passwordResetForm.newPassword.length >= 6 &&
+         passwordResetForm.confirmPassword &&
+         !passwordMismatch.value
 })
 
 // 可用成員列表 (不包括已有團隊的成員)
@@ -993,7 +949,6 @@ const getInitials = (name: string): string => {
 const getRoleDisplayName = (role: string): string => {
   const roleMap: Record<string, string> = {
     admin: '管理員',
-    team: '組長',
     agent: '客服'
   }
   return roleMap[role] || role
@@ -1051,7 +1006,7 @@ const submitAddMember = async () => {
       name: '',
       email: '',
       password: '',
-      role: 'agent' as 'admin' | 'team' | 'agent',
+      role: 'agent' as 'admin' | 'agent',
       group: '',
       isActive: true
     })
@@ -1077,7 +1032,7 @@ const closeAddMemberModal = () => {
     name: '',
     email: '',
     password: '',
-    role: 'agent' as 'admin' | 'team' | 'agent',
+    role: 'agent' as 'admin' | 'agent',
     group: '',
     isActive: true
   })
@@ -1091,7 +1046,7 @@ const toggleAddPasswordVisibility = () => {
 // 更新成員角色
 const updateMemberRole = async (memberId: string, role: string) => {
   try {
-    await teamStore.updateMemberRole(memberId, role as 'admin' | 'team' | 'agent')
+    await teamStore.updateMemberRole(memberId, role as 'admin' | 'agent') // Simplified from 3-tier to 2-tier
   } catch (error) {
     console.error('更新角色失敗:', error)
   }
@@ -1113,8 +1068,7 @@ const resetMemberPassword = async (member: TeamMember) => {
   // 重置表單
   Object.assign(passwordResetForm, {
     newPassword: '',
-    confirmPassword: '',
-    policy: 'changeable'
+    confirmPassword: ''
   })
   showPasswordResetModal.value = true
 }
@@ -1122,14 +1076,14 @@ const resetMemberPassword = async (member: TeamMember) => {
 // 提交密碼重設
 const submitPasswordReset = async () => {
   if (!isPasswordFormValid.value || !passwordResetMember.value) {return}
-  
+
   passwordResetLoading.value = true
   try {
     await teamStore.resetPasswordWithPolicy(passwordResetMember.value.id, {
       newPassword: passwordResetForm.newPassword,
-      policy: passwordResetForm.policy
+      policy: 'changeable' // 默認使用 changeable 政策
     })
-    
+
     // 顯示成功訊息
     showSuccess(
       '密碼設定成功',
@@ -1154,8 +1108,7 @@ const closePasswordResetModal = () => {
   passwordResetMember.value = null
   Object.assign(passwordResetForm, {
     newPassword: '',
-    confirmPassword: '',
-    policy: 'changeable'
+    confirmPassword: ''
   })
 }
 

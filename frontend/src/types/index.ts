@@ -3,24 +3,24 @@
 // Created by: Frontend TypeScript Developer
 
 // 重新匯出共享型別 - 避免重複匯出
-export type { 
-  Agent, 
-  Platform, 
+export type {
+  Agent,
+  Platform,
   User,
   Customer,
   Conversation,
   Message,
   ApiResponse
-} from '../../../shared/types/index';
+} from '@shared/types/index';
 
 // 只匯出不重複的 API 型別
 export type {
   LoginRequest,
   LoginResponse,
   SendMessageRequest
-} from '../../../shared/api-types';
+} from '@shared/api-types';
 
-import type { Agent, Platform } from '../../../shared/types/index';
+import type { Agent, Platform } from '@shared/types/index';
 
 // 前端專用型別
 export interface AppState {
@@ -70,7 +70,7 @@ export interface TeamMember {
   loginId: string;
   name?: string;
   email?: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   status: 'active' | 'inactive' | 'pending';
   group?: string;
   teamId?: number;
@@ -83,7 +83,7 @@ export interface TeamMember {
 export interface Invitation {
   id: string;
   email: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   status: 'pending' | 'accepted' | 'declined' | 'expired';
   token: string;
   message?: string;
@@ -95,7 +95,7 @@ export interface Invitation {
 
 export interface InvitationRequest {
   email: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   message?: string;
   useQR?: boolean;
 }
@@ -110,7 +110,7 @@ export interface AcceptInvitationRequest {
 // 邀請請求類型
 export interface InviteRequest {
   email: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   message?: string;
   useQR?: boolean;
 }

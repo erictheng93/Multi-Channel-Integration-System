@@ -70,23 +70,11 @@ import {
   healthCheck,
   getApiStatus
 } from './handlers/system';
-// Import team functions
-import {
-  getTeamMembers,
-  addTeamMember,
-  inviteMember,
-  updateMemberStatus,
-  updateMemberRole,
-  resetMemberPassword,
-  resetPasswordWithPolicy,
-  changePassword,
-  deleteMember,
-  getInvitations,
-  revokeInvitation,
-  getMemberPassword,
-  updateMember,
-  migratePasswords
-} from './handlers/team';
+// ❌ LEGACY TEAM HANDLER IMPORTS REMOVED
+// All team management functions now in modular handlers:
+// - src/modules/teams/handlers/members.ts
+// - src/modules/teams/handlers/password.ts
+// - src/modules/teams/handlers/invitations.ts
 
 // Import credential functions
 import {
@@ -294,6 +282,10 @@ console.log('   • GET /api/websocket/dashboard/history (Admin/Team)');
 console.log('   • GET /api/websocket/dashboard/trends (Admin/Team)');
 console.log('   • GET /api/websocket/dashboard/durable-objects (Admin)');
 console.log('   • GET /api/websocket/dashboard/alerts (Admin/Team)');
+
+// ❌ LEGACY PRE-REGISTRATION REMOVED
+// GET /api/teams/members is now handled by the new modular team handler
+// (src/modules/teams/handlers/team.ts:319)
 
 // 創建路由註冊器
 const routeRegistry = new RouteRegistry(app);
@@ -580,60 +572,38 @@ app.get('/api/credentials', jwtAuth, getAllCredentials);
 app.delete('/api/credentials/:platform', jwtAuth, clearPlatformCredentials);
 app.get('/api/credentials/backup', jwtAuth, backupCredentials);
 
-// 新的團隊管理 API 路由 - 細粒度控制 (保留)
-app.get('/api/team/members', jwtAuth, getTeamMembers);  // 單數形式（向後兼容）
-app.get('/api/teams/members', jwtAuth, getTeamMembers); // 複數形式（RESTful 標準）✨
-app.post('/api/team/members', jwtAuth, addTeamMember);
-app.post('/api/team/invite', jwtAuth, inviteMember);
-app.put('/api/team/members/:id/status', jwtAuth, updateMemberStatus);
-app.put('/api/team/members/:id/role', jwtAuth, updateMemberRole);
-app.get('/api/team/members/:id/password', jwtAuth, getMemberPassword);
-app.get('/api/team/members/:id', jwtAuth, async (c) => {
-  // Get single team member details
-  try {
-    const { drizzle } = await import('drizzle-orm/d1');
-    const { agents } = await import('./db/schema');
-    const { eq, sql } = await import('drizzle-orm');
-    const { successResponse, handleApiError } = await import('./utils/api-response');
+// ========================================================================
+// 🚀 TEAM MANAGEMENT API ROUTES - FULLY MIGRATED TO MODULAR ARCHITECTURE
+// ========================================================================
+//
+// ❌ LEGACY ROUTES REMOVED - All team member management has been migrated to:
+//    src/modules/teams/handlers/members.ts
+//    src/modules/teams/handlers/password.ts
+//    src/modules/teams/handlers/invitations.ts
+//
+// ✅ NEW MODULAR ROUTES (via unified route system):
+//    POST   /api/teams/members                     → Add member
+//    PUT    /api/teams/members/:memberId/status    → Update status
+//    PUT    /api/teams/members/:memberId/role      → Update role
+//    PUT    /api/teams/members/:memberId           → Update member
+//    DELETE /api/teams/members/:memberId           → Delete member
+//    POST   /api/teams/members/:memberId/reset     → Reset password (admin)
+//    POST   /api/teams/invitations                 → Send invitation
+//    GET    /api/teams/invitations                 → List invitations
+//    DELETE /api/teams/invitations/:id             → Revoke invitation
+//
+// 🔧 SPECIAL ROUTE: Password change endpoint needs to be under /api/auth
+// ========================================================================
 
-    const memberId = c.req.param('id');
-    const drizzleDb = drizzle(c.env.DB);
+import passwordHandler from './modules/teams/handlers/password';
 
-    const member = await drizzleDb
-      .select({
-        id: agents.id,
-        loginId: agents.displayName,
-        email: agents.email,
-        name: agents.displayName,
-        role: agents.role,
-        teamId: agents.teamId,
-        status: sql`CASE WHEN ${agents.isActive} = 1 THEN 'active' ELSE 'inactive' END`.as('status'),
-        isActive: agents.isActive,
-        createdAt: agents.createdAt,
-        lastActive: agents.lastLoginAt
-      })
-      .from(agents)
-      .where(eq(agents.id, memberId))
-      .get();
+// Mount change-password under /api/auth (user self-service)
+app.route('/api/auth', passwordHandler);
 
-    if (!member) {
-      return c.json({ success: false, error: 'Member not found' }, 404);
-    }
-
-    return successResponse(c, member, 'Member retrieved successfully');
-  } catch (error) {
-    const { handleApiError } = await import('./utils/api-response');
-    return handleApiError(error, c);
-  }
-});
-app.put('/api/team/members/:id', jwtAuth, updateMember);
-app.post('/api/team/members/:id/reset-password', jwtAuth, resetMemberPassword);
-app.post('/api/team/members/:id/reset-password-policy', jwtAuth, resetPasswordWithPolicy);
-app.post('/api/auth/change-password', changePassword);
-app.delete('/api/team/members/:id', jwtAuth, deleteMember);
-app.get('/api/team/invitations', jwtAuth, getInvitations);
-app.delete('/api/team/invitations/:id', jwtAuth, revokeInvitation);
-app.post('/api/team/migrate-passwords', jwtAuth, migratePasswords); // 臨時遷移端點
+// ========================================================================
+// All other legacy team routes have been removed
+// They are now handled by the unified route system + modular handlers
+// ========================================================================
 
 // 臨時測試路由 - 調試用 (保留，可在生產環境移除)
 app.get('/api/messages-test', (c) => {

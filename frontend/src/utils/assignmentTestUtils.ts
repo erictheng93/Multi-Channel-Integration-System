@@ -6,8 +6,8 @@
 import type { Conversation, TeamMember } from '@/types'
 import { PermissionService, Permission } from '@/services/permissionService'
 
-// 模擬數據生成器
-export const createMockAgent = (role: 'admin' | 'team' | 'agent', options: Partial<TeamMember> = {}): TeamMember => ({
+// 模擬數據生成器 - Simplified from 3-tier to 2-tier role system
+export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMember> = {}): TeamMember => ({
   id: `agent-${Math.random().toString(36).substr(2, 9)}`,
   loginId: `user${Math.random().toString(36).substr(2, 6)}`,
   name: `Test ${role} User`,
@@ -79,8 +79,8 @@ export class AssignmentPermissionTests {
   }
 
   static testTeamPermissions() {
-    console.log('🔍 Testing Team Lead Permissions...')
-    const teamLead = createMockAgent('team')
+    console.log('🔍 Testing Admin Permissions (team role removed)...')
+    const teamLead = createMockAgent('admin') // Changed from 'team' to 'admin'
     const openConversation = createMockConversation('open')
     const assignedConversation = createMockConversation('assigned', { assignedAgentId: 'other-agent' })
 
@@ -230,8 +230,8 @@ export class AssignmentUITests {
         conversation: createMockConversation('open')
       },
       {
-        description: 'Team lead assigns conversation to team member',
-        user: createMockAgent('team'),
+        description: 'Admin assigns conversation to team member',
+        user: createMockAgent('admin'), // Changed from 'team' to 'admin'
         conversation: createMockConversation('open')
       },
       {

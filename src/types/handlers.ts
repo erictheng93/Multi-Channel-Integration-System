@@ -12,7 +12,7 @@ export interface AuthPayload {
   userId: number;
   displayName: string;
   email?: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent';
   teamId?: number;
   iat: number;
   exp: number;

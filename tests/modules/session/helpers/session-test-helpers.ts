@@ -10,7 +10,7 @@ import type {
   BatchSessionOperation,
   SessionMessage,
   SessionStats
-} from '../../../../src/modules/session/types/session-types';
+} from '@session/types/session-types';
 
 // ======================== 測試資料生成器 ========================
 

@@ -237,16 +237,6 @@ function getUserPermissions(payload: JWTPayload): CustomerPermissions {
         canExport: true
       };
 
-    case 'team':
-      return {
-        canView: true,
-        canEdit: true,
-        canDelete: false, // 團隊角色不能刪除客戶
-        canManageTags: true,
-        canViewStats: true,
-        canExport: true
-      };
-
     case 'agent':
     default:
       return {

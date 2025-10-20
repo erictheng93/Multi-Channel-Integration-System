@@ -11,7 +11,7 @@ export interface WebSocketConnection {
   userId: string;
   conversationId?: string;
   teamId?: number;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent';
   connectionId: string;
   lastActivity: number;
   isActive: boolean;

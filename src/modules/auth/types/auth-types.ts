@@ -38,7 +38,7 @@ export interface JWTPayload {
   username?: string;
   displayName: string;
   email?: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   teamId?: number;
   iat: number;
   exp: number;

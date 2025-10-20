@@ -110,15 +110,15 @@
 
 - **** - LINE OA Facebook Messenger
 - **** -
-- **** - 3 (Admin/Team/Agent)
+- **** - 2 (Admin/Agent)
 - **** -
-- **** - JWT RBAC
+- **** - JWT 2 RBAC
 - **** -
 
 ### (Production Ready)
 - **WebSocket + Durable Objects ** - 1000+
 - **LINE OA ** - Webhook + WebSocket
-- **** - JWT 3 + WebSocket
+- **** - JWT 2 + WebSocket
 - **** - +
 - **** - + WebSocket
 - **** - +
@@ -170,7 +170,7 @@
 - ** **: Cloudflare KV ()
 - ** **: Cloudflare R2 (S3 )
 - ** **: Cloudflare Queues ()
-- ** **: JWT + 3
+- ** **: JWT + 2
 - ** **: API
 
 #### (Vue 3 Application)
@@ -333,7 +333,7 @@ API
 - ** ** - WebSocket
 - ** ** -
 - **** - LINE OA + WebSocket Facebook Messenger
-- **** - Admin/Team/Agent 3RBAC + WebSocket
+- **** - Admin/Agent 2RBAC + WebSocket
 - **** -
 - **** - 1-120 + WebSocket
 - **** - Vue 3 + TypeScript + WebSocket 100%
@@ -426,7 +426,7 @@ API
 
 
 - **JWT Token** - APIJWT
-- **3** - Admin() > Team() > Agent()
+- **2** - Admin() > Agent()
 - **** -
 
 

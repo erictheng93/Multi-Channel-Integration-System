@@ -21,10 +21,9 @@ export interface Role {
 }
 
 export class PermissionService {
-  // Role hierarchy: admin > team > agent
+  // Role hierarchy: admin > agent (simplified from 3-tier to 2-tier)
   private static roleHierarchy = {
-    admin: 3,
-    team: 2, 
+    admin: 2,
     agent: 1
   };
 
@@ -34,46 +33,6 @@ export class PermissionService {
       name: '系統管理員',
       permissions: [
         { resource: '*', action: '*' }
-      ]
-    },
-    team: {
-      id: 'team',
-      name: '團隊負責人',
-      permissions: [
-        // Conversation management for team
-        { resource: 'conversation', action: 'view', conditions: { teamScope: true } },
-        { resource: 'conversation', action: 'transfer' },
-        { resource: 'conversation', action: 'close' },
-        { resource: 'conversation', action: 'reopen' },
-        
-        // Team management permissions
-        { resource: 'team', action: 'view', conditions: { ownTeam: true } },
-        { resource: 'team', action: 'manage', conditions: { ownTeam: true } },
-        { resource: 'team', action: 'invite', conditions: { ownTeam: true } },
-        
-        // Agent management within team
-        { resource: 'agent', action: 'view', conditions: { teamScope: true } },
-        { resource: 'agent', action: 'invite', conditions: { ownTeam: true } },
-        
-        // Customer management for team
-        { resource: 'customer', action: 'view', conditions: { teamScope: true } },
-        { resource: 'customer', action: 'edit', conditions: { teamScope: true } },
-        { resource: 'customer', action: 'tag', conditions: { teamScope: true } },
-        
-        // Message management for team conversations  
-        { resource: 'message', action: 'view', conditions: { teamScope: true } },
-        { resource: 'message', action: 'send' }, // Team Leader 可以發送訊息到任何對話
-        { resource: 'message', action: 'recall', conditions: { teamScope: true } },
-        
-        // Tag management for team
-        { resource: 'tag', action: '*', conditions: { teamScope: true } },
-        
-        // QR Code generation
-        { resource: 'qrcode', action: 'generate' },
-        
-        // Analytics and reporting for team
-        { resource: 'analytics', action: 'view', conditions: { teamScope: true } },
-        { resource: 'report', action: 'generate', conditions: { teamScope: true } }
       ]
     },
     agent: {
@@ -309,26 +268,7 @@ export class PermissionService {
         return result.map(row => row.id);
       }
 
-      // Manager 可以看到團隊內的所有對話
-      if (user.role === 'team' && user.teamId) {
-        const drizzleDb = drizzle(database);
-        const result = await drizzleDb
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(
-            or(
-              // 未指派 (搶單池) - 兩個欄位都必須是 NULL
-              and(
-                isNull(conversations.assignedTeamId),
-                isNull(conversations.assignedUserId)
-              ),
-              // 指派給本團隊 (直接檢查 assignedTeamId，不依賴 JOIN)
-              eq(conversations.assignedTeamId, user.teamId)
-            )
-          )
-          .orderBy(desc(conversations.updatedAt));
-        return result.map(row => row.id);
-      }
+      // Note: 'team' role has been removed from the system (simplified to 2-tier: admin/agent)
 
       // Agent 可以看到：1) 搶單池 2) 指派給自己 3) 本團隊對話(如果有團隊)
       if (user.role === 'agent') {

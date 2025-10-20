@@ -137,15 +137,6 @@ export const checkTeamAccess = (): MiddlewareHandler<{ Bindings: Bindings }> => 
       return;
     }
 
-    // 團隊領導只能操作自己的團隊
-    if (user.role === 'team') {
-      if (targetTeamId && parseInt(targetTeamId) !== user.teamId) {
-        throw new AgentPermissionError('Cannot access other teams');
-      }
-      await next();
-      return;
-    }
-
     // 一般代理不能進行團隊操作
     if (user.role === 'agent') {
       throw new AgentPermissionError('Team operations not allowed for agents');

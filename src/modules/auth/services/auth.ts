@@ -159,13 +159,14 @@ export function generateRandomString(length: number = 32): string {
 }
 
 // 用戶認證相關的資料庫操作
+// Simplified from 3-tier to 2-tier role system
 export async function createUser(
   db: D1Database,
   userData: {
     email: string;
     password: string;
     displayName: string;
-    role: 'admin' | 'team' | 'agent';
+    role: 'admin' | 'agent';
     teamId?: number;
   }
 ): Promise<DbUser> {
@@ -316,7 +317,8 @@ export async function authenticateUserByEmail(
 }
 
 // 權限檢查
-export function hasPermission(user: DbUser, requiredRole: 'admin' | 'team' | 'agent'): boolean {
+// Simplified from 3-tier to 2-tier role system
+export function hasPermission(user: DbUser, requiredRole: 'admin' | 'agent'): boolean {
   if (user.role === 'admin') {
     return true; // admin 有所有權限
   }
@@ -354,7 +356,7 @@ export async function createSession(
 // Phase 2 監控系統 JWT 令牌管理
 export async function generateSystemToken(
   userId: string,
-  role: 'admin' | 'team' | 'agent',
+  role: 'admin' | 'agent',
   displayName: string,
   teamId: number,
   secret: string,
@@ -392,7 +394,7 @@ export async function generateMonitoringToken(
 export async function generateTokenBatch(
   users: Array<{
     userId: string;
-    role: 'admin' | 'team' | 'agent';
+    role: 'admin' | 'agent';
     displayName: string;
     teamId: number;
   }>,

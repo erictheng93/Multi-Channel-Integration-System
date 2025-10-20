@@ -363,7 +363,7 @@ export async function createSession(
 // Phase 2 監控系統 JWT 令牌管理
 export async function generateSystemToken(
   userId: string,
-  role: 'admin' | 'team' | 'agent',
+  role: 'admin' | 'agent',
   displayName: string,
   teamId: number,
   secret: string,
@@ -401,7 +401,7 @@ export async function generateMonitoringToken(
 export async function generateTokenBatch(
   users: Array<{
     userId: string;
-    role: 'admin' | 'team' | 'agent';
+    role: 'admin' | 'agent';
     displayName: string;
     teamId: number;
   }>,

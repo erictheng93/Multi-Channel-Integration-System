@@ -130,7 +130,7 @@ export function convertAgent(drizzleAgent: DrizzleAgent, teamName?: string): DbU
     id: drizzleAgent.id,
     email: drizzleAgent.email,
     displayName: drizzleAgent.displayName,
-    role: drizzleAgent.role as 'admin' | 'team' | 'agent',
+    role: drizzleAgent.role as 'admin' | 'agent',
     teamId: drizzleAgent.teamId,
     teamName: teamName || null,
     isActive: Boolean(drizzleAgent.isActive),

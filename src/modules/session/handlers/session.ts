@@ -77,6 +77,26 @@ sessionHandler.post('/', jwtAuth, async (c) => {
 sessionHandler.get('/:sessionId', jwtAuth, async (c) => {
   try {
     const sessionId = c.req.param('sessionId');
+
+    // 🔒 ROUTE CONFLICT PREVENTION: Reject reserved paths
+    // These paths are static endpoints that should NOT be treated as sessionIds
+    const RESERVED_PATHS = [
+      'search',           // GET /sessions/search
+      'get-or-create',    // POST /sessions/get-or-create
+      'stats',            // GET /sessions/stats
+      'activity-stats',   // GET /sessions/activity-stats
+      'topics',           // GET /sessions/topics/* (子路徑)
+      'batch',            // POST /sessions/batch
+      'detect-boundary'   // POST /sessions/detect-boundary
+    ];
+
+    if (RESERVED_PATHS.includes(sessionId.toLowerCase())) {
+      return c.json({
+        success: false,
+        error: `Invalid sessionId - "${sessionId}" is a reserved endpoint path`
+      }, 400);
+    }
+
     const sessionService = new SessionService(c.env.DB);
     const session = await sessionService.get(sessionId);
 
@@ -109,6 +129,16 @@ sessionHandler.get('/:sessionId', jwtAuth, async (c) => {
 sessionHandler.put('/:sessionId', jwtAuth, async (c) => {
   try {
     const sessionId = c.req.param('sessionId');
+
+    // 🔒 ROUTE CONFLICT PREVENTION: Reject reserved paths
+    const RESERVED_PATHS = ['search', 'get-or-create', 'stats', 'activity-stats', 'topics', 'batch', 'detect-boundary'];
+    if (RESERVED_PATHS.includes(sessionId.toLowerCase())) {
+      return c.json({
+        success: false,
+        error: `Invalid sessionId - "${sessionId}" is a reserved endpoint path`
+      }, 400);
+    }
+
     const updateData: UpdateSessionData = await c.req.json();
 
     const sessionService = new SessionService(c.env.DB);
@@ -154,6 +184,16 @@ sessionHandler.put('/:sessionId', jwtAuth, async (c) => {
 sessionHandler.delete('/:sessionId', jwtAuth, async (c) => {
   try {
     const sessionId = c.req.param('sessionId');
+
+    // 🔒 ROUTE CONFLICT PREVENTION: Reject reserved paths
+    const RESERVED_PATHS = ['search', 'get-or-create', 'stats', 'activity-stats', 'topics', 'batch', 'detect-boundary'];
+    if (RESERVED_PATHS.includes(sessionId.toLowerCase())) {
+      return c.json({
+        success: false,
+        error: `Invalid sessionId - "${sessionId}" is a reserved endpoint path`
+      }, 400);
+    }
+
     const sessionService = new SessionService(c.env.DB);
     const deleted = await sessionService.delete(sessionId);
 

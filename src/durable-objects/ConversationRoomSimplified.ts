@@ -58,7 +58,7 @@ export class SimplifiedConversationRoom implements DurableObject {
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId')
     const token = url.searchParams.get('token')
-    const role = url.searchParams.get('role') as 'admin' | 'team' | 'agent'
+    const role = url.searchParams.get('role') as 'admin' | 'agent'
 
     // Simplified validation
     if (!userId || !token || !role) {

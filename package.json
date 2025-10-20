@@ -103,7 +103,11 @@
     "validate:config": "npx tsx scripts/validate-configuration.ts",
     "validate:routes": "npx tsx scripts/validate-route-order.ts",
     "validate:routes:ci": "npx tsx scripts/validate-route-order.ts || (echo 'Route validation failed!' && exit 1)",
-    "validate:all": "npm run validate:config && npm run validate:routes"
+    "validate:all": "npm run validate:config && npm run validate:routes",
+    "check:routes": "npx tsx scripts/detect-route-conflicts.ts",
+    "check:routes:watch": "nodemon --exec npx tsx scripts/detect-route-conflicts.ts --watch src/modules --watch src/handlers",
+    "check:routes:ci": "npx tsx scripts/detect-route-conflicts.ts || (echo '⚠️  Route conflict detection failed! See report above.' && exit 1)",
+    "precheck:all": "npm run check:routes && npm run validate:all"
   },
   "overrides": {
     "esbuild": "^0.25.9",
