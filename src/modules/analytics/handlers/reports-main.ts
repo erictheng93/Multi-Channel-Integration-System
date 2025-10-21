@@ -40,44 +40,242 @@ const createReportsApp = (reportsService: ReportsService) => {
   // 驗證中間件
   app.use('/*', analyticsAuthMiddleware);
 
+  // ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+  // Routes MUST be registered in this order to avoid conflicts:
+  // 1. STATIC: /health
+  // 2. SPECIFIC MULTI-SEGMENT: /reports/generation/:id/status, /reports/download/:id
+  // 3. MULTI-SEGMENT PARAMETERIZED: /reports/:reportId/generate, /reports/:reportId/export, /batches/:batchId/generate
+  // 4. SINGLE PARAMETERIZED: /reports/:reportId, /templates/:templateId
+  // 5. WILDCARD: /reports, /templates, /batches
+
+  // ==================== Priority 1: STATIC routes ====================
+
   /**
-   * 創建報表配置
-   * POST /reports
+   * 健康檢查端點
+   * GET /health
    */
-  app.post('/reports', async (c) => {
+  app.get('/health', async (c) => {
+    try {
+      return c.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'reports-system',
+        features: {
+          reportGeneration: 'active',
+          templateManagement: 'active',
+          batchProcessing: 'active',
+          exportFormats: ['pdf', 'excel', 'csv', 'json', 'html']
+        }
+      });
+    } catch (error) {
+      return c.json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        service: 'reports-system',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 500);
+    }
+  });
+
+  // ==================== Priority 2: SPECIFIC MULTI-SEGMENT ====================
+
+  /**
+   * 獲取生成狀態
+   * GET /reports/generation/:generationId/status
+   */
+  app.get('/reports/generation/:generationId/status', async (c) => {
+    try {
+      const generationId = c.req.param('generationId');
+
+      const generationResult = await reportsService.getGenerationStatus(generationId);
+
+      if (!generationResult) {
+        return c.json({
+          success: false,
+          error: 'Generation record not found'
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: generationResult
+      });
+
+    } catch (error) {
+      console.error('Failed to get generation status:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to get generation status'
+      }, 500);
+    }
+  });
+
+  /**
+   * 下載生成的報表
+   * GET /reports/download/:generationId
+   */
+  app.get('/reports/download/:generationId', async (c) => {
+    try {
+      const generationId = c.req.param('generationId');
+
+      const generationResult = await reportsService.getGenerationStatus(generationId);
+
+      if (!generationResult || generationResult.status !== 'completed') {
+        return c.json({
+          success: false,
+          error: 'Report generation not completed or not found'
+        }, 404);
+      }
+
+      // TODO: 實現實際的文件下載邏輯
+      // 這裡應該返回文件流或重定向到文件 URL
+      return c.json({
+        success: true,
+        downloadUrl: generationResult.downloadUrl,
+        filePath: generationResult.filePath,
+        message: 'Use downloadUrl to access the generated report'
+      });
+
+    } catch (error) {
+      console.error('Failed to download report:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to download report'
+      }, 500);
+    }
+  });
+
+  // ==================== Priority 3: MULTI-SEGMENT PARAMETERIZED ====================
+
+  /**
+   * 生成報表
+   * POST /reports/:reportId/generate
+   */
+  app.post('/reports/:reportId/generate', async (c) => {
     try {
       const user = c.get('user') as AnalyticsUser;
-      const requestData = await c.req.json();
+      const reportId = c.req.param('reportId');
+      const { format, options } = await c.req.json();
+
+      const report = await reportsService.getReport(reportId);
+      if (!report) {
+        return c.json({
+          success: false,
+          error: 'Report not found'
+        }, 404);
+      }
+
+      // 檢查權限
+      if (!hasReportAccess(user, report)) {
+        return c.json({
+          success: false,
+          error: 'Insufficient permissions to generate this report'
+        }, 403);
+      }
+
+      const generationResult = await reportsService.generateReport(reportId, format as ReportFormat, options);
+
+      return c.json({
+        success: true,
+        data: generationResult,
+        message: 'Report generation started successfully'
+      });
+
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      return c.json({
+        success: false,
+        error: error instanceof AnalyticsError ? error.message : 'Failed to generate report'
+      }, 500);
+    }
+  });
+
+  /**
+   * 匯出報表
+   * POST /reports/:reportId/export
+   */
+  app.post('/reports/:reportId/export', async (c) => {
+    try {
+      const user = c.get('user') as AnalyticsUser;
+      const reportId = c.req.param('reportId');
+      const { format, options } = await c.req.json();
+
+      const report = await reportsService.getReport(reportId);
+      if (!report) {
+        return c.json({
+          success: false,
+          error: 'Report not found'
+        }, 404);
+      }
+
+      // 檢查權限
+      if (!hasReportAccess(user, report)) {
+        return c.json({
+          success: false,
+          error: 'Insufficient permissions to export this report'
+        }, 403);
+      }
+
+      const exportPath = await reportsService.exportReport(
+        reportId,
+        format as ReportFormat,
+        options as ReportExportOptions
+      );
+
+      return c.json({
+        success: true,
+        data: {
+          exportPath,
+          downloadUrl: `/api/reports/files/${encodeURIComponent(exportPath)}`
+        },
+        message: 'Report exported successfully'
+      });
+
+    } catch (error) {
+      console.error('Failed to export report:', error);
+      return c.json({
+        success: false,
+        error: error instanceof AnalyticsError ? error.message : 'Failed to export report'
+      }, 500);
+    }
+  });
+
+  /**
+   * 批量生成報表
+   * POST /batches/:batchId/generate
+   */
+  app.post('/batches/:batchId/generate', async (c) => {
+    try {
+      const user = c.get('user') as AnalyticsUser;
+      const batchId = c.req.param('batchId');
+      const { format } = await c.req.json();
 
       // 檢查權限
       if (!user || (user.role !== 'admin' && user.role !== 'team')) {
         return c.json({
           success: false,
-          error: 'Insufficient permissions to create reports'
+          error: 'Insufficient permissions to generate report batches'
         }, 403);
       }
 
-      const reportConfig = {
-        ...requestData,
-        createdBy: user.id.toString()
-      };
-
-      const createdReport = await reportsService.createReport(reportConfig);
+      const generationResults = await reportsService.generateBatch(batchId, format as ReportFormat);
 
       return c.json({
         success: true,
-        data: createdReport,
-        message: 'Report configuration created successfully'
+        data: generationResults,
+        message: 'Batch report generation started successfully'
       });
 
     } catch (error) {
-      console.error('Failed to create report:', error);
+      console.error('Failed to generate batch:', error);
       return c.json({
         success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to create report'
+        error: error instanceof AnalyticsError ? error.message : 'Failed to generate batch'
       }, 500);
     }
   });
+
+  // ==================== Priority 4: SINGLE PARAMETERIZED ====================
 
   /**
    * 獲取報表配置
@@ -204,6 +402,39 @@ const createReportsApp = (reportsService: ReportsService) => {
   });
 
   /**
+   * 獲取報表模板
+   * GET /templates/:templateId
+   */
+  app.get('/templates/:templateId', async (c) => {
+    try {
+      const templateId = c.req.param('templateId');
+
+      const template = await reportsService.getTemplate(templateId);
+
+      if (!template) {
+        return c.json({
+          success: false,
+          error: 'Template not found'
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: template
+      });
+
+    } catch (error) {
+      console.error('Failed to get template:', error);
+      return c.json({
+        success: false,
+        error: error instanceof AnalyticsError ? error.message : 'Failed to get template'
+      }, 500);
+    }
+  });
+
+  // ==================== Priority 5: WILDCARD (LAST!) ====================
+
+  /**
    * 查詢報表列表
    * GET /reports
    */
@@ -251,160 +482,65 @@ const createReportsApp = (reportsService: ReportsService) => {
   });
 
   /**
-   * 生成報表
-   * POST /reports/:reportId/generate
+   * 創建報表配置
+   * POST /reports
    */
-  app.post('/reports/:reportId/generate', async (c) => {
+  app.post('/reports', async (c) => {
     try {
       const user = c.get('user') as AnalyticsUser;
-      const reportId = c.req.param('reportId');
-      const { format, options } = await c.req.json();
-
-      const report = await reportsService.getReport(reportId);
-      if (!report) {
-        return c.json({
-          success: false,
-          error: 'Report not found'
-        }, 404);
-      }
+      const requestData = await c.req.json();
 
       // 檢查權限
-      if (!hasReportAccess(user, report)) {
+      if (!user || (user.role !== 'admin' && user.role !== 'team')) {
         return c.json({
           success: false,
-          error: 'Insufficient permissions to generate this report'
+          error: 'Insufficient permissions to create reports'
         }, 403);
       }
 
-      const generationResult = await reportsService.generateReport(reportId, format as ReportFormat, options);
+      const reportConfig = {
+        ...requestData,
+        createdBy: user.id.toString()
+      };
+
+      const createdReport = await reportsService.createReport(reportConfig);
 
       return c.json({
         success: true,
-        data: generationResult,
-        message: 'Report generation started successfully'
+        data: createdReport,
+        message: 'Report configuration created successfully'
       });
 
     } catch (error) {
-      console.error('Failed to generate report:', error);
+      console.error('Failed to create report:', error);
       return c.json({
         success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to generate report'
+        error: error instanceof AnalyticsError ? error.message : 'Failed to create report'
       }, 500);
     }
   });
 
   /**
-   * 獲取生成狀態
-   * GET /reports/generation/:generationId/status
+   * 獲取模板列表
+   * GET /templates
    */
-  app.get('/reports/generation/:generationId/status', async (c) => {
+  app.get('/templates', async (c) => {
     try {
-      const generationId = c.req.param('generationId');
+      const category = c.req.query('category');
+      const isPublic = c.req.query('public') === 'true';
 
-      const generationResult = await reportsService.getGenerationStatus(generationId);
-
-      if (!generationResult) {
-        return c.json({
-          success: false,
-          error: 'Generation record not found'
-        }, 404);
-      }
+      const templates = await reportsService.getTemplates(category, isPublic);
 
       return c.json({
         success: true,
-        data: generationResult
+        data: templates
       });
 
     } catch (error) {
-      console.error('Failed to get generation status:', error);
+      console.error('Failed to get templates:', error);
       return c.json({
         success: false,
-        error: 'Failed to get generation status'
-      }, 500);
-    }
-  });
-
-  /**
-   * 下載生成的報表
-   * GET /reports/download/:generationId
-   */
-  app.get('/reports/download/:generationId', async (c) => {
-    try {
-      const generationId = c.req.param('generationId');
-
-      const generationResult = await reportsService.getGenerationStatus(generationId);
-
-      if (!generationResult || generationResult.status !== 'completed') {
-        return c.json({
-          success: false,
-          error: 'Report generation not completed or not found'
-        }, 404);
-      }
-
-      // TODO: 實現實際的文件下載邏輯
-      // 這裡應該返回文件流或重定向到文件 URL
-      return c.json({
-        success: true,
-        downloadUrl: generationResult.downloadUrl,
-        filePath: generationResult.filePath,
-        message: 'Use downloadUrl to access the generated report'
-      });
-
-    } catch (error) {
-      console.error('Failed to download report:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to download report'
-      }, 500);
-    }
-  });
-
-  /**
-   * 匯出報表
-   * POST /reports/:reportId/export
-   */
-  app.post('/reports/:reportId/export', async (c) => {
-    try {
-      const user = c.get('user') as AnalyticsUser;
-      const reportId = c.req.param('reportId');
-      const { format, options } = await c.req.json();
-
-      const report = await reportsService.getReport(reportId);
-      if (!report) {
-        return c.json({
-          success: false,
-          error: 'Report not found'
-        }, 404);
-      }
-
-      // 檢查權限
-      if (!hasReportAccess(user, report)) {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions to export this report'
-        }, 403);
-      }
-
-      const exportPath = await reportsService.exportReport(
-        reportId,
-        format as ReportFormat,
-        options as ReportExportOptions
-      );
-
-      return c.json({
-        success: true,
-        data: {
-          exportPath,
-          downloadUrl: `/api/reports/files/${encodeURIComponent(exportPath)}`
-        },
-        message: 'Report exported successfully'
-      });
-
-    } catch (error) {
-      console.error('Failed to export report:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to export report'
+        error: error instanceof AnalyticsError ? error.message : 'Failed to get templates'
       }, 500);
     }
   });
@@ -449,62 +585,6 @@ const createReportsApp = (reportsService: ReportsService) => {
   });
 
   /**
-   * 獲取報表模板
-   * GET /templates/:templateId
-   */
-  app.get('/templates/:templateId', async (c) => {
-    try {
-      const templateId = c.req.param('templateId');
-
-      const template = await reportsService.getTemplate(templateId);
-
-      if (!template) {
-        return c.json({
-          success: false,
-          error: 'Template not found'
-        }, 404);
-      }
-
-      return c.json({
-        success: true,
-        data: template
-      });
-
-    } catch (error) {
-      console.error('Failed to get template:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to get template'
-      }, 500);
-    }
-  });
-
-  /**
-   * 獲取模板列表
-   * GET /templates
-   */
-  app.get('/templates', async (c) => {
-    try {
-      const category = c.req.query('category');
-      const isPublic = c.req.query('public') === 'true';
-
-      const templates = await reportsService.getTemplates(category, isPublic);
-
-      return c.json({
-        success: true,
-        data: templates
-      });
-
-    } catch (error) {
-      console.error('Failed to get templates:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to get templates'
-      }, 500);
-    }
-  });
-
-  /**
    * 創建報表批次
    * POST /batches
    */
@@ -539,68 +619,6 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to create batch'
-      }, 500);
-    }
-  });
-
-  /**
-   * 批量生成報表
-   * POST /batches/:batchId/generate
-   */
-  app.post('/batches/:batchId/generate', async (c) => {
-    try {
-      const user = c.get('user') as AnalyticsUser;
-      const batchId = c.req.param('batchId');
-      const { format } = await c.req.json();
-
-      // 檢查權限
-      if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions to generate report batches'
-        }, 403);
-      }
-
-      const generationResults = await reportsService.generateBatch(batchId, format as ReportFormat);
-
-      return c.json({
-        success: true,
-        data: generationResults,
-        message: 'Batch report generation started successfully'
-      });
-
-    } catch (error) {
-      console.error('Failed to generate batch:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to generate batch'
-      }, 500);
-    }
-  });
-
-  /**
-   * 健康檢查端點
-   * GET /health
-   */
-  app.get('/health', async (c) => {
-    try {
-      return c.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        service: 'reports-system',
-        features: {
-          reportGeneration: 'active',
-          templateManagement: 'active',
-          batchProcessing: 'active',
-          exportFormats: ['pdf', 'excel', 'csv', 'json', 'html']
-        }
-      });
-    } catch (error) {
-      return c.json({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        service: 'reports-system',
-        error: error instanceof Error ? error.message : 'Unknown error'
       }, 500);
     }
   });
