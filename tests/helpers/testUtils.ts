@@ -1,12 +1,13 @@
-// Legacy test utilities - DEPRECATED
-// Use consolidatedTestUtils.ts instead
+// Backend Test Utilities
+// For backend tests - uses consolidatedBackendTestUtils (no pinia/frontend dependencies)
+// For frontend tests, use consolidatedTestUtils.ts directly
 
-// Re-export from consolidated utilities for backward compatibility
+// Re-export from consolidated BACKEND utilities for backward compatibility
 export {
   createMockContext,
   extractResponseData,
   TestDataFactory
-} from './consolidatedTestUtils'
+} from './consolidatedBackendTestUtils'
 
 // Legacy exports (deprecated - use TestDataFactory instead)
 export const createMockJWTPayload = (overrides: any = {}) =>
@@ -27,5 +28,5 @@ export const createMockConversation = (overrides: any = {}) =>
 export const createMockMessage = (overrides: any = {}) =>
   ({ ...TestDataFactory.createMessage(overrides) } as any)
 
-// Import the consolidated version for everything else
-import { TestDataFactory } from './consolidatedTestUtils'
+// Import the consolidated BACKEND version for everything else
+import { TestDataFactory } from './consolidatedBackendTestUtils'

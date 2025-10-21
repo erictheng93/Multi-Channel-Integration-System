@@ -1,0 +1,21 @@
+{
+  "handlers/messaging-main": "/api/messages",
+  "modules/qrcode/handlers/qrcode-router-simple": "/api/qr-codes",
+  "modules/analytics/handlers/analytics-main": "/api/analytics",
+  "modules/analytics/handlers/dashboard-main": "/api/analytics/dashboard",
+  "modules/analytics/handlers/realtime-dashboard-main": "/api/analytics/realtime",
+  "modules/reports/handlers/reports-main": "/api/reports",
+  "handlers/websocket-main": "/api/websocket",
+  "handlers/websocket-analytics-main": "/api/websocket/analytics",
+  "modules/collaboration/handlers/collaboration-main": "/api/collaboration",
+  "modules/realtime": "/api/realtime",
+  "handlers/sse-monitoring-main": "/api/sse/monitoring",
+  "handlers/delayed-message-buffer": "/api/delayed-messages-v2",
+  "handlers/user-experience-main": "/api/user-experience",
+  "handlers/phase2-auth-management": "/api/phase2-auth",
+  "handlers/alert-config-management": "/api/alert-config",
+  "handlers/data-optimization-main": "/api/data-optimization",
+  "handlers/queue-monitor": "/api/queues",
+  "handlers/webhook": "/api/webhook",
+  "./modular-system-integration": "/api/modular"
+}

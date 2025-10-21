@@ -5,6 +5,15 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { DelayedMessageService } from '@modules/messaging/services/delayed-message-service';
 import type { Bindings } from '../../src/types';
 import type { DelayedMessage, DelayedMessageRequest } from '../../src/types/messaging';
+import { createMockDrizzle } from '../helpers/mockDrizzle';
+
+// Mock drizzle function to return our mock
+vi.mock('drizzle-orm/d1', () => ({
+  drizzle: vi.fn(() => mockDrizzle)
+}));
+
+// Global mock drizzle instance
+let mockDrizzle: any;
 
 describe('Database Field Mapping Integration Tests', () => {
   let service: DelayedMessageService;
@@ -12,17 +21,12 @@ describe('Database Field Mapping Integration Tests', () => {
   let testCtx: ExecutionContext;
 
   beforeEach(async () => {
+    // Initialize mock Drizzle instance
+    mockDrizzle = createMockDrizzle();
+
     // 建立模擬環境
     mockEnv = {
-      DB: {
-        prepare: vi.fn().mockReturnValue({
-          bind: vi.fn().mockReturnValue({
-            first: vi.fn().mockResolvedValue(null),
-            all: vi.fn().mockResolvedValue({ results: [], meta: {} }),
-            run: vi.fn().mockResolvedValue({ success: true, changes: 1, meta: { last_row_id: 'test-id' } })
-          })
-        })
-      } as any,
+      DB: {} as any, // Drizzle will use this, but we mock drizzle() itself
       SESSIONS: {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn().mockResolvedValue(undefined),
@@ -43,8 +47,10 @@ describe('Database Field Mapping Integration Tests', () => {
     testCtx = {} as ExecutionContext;
     service = new DelayedMessageService(mockEnv.DB as any, mockEnv);
 
-    // 清理之前的測試數據
-    vi.clearAllMocks();
+    // Set default Drizzle mock responses
+    mockDrizzle.mockInsertResponse('delayed_messages', { id: 'test-message-id' });
+    mockDrizzle.mockUpdateResponse('delayed_messages', 1);
+    mockDrizzle.mockSelectResponse([]);
   });
 
   afterEach(() => {
@@ -66,30 +72,16 @@ describe('Database Field Mapping Integration Tests', () => {
         platform: 'line'
       };
 
-      // Mock database insert
-      const mockInsert = vi.fn().mockReturnValue({
-        values: vi.fn().mockReturnValue(Promise.resolve({ success: true }))
-      });
+      // Mock Drizzle conversation query (service checks if conversation exists)
+      mockDrizzle.mockSelectResponse([{ id: testConversationId }]);
 
-      mockEnv.DB = {
-        prepare: vi.fn().mockReturnValue({
-          bind: vi.fn().mockReturnValue({
-            run: vi.fn().mockResolvedValue({
-              success: true,
-              meta: { last_row_id: 'test-message-id' }
-            })
-          })
-        })
-      } as any;
-
-      const result = await service.sendDelayedMessage(delayedMessageRequest);
+      const result = await service.sendDelayedMessage(delayedMessageRequest, testAgentId);
 
       expect(result.success).toBe(true);
       expect(result.messageId).toBeDefined();
 
-      // 驗證資料庫查詢使用正確的 agentId
-      const dbCalls = mockEnv.DB.prepare as any;
-      expect(dbCalls).toHaveBeenCalled();
+      // 驗證 Drizzle insert was called
+      expect(mockDrizzle.insert).toHaveBeenCalled();
     });
 
     it('should correctly map agentId to senderId when retrieving delayed message', async () => {
