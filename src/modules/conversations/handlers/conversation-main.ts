@@ -18,6 +18,31 @@ import { getSSECorsHeaders } from '@/config/cors';
 
 const conversationHandler = new Hono<{ Bindings: Bindings }>();
 
+// ==================== ROUTE REGISTRATION (Priority Order) ====================
+// ⚠️  ROUTE ORDERING ISSUE DETECTED - TODO: Reorder routes for optimal routing
+//
+// CURRENT ORDER (has conflicts):
+//   Line 22:  POST /:id/assign (multi-segment)
+//   Line 108: POST /:id/transfer (multi-segment)
+//   Line 201: GET / (wildcard)
+//   Line 295: GET /:id (single param) ⚠️  REGISTERED BEFORE /stream!
+//   Line 364: POST /:id/messages (multi-segment)
+//   Line 517: GET /:id/messages (multi-segment)
+//   Line 676: GET /stream (static) ⚠️  Should be BEFORE /:id!
+//   Line 1004: GET /:conversationId/messages/stream (3-segment) ⚠️  Should be near top!
+//
+// RECOMMENDED ORDER (to fix conflicts):
+//   Priority 1: STATIC - GET /stream
+//   Priority 2: MULTI-SEGMENT 3-param - GET /:conversationId/messages/stream
+//   Priority 3: MULTI-SEGMENT 2-param - POST /:id/assign, /:id/transfer, /:id/messages (GET/POST)
+//   Priority 4: SINGLE PARAM - GET /:id
+//   Priority 5: WILDCARD - GET /
+//
+// 📝 NOTE: Due to file size (1241 lines) and complex handlers, route reordering
+//          requires careful extraction and moving of 100+ line handler functions.
+//          This should be done in a dedicated refactoring session.
+// ====================================================================================
+
 // 指派對話到團隊/用戶
 conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
   try {
