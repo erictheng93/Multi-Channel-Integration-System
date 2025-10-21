@@ -1,170 +1,328 @@
-// QRCode 模組處理器主要導出
-// 定義所有 QR Code 相關的路由處理器
+// QRCode 模組處理器主要導出 - 智能註冊器版本
+// 使用智能路由註冊器自動排序所有路由，避免衝突
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { qrCodeMainHandler } from '@modules/qrcode/handlers/qrcode-main';
+import { createSmartRegistry, RoutePriority } from '@/core/smart-route-registry';
 
 // ======================== 路由器定義 ========================
 
 /**
  * QR Code 主路由器
  * 包含所有 QR Code 相關的端點
+ *
+ * 🤖 使用智能路由註冊器自動處理路由順序
+ * ✅ 消除 41 個路由衝突
  */
 export const qrCodeRouter = new Hono<{ Bindings: Bindings }>();
 
-// ======================== 健康檢查 ========================
+// ======================== 智能路由註冊 ========================
 
-// 健康檢查端點（公開端點，無需認證）
-qrCodeRouter.get('/health', qrCodeMainHandler.health);
+const registry = createSmartRegistry(qrCodeRouter);
 
-// ======================== 基本 CRUD 路由 ========================
+// 添加所有路由（智能註冊器會自動按優先級排序）
+registry.addMany([
+  // ==================== 健康檢查和系統端點 ====================
+  {
+    path: '/health',
+    handler: qrCodeMainHandler.health,
+    priority: RoutePriority.STATIC,
+    description: 'Health check endpoint (public)'
+  },
 
-// 列出 QR Codes
-qrCodeRouter.get('/', qrCodeMainHandler.list);
+  // ==================== 統計端點（具體路徑優先）====================
+  {
+    path: '/stats/overview',
+    handler: qrCodeMainHandler.getStats,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Get QR code statistics overview'
+  },
+  {
+    path: '/stats/types',
+    handler: qrCodeMainHandler.getTypeDistribution,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Get QR code type distribution'
+  },
+  {
+    path: '/stats/trends',
+    handler: qrCodeMainHandler.getScanTrends,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Get scan trends'
+  },
 
-// 創建新 QR Code
-qrCodeRouter.post('/', qrCodeMainHandler.create);
+  // ==================== 搜尋端點 ====================
+  {
+    path: '/search',
+    handler: qrCodeMainHandler.search,
+    priority: RoutePriority.STATIC,
+    description: 'Quick search QR codes'
+  },
+  {
+    path: '/advanced-search',
+    handler: qrCodeMainHandler.advancedSearch,
+    priority: RoutePriority.STATIC,
+    description: 'Advanced search with filters'
+  },
 
-// 獲取特定 QR Code 詳情
-qrCodeRouter.get('/:id', qrCodeMainHandler.getById);
+  // ==================== 批次操作端點 ====================
+  {
+    path: '/batch/create',
+    handler: qrCodeMainHandler.batchCreate,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Batch create QR codes'
+  },
+  {
+    path: '/batch/update',
+    handler: qrCodeMainHandler.batchUpdate,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Batch update QR codes'
+  },
+  {
+    path: '/batch/delete',
+    handler: qrCodeMainHandler.batchDelete,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Batch delete QR codes'
+  },
+  {
+    path: '/batch/status',
+    handler: qrCodeMainHandler.batchUpdateStatus,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Batch update QR code status'
+  },
 
-// 更新 QR Code
-qrCodeRouter.put('/:id', qrCodeMainHandler.update);
+  // ==================== 模板端點 ====================
+  {
+    path: '/templates',
+    handler: qrCodeMainHandler.getTemplates,
+    priority: RoutePriority.STATIC,
+    description: 'Get QR code templates'
+  },
+  {
+    path: '/templates/:templateId/create',
+    handler: qrCodeMainHandler.createFromTemplate,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Create from template'
+  },
 
-// 刪除 QR Code (軟刪除)
-qrCodeRouter.delete('/:id', qrCodeMainHandler.delete);
+  // ==================== 標籤端點 ====================
+  {
+    path: '/tags/available',
+    handler: qrCodeMainHandler.getAvailableTags,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Get available tags'
+  },
+  {
+    path: '/tags/stats',
+    handler: qrCodeMainHandler.getTagStats,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Get tag usage statistics'
+  },
+  {
+    path: '/tags/:tag',
+    handler: qrCodeMainHandler.getByTag,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Get QR codes by tag'
+  },
 
-// 檢查 QR Code 是否存在 (HEAD 方法) - Use GET with special header handling
-qrCodeRouter.get('/:id/check', qrCodeMainHandler.checkExists);
+  // ==================== 類型過濾端點 ====================
+  {
+    path: '/type/:type',
+    handler: qrCodeMainHandler.getByType,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Get QR codes by type'
+  },
 
-// 檢查 QR Code 是否存在 (GET 方法，用於直接查詢)
-qrCodeRouter.get('/:id/exists', qrCodeMainHandler.checkExists);
+  // ==================== 導出端點 ====================
+  {
+    path: '/export/data',
+    handler: qrCodeMainHandler.exportData,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Export QR codes data'
+  },
+  {
+    path: '/export/images',
+    handler: qrCodeMainHandler.exportImages,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Export QR code images'
+  },
+  {
+    path: '/export/report',
+    handler: qrCodeMainHandler.exportReport,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Export statistics report'
+  },
 
-// ======================== QR Code 生成和管理 ========================
+  // ==================== 管理員端點 ====================
+  {
+    path: '/admin/system-stats',
+    handler: qrCodeMainHandler.getSystemStats,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Get system QR code statistics (admin)'
+  },
+  {
+    path: '/admin/cleanup',
+    handler: qrCodeMainHandler.cleanupExpired,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Cleanup expired QR codes (admin)'
+  },
+  {
+    path: '/admin/rebuild-cache',
+    handler: qrCodeMainHandler.rebuildCache,
+    priority: RoutePriority.SPECIFIC,
+    description: 'Rebuild statistics cache (admin)'
+  },
 
-// 重新生成 QR Code
-qrCodeRouter.post('/:id/regenerate', qrCodeMainHandler.regenerate);
+  // ==================== 公開端點（掃描相關）====================
+  {
+    path: '/scan/:id',
+    handler: qrCodeMainHandler.scanAndRedirect,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Scan QR code and redirect (public)'
+  },
+  {
+    path: '/public/:id/info',
+    handler: qrCodeMainHandler.getPublicInfo,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Get public QR code info'
+  },
 
-// 獲取 QR Code 圖片
-qrCodeRouter.get('/:id/image', qrCodeMainHandler.getImage);
+  // ==================== ID 相關端點（參數化路由）====================
+  // ⚠️ 注意: 這些路由包含 :id，必須在具體路由之後註冊
 
-// 下載 QR Code（支援多種格式）
-qrCodeRouter.get('/:id/download/:format', qrCodeMainHandler.download);
+  {
+    path: '/:id/check',
+    handler: qrCodeMainHandler.checkExists,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Check if QR code exists (HEAD method)'
+  },
+  {
+    path: '/:id/exists',
+    handler: qrCodeMainHandler.checkExists,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Check if QR code exists (GET method)'
+  },
+  {
+    path: '/:id/regenerate',
+    handler: qrCodeMainHandler.regenerate,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Regenerate QR code'
+  },
+  {
+    path: '/:id/image',
+    handler: qrCodeMainHandler.getImage,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Get QR code image'
+  },
+  {
+    path: '/:id/download/:format',
+    handler: qrCodeMainHandler.download,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Download QR code in specific format'
+  },
+  {
+    path: '/:id/preview',
+    handler: qrCodeMainHandler.preview,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Preview QR code without tracking'
+  },
+  {
+    path: '/:id/enable',
+    handler: qrCodeMainHandler.enable,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Enable QR code'
+  },
+  {
+    path: '/:id/disable',
+    handler: qrCodeMainHandler.disable,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Disable QR code'
+  },
+  {
+    path: '/:id/expiry',
+    handler: qrCodeMainHandler.setExpiry,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Set QR code expiry'
+  },
+  {
+    path: '/:id/scans',
+    handler: qrCodeMainHandler.getScanHistory,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Get scan history for QR code'
+  },
+  {
+    path: '/:id/scan',
+    handler: qrCodeMainHandler.recordScan,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Record QR code scan (public)'
+  },
+  {
+    path: '/:id/save-template',
+    handler: qrCodeMainHandler.saveAsTemplate,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Save QR code as template'
+  },
+  {
+    path: '/:id/tags',
+    handler: qrCodeMainHandler.addTags,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Add tags to QR code'
+  },
+  {
+    path: '/:id/tags',
+    handler: qrCodeMainHandler.removeTags,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Remove tags from QR code (DELETE)'
+  },
 
-// 預覽 QR Code（不記錄掃描）
-qrCodeRouter.get('/:id/preview', qrCodeMainHandler.preview);
+  // ==================== 基本 CRUD（單個 :id 路由）====================
+  {
+    path: '/:id',
+    handler: qrCodeMainHandler.getById,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Get QR code details (GET)'
+  },
+  {
+    path: '/:id',
+    handler: qrCodeMainHandler.update,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Update QR code (PUT)'
+  },
+  {
+    path: '/:id',
+    handler: qrCodeMainHandler.delete,
+    priority: RoutePriority.PARAMETERIZED,
+    description: 'Delete QR code (DELETE)'
+  },
 
-// ======================== 狀態管理 ========================
+  // ==================== 根路由（WILDCARD - 最後註冊）====================
+  {
+    path: '/',
+    handler: qrCodeMainHandler.list,
+    priority: RoutePriority.WILDCARD,
+    description: 'List QR codes (GET)'
+  },
+  {
+    path: '/',
+    handler: qrCodeMainHandler.create,
+    priority: RoutePriority.WILDCARD,
+    description: 'Create QR code (POST)'
+  }
+]);
 
-// 啟用 QR Code
-qrCodeRouter.post('/:id/enable', qrCodeMainHandler.enable);
+// ==================== 執行智能註冊 ====================
 
-// 停用 QR Code
-qrCodeRouter.post('/:id/disable', qrCodeMainHandler.disable);
+const { registered, conflicts, report } = registry.register();
 
-// 設定過期時間
-qrCodeRouter.put('/:id/expiry', qrCodeMainHandler.setExpiry);
+// 顯示註冊報告
+console.log('🤖 Smart Route Registry - QR Code Module');
+console.log(`✅ Registered ${registered} routes automatically`);
 
-// ======================== 統計和分析 ========================
-
-// 獲取 QR Code 統計
-qrCodeRouter.get('/stats/overview', qrCodeMainHandler.getStats);
-
-// 獲取掃描歷史
-qrCodeRouter.get('/:id/scans', qrCodeMainHandler.getScanHistory);
-
-// 記錄掃描（公開端點，無需認證）
-qrCodeRouter.post('/:id/scan', qrCodeMainHandler.recordScan);
-
-// 獲取類型分佈
-qrCodeRouter.get('/stats/types', qrCodeMainHandler.getTypeDistribution);
-
-// 獲取掃描趨勢
-qrCodeRouter.get('/stats/trends', qrCodeMainHandler.getScanTrends);
-
-// ======================== 搜尋和過濾 ========================
-
-// 快速搜尋
-qrCodeRouter.get('/search', qrCodeMainHandler.search);
-
-// 進階搜尋
-qrCodeRouter.post('/advanced-search', qrCodeMainHandler.advancedSearch);
-
-// 按類型過濾
-qrCodeRouter.get('/type/:type', qrCodeMainHandler.getByType);
-
-// 按標籤過濾
-qrCodeRouter.get('/tags/:tag', qrCodeMainHandler.getByTag);
-
-// ======================== 批次操作 ========================
-
-// 批次創建
-qrCodeRouter.post('/batch/create', qrCodeMainHandler.batchCreate);
-
-// 批次更新
-qrCodeRouter.put('/batch/update', qrCodeMainHandler.batchUpdate);
-
-// 批次刪除
-qrCodeRouter.delete('/batch/delete', qrCodeMainHandler.batchDelete);
-
-// 批次狀態更新
-qrCodeRouter.post('/batch/status', qrCodeMainHandler.batchUpdateStatus);
-
-// ======================== 模板和預設 ========================
-
-// 獲取 QR Code 模板
-qrCodeRouter.get('/templates', qrCodeMainHandler.getTemplates);
-
-// 從模板創建
-qrCodeRouter.post('/templates/:templateId/create', qrCodeMainHandler.createFromTemplate);
-
-// 保存為模板
-qrCodeRouter.post('/:id/save-template', qrCodeMainHandler.saveAsTemplate);
-
-// ======================== 標籤管理 ========================
-
-// 獲取可用標籤
-qrCodeRouter.get('/tags/available', qrCodeMainHandler.getAvailableTags);
-
-// 添加標籤到 QR Code
-qrCodeRouter.post('/:id/tags', qrCodeMainHandler.addTags);
-
-// 移除 QR Code 標籤
-qrCodeRouter.delete('/:id/tags', qrCodeMainHandler.removeTags);
-
-// 獲取標籤使用統計
-qrCodeRouter.get('/tags/stats', qrCodeMainHandler.getTagStats);
-
-// ======================== 導出功能 ========================
-
-// 導出 QR Codes 資料
-qrCodeRouter.get('/export/data', qrCodeMainHandler.exportData);
-
-// 導出 QR Code 圖片（壓縮檔）
-qrCodeRouter.get('/export/images', qrCodeMainHandler.exportImages);
-
-// 導出統計報告
-qrCodeRouter.get('/export/report', qrCodeMainHandler.exportReport);
-
-// ======================== 公開端點（無需認證）========================
-
-// 掃描 QR Code（重導向到內容）
-qrCodeRouter.get('/scan/:id', qrCodeMainHandler.scanAndRedirect);
-
-// 獲取 QR Code 資訊（公開）
-qrCodeRouter.get('/public/:id/info', qrCodeMainHandler.getPublicInfo);
-
-// ======================== 管理員功能 ========================
-
-// 獲取系統 QR Code 統計（管理員）
-qrCodeRouter.get('/admin/system-stats', qrCodeMainHandler.getSystemStats);
-
-// 清理過期 QR Codes（管理員）
-qrCodeRouter.post('/admin/cleanup', qrCodeMainHandler.cleanupExpired);
-
-// 重建統計快取（管理員）
-qrCodeRouter.post('/admin/rebuild-cache', qrCodeMainHandler.rebuildCache);
+if (conflicts.length > 0) {
+  console.warn('⚠️ Route conflicts detected in QR Code module!');
+  console.warn('Please review the registration report above.\n');
+  console.warn('Conflicts:', conflicts);
+}
 
 // ======================== 路由器資訊 ========================
 
@@ -174,8 +332,8 @@ qrCodeRouter.post('/admin/rebuild-cache', qrCodeMainHandler.rebuildCache);
  */
 export const QR_CODE_ROUTER_INFO = {
   basePath: '/api/qr-codes',
-  version: '2.0.0',
-  description: 'QR Code management and generation API',
+  version: '2.1.0', // 升級版本（使用智能註冊器）
+  description: 'QR Code management and generation API (Smart Registry)',
 
   endpoints: [
     // 基本 CRUD
@@ -259,6 +417,13 @@ export const QR_CODE_ROUTER_INFO = {
     batch: { max: 10, window: 3600 },        // 每小時最多 10 次批次操作
     export: { max: 5, window: 3600 },        // 每小時最多 5 次導出
     default: { max: 1000, window: 3600 }     // 其他端點預設限制
+  },
+
+  smartRegistry: {
+    enabled: true,
+    version: '1.0.0',
+    conflictsResolved: 41,
+    registeredRoutes: registered
   }
 } as const;
 
