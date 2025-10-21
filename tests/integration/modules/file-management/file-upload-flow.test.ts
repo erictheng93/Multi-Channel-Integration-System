@@ -21,7 +21,7 @@ const createMockEnv = (): Bindings => {
         run: vi.fn().mockResolvedValue({ success: true })
       })
     } as any,
-    FILE_BUCKET: {
+    R2_BUCKET: {
       put: vi.fn().mockResolvedValue(undefined),
       get: vi.fn().mockResolvedValue(null),
       delete: vi.fn().mockResolvedValue(undefined),

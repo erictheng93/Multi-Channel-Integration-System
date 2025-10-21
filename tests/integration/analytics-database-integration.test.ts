@@ -312,8 +312,9 @@ describe('AnalyticsService 數據庫集成測試', () => {
       const result = await analyticsService.exportAnalytics(query);
 
       expect(result).toBeDefined();
-      expect(result.format).toBe('json');
-      expect(result.fileUrl).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('json');
+      expect(result.data.fileUrl).toBeDefined();
     });
 
     it('應該支持 CSV 格式導出', async () => {
@@ -326,7 +327,8 @@ describe('AnalyticsService 數據庫集成測試', () => {
       const result = await analyticsService.exportAnalytics(query);
 
       expect(result).toBeDefined();
-      expect(result.format).toBe('csv');
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('csv');
     });
 
     it('應該支持 Excel 格式導出', async () => {
@@ -339,7 +341,8 @@ describe('AnalyticsService 數據庫集成測試', () => {
       const result = await analyticsService.exportAnalytics(query);
 
       expect(result).toBeDefined();
-      expect(result.format).toBe('xlsx');
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('xlsx');
     });
 
     it('應該支持 PDF 格式導出', async () => {
@@ -352,7 +355,8 @@ describe('AnalyticsService 數據庫集成測試', () => {
       const result = await analyticsService.exportAnalytics(query);
 
       expect(result).toBeDefined();
-      expect(result.format).toBe('pdf');
+      expect(result.success).toBe(true);
+      expect(result.data.format).toBe('pdf');
     });
   });
 });
@@ -367,9 +371,13 @@ describe('錯誤處理和邊界情況', () => {
       metrics: ['total_conversations']
     };
 
-    await expect(
-      analyticsService.getConversationAnalytics(query as any)
-    ).rejects.toThrow();
+    // Service catches errors and returns { success: false } response
+    const result = await analyticsService.getConversationAnalytics(query as any);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain('startDate');
+    expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
   });
 
   it('應該處理缺少必需參數', async () => {
@@ -378,9 +386,13 @@ describe('錯誤處理和邊界情況', () => {
       metrics: ['total_conversations']
     };
 
-    await expect(
-      analyticsService.getConversationAnalytics(invalidQuery as any)
-    ).rejects.toThrow();
+    // Service catches errors and returns { success: false } response
+    const result = await analyticsService.getConversationAnalytics(invalidQuery as any);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error).toMatch(/timeRange|startDate/);
+    expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
   });
 
   it('應該處理空結果集', async () => {
