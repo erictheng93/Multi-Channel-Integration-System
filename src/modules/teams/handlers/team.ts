@@ -63,48 +63,378 @@ app.get('/info', (c) => {
   });
 });
 
-// List teams with pagination and search
-app.get('/', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    const includeInactive = c.req.query('includeInactive') === 'true';
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// Routes MUST be registered in this order to avoid conflicts:
+// 1. STATIC routes (no params): /health, /info
+// 2. SPECIFIC routes: /stats/all, /transfer, /search/:query
+// 3. PARAMETERIZED multi-segment: /:id/members, /:id/stats, /:id/qr-codes
+// 4. PARAMETERIZED single: /:id (GET/PUT/DELETE)
+// 5. WILDCARD: / (GET/POST) - MUST BE LAST!
 
-    // 非 admin/team 用戶只能看到自己的團隊
-    if (user.role === 'agent' && user.teamId) {
-      const teamService = new TeamService(c.env.DB);
-      const team = await teamService.getTeam(user.teamId);
+// ==================== Priority 1: STATIC routes (already correctly positioned above) ====================
+
+// ==================== Priority 2: SPECIFIC routes ====================
+// Get all teams statistics
+app.get('/stats/all', async (c) => {
+  try {
+    const dateFromParam = c.req.query('dateFrom');
+    const dateToParam = c.req.query('dateTo');
+    const params: TeamStatsRequest = {
+      ...(dateFromParam && { dateFrom: dateFromParam }),
+      ...(dateToParam && { dateTo: dateToParam }),
+      includeMembers: c.req.query('includeMembers') === 'true'
+    };
+
+    const teamService = new TeamService(c.env.DB);
+    const stats = await teamService.getAllTeamsStats(params);
+
+    return c.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Get all teams stats error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
+    }, 500);
+  }
+});
+
+// Transfer members between teams
+app.post('/transfer', async (c) => {
+  try {
+    const body = await c.req.json() as TeamTransferRequest;
+
+    if (!body.fromTeamId || !body.toTeamId || !body.agentIds?.length) {
       return c.json({
-        success: true,
-        data: [team],
-        timestamp: new Date().toISOString()
-      });
+        success: false,
+        error: 'From team ID, to team ID, and agent IDs are required'
+      }, 400);
     }
 
     const teamService = new TeamService(c.env.DB);
-    const searchParam = c.req.query('search');
-    const params: TeamListRequest = {
-      page: parseInt(c.req.query('page') || '1'),
-      limit: parseInt(c.req.query('limit') || '20'),
-      includeInactive,
-      ...(searchParam && { search: searchParam })
-    };
+    const result = await teamService.transferMembers(body);
 
-    const result = await teamService.listTeams(params);
+    return c.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Transfer members error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION
+    }, 500);
+  }
+});
+
+// ==================== Priority 3: SPECIFIC PARAMETERIZED ====================
+// Search teams
+app.get('/search/:query', async (c) => {
+  try {
+    const query = c.req.param('query');
+
+    if (!query?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Search query is required'
+      }, 400);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const teams = await teamService.searchTeams(query);
+
+    return c.json({ success: true, data: teams });
+  } catch (error) {
+    console.error('Search teams error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS
+    }, 500);
+  }
+});
+
+// ==================== Priority 4: MULTI-SEGMENT PARAMETERIZED ====================
+// 3-segment routes (most specific first)
+// Update team member
+app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const teamId = parseInt(c.req.param('id'));
+    const agentId = c.req.param('agentId');
+    const body = await c.req.json() as TeamMemberUpdateRequest;
+
+    if (!teamId || !agentId?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID or agent ID'
+      }, 400);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const member = await teamService.updateMember(teamId, agentId, body);
+
+    return c.json({ success: true, data: member });
+  } catch (error) {
+    console.error('Update team member error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to update team member'
+    }, 500);
+  }
+});
+
+// Remove member from team
+app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const teamId = parseInt(c.req.param('id'));
+    const agentId = c.req.param('agentId');
+
+    if (!teamId || !agentId?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID or agent ID'
+      }, 400);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const success = await teamService.removeMember(teamId, agentId);
+
+    if (!success) {
+      return c.json({
+        success: false,
+        error: 'Failed to remove team member'
+      }, 500);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Remove team member error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to remove team member'
+    }, 500);
+  }
+});
+
+// Deactivate QR code
+app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+    const qrCodeId = c.req.param('qrCodeId');
+
+    if (!teamId || !qrCodeId?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID or QR code ID'
+      }, 400);
+    }
+
+    const qrService = new TeamQRService(c.env.DB);
+    await qrService.deactivateQRCode(teamId, qrCodeId);
+
     return c.json({
       success: true,
-      ...result,
+      message: 'QR code deactivated successfully',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('List teams error:', error);
+    console.error('Deactivate QR code error:', error);
     return c.json({
       success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS,
+      error: error instanceof Error ? error.message : 'Failed to deactivate QR code',
       timestamp: new Date().toISOString()
     }, 500);
   }
 });
 
+// 2-segment routes
+// Get team members (specific team)
+app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID - must be a number'
+      }, 400);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const members = await teamService.getMembers(teamId);
+
+    return c.json({ success: true, data: members });
+  } catch (error) {
+    console.error('Get team members error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_MEMBERS
+    }, 500);
+  }
+});
+
+// Add member to team
+app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const teamId = parseInt(c.req.param('id'));
+    const body = await c.req.json() as TeamMemberAddRequest;
+
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    if (!body.agentId?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Agent ID is required'
+      }, 400);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const member = await teamService.addMember(teamId, body);
+
+    return c.json({
+      success: true,
+      data: member
+    }, 201);
+  } catch (error) {
+    console.error('Add team member error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to add team member'
+    }, 500);
+  }
+});
+
+// Generate QR Code for team
+app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+    const { campaignName, description, expiresAt, maxUses } = await c.req.json().catch(() => ({}));
+
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const qrService = new TeamQRService(c.env.DB);
+    const qrCodeParams: any = {
+      teamId,
+      campaignName,
+      description,
+      maxUses,
+      metadata: {
+        description,
+        teamId
+      }
+    };
+
+    if (expiresAt) {
+      qrCodeParams.expiresAt = new Date(expiresAt);
+    }
+
+    const qrCode = await qrService.generateTeamQRCode(qrCodeParams);
+
+    return c.json({
+      success: true,
+      data: qrCode,
+      timestamp: new Date().toISOString()
+    }, 201);
+  } catch (error) {
+    console.error('Generate QR code error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GENERATE_QR_CODE,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// Get team QR codes
+app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const qrService = new TeamQRService(c.env.DB);
+    const qrCodes = await qrService.getTeamQRCodes(teamId);
+
+    return c.json({
+      success: true,
+      data: qrCodes,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Get QR codes error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GET_QR_CODES,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// Test QR code generation
+app.post('/:id/qr-code-test', async (c) => {
+  try {
+    const qrService = new TeamQRService(c.env.DB);
+    const testQR = await qrService.generateTestQRCode();
+
+    return c.json({
+      success: true,
+      data: testQR
+    });
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: 'Test failed'
+    }, 500);
+  }
+});
+
+// Get team statistics
+app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const dateFromParam = c.req.query('dateFrom');
+    const dateToParam = c.req.query('dateTo');
+    const params: TeamStatsRequest = {
+      ...(dateFromParam && { dateFrom: dateFromParam }),
+      ...(dateToParam && { dateTo: dateToParam }),
+      includeMembers: c.req.query('includeMembers') === 'true'
+    };
+
+    const teamService = new TeamService(c.env.DB);
+    const stats = await teamService.getTeamStats(teamId, params);
+
+    return c.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Get team stats error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
+    }, 500);
+  }
+});
+
+// ==================== Priority 5: SINGLE PARAMETERIZED (:id only) ====================
 // Get single team by ID
 app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
@@ -132,48 +462,6 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAM
-    }, 500);
-  }
-});
-
-// Create new team
-app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
-  try {
-    const body = await c.req.json() as TeamCreateRequest;
-
-    if (!body.name?.trim()) {
-      return c.json({
-        success: false,
-        error: 'Team name is required'
-      }, 400);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const team = await teamService.createTeam(body);
-
-    // Log activity
-    const user = c.get('user');
-    const activityService = new TeamActivityService(c.env.DB);
-    await activityService.logTeamCreate({
-      userId: user.id.toString(),
-      userName: user.displayName || user.email,
-      userRole: user.role,
-      teamId: team.id,
-      teamName: team.name,
-      ...(team.description && { description: team.description })
-    });
-
-    return c.json({
-      success: true,
-      data: team,
-      timestamp: new Date().toISOString()
-    }, 201);
-  } catch (error) {
-    console.error('Create team error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_CREATE_TEAM,
-      timestamp: new Date().toISOString()
     }, 500);
   }
 });
@@ -281,362 +569,87 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
   }
 });
 
-// Search teams
-app.get('/search/:query', async (c) => {
-  try {
-    const query = c.req.param('query');
-
-    if (!query?.trim()) {
-      return c.json({
-        success: false,
-        error: 'Search query is required'
-      }, 400);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const teams = await teamService.searchTeams(query);
-
-    return c.json({ success: true, data: teams });
-  } catch (error) {
-    console.error('Search teams error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS
-    }, 500);
-  }
-});
-
-// ✅ MOVED: GET /members route moved to src/modules/teams/handlers/members.ts
-// This prevents route conflict with /:id/members pattern
-// GET /api/teams/members is now handled by membersHandler at index.ts:17
-
-// Get team members (specific team)
-app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
-  try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID - must be a number'
-      }, 400);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const members = await teamService.getMembers(teamId);
-
-    return c.json({ success: true, data: members });
-  } catch (error) {
-    console.error('Get team members error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_MEMBERS
-    }, 500);
-  }
-});
-
-// Add member to team
-app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
+// ==================== Priority 6: WILDCARD (LAST!) ====================
+// List teams
+app.get('/', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
-    const body = await c.req.json() as TeamMemberAddRequest;
+    const includeInactive = c.req.query('includeInactive') === 'true';
 
-    if (!teamId) {
+    // 非 admin/team 用戶只能看到自己的團隊
+    if (user.role === 'agent' && user.teamId) {
+      const teamService = new TeamService(c.env.DB);
+      const team = await teamService.getTeam(user.teamId);
       return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, 400);
-    }
-
-    if (!body.agentId?.trim()) {
-      return c.json({
-        success: false,
-        error: 'Agent ID is required'
-      }, 400);
+        success: true,
+        data: [team],
+        timestamp: new Date().toISOString()
+      });
     }
 
     const teamService = new TeamService(c.env.DB);
-    const member = await teamService.addMember(teamId, body);
-
-    return c.json({
-      success: true,
-      data: member
-    }, 201);
-  } catch (error) {
-    console.error('Add team member error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to add team member'
-    }, 500);
-  }
-});
-
-// Update team member
-app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
-  try {
-    const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
-    const agentId = c.req.param('agentId');
-    const body = await c.req.json() as TeamMemberUpdateRequest;
-
-    if (!teamId || !agentId?.trim()) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID or agent ID'
-      }, 400);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const member = await teamService.updateMember(teamId, agentId, body);
-
-    return c.json({ success: true, data: member });
-  } catch (error) {
-    console.error('Update team member error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to update team member'
-    }, 500);
-  }
-});
-
-// Remove member from team
-app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
-  try {
-    const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
-    const agentId = c.req.param('agentId');
-
-    if (!teamId || !agentId?.trim()) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID or agent ID'
-      }, 400);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const success = await teamService.removeMember(teamId, agentId);
-
-    if (!success) {
-      return c.json({
-        success: false,
-        error: 'Failed to remove team member'
-      }, 500);
-    }
-
-    return c.json({ success: true });
-  } catch (error) {
-    console.error('Remove team member error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to remove team member'
-    }, 500);
-  }
-});
-
-// Generate QR Code for team
-app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
-  try {
-    const teamId = parseInt(c.req.param('id'));
-    const { campaignName, description, expiresAt, maxUses } = await c.req.json().catch(() => ({}));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, 400);
-    }
-
-    const qrService = new TeamQRService(c.env.DB);
-    const qrCodeParams: any = {
-      teamId,
-      campaignName,
-      description,
-      maxUses,
-      metadata: {
-        description,
-        teamId
-      }
+    const searchParam = c.req.query('search');
+    const params: TeamListRequest = {
+      page: parseInt(c.req.query('page') || '1'),
+      limit: parseInt(c.req.query('limit') || '20'),
+      includeInactive,
+      ...(searchParam && { search: searchParam })
     };
 
-    if (expiresAt) {
-      qrCodeParams.expiresAt = new Date(expiresAt);
+    const result = await teamService.listTeams(params);
+    return c.json({
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('List teams error:', error);
+    return c.json({
+      success: false,
+      error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// Create new team
+app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const body = await c.req.json() as TeamCreateRequest;
+
+    if (!body.name?.trim()) {
+      return c.json({
+        success: false,
+        error: 'Team name is required'
+      }, 400);
     }
 
-    const qrCode = await qrService.generateTeamQRCode(qrCodeParams);
+    const teamService = new TeamService(c.env.DB);
+    const team = await teamService.createTeam(body);
+
+    // Log activity
+    const user = c.get('user');
+    const activityService = new TeamActivityService(c.env.DB);
+    await activityService.logTeamCreate({
+      userId: user.id.toString(),
+      userName: user.displayName || user.email,
+      userRole: user.role,
+      teamId: team.id,
+      teamName: team.name,
+      ...(team.description && { description: team.description })
+    });
 
     return c.json({
       success: true,
-      data: qrCode,
+      data: team,
       timestamp: new Date().toISOString()
     }, 201);
   } catch (error) {
-    console.error('Generate QR code error:', error);
+    console.error('Create team error:', error);
     return c.json({
       success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GENERATE_QR_CODE,
+      error: ERROR_MESSAGES.FAILED_TO_CREATE_TEAM,
       timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// Get team QR codes
-app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
-  try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, 400);
-    }
-
-    const qrService = new TeamQRService(c.env.DB);
-    const qrCodes = await qrService.getTeamQRCodes(teamId);
-
-    return c.json({
-      success: true,
-      data: qrCodes,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Get QR codes error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_QR_CODES,
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// Deactivate QR code
-app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), async (c) => {
-  try {
-    const teamId = parseInt(c.req.param('id'));
-    const qrCodeId = c.req.param('qrCodeId');
-
-    if (!teamId || !qrCodeId?.trim()) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID or QR code ID'
-      }, 400);
-    }
-
-    const qrService = new TeamQRService(c.env.DB);
-    await qrService.deactivateQRCode(teamId, qrCodeId);
-
-    return c.json({
-      success: true,
-      message: 'QR code deactivated successfully',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Deactivate QR code error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to deactivate QR code',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// Test QR code generation
-app.post('/:id/qr-code-test', async (c) => {
-  try {
-    const qrService = new TeamQRService(c.env.DB);
-    const testQR = await qrService.generateTestQRCode();
-
-    return c.json({
-      success: true,
-      data: testQR
-    });
-  } catch (error) {
-    return c.json({
-      success: false,
-      error: 'Test failed'
-    }, 500);
-  }
-});
-
-// Get team statistics
-app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
-  try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, 400);
-    }
-
-    const dateFromParam = c.req.query('dateFrom');
-    const dateToParam = c.req.query('dateTo');
-    const params: TeamStatsRequest = {
-      ...(dateFromParam && { dateFrom: dateFromParam }),
-      ...(dateToParam && { dateTo: dateToParam }),
-      includeMembers: c.req.query('includeMembers') === 'true'
-    };
-
-    const teamService = new TeamService(c.env.DB);
-    const stats = await teamService.getTeamStats(teamId, params);
-
-    return c.json({ success: true, data: stats });
-  } catch (error) {
-    console.error('Get team stats error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
-    }, 500);
-  }
-});
-
-// Get all teams statistics
-app.get('/stats/all', async (c) => {
-  try {
-    const dateFromParam = c.req.query('dateFrom');
-    const dateToParam = c.req.query('dateTo');
-    const params: TeamStatsRequest = {
-      ...(dateFromParam && { dateFrom: dateFromParam }),
-      ...(dateToParam && { dateTo: dateToParam }),
-      includeMembers: c.req.query('includeMembers') === 'true'
-    };
-
-    const teamService = new TeamService(c.env.DB);
-    const stats = await teamService.getAllTeamsStats(params);
-
-    return c.json({ success: true, data: stats });
-  } catch (error) {
-    console.error('Get all teams stats error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
-    }, 500);
-  }
-});
-
-// Transfer members between teams
-app.post('/transfer', async (c) => {
-  try {
-    const body = await c.req.json() as TeamTransferRequest;
-
-    if (!body.fromTeamId || !body.toTeamId || !body.agentIds?.length) {
-      return c.json({
-        success: false,
-        error: 'From team ID, to team ID, and agent IDs are required'
-      }, 400);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const result = await teamService.transferMembers(body);
-
-    return c.json({ success: true, data: result });
-  } catch (error) {
-    console.error('Transfer members error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION
     }, 500);
   }
 });
