@@ -36,10 +36,16 @@ app.get('/info', (c) => {
   });
 });
 
-// ======================== Main Notification Routes ========================
-// Route registration order: STATIC → SPECIFIC → PARAMETERIZED → WILDCARD
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// Routes MUST be registered in this order to avoid conflicts:
+// 1. SPECIFIC: /stats, /unread-count, /recent, /bulk, /channels/stats, /mark-all-read, /cleanup, /new-message, /conversation-assigned, /system
+// 2. SPECIFIC PARAMETERIZED: /channels/:channelType/test
+// 3. MULTI-SEGMENT: /:id/read
+// 4. SINGLE PARAMETERIZED: /:id (GET/DELETE)
+// 5. WILDCARD: / (GET/POST) - MUST BE LAST!
 
-// ==================== Priority 1: STATIC routes ====================
+// ==================== Priority 1: SPECIFIC routes ====================
+
 // 獲取通知統計
 app.get('/stats', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
@@ -64,37 +70,10 @@ app.post('/bulk', jwtAuth, async (c) => {
   return handlers.createBulk(c as any);
 });
 
-// ==================== Priority 2: SPECIFIC routes ====================
-// 通道統計 (moved from line 110 to before /:id)
+// 通道統計
 app.get('/channels/stats', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
   return handlers.getChannelStats(c as any);
-});
-
-// ==================== Priority 3: PARAMETERIZED routes ====================
-// 獲取單個通知
-app.get('/:id', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getById(c as any);
-});
-
-// ==================== Priority 4: WILDCARD routes ====================
-// 獲取通知列表 (moved from line 42 to after /:id)
-app.get('/', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.list(c as any);
-});
-
-// 創建通知
-app.post('/', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.create(c as any);
-});
-
-// 標記為已讀
-app.put('/:id/read', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.markAsRead(c as any);
 });
 
 // 批量標記已讀
@@ -103,27 +82,11 @@ app.put('/mark-all-read', jwtAuth, async (c) => {
   return handlers.markAllAsRead(c as any);
 });
 
-// 刪除通知
-app.delete('/:id', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.delete(c as any);
-});
-
-// ======================== Admin Routes ========================
-
 // 清理過期通知
 app.delete('/cleanup', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
   return handlers.cleanup(c as any);
 });
-
-// 測試通道
-app.post('/channels/:channelType/test', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.testChannel(c as any);
-});
-
-// ======================== Convenience Routes ========================
 
 // 新訊息通知
 app.post('/new-message', jwtAuth, async (c) => {
@@ -141,6 +104,50 @@ app.post('/conversation-assigned', jwtAuth, async (c) => {
 app.post('/system', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
   return handlers.notifySystem(c as any);
+});
+
+// ==================== Priority 2: SPECIFIC PARAMETERIZED routes ====================
+
+// 測試通道
+app.post('/channels/:channelType/test', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.testChannel(c as any);
+});
+
+// ==================== Priority 3: MULTI-SEGMENT routes (/:id/xxx) ====================
+
+// 標記為已讀
+app.put('/:id/read', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.markAsRead(c as any);
+});
+
+// ==================== Priority 4: SINGLE PARAMETERIZED routes ====================
+
+// 獲取單個通知
+app.get('/:id', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.getById(c as any);
+});
+
+// 刪除通知
+app.delete('/:id', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.delete(c as any);
+});
+
+// ==================== Priority 5: WILDCARD routes (MUST BE LAST!) ====================
+
+// 獲取通知列表
+app.get('/', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.list(c as any);
+});
+
+// 創建通知
+app.post('/', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.create(c as any);
 });
 
 // ======================== SSE Routes REMOVED ========================
