@@ -18,716 +18,57 @@ import { getSSECorsHeaders } from '@/config/cors';
 
 const conversationHandler = new Hono<{ Bindings: Bindings }>();
 
-// ==================== ROUTE REGISTRATION (Priority Order) ====================
-// ⚠️  ROUTE ORDERING ISSUE DETECTED - TODO: Reorder routes for optimal routing
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// ✅ ROUTES REORDERED - All conflicts resolved following Hono's first-registered, first-matched priority
 //
-// CURRENT ORDER (has conflicts):
-//   Line 22:  POST /:id/assign (multi-segment)
-//   Line 108: POST /:id/transfer (multi-segment)
-//   Line 201: GET / (wildcard)
-//   Line 295: GET /:id (single param) ⚠️  REGISTERED BEFORE /stream!
-//   Line 364: POST /:id/messages (multi-segment)
-//   Line 517: GET /:id/messages (multi-segment)
-//   Line 676: GET /stream (static) ⚠️  Should be BEFORE /:id!
-//   Line 1004: GET /:conversationId/messages/stream (3-segment) ⚠️  Should be near top!
-//
-// RECOMMENDED ORDER (to fix conflicts):
+// CORRECTED ORDER (0 conflicts):
 //   Priority 1: STATIC - GET /stream
 //   Priority 2: MULTI-SEGMENT 3-param - GET /:conversationId/messages/stream
-//   Priority 3: MULTI-SEGMENT 2-param - POST /:id/assign, /:id/transfer, /:id/messages (GET/POST)
+//   Priority 3: MULTI-SEGMENT 2-param:
+//     - POST /:id/assign
+//     - POST /:id/transfer
+//     - POST /:id/messages
+//     - GET /:id/messages
 //   Priority 4: SINGLE PARAM - GET /:id
 //   Priority 5: WILDCARD - GET /
 //
-// 📝 NOTE: Due to file size (1241 lines) and complex handlers, route reordering
-//          requires careful extraction and moving of 100+ line handler functions.
-//          This should be done in a dedicated refactoring session.
+// This ordering ensures that more specific routes (with concrete segments or more parameters)
+// are checked before general parameterized or wildcard routes, preventing route interception.
 // ====================================================================================
 
-// 指派對話到團隊/用戶
-conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    const conversationId = c.req.param('id');
-    const { teamId, userId, reason } = await c.req.json();
-    
-    // 檢查權限
-    const hasPermission = await PermissionService.checkPermission(
-      user.id, 
-      'conversation', 
-      'assign'
-    );
-    
-    if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
-    }
-
-    // 更新對話指派
-    const drizzleDb = drizzle(c.env.DB);
-    const timestamp = new Date().toISOString();
-    
-    await drizzleDb
-      .update(conversations)
-      .set({
-        assignedTeamId: teamId || null,
-        assignedUserId: userId || null,
-        updatedAt: timestamp
-      })
-      .where(eq(conversations.id, conversationId));
-
-    // 記錄轉移歷史 (使用 Drizzle ORM)
-    if (reason) {
-      const transferRecord: NewConversationTransfer = {
-        conversationId,
-        toTeamId: teamId || null,
-        toUserId: userId || null,
-        transferReason: reason,
-        transferredBy: String(user.id),
-        createdAt: timestamp
-      };
-
-      await drizzleDb.insert(conversationTransfers).values(transferRecord);
-    }
-
-    // 🚀 WebSocket Broadcasting: Conversation Assignment
-    try {
-      const broadcastService = new WebSocketBroadcastService(c.env);
-      await broadcastService.broadcastConversationEvent({
-        type: 'conversation_assigned',
-        conversationId,
-        userId: String(user.id),
-        data: {
-          assignedTeamId: teamId,
-          assignedUserId: userId,
-          assignedBy: {
-            id: user.id,
-            name: user.displayName,
-            role: user.role
-          },
-          reason,
-          timestamp
-        },
-        priority: 'normal'
-      });
-      console.log('✅ [WebSocket] Conversation assignment broadcasted');
-    } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Assignment broadcast failed, continuing with fallback:', broadcastError);
-    }
-
-    return c.json({
-      success: true,
-      message: 'Conversation assigned successfully',
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Assign conversation error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// 轉移對話
-conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    const conversationId = c.req.param('id');
-    const { fromTeamId, toTeamId, fromUserId, toUserId, reason } = await c.req.json();
-    
-    // 檢查權限
-    const hasPermission = await PermissionService.checkPermission(
-      user.id, 
-      'conversation', 
-      'transfer'
-    );
-    
-    if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
-    }
-
-    // 更新對話指派
-    const drizzleDb = drizzle(c.env.DB);
-    const timestamp = new Date().toISOString();
-    
-    await drizzleDb
-      .update(conversations)
-      .set({
-        assignedTeamId: toTeamId || null,
-        assignedUserId: toUserId || null,
-        status: 'active',
-        updatedAt: timestamp
-      })
-      .where(eq(conversations.id, conversationId));
-
-    // 記錄轉移歷史 (使用 Drizzle ORM)
-    const transferRecord: NewConversationTransfer = {
-      conversationId,
-      fromTeamId: fromTeamId || null,
-      toTeamId: toTeamId || null,
-      fromUserId: fromUserId || null,
-      toUserId: toUserId || null,
-      transferReason: reason,
-      transferredBy: String(user.id),
-      createdAt: timestamp
-    };
-
-    await drizzleDb.insert(conversationTransfers).values(transferRecord);
-
-    // 🚀 WebSocket Broadcasting: Conversation Transfer
-    try {
-      const broadcastService = new WebSocketBroadcastService(c.env);
-      await broadcastService.broadcastConversationEvent({
-        type: 'conversation_transferred',
-        conversationId,
-        userId: String(user.id),
-        data: {
-          from: {
-            teamId: fromTeamId,
-            userId: fromUserId
-          },
-          to: {
-            teamId: toTeamId,
-            userId: toUserId
-          },
-          transferredBy: {
-            id: user.id,
-            name: user.displayName,
-            role: user.role
-          },
-          reason,
-          timestamp
-        },
-        priority: 'high'
-      });
-      console.log('✅ [WebSocket] Conversation transfer broadcasted');
-    } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Transfer broadcast failed, continuing with fallback:', broadcastError);
-    }
-
-    return c.json({
-      success: true,
-      message: 'Conversation transferred successfully',
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Transfer conversation error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// 獲取用戶可見的對話列表
-conversationHandler.get('/', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    console.log('🔍 [Conversation Handler] GET / - User authenticated:', user);
-    console.log('🔍 [Conversation Handler] User ID type:', typeof user.id, 'Value:', user.id);
-    console.log('🔍 [Conversation Handler] Calling PermissionService.getVisibleConversations...');
-    
-    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
-    
-    console.log('📋 [Conversation Handler] Visible conversation IDs returned:', visibleConversationIds);
-    console.log('📊 [Conversation Handler] Total visible conversations:', visibleConversationIds.length);
-    
-    // 如果沒有可見對話，返回空列表
-    if (visibleConversationIds.length === 0) {
-      console.log('❌ [Conversation Handler] No visible conversations found, returning empty array');
-      return c.json({
-        success: true,
-        data: [],
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // 使用 Drizzle ORM 查詢對話列表
-    console.log('🔍 [Conversation Handler] Querying conversation data with IDs:', visibleConversationIds);
-    const drizzleDb = drizzle(c.env.DB);
-    const conversationData = await drizzleDb
-      .select({
-        // 對話資料
-        id: conversations.id,
-        customerId: conversations.customerId,
-        assignedTeamId: conversations.assignedTeamId,
-        assignedUserId: conversations.assignedUserId,
-        status: conversations.status,
-        lastMessageAt: conversations.lastMessageAt,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        // 客戶資料
-        customerName: customers.displayName,
-        platform: customers.platform,
-        platformUserId: customers.platformUserId
-      })
-      .from(conversations)
-      .leftJoin(customers, eq(conversations.customerId, customers.id))
-      .where(inArray(conversations.id, visibleConversationIds))
-      .orderBy(desc(conversations.updatedAt));
-      
-    console.log('📊 [Conversation Handler] Retrieved conversation data:', conversationData);
-
-    // ⚡ Enterprise Cache: Get latest messages using background job + cache system
-    const { LatestMessageCache } = await import('../../../services/latest-message-cache');
-    const latestMessageCache = new LatestMessageCache(c.env);
-
-    console.log('🚀 [Conversation Handler] Using enterprise cache for latest messages');
-    const conversationIds = conversationData.map(c => c.id);
-
-    const latestMessagesMap = await latestMessageCache.getLatestMessages(conversationIds);
-    const lastMessages = Array.from(latestMessagesMap.values());
-    
-    // 結合數據并統一為camelCase格式 (using cache structure)
-    const combinedData = conversationData.map(conv => {
-      const lastMsg = lastMessages.find((msg: any) => msg?.conversationId === conv.id);
-      return {
-        ...conv,
-        // 構建lastMessage對象以匹配前端期望的結構
-        lastMessage: lastMsg?.content ? {
-          id: lastMsg.messageId || '',
-          content: lastMsg.content,
-          createdAt: lastMsg.createdAt,
-          senderType: lastMsg.senderType || 'agent',
-          messageType: lastMsg.messageType || 'text'
-        } : null,
-        // 保留原有字段以確保向後兼容
-        lastMessageContent: lastMsg?.content || null,
-        lastMessageAtActual: lastMsg?.createdAt || null
-      };
-    });
-
-    return c.json({
-      success: true,
-      data: combinedData,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get conversations',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// 獲取特定對話詳情
-conversationHandler.get('/:id', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    const conversationId = c.req.param('id');
-    
-    // 檢查權限
-    const hasPermission = await PermissionService.checkPermission(
-      user.id, 
-      'conversation', 
-      'view',
-      { 
-        userId: Number(user.id),
-        role: user.role,
-        resourceId: conversationId 
-      },
-      c.env.DB
-    );
-    
-    if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
-    }
-
-    const drizzleDb = drizzle(c.env.DB);
-    const conversation = await drizzleDb
-      .select({
-        // 對話資料
-        id: conversations.id,
-        customerId: conversations.customerId,
-        assignedTeamId: conversations.assignedTeamId,
-        assignedUserId: conversations.assignedUserId,
-        status: conversations.status,
-        lastMessageAt: conversations.lastMessageAt,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        // 客戶資料
-        customerName: customers.displayName,
-        platform: customers.platform,
-        platformUserId: customers.platformUserId
-      })
-      .from(conversations)
-      .leftJoin(customers, eq(conversations.customerId, customers.id))
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
-      return c.json({
-        success: false,
-        error: 'Conversation not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
-
-    return c.json({
-      success: true,
-      data: conversation,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Get conversation error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get conversation',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// 發送訊息 - Simplified with extracted services
-conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
-  // 🔵 Phase 1 Emergency Debug Logging
-  console.log('🔵 [ENTRY] ========== MESSAGE HANDLER REACHED ==========');
-  console.log('🔵 [ENTRY] Timestamp:', new Date().toISOString());
-  console.log('🔵 [ENTRY] Conversation ID:', c.req.param('id'));
-  console.log('🔵 [ENTRY] Method:', c.req.method);
-  console.log('🔵 [ENTRY] Path:', c.req.path);
-
-  try {
-    console.log('🔵 [AUTH] Checking user context...');
-    const user = c.get('user');
-    console.log('🔵 [AUTH] User ID:', user?.id);
-    console.log('🔵 [AUTH] User Role:', user?.role);
-    console.log('🔵 [AUTH] User Name:', user?.displayName);
-
-    // 1. Validate and parse request
-    console.log('🔵 [PARSE] Starting request validation...');
-    const request = await MessageRequestService.validateAndParse(c);
-    console.log('🔵 [PARSE] Request validated successfully');
-    console.log('🔵 [PARSE] Content length:', request.content?.length);
-    console.log('🔵 [PARSE] Sender ID:', request.senderId);
-
-    // 2. Check permissions
-    console.log('🔵 [PERMISSION] Checking permissions...');
-    const hasPermission = await PermissionService.checkPermission(
-      user.id,
-      'message',
-      'send',
-      {
-        userId: Number(user.id),
-        role: user.role,
-        resourceId: request.conversationId
-      },
-      c.env.DB
-    );
-
-    console.log('🔵 [PERMISSION] Permission check result:', hasPermission);
-
-    if (!hasPermission) {
-      console.log('🔴 [PERMISSION] Permission denied for user:', user.id);
-      return errorResponse(c, user.role === 'agent'
-        ? '權限不足，您無權對此訊息進行任何操作。只有指派給您的對話或團隊負責人能夠回覆未指派的對話。'
-        : 'Permission denied', 403);
-    }
-
-    // 3. Send message through service
-    console.log('🔵 [SERVICE] Creating MessageService instance...');
-    const messageService = new MessageService(c.env);
-    console.log('🔵 [SERVICE] Calling sendMessage...');
-    const result = await messageService.sendMessage(request);
-    console.log('🔵 [SERVICE] sendMessage result:', result.success);
-
-    if (!result.success) {
-      console.log('🔴 [SERVICE] Send message failed:', result.error);
-      return errorResponse(c, result.error || 'Failed to send message', 400);
-    }
-
-    console.log('🔵 [SERVICE] Message sent successfully, ID:', result.messageId);
-
-    // 4. Broadcast WebSocket event
-    console.log('🔵 [WEBSOCKET] Starting WebSocket broadcast...');
-    try {
-      const broadcastService = new WebSocketBroadcastService(c.env);
-      await broadcastService.broadcastMessageEvent({
-        type: 'message_sent',
-        conversationId: request.conversationId,
-        messageId: result.messageId!,
-        agentId: request.senderId,
-        data: {
-          content: request.content,
-          messageType: request.messageType,
-          sender: {
-            id: user.id,
-            name: user.displayName,
-            role: user.role
-          },
-          deliveryStatus: 'sent',
-          timestamp: new Date().toISOString()
-        },
-        priority: 'normal'
-      });
-      console.log('🔵 [WEBSOCKET] Broadcast successful');
-    } catch (broadcastError) {
-      console.warn('⚠️ [WEBSOCKET] Message broadcast failed:', broadcastError);
-    }
-
-    // ✅ 5. Return complete Message object formatted for frontend
-    console.log('🔵 [RESPONSE] Preparing response...');
-    console.log('🔵 [RESPONSE] Has result.message:', !!result.message);
-
-    if (!result.message) {
-      console.log('🔵 [RESPONSE] Using fallback message format');
-      // Fallback: construct minimal message if query failed
-      return successResponse(c, {
-        id: result.messageId,
-        conversationId: request.conversationId,
-        senderType: 'agent' as const,
-        senderId: request.senderId,
-        senderName: user.displayName,
-        content: request.content,
-        messageType: request.messageType || 'text',
-        platform: 'line' as const,
-        createdAt: Date.now(),
-        deliveryStatus: 'sent'
-      }, 'Message sent successfully');
-    }
-
-    // Transform database message to frontend Message format
-    // ✅ Safe metadata parsing with error handling
-    let parsedMetadata = {};
-    if (result.message.metadata) {
-      try {
-        parsedMetadata = JSON.parse(result.message.metadata as string);
-      } catch (parseError) {
-        console.warn('⚠️ Failed to parse message metadata:', parseError);
-        parsedMetadata = {};
-      }
-    }
-
-    const formattedMessage = {
-      id: result.message.id,
-      conversationId: result.message.conversationId,
-      senderType: 'agent' as const,
-      senderId: result.message.agentSenderId || request.senderId,
-      senderName: user.displayName,
-      content: result.message.content,
-      mediaUrl: '',
-      mediaType: result.message.messageType as 'text' | 'image' | 'video' | 'file',
-      platform: 'line' as const,
-      createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
-      timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
-      deliveryStatus: result.message.deliveryStatus || 'sent',
-      isSent: result.message.isSent,
-      platformMessageId: result.message.platformMessageId,
-      metadata: parsedMetadata
-    };
-
-    console.log('🔵 [RESPONSE] Formatted message prepared');
-    console.log('🔵 [RESPONSE] Calling successResponse...');
-    const response = successResponse(c, formattedMessage, 'Message sent successfully');
-    console.log('🔵 [RESPONSE] ========== SUCCESS - RETURNING RESPONSE ==========');
-    return response;
-
-  } catch (error) {
-    console.error('🔴 [ERROR] ========== EXCEPTION CAUGHT ==========');
-    console.error('🔴 [ERROR] Error type:', error instanceof Error ? error.constructor.name : typeof error);
-    console.error('🔴 [ERROR] Error message:', error instanceof Error ? error.message : String(error));
-    console.error('🔴 [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack');
-    return errorResponse(c, error instanceof Error ? error.message : 'Failed to send message', 500);
-  }
-});
-
-// 獲取對話的訊息（支持分頁）
-conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    const conversationId = c.req.param('id');
-    
-    // 獲取分頁參數
-    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(c.req.query('pageSize') || '30', 10)));
-    const offset = (page - 1) * pageSize;
-    
-    console.log(`📄 [Messages API] Getting messages for conversation ${conversationId}, page=${page}, pageSize=${pageSize}, offset=${offset}`);
-    
-    // 檢查權限
-    const hasPermission = await PermissionService.checkPermission(
-      user.id, 
-      'conversation', 
-      'view',
-      { 
-        userId: Number(user.id),
-        role: user.role,
-        resourceId: conversationId 
-      },
-      c.env.DB
-    );
-    
-    if (!hasPermission) {
-      return c.json({ 
-        success: false,
-        error: 'Permission denied',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
-
-    // 檢查對話是否存在
-    const drizzleDb = drizzle(c.env.DB);
-    const conversation = await drizzleDb
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
-      return c.json({
-        success: false,
-        error: 'Conversation not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
-
-    // 獲取訊息總數
-    const totalResult = await drizzleDb
-      .select({ count: count() })
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .get();
-    
-    const total = totalResult?.count || 0;
-    console.log(`📊 [Messages API] Total messages in conversation: ${total}`);
-
-    // 獲取分頁訊息（包含發送者資訊）
-    const messageList = await drizzleDb
-      .select({
-        // Message fields
-        id: messages.id,
-        conversationId: messages.conversationId,
-        senderType: messages.senderType,
-        customerSenderId: messages.customerSenderId,
-        agentSenderId: messages.agentSenderId,
-        content: messages.content,
-        messageType: messages.messageType,
-        platformMessageId: messages.platformMessageId,
-        isSent: messages.isSent,
-        deliveryStatus: messages.deliveryStatus,
-        metadata: messages.metadata,
-        sentAt: messages.sentAt,
-        recallDeadline: messages.recallDeadline,
-        recalledAt: messages.recalledAt,
-        isRecalled: messages.isRecalled,
-        createdAt: messages.createdAt,
-        // Customer info for customer messages
-        customerName: customers.displayName,
-        // Agent info for agent messages  
-        agentName: agents.displayName
-      })
-      .from(messages)
-      .leftJoin(customers, 
-        and(
-          eq(messages.senderType, 'customer'),
-          eq(messages.customerSenderId, customers.id)
-        )
-      )
-      .leftJoin(agents,
-        and(
-          eq(messages.senderType, 'agent'),
-          eq(messages.agentSenderId, agents.id)
-        )
-      )
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(desc(messages.createdAt)) // 最新的消息在前面
-      .limit(pageSize)
-      .offset(offset);
-
-    console.log(`📄 [Messages API] Retrieved ${messageList.length} messages for page ${page}`);
-
-    // ✅ 轉換為前端期望的 Message 格式
-    const formattedMessages = messageList.map(row => ({
-      id: row.id,
-      conversationId: row.conversationId,
-      senderType: row.senderType === 'customer' ? 'user' as const : row.senderType as 'agent' | 'system',
-      senderId: row.senderType === 'customer' 
-        ? row.customerSenderId?.toString() || '' 
-        : row.agentSenderId || '',
-      senderName: row.senderType === 'customer' ? row.customerName : row.agentName,
-      content: row.content,
-      mediaUrl: '', // 需要從 metadata 或其他表獲取
-      mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
-      platform: 'line' as const, // 需要從 conversation->customer 獲取
-      createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
-      // 額外的數據庫字段
-      platformMessageId: row.platformMessageId,
-      isSent: row.isSent,
-      deliveryStatus: row.deliveryStatus,
-      metadata: row.metadata,
-      sentAt: row.sentAt,
-      isRecalled: row.isRecalled,
-      recallDeadline: row.recallDeadline,
-      recalledAt: row.recalledAt
-    }));
-
-    // ✅ 返回分頁響應格式
-    const totalPages = Math.ceil(total / pageSize);
-    const paginatedResponse = {
-      items: formattedMessages,
-      page,
-      pageSize,
-      total,
-      totalPages,
-      hasMore: page < totalPages
-    };
-
-    console.log(`📊 [Messages API] Returning page ${page}/${totalPages}, ${formattedMessages.length} items, hasMore: ${paginatedResponse.hasMore}`);
-
-    return c.json({
-      success: true,
-      data: paginatedResponse,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Get messages error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get messages',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
+// ==================== Priority 1: STATIC routes ====================
 
 // SSE推送端點 - 實時對話更新
 conversationHandler.get('/stream', async (c) => {
-  // 手動驗證token，因為EventSource無法設置自定義headers
+  // 手動驗證token,因為EventSource無法設置自定義headers
   try {
     const authHeader = c.req.header('Authorization');
     const token = c.req.query('token'); // 備用：從query參數獲取token
-    
+
     let authToken: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
       authToken = authHeader.substring(7);
     } else if (token) {
       authToken = token;
     }
-    
+
     if (!authToken) {
       return c.json({ error: 'Missing authentication token' }, 401);
     }
-    
+
     // 驗證JWT並設置用戶
     const payload = await verifyJWT(authToken, c.env.JWT_SECRET);
     const user = await getUserById(c.env.DB, payload.userId);
-    
+
     if (!user.isActive) {
       return c.json({ error: 'User account is inactive' }, 401);
     }
-    
+
     // 手動設置用戶到context
     c.set('user', user);
-    
+
     console.log('🔄 [SSE Stream] Starting SSE connection for user:', user.id);
-    
+
     // 設定SSE headers（使用統一 CORS 配置）
     const sseCorsHeaders1 = getSSECorsHeaders(c.req.header('Origin'));
     Object.entries(sseCorsHeaders1).forEach(([key, value]) => {
@@ -735,20 +76,20 @@ conversationHandler.get('/stream', async (c) => {
     });
 
     let isConnected = true;
-    
+
     // 創建可讀流
     const stream = new ReadableStream({
       start(controller) {
         console.log('📡 [SSE Stream] Stream started');
-        
+
         // 發送心跳
         const sendHeartbeat = () => {
           if (!isConnected) return;
-          
+
           try {
-            const heartbeat = `data: ${JSON.stringify({ 
-              type: 'heartbeat', 
-              timestamp: new Date().toISOString() 
+            const heartbeat = `data: ${JSON.stringify({
+              type: 'heartbeat',
+              timestamp: new Date().toISOString()
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(heartbeat));
           } catch (error) {
@@ -761,13 +102,13 @@ conversationHandler.get('/stream', async (c) => {
         // 發送對話數據更新
         const sendConversationUpdate = async () => {
           if (!isConnected) return;
-          
+
           try {
             console.log('📤 [SSE Stream] Sending conversation update');
-            
+
             // 獲取用戶可見的對話
             const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
-            
+
             if (visibleConversationIds.length === 0) {
               const updateData = `data: ${JSON.stringify({
                 type: 'conversations_update',
@@ -802,7 +143,7 @@ conversationHandler.get('/stream', async (c) => {
             // 獲取最新消息
             const conversationIds = conversationData.map(c => c.id);
             let lastMessages: any[] = [];
-            
+
             if (conversationIds.length > 0) {
               for (const conversationId of conversationIds) {
                 const latestMessage = await drizzleDb
@@ -816,7 +157,7 @@ conversationHandler.get('/stream', async (c) => {
                   .orderBy(desc(messages.createdAt))
                   .limit(1)
                   .get();
-                  
+
                 if (latestMessage) {
                   lastMessages.push(latestMessage);
                 }
@@ -844,9 +185,9 @@ conversationHandler.get('/stream', async (c) => {
               data: combinedData,
               timestamp: new Date().toISOString()
             })}\n\n`;
-            
+
             controller.enqueue(new TextEncoder().encode(updateData));
-            
+
           } catch (error) {
             console.error('❌ [SSE Stream] Failed to send conversation update:', error);
           }
@@ -854,10 +195,10 @@ conversationHandler.get('/stream', async (c) => {
 
         // 立即發送初始數據
         sendConversationUpdate();
-        
+
         // 定期發送更新 (60秒間隔，比輪詢更低頻)
         const updateInterval = setInterval(sendConversationUpdate, 60000);
-        
+
         // 心跳間隔 (30秒)
         const heartbeatInterval = setInterval(sendHeartbeat, 30000);
 
@@ -879,7 +220,7 @@ conversationHandler.get('/stream', async (c) => {
           cleanup();
         };
       },
-      
+
       cancel() {
         console.log('🚫 [SSE Stream] Stream cancelled');
         isConnected = false;
@@ -900,130 +241,7 @@ conversationHandler.get('/stream', async (c) => {
   }
 });
 
-// =================== 訊息流 SSE 系統 ===================
-// 🚀 Phase 1: 專用訊息流端點實施
-
-/**
- * 獲取對話的最近訊息
- * @param conversationId 對話ID
- * @param limit 訊息數量限制
- * @param db 資料庫實例
- * @returns 訊息列表（按時間升序）
- */
-async function getRecentMessages(conversationId: string, limit: number, db: D1Database) {
-  const drizzleDb = drizzle(db);
-
-  try {
-    const recentMessages = await drizzleDb
-      .select({
-        id: messages.id,
-        conversationId: messages.conversationId,
-        senderType: messages.senderType,
-        customerSenderId: messages.customerSenderId,
-        agentSenderId: messages.agentSenderId,
-        content: messages.content,
-        messageType: messages.messageType,
-        createdAt: messages.createdAt,
-        isSent: messages.isSent,
-        deliveryStatus: messages.deliveryStatus,
-        isRecalled: messages.isRecalled
-      })
-      .from(messages)
-      .where(
-        and(
-          eq(messages.conversationId, conversationId),
-          eq(messages.isRecalled, false)  // 排除已撤回的訊息
-        )
-      )
-      .orderBy(desc(messages.createdAt))
-      .limit(limit);
-
-    // 反轉結果以獲得時間升序（最舊在前，最新在後）
-    return recentMessages.reverse();
-  } catch (error) {
-    console.error('❌ [SSE] Error fetching recent messages:', error);
-    return [];
-  }
-}
-
-/**
- * 獲取指定時間點之後的新訊息
- * @param conversationId 對話ID
- * @param afterTimestamp 時間戳（ISO string）
- * @param db 資料庫實例
- * @returns 新訊息列表（按時間升序）
- */
-async function getMessagesAfterTimestamp(conversationId: string, afterTimestamp: string, db: D1Database) {
-  const drizzleDb = drizzle(db);
-
-  try {
-    const newMessages = await drizzleDb
-      .select({
-        id: messages.id,
-        conversationId: messages.conversationId,
-        senderType: messages.senderType,
-        customerSenderId: messages.customerSenderId,
-        agentSenderId: messages.agentSenderId,
-        content: messages.content,
-        messageType: messages.messageType,
-        createdAt: messages.createdAt,
-        isSent: messages.isSent,
-        deliveryStatus: messages.deliveryStatus,
-        isRecalled: messages.isRecalled
-      })
-      .from(messages)
-      .where(
-        and(
-          eq(messages.conversationId, conversationId),
-          eq(messages.isRecalled, false),  // 排除已撤回的訊息
-          gt(messages.createdAt, afterTimestamp)  // ✅ 修復：使用 Drizzle ORM 的 gt 操作符
-        )
-      )
-      .orderBy(messages.createdAt);  // 時間升序
-
-    return newMessages;
-  } catch (error) {
-    console.error('❌ [SSE] Error fetching messages after timestamp:', error);
-    return [];
-  }
-}
-
-/**
- * 獲取指定訊息ID之後的新訊息
- * @param conversationId 對話ID
- * @param lastMessageId 最後已知訊息ID
- * @param db 資料庫實例
- * @returns 新訊息列表（按時間升序）
- */
-async function getMessagesAfter(conversationId: string, lastMessageId: string | null, db: D1Database) {
-  if (!lastMessageId) {
-    // 如果沒有最後訊息ID，返回最近的訊息
-    return getRecentMessages(conversationId, 50, db);
-  }
-
-  const drizzleDb = drizzle(db);
-
-  try {
-    // 首先獲取最後已知訊息的時間戳
-    const lastMessage = await drizzleDb
-      .select({ createdAt: messages.createdAt })
-      .from(messages)
-      .where(eq(messages.id, lastMessageId))
-      .limit(1);
-
-    if (lastMessage.length === 0) {
-      console.warn(`⚠️ [SSE] Last message ${lastMessageId} not found, returning recent messages`);
-      return getRecentMessages(conversationId, 50, db);
-    }
-
-    // 獲取該時間戳之後的所有訊息
-    const createdAt = lastMessage[0]?.createdAt || new Date().toISOString();
-    return getMessagesAfterTimestamp(conversationId, createdAt, db);
-  } catch (error) {
-    console.error('❌ [SSE] Error fetching messages after last message:', error);
-    return [];
-  }
-}
+// ==================== Priority 2: MULTI-SEGMENT 3-param routes ====================
 
 // 🎯 新的專用訊息流 SSE 端點
 conversationHandler.get('/:conversationId/messages/stream', async (c) => {
@@ -1263,5 +481,789 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     }, 500);
   }
 });
+
+// ==================== Priority 3: MULTI-SEGMENT 2-param routes ====================
+
+// 指派對話到團隊/用戶
+conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id');
+    const { teamId, userId, reason } = await c.req.json();
+
+    // 檢查權限
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'conversation',
+      'assign'
+    );
+
+    if (!hasPermission) {
+      return c.json({ error: 'Permission denied' }, 403);
+    }
+
+    // 更新對話指派
+    const drizzleDb = drizzle(c.env.DB);
+    const timestamp = new Date().toISOString();
+
+    await drizzleDb
+      .update(conversations)
+      .set({
+        assignedTeamId: teamId || null,
+        assignedUserId: userId || null,
+        updatedAt: timestamp
+      })
+      .where(eq(conversations.id, conversationId));
+
+    // 記錄轉移歷史 (使用 Drizzle ORM)
+    if (reason) {
+      const transferRecord: NewConversationTransfer = {
+        conversationId,
+        toTeamId: teamId || null,
+        toUserId: userId || null,
+        transferReason: reason,
+        transferredBy: String(user.id),
+        createdAt: timestamp
+      };
+
+      await drizzleDb.insert(conversationTransfers).values(transferRecord);
+    }
+
+    // 🚀 WebSocket Broadcasting: Conversation Assignment
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastConversationEvent({
+        type: 'conversation_assigned',
+        conversationId,
+        userId: String(user.id),
+        data: {
+          assignedTeamId: teamId,
+          assignedUserId: userId,
+          assignedBy: {
+            id: user.id,
+            name: user.displayName,
+            role: user.role
+          },
+          reason,
+          timestamp
+        },
+        priority: 'normal'
+      });
+      console.log('✅ [WebSocket] Conversation assignment broadcasted');
+    } catch (broadcastError) {
+      console.warn('⚠️ [WebSocket] Assignment broadcast failed, continuing with fallback:', broadcastError);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Conversation assigned successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Assign conversation error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 轉移對話
+conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id');
+    const { fromTeamId, toTeamId, fromUserId, toUserId, reason } = await c.req.json();
+
+    // 檢查權限
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'conversation',
+      'transfer'
+    );
+
+    if (!hasPermission) {
+      return c.json({ error: 'Permission denied' }, 403);
+    }
+
+    // 更新對話指派
+    const drizzleDb = drizzle(c.env.DB);
+    const timestamp = new Date().toISOString();
+
+    await drizzleDb
+      .update(conversations)
+      .set({
+        assignedTeamId: toTeamId || null,
+        assignedUserId: toUserId || null,
+        status: 'active',
+        updatedAt: timestamp
+      })
+      .where(eq(conversations.id, conversationId));
+
+    // 記錄轉移歷史 (使用 Drizzle ORM)
+    const transferRecord: NewConversationTransfer = {
+      conversationId,
+      fromTeamId: fromTeamId || null,
+      toTeamId: toTeamId || null,
+      fromUserId: fromUserId || null,
+      toUserId: toUserId || null,
+      transferReason: reason,
+      transferredBy: String(user.id),
+      createdAt: timestamp
+    };
+
+    await drizzleDb.insert(conversationTransfers).values(transferRecord);
+
+    // 🚀 WebSocket Broadcasting: Conversation Transfer
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastConversationEvent({
+        type: 'conversation_transferred',
+        conversationId,
+        userId: String(user.id),
+        data: {
+          from: {
+            teamId: fromTeamId,
+            userId: fromUserId
+          },
+          to: {
+            teamId: toTeamId,
+            userId: toUserId
+          },
+          transferredBy: {
+            id: user.id,
+            name: user.displayName,
+            role: user.role
+          },
+          reason,
+          timestamp
+        },
+        priority: 'high'
+      });
+      console.log('✅ [WebSocket] Conversation transfer broadcasted');
+    } catch (broadcastError) {
+      console.warn('⚠️ [WebSocket] Transfer broadcast failed, continuing with fallback:', broadcastError);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Conversation transferred successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Transfer conversation error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 發送訊息 - Simplified with extracted services
+conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
+  // 🔵 Phase 1 Emergency Debug Logging
+  console.log('🔵 [ENTRY] ========== MESSAGE HANDLER REACHED ==========');
+  console.log('🔵 [ENTRY] Timestamp:', new Date().toISOString());
+  console.log('🔵 [ENTRY] Conversation ID:', c.req.param('id'));
+  console.log('🔵 [ENTRY] Method:', c.req.method);
+  console.log('🔵 [ENTRY] Path:', c.req.path);
+
+  try {
+    console.log('🔵 [AUTH] Checking user context...');
+    const user = c.get('user');
+    console.log('🔵 [AUTH] User ID:', user?.id);
+    console.log('🔵 [AUTH] User Role:', user?.role);
+    console.log('🔵 [AUTH] User Name:', user?.displayName);
+
+    // 1. Validate and parse request
+    console.log('🔵 [PARSE] Starting request validation...');
+    const request = await MessageRequestService.validateAndParse(c);
+    console.log('🔵 [PARSE] Request validated successfully');
+    console.log('🔵 [PARSE] Content length:', request.content?.length);
+    console.log('🔵 [PARSE] Sender ID:', request.senderId);
+
+    // 2. Check permissions
+    console.log('🔵 [PERMISSION] Checking permissions...');
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'message',
+      'send',
+      {
+        userId: Number(user.id),
+        role: user.role,
+        resourceId: request.conversationId
+      },
+      c.env.DB
+    );
+
+    console.log('🔵 [PERMISSION] Permission check result:', hasPermission);
+
+    if (!hasPermission) {
+      console.log('🔴 [PERMISSION] Permission denied for user:', user.id);
+      return errorResponse(c, user.role === 'agent'
+        ? '權限不足，您無權對此訊息進行任何操作。只有指派給您的對話或團隊負責人能夠回覆未指派的對話。'
+        : 'Permission denied', 403);
+    }
+
+    // 3. Send message through service
+    console.log('🔵 [SERVICE] Creating MessageService instance...');
+    const messageService = new MessageService(c.env);
+    console.log('🔵 [SERVICE] Calling sendMessage...');
+    const result = await messageService.sendMessage(request);
+    console.log('🔵 [SERVICE] sendMessage result:', result.success);
+
+    if (!result.success) {
+      console.log('🔴 [SERVICE] Send message failed:', result.error);
+      return errorResponse(c, result.error || 'Failed to send message', 400);
+    }
+
+    console.log('🔵 [SERVICE] Message sent successfully, ID:', result.messageId);
+
+    // 4. Broadcast WebSocket event
+    console.log('🔵 [WEBSOCKET] Starting WebSocket broadcast...');
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastMessageEvent({
+        type: 'message_sent',
+        conversationId: request.conversationId,
+        messageId: result.messageId!,
+        agentId: request.senderId,
+        data: {
+          content: request.content,
+          messageType: request.messageType,
+          sender: {
+            id: user.id,
+            name: user.displayName,
+            role: user.role
+          },
+          deliveryStatus: 'sent',
+          timestamp: new Date().toISOString()
+        },
+        priority: 'normal'
+      });
+      console.log('🔵 [WEBSOCKET] Broadcast successful');
+    } catch (broadcastError) {
+      console.warn('⚠️ [WEBSOCKET] Message broadcast failed:', broadcastError);
+    }
+
+    // ✅ 5. Return complete Message object formatted for frontend
+    console.log('🔵 [RESPONSE] Preparing response...');
+    console.log('🔵 [RESPONSE] Has result.message:', !!result.message);
+
+    if (!result.message) {
+      console.log('🔵 [RESPONSE] Using fallback message format');
+      // Fallback: construct minimal message if query failed
+      return successResponse(c, {
+        id: result.messageId,
+        conversationId: request.conversationId,
+        senderType: 'agent' as const,
+        senderId: request.senderId,
+        senderName: user.displayName,
+        content: request.content,
+        messageType: request.messageType || 'text',
+        platform: 'line' as const,
+        createdAt: Date.now(),
+        deliveryStatus: 'sent'
+      }, 'Message sent successfully');
+    }
+
+    // Transform database message to frontend Message format
+    // ✅ Safe metadata parsing with error handling
+    let parsedMetadata = {};
+    if (result.message.metadata) {
+      try {
+        parsedMetadata = JSON.parse(result.message.metadata as string);
+      } catch (parseError) {
+        console.warn('⚠️ Failed to parse message metadata:', parseError);
+        parsedMetadata = {};
+      }
+    }
+
+    const formattedMessage = {
+      id: result.message.id,
+      conversationId: result.message.conversationId,
+      senderType: 'agent' as const,
+      senderId: result.message.agentSenderId || request.senderId,
+      senderName: user.displayName,
+      content: result.message.content,
+      mediaUrl: '',
+      mediaType: result.message.messageType as 'text' | 'image' | 'video' | 'file',
+      platform: 'line' as const,
+      createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
+      timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
+      deliveryStatus: result.message.deliveryStatus || 'sent',
+      isSent: result.message.isSent,
+      platformMessageId: result.message.platformMessageId,
+      metadata: parsedMetadata
+    };
+
+    console.log('🔵 [RESPONSE] Formatted message prepared');
+    console.log('🔵 [RESPONSE] Calling successResponse...');
+    const response = successResponse(c, formattedMessage, 'Message sent successfully');
+    console.log('🔵 [RESPONSE] ========== SUCCESS - RETURNING RESPONSE ==========');
+    return response;
+
+  } catch (error) {
+    console.error('🔴 [ERROR] ========== EXCEPTION CAUGHT ==========');
+    console.error('🔴 [ERROR] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('🔴 [ERROR] Error message:', error instanceof Error ? error.message : String(error));
+    console.error('🔴 [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack');
+    return errorResponse(c, error instanceof Error ? error.message : 'Failed to send message', 500);
+  }
+});
+
+// 獲取對話的訊息（支持分頁）
+conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id');
+
+    // 獲取分頁參數
+    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(c.req.query('pageSize') || '30', 10)));
+    const offset = (page - 1) * pageSize;
+
+    console.log(`📄 [Messages API] Getting messages for conversation ${conversationId}, page=${page}, pageSize=${pageSize}, offset=${offset}`);
+
+    // 檢查權限
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'conversation',
+      'view',
+      {
+        userId: Number(user.id),
+        role: user.role,
+        resourceId: conversationId
+      },
+      c.env.DB
+    );
+
+    if (!hasPermission) {
+      return c.json({
+        success: false,
+        error: 'Permission denied',
+        timestamp: new Date().toISOString()
+      }, 403);
+    }
+
+    // 檢查對話是否存在
+    const drizzleDb = drizzle(c.env.DB);
+    const conversation = await drizzleDb
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({
+        success: false,
+        error: 'Conversation not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    // 獲取訊息總數
+    const totalResult = await drizzleDb
+      .select({ count: count() })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .get();
+
+    const total = totalResult?.count || 0;
+    console.log(`📊 [Messages API] Total messages in conversation: ${total}`);
+
+    // 獲取分頁訊息（包含發送者資訊）
+    const messageList = await drizzleDb
+      .select({
+        // Message fields
+        id: messages.id,
+        conversationId: messages.conversationId,
+        senderType: messages.senderType,
+        customerSenderId: messages.customerSenderId,
+        agentSenderId: messages.agentSenderId,
+        content: messages.content,
+        messageType: messages.messageType,
+        platformMessageId: messages.platformMessageId,
+        isSent: messages.isSent,
+        deliveryStatus: messages.deliveryStatus,
+        metadata: messages.metadata,
+        sentAt: messages.sentAt,
+        recallDeadline: messages.recallDeadline,
+        recalledAt: messages.recalledAt,
+        isRecalled: messages.isRecalled,
+        createdAt: messages.createdAt,
+        // Customer info for customer messages
+        customerName: customers.displayName,
+        // Agent info for agent messages
+        agentName: agents.displayName
+      })
+      .from(messages)
+      .leftJoin(customers,
+        and(
+          eq(messages.senderType, 'customer'),
+          eq(messages.customerSenderId, customers.id)
+        )
+      )
+      .leftJoin(agents,
+        and(
+          eq(messages.senderType, 'agent'),
+          eq(messages.agentSenderId, agents.id)
+        )
+      )
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.createdAt)) // 最新的消息在前面
+      .limit(pageSize)
+      .offset(offset);
+
+    console.log(`📄 [Messages API] Retrieved ${messageList.length} messages for page ${page}`);
+
+    // ✅ 轉換為前端期望的 Message 格式
+    const formattedMessages = messageList.map(row => ({
+      id: row.id,
+      conversationId: row.conversationId,
+      senderType: row.senderType === 'customer' ? 'user' as const : row.senderType as 'agent' | 'system',
+      senderId: row.senderType === 'customer'
+        ? row.customerSenderId?.toString() || ''
+        : row.agentSenderId || '',
+      senderName: row.senderType === 'customer' ? row.customerName : row.agentName,
+      content: row.content,
+      mediaUrl: '', // 需要從 metadata 或其他表獲取
+      mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
+      platform: 'line' as const, // 需要從 conversation->customer 獲取
+      createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
+      // 額外的數據庫字段
+      platformMessageId: row.platformMessageId,
+      isSent: row.isSent,
+      deliveryStatus: row.deliveryStatus,
+      metadata: row.metadata,
+      sentAt: row.sentAt,
+      isRecalled: row.isRecalled,
+      recallDeadline: row.recallDeadline,
+      recalledAt: row.recalledAt
+    }));
+
+    // ✅ 返回分頁響應格式
+    const totalPages = Math.ceil(total / pageSize);
+    const paginatedResponse = {
+      items: formattedMessages,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      hasMore: page < totalPages
+    };
+
+    console.log(`📊 [Messages API] Returning page ${page}/${totalPages}, ${formattedMessages.length} items, hasMore: ${paginatedResponse.hasMore}`);
+
+    return c.json({
+      success: true,
+      data: paginatedResponse,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Get messages error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get messages',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// ==================== Priority 4: SINGLE PARAM routes ====================
+
+// 獲取特定對話詳情
+conversationHandler.get('/:id', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id');
+
+    // 檢查權限
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'conversation',
+      'view',
+      {
+        userId: Number(user.id),
+        role: user.role,
+        resourceId: conversationId
+      },
+      c.env.DB
+    );
+
+    if (!hasPermission) {
+      return c.json({ error: 'Permission denied' }, 403);
+    }
+
+    const drizzleDb = drizzle(c.env.DB);
+    const conversation = await drizzleDb
+      .select({
+        // 對話資料
+        id: conversations.id,
+        customerId: conversations.customerId,
+        assignedTeamId: conversations.assignedTeamId,
+        assignedUserId: conversations.assignedUserId,
+        status: conversations.status,
+        lastMessageAt: conversations.lastMessageAt,
+        createdAt: conversations.createdAt,
+        updatedAt: conversations.updatedAt,
+        // 客戶資料
+        customerName: customers.displayName,
+        platform: customers.platform,
+        platformUserId: customers.platformUserId
+      })
+      .from(conversations)
+      .leftJoin(customers, eq(conversations.customerId, customers.id))
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({
+        success: false,
+        error: 'Conversation not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: conversation,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Get conversation error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get conversation',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// ==================== Priority 5: WILDCARD routes ====================
+
+// 獲取用戶可見的對話列表
+conversationHandler.get('/', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    console.log('🔍 [Conversation Handler] GET / - User authenticated:', user);
+    console.log('🔍 [Conversation Handler] User ID type:', typeof user.id, 'Value:', user.id);
+    console.log('🔍 [Conversation Handler] Calling PermissionService.getVisibleConversations...');
+
+    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
+
+    console.log('📋 [Conversation Handler] Visible conversation IDs returned:', visibleConversationIds);
+    console.log('📊 [Conversation Handler] Total visible conversations:', visibleConversationIds.length);
+
+    // 如果沒有可見對話，返回空列表
+    if (visibleConversationIds.length === 0) {
+      console.log('❌ [Conversation Handler] No visible conversations found, returning empty array');
+      return c.json({
+        success: true,
+        data: [],
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 使用 Drizzle ORM 查詢對話列表
+    console.log('🔍 [Conversation Handler] Querying conversation data with IDs:', visibleConversationIds);
+    const drizzleDb = drizzle(c.env.DB);
+    const conversationData = await drizzleDb
+      .select({
+        // 對話資料
+        id: conversations.id,
+        customerId: conversations.customerId,
+        assignedTeamId: conversations.assignedTeamId,
+        assignedUserId: conversations.assignedUserId,
+        status: conversations.status,
+        lastMessageAt: conversations.lastMessageAt,
+        createdAt: conversations.createdAt,
+        updatedAt: conversations.updatedAt,
+        // 客戶資料
+        customerName: customers.displayName,
+        platform: customers.platform,
+        platformUserId: customers.platformUserId
+      })
+      .from(conversations)
+      .leftJoin(customers, eq(conversations.customerId, customers.id))
+      .where(inArray(conversations.id, visibleConversationIds))
+      .orderBy(desc(conversations.updatedAt));
+
+    console.log('📊 [Conversation Handler] Retrieved conversation data:', conversationData);
+
+    // ⚡ Enterprise Cache: Get latest messages using background job + cache system
+    const { LatestMessageCache } = await import('../../../services/latest-message-cache');
+    const latestMessageCache = new LatestMessageCache(c.env);
+
+    console.log('🚀 [Conversation Handler] Using enterprise cache for latest messages');
+    const conversationIds = conversationData.map(c => c.id);
+
+    const latestMessagesMap = await latestMessageCache.getLatestMessages(conversationIds);
+    const lastMessages = Array.from(latestMessagesMap.values());
+
+    // 結合數據并統一為camelCase格式 (using cache structure)
+    const combinedData = conversationData.map(conv => {
+      const lastMsg = lastMessages.find((msg: any) => msg?.conversationId === conv.id);
+      return {
+        ...conv,
+        // 構建lastMessage對象以匹配前端期望的結構
+        lastMessage: lastMsg?.content ? {
+          id: lastMsg.messageId || '',
+          content: lastMsg.content,
+          createdAt: lastMsg.createdAt,
+          senderType: lastMsg.senderType || 'agent',
+          messageType: lastMsg.messageType || 'text'
+        } : null,
+        // 保留原有字段以確保向後兼容
+        lastMessageContent: lastMsg?.content || null,
+        lastMessageAtActual: lastMsg?.createdAt || null
+      };
+    });
+
+    return c.json({
+      success: true,
+      data: combinedData,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get conversations',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// ==================== Helper Functions ====================
+
+/**
+ * 獲取對話的最近訊息
+ * @param conversationId 對話ID
+ * @param limit 訊息數量限制
+ * @param db 資料庫實例
+ * @returns 訊息列表（按時間升序）
+ */
+async function getRecentMessages(conversationId: string, limit: number, db: D1Database) {
+  const drizzleDb = drizzle(db);
+
+  try {
+    const recentMessages = await drizzleDb
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        senderType: messages.senderType,
+        customerSenderId: messages.customerSenderId,
+        agentSenderId: messages.agentSenderId,
+        content: messages.content,
+        messageType: messages.messageType,
+        createdAt: messages.createdAt,
+        isSent: messages.isSent,
+        deliveryStatus: messages.deliveryStatus,
+        isRecalled: messages.isRecalled
+      })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(messages.isRecalled, false)  // 排除已撤回的訊息
+        )
+      )
+      .orderBy(desc(messages.createdAt))
+      .limit(limit);
+
+    // 反轉結果以獲得時間升序（最舊在前，最新在後）
+    return recentMessages.reverse();
+  } catch (error) {
+    console.error('❌ [SSE] Error fetching recent messages:', error);
+    return [];
+  }
+}
+
+/**
+ * 獲取指定時間點之後的新訊息
+ * @param conversationId 對話ID
+ * @param afterTimestamp 時間戳（ISO string）
+ * @param db 資料庫實例
+ * @returns 新訊息列表（按時間升序）
+ */
+async function getMessagesAfterTimestamp(conversationId: string, afterTimestamp: string, db: D1Database) {
+  const drizzleDb = drizzle(db);
+
+  try {
+    const newMessages = await drizzleDb
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        senderType: messages.senderType,
+        customerSenderId: messages.customerSenderId,
+        agentSenderId: messages.agentSenderId,
+        content: messages.content,
+        messageType: messages.messageType,
+        createdAt: messages.createdAt,
+        isSent: messages.isSent,
+        deliveryStatus: messages.deliveryStatus,
+        isRecalled: messages.isRecalled
+      })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(messages.isRecalled, false),  // 排除已撤回的訊息
+          gt(messages.createdAt, afterTimestamp)  // ✅ 修復：使用 Drizzle ORM 的 gt 操作符
+        )
+      )
+      .orderBy(messages.createdAt);  // 時間升序
+
+    return newMessages;
+  } catch (error) {
+    console.error('❌ [SSE] Error fetching messages after timestamp:', error);
+    return [];
+  }
+}
+
+/**
+ * 獲取指定訊息ID之後的新訊息
+ * @param conversationId 對話ID
+ * @param lastMessageId 最後已知訊息ID
+ * @param db 資料庫實例
+ * @returns 新訊息列表（按時間升序）
+ */
+async function getMessagesAfter(conversationId: string, lastMessageId: string | null, db: D1Database) {
+  if (!lastMessageId) {
+    // 如果沒有最後訊息ID，返回最近的訊息
+    return getRecentMessages(conversationId, 50, db);
+  }
+
+  const drizzleDb = drizzle(db);
+
+  try {
+    // 首先獲取最後已知訊息的時間戳
+    const lastMessage = await drizzleDb
+      .select({ createdAt: messages.createdAt })
+      .from(messages)
+      .where(eq(messages.id, lastMessageId))
+      .limit(1);
+
+    if (lastMessage.length === 0) {
+      console.warn(`⚠️ [SSE] Last message ${lastMessageId} not found, returning recent messages`);
+      return getRecentMessages(conversationId, 50, db);
+    }
+
+    // 獲取該時間戳之後的所有訊息
+    const createdAt = lastMessage[0]?.createdAt || new Date().toISOString();
+    return getMessagesAfterTimestamp(conversationId, createdAt, db);
+  } catch (error) {
+    console.error('❌ [SSE] Error fetching messages after last message:', error);
+    return [];
+  }
+}
 
 export default conversationHandler;
