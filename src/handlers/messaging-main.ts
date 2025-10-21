@@ -12,9 +12,33 @@ import { jwtAuth } from '../middleware/auth';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// ✅ ROUTES REORDERED - All conflicts resolved following Hono's first-registered, first-matched priority
+//
+// CORRECTED ORDER (0 conflicts):
+//   Priority 1: STATIC GET routes
+//     - GET /health, /info, /search, /stats, /tags, /export
+//   Priority 2: STATIC POST routes (specific paths)
+//     - POST /bulk-create, /bulk-delete
+//   Priority 3: SPECIFIC multi-segment GET
+//     - GET /conversation/:conversationId
+//   Priority 4: MULTI-SEGMENT with /:id prefix
+//     - GET /:id/attachments
+//     - POST /:id/attachments
+//     - POST /:id/forward
+//     - PUT /:id/tags
+//   Priority 5: SINGLE PARAM
+//     - GET /:id
+//     - PUT /:id
+//     - DELETE /:id
+//   Priority 6: WILDCARD (registered LAST to avoid intercepting other routes)
+//     - POST /
+//
+// Key fix: POST / moved to END to prevent intercepting POST /:id/attachments and POST /:id/forward
+// ====================================================================================
+
 // ======================== Health Check Routes ========================
 
-// 健康檢查端點 (無需認證)
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
@@ -24,7 +48,6 @@ app.get('/health', (c) => {
   });
 });
 
-// 模組資訊端點
 app.get('/info', (c) => {
   return c.json({
     success: true,
@@ -90,118 +113,8 @@ app.get('/info', (c) => {
  * 創建新訊息
  * POST /api/messages
  */
-app.post('/', jwtAuth, async (c) => {
-  try {
-    const userPayload = c.get('jwtPayload') as JWTPayload;
 
-    let requestData: {
-      conversationId: string;
-      content: string;
-      messageType?: string;
-      replyToMessageId?: string;
-      metadata?: any;
-    };
 
-    try {
-      requestData = await c.req.json();
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: 'Invalid JSON data',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    const { conversationId, content, messageType, replyToMessageId, metadata } = requestData;
-
-    // 基本驗證
-    if (!conversationId || !content || content.trim().length === 0) {
-      return c.json({
-        success: false,
-        error: 'Conversation ID and content are required',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    // 創建資料庫連線
-    const db = drizzle(c.env.DB);
-
-    // 檢查對話是否存在
-    const conversation = await db
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
-      return c.json({
-        success: false,
-        error: 'Conversation not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
-
-    // 生成訊息ID
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // 準備訊息數據
-    const messageData = {
-      id: messageId,
-      conversationId,
-      senderType: 'agent' as const,
-      agentSenderId: userPayload.userId.toString(),
-      content,
-      messageType: messageType || 'text',
-      replyToMessageId: replyToMessageId || null,
-      metadata: metadata ? JSON.stringify(metadata) : null,
-      isSent: true,
-      deliveryStatus: 'sent',
-      sentAt: new Date().toISOString(),
-      createdAt: new Date().toISOString()
-    };
-
-    // 插入訊息
-    await db.insert(messages).values(messageData);
-
-    // 更新對話的最後訊息時間
-    await db
-      .update(conversations)
-      .set({
-        lastMessageAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      })
-      .where(eq(conversations.id, conversationId));
-
-    return c.json({
-      success: true,
-      data: {
-        id: messageId,
-        conversationId,
-        content,
-        messageType: messageType || 'text',
-        senderType: 'agent',
-        agentSenderId: userPayload.userId.toString(),
-        sentAt: messageData.sentAt,
-        createdAt: messageData.createdAt
-      },
-      message: 'Message created successfully',
-      timestamp: new Date().toISOString()
-    }, 201);
-
-  } catch (error) {
-    console.error('Create message error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to create message',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-/**
- * 搜尋訊息
- * GET /api/messages/search
- */
 app.get('/search', jwtAuth, async (c) => {
   try {
     const query = c.req.query('q') || '';
@@ -269,6 +182,8 @@ app.get('/search', jwtAuth, async (c) => {
  * 獲取訊息統計 (極度簡化版本，避開路徑問題)
  * GET /api/messages/stats
  */
+
+
 app.get('/stats', jwtAuth, async (c) => {
   try {
     // 使用正確的資料庫連接
@@ -321,6 +236,8 @@ app.get('/stats', jwtAuth, async (c) => {
  * 獲取所有可用標籤
  * GET /api/messages/tags
  */
+
+
 app.get('/tags', jwtAuth, async (c) => {
   try {
     const db = drizzle(c.env.DB);
@@ -382,6 +299,8 @@ app.get('/tags', jwtAuth, async (c) => {
  * 匯出訊息為JSON/CSV格式
  * GET /api/messages/export
  */
+
+
 app.get('/export', jwtAuth, async (c) => {
   try {
     const userPayload = c.get('jwtPayload') as JWTPayload;
@@ -530,145 +449,23 @@ app.get('/export', jwtAuth, async (c) => {
  * However, Hono's smart routing may handle this correctly.
  * Verify through integration testing if issues arise.
  */
-app.get('/:id', jwtAuth, async (c) => {
+
+
+app.post('/bulk-create', jwtAuth, async (c) => {
   try {
-    const messageId = c.req.param('id');
-
-    if (!messageId) {
-      return c.json({
-        success: false,
-        error: 'Message ID is required',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    const db = drizzle(c.env.DB);
-
-    // 獲取訊息詳細資訊，包含相關的對話和發送者資訊
-    const messageQuery = await db
-      .select({
-        // 訊息資訊
-        id: messages.id,
-        conversationId: messages.conversationId,
-        senderType: messages.senderType,
-        customerSenderId: messages.customerSenderId,
-        agentSenderId: messages.agentSenderId,
-        content: messages.content,
-        messageType: messages.messageType,
-        platformMessageId: messages.platformMessageId,
-        isRecalled: messages.isRecalled,
-        recallDeadline: messages.recallDeadline,
-        recalledAt: messages.recalledAt,
-        isSent: messages.isSent,
-        sentAt: messages.sentAt,
-        deliveryStatus: messages.deliveryStatus,
-        replyToMessageId: messages.replyToMessageId,
-        threadId: messages.threadId,
-        sessionId: messages.sessionId,
-        sessionSequence: messages.sessionSequence,
-        metadata: messages.metadata,
-        createdAt: messages.createdAt,
-        // 對話資訊
-        conversationStatus: conversations.status,
-        conversationPriority: conversations.priority,
-        // 代理人資訊
-        agentName: agents.displayName,
-        agentRole: agents.role,
-        // 客戶資訊
-        customerName: customers.displayName,
-        customerPlatform: customers.platform
-      })
-      .from(messages)
-      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
-      .leftJoin(agents, eq(messages.agentSenderId, agents.id))
-      .leftJoin(customers, eq(messages.customerSenderId, customers.id))
-      .where(eq(messages.id, messageId))
-      .get();
-
-    if (!messageQuery) {
-      return c.json({
-        success: false,
-        error: 'Message not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
-
-    // 構造回應數據
-    const messageDetail = {
-      id: messageQuery.id,
-      conversationId: messageQuery.conversationId,
-      senderType: messageQuery.senderType,
-      senderInfo: messageQuery.senderType === 'agent' ? {
-        id: messageQuery.agentSenderId,
-        name: messageQuery.agentName,
-        role: messageQuery.agentRole
-      } : messageQuery.senderType === 'customer' ? {
-        id: messageQuery.customerSenderId,
-        name: messageQuery.customerName,
-        platform: messageQuery.customerPlatform
-      } : null,
-      content: messageQuery.content,
-      messageType: messageQuery.messageType,
-      platformMessageId: messageQuery.platformMessageId,
-      isRecalled: Boolean(messageQuery.isRecalled),
-      recallDeadline: messageQuery.recallDeadline,
-      recalledAt: messageQuery.recalledAt,
-      isSent: Boolean(messageQuery.isSent),
-      sentAt: messageQuery.sentAt,
-      deliveryStatus: messageQuery.deliveryStatus,
-      replyToMessageId: messageQuery.replyToMessageId,
-      threadId: messageQuery.threadId,
-      sessionId: messageQuery.sessionId,
-      sessionSequence: messageQuery.sessionSequence,
-      metadata: messageQuery.metadata ? JSON.parse(messageQuery.metadata) : null,
-      createdAt: messageQuery.createdAt,
-      conversationInfo: {
-        status: messageQuery.conversationStatus,
-        priority: messageQuery.conversationPriority
-      }
-    };
-
-    return c.json({
-      success: true,
-      data: messageDetail,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Get message error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get message',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-/**
- * 更新訊息
- * PUT /api/messages/:id
- */
-app.put('/:id', jwtAuth, async (c) => {
-  try {
-    const messageId = c.req.param('id');
     const userPayload = c.get('jwtPayload') as JWTPayload;
 
-    if (!messageId) {
-      return c.json({
-        success: false,
-        error: 'Message ID is required',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    let updateData: {
-      content?: string;
-      messageType?: string;
-      metadata?: any;
+    let requestData: {
+      messages: {
+        conversationId: string;
+        content: string;
+        messageType?: string;
+        metadata?: any;
+      }[];
     };
 
     try {
-      updateData = await c.req.json();
+      requestData = await c.req.json();
     } catch (error) {
       return c.json({
         success: false,
@@ -677,241 +474,294 @@ app.put('/:id', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const { messages: messagesToCreate } = requestData;
 
-    // 檢查訊息是否存在以及用戶權限
-    const existingMessage = await db
-      .select({
-        id: messages.id,
-        agentSenderId: messages.agentSenderId,
-        senderType: messages.senderType,
-        isRecalled: messages.isRecalled,
-        createdAt: messages.createdAt
-      })
-      .from(messages)
-      .where(eq(messages.id, messageId))
-      .get();
-
-    if (!existingMessage) {
+    // 驗證
+    if (!messagesToCreate || !Array.isArray(messagesToCreate) || messagesToCreate.length === 0) {
       return c.json({
         success: false,
-        error: 'Message not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
-
-    // 檢查權限：只有發送者或管理員可以編輯
-    if (existingMessage.senderType === 'agent' &&
-        existingMessage.agentSenderId !== userPayload.userId.toString() &&
-        userPayload.role !== 'admin') {
-      return c.json({
-        success: false,
-        error: 'Permission denied: Only the sender or admin can update this message',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
-
-    // 檢查訊息是否已被撤回
-    if (existingMessage.isRecalled) {
-      return c.json({
-        success: false,
-        error: 'Cannot update a recalled message',
+        error: 'Messages array is required and must not be empty',
         timestamp: new Date().toISOString()
       }, 400);
     }
 
-    // 準備更新數據
-    const updateValues: any = {
-      updatedAt: new Date().toISOString()
-    };
+    // 批量操作限制 (最多100條)
+    if (messagesToCreate.length > 100) {
+      return c.json({
+        success: false,
+        error: 'Bulk operation limited to 100 messages at a time',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
 
-    if (updateData.content !== undefined) {
-      if (!updateData.content.trim()) {
-        return c.json({
-          success: false,
-          error: 'Content cannot be empty',
-          timestamp: new Date().toISOString()
-        }, 400);
+    const db = drizzle(c.env.DB);
+    const results: any[] = [];
+    const errors: any[] = [];
+
+    // 批量處理
+    for (let i = 0; i < messagesToCreate.length; i++) {
+      const msgData = messagesToCreate[i];
+
+      try {
+        // 基本驗證
+        if (!msgData.conversationId || !msgData.content || msgData.content.trim().length === 0) {
+          errors.push({
+            index: i,
+            conversationId: msgData.conversationId,
+            error: 'Conversation ID and content are required'
+          });
+          continue;
+        }
+
+        // 檢查對話是否存在
+        const conversation = await db
+          .select({ id: conversations.id })
+          .from(conversations)
+          .where(eq(conversations.id, msgData.conversationId))
+          .get();
+
+        if (!conversation) {
+          errors.push({
+            index: i,
+            conversationId: msgData.conversationId,
+            error: 'Conversation not found'
+          });
+          continue;
+        }
+
+        // 生成訊息ID
+        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        // 準備訊息數據
+        const messageData = {
+          id: messageId,
+          conversationId: msgData.conversationId,
+          senderType: 'agent' as const,
+          agentSenderId: userPayload.userId.toString(),
+          content: msgData.content,
+          messageType: msgData.messageType || 'text',
+          metadata: msgData.metadata ? JSON.stringify(msgData.metadata) : null,
+          isSent: true,
+          deliveryStatus: 'sent',
+          sentAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+
+        // 插入訊息
+        await db.insert(messages).values(messageData);
+
+        // 更新對話的最後訊息時間
+        await db
+          .update(conversations)
+          .set({
+            lastMessageAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(conversations.id, msgData.conversationId));
+
+        results.push({
+          index: i,
+          id: messageId,
+          conversationId: msgData.conversationId,
+          status: 'success'
+        });
+
+      } catch (error) {
+        errors.push({
+          index: i,
+          conversationId: msgData.conversationId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
-      updateValues.content = updateData.content;
     }
-
-    if (updateData.messageType !== undefined) {
-      updateValues.messageType = updateData.messageType;
-    }
-
-    if (updateData.metadata !== undefined) {
-      updateValues.metadata = JSON.stringify(updateData.metadata);
-    }
-
-    // 執行更新
-    await db
-      .update(messages)
-      .set(updateValues)
-      .where(eq(messages.id, messageId));
-
-    // 獲取更新後的訊息
-    const updatedMessage = await db
-      .select({
-        id: messages.id,
-        conversationId: messages.conversationId,
-        content: messages.content,
-        messageType: messages.messageType,
-        metadata: messages.metadata,
-        createdAt: messages.createdAt
-      })
-      .from(messages)
-      .where(eq(messages.id, messageId))
-      .get();
 
     return c.json({
       success: true,
       data: {
-        ...updatedMessage,
-        metadata: updatedMessage?.metadata ? JSON.parse(updatedMessage.metadata) : null
+        totalRequested: messagesToCreate.length,
+        successCount: results.length,
+        failureCount: errors.length,
+        results,
+        errors: errors.length > 0 ? errors : undefined
       },
-      message: 'Message updated successfully',
+      message: `Bulk operation completed: ${results.length} succeeded, ${errors.length} failed`,
       timestamp: new Date().toISOString()
-    });
+    }, 201);
 
   } catch (error) {
-    console.error('Update message error:', error);
+    console.error('Bulk create messages error:', error);
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update message',
+      error: error instanceof Error ? error.message : 'Failed to bulk create messages',
       timestamp: new Date().toISOString()
     }, 500);
   }
 });
 
 /**
- * 刪除訊息 (撤回訊息)
- * DELETE /api/messages/:id
+ * 批量刪除訊息 (批量撤回)
+ * POST /api/messages/bulk-delete
  */
-app.delete('/:id', jwtAuth, async (c) => {
+
+
+app.post('/bulk-delete', jwtAuth, async (c) => {
   try {
-    const messageId = c.req.param('id');
     const userPayload = c.get('jwtPayload') as JWTPayload;
 
-    if (!messageId) {
+    let requestData: {
+      messageIds: string[];
+    };
+
+    try {
+      requestData = await c.req.json();
+    } catch (error) {
       return c.json({
         success: false,
-        error: 'Message ID is required',
+        error: 'Invalid JSON data',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    const { messageIds } = requestData;
+
+    // 驗證
+    if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+      return c.json({
+        success: false,
+        error: 'Message IDs array is required and must not be empty',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    // 批量操作限制 (最多100條)
+    if (messageIds.length > 100) {
+      return c.json({
+        success: false,
+        error: 'Bulk operation limited to 100 messages at a time',
         timestamp: new Date().toISOString()
       }, 400);
     }
 
     const db = drizzle(c.env.DB);
+    const results: any[] = [];
+    const errors: any[] = [];
 
-    // 檢查訊息是否存在以及用戶權限
-    const existingMessage = await db
-      .select({
-        id: messages.id,
-        conversationId: messages.conversationId,
-        agentSenderId: messages.agentSenderId,
-        senderType: messages.senderType,
-        isRecalled: messages.isRecalled,
-        recallDeadline: messages.recallDeadline,
-        content: messages.content,
-        createdAt: messages.createdAt
-      })
-      .from(messages)
-      .where(eq(messages.id, messageId))
-      .get();
+    // 批量處理
+    for (const messageId of messageIds) {
+      try {
+        // 檢查訊息是否存在以及用戶權限
+        const existingMessage = await db
+          .select({
+            id: messages.id,
+            conversationId: messages.conversationId,
+            agentSenderId: messages.agentSenderId,
+            senderType: messages.senderType,
+            isRecalled: messages.isRecalled,
+            recallDeadline: messages.recallDeadline
+          })
+          .from(messages)
+          .where(eq(messages.id, messageId))
+          .get();
 
-    if (!existingMessage) {
-      return c.json({
-        success: false,
-        error: 'Message not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
+        if (!existingMessage) {
+          errors.push({
+            messageId,
+            error: 'Message not found'
+          });
+          continue;
+        }
 
-    // 檢查權限：只有發送者或管理員可以撤回
-    if (existingMessage.senderType === 'agent' &&
-        existingMessage.agentSenderId !== userPayload.userId.toString() &&
-        userPayload.role !== 'admin') {
-      return c.json({
-        success: false,
-        error: 'Permission denied: Only the sender or admin can recall this message',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
+        // 檢查權限：只有發送者或管理員可以撤回
+        if (existingMessage.senderType === 'agent' &&
+            existingMessage.agentSenderId !== userPayload.userId.toString() &&
+            userPayload.role !== 'admin') {
+          errors.push({
+            messageId,
+            error: 'Permission denied'
+          });
+          continue;
+        }
 
-    // 檢查訊息是否已被撤回
-    if (existingMessage.isRecalled) {
-      return c.json({
-        success: false,
-        error: 'Message has already been recalled',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
+        // 檢查訊息是否已被撤回
+        if (existingMessage.isRecalled) {
+          errors.push({
+            messageId,
+            error: 'Message already recalled'
+          });
+          continue;
+        }
 
-    // 檢查撤回時限（如果設定了）
-    if (existingMessage.recallDeadline) {
-      const deadline = new Date(existingMessage.recallDeadline);
-      const now = new Date();
-      if (now > deadline) {
-        return c.json({
-          success: false,
-          error: 'Message recall deadline has passed',
-          timestamp: new Date().toISOString()
-        }, 400);
+        // 檢查撤回時限（如果設定了）
+        if (existingMessage.recallDeadline) {
+          const deadline = new Date(existingMessage.recallDeadline);
+          const now = new Date();
+          if (now > deadline) {
+            errors.push({
+              messageId,
+              error: 'Recall deadline has passed'
+            });
+            continue;
+          }
+        }
+
+        const recalledAt = new Date().toISOString();
+
+        // 撤回訊息 (軟刪除)
+        await db
+          .update(messages)
+          .set({
+            isRecalled: true,
+            recalledAt: recalledAt,
+            content: '[This message has been recalled]'
+          })
+          .where(eq(messages.id, messageId));
+
+        results.push({
+          messageId,
+          conversationId: existingMessage.conversationId,
+          recalledAt,
+          status: 'success'
+        });
+
+      } catch (error) {
+        errors.push({
+          messageId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
-
-    const recalledAt = new Date().toISOString();
-
-    // 撤回訊息 (軟刪除，保留記錄)
-    await db
-      .update(messages)
-      .set({
-        isRecalled: true,
-        recalledAt: recalledAt,
-        content: '[This message has been recalled]' // 替換內容
-      })
-      .where(eq(messages.id, messageId));
-
-    // 可以在這裡記錄撤回日誌到 messageRecallLogs 表
-    // const recallLogId = `recall_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    // await db.insert(messageRecallLogs).values({
-    //   id: recallLogId,
-    //   messageId,
-    //   recalledBy: userPayload.userId.toString(),
-    //   recalledAt,
-    //   reason: 'User requested recall'
-    // });
 
     return c.json({
       success: true,
       data: {
-        id: messageId,
-        conversationId: existingMessage.conversationId,
-        isRecalled: true,
-        recalledAt,
-        recalledBy: {
-          id: userPayload.userId.toString(),
-          name: userPayload.displayName || 'Unknown User'
-        }
+        totalRequested: messageIds.length,
+        successCount: results.length,
+        failureCount: errors.length,
+        results,
+        errors: errors.length > 0 ? errors : undefined
       },
-      message: 'Message recalled successfully',
+      message: `Bulk delete completed: ${results.length} succeeded, ${errors.length} failed`,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Delete message error:', error);
+    console.error('Bulk delete messages error:', error);
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to recall message',
+      error: error instanceof Error ? error.message : 'Failed to bulk delete messages',
       timestamp: new Date().toISOString()
     }, 500);
   }
 });
 
+// ======================== 附件管理端點 (Attachment Management) ========================
+
 /**
- * 獲取對話訊息列表
- * GET /api/messages/conversation/:conversationId
+ * 獲取訊息的附件列表
+ * GET /api/messages/:id/attachments
  */
+
+
 app.get('/conversation/:conversationId', jwtAuth, async (c) => {
   try {
     const conversationId = c.req.param('conversationId');
@@ -1078,313 +928,8 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
  * 批量創建訊息
  * POST /api/messages/bulk-create
  */
-app.post('/bulk-create', jwtAuth, async (c) => {
-  try {
-    const userPayload = c.get('jwtPayload') as JWTPayload;
 
-    let requestData: {
-      messages: {
-        conversationId: string;
-        content: string;
-        messageType?: string;
-        metadata?: any;
-      }[];
-    };
 
-    try {
-      requestData = await c.req.json();
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: 'Invalid JSON data',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    const { messages: messagesToCreate } = requestData;
-
-    // 驗證
-    if (!messagesToCreate || !Array.isArray(messagesToCreate) || messagesToCreate.length === 0) {
-      return c.json({
-        success: false,
-        error: 'Messages array is required and must not be empty',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    // 批量操作限制 (最多100條)
-    if (messagesToCreate.length > 100) {
-      return c.json({
-        success: false,
-        error: 'Bulk operation limited to 100 messages at a time',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    const db = drizzle(c.env.DB);
-    const results: any[] = [];
-    const errors: any[] = [];
-
-    // 批量處理
-    for (let i = 0; i < messagesToCreate.length; i++) {
-      const msgData = messagesToCreate[i];
-
-      try {
-        // 基本驗證
-        if (!msgData.conversationId || !msgData.content || msgData.content.trim().length === 0) {
-          errors.push({
-            index: i,
-            conversationId: msgData.conversationId,
-            error: 'Conversation ID and content are required'
-          });
-          continue;
-        }
-
-        // 檢查對話是否存在
-        const conversation = await db
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(eq(conversations.id, msgData.conversationId))
-          .get();
-
-        if (!conversation) {
-          errors.push({
-            index: i,
-            conversationId: msgData.conversationId,
-            error: 'Conversation not found'
-          });
-          continue;
-        }
-
-        // 生成訊息ID
-        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        // 準備訊息數據
-        const messageData = {
-          id: messageId,
-          conversationId: msgData.conversationId,
-          senderType: 'agent' as const,
-          agentSenderId: userPayload.userId.toString(),
-          content: msgData.content,
-          messageType: msgData.messageType || 'text',
-          metadata: msgData.metadata ? JSON.stringify(msgData.metadata) : null,
-          isSent: true,
-          deliveryStatus: 'sent',
-          sentAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        };
-
-        // 插入訊息
-        await db.insert(messages).values(messageData);
-
-        // 更新對話的最後訊息時間
-        await db
-          .update(conversations)
-          .set({
-            lastMessageAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          })
-          .where(eq(conversations.id, msgData.conversationId));
-
-        results.push({
-          index: i,
-          id: messageId,
-          conversationId: msgData.conversationId,
-          status: 'success'
-        });
-
-      } catch (error) {
-        errors.push({
-          index: i,
-          conversationId: msgData.conversationId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    }
-
-    return c.json({
-      success: true,
-      data: {
-        totalRequested: messagesToCreate.length,
-        successCount: results.length,
-        failureCount: errors.length,
-        results,
-        errors: errors.length > 0 ? errors : undefined
-      },
-      message: `Bulk operation completed: ${results.length} succeeded, ${errors.length} failed`,
-      timestamp: new Date().toISOString()
-    }, 201);
-
-  } catch (error) {
-    console.error('Bulk create messages error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to bulk create messages',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-/**
- * 批量刪除訊息 (批量撤回)
- * POST /api/messages/bulk-delete
- */
-app.post('/bulk-delete', jwtAuth, async (c) => {
-  try {
-    const userPayload = c.get('jwtPayload') as JWTPayload;
-
-    let requestData: {
-      messageIds: string[];
-    };
-
-    try {
-      requestData = await c.req.json();
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: 'Invalid JSON data',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    const { messageIds } = requestData;
-
-    // 驗證
-    if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
-      return c.json({
-        success: false,
-        error: 'Message IDs array is required and must not be empty',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    // 批量操作限制 (最多100條)
-    if (messageIds.length > 100) {
-      return c.json({
-        success: false,
-        error: 'Bulk operation limited to 100 messages at a time',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    const db = drizzle(c.env.DB);
-    const results: any[] = [];
-    const errors: any[] = [];
-
-    // 批量處理
-    for (const messageId of messageIds) {
-      try {
-        // 檢查訊息是否存在以及用戶權限
-        const existingMessage = await db
-          .select({
-            id: messages.id,
-            conversationId: messages.conversationId,
-            agentSenderId: messages.agentSenderId,
-            senderType: messages.senderType,
-            isRecalled: messages.isRecalled,
-            recallDeadline: messages.recallDeadline
-          })
-          .from(messages)
-          .where(eq(messages.id, messageId))
-          .get();
-
-        if (!existingMessage) {
-          errors.push({
-            messageId,
-            error: 'Message not found'
-          });
-          continue;
-        }
-
-        // 檢查權限：只有發送者或管理員可以撤回
-        if (existingMessage.senderType === 'agent' &&
-            existingMessage.agentSenderId !== userPayload.userId.toString() &&
-            userPayload.role !== 'admin') {
-          errors.push({
-            messageId,
-            error: 'Permission denied'
-          });
-          continue;
-        }
-
-        // 檢查訊息是否已被撤回
-        if (existingMessage.isRecalled) {
-          errors.push({
-            messageId,
-            error: 'Message already recalled'
-          });
-          continue;
-        }
-
-        // 檢查撤回時限（如果設定了）
-        if (existingMessage.recallDeadline) {
-          const deadline = new Date(existingMessage.recallDeadline);
-          const now = new Date();
-          if (now > deadline) {
-            errors.push({
-              messageId,
-              error: 'Recall deadline has passed'
-            });
-            continue;
-          }
-        }
-
-        const recalledAt = new Date().toISOString();
-
-        // 撤回訊息 (軟刪除)
-        await db
-          .update(messages)
-          .set({
-            isRecalled: true,
-            recalledAt: recalledAt,
-            content: '[This message has been recalled]'
-          })
-          .where(eq(messages.id, messageId));
-
-        results.push({
-          messageId,
-          conversationId: existingMessage.conversationId,
-          recalledAt,
-          status: 'success'
-        });
-
-      } catch (error) {
-        errors.push({
-          messageId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    }
-
-    return c.json({
-      success: true,
-      data: {
-        totalRequested: messageIds.length,
-        successCount: results.length,
-        failureCount: errors.length,
-        results,
-        errors: errors.length > 0 ? errors : undefined
-      },
-      message: `Bulk delete completed: ${results.length} succeeded, ${errors.length} failed`,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Bulk delete messages error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to bulk delete messages',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-// ======================== 附件管理端點 (Attachment Management) ========================
-
-/**
- * 獲取訊息的附件列表
- * GET /api/messages/:id/attachments
- */
 app.get('/:id/attachments', jwtAuth, async (c) => {
   try {
     const messageId = c.req.param('id');
@@ -1456,6 +1001,8 @@ app.get('/:id/attachments', jwtAuth, async (c) => {
  * 上傳訊息附件
  * POST /api/messages/:id/attachments
  */
+
+
 app.post('/:id/attachments', jwtAuth, async (c) => {
   try {
     const messageId = c.req.param('id');
@@ -1616,6 +1163,8 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
  * 轉發訊息到其他對話
  * POST /api/messages/:id/forward
  */
+
+
 app.post('/:id/forward', jwtAuth, async (c) => {
   try {
     const messageId = c.req.param('id');
@@ -1803,6 +1352,8 @@ app.post('/:id/forward', jwtAuth, async (c) => {
  * 為訊息添加/更新標籤
  * PUT /api/messages/:id/tags
  */
+
+
 app.put('/:id/tags', jwtAuth, async (c) => {
   try {
     const messageId = c.req.param('id');
@@ -1915,5 +1466,508 @@ app.put('/:id/tags', jwtAuth, async (c) => {
     }, 500);
   }
 });
+
+
+
+app.get('/:id', jwtAuth, async (c) => {
+  try {
+    const messageId = c.req.param('id');
+
+    if (!messageId) {
+      return c.json({
+        success: false,
+        error: 'Message ID is required',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    const db = drizzle(c.env.DB);
+
+    // 獲取訊息詳細資訊，包含相關的對話和發送者資訊
+    const messageQuery = await db
+      .select({
+        // 訊息資訊
+        id: messages.id,
+        conversationId: messages.conversationId,
+        senderType: messages.senderType,
+        customerSenderId: messages.customerSenderId,
+        agentSenderId: messages.agentSenderId,
+        content: messages.content,
+        messageType: messages.messageType,
+        platformMessageId: messages.platformMessageId,
+        isRecalled: messages.isRecalled,
+        recallDeadline: messages.recallDeadline,
+        recalledAt: messages.recalledAt,
+        isSent: messages.isSent,
+        sentAt: messages.sentAt,
+        deliveryStatus: messages.deliveryStatus,
+        replyToMessageId: messages.replyToMessageId,
+        threadId: messages.threadId,
+        sessionId: messages.sessionId,
+        sessionSequence: messages.sessionSequence,
+        metadata: messages.metadata,
+        createdAt: messages.createdAt,
+        // 對話資訊
+        conversationStatus: conversations.status,
+        conversationPriority: conversations.priority,
+        // 代理人資訊
+        agentName: agents.displayName,
+        agentRole: agents.role,
+        // 客戶資訊
+        customerName: customers.displayName,
+        customerPlatform: customers.platform
+      })
+      .from(messages)
+      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+      .leftJoin(agents, eq(messages.agentSenderId, agents.id))
+      .leftJoin(customers, eq(messages.customerSenderId, customers.id))
+      .where(eq(messages.id, messageId))
+      .get();
+
+    if (!messageQuery) {
+      return c.json({
+        success: false,
+        error: 'Message not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    // 構造回應數據
+    const messageDetail = {
+      id: messageQuery.id,
+      conversationId: messageQuery.conversationId,
+      senderType: messageQuery.senderType,
+      senderInfo: messageQuery.senderType === 'agent' ? {
+        id: messageQuery.agentSenderId,
+        name: messageQuery.agentName,
+        role: messageQuery.agentRole
+      } : messageQuery.senderType === 'customer' ? {
+        id: messageQuery.customerSenderId,
+        name: messageQuery.customerName,
+        platform: messageQuery.customerPlatform
+      } : null,
+      content: messageQuery.content,
+      messageType: messageQuery.messageType,
+      platformMessageId: messageQuery.platformMessageId,
+      isRecalled: Boolean(messageQuery.isRecalled),
+      recallDeadline: messageQuery.recallDeadline,
+      recalledAt: messageQuery.recalledAt,
+      isSent: Boolean(messageQuery.isSent),
+      sentAt: messageQuery.sentAt,
+      deliveryStatus: messageQuery.deliveryStatus,
+      replyToMessageId: messageQuery.replyToMessageId,
+      threadId: messageQuery.threadId,
+      sessionId: messageQuery.sessionId,
+      sessionSequence: messageQuery.sessionSequence,
+      metadata: messageQuery.metadata ? JSON.parse(messageQuery.metadata) : null,
+      createdAt: messageQuery.createdAt,
+      conversationInfo: {
+        status: messageQuery.conversationStatus,
+        priority: messageQuery.conversationPriority
+      }
+    };
+
+    return c.json({
+      success: true,
+      data: messageDetail,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Get message error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get message',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * 更新訊息
+ * PUT /api/messages/:id
+ */
+
+
+app.put('/:id', jwtAuth, async (c) => {
+  try {
+    const messageId = c.req.param('id');
+    const userPayload = c.get('jwtPayload') as JWTPayload;
+
+    if (!messageId) {
+      return c.json({
+        success: false,
+        error: 'Message ID is required',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    let updateData: {
+      content?: string;
+      messageType?: string;
+      metadata?: any;
+    };
+
+    try {
+      updateData = await c.req.json();
+    } catch (error) {
+      return c.json({
+        success: false,
+        error: 'Invalid JSON data',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    const db = drizzle(c.env.DB);
+
+    // 檢查訊息是否存在以及用戶權限
+    const existingMessage = await db
+      .select({
+        id: messages.id,
+        agentSenderId: messages.agentSenderId,
+        senderType: messages.senderType,
+        isRecalled: messages.isRecalled,
+        createdAt: messages.createdAt
+      })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .get();
+
+    if (!existingMessage) {
+      return c.json({
+        success: false,
+        error: 'Message not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    // 檢查權限：只有發送者或管理員可以編輯
+    if (existingMessage.senderType === 'agent' &&
+        existingMessage.agentSenderId !== userPayload.userId.toString() &&
+        userPayload.role !== 'admin') {
+      return c.json({
+        success: false,
+        error: 'Permission denied: Only the sender or admin can update this message',
+        timestamp: new Date().toISOString()
+      }, 403);
+    }
+
+    // 檢查訊息是否已被撤回
+    if (existingMessage.isRecalled) {
+      return c.json({
+        success: false,
+        error: 'Cannot update a recalled message',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    // 準備更新數據
+    const updateValues: any = {
+      updatedAt: new Date().toISOString()
+    };
+
+    if (updateData.content !== undefined) {
+      if (!updateData.content.trim()) {
+        return c.json({
+          success: false,
+          error: 'Content cannot be empty',
+          timestamp: new Date().toISOString()
+        }, 400);
+      }
+      updateValues.content = updateData.content;
+    }
+
+    if (updateData.messageType !== undefined) {
+      updateValues.messageType = updateData.messageType;
+    }
+
+    if (updateData.metadata !== undefined) {
+      updateValues.metadata = JSON.stringify(updateData.metadata);
+    }
+
+    // 執行更新
+    await db
+      .update(messages)
+      .set(updateValues)
+      .where(eq(messages.id, messageId));
+
+    // 獲取更新後的訊息
+    const updatedMessage = await db
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        content: messages.content,
+        messageType: messages.messageType,
+        metadata: messages.metadata,
+        createdAt: messages.createdAt
+      })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .get();
+
+    return c.json({
+      success: true,
+      data: {
+        ...updatedMessage,
+        metadata: updatedMessage?.metadata ? JSON.parse(updatedMessage.metadata) : null
+      },
+      message: 'Message updated successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Update message error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update message',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * 刪除訊息 (撤回訊息)
+ * DELETE /api/messages/:id
+ */
+
+
+app.delete('/:id', jwtAuth, async (c) => {
+  try {
+    const messageId = c.req.param('id');
+    const userPayload = c.get('jwtPayload') as JWTPayload;
+
+    if (!messageId) {
+      return c.json({
+        success: false,
+        error: 'Message ID is required',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    const db = drizzle(c.env.DB);
+
+    // 檢查訊息是否存在以及用戶權限
+    const existingMessage = await db
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        agentSenderId: messages.agentSenderId,
+        senderType: messages.senderType,
+        isRecalled: messages.isRecalled,
+        recallDeadline: messages.recallDeadline,
+        content: messages.content,
+        createdAt: messages.createdAt
+      })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .get();
+
+    if (!existingMessage) {
+      return c.json({
+        success: false,
+        error: 'Message not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    // 檢查權限：只有發送者或管理員可以撤回
+    if (existingMessage.senderType === 'agent' &&
+        existingMessage.agentSenderId !== userPayload.userId.toString() &&
+        userPayload.role !== 'admin') {
+      return c.json({
+        success: false,
+        error: 'Permission denied: Only the sender or admin can recall this message',
+        timestamp: new Date().toISOString()
+      }, 403);
+    }
+
+    // 檢查訊息是否已被撤回
+    if (existingMessage.isRecalled) {
+      return c.json({
+        success: false,
+        error: 'Message has already been recalled',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    // 檢查撤回時限（如果設定了）
+    if (existingMessage.recallDeadline) {
+      const deadline = new Date(existingMessage.recallDeadline);
+      const now = new Date();
+      if (now > deadline) {
+        return c.json({
+          success: false,
+          error: 'Message recall deadline has passed',
+          timestamp: new Date().toISOString()
+        }, 400);
+      }
+    }
+
+    const recalledAt = new Date().toISOString();
+
+    // 撤回訊息 (軟刪除，保留記錄)
+    await db
+      .update(messages)
+      .set({
+        isRecalled: true,
+        recalledAt: recalledAt,
+        content: '[This message has been recalled]' // 替換內容
+      })
+      .where(eq(messages.id, messageId));
+
+    // 可以在這裡記錄撤回日誌到 messageRecallLogs 表
+    // const recallLogId = `recall_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // await db.insert(messageRecallLogs).values({
+    //   id: recallLogId,
+    //   messageId,
+    //   recalledBy: userPayload.userId.toString(),
+    //   recalledAt,
+    //   reason: 'User requested recall'
+    // });
+
+    return c.json({
+      success: true,
+      data: {
+        id: messageId,
+        conversationId: existingMessage.conversationId,
+        isRecalled: true,
+        recalledAt,
+        recalledBy: {
+          id: userPayload.userId.toString(),
+          name: userPayload.displayName || 'Unknown User'
+        }
+      },
+      message: 'Message recalled successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Delete message error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to recall message',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * 獲取對話訊息列表
+ * GET /api/messages/conversation/:conversationId
+ */
+
+app.post('/', jwtAuth, async (c) => {
+  try {
+    const userPayload = c.get('jwtPayload') as JWTPayload;
+
+    let requestData: {
+      conversationId: string;
+      content: string;
+      messageType?: string;
+      replyToMessageId?: string;
+      metadata?: any;
+    };
+
+    try {
+      requestData = await c.req.json();
+    } catch (error) {
+      return c.json({
+        success: false,
+        error: 'Invalid JSON data',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    const { conversationId, content, messageType, replyToMessageId, metadata } = requestData;
+
+    // 基本驗證
+    if (!conversationId || !content || content.trim().length === 0) {
+      return c.json({
+        success: false,
+        error: 'Conversation ID and content are required',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    // 創建資料庫連線
+    const db = drizzle(c.env.DB);
+
+    // 檢查對話是否存在
+    const conversation = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({
+        success: false,
+        error: 'Conversation not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    // 生成訊息ID
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // 準備訊息數據
+    const messageData = {
+      id: messageId,
+      conversationId,
+      senderType: 'agent' as const,
+      agentSenderId: userPayload.userId.toString(),
+      content,
+      messageType: messageType || 'text',
+      replyToMessageId: replyToMessageId || null,
+      metadata: metadata ? JSON.stringify(metadata) : null,
+      isSent: true,
+      deliveryStatus: 'sent',
+      sentAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+
+    // 插入訊息
+    await db.insert(messages).values(messageData);
+
+    // 更新對話的最後訊息時間
+    await db
+      .update(conversations)
+      .set({
+        lastMessageAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(conversations.id, conversationId));
+
+    return c.json({
+      success: true,
+      data: {
+        id: messageId,
+        conversationId,
+        content,
+        messageType: messageType || 'text',
+        senderType: 'agent',
+        agentSenderId: userPayload.userId.toString(),
+        sentAt: messageData.sentAt,
+        createdAt: messageData.createdAt
+      },
+      message: 'Message created successfully',
+      timestamp: new Date().toISOString()
+    }, 201);
+
+  } catch (error) {
+    console.error('Create message error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create message',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * 搜尋訊息
+ * GET /api/messages/search
+ */
+
 
 export default app;
