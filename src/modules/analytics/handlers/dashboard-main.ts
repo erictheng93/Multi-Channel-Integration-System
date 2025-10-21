@@ -102,6 +102,163 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
   // 驗證中間件
   app.use('/*', analyticsAuthMiddleware);
 
+  // ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+  // Routes MUST be registered in this order to avoid conflicts:
+  // 1. STATIC: /health
+  // 2. SPECIFIC (concrete paths, no params): /widget-types, /templates, /widget-templates, /layout/optimize
+  // 3. SPECIFIC PARAMETERIZED: /config/:dashboardId?, /data/:dashboardId?
+  // 4. MULTI-SEGMENT (param + specific segments): /widget/:widgetId/data, /widget/:widgetId/clone, /templates/:templateId/create, /widget-templates/:templateId/create
+  // 5. SPECIFIC (single segment): /widget - MUST come after MULTI-SEGMENT to avoid interception
+  // 6. SINGLE PARAMETERIZED: /widget/:widgetId
+
+  // ==================== Priority 1: STATIC routes ====================
+
+  /**
+   * 健康檢查端點
+   * GET /health
+   */
+  app.get('/health', async (c) => {
+    try {
+      // 簡單的健康檢查
+      const status = {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        services: {
+          dashboardService: 'ok',
+          widgetManager: 'ok'
+        }
+      };
+
+      return c.json(status);
+    } catch (error) {
+      return c.json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 500);
+    }
+  });
+
+  // ==================== Priority 2: SPECIFIC routes (concrete paths without params, excluding /widget) ====================
+
+  /**
+   * 獲取可用的小工具類型
+   * GET /widget-types
+   */
+  app.get('/widget-types', async (c) => {
+    try {
+      const widgetTypes = widgetManager.getAvailableWidgetTypes();
+
+      return c.json({
+        success: true,
+        data: widgetTypes
+      });
+    } catch (error) {
+      console.error('Failed to get widget types:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to get widget types'
+      }, 500);
+    }
+  });
+
+  /**
+   * 獲取儀表板模板
+   * GET /templates
+   */
+  app.get('/templates', async (c) => {
+    try {
+      const category = c.req.query('category');
+      const templates = await dashboardService.getDashboardTemplates(category);
+
+      return c.json({
+        success: true,
+        data: templates
+      });
+    } catch (error) {
+      console.error('Failed to get dashboard templates:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to get dashboard templates'
+      }, 500);
+    }
+  });
+
+  /**
+   * 獲取小工具模板
+   * GET /widget-templates
+   */
+  app.get('/widget-templates', async (c) => {
+    try {
+      const category = c.req.query('category');
+      const widgetType = c.req.query('type');
+
+      const templates = await widgetManager.getWidgetTemplates(category, widgetType);
+
+      return c.json({
+        success: true,
+        data: templates
+      });
+    } catch (error) {
+      console.error('Failed to get widget templates:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to get widget templates'
+      }, 500);
+    }
+  });
+
+  /**
+   * 優化儀表板佈局
+   * POST /layout/optimize
+   */
+  app.post('/layout/optimize',
+    zValidator('json', z.object({
+      dashboardId: z.string().optional(),
+      containerWidth: z.number().min(1).max(24).optional()
+    })),
+    async (c) => {
+      try {
+        const user = c.get('user') as AnalyticsUser;
+        const { dashboardId, containerWidth } = c.req.valid('json');
+
+        // 檢查權限
+        if (!user || (user.role !== 'admin' && user.role !== 'team')) {
+          return c.json({
+            success: false,
+            error: 'Insufficient permissions to optimize layout'
+          }, 403);
+        }
+
+        const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
+        const optimizedWidgets = widgetManager.optimizeLayout(config.widgets, containerWidth);
+
+        // 更新配置
+        const updatedConfig: DashboardConfig = {
+          ...config,
+          widgets: optimizedWidgets,
+          updatedAt: new Date().toISOString()
+        };
+
+        await dashboardService.saveDashboardConfig(user.id.toString(), updatedConfig, dashboardId);
+
+        return c.json({
+          success: true,
+          data: updatedConfig,
+          message: 'Layout optimized successfully'
+        });
+      } catch (error) {
+        console.error('Failed to optimize layout:', error);
+        return c.json({
+          success: false,
+          error: error instanceof AnalyticsError ? error.message : 'Failed to optimize layout'
+        }, 500);
+      }
+    }
+  );
+
+  // ==================== Priority 3: SPECIFIC PARAMETERIZED routes ====================
+
   /**
    * 獲取儀表板配置
    * GET /config/:dashboardId?
@@ -246,6 +403,8 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
     }
   });
 
+  // ==================== Priority 4: MULTI-SEGMENT routes (/:param/xxx) ====================
+
   /**
    * 獲取單個小工具數據
    * GET /widget/:widgetId/data
@@ -297,114 +456,55 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
   });
 
   /**
-   * 創建新小工具
-   * POST /widget
+   * 複製小工具
+   * POST /widget/:widgetId/clone
    */
-  app.post('/widget', zValidator('json', widgetConfigSchema), async (c) => {
-    try {
-      const user = c.get('user') as AnalyticsUser;
-      const widgetConfig = c.req.valid('json');
+  app.post('/widget/:widgetId/clone',
+    zValidator('json', z.object({
+      newId: z.string().optional(),
+      dashboardId: z.string().optional()
+    }).optional()),
+    async (c) => {
+      try {
+        const user = c.get('user') as AnalyticsUser;
+        const widgetId = c.req.param('widgetId');
+        const { newId, dashboardId } = c.req.valid('json') || {};
 
-      // 檢查用戶權限（簡化版本）
-      if (!user || (user.role !== 'admin' && user.role !== 'team')) {
+        // 檢查權限
+        if (!user || (user.role !== 'admin' && user.role !== 'team')) {
+          return c.json({
+            success: false,
+            error: 'Insufficient permissions to clone widgets'
+          }, 403);
+        }
+
+        // 獲取原小工具
+        const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
+        const originalWidget = config.widgets.find(w => w.id === widgetId);
+
+        if (!originalWidget) {
+          return c.json({
+            success: false,
+            error: 'Widget not found'
+          }, 404);
+        }
+
+        const clonedWidget = await widgetManager.cloneWidget(originalWidget, newId);
+
+        return c.json({
+          success: true,
+          data: clonedWidget,
+          message: 'Widget cloned successfully'
+        });
+      } catch (error) {
+        console.error('Failed to clone widget:', error);
         return c.json({
           success: false,
-          error: 'Insufficient permissions to create widgets'
-        }, 403);
+          error: error instanceof AnalyticsError ? error.message : 'Failed to clone widget'
+        }, 500);
       }
-
-      const widget = await widgetManager.createWidget(widgetConfig);
-
-      return c.json({
-        success: true,
-        data: widget,
-        message: 'Widget created successfully'
-      });
-    } catch (error) {
-      console.error('Failed to create widget:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to create widget'
-      }, 500);
     }
-  });
-
-  /**
-   * 更新小工具配置
-   * PUT /widget/:widgetId
-   */
-  app.put('/widget/:widgetId', zValidator('json', widgetConfigSchema.partial()), async (c) => {
-    try {
-      const user = c.get('user') as AnalyticsUser;
-      const widgetId = c.req.param('widgetId');
-      const updates = c.req.valid('json');
-
-      // 檢查用戶權限
-      if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions to update widgets'
-        }, 403);
-      }
-
-      const widget = await widgetManager.updateWidget(widgetId, updates);
-
-      return c.json({
-        success: true,
-        data: widget,
-        message: 'Widget updated successfully'
-      });
-    } catch (error) {
-      console.error('Failed to update widget:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to update widget'
-      }, 500);
-    }
-  });
-
-  /**
-   * 獲取可用的小工具類型
-   * GET /widget-types
-   */
-  app.get('/widget-types', async (c) => {
-    try {
-      const widgetTypes = widgetManager.getAvailableWidgetTypes();
-
-      return c.json({
-        success: true,
-        data: widgetTypes
-      });
-    } catch (error) {
-      console.error('Failed to get widget types:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get widget types'
-      }, 500);
-    }
-  });
-
-  /**
-   * 獲取儀表板模板
-   * GET /templates
-   */
-  app.get('/templates', async (c) => {
-    try {
-      const category = c.req.query('category');
-      const templates = await dashboardService.getDashboardTemplates(category);
-
-      return c.json({
-        success: true,
-        data: templates
-      });
-    } catch (error) {
-      console.error('Failed to get dashboard templates:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get dashboard templates'
-      }, 500);
-    }
-  });
+  );
 
   /**
    * 從模板創建儀表板
@@ -443,30 +543,6 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       }
     }
   );
-
-  /**
-   * 獲取小工具模板
-   * GET /widget-templates
-   */
-  app.get('/widget-templates', async (c) => {
-    try {
-      const category = c.req.query('category');
-      const widgetType = c.req.query('type');
-
-      const templates = await widgetManager.getWidgetTemplates(category, widgetType);
-
-      return c.json({
-        success: true,
-        data: templates
-      });
-    } catch (error) {
-      console.error('Failed to get widget templates:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get widget templates'
-      }, 500);
-    }
-  });
 
   /**
    * 從模板創建小工具
@@ -521,128 +597,73 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
     }
   );
 
-  /**
-   * 複製小工具
-   * POST /widget/:widgetId/clone
-   */
-  app.post('/widget/:widgetId/clone',
-    zValidator('json', z.object({
-      newId: z.string().optional(),
-      dashboardId: z.string().optional()
-    }).optional()),
-    async (c) => {
-      try {
-        const user = c.get('user') as AnalyticsUser;
-        const widgetId = c.req.param('widgetId');
-        const { newId, dashboardId } = c.req.valid('json') || {};
-
-        // 檢查權限
-        if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-          return c.json({
-            success: false,
-            error: 'Insufficient permissions to clone widgets'
-          }, 403);
-        }
-
-        // 獲取原小工具
-        const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
-        const originalWidget = config.widgets.find(w => w.id === widgetId);
-
-        if (!originalWidget) {
-          return c.json({
-            success: false,
-            error: 'Widget not found'
-          }, 404);
-        }
-
-        const clonedWidget = await widgetManager.cloneWidget(originalWidget, newId);
-
-        return c.json({
-          success: true,
-          data: clonedWidget,
-          message: 'Widget cloned successfully'
-        });
-      } catch (error) {
-        console.error('Failed to clone widget:', error);
-        return c.json({
-          success: false,
-          error: error instanceof AnalyticsError ? error.message : 'Failed to clone widget'
-        }, 500);
-      }
-    }
-  );
+  // ==================== Priority 5: SPECIFIC (single segment, no param) - MUST come after MULTI-SEGMENT ====================
 
   /**
-   * 優化儀表板佈局
-   * POST /layout/optimize
+   * 創建新小工具
+   * POST /widget
    */
-  app.post('/layout/optimize',
-    zValidator('json', z.object({
-      dashboardId: z.string().optional(),
-      containerWidth: z.number().min(1).max(24).optional()
-    })),
-    async (c) => {
-      try {
-        const user = c.get('user') as AnalyticsUser;
-        const { dashboardId, containerWidth } = c.req.valid('json');
-
-        // 檢查權限
-        if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-          return c.json({
-            success: false,
-            error: 'Insufficient permissions to optimize layout'
-          }, 403);
-        }
-
-        const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
-        const optimizedWidgets = widgetManager.optimizeLayout(config.widgets, containerWidth);
-
-        // 更新配置
-        const updatedConfig: DashboardConfig = {
-          ...config,
-          widgets: optimizedWidgets,
-          updatedAt: new Date().toISOString()
-        };
-
-        await dashboardService.saveDashboardConfig(user.id.toString(), updatedConfig, dashboardId);
-
-        return c.json({
-          success: true,
-          data: updatedConfig,
-          message: 'Layout optimized successfully'
-        });
-      } catch (error) {
-        console.error('Failed to optimize layout:', error);
-        return c.json({
-          success: false,
-          error: error instanceof AnalyticsError ? error.message : 'Failed to optimize layout'
-        }, 500);
-      }
-    }
-  );
-
-  /**
-   * 健康檢查端點
-   * GET /health
-   */
-  app.get('/health', async (c) => {
+  app.post('/widget', zValidator('json', widgetConfigSchema), async (c) => {
     try {
-      // 簡單的健康檢查
-      const status = {
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        services: {
-          dashboardService: 'ok',
-          widgetManager: 'ok'
-        }
-      };
+      const user = c.get('user') as AnalyticsUser;
+      const widgetConfig = c.req.valid('json');
 
-      return c.json(status);
-    } catch (error) {
+      // 檢查用戶權限（簡化版本）
+      if (!user || (user.role !== 'admin' && user.role !== 'team')) {
+        return c.json({
+          success: false,
+          error: 'Insufficient permissions to create widgets'
+        }, 403);
+      }
+
+      const widget = await widgetManager.createWidget(widgetConfig);
+
       return c.json({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error'
+        success: true,
+        data: widget,
+        message: 'Widget created successfully'
+      });
+    } catch (error) {
+      console.error('Failed to create widget:', error);
+      return c.json({
+        success: false,
+        error: error instanceof AnalyticsError ? error.message : 'Failed to create widget'
+      }, 500);
+    }
+  });
+
+  // ==================== Priority 6: SINGLE PARAMETERIZED routes (/:id) ====================
+
+  /**
+   * 更新小工具配置
+   * PUT /widget/:widgetId
+   */
+  app.put('/widget/:widgetId', zValidator('json', widgetConfigSchema.partial()), async (c) => {
+    try {
+      const user = c.get('user') as AnalyticsUser;
+      const widgetId = c.req.param('widgetId');
+      const updates = c.req.valid('json');
+
+      // 檢查用戶權限
+      if (!user || (user.role !== 'admin' && user.role !== 'team')) {
+        return c.json({
+          success: false,
+          error: 'Insufficient permissions to update widgets'
+        }, 403);
+      }
+
+      const widget = await widgetManager.updateWidget(widgetId, updates);
+
+      return c.json({
+        success: true,
+        data: widget,
+        message: 'Widget updated successfully'
+      });
+    } catch (error) {
+      console.error('Failed to update widget:', error);
+      return c.json({
+        success: false,
+        error: error instanceof AnalyticsError ? error.message : 'Failed to update widget'
       }, 500);
     }
   });
