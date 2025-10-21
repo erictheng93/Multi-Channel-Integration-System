@@ -23,90 +23,13 @@ const conversations = new Hono<HonoContext>();
 conversations.use('*', databaseMiddleware);
 conversations.use('*', authMiddleware);
 
-// 獲取對話列表
-conversations.get('/', async (c) => {
-  try {
-    const agent = c.get('agent');
-    const db = c.get('db');
-    const kv = c.get('kv');
-    const dbService = new DatabaseService(db, kv);
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// Routes MUST be registered in this order to avoid conflicts:
+// 1. MULTI-SEGMENT: /:id/messages, /:id/status, /:id/mark-read, /:id/assign, /:id/transfer
+// 2. SINGLE PARAMETERIZED: /:id
+// 3. WILDCARD: / - MUST be registered LAST to avoid intercepting /:id
 
-    const { status, limit = '50', page = '1' } = c.req.query();
-    const limitNum = Math.min(parseInt(limit), 100);
-    const pageNum = Math.max(parseInt(page), 1);
-
-    // 根據角色獲取對話 - 使用新的三層權限體系
-    const conversationList = await dbService.getConversationsByRole(agent!, status, limitNum);
-
-    return c.json({
-      success: true,
-      data: {
-        conversations: conversationList,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: conversationList.length,
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Operation failed:', error);
-    return handleApiError(error, c);
-  }
-});
-
-// 獲取特定對話
-conversations.get('/:id', async (c) => {
-  try {
-    const conversationId = c.req.param('id');
-    const agent = c.get('agent');
-    const db = c.get('db');
-    const kv = c.get('kv');
-    const dbService = new DatabaseService(db, kv);
-
-    if (!conversationId) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation ID is required' 
-      }, 400);
-    }
-
-    // 檢查權限 - 確保代理可以存取此對話
-    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
-    if (!canAccess) {
-      return c.json({ 
-        success: false, 
-        error: 'Access denied' 
-      }, 403);
-    }
-
-    // 獲取對話資訊
-    const conversation = await dbService.getConversationById(conversationId);
-    
-    if (!conversation) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation not found' 
-      }, 404);
-    }
-
-    // 獲取對話中的訊息
-    const messages = await dbService.getMessagesByConversationId(conversationId, 100);
-
-    return c.json({
-      success: true,
-      data: {
-        conversation,
-        messages: messages.reverse(), // 按時間順序排列
-      }
-    });
-
-  } catch (error) {
-    console.error('Operation failed:', error);
-    return handleApiError(error, c);
-  }
-});
+// ==================== Priority 1: MULTI-SEGMENT routes (/:id/xxx) ====================
 
 // 發送訊息
 conversations.post('/:id/messages', async (c) => {
@@ -116,16 +39,16 @@ conversations.post('/:id/messages', async (c) => {
     const { content, messageType = 'text' } = await c.req.json();
 
     if (!content) {
-      return c.json({ 
-        success: false, 
-        error: 'Message content is required' 
+      return c.json({
+        success: false,
+        error: 'Message content is required'
       }, 400);
     }
 
     if (!conversationId) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation ID is required' 
+      return c.json({
+        success: false,
+        error: 'Conversation ID is required'
       }, 400);
     }
 
@@ -136,18 +59,18 @@ conversations.post('/:id/messages', async (c) => {
     // 檢查權限 - 確保代理可以存取此對話
     const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
     if (!canAccess) {
-      return c.json({ 
-        success: false, 
-        error: 'Access denied' 
+      return c.json({
+        success: false,
+        error: 'Access denied'
       }, 403);
     }
 
     // 檢查對話是否存在
     const conversation = await dbService.getConversationById(conversationId);
     if (!conversation) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation not found' 
+      return c.json({
+        success: false,
+        error: 'Conversation not found'
       }, 404);
     }
 
@@ -241,16 +164,16 @@ conversations.patch('/:id/status', async (c) => {
     const { status } = await c.req.json();
 
     if (!['pending', 'in-progress', 'closed'].includes(status)) {
-      return c.json({ 
-        success: false, 
-        error: 'Invalid status' 
+      return c.json({
+        success: false,
+        error: 'Invalid status'
       }, 400);
     }
 
     if (!conversationId) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation ID is required' 
+      return c.json({
+        success: false,
+        error: 'Conversation ID is required'
       }, 400);
     }
 
@@ -261,24 +184,24 @@ conversations.patch('/:id/status', async (c) => {
     // 檢查權限 - 確保代理可以存取此對話
     const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
     if (!canAccess) {
-      return c.json({ 
-        success: false, 
-        error: 'Access denied' 
+      return c.json({
+        success: false,
+        error: 'Access denied'
       }, 403);
     }
 
     // 檢查對話是否存在
     const conversation = await dbService.getConversationById(conversationId);
     if (!conversation) {
-      return c.json({ 
-        success: false, 
-        error: 'Conversation not found' 
+      return c.json({
+        success: false,
+        error: 'Conversation not found'
       }, 404);
     }
 
     // 更新對話狀態
     const updates: any = { status };
-    
+
     // 如果狀態變為 in-progress 且沒有指派客服，指派當前客服
     if (status === 'in-progress' && !conversation.assignedUserId) {
       updates.assignedUserId = agent!.id;
@@ -447,6 +370,97 @@ conversations.post('/:id/transfer', async (c) => {
     return c.json({
       success: true,
       message: 'Conversation transferred successfully'
+    });
+
+  } catch (error) {
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// ==================== Priority 2: SINGLE PARAMETERIZED routes (/:id) ====================
+
+// 獲取特定對話
+conversations.get('/:id', async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    if (!conversationId) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation ID is required' 
+      }, 400);
+    }
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({ 
+        success: false, 
+        error: 'Access denied' 
+      }, 403);
+    }
+
+    // 獲取對話資訊
+    const conversation = await dbService.getConversationById(conversationId);
+    
+    if (!conversation) {
+      return c.json({ 
+        success: false, 
+        error: 'Conversation not found' 
+      }, 404);
+    }
+
+    // 獲取對話中的訊息
+    const messages = await dbService.getMessagesByConversationId(conversationId, 100);
+
+    return c.json({
+      success: true,
+      data: {
+        conversation,
+        messages: messages.reverse(), // 按時間順序排列
+      }
+    });
+
+  } catch (error) {
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// 發送訊息
+
+// ==================== Priority 3: WILDCARD routes (/) - MUST BE LAST! ====================
+
+// 獲取對話列表
+conversations.get('/', async (c) => {
+  try {
+    const agent = c.get('agent');
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    const { status, limit = '50', page = '1' } = c.req.query();
+    const limitNum = Math.min(parseInt(limit), 100);
+    const pageNum = Math.max(parseInt(page), 1);
+
+    // 根據角色獲取對話 - 使用新的三層權限體系
+    const conversationList = await dbService.getConversationsByRole(agent!, status, limitNum);
+
+    return c.json({
+      success: true,
+      data: {
+        conversations: conversationList,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: conversationList.length,
+        }
+      }
     });
 
   } catch (error) {
