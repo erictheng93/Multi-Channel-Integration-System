@@ -95,127 +95,8 @@ customerRouter.get('/info', (c) => {
     timestamp: new Date().toISOString()
   });
 });
-
-// ======================== 基礎CRUD路由 ========================
-
-/**
- * 創建新客戶
- * POST /api/customers
- */
-customerRouter.post(
-  '/',
-  checkCustomerAccess,
-  checkCustomerEditPermission,
-  validateCreateCustomerData,
-  CustomerMainHandler.create
-);
-
-/**
- * 獲取客戶詳情
- * GET /api/customers/:id
- */
-customerRouter.get(
-  '/:id',
-  checkCustomerAccess,
-  validateCustomerId,
-  checkSpecificCustomerAccess,
-  CustomerMainHandler.get
-);
-
-/**
- * 獲取客戶基本資料
- * GET /api/customers/:id/basic
- */
-customerRouter.get(
-  '/:id/basic',
-  checkCustomerAccess,
-  validateCustomerId,
-  checkSpecificCustomerAccess,
-  CustomerMainHandler.getBasic
-);
-
-/**
- * 更新客戶資料
- * PUT /api/customers/:id
- */
-customerRouter.put(
-  '/:id',
-  checkCustomerAccess,
-  checkCustomerEditPermission,
-  validateCustomerId,
-  checkSpecificCustomerAccess,
-  validateUpdateCustomerData,
-  CustomerMainHandler.update
-);
-
-/**
- * 軟刪除客戶
- * DELETE /api/customers/:id
- */
-customerRouter.delete(
-  '/:id',
-  checkCustomerAccess,
-  checkCustomerDeletePermission,
-  validateCustomerId,
-  checkSpecificCustomerAccess,
-  CustomerMainHandler.softDelete
-);
-
-/**
- * 檢查客戶是否存在 (OPTIONS 方法)
- * OPTIONS /api/customers/:id
- */
-customerRouter.options(
-  '/:id',
-  checkCustomerAccess,
-  validateCustomerId,
-  checkSpecificCustomerAccess,
-  CustomerMainHandler.exists
-);
-
-/**
- * 檢查客戶是否存在 (GET 方法，用於直接查詢)
- * GET /api/customers/:id/exists
- */
-customerRouter.get(
-  '/:id/exists',
-  checkCustomerAccess,
-  validateCustomerId,
-  checkSpecificCustomerAccess,
-  CustomerMainHandler.exists
-);
-
-// ======================== 平台客戶路由 ========================
-
-/**
- * 根據平台ID查詢客戶
- * GET /api/customers/platform/:platform/:platformUserId
- */
-customerRouter.get(
-  '/platform/:platform/:platformUserId',
-  checkCustomerAccess,
-  CustomerMainHandler.getByPlatformId
-);
-
-/**
- * 檢查平台客戶是否存在 (OPTIONS 方法)
- * OPTIONS /api/customers/platform/:platform/:platformUserId
- */
-customerRouter.options(
-  '/platform/:platform/:platformUserId',
-  checkCustomerAccess,
-  CustomerMainHandler.existsByPlatformId
-);
-
-/**
- * 檢查平台客戶是否存在 (GET 方法，用於直接查詢)
- * GET /api/customers/platform/:platform/:platformUserId/exists
- */
-customerRouter.get(
-  '/platform/:platform/:platformUserId/exists',
-  checkCustomerAccess,
-  CustomerMainHandler.existsByPlatformId
-);
+// ======================== PRIORITY 1: STATIC 路由 ========================
+// 靜態路徑路由 - 必須在任何參數化路由之前註冊
 
 /**
  * 尋找或創建客戶
@@ -226,21 +107,6 @@ customerRouter.post(
   checkCustomerAccess,
   checkCustomerEditPermission,
   CustomerMainHandler.findOrCreate
-);
-
-// ======================== 列表和搜索路由 ========================
-
-/**
- * 獲取客戶列表 (支持篩選)
- * GET /api/customers
- */
-customerRouter.get(
-  '/',
-  checkCustomerAccess,
-  validatePaginationParams,
-  validateFilterParams,
-  applyTeamScopeFilter,
-  CustomerAdvancedHandler.list
 );
 
 /**
@@ -276,8 +142,6 @@ customerRouter.get(
   checkCustomerAccess,
   CustomerAdvancedHandler.searchSuggestions
 );
-
-// ======================== 統計路由 ========================
 
 /**
  * 獲取客戶統計
@@ -334,7 +198,124 @@ customerRouter.get(
   CustomerAdvancedHandler.getGrowthStats
 );
 
-// ======================== 標籤管理路由 ========================
+/**
+ * 獲取所有可用標籤
+ * GET /api/customers/tags/available
+ */
+customerRouter.get(
+  '/tags/available',
+  checkCustomerAccess,
+  CustomerAdvancedHandler.getAvailableTags
+);
+
+/**
+ * 獲取標籤使用統計
+ * GET /api/customers/tags/usage-stats
+ */
+customerRouter.get(
+  '/tags/usage-stats',
+  checkCustomerAccess,
+  checkStatsViewPermission,
+  CustomerAdvancedHandler.getTagUsageStats
+);
+
+/**
+ * 根據標籤查找客戶
+ * POST /api/customers/find-by-tags
+ */
+customerRouter.post(
+  '/find-by-tags',
+  checkCustomerAccess,
+  CustomerAdvancedHandler.findCustomersByTags
+);
+
+/**
+ * 獲取沒有標籤的客戶
+ * GET /api/customers/without-tags
+ */
+customerRouter.get(
+  '/without-tags',
+  checkCustomerAccess,
+  CustomerAdvancedHandler.getCustomersWithoutTags
+);
+
+/**
+ * 批量獲取客戶基本資料
+ * POST /api/customers/batch/basic
+ */
+customerRouter.post(
+  '/batch/basic',
+  checkCustomerAccess,
+  validateBatchOperation,
+  CustomerMainHandler.getBatchBasic
+);
+
+/**
+ * 批量標籤操作
+ * POST /api/customers/batch/tags
+ */
+customerRouter.post(
+  '/batch/tags',
+  checkCustomerAccess,
+  checkTagManagementPermission,
+  CustomerAdvancedHandler.batchTagOperation
+);
+// ======================== PRIORITY 2: MULTI-SEGMENT 參數化路由 ========================
+// 多段參數路由 - 必須在單段參數路由之前註冊
+
+/**
+ * 根據平台ID查詢客戶
+ * GET /api/customers/platform/:platform/:platformUserId
+ */
+customerRouter.get(
+  '/platform/:platform/:platformUserId',
+  checkCustomerAccess,
+  CustomerMainHandler.getByPlatformId
+);
+
+/**
+ * 檢查平台客戶是否存在 (OPTIONS 方法)
+ * OPTIONS /api/customers/platform/:platform/:platformUserId
+ */
+customerRouter.options(
+  '/platform/:platform/:platformUserId',
+  checkCustomerAccess,
+  CustomerMainHandler.existsByPlatformId
+);
+
+/**
+ * 檢查平台客戶是否存在 (GET 方法，用於直接查詢)
+ * GET /api/customers/platform/:platform/:platformUserId/exists
+ */
+customerRouter.get(
+  '/platform/:platform/:platformUserId/exists',
+  checkCustomerAccess,
+  CustomerMainHandler.existsByPlatformId
+);
+
+/**
+ * 獲取客戶基本資料
+ * GET /api/customers/:id/basic
+ */
+customerRouter.get(
+  '/:id/basic',
+  checkCustomerAccess,
+  validateCustomerId,
+  checkSpecificCustomerAccess,
+  CustomerMainHandler.getBasic
+);
+
+/**
+ * 檢查客戶是否存在 (GET 方法，用於直接查詢)
+ * GET /api/customers/:id/exists
+ */
+customerRouter.get(
+  '/:id/exists',
+  checkCustomerAccess,
+  validateCustomerId,
+  checkSpecificCustomerAccess,
+  CustomerMainHandler.exists
+);
 
 /**
  * 獲取客戶標籤
@@ -389,70 +370,85 @@ customerRouter.put(
   validateTagOperation,
   CustomerAdvancedHandler.setCustomerTags
 );
+// ======================== PRIORITY 3: SINGLE PARAM 路由 ========================
+// 單段參數路由 - 必須在通配符路由之前註冊
 
 /**
- * 獲取所有可用標籤
- * GET /api/customers/tags/available
+ * 獲取客戶詳情
+ * GET /api/customers/:id
  */
 customerRouter.get(
-  '/tags/available',
+  '/:id',
   checkCustomerAccess,
-  CustomerAdvancedHandler.getAvailableTags
+  validateCustomerId,
+  checkSpecificCustomerAccess,
+  CustomerMainHandler.get
 );
 
 /**
- * 獲取標籤使用統計
- * GET /api/customers/tags/usage-stats
+ * 更新客戶資料
+ * PUT /api/customers/:id
+ */
+customerRouter.put(
+  '/:id',
+  checkCustomerAccess,
+  checkCustomerEditPermission,
+  validateCustomerId,
+  checkSpecificCustomerAccess,
+  validateUpdateCustomerData,
+  CustomerMainHandler.update
+);
+
+/**
+ * 軟刪除客戶
+ * DELETE /api/customers/:id
+ */
+customerRouter.delete(
+  '/:id',
+  checkCustomerAccess,
+  checkCustomerDeletePermission,
+  validateCustomerId,
+  checkSpecificCustomerAccess,
+  CustomerMainHandler.softDelete
+);
+
+/**
+ * 檢查客戶是否存在 (OPTIONS 方法)
+ * OPTIONS /api/customers/:id
+ */
+customerRouter.options(
+  '/:id',
+  checkCustomerAccess,
+  validateCustomerId,
+  checkSpecificCustomerAccess,
+  CustomerMainHandler.exists
+);
+// ======================== PRIORITY 4: WILDCARD 路由 ========================
+// 通配符路由 - 必須最後註冊，避免攔截其他路由
+
+/**
+ * 創建新客戶
+ * POST /api/customers
+ */
+customerRouter.post(
+  '/',
+  checkCustomerAccess,
+  checkCustomerEditPermission,
+  validateCreateCustomerData,
+  CustomerMainHandler.create
+);
+
+/**
+ * 獲取客戶列表 (支持篩選)
+ * GET /api/customers
  */
 customerRouter.get(
-  '/tags/usage-stats',
+  '/',
   checkCustomerAccess,
-  checkStatsViewPermission,
-  CustomerAdvancedHandler.getTagUsageStats
-);
-
-/**
- * 根據標籤查找客戶
- * POST /api/customers/find-by-tags
- */
-customerRouter.post(
-  '/find-by-tags',
-  checkCustomerAccess,
-  CustomerAdvancedHandler.findCustomersByTags
-);
-
-/**
- * 獲取沒有標籤的客戶
- * GET /api/customers/without-tags
- */
-customerRouter.get(
-  '/without-tags',
-  checkCustomerAccess,
-  CustomerAdvancedHandler.getCustomersWithoutTags
-);
-
-// ======================== 批量操作路由 ========================
-
-/**
- * 批量獲取客戶基本資料
- * POST /api/customers/batch/basic
- */
-customerRouter.post(
-  '/batch/basic',
-  checkCustomerAccess,
-  validateBatchOperation,
-  CustomerMainHandler.getBatchBasic
-);
-
-/**
- * 批量標籤操作
- * POST /api/customers/batch/tags
- */
-customerRouter.post(
-  '/batch/tags',
-  checkCustomerAccess,
-  checkTagManagementPermission,
-  CustomerAdvancedHandler.batchTagOperation
+  validatePaginationParams,
+  validateFilterParams,
+  applyTeamScopeFilter,
+  CustomerAdvancedHandler.list
 );
 
 // 導出客戶路由
