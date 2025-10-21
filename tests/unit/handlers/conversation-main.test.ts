@@ -130,7 +130,7 @@ describe('Conversation Main Handler', () => {
     const testSetup = setupHandlerTest();
     app = testSetup.app;
 
-    // Create mock DB that will be used by the handler
+    // Create mock DB with Drizzle-style interface
     mockDB = {
       prepare: vi.fn().mockReturnValue({
         bind: vi.fn().mockReturnValue({
@@ -142,11 +142,16 @@ describe('Conversation Main Handler', () => {
       })
     };
 
-    // Override the app's environment with our mock DB
+    // Override the app's environment with our mock DB + KV
     app.use('*', (c, next) => {
       c.env = {
         ...c.env,
-        DB: mockDB
+        DB: mockDB,
+        KV: {
+          get: vi.fn().mockResolvedValue(null),
+          put: vi.fn().mockResolvedValue(undefined),
+          delete: vi.fn().mockResolvedValue(undefined)
+        }
       } as any;
       return next();
     });
