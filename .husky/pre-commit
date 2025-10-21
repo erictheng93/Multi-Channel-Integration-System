@@ -8,6 +8,15 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Check route conflicts (prevent route ordering issues)
+echo "🛤️  Checking route conflicts..."
+npm run check:routes:ci
+if [ $? -ne 0 ]; then
+  echo "❌ Route conflict detected! Please fix before committing."
+  echo "💡 Run 'npm run check:routes' for detailed report"
+  exit 1
+fi
+
 # Backend TypeScript check
 echo "Checking backend TypeScript..."
 npx tsc --noEmit

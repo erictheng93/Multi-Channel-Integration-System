@@ -17,7 +17,7 @@ import {
 } from '../handlers';
 
 import messagingMainHandler from '../handlers/messaging-main';
-import { qrCodeRouter } from '@modules/qrcode/handlers/index';
+import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
 
 // 導入額�??��???
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
@@ -184,9 +184,9 @@ const integrationGroup = createRouteGroup({
     createRouteModule({
       name: 'qr-codes',
       path: '/qr-codes',
-      handler: qrCodeRouter,
-      description: 'QR Code Generation and Management (Smart Registry)',
-      version: '2.0.0',
+      handler: qrCodeRouterSimple,
+      description: 'QR Code Generation and Management (Simple Router - WORKING)',
+      version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
     })
