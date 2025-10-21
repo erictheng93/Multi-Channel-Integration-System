@@ -144,12 +144,7 @@ app.post('/system', jwtAuth, async (c) => {
 });
 
 // ======================== SSE Routes REMOVED ========================
-// REMOVED: All SSE routes (Phase 2 cleanup - SSE removed, WebSocket only)
-// - app.get('/sse', ...)
-// - app.post('/sse/send', ...)
-// - app.post('/sse/broadcast', ...)
-// - app.get('/sse/stats', ...)
-// - app.post('/sse/cleanup', ...)
-// - app.get('/sse/connections/count', ...)
+// All SSE functionality has been replaced with WebSocket-based real-time communication.
+// SSE routes were removed in Phase 2 cleanup. See WebSocket handlers for real-time features.
 
 export default app;
