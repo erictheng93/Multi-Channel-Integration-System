@@ -224,41 +224,9 @@ userExperienceHandler.get('/report', jwtAuth, async (c) => {
 });
 
 // =================== A/B 測試 API ===================
-
-// 創建 A/B 測試 (僅管理員)
-userExperienceHandler.post('/ab-tests', jwtAuth, async (c) => {
-  try {
-    const user = c.get('user');
-
-    // 只有管理員可以創建 A/B 測試
-    if (user.role !== 'admin') {
-      return c.json({
-        error: 'Admin access required',
-        message: 'Only administrators can create A/B tests'
-      }, 403);
-    }
-
-    const testConfig = await c.req.json() as ABTestConfig;
-
-    const uxService = createUserExperienceMonitoringService(c.env);
-    await uxService.createABTest(testConfig);
-
-    return c.json({
-      success: true,
-      message: 'A/B test created successfully',
-      testId: testConfig.testId,
-      createdBy: user.id,
-      timestamp: Date.now()
-    });
-
-  } catch (error) {
-    console.error('❌ [UX API] Create A/B test error:', error);
-    return c.json({
-      error: 'Failed to create A/B test',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
-  }
-});
+// Routes MUST be registered in this order to avoid conflicts:
+// 1. MULTI-SEGMENT: /ab-tests/:testId/assignment, /ab-tests/:testId/metrics
+// 2. SPECIFIC: /ab-tests - MUST come after MULTI-SEGMENT to avoid interception
 
 // 獲取用戶的 A/B 測試分配
 userExperienceHandler.get('/ab-tests/:testId/assignment', jwtAuth, async (c) => {
@@ -313,6 +281,41 @@ userExperienceHandler.post('/ab-tests/:testId/metrics', jwtAuth, async (c) => {
     console.error('❌ [UX API] A/B test metric error:', error);
     return c.json({
       error: 'Failed to record A/B test metric',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// 創建 A/B 測試 (僅管理員) - Moved AFTER multi-segment routes to avoid interception
+userExperienceHandler.post('/ab-tests', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+
+    // 只有管理員可以創建 A/B 測試
+    if (user.role !== 'admin') {
+      return c.json({
+        error: 'Admin access required',
+        message: 'Only administrators can create A/B tests'
+      }, 403);
+    }
+
+    const testConfig = await c.req.json() as ABTestConfig;
+
+    const uxService = createUserExperienceMonitoringService(c.env);
+    await uxService.createABTest(testConfig);
+
+    return c.json({
+      success: true,
+      message: 'A/B test created successfully',
+      testId: testConfig.testId,
+      createdBy: user.id,
+      timestamp: Date.now()
+    });
+
+  } catch (error) {
+    console.error('❌ [UX API] Create A/B test error:', error);
+    return c.json({
+      error: 'Failed to create A/B test',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
   }
