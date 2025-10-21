@@ -37,25 +37,9 @@ app.get('/info', (c) => {
 });
 
 // ======================== Main Notification Routes ========================
+// Route registration order: STATIC → SPECIFIC → PARAMETERIZED → WILDCARD
 
-// 獲取通知列表
-app.get('/', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.list(c as any);
-});
-
-// 創建通知
-app.post('/', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.create(c as any);
-});
-
-// 批量創建通知
-app.post('/bulk', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.createBulk(c as any);
-});
-
+// ==================== Priority 1: STATIC routes ====================
 // 獲取通知統計
 app.get('/stats', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
@@ -74,10 +58,37 @@ app.get('/recent', jwtAuth, async (c) => {
   return handlers.getRecent(c as any);
 });
 
+// 批量創建通知
+app.post('/bulk', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.createBulk(c as any);
+});
+
+// ==================== Priority 2: SPECIFIC routes ====================
+// 通道統計 (moved from line 110 to before /:id)
+app.get('/channels/stats', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.getChannelStats(c as any);
+});
+
+// ==================== Priority 3: PARAMETERIZED routes ====================
 // 獲取單個通知
 app.get('/:id', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
   return handlers.getById(c as any);
+});
+
+// ==================== Priority 4: WILDCARD routes ====================
+// 獲取通知列表 (moved from line 42 to after /:id)
+app.get('/', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.list(c as any);
+});
+
+// 創建通知
+app.post('/', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.create(c as any);
 });
 
 // 標記為已讀
@@ -104,12 +115,6 @@ app.delete('/:id', jwtAuth, async (c) => {
 app.delete('/cleanup', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
   return handlers.cleanup(c as any);
-});
-
-// 通道統計
-app.get('/channels/stats', jwtAuth, async (c) => {
-  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getChannelStats(c as any);
 });
 
 // 測試通道

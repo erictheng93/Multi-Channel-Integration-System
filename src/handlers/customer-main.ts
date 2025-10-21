@@ -18,29 +18,11 @@ customerHandler.get('/tags/available', customerTagsHandler.getAvailableTags);
 
 // ========================================
 // 客戶管理端點
+// Route registration order: STATIC → SPECIFIC → PARAMETERIZED → WILDCARD
 // ========================================
 
-// 客戶資訊查詢端點
-customerHandler.get('/', async (c) => {
-  try {
-    const { getAllCustomers } = await import('../utils/database');
-    const customers = await getAllCustomers(c.env.DB);
-
-    return c.json({
-      success: true,
-      data: {
-        customers,
-        count: customers.length
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Operation failed:', error);
-    return handleApiError(error, c);
-  }
-});
-
-// 根據平台用戶ID查詢客戶
+// ==================== Priority 1: SPECIFIC multi-segment routes ====================
+// 根據平台用戶ID查詢客戶 (moved from line 44 to before /:customerId)
 customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
   try {
     const platform = c.req.param('platform');
@@ -73,7 +55,12 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
   }
 });
 
-// 特定客戶資訊查詢端點
+// ==================== Priority 2: PARAMETERIZED multi-segment routes ====================
+// 獲取客戶的所有標籤 (moved from line 117 - more specific, 2 segments)
+customerHandler.get('/:customerId/tags', customerTagsHandler.getCustomerTags);
+
+// ==================== Priority 3: PARAMETERIZED single-segment routes ====================
+// 特定客戶資訊查詢端點 (moved from line 77 to before /)
 customerHandler.get('/:customerId', async (c) => {
   try {
     const customerId = parseInt(c.req.param('customerId'));
@@ -105,12 +92,30 @@ customerHandler.get('/:customerId', async (c) => {
   }
 });
 
-// ========================================
-// 客戶標籤關聯端點
-// ========================================
+// ==================== Priority 4: WILDCARD routes ====================
+// 客戶資訊查詢端點 - 列表所有客戶 (moved from line 24 to after /:customerId)
+customerHandler.get('/', async (c) => {
+  try {
+    const { getAllCustomers } = await import('../utils/database');
+    const customers = await getAllCustomers(c.env.DB);
 
-// 獲取客戶的所有標籤
-customerHandler.get('/:customerId/tags', customerTagsHandler.getCustomerTags);
+    return c.json({
+      success: true,
+      data: {
+        customers,
+        count: customers.length
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// ========================================
+// 客戶標籤關聯端點 (other HTTP methods)
+// ========================================
 
 // 為客戶添加標籤
 customerHandler.post('/:customerId/tags', customerTagsHandler.addTagsToCustomer);

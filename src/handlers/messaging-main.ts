@@ -69,6 +69,22 @@ app.get('/info', (c) => {
 });
 
 // ======================== Basic API Endpoints ========================
+//
+// ⚠️  ROUTE ORDERING NOTE:
+// Due to file size (1895 lines) and complexity, routes are organized by functionality.
+// However, for optimal routing, GET routes should follow this priority:
+//   Priority 1: STATIC routes (/health, /info, /search, /stats, /tags, /export)
+//   Priority 2: SPECIFIC multi-segment (/conversation/:conversationId, /:id/attachments)
+//   Priority 3: PARAMETERIZED single-segment (/:id)
+//
+// TODO: Consider refactoring to group routes by HTTP method and priority
+// Current conflicts (detection script warnings):
+//   - GET /:id (line 510) registered before GET /conversation/:conversationId (line 892)
+//   - GET /:id (line 510) registered before GET /:id/attachments (line 1365)
+//
+// These may not cause runtime issues in Hono due to smart matching, but should be
+// verified through integration testing.
+// ========================
 
 /**
  * 創建新訊息
@@ -506,6 +522,13 @@ app.get('/export', jwtAuth, async (c) => {
 /**
  * 獲取特定訊息
  * GET /api/messages/:id
+ *
+ * ⚠️  ROUTING PRIORITY NOTE:
+ * This route should ideally be registered AFTER:
+ *   - GET /conversation/:conversationId (currently at line ~892)
+ *   - GET /:id/attachments (currently at line ~1365)
+ * However, Hono's smart routing may handle this correctly.
+ * Verify through integration testing if issues arise.
  */
 app.get('/:id', jwtAuth, async (c) => {
   try {
