@@ -98,70 +98,47 @@ sessionHandler.get('/info', (c) => {
   });
 });
 
-// ======================== CRUD 操作 ========================
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// Routes MUST be registered in this order to avoid conflicts:
+// 1. STATIC: /health, /info
+// 2. SPECIFIC: /batch, /search, /stats, /activity
+// 3. SPECIFIC PARAMETERIZED: /stats/:conversation_id
+// 4. MULTI-SEGMENT: /:sessionId/close, /:sessionId/reopen, /:sessionId/messages, /:sessionId/health
+// 5. SINGLE PARAMETERIZED: /:sessionId (GET/PUT/DELETE)
+// 6. WILDCARD: / (POST/GET) - MUST BE LAST!
+
+// ==================== Priority 2: SPECIFIC routes ====================
 
 /**
- * 創建新會話
- * POST /api/sessions
+ * 執行批量會話操作
+ * POST /api/sessions/batch
  */
 sessionHandler.post(
-  '/',
+  '/batch',
   validateRequestSize,
-  validateCreateSessionData,
+  validateBatchSessionOperation,
   validateRateLimit,
   checkSessionAccess,
-  checkSessionCreatePermission,
+  checkSessionBatchPermission,
   logSessionOperation,
   async (c) => {
     try {
-      const createData = c.get('createSessionData');
+      const batchOperation = c.get('batchOperation');
       const sessionService = new SessionService(c.env.DB);
 
-      const session = await sessionService.create(createData);
-
-      return c.json({
-        success: true,
-        data: session,
-        message: 'Session created successfully',
-        timestamp: new Date().toISOString()
-      }, 201);
-    } catch (error) {
-      console.error('Create session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create session',
-        timestamp: new Date().toISOString()
-      }, 500);
-    }
-  }
-);
-
-/**
- * 獲取會話列表
- * GET /api/sessions
- */
-sessionHandler.get(
-  '/',
-  validateSessionListQuery,
-  checkSessionAccess,
-  checkSessionViewPermission,
-  async (c) => {
-    try {
-      const query = c.get('sessionQuery');
-      const sessionService = new SessionService(c.env.DB);
-
-      const result = await sessionService.list(query);
+      const result = await sessionService.batchOperation(batchOperation as any);
 
       return c.json({
         success: true,
         data: result,
+        message: `Batch operation ${batchOperation.action} completed`,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('List sessions error:', error);
+      console.error('Batch operation error:', error);
       return c.json({
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to list sessions',
+        error: error instanceof Error ? error.message : 'Failed to execute batch operation',
         timestamp: new Date().toISOString()
       }, 500);
     }
@@ -201,8 +178,6 @@ sessionHandler.get(
   }
 );
 
-// ======================== 統計和分析 ========================
-
 /**
  * 獲取會話統計
  * GET /api/sessions/stats
@@ -228,39 +203,6 @@ sessionHandler.get(
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session statistics',
-        timestamp: new Date().toISOString()
-      }, 500);
-    }
-  }
-);
-
-/**
- * 獲取特定對話的會話統計
- * GET /api/sessions/stats/:conversation_id
- */
-sessionHandler.get(
-  '/stats/:conversation_id',
-  validateConversationId,
-  checkSessionAccess,
-  checkSessionStatsPermission,
-  async (c) => {
-    try {
-      const conversation_id = c.req.param('conversation_id');
-      const sessionService = new SessionService(c.env.DB);
-
-      const stats = await sessionService.getStats(conversation_id);
-
-      return c.json({
-        success: true,
-        data: stats,
-        conversation_id,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Get conversation session stats error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get conversation session statistics',
         timestamp: new Date().toISOString()
       }, 500);
     }
@@ -310,7 +252,196 @@ sessionHandler.get(
   }
 );
 
-// ======================== CRUD 操作（續） ========================
+// ==================== Priority 3: SPECIFIC PARAMETERIZED routes ====================
+
+/**
+ * 獲取特定對話的會話統計
+ * GET /api/sessions/stats/:conversation_id
+ */
+sessionHandler.get(
+  '/stats/:conversation_id',
+  validateConversationId,
+  checkSessionAccess,
+  checkSessionStatsPermission,
+  async (c) => {
+    try {
+      const conversation_id = c.req.param('conversation_id');
+      const sessionService = new SessionService(c.env.DB);
+
+      const stats = await sessionService.getStats(conversation_id);
+
+      return c.json({
+        success: true,
+        data: stats,
+        conversation_id,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Get conversation session stats error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get conversation session statistics',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ==================== Priority 4: MULTI-SEGMENT routes (/:sessionId/xxx) ====================
+
+/**
+ * 關閉會話
+ * POST /api/sessions/:sessionId/close
+ */
+sessionHandler.post(
+  '/:sessionId/close',
+  validateSessionId,
+  validateRateLimit,
+  checkSessionAccess,
+  checkSessionUpdatePermission,
+  logSessionOperation,
+  async (c) => {
+    try {
+      const sessionId = c.get('sessionId');
+      const sessionService = new SessionService(c.env.DB);
+
+      const success = await sessionService.closeSession(sessionId);
+
+      if (!success) {
+        return c.json({
+          success: false,
+          error: 'Session not found or could not be closed',
+          timestamp: new Date().toISOString()
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: { closed: true, sessionId },
+        message: 'Session closed successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Close session error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to close session',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 重新開啟會話
+ * POST /api/sessions/:sessionId/reopen
+ */
+sessionHandler.post(
+  '/:sessionId/reopen',
+  validateSessionId,
+  validateRateLimit,
+  checkSessionAccess,
+  checkSessionUpdatePermission,
+  logSessionOperation,
+  async (c) => {
+    try {
+      const sessionId = c.get('sessionId');
+      const sessionService = new SessionService(c.env.DB);
+
+      const success = await sessionService.reopenSession(sessionId);
+
+      if (!success) {
+        return c.json({
+          success: false,
+          error: 'Session not found or could not be reopened',
+          timestamp: new Date().toISOString()
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: { reopened: true, sessionId },
+        message: 'Session reopened successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Reopen session error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reopen session',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 獲取會話訊息
+ * GET /api/sessions/:sessionId/messages
+ */
+sessionHandler.get(
+  '/:sessionId/messages',
+  validateSessionId,
+  checkSessionAccess,
+  checkSessionViewPermission,
+  async (c) => {
+    try {
+      const sessionId = c.get('sessionId');
+      const page = parseInt(c.req.query('page') || '1');
+      const pageSize = parseInt(c.req.query('pageSize') || '20');
+
+      const sessionService = new SessionService(c.env.DB);
+      const result = await sessionService.getMessages(sessionId, page, pageSize);
+
+      return c.json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Get session messages error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get session messages',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+/**
+ * 檢查會話健康狀態
+ * GET /api/sessions/:sessionId/health
+ */
+sessionHandler.get(
+  '/:sessionId/health',
+  validateSessionId,
+  checkSessionAccess,
+  checkSessionViewPermission,
+  async (c) => {
+    try {
+      const sessionId = c.get('sessionId');
+      const sessionService = new SessionService(c.env.DB);
+
+      const healthReport = await sessionService.analyzeSessionHealth(sessionId);
+
+      return c.json({
+        success: true,
+        data: healthReport,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Session health check error:', error);
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to analyze session health',
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+  }
+);
+
+// ==================== Priority 5: SINGLE PARAMETERIZED routes ====================
 
 /**
  * 獲取單個會話詳情
@@ -433,204 +564,77 @@ sessionHandler.delete(
   }
 );
 
-// ======================== 會話管理操作 ========================
+// ==================== Priority 6: WILDCARD routes (MUST BE LAST!) ====================
 
 /**
- * 關閉會話
- * POST /api/sessions/:sessionId/close
+ * 創建新會話
+ * POST /api/sessions
  */
 sessionHandler.post(
-  '/:sessionId/close',
-  validateSessionId,
-  validateRateLimit,
-  checkSessionAccess,
-  checkSessionUpdatePermission,
-  logSessionOperation,
-  async (c) => {
-    try {
-      const sessionId = c.get('sessionId');
-      const sessionService = new SessionService(c.env.DB);
-
-      const success = await sessionService.closeSession(sessionId);
-
-      if (!success) {
-        return c.json({
-          success: false,
-          error: 'Session not found or could not be closed',
-          timestamp: new Date().toISOString()
-        }, 404);
-      }
-
-      return c.json({
-        success: true,
-        data: { closed: true, sessionId },
-        message: 'Session closed successfully',
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Close session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to close session',
-        timestamp: new Date().toISOString()
-      }, 500);
-    }
-  }
-);
-
-/**
- * 重新開啟會話
- * POST /api/sessions/:sessionId/reopen
- */
-sessionHandler.post(
-  '/:sessionId/reopen',
-  validateSessionId,
-  validateRateLimit,
-  checkSessionAccess,
-  checkSessionUpdatePermission,
-  logSessionOperation,
-  async (c) => {
-    try {
-      const sessionId = c.get('sessionId');
-      const sessionService = new SessionService(c.env.DB);
-
-      const success = await sessionService.reopenSession(sessionId);
-
-      if (!success) {
-        return c.json({
-          success: false,
-          error: 'Session not found or could not be reopened',
-          timestamp: new Date().toISOString()
-        }, 404);
-      }
-
-      return c.json({
-        success: true,
-        data: { reopened: true, sessionId },
-        message: 'Session reopened successfully',
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Reopen session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to reopen session',
-        timestamp: new Date().toISOString()
-      }, 500);
-    }
-  }
-);
-
-// ======================== 訊息相關操作 ========================
-
-/**
- * 獲取會話訊息
- * GET /api/sessions/:sessionId/messages
- */
-sessionHandler.get(
-  '/:sessionId/messages',
-  validateSessionId,
-  checkSessionAccess,
-  checkSessionViewPermission,
-  async (c) => {
-    try {
-      const sessionId = c.get('sessionId');
-      const page = parseInt(c.req.query('page') || '1');
-      const pageSize = parseInt(c.req.query('pageSize') || '20');
-
-      const sessionService = new SessionService(c.env.DB);
-      const result = await sessionService.getMessages(sessionId, page, pageSize);
-
-      return c.json({
-        success: true,
-        data: result,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Get session messages error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get session messages',
-        timestamp: new Date().toISOString()
-      }, 500);
-    }
-  }
-);
-
-
-// ======================== 批量操作 ========================
-
-/**
- * 執行批量會話操作
- * POST /api/sessions/batch
- */
-sessionHandler.post(
-  '/batch',
+  '/',
   validateRequestSize,
-  validateBatchSessionOperation,
+  validateCreateSessionData,
   validateRateLimit,
   checkSessionAccess,
-  checkSessionBatchPermission,
+  checkSessionCreatePermission,
   logSessionOperation,
   async (c) => {
     try {
-      const batchOperation = c.get('batchOperation');
+      const createData = c.get('createSessionData');
       const sessionService = new SessionService(c.env.DB);
 
-      const result = await sessionService.batchOperation(batchOperation as any);
+      const session = await sessionService.create(createData);
 
       return c.json({
         success: true,
-        data: result,
-        message: `Batch operation ${batchOperation.action} completed`,
+        data: session,
+        message: 'Session created successfully',
         timestamp: new Date().toISOString()
-      });
+      }, 201);
     } catch (error) {
-      console.error('Batch operation error:', error);
+      console.error('Create session error:', error);
       return c.json({
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute batch operation',
+        error: error instanceof Error ? error.message : 'Failed to create session',
         timestamp: new Date().toISOString()
       }, 500);
     }
   }
 );
 
-// ======================== 會話健康檢查 ========================
-
 /**
- * 檢查會話健康狀態
- * GET /api/sessions/:sessionId/health
+ * 獲取會話列表
+ * GET /api/sessions
  */
 sessionHandler.get(
-  '/:sessionId/health',
-  validateSessionId,
+  '/',
+  validateSessionListQuery,
   checkSessionAccess,
   checkSessionViewPermission,
   async (c) => {
     try {
-      const sessionId = c.get('sessionId');
+      const query = c.get('sessionQuery');
       const sessionService = new SessionService(c.env.DB);
 
-      const healthReport = await sessionService.analyzeSessionHealth(sessionId);
+      const result = await sessionService.list(query);
 
       return c.json({
         success: true,
-        data: healthReport,
+        data: result,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('Session health check error:', error);
+      console.error('List sessions error:', error);
       return c.json({
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to analyze session health',
+        error: error instanceof Error ? error.message : 'Failed to list sessions',
         timestamp: new Date().toISOString()
       }, 500);
     }
   }
 );
 
-// ======================== 錯誤處理 ========================
+// ==================== Error Handlers ====================
 
 // 全域錯誤處理
 sessionHandler.onError((err, c) => {
