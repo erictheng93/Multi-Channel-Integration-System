@@ -22,8 +22,11 @@ import type { Bindings } from '@/types';
 // 創建系統路由實例
 const systemRouter = new Hono<{ Bindings: Bindings }>();
 
-// 將現有的系統處理器集成到統一路由中
-systemRouter.route('/', systemMainHandler);
+// ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
+// Routes MUST be registered in this order to avoid conflicts:
+// 1. SPECIFIC routes: /module-info, /security/audit, /performance/report, etc.
+// 2. WILDCARD route: systemMainHandler at '/' - MUST be registered LAST!
+// ====================================================================================
 
 // ======================== 額外的企業級端點 ========================
 
@@ -392,6 +395,10 @@ systemRouter.get(
     }
   }
 );
+
+// ==================== WILDCARD Route (MUST BE LAST!) ====================
+// Mount systemMainHandler at root '/' - registered LAST to avoid intercepting specific routes
+systemRouter.route('/', systemMainHandler);
 
 // 導出系統路由
 export { systemRouter };
