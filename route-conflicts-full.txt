@@ -1,0 +1,1174 @@
+
+> check:routes
+> npx tsx scripts/detect-route-conflicts.ts
+
+🔍 Route Conflict Detector
+
+Scanning for route definitions...
+
+Found 97 handler files
+
+Extracted 439 route definitions
+
+📊 Module Distribution:
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  📦 modules/qrcode                           43 routes
+  📦 handlers/notification-router             24 routes
+  📦 modules/teams/sub:team                   19 routes
+  📦 modules/session/sub:session              19 routes
+  📦 modules/system/sub:system                18 routes
+  📦 handlers/messaging-main                  17 routes
+  📦 modules/agents/sub:agent-main            17 routes
+  📦 modules/analytics/sub:reports-main       15 routes
+  📦 modules/analytics/sub:dashboard-main     15 routes
+  📦 handlers/health-router                   13 routes
+  📦 handlers/websocket-integration-test      11 routes
+  📦 handlers/activity                        11 routes
+  📦 handlers/user-experience-main            10 routes
+  📦 handlers/data-optimization-main          10 routes
+  📦 modules/analytics/sub:realtime-dashboard-main 10 routes
+  📦 handlers/websocket-analytics-main        9 routes
+  📦 modules/collaboration/sub:collaboration-main 9 routes
+  📦 modules/analytics/sub:analytics-main     9 routes
+  📦 handlers/system-main                     8 routes
+  📦 handlers/customer-main                   8 routes
+  📦 modules/integrations/sub:webhook-handler 8 routes
+  📦 modules/conversations/sub:conversation-main 8 routes
+  📦 handlers/websocket-health                7 routes
+  📦 handlers/conversation                    7 routes
+  📦 modules/qrcode/sub:qrcode-router-simple  7 routes
+  📦 handlers/websocket-main                  6 routes
+  📦 handlers/websocket-dashboard             6 routes
+  📦 handlers/phase2-auth-management          6 routes
+  📦 handlers/cors-monitoring                 6 routes
+  📦 handlers/auth-main                       6 routes
+  📦 handlers/alert-config-management         6 routes
+  📦 modules/teams/sub:members                6 routes
+  📦 modules/file-management/sub:file-main    6 routes
+  📦 modules/auth/sub:auth-main               6 routes
+  📦 modules/analytics/sub:comparison-api     6 routes
+  📦 handlers/delayed-message-buffer          5 routes
+  📦 handlers/webhook                         4 routes
+  📦 handlers/delayed-message-main            4 routes
+  📦 handlers/delayed-message-drizzle         4 routes
+  📦 modules/teams                            4 routes
+  📦 modules/auth                             4 routes
+  📦 modules/teams/sub:invitations            3 routes
+  📦 modules/conversations                    3 routes
+  📦 handlers/qrcode-main                     2 routes
+  📦 modules/teams/sub:password               2 routes
+  📦 modules/session/sub:session-main         2 routes
+  📦 modules/session                          2 routes
+  📦 modules/reports/sub:reports-main         2 routes
+  📦 modules/messaging                        2 routes
+  📦 modules/customer                         2 routes
+  📦 modules/system                           2 routes
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+📊 CONFLICT DETECTION REPORT
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+⚠️  Found 173 potential conflicts:
+
+🟡 MEDIUM SEVERITY (Parameterized route conflicts):
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⚠️  "/ab-tests" may intercept "/ab-tests/:testId/metrics"
+     📦 Module: handlers/user-experience-main
+     Priority scores: 10 vs 41
+     📍 src\handlers\user-experience-main.ts:229
+     📍 src\handlers\user-experience-main.ts:290
+     💡 Suggestion: Register "/ab-tests/:testId/metrics" before "/ab-tests"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: handlers/notification-router
+     Priority scores: 0 vs 1
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:78
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/channels/:channelType/test"
+     📦 Module: handlers/notification-router
+     Priority scores: 0 vs 41
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:116
+     💡 Suggestion: Register "/channels/:channelType/test" before "/"
+
+  ⚠️  "/:id" may intercept "/channels/stats"
+     📦 Module: handlers/notification-router
+     Priority scores: 1 vs 30
+     📍 src\handlers\notification-router.ts:78
+     📍 src\handlers\notification-router.ts:110
+     💡 Suggestion: Register "/channels/stats" before "/:id"
+
+  ⚠️  "/:id" may intercept "/sse/stats"
+     📦 Module: handlers/notification-router
+     Priority scores: 1 vs 30
+     📍 src\handlers\notification-router.ts:78
+     📍 src\handlers\notification-router.ts:146
+     💡 Suggestion: Register "/sse/stats" before "/:id"
+
+  ⚠️  "/:id" may intercept "/sse/connections/count"
+     📦 Module: handlers/notification-router
+     Priority scores: 1 vs 60
+     📍 src\handlers\notification-router.ts:78
+     📍 src\handlers\notification-router.ts:148
+     💡 Suggestion: Register "/sse/connections/count" before "/:id"
+
+  ⚠️  "/" may intercept "/:id/attachments"
+     📦 Module: handlers/messaging-main
+     Priority scores: 0 vs 11
+     📍 src\handlers\messaging-main.ts:77
+     📍 src\handlers\messaging-main.ts:1436
+     💡 Suggestion: Register "/:id/attachments" before "/"
+
+  ⚠️  "/" may intercept "/:id/forward"
+     📦 Module: handlers/messaging-main
+     Priority scores: 0 vs 11
+     📍 src\handlers\messaging-main.ts:77
+     📍 src\handlers\messaging-main.ts:1596
+     💡 Suggestion: Register "/:id/forward" before "/"
+
+  ⚠️  "/:id" may intercept "/conversation/:conversationId"
+     📦 Module: handlers/messaging-main
+     Priority scores: 1 vs 21
+     📍 src\handlers\messaging-main.ts:510
+     📍 src\handlers\messaging-main.ts:892
+     💡 Suggestion: Register "/conversation/:conversationId" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/attachments"
+     📦 Module: handlers/messaging-main
+     Priority scores: 1 vs 11
+     📍 src\handlers\messaging-main.ts:510
+     📍 src\handlers\messaging-main.ts:1365
+     💡 Suggestion: Register "/:id/attachments" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/tags"
+     📦 Module: handlers/messaging-main
+     Priority scores: 1 vs 11
+     📍 src\handlers\messaging-main.ts:628
+     📍 src\handlers\messaging-main.ts:1783
+     💡 Suggestion: Register "/:id/tags" before "/:id"
+
+  ⚠️  "/" may intercept "/platform/:platform/:platformUserId"
+     📦 Module: handlers/customer-main
+     Priority scores: 0 vs 32
+     📍 src\handlers\customer-main.ts:24
+     📍 src\handlers\customer-main.ts:44
+     💡 Suggestion: Register "/platform/:platform/:platformUserId" before "/"
+
+  ⚠️  "/" may intercept "/:customerId"
+     📦 Module: handlers/customer-main
+     Priority scores: 0 vs 1
+     📍 src\handlers\customer-main.ts:24
+     📍 src\handlers\customer-main.ts:77
+     💡 Suggestion: Register "/:customerId" before "/"
+
+  ⚠️  "/" may intercept "/:customerId/tags"
+     📦 Module: handlers/customer-main
+     Priority scores: 0 vs 11
+     📍 src\handlers\customer-main.ts:24
+     📍 src\handlers\customer-main.ts:113
+     💡 Suggestion: Register "/:customerId/tags" before "/"
+
+  ⚠️  "/:customerId" may intercept "/:customerId/tags"
+     📦 Module: handlers/customer-main
+     Priority scores: 1 vs 11
+     📍 src\handlers\customer-main.ts:77
+     📍 src\handlers\customer-main.ts:113
+     💡 Suggestion: Register "/:customerId/tags" before "/:customerId"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: handlers/conversation
+     Priority scores: 0 vs 1
+     📍 src\handlers\conversation.ts:27
+     📍 src\handlers\conversation.ts:60
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/user/:userId/stats"
+     📦 Module: handlers/activity
+     Priority scores: 0 vs 41
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:15
+     💡 Suggestion: Register "/user/:userId/stats" before "/"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: handlers/activity
+     Priority scores: 0 vs 1
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:24
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 1
+     📍 src\modules\teams\handlers\team.ts:67
+     📍 src\modules\teams\handlers\team.ts:109
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/search/:query"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 21
+     📍 src\modules\teams\handlers\team.ts:67
+     📍 src\modules\teams\handlers\team.ts:285
+     💡 Suggestion: Register "/search/:query" before "/"
+
+  ⚠️  "/" may intercept "/:id/members"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 11
+     📍 src\modules\teams\handlers\team.ts:67
+     📍 src\modules\teams\handlers\team.ts:314
+     💡 Suggestion: Register "/:id/members" before "/"
+
+  ⚠️  "/" may intercept "/:id/qr-codes"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 11
+     📍 src\modules\teams\handlers\team.ts:67
+     📍 src\modules\teams\handlers\team.ts:484
+     💡 Suggestion: Register "/:id/qr-codes" before "/"
+
+  ⚠️  "/" may intercept "/:id/stats"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 11
+     📍 src\modules\teams\handlers\team.ts:67
+     📍 src\modules\teams\handlers\team.ts:563
+     💡 Suggestion: Register "/:id/stats" before "/"
+
+  ⚠️  "/:id" may intercept "/search/:query"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 21
+     📍 src\modules\teams\handlers\team.ts:109
+     📍 src\modules\teams\handlers\team.ts:285
+     💡 Suggestion: Register "/search/:query" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/members"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 11
+     📍 src\modules\teams\handlers\team.ts:109
+     📍 src\modules\teams\handlers\team.ts:314
+     💡 Suggestion: Register "/:id/members" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/qr-codes"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 11
+     📍 src\modules\teams\handlers\team.ts:109
+     📍 src\modules\teams\handlers\team.ts:484
+     💡 Suggestion: Register "/:id/qr-codes" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/stats"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 11
+     📍 src\modules\teams\handlers\team.ts:109
+     📍 src\modules\teams\handlers\team.ts:563
+     💡 Suggestion: Register "/:id/stats" before "/:id"
+
+  ⚠️  "/:id" may intercept "/stats/all"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 30
+     📍 src\modules\teams\handlers\team.ts:109
+     📍 src\modules\teams\handlers\team.ts:596
+     💡 Suggestion: Register "/stats/all" before "/:id"
+
+  ⚠️  "/" may intercept "/:id/members"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 11
+     📍 src\modules\teams\handlers\team.ts:140
+     📍 src\modules\teams\handlers\team.ts:339
+     💡 Suggestion: Register "/:id/members" before "/"
+
+  ⚠️  "/" may intercept "/:id/qr-code"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 11
+     📍 src\modules\teams\handlers\team.ts:140
+     📍 src\modules\teams\handlers\team.ts:438
+     💡 Suggestion: Register "/:id/qr-code" before "/"
+
+  ⚠️  "/" may intercept "/:id/qr-code-test"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 0 vs 11
+     📍 src\modules\teams\handlers\team.ts:140
+     📍 src\modules\teams\handlers\team.ts:545
+     💡 Suggestion: Register "/:id/qr-code-test" before "/"
+
+  ⚠️  "/:id" may intercept "/:id/members/:agentId"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 22
+     📍 src\modules\teams\handlers\team.ts:182
+     📍 src\modules\teams\handlers\team.ts:376
+     💡 Suggestion: Register "/:id/members/:agentId" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/qr-codes/:qrCodeId/deactivate"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 42
+     📍 src\modules\teams\handlers\team.ts:182
+     📍 src\modules\teams\handlers\team.ts:514
+     💡 Suggestion: Register "/:id/qr-codes/:qrCodeId/deactivate" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/members/:agentId"
+     📦 Module: modules/teams/sub:team
+     Priority scores: 1 vs 22
+     📍 src\modules\teams\handlers\team.ts:225
+     📍 src\modules\teams\handlers\team.ts:404
+     💡 Suggestion: Register "/:id/members/:agentId" before "/:id"
+
+  ⚠️  "/" may intercept "/:sessionId/close"
+     📦 Module: modules/session/sub:session
+     Priority scores: 0 vs 11
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:342
+     💡 Suggestion: Register "/:sessionId/close" before "/"
+
+  ⚠️  "/" may intercept "/:sessionId/reopen"
+     📦 Module: modules/session/sub:session
+     Priority scores: 0 vs 11
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:376
+     💡 Suggestion: Register "/:sessionId/reopen" before "/"
+
+  ⚠️  "/:sessionId" may intercept "/:sessionId/messages"
+     📦 Module: modules/session/sub:session
+     Priority scores: 1 vs 11
+     📍 src\modules\session\handlers\session.ts:77
+     📍 src\modules\session\handlers\session.ts:412
+     💡 Suggestion: Register "/:sessionId/messages" before "/:sessionId"
+
+  ⚠️  "/:sessionId" may intercept "/:sessionId/health"
+     📦 Module: modules/session/sub:session
+     Priority scores: 1 vs 11
+     📍 src\modules\session\handlers\session.ts:77
+     📍 src\modules\session\handlers\session.ts:497
+     💡 Suggestion: Register "/:sessionId/health" before "/:sessionId"
+
+  ⚠️  "/:sessionId" may intercept "/topics/stats"
+     📦 Module: modules/session/sub:session
+     Priority scores: 1 vs 30
+     📍 src\modules\session\handlers\session.ts:77
+     📍 src\modules\session\handlers\session.ts:532
+     💡 Suggestion: Register "/topics/stats" before "/:sessionId"
+
+  ⚠️  "/:sessionId" may intercept "/:sessionId/topic"
+     📦 Module: modules/session/sub:session
+     Priority scores: 1 vs 11
+     📍 src\modules\session\handlers\session.ts:129
+     📍 src\modules\session\handlers\session.ts:624
+     💡 Suggestion: Register "/:sessionId/topic" before "/:sessionId"
+
+  ⚠️  "/" may intercept "/:sessionId/messages"
+     📦 Module: modules/session/sub:session
+     Priority scores: 0 vs 11
+     📍 src\modules\session\handlers\session.ts:230
+     📍 src\modules\session\handlers\session.ts:412
+     💡 Suggestion: Register "/:sessionId/messages" before "/"
+
+  ⚠️  "/" may intercept "/:sessionId/health"
+     📦 Module: modules/session/sub:session
+     Priority scores: 0 vs 11
+     📍 src\modules\session\handlers\session.ts:230
+     📍 src\modules\session\handlers\session.ts:497
+     💡 Suggestion: Register "/:sessionId/health" before "/"
+
+  ⚠️  "/" may intercept "/:id/exists"
+     📦 Module: modules/qrcode/sub:qrcode-router-simple
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\qrcode-router-simple.ts:13
+     📍 src\modules\qrcode\handlers\qrcode-router-simple.ts:19
+     💡 Suggestion: Register "/:id/exists" before "/"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: modules/qrcode/sub:qrcode-router-simple
+     Priority scores: 0 vs 1
+     📍 src\modules\qrcode\handlers\qrcode-router-simple.ts:13
+     📍 src\modules\qrcode\handlers\qrcode-router-simple.ts:20
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 1
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:30
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/:id/check"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:39
+     💡 Suggestion: Register "/:id/check" before "/"
+
+  ⚠️  "/" may intercept "/:id/exists"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:42
+     💡 Suggestion: Register "/:id/exists" before "/"
+
+  ⚠️  "/" may intercept "/:id/image"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:50
+     💡 Suggestion: Register "/:id/image" before "/"
+
+  ⚠️  "/" may intercept "/:id/download/:format"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 22
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:53
+     💡 Suggestion: Register "/:id/download/:format" before "/"
+
+  ⚠️  "/" may intercept "/:id/preview"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:56
+     💡 Suggestion: Register "/:id/preview" before "/"
+
+  ⚠️  "/" may intercept "/:id/scans"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:75
+     💡 Suggestion: Register "/:id/scans" before "/"
+
+  ⚠️  "/" may intercept "/type/:type"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 21
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:95
+     💡 Suggestion: Register "/type/:type" before "/"
+
+  ⚠️  "/" may intercept "/tags/:tag"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 21
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:98
+     💡 Suggestion: Register "/tags/:tag" before "/"
+
+  ⚠️  "/" may intercept "/scan/:id"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 21
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:153
+     💡 Suggestion: Register "/scan/:id" before "/"
+
+  ⚠️  "/" may intercept "/public/:id/info"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 41
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:156
+     💡 Suggestion: Register "/public/:id/info" before "/"
+
+  ⚠️  "/" may intercept "/:id/regenerate"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:47
+     💡 Suggestion: Register "/:id/regenerate" before "/"
+
+  ⚠️  "/" may intercept "/:id/enable"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:61
+     💡 Suggestion: Register "/:id/enable" before "/"
+
+  ⚠️  "/" may intercept "/:id/disable"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:64
+     💡 Suggestion: Register "/:id/disable" before "/"
+
+  ⚠️  "/" may intercept "/:id/scan"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:78
+     💡 Suggestion: Register "/:id/scan" before "/"
+
+  ⚠️  "/" may intercept "/templates/:templateId/create"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 41
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:120
+     💡 Suggestion: Register "/templates/:templateId/create" before "/"
+
+  ⚠️  "/" may intercept "/:id/save-template"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:123
+     💡 Suggestion: Register "/:id/save-template" before "/"
+
+  ⚠️  "/" may intercept "/:id/tags"
+     📦 Module: modules/qrcode
+     Priority scores: 0 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:131
+     💡 Suggestion: Register "/:id/tags" before "/"
+
+  ⚠️  "/:id" may intercept "/:id/check"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:39
+     💡 Suggestion: Register "/:id/check" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/exists"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:42
+     💡 Suggestion: Register "/:id/exists" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/image"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:50
+     💡 Suggestion: Register "/:id/image" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/download/:format"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 22
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:53
+     💡 Suggestion: Register "/:id/download/:format" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/preview"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:56
+     💡 Suggestion: Register "/:id/preview" before "/:id"
+
+  ⚠️  "/:id" may intercept "/stats/overview"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:72
+     💡 Suggestion: Register "/stats/overview" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/scans"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:75
+     💡 Suggestion: Register "/:id/scans" before "/:id"
+
+  ⚠️  "/:id" may intercept "/stats/types"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:81
+     💡 Suggestion: Register "/stats/types" before "/:id"
+
+  ⚠️  "/:id" may intercept "/stats/trends"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:84
+     💡 Suggestion: Register "/stats/trends" before "/:id"
+
+  ⚠️  "/:id" may intercept "/type/:type"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 21
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:95
+     💡 Suggestion: Register "/type/:type" before "/:id"
+
+  ⚠️  "/:id" may intercept "/tags/:tag"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 21
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:98
+     💡 Suggestion: Register "/tags/:tag" before "/:id"
+
+  ⚠️  "/:id" may intercept "/tags/available"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:128
+     💡 Suggestion: Register "/tags/available" before "/:id"
+
+  ⚠️  "/:id" may intercept "/tags/stats"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:137
+     💡 Suggestion: Register "/tags/stats" before "/:id"
+
+  ⚠️  "/:id" may intercept "/export/data"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:142
+     💡 Suggestion: Register "/export/data" before "/:id"
+
+  ⚠️  "/:id" may intercept "/export/images"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:145
+     💡 Suggestion: Register "/export/images" before "/:id"
+
+  ⚠️  "/:id" may intercept "/export/report"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:148
+     💡 Suggestion: Register "/export/report" before "/:id"
+
+  ⚠️  "/:id" may intercept "/scan/:id"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 21
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:153
+     💡 Suggestion: Register "/scan/:id" before "/:id"
+
+  ⚠️  "/:id" may intercept "/public/:id/info"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 41
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:156
+     💡 Suggestion: Register "/public/:id/info" before "/:id"
+
+  ⚠️  "/:id" may intercept "/admin/system-stats"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:30
+     📍 src\modules\qrcode\handlers\index.ts:161
+     💡 Suggestion: Register "/admin/system-stats" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/expiry"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:33
+     📍 src\modules\qrcode\handlers\index.ts:67
+     💡 Suggestion: Register "/:id/expiry" before "/:id"
+
+  ⚠️  "/:id" may intercept "/batch/update"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:33
+     📍 src\modules\qrcode\handlers\index.ts:106
+     💡 Suggestion: Register "/batch/update" before "/:id"
+
+  ⚠️  "/:id" may intercept "/batch/delete"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 30
+     📍 src\modules\qrcode\handlers\index.ts:36
+     📍 src\modules\qrcode\handlers\index.ts:109
+     💡 Suggestion: Register "/batch/delete" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:id/tags"
+     📦 Module: modules/qrcode
+     Priority scores: 1 vs 11
+     📍 src\modules\qrcode\handlers\index.ts:36
+     📍 src\modules\qrcode\handlers\index.ts:134
+     💡 Suggestion: Register "/:id/tags" before "/:id"
+
+  ⚠️  "/" may intercept "/:id"
+     📦 Module: modules/conversations/sub:conversation-main
+     Priority scores: 0 vs 1
+     📍 src\modules\conversations\handlers\conversation-main.ts:201
+     📍 src\modules\conversations\handlers\conversation-main.ts:295
+     💡 Suggestion: Register "/:id" before "/"
+
+  ⚠️  "/" may intercept "/:id/messages"
+     📦 Module: modules/conversations/sub:conversation-main
+     Priority scores: 0 vs 11
+     📍 src\modules\conversations\handlers\conversation-main.ts:201
+     📍 src\modules\conversations\handlers\conversation-main.ts:517
+     💡 Suggestion: Register "/:id/messages" before "/"
+
+  ⚠️  "/" may intercept "/:conversationId/messages/stream"
+     📦 Module: modules/conversations/sub:conversation-main
+     Priority scores: 0 vs 31
+     📍 src\modules\conversations\handlers\conversation-main.ts:201
+     📍 src\modules\conversations\handlers\conversation-main.ts:1004
+     💡 Suggestion: Register "/:conversationId/messages/stream" before "/"
+
+  ⚠️  "/:id" may intercept "/:id/messages"
+     📦 Module: modules/conversations/sub:conversation-main
+     Priority scores: 1 vs 11
+     📍 src\modules\conversations\handlers\conversation-main.ts:295
+     📍 src\modules\conversations\handlers\conversation-main.ts:517
+     💡 Suggestion: Register "/:id/messages" before "/:id"
+
+  ⚠️  "/:id" may intercept "/:conversationId/messages/stream"
+     📦 Module: modules/conversations/sub:conversation-main
+     Priority scores: 1 vs 31
+     📍 src\modules\conversations\handlers\conversation-main.ts:295
+     📍 src\modules\conversations\handlers\conversation-main.ts:1004
+     💡 Suggestion: Register "/:conversationId/messages/stream" before "/:id"
+
+  ⚠️  "/:id/messages" may intercept "/:conversationId/messages/stream"
+     📦 Module: modules/conversations/sub:conversation-main
+     Priority scores: 11 vs 31
+     📍 src\modules\conversations\handlers\conversation-main.ts:517
+     📍 src\modules\conversations\handlers\conversation-main.ts:1004
+     💡 Suggestion: Register "/:conversationId/messages/stream" before "/:id/messages"
+
+  ⚠️  "/reports" may intercept "/reports/:reportId/generate"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 10 vs 41
+     📍 src\modules\analytics\handlers\reports-main.ts:47
+     📍 src\modules\analytics\handlers\reports-main.ts:257
+     💡 Suggestion: Register "/reports/:reportId/generate" before "/reports"
+
+  ⚠️  "/reports" may intercept "/reports/:reportId/export"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 10 vs 41
+     📍 src\modules\analytics\handlers\reports-main.ts:47
+     📍 src\modules\analytics\handlers\reports-main.ts:366
+     💡 Suggestion: Register "/reports/:reportId/export" before "/reports"
+
+  ⚠️  "/reports/:reportId" may intercept "/reports/generation/:generationId/status"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 21 vs 81
+     📍 src\modules\analytics\handlers\reports-main.ts:86
+     📍 src\modules\analytics\handlers\reports-main.ts:300
+     💡 Suggestion: Register "/reports/generation/:generationId/status" before "/reports/:reportId"
+
+  ⚠️  "/reports/:reportId" may intercept "/reports/download/:generationId"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 21 vs 51
+     📍 src\modules\analytics\handlers\reports-main.ts:86
+     📍 src\modules\analytics\handlers\reports-main.ts:331
+     💡 Suggestion: Register "/reports/download/:generationId" before "/reports/:reportId"
+
+  ⚠️  "/reports" may intercept "/reports/generation/:generationId/status"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 10 vs 81
+     📍 src\modules\analytics\handlers\reports-main.ts:210
+     📍 src\modules\analytics\handlers\reports-main.ts:300
+     💡 Suggestion: Register "/reports/generation/:generationId/status" before "/reports"
+
+  ⚠️  "/reports" may intercept "/reports/download/:generationId"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 10 vs 51
+     📍 src\modules\analytics\handlers\reports-main.ts:210
+     📍 src\modules\analytics\handlers\reports-main.ts:331
+     💡 Suggestion: Register "/reports/download/:generationId" before "/reports"
+
+  ⚠️  "/batches" may intercept "/batches/:batchId/generate"
+     📦 Module: modules/analytics/sub:reports-main
+     Priority scores: 10 vs 41
+     📍 src\modules\analytics\handlers\reports-main.ts:511
+     📍 src\modules\analytics\handlers\reports-main.ts:550
+     💡 Suggestion: Register "/batches/:batchId/generate" before "/batches"
+
+  ⚠️  "/widget" may intercept "/widget/:widgetId/clone"
+     📦 Module: modules/analytics/sub:dashboard-main
+     Priority scores: 10 vs 41
+     📍 src\modules\analytics\handlers\dashboard-main.ts:303
+     📍 src\modules\analytics\handlers\dashboard-main.ts:528
+     💡 Suggestion: Register "/widget/:widgetId/clone" before "/widget"
+
+  ⚠️  "/agents" may intercept "/agents/:agentId/skills"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 10 vs 41
+     📍 src\modules\agents\handlers\agent-main.ts:31
+     📍 src\modules\agents\handlers\agent-main.ts:199
+     💡 Suggestion: Register "/agents/:agentId/skills" before "/agents"
+
+  ⚠️  "/agents" may intercept "/agents/:agentId"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 10 vs 21
+     📍 src\modules\agents\handlers\agent-main.ts:64
+     📍 src\modules\agents\handlers\agent-main.ts:93
+     💡 Suggestion: Register "/agents/:agentId" before "/agents"
+
+  ⚠️  "/agents" may intercept "/agents/:agentId/skills"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 10 vs 41
+     📍 src\modules\agents\handlers\agent-main.ts:64
+     📍 src\modules\agents\handlers\agent-main.ts:220
+     💡 Suggestion: Register "/agents/:agentId/skills" before "/agents"
+
+  ⚠️  "/agents" may intercept "/agents/:agentId/status"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 10 vs 41
+     📍 src\modules\agents\handlers\agent-main.ts:64
+     📍 src\modules\agents\handlers\agent-main.ts:284
+     💡 Suggestion: Register "/agents/:agentId/status" before "/agents"
+
+  ⚠️  "/agents" may intercept "/agents/:agentId/status/history"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 10 vs 71
+     📍 src\modules\agents\handlers\agent-main.ts:64
+     📍 src\modules\agents\handlers\agent-main.ts:323
+     💡 Suggestion: Register "/agents/:agentId/status/history" before "/agents"
+
+  ⚠️  "/agents" may intercept "/agents/:agentId/skills/statistics"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 10 vs 71
+     📍 src\modules\agents\handlers\agent-main.ts:64
+     📍 src\modules\agents\handlers\agent-main.ts:407
+     💡 Suggestion: Register "/agents/:agentId/skills/statistics" before "/agents"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/skills"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 41
+     📍 src\modules\agents\handlers\agent-main.ts:93
+     📍 src\modules\agents\handlers\agent-main.ts:220
+     💡 Suggestion: Register "/agents/:agentId/skills" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/status"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 41
+     📍 src\modules\agents\handlers\agent-main.ts:93
+     📍 src\modules\agents\handlers\agent-main.ts:284
+     💡 Suggestion: Register "/agents/:agentId/status" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/status/history"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 71
+     📍 src\modules\agents\handlers\agent-main.ts:93
+     📍 src\modules\agents\handlers\agent-main.ts:323
+     💡 Suggestion: Register "/agents/:agentId/status/history" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/skills/statistics"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 71
+     📍 src\modules\agents\handlers\agent-main.ts:93
+     📍 src\modules\agents\handlers\agent-main.ts:407
+     💡 Suggestion: Register "/agents/:agentId/skills/statistics" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/status/statistics"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 60
+     📍 src\modules\agents\handlers\agent-main.ts:93
+     📍 src\modules\agents\handlers\agent-main.ts:425
+     💡 Suggestion: Register "/agents/status/statistics" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/skills/:skillId"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 62
+     📍 src\modules\agents\handlers\agent-main.ts:131
+     📍 src\modules\agents\handlers\agent-main.ts:238
+     💡 Suggestion: Register "/agents/:agentId/skills/:skillId" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/status"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 41
+     📍 src\modules\agents\handlers\agent-main.ts:131
+     📍 src\modules\agents\handlers\agent-main.ts:302
+     💡 Suggestion: Register "/agents/:agentId/status" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/batch/transfer"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 60
+     📍 src\modules\agents\handlers\agent-main.ts:131
+     📍 src\modules\agents\handlers\agent-main.ts:384
+     💡 Suggestion: Register "/agents/batch/transfer" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId" may intercept "/agents/:agentId/skills/:skillId"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 21 vs 62
+     📍 src\modules\agents\handlers\agent-main.ts:175
+     📍 src\modules\agents\handlers\agent-main.ts:259
+     💡 Suggestion: Register "/agents/:agentId/skills/:skillId" before "/agents/:agentId"
+
+  ⚠️  "/agents/:agentId/skills" may intercept "/agents/:agentId/skills/statistics"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 41 vs 71
+     📍 src\modules\agents\handlers\agent-main.ts:220
+     📍 src\modules\agents\handlers\agent-main.ts:407
+     💡 Suggestion: Register "/agents/:agentId/skills/statistics" before "/agents/:agentId/skills"
+
+  ⚠️  "/agents/:agentId/status" may intercept "/agents/:agentId/status/history"
+     📦 Module: modules/agents/sub:agent-main
+     Priority scores: 41 vs 71
+     📍 src\modules\agents\handlers\agent-main.ts:284
+     📍 src\modules\agents\handlers\agent-main.ts:323
+     💡 Suggestion: Register "/agents/:agentId/status/history" before "/agents/:agentId/status"
+
+🟢 LOW SEVERITY (Potential issues):
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  ℹ️  "/" and "/stats"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:60
+
+  ℹ️  "/" and "/unread-count"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:66
+
+  ℹ️  "/" and "/recent"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:72
+
+  ℹ️  "/" and "/channels/stats"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:110
+
+  ℹ️  "/" and "/sse"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:143
+
+  ℹ️  "/" and "/sse/stats"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:146
+
+  ℹ️  "/" and "/sse/connections/count"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:42
+     📍 src\handlers\notification-router.ts:148
+
+  ℹ️  "/" and "/bulk"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:54
+
+  ℹ️  "/" and "/new-message"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:124
+
+  ℹ️  "/" and "/conversation-assigned"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:130
+
+  ℹ️  "/" and "/system"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:136
+
+  ℹ️  "/" and "/sse/send"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:144
+
+  ℹ️  "/" and "/sse/broadcast"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:145
+
+  ℹ️  "/" and "/sse/cleanup"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:48
+     📍 src\handlers\notification-router.ts:147
+
+  ℹ️  "/sse" and "/sse/stats"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:143
+     📍 src\handlers\notification-router.ts:146
+
+  ℹ️  "/sse" and "/sse/connections/count"
+     📦 Module: handlers/notification-router
+     📍 src\handlers\notification-router.ts:143
+     📍 src\handlers\notification-router.ts:148
+
+  ℹ️  "/" and "/bulk-create"
+     📦 Module: handlers/messaging-main
+     📍 src\handlers\messaging-main.ts:77
+     📍 src\handlers\messaging-main.ts:1058
+
+  ℹ️  "/" and "/bulk-delete"
+     📦 Module: handlers/messaging-main
+     📍 src\handlers\messaging-main.ts:77
+     📍 src\handlers\messaging-main.ts:1209
+
+  ℹ️  "/" and "/overview"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:17
+
+  ℹ️  "/" and "/stats/resources"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:18
+
+  ℹ️  "/" and "/stats/roles"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:19
+
+  ℹ️  "/" and "/trends"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:20
+
+  ℹ️  "/" and "/heatmap"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:21
+
+  ℹ️  "/" and "/metrics"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:22
+
+  ℹ️  "/" and "/stats/custom"
+     📦 Module: handlers/activity
+     📍 src\handlers\activity.ts:14
+     📍 src\handlers\activity.ts:23
+
+  ℹ️  "/" and "/stats/all"
+     📦 Module: modules/teams/sub:team
+     📍 src\modules\teams\handlers\team.ts:67
+     📍 src\modules\teams\handlers\team.ts:596
+
+  ℹ️  "/" and "/transfer"
+     📦 Module: modules/teams/sub:team
+     📍 src\modules\teams\handlers\team.ts:140
+     📍 src\modules\teams\handlers\team.ts:620
+
+  ℹ️  "/" and "/get-or-create"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:309
+
+  ℹ️  "/" and "/topics/analyze"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:557
+
+  ℹ️  "/" and "/topics/suggest"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:590
+
+  ℹ️  "/" and "/batch"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:662
+
+  ℹ️  "/" and "/detect-boundary"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:32
+     📍 src\modules\session\handlers\session.ts:703
+
+  ℹ️  "/" and "/search"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:230
+     📍 src\modules\session\handlers\session.ts:268
+
+  ℹ️  "/" and "/stats"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:230
+     📍 src\modules\session\handlers\session.ts:442
+
+  ℹ️  "/" and "/activity-stats"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:230
+     📍 src\modules\session\handlers\session.ts:467
+
+  ℹ️  "/" and "/topics/stats"
+     📦 Module: modules/session/sub:session
+     📍 src\modules\session\handlers\session.ts:230
+     📍 src\modules\session\handlers\session.ts:532
+
+  ℹ️  "/" and "/stats/overview"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:72
+
+  ℹ️  "/" and "/stats/types"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:81
+
+  ℹ️  "/" and "/stats/trends"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:84
+
+  ℹ️  "/" and "/search"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:89
+
+  ℹ️  "/" and "/templates"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:117
+
+  ℹ️  "/" and "/tags/available"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:128
+
+  ℹ️  "/" and "/tags/stats"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:137
+
+  ℹ️  "/" and "/export/data"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:142
+
+  ℹ️  "/" and "/export/images"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:145
+
+  ℹ️  "/" and "/export/report"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:148
+
+  ℹ️  "/" and "/admin/system-stats"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:24
+     📍 src\modules\qrcode\handlers\index.ts:161
+
+  ℹ️  "/" and "/advanced-search"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:92
+
+  ℹ️  "/" and "/batch/create"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:103
+
+  ℹ️  "/" and "/batch/status"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:112
+
+  ℹ️  "/" and "/admin/cleanup"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:164
+
+  ℹ️  "/" and "/admin/rebuild-cache"
+     📦 Module: modules/qrcode
+     📍 src\modules\qrcode\handlers\index.ts:27
+     📍 src\modules\qrcode\handlers\index.ts:167
+
+  ℹ️  "/" and "/stream"
+     📦 Module: modules/conversations/sub:conversation-main
+     📍 src\modules\conversations\handlers\conversation-main.ts:201
+     📍 src\modules\conversations\handlers\conversation-main.ts:676
+
+  ℹ️  "/agents" and "/agents/search"
+     📦 Module: modules/agents/sub:agent-main
+     📍 src\modules\agents\handlers\agent-main.ts:31
+     📍 src\modules\agents\handlers\agent-main.ts:345
+
+  ℹ️  "/agents" and "/agents/status/statistics"
+     📦 Module: modules/agents/sub:agent-main
+     📍 src\modules\agents\handlers\agent-main.ts:64
+     📍 src\modules\agents\handlers\agent-main.ts:425
+
+  ℹ️  "/agents/batch" and "/agents/batch/transfer"
+     📦 Module: modules/agents/sub:agent-main
+     📍 src\modules\agents\handlers\agent-main.ts:365
+     📍 src\modules\agents\handlers\agent-main.ts:384
+
+  ℹ️  "/" and "/module-info"
+     📦 Module: modules/system
+     📍 src\modules\system\handlers\index.ts:26
+     📍 src\modules\system\handlers\index.ts:34
+
+════════════════════════════════════════════════════════════════════════════════════════════════════

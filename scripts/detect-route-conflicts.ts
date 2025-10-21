@@ -11,6 +11,46 @@ interface RouteInfo {
   path: string;
   file: string;
   line: number;
+  module: string; // Module identifier to prevent cross-module false positives
+}
+
+/**
+ * 從文件路徑提取模組識別符
+ * 用於區分不同模組的路由，避免跨模組誤報
+ *
+ * 對於子應用模式（如 modules/teams/handlers/members.ts），
+ * 將其標記為獨立的子模組以避免誤報
+ */
+function getModuleIdentifier(filePath: string): string {
+  // 標準化路徑分隔符
+  const normalizedPath = filePath.replace(/\\/g, '/');
+
+  // 情況 1: src/modules/xxx/handlers/yyy.ts - 子應用處理器（NOT index.ts）
+  const subHandlerMatch = normalizedPath.match(/src\/modules\/([^\/]+)\/handlers\/([^\/]+)\.ts/);
+  if (subHandlerMatch && subHandlerMatch[2] !== 'index') {
+    // 標記為獨立子模組，避免與同模組的其他子應用衝突
+    return `modules/${subHandlerMatch[1]}/sub:${subHandlerMatch[2]}`;
+  }
+
+  // 情況 2: src/modules/xxx - 提取模組名稱（包括 index.ts）
+  const moduleMatch = normalizedPath.match(/src\/modules\/([^\/]+)/);
+  if (moduleMatch) {
+    return `modules/${moduleMatch[1]}`;
+  }
+
+  // 情況 3: src/handlers/xxx - 提取處理器名稱
+  const handlerMatch = normalizedPath.match(/src\/handlers\/([^\/]+)\.ts/);
+  if (handlerMatch) {
+    return `handlers/${handlerMatch[1]}`;
+  }
+
+  // 情況 4: src/index.ts - 主入口文件（所有路由都在這裡匯總，需要特別注意）
+  if (normalizedPath.includes('src/index.ts')) {
+    return 'main-entry';
+  }
+
+  // 默認：使用完整路徑作為模組標識符
+  return normalizedPath;
 }
 
 /**
@@ -27,6 +67,8 @@ function extractRoutes(filePath: string): RouteInfo[] {
   // 匹配模式: variableName.method('path', ...
   const routeRegex = /(?!c\.|env\.|ctx\.)(\w+)\.(get|post|put|delete|patch|route)\s*\(\s*['"`]([/][^'"`]*)['"`]\s*,/g;
 
+  const moduleId = getModuleIdentifier(filePath);
+
   lines.forEach((line, index) => {
     let match;
     // Reset regex state for each line
@@ -42,7 +84,8 @@ function extractRoutes(filePath: string): RouteInfo[] {
           method,
           path,
           file: filePath,
-          line: index + 1
+          line: index + 1,
+          module: moduleId
         });
       }
     }
@@ -55,6 +98,15 @@ function extractRoutes(filePath: string): RouteInfo[] {
  * 檢查兩個路由是否可能衝突
  */
 function checkConflict(route1: RouteInfo, route2: RouteInfo): boolean {
+  // Hono 的 .route() 方法支持多次掛載到同一路徑（會合併路由）
+  // 所以 ROUTE 方法的重複不應該被視為衝突
+  if (route1.method === 'ROUTE' && route2.method === 'ROUTE') {
+    // 相同路徑的多次 .route() 調用是合法的（路由合併）
+    if (route1.path === route2.path) {
+      return false; // 不是衝突
+    }
+  }
+
   // 不同 HTTP 方法不會衝突
   if (route1.method !== route2.method && route1.method !== 'ROUTE' && route2.method !== 'ROUTE') {
     return false;
@@ -144,6 +196,21 @@ async function detectConflicts() {
 
   console.log(`Extracted ${allRoutes.length} route definitions\n`);
 
+  // 統計各模組的路由數量
+  const moduleStats = new Map<string, number>();
+  allRoutes.forEach(route => {
+    moduleStats.set(route.module, (moduleStats.get(route.module) || 0) + 1);
+  });
+
+  console.log('📊 Module Distribution:');
+  console.log('─'.repeat(100));
+  Array.from(moduleStats.entries())
+    .sort((a, b) => b[1] - a[1]) // 按路由數量排序
+    .forEach(([module, count]) => {
+      console.log(`  📦 ${module.padEnd(40)} ${count} routes`);
+    });
+  console.log('');
+
   // 檢測衝突
   const conflicts: Array<{
     route1: RouteInfo;
@@ -155,6 +222,12 @@ async function detectConflicts() {
     for (let j = i + 1; j < allRoutes.length; j++) {
       const route1 = allRoutes[i];
       const route2 = allRoutes[j];
+
+      // 🔧 修復：只檢查同一模組內的路由衝突，避免跨模組誤報
+      // 例如：modules/system 的 /health 不會與 handlers/websocket-main 的 /health 衝突
+      if (route1.module !== route2.module) {
+        continue; // 跳過不同模組的路由比較
+      }
 
       if (checkConflict(route1, route2)) {
         // 判斷嚴重程度
@@ -192,6 +265,7 @@ async function detectConflicts() {
       console.log('─'.repeat(100));
       highSeverity.forEach(({ route1, route2 }) => {
         console.log(`  ❌ ${route1.method} ${route1.path}`);
+        console.log(`     📦 Module: ${route1.module}`);
         console.log(`     📍 ${route1.file}:${route1.line}`);
         console.log(`     📍 ${route2.file}:${route2.line}`);
         console.log('');
@@ -206,6 +280,7 @@ async function detectConflicts() {
         const priority2 = calculatePriority(route2.path);
 
         console.log(`  ⚠️  "${route1.path}" may intercept "${route2.path}"`);
+        console.log(`     📦 Module: ${route1.module}`);
         console.log(`     Priority scores: ${priority1} vs ${priority2}`);
         console.log(`     📍 ${route1.file}:${route1.line}`);
         console.log(`     📍 ${route2.file}:${route2.line}`);
@@ -222,6 +297,7 @@ async function detectConflicts() {
       console.log('─'.repeat(100));
       lowSeverity.forEach(({ route1, route2 }) => {
         console.log(`  ℹ️  "${route1.path}" and "${route2.path}"`);
+        console.log(`     📦 Module: ${route1.module}`);
         console.log(`     📍 ${route1.file}:${route1.line}`);
         console.log(`     📍 ${route2.file}:${route2.line}`);
         console.log('');
