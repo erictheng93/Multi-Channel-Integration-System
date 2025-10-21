@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
-import { conversationHandler } from '../../../src/handlers/conversation'
+import { conversationHandler } from '@backend/handlers/conversation'
 import { createMockDrizzle } from '../../helpers/mockDrizzle'
 
 // Mock crypto.randomUUID
@@ -31,6 +31,12 @@ vi.mock('../../../src/db/schema', () => ({
   customers: {}
 }))
 
+// Mock DatabaseService
+let mockDbServiceInstance: any
+vi.mock('../../../src/services/database', () => ({
+  DatabaseService: vi.fn().mockImplementation(() => mockDbServiceInstance)
+}))
+
 // Mock authentication middleware
 vi.mock('../../../src/middleware/database', () => ({
   databaseMiddleware: vi.fn((c, next) => {
@@ -47,6 +53,7 @@ describe('conversationHandler - Hono App Routes', () => {
   let app: Hono
   let mockDB: any
   let mockDrizzle: any
+  let mockDbService: any
 
   beforeEach(() => {
     // Create fresh Hono app
@@ -64,23 +71,34 @@ describe('conversationHandler - Hono App Routes', () => {
       })
     }
 
+    // Create mockDbService that can be modified by tests
+    mockDbService = {
+      getConversationsByRole: vi.fn().mockResolvedValue([]),
+      canAgentAccessConversation: vi.fn().mockResolvedValue(true),
+      getConversationById: vi.fn().mockResolvedValue(null),
+      getMessagesByConversationId: vi.fn().mockResolvedValue([]),
+      updateConversation: vi.fn().mockResolvedValue({ success: true })
+    }
+
+    // Set the instance that will be returned by the mocked constructor
+    mockDbServiceInstance = mockDbService
+
     // Add middleware to inject mocks into context
     app.use('*', async (c, next) => {
       c.env = {
         DB: mockDB,
         KV: {
           get: vi.fn().mockResolvedValue(null),
-          put: vi.fn().mockResolvedValue(undefined)
+          put: vi.fn().mockResolvedValue(undefined),
+          delete: vi.fn().mockResolvedValue(undefined),
+          list: vi.fn().mockResolvedValue({ keys: [] }),
+          getCache: vi.fn().mockResolvedValue(null)
         }
       } as any
 
       c.set('db', mockDrizzle)
-      c.set('dbService', {
-        getConversationsByRole: vi.fn().mockResolvedValue([]),
-        canAgentAccessConversation: vi.fn().mockResolvedValue(true),
-        getConversationById: vi.fn().mockResolvedValue(null),
-        getMessagesByConversationId: vi.fn().mockResolvedValue([])
-      })
+      c.set('dbService', mockDbService)
+      c.set('kv', c.env.KV)
       c.set('agent', {
         id: 2,
         userId: 2,
@@ -200,7 +218,9 @@ describe('conversationHandler - Hono App Routes', () => {
     })
 
     it('should return 404 when conversation not found', async () => {
-      mockDrizzle.mockSelectResponse([])
+      // Set up mocks for non-existent conversation
+      mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
+      mockDbService.getConversationById.mockResolvedValueOnce(null)
 
       const response = await app.request('/api/conversations/999')
       const result = await response.json()

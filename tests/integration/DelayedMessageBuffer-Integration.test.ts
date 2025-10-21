@@ -177,6 +177,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       // 模擬 addToDeadLetterQueue 重試邏輯
       const maxAttempts = 3;
       let lastError: Error | null = null;
+      let succeeded = false;
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
@@ -185,6 +186,8 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
             failedAt: Date.now(),
             failureReason: 'Test failure'
           });
+          succeeded = true;
+          lastError = null; // 成功時重置錯誤
           break; // 成功
         } catch (error) {
           lastError = error as Error;
@@ -195,6 +198,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       }
 
       expect(attemptCount).toBe(3); // 經過 3 次嘗試
+      expect(succeeded).toBe(true); // 最終成功
       expect(lastError).toBeNull(); // 最終未失敗 (被重置)
       expect(mockPut).toHaveBeenCalledTimes(3);
     });
