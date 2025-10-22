@@ -1204,22 +1204,60 @@ const editTeam = (team: Team) => {
   showEditTeamModal.value = true
 }
 
-// 提交編輯團隊
+// 提交編輯團隊（樂觀更新）
 const submitEditTeam = async () => {
   editTeamLoading.value = true
+
+  // 找到團隊在列表中的位置
+  const teamIndex = teams.value.findIndex(t => t.id === editTeamForm.id)
+  if (teamIndex === -1) {
+    console.error('Team not found in list:', editTeamForm.id)
+    editTeamLoading.value = false
+    return
+  }
+
+  const team = teams.value[teamIndex]
+  if (!team) {
+    console.error('Team object is undefined:', editTeamForm.id)
+    editTeamLoading.value = false
+    return
+  }
+
+  // 1️⃣ 保存原始數據（用於失敗恢復）
+  const originalName = team.name
+  const originalDescription = team.description
+  const originalIsActive = team.isActive
+  const { id, ...updateData } = editTeamForm
+
+  // 2️⃣ 樂觀更新：立即更新 UI
+  team.name = updateData.name
+  team.description = updateData.description
+  team.isActive = updateData.isActive
+
+  // 3️⃣ 立即關閉模態框和顯示成功消息
+  closeEditTeamModal()
+  editTeamLoading.value = false
+  showSuccess('更新團隊成功', '已成功更新團隊資訊')
+
   try {
-    const { id, ...updateData } = editTeamForm
+    // 4️⃣ 背景調用 API
     const response = await teamApi.updateTeam(id, updateData)
-    if (response.success) {
-      showSuccess('更新團隊成功', '已成功更新團隊資訊')
-      closeEditTeamModal()
-      await loadTeams()
+
+    if (!response.success) {
+      // 5️⃣ API 返回失敗，恢復原數據
+      team.name = originalName
+      team.description = originalDescription
+      team.isActive = originalIsActive
+      showError('更新團隊失敗', response.error || '請稍後重試')
     }
+    // 成功的情況不需要做任何事，UI 已經更新了
   } catch (error) {
     console.error('更新團隊失敗:', error)
+    // 5️⃣ 發生錯誤，恢復原數據
+    team.name = originalName
+    team.description = originalDescription
+    team.isActive = originalIsActive
     showError('更新團隊失敗', error instanceof Error ? error.message : '請稍後重試')
-  } finally {
-    editTeamLoading.value = false
   }
 }
 
@@ -1231,15 +1269,41 @@ const closeEditTeamModal = () => {
 
 // 切換團隊狀態
 const toggleTeamStatus = async (team: Team) => {
+  // 找到團隊在列表中的位置
+  const teamIndex = teams.value.findIndex(t => t.id === team.id)
+  if (teamIndex === -1) {
+    console.warn('Team not found in list:', team.id)
+    return
+  }
+
+  const teamObj = teams.value[teamIndex]
+  if (!teamObj) {
+    console.error('Team object is undefined:', team.id)
+    return
+  }
+
+  // 1️⃣ 保存原始狀態（用於失敗恢復）
+  const originalStatus = teamObj.isActive
+  const newStatus = !originalStatus
+
+  // 2️⃣ 樂觀更新：立即更新 UI
+  teamObj.isActive = newStatus
+
   try {
-    const newStatus = !team.isActive
+    // 3️⃣ 背景調用 API
     const response = await teamApi.updateTeam(team.id, { isActive: newStatus })
     if (response.success) {
       showSuccess('團隊狀態更新成功', `已${newStatus ? '啟用' : '停用'}團隊`)
-      await loadTeams()
+      // 不需要 loadTeams()，已經樂觀更新了
+    } else {
+      // 4️⃣ API 返回失敗，恢復原狀態
+      teamObj.isActive = originalStatus
+      showError('更新團隊狀態失敗', response.error || '請稍後重試')
     }
   } catch (error) {
     console.error('更新團隊狀態失敗:', error)
+    // 4️⃣ 發生錯誤，恢復原狀態
+    teamObj.isActive = originalStatus
     showError('更新團隊狀態失敗', '請稍後重試')
   }
 }
