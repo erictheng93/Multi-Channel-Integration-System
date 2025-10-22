@@ -1285,14 +1285,35 @@ const closeQRModal = () => {
 const confirmRemoveTeam = (team: Team) => {
   confirmMessage.value = `確定要刪除團隊 ${team.name} 嗎？此操作無法撤銷。`
   confirmCallback.value = async () => {
+    // 樂觀更新: 先從列表中移除團隊
+    const teamIndex = teams.value.findIndex(t => t.id === team.id)
+
+    if (teamIndex === -1) {
+      console.warn('Team not found in list:', team.id)
+      return
+    }
+
+    const removedTeam = teams.value[teamIndex]
+    if (!removedTeam) {
+      console.error('Failed to retrieve team from list')
+      return
+    }
+    teams.value.splice(teamIndex, 1)
+
     try {
       const response = await teamApi.deleteTeam(team.id)
       if (response.success) {
         showSuccess('刪除團隊成功', '已成功刪除團隊')
-        await loadTeams()
+        // 不需要重新載入所有團隊，已經樂觀更新了
+      } else {
+        // API 返回失敗，恢復團隊到列表
+        teams.value.splice(teamIndex, 0, removedTeam)
+        showError('刪除團隊失敗', response.error || '請稍後重試')
       }
     } catch (error) {
       console.error('刪除團隊失敗:', error)
+      // 發生錯誤，恢復團隊到列表
+      teams.value.splice(teamIndex, 0, removedTeam)
       showError('刪除團隊失敗', '請稍後重試')
     }
   }

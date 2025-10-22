@@ -2,7 +2,7 @@
 // 團隊服務層
 
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, desc, and, count, or, like } from 'drizzle-orm';
+import { eq, desc, and, count, or, like, sql } from 'drizzle-orm';
 import { teams, agents, conversations, messages } from '@/db/schema';
 import type {
   Team,
@@ -126,19 +126,22 @@ export class TeamService implements TeamServiceInterface {
   // Delete team (hard delete - permanently removes from database)
   async deleteTeam(id: number): Promise<boolean> {
     try {
-      // First, remove team assignment from all agents in this team
-      await this.db
-        .update(agents)
-        .set({
-          teamId: null,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(agents.teamId, id));
+      // Use transaction to ensure data consistency
+      await this.db.transaction(async (tx) => {
+        // First, remove team assignment from all agents in this team
+        await tx
+          .update(agents)
+          .set({
+            teamId: null,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(agents.teamId, id));
 
-      // Then delete the team permanently
-      await this.db
-        .delete(teams)
-        .where(eq(teams.id, id));
+        // Then delete the team permanently
+        await tx
+          .delete(teams)
+          .where(eq(teams.id, id));
+      });
 
       return true;
     } catch (error) {
@@ -176,14 +179,17 @@ export class TeamService implements TeamServiceInterface {
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    // Get teams with member counts
+    // Optimized: Get teams with all stats in a single query
     const teamList = await this.db
       .select({
         team: teams,
-        memberCount: count(agents.id)
+        memberCount: sql<number>`COALESCE(COUNT(DISTINCT ${agents.id}), 0)`,
+        activeMembers: sql<number>`COALESCE(SUM(CASE WHEN ${agents.isActive} = 1 THEN 1 ELSE 0 END), 0)`,
+        conversationCount: sql<number>`COALESCE(COUNT(DISTINCT ${conversations.id}), 0)`
       })
       .from(teams)
       .leftJoin(agents, eq(teams.id, agents.teamId))
+      .leftJoin(conversations, eq(teams.id, conversations.assignedTeamId))
       .where(whereClause)
       .groupBy(teams.id)
       .orderBy(desc(teams.createdAt))
@@ -197,31 +203,14 @@ export class TeamService implements TeamServiceInterface {
       .where(whereClause);
     const total = totalResult[0]?.total || 0;
 
-    const teamsWithStats: TeamWithStats[] = await Promise.all(
-      teamList.map(async (row) => {
-        // Get active members count
-        const activeMembersResult = await this.db
-          .select({ activeMembers: count() })
-          .from(agents)
-          .where(and(eq(agents.teamId, row.team.id), eq(agents.isActive, true)));
-        const activeMembers = activeMembersResult[0]?.activeMembers || 0;
-
-        // Get conversation count
-        const conversationCountResult = await this.db
-          .select({ conversationCount: count() })
-          .from(conversations)
-          .where(eq(conversations.assignedTeamId, row.team.id));
-        const conversationCount = conversationCountResult[0]?.conversationCount || 0;
-
-        return {
-          ...row.team,
-          memberCount: row.memberCount,
-          activeMembers,
-          conversationCount,
-          qrCodeScans: 0
-        };
-      })
-    );
+    // No more N+1 queries! Map directly without async
+    const teamsWithStats: TeamWithStats[] = teamList.map((row) => ({
+      ...row.team,
+      memberCount: row.memberCount,
+      activeMembers: row.activeMembers,
+      conversationCount: row.conversationCount,
+      qrCodeScans: 0
+    }));
 
     return {
       teams: teamsWithStats,
