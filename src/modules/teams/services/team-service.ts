@@ -126,22 +126,19 @@ export class TeamService implements TeamServiceInterface {
   // Delete team (hard delete - permanently removes from database)
   async deleteTeam(id: number): Promise<boolean> {
     try {
-      // Use transaction to ensure data consistency
-      await this.db.transaction(async (tx) => {
-        // First, remove team assignment from all agents in this team
-        await tx
-          .update(agents)
-          .set({
-            teamId: null,
-            updatedAt: new Date().toISOString()
-          })
-          .where(eq(agents.teamId, id));
+      // First, remove team assignment from all agents in this team
+      await this.db
+        .update(agents)
+        .set({
+          teamId: null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(agents.teamId, id));
 
-        // Then delete the team permanently
-        await tx
-          .delete(teams)
-          .where(eq(teams.id, id));
-      });
+      // Then delete the team permanently
+      await this.db
+        .delete(teams)
+        .where(eq(teams.id, id));
 
       return true;
     } catch (error) {
