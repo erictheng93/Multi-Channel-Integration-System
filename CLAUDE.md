@@ -52,6 +52,7 @@ The backend uses a modular handler-based approach:
 - `handlers/team-main.ts` - Team and member management
 - `handlers/system-main.ts` - System settings and health monitoring
 - `handlers/customer-main.ts` - Customer data management
+- `handlers/tag-main.ts` - **Tag management system** with CRUD operations, bulk operations, and usage statistics
 - `handlers/websocket-main.ts` - WebSocket connection management and routing
 - `handlers/websocket-health.ts` - WebSocket health checks and monitoring
 - `handlers/websocket-integration-test.ts` - WebSocket testing endpoints
@@ -147,6 +148,7 @@ npm run verify:deployment # Verify production deployment
  - File upload with progress indicators and R2 integration
  - Responsive design with modern CSS and component library
  - Loading states and error handling components
+ - **Confirmation dialogs** with promise-based API and multiple types (warning, danger, info)
 - **Developer Experience**:
  - **Internationalization (i18n)** with Vue I18n
  - **Development tools** with Vite and TypeScript
@@ -186,7 +188,8 @@ npm run verify:deployment # Verify production deployment
 - `frontend/src/stores/` - Pinia state management with real-time event handling
 - `frontend/src/api/` - API client modules
 - `frontend/src/services/` - WebSocket client services and connection management
-- `frontend/src/composables/` - Vue composables for WebSocket functionality
+- `frontend/src/composables/` - Vue composables for WebSocket functionality and UI interactions
+ - `frontend/src/composables/useConfirmDialog.ts` - **Global confirmation dialog system** with singleton pattern and promise-based API
 - `frontend/src/components/ui/` - Real-time UI components (status indicators, typing indicators)
 - `frontend/src/views/ConversationDetail.vue` - Main conversation interface with WebSocket integration
 - `frontend/src/types/` - Frontend type definitions including WebSocket types
@@ -227,6 +230,7 @@ Key test helpers:
  - **Messaging Handler**: 44 unit tests with 66% pass rate (29/44 passing, core functionality 100%)
 - API integration tests in `tests/integration/` including real-time event testing
 - Database operation tests with mocking
+- **Improved Test Architecture**: Database layer mocking approach with proper Drizzle ORM column structure
 - **WebSocket Infrastructure Tests** - Complete Durable Objects and broadcasting system testing
 - **Load Testing Suite** - Validates 1000+ concurrent connections and message throughput
 
@@ -415,6 +419,11 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 - **Multi-platform Customer Data**: Unified customer profiles across LINE OA and planned channels
 - **Conversation History**: Complete conversation tracking and searchable history
 - **Customer Insights**: Data collection and management with privacy-conscious design
+- **Tag Management System**:
+  - Complete CRUD operations for customer and conversation tags
+  - Bulk operations support for efficient tag management
+  - Usage statistics and analytics tracking
+  - Professional UI with confirmation dialogs and toast notifications
 - **Integration Ready**: Webhook handlers prepared for multiple messaging platforms
 
 ### **Technical Excellence**

@@ -95,6 +95,17 @@ const router = createRouter({
         title: 'API監控'
       }
     },
+    // ==================== 组件测试页面 (开发用) ====================
+    {
+      path: '/test/components',
+      name: 'ComponentTest',
+      component: () => import('@/views/ComponentTestPage.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+        title: '组件测试'
+      }
+    },
     // ==================== WebSocket 管理路由 ====================
     {
       path: '/admin/websocket',

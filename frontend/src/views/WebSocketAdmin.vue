@@ -191,6 +191,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import { apiClient } from '@/api'
+import { useToast } from '@/composables/useToast'
 
 interface MigrationConfig {
   enableWebSocket: boolean
@@ -222,6 +223,9 @@ const healthStatus = ref<HealthStatus | null>(null)
 const error = ref<string | null>(null)
 const saving = ref(false)
 const refreshing = ref(false)
+
+// Toast notifications
+const { showSuccess } = useToast()
 
 const localConfig = reactive<MigrationConfig>({
   enableWebSocket: false,
@@ -291,7 +295,7 @@ async function saveConfig() {
     const data = response.data as { success: boolean; config: MigrationConfig }
     migrationConfig.value = data.config
 
-    window.alert('配置已保存成功！')
+    showSuccess('配置已保存成功！')
   } catch (err: unknown) {
     error.value = (err as {response?: {data?: {error?: string}}}).response?.data?.error || '保存配置失敗'
     console.error('Failed to save config:', err)

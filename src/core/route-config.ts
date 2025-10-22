@@ -10,6 +10,7 @@ import {
   conversationMainHandler,
   systemMainHandler,
   customerMainHandler,
+  tagMainHandler,
   sessionMainHandler,
   agentMainHandler,
   notificationMainHandler,
@@ -119,6 +120,15 @@ const businessLogicGroup = createRouteGroup({
       path: '/customers',
       handler: customerMainHandler,
       description: 'Customer Data Management',
+      version: '1.0.0',
+      dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'tags',
+      path: '/tags',
+      handler: tagMainHandler,
+      description: 'Tag Management System',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'

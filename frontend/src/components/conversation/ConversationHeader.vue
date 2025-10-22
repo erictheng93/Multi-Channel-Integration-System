@@ -136,6 +136,7 @@ import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, addTagsToCustomer, type Tag } from '@/api/tags'
+import { useToast } from '@/composables/useToast'
 
 interface Props {
   conversation?: Conversation
@@ -155,6 +156,9 @@ const customerTags = ref<Tag[]>([])
 const selectedTagIds = ref<number[]>([])
 const showAllTags = ref(false)
 const showAssignPanel = ref(false)
+
+// Toast notifications
+const { showError } = useToast()
 
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
@@ -224,8 +228,7 @@ const handleUnassigned = (conversation: Conversation) => {
 
 const handleAssignError = (message: string) => {
   console.error('Assignment error:', message)
-  // 可以在這裡顯示toast通知
-  window.alert(message) // 簡單的錯誤提示
+  showError('指派失敗', message)
 }
 
 // 點擊外部關閉指派面板

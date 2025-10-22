@@ -341,10 +341,22 @@ body {
   color: white;
   background-color: var(--danger-600);
   border-color: var(--danger-600);
+  transition: all var(--transition-fast);
 }
 
 .btn-danger:hover:not(:disabled) {
   background-color: var(--danger-700);
+  color: white;
+  font-weight: 700;
+  border-color: var(--danger-700);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:active:not(:disabled) {
+  background-color: var(--danger-800);
+  border-color: var(--danger-800);
+  transform: translateY(0);
 }
 
 .btn-ghost {

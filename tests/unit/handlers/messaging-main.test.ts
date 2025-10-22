@@ -5,13 +5,49 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
 
 // Mock problematic imports FIRST before importing the handler
-vi.mock('@shared/database/schema', () => ({
-  messages: {},
-  conversations: {},
-  customers: {},
-  agents: {},
-  fileAttachments: {} // ✅ Added missing export
-}));
+// Create proper schema mocks with column references for Drizzle ORM
+vi.mock('@shared/database/schema', () => {
+  const createMockColumn = (name: string) => ({
+    name,
+    columnType: 'mock',
+    _: { name }
+  });
+
+  return {
+    messages: {
+      id: createMockColumn('id'),
+      conversationId: createMockColumn('conversationId'),
+      agentSenderId: createMockColumn('agentSenderId'),
+      senderType: createMockColumn('senderType'),
+      content: createMockColumn('content'),
+      metadata: createMockColumn('metadata'),
+      isRecalled: createMockColumn('isRecalled'),
+      createdAt: createMockColumn('createdAt'),
+      updatedAt: createMockColumn('updatedAt')
+    },
+    conversations: {
+      id: createMockColumn('id'),
+      customerId: createMockColumn('customerId'),
+      status: createMockColumn('status')
+    },
+    customers: {
+      id: createMockColumn('id'),
+      displayName: createMockColumn('displayName')
+    },
+    agents: {
+      id: createMockColumn('id'),
+      username: createMockColumn('username')
+    },
+    fileAttachments: {
+      id: createMockColumn('id'),
+      messageId: createMockColumn('messageId'),
+      fileName: createMockColumn('fileName'),
+      fileType: createMockColumn('fileType'),
+      fileSize: createMockColumn('fileSize'),
+      fileUrl: createMockColumn('fileUrl')
+    }
+  };
+});
 
 // Mock the correct path that matches the handler's import
 vi.mock('@modules/messaging/types/message-types', () => ({

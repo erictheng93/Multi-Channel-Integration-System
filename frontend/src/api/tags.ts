@@ -110,44 +110,61 @@ export const getTags = async (params?: {
           .map(([key, value]) => [key, String(value)])
       ).toString()}`
     : ''
-  const response = await apiClient.get<PaginatedTagsResponse>(`/customers/tags/available${queryString}`)
+  const response = await apiClient.get<Tag[]>(`/customers/tags/available${queryString}`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tags')
   }
-  return response.data
+  return {
+    success: response.success,
+    data: response.data,
+    pagination: response.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 },
+    message: response.message || 'Tags retrieved successfully'
+  }
 }
 
 /**
  * 創建新標籤
  */
 export const createTag = async (data: CreateTagRequest): Promise<TagResponse> => {
-  const response = await apiClient.post<TagResponse>('/tags', data)
+  const response = await apiClient.post<Tag>('/tags', data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to create tag')
   }
-  return response.data
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || 'Tag created successfully'
+  }
 }
 
 /**
  * 獲取單一標籤詳情
  */
 export const getTagById = async (id: number): Promise<TagResponse> => {
-  const response = await apiClient.get<TagResponse>(`/tags/${id}`)
+  const response = await apiClient.get<Tag>(`/tags/${id}`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag')
   }
-  return response.data
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || 'Tag retrieved successfully'
+  }
 }
 
 /**
  * 更新標籤
  */
 export const updateTag = async (id: number, data: UpdateTagRequest): Promise<TagResponse> => {
-  const response = await apiClient.put<TagResponse>(`/tags/${id}`, data)
+  const response = await apiClient.put<Tag>(`/tags/${id}`, data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to update tag')
   }
-  return response.data
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || 'Tag updated successfully'
+  }
 }
 
 /**
@@ -165,11 +182,15 @@ export const deleteTag = async (id: number): Promise<{ success: boolean; message
  * 獲取標籤使用統計
  */
 export const getTagUsageStats = async (id: number): Promise<TagStatsResponse> => {
-  const response = await apiClient.get<TagStatsResponse>(`/tags/${id}/stats`)
+  const response = await apiClient.get<TagUsageStats>(`/tags/${id}/stats`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag stats')
   }
-  return response.data
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || 'Tag stats retrieved successfully'
+  }
 }
 
 /**

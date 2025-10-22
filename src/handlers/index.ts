@@ -19,6 +19,7 @@ export { conversationsMainHandler as conversationMainHandler } from '../modules/
 export { default as messagingMainHandler } from './messaging-main'
 export { default as systemMainHandler } from './system-main'
 export { default as customerMainHandler } from './customer-main'
+export { default as tagMainHandler } from './tag-main'
 export { default as qrcodeMainHandler } from './qrcode-main'
 export { default as sessionMainHandler } from '../modules/session/handlers/session' // Updated to use modular session handler
 export { createAgentRouter as agentMainHandler } from '../modules/agents/handlers/agent-main' // Agents module handler

@@ -79,7 +79,9 @@
       "Bash(bash:*)",
       "Bash(git config core.autocrlf)",
       "Bash(npm audit --audit-level=moderate)",
-      "Bash(npm ls tar-fs)"
+      "Bash(npm ls tar-fs)",
+      "Bash(npm run test:handlers:main)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": [],
@@ -88,11 +90,11 @@
       "D:\\d D:\\Code\\Multi_Channel_Integration_System"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "chrome-devtools",
     "playwright",
     "context7"
   ],
-  "outputStyle": "visual-explanation",
-  "enableAllProjectMcpServers": true
+  "outputStyle": "visual-explanation"
 }
