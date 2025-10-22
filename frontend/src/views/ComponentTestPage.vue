@@ -2,7 +2,9 @@
   <div class="test-page">
     <div class="test-header">
       <h1>🧪 Toast & ConfirmDialog 测试页面</h1>
-      <p class="subtitle">验证统一弹窗组件功能</p>
+      <p class="subtitle">
+        验证统一弹窗组件功能
+      </p>
     </div>
 
     <div class="test-sections">

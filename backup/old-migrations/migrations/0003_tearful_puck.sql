@@ -1,1 +1,0 @@
-ALTER TABLE `agents` ADD `password_encrypted` text;

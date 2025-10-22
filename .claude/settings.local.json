@@ -81,7 +81,9 @@
       "Bash(npm audit --audit-level=moderate)",
       "Bash(npm ls tar-fs)",
       "Bash(npm run test:handlers:main)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": [],

@@ -59,5 +59,7 @@ frontend/nul
 
 # 測試和臨時文件
 .playwright-mcp/
-backups/
+backups/*
+!backups/README.md
 monitoring/
+archive/
