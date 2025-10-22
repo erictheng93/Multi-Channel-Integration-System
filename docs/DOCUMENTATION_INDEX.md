@@ -166,8 +166,52 @@ docs/
 - [reports/USER_MANUAL.md](./reports/USER_MANUAL.md) - 使用者手冊
 - [reports/DEVELOPER_GUIDE.md](./reports/DEVELOPER_GUIDE.md) - 開發者指南
 
+## 系統報告
+
+### 架構與設計報告
+- [reports/ARCHITECTURAL_REVIEW.md](./reports/ARCHITECTURAL_REVIEW.md) - 系統架構審查報告
+- [reports/SMART_REGISTRY_FAILURE_ANALYSIS.md](./reports/SMART_REGISTRY_FAILURE_ANALYSIS.md) - Smart Registry 失敗分析
+- [reports/ROUTE_CONFLICT_RESOLUTION_PATH_FORWARD.md](./reports/ROUTE_CONFLICT_RESOLUTION_PATH_FORWARD.md) - 路由衝突解決方案
+
+### 安全報告
+- [reports/SECURITY_AUDIT_REPORT.md](./reports/SECURITY_AUDIT_REPORT.md) - 安全審計報告
+- [reports/SECURITY_FIXES_SUMMARY_DETAILED.md](./reports/SECURITY_FIXES_SUMMARY_DETAILED.md) - 安全修復總結（詳細版）
+
+### UI/UX 改進報告
+- [reports/TOAST_DIALOG_REPLACEMENT_REPORT.md](./reports/TOAST_DIALOG_REPLACEMENT_REPORT.md) - Toast 對話框替換報告
+
+### 模組重組報告
+- [reports/modules/AGENTS_MODULE_REORDERING_PLAN.md](./reports/modules/AGENTS_MODULE_REORDERING_PLAN.md) - 代理模組重排計劃
+- [reports/modules/TEAMS_MODULE_REORDERING_PLAN.md](./reports/modules/TEAMS_MODULE_REORDERING_PLAN.md) - 團隊模組重排計劃
+
+### 驗證報告
+- [reports/verification/PASSWORD_RESET_VERIFICATION_REPORT.md](./reports/verification/PASSWORD_RESET_VERIFICATION_REPORT.md) - 密碼重置功能驗證報告
+
+## 修復報告
+
+- [fixes/QRCODE_FIX_SUCCESS_REPORT.md](./fixes/QRCODE_FIX_SUCCESS_REPORT.md) - QR Code 功能修復成功報告
+- [fixes/CUSTOMER_HANDLER_ROUTE_FIX_SUMMARY.md](./fixes/CUSTOMER_HANDLER_ROUTE_FIX_SUMMARY.md) - 客戶處理器路由修復總結
+
+## 部署文檔
+
+- [deployment/DEPLOYMENT_RECOMMENDATION.md](./deployment/DEPLOYMENT_RECOMMENDATION.md) - 部署建議
+
+## 實作文檔
+
+- [implementation/IMPLEMENTATION_SUMMARY.md](./implementation/IMPLEMENTATION_SUMMARY.md) - 實作總結
+
+## 效能文檔
+
+- [performance/PERFORMANCE_ANALYSIS_REPORT.md](./performance/PERFORMANCE_ANALYSIS_REPORT.md) - 效能分析報告
+
+## 測試文檔
+
+- [testing/TEST_COVERAGE_QUALITY_EVALUATION.md](./testing/TEST_COVERAGE_QUALITY_EVALUATION.md) - 測試覆蓋率品質評估
+
 ## 更新記錄
 
+- 2025-10-22: 完成根目錄文檔整理，移動 15 個文檔到正確位置
+- 2025-10-22: 清理臨時文件，合併備份目錄
 - 2025-10-18: 完成文檔架構重組，移動所有錯放文檔至正確位置
 - 2025-10-18: 移除所有文檔中的 emoji（95% 完成）
 - 2025-10-18: 建立文檔索引系統
