@@ -117,58 +117,80 @@ export const useTeamStore = defineStore('team', () => {
   }
 
   const updateMemberRole = async (memberId: string, role: 'admin' | 'agent') => { // Simplified from 3-tier to 2-tier
+    // ① 查找成員
+    const member = members.value.find(m => m.id === memberId)
+    if (!member) {
+      console.error('Member not found:', memberId)
+      error.value = '找不到該成員'
+      throw new Error('找不到該成員')
+    }
+
+    // ② 保存原始角色（用於失敗恢復）
+    const originalRole = member.role
+
+    // ③ 樂觀更新：立即更新 UI
+    member.role = role
+    error.value = null
+
     try {
-      loading.value = true
-      error.value = null
+      // ④ 背景調用 API（不使用 loading.value，UI 已更新）
       const response = await teamApi.updateMemberRole(memberId, role)
-      if (response.success) {
-        // 更新本地狀態
-        const member = members.value.find(m => m.id === memberId)
-        if (member) {
-          member.role = role
-        }
-      } else {
+
+      if (!response.success) {
+        // ⑤ API 失敗，恢復原角色
+        member.role = originalRole
         error.value = '更新角色失敗'
         throw new Error('更新角色失敗')
       }
+      // 成功：無需操作，UI 已更新
     } catch (err: unknown) {
+      // ⑤ 發生錯誤，恢復原角色
+      member.role = originalRole
       error.value = (err as Error)?.message || '更新角色失敗'
       console.error('更新角色失敗:', err)
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
   const updateMemberStatus = async (memberId: string, status: 'active' | 'inactive') => {
+    // ① 查找成員
+    const member = members.value.find(m => m.id === memberId)
+    if (!member) {
+      console.error('Member not found:', memberId)
+      error.value = '找不到該成員'
+      throw new Error('找不到該成員')
+    }
+
+    // ② 保存原始狀態（用於失敗恢復）
+    const originalStatus = member.status
+
+    // ③ 樂觀更新：立即更新 UI
+    member.status = status
+    error.value = null
+
     try {
-      loading.value = true
-      error.value = null
+      // ④ 背景調用 API（不使用 loading.value，UI 已更新）
       const response = await teamApi.updateMemberStatus(memberId, status)
+
       if (response.success) {
-        // 更新本地狀態
-        const member = members.value.find(m => m.id === memberId)
-        if (member) {
-          member.status = status
-          
-          // 如果是停用操作，發送 WebSocket 通知給該用戶
-          if (status === 'inactive') {
-            // 通知系統該用戶已被停權
-            window.dispatchEvent(new CustomEvent('user-account-disabled', {
-              detail: { memberId, memberName: member.name || member.loginId }
-            }))
-          }
+        // ⑤ API 成功，發送 WebSocket 通知（只在停用時）
+        if (status === 'inactive') {
+          window.dispatchEvent(new CustomEvent('user-account-disabled', {
+            detail: { memberId, memberName: member.name || member.loginId }
+          }))
         }
       } else {
+        // ⑥ API 失敗，恢復原狀態
+        member.status = originalStatus
         error.value = '更新狀態失敗'
         throw new Error('更新狀態失敗')
       }
     } catch (err: unknown) {
+      // ⑥ 發生錯誤，恢復原狀態
+      member.status = originalStatus
       error.value = (err as Error)?.message || '更新狀態失敗'
       console.error('更新狀態失敗:', err)
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
