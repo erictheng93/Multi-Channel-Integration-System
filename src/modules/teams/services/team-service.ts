@@ -123,15 +123,21 @@ export class TeamService implements TeamServiceInterface {
     return result[0];
   }
 
-  // Delete team (soft delete by setting inactive)
+  // Delete team (hard delete - permanently removes from database)
   async deleteTeam(id: number): Promise<boolean> {
     try {
+      // First, remove team assignment from all agents in this team
       await this.db
-        .update(teams)
+        .update(agents)
         .set({
-          isActive: false,
+          teamId: null,
           updatedAt: new Date().toISOString()
         })
+        .where(eq(agents.teamId, id));
+
+      // Then delete the team permanently
+      await this.db
+        .delete(teams)
         .where(eq(teams.id, id));
 
       return true;
@@ -140,6 +146,7 @@ export class TeamService implements TeamServiceInterface {
       return false;
     }
   }
+
 
   // List teams with pagination
   async listTeams(params: TeamListRequest): Promise<TeamListResponse> {
