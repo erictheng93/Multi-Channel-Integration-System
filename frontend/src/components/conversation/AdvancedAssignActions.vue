@@ -205,6 +205,7 @@ import { usePermissions } from '@/services/permissionService'
 import type { Conversation, TeamMember, Agent } from '@/types'
 import { teamApi } from '@/api/team'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import {
   UserPlusIcon,
   UserCheckIcon,
@@ -241,6 +242,9 @@ const isAssigning = ref(false)
 const showAdvancedOptions = ref(false)
 const loadingMembers = ref(false)
 const searchTerm = ref('')
+
+// Confirm dialog
+const { showWarning } = useConfirmDialog()
 const activeRoleFilter = ref<'all' | 'admin' | 'team' | 'agent'>('all')
 const selectedMember = ref<TeamMember | null>(null)
 const availableMembers = ref<TeamMember[]>([])
@@ -357,8 +361,9 @@ const handleAssignToMe = async () => {
 const handleUnassign = async () => {
   if (isAssigning.value) {return}
 
-  // 簡單確認
-  if (!window.confirm('確定要取消對話指派嗎？')) {
+  // 确认对话框
+  const confirmed = await showWarning('確定要取消對話指派嗎？')
+  if (!confirmed) {
     return
   }
 

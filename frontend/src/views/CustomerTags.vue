@@ -596,15 +596,82 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Delete Confirmation Modal -->
+    <Modal
+      :show="showDeleteModal"
+      title="確認刪除標籤"
+      size="sm"
+      @close="cancelDelete"
+    >
+      <div class="delete-modal-content">
+        <div class="delete-warning-icon">
+          <svg
+            class="icon-large"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+        <p class="delete-message">
+          確定要刪除標籤
+          <span class="tag-name-highlight">「{{ deletingTag?.name }}」</span>
+          嗎？
+        </p>
+        <p class="delete-description">
+          此操作無法撤銷。刪除後，此標籤將從所有客戶和對話中移除。
+        </p>
+      </div>
+
+      <template #footer>
+        <button
+          class="modal-cancel-btn"
+          @click="cancelDelete"
+        >
+          取消
+        </button>
+        <button
+          class="modal-delete-btn"
+          @click="executeDelete"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          確認刪除
+        </button>
+      </template>
+    </Modal>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getTags, createTag, updateTag, deleteTag, type Tag } from '@/api/tags'
+import { useToast } from '@/composables/useToast'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import Modal from '@/components/ui/Modal.vue'
+
+// Toast notifications
+const { showSuccess, showError } = useToast()
 
 const loading = ref(false)
 const searchQuery = ref('')
@@ -614,7 +681,9 @@ const selectedTags = ref<number[]>([])
 const showBulkMenu = ref(false)
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
+const showDeleteModal = ref(false)
 const editingTag = ref<Tag | null>(null)
+const deletingTag = ref<Tag | null>(null)
 
 const formData = ref({
   name: '',
@@ -695,33 +764,75 @@ const editTag = (tag: Tag) => {
 const saveTag = async () => {
   try {
     loading.value = true
-    if (showEditModal.value && editingTag.value) {
+    const isEdit = showEditModal.value && editingTag.value
+
+    if (isEdit && editingTag.value) {
       await updateTag(editingTag.value.id, formData.value)
+      showSuccess(
+        '標籤更新成功',
+        `成功更新標籤「${formData.value.name}」`,
+        { duration: 4000 }
+      )
     } else {
       await createTag(formData.value)
+      showSuccess(
+        '標籤創建成功',
+        `成功創建標籤「${formData.value.name}」`,
+        { duration: 4000 }
+      )
     }
+
     await loadTags()
     closeModals()
   } catch (error) {
     console.error('Failed to save tag:', error)
+    const isEdit = showEditModal.value && editingTag.value
+    showError(
+      isEdit ? '標籤更新失敗' : '標籤創建失敗',
+      '請檢查網路連線或稍後重試'
+    )
   } finally {
     loading.value = false
   }
 }
 
-// Confirm delete
-const confirmDelete = async (tag: Tag) => {
-  if (window.confirm(`確定要刪除標籤「${tag.name}」嗎？`)) {
-    try {
-      loading.value = true
-      await deleteTag(tag.id)
-      await loadTags()
-    } catch (error) {
-      console.error('Failed to delete tag:', error)
-    } finally {
-      loading.value = false
-    }
+// Confirm delete - Show modal
+const confirmDelete = (tag: Tag) => {
+  deletingTag.value = tag
+  showDeleteModal.value = true
+}
+
+// Execute delete
+const executeDelete = async () => {
+  if (!deletingTag.value) {return}
+
+  try {
+    loading.value = true
+    const tagName = deletingTag.value.name
+    await deleteTag(deletingTag.value.id)
+    await loadTags()
+    showSuccess(
+      '標籤刪除成功',
+      `成功刪除標籤「${tagName}」`,
+      { duration: 4000 }
+    )
+  } catch (error) {
+    console.error('Failed to delete tag:', error)
+    showError(
+      '標籤刪除失敗',
+      '請檢查網路連線或稍後重試'
+    )
+  } finally {
+    loading.value = false
+    showDeleteModal.value = false
+    deletingTag.value = null
   }
+}
+
+// Cancel delete
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  deletingTag.value = null
 }
 
 // View tag stats
@@ -1438,6 +1549,113 @@ onMounted(() => {
   .action-btn {
     width: 100%;
   }
+}
+
+/* Delete Modal Styles */
+.delete-modal-content {
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.delete-warning-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-4);
+  border-radius: 50%;
+  background: var(--danger-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger-600);
+}
+
+.icon-large {
+  width: 32px;
+  height: 32px;
+}
+
+.delete-message {
+  font-size: 1rem;
+  color: var(--gray-900);
+  margin: 0 0 var(--space-3) 0;
+  line-height: 1.5;
+}
+
+.tag-name-highlight {
+  font-weight: 700;
+  color: var(--danger-600);
+}
+
+.delete-description {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Modal Footer Buttons - Clean & Modern Design */
+.modal-cancel-btn,
+.modal-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  border: none;
+}
+
+/* Cancel Button - Gray */
+.modal-cancel-btn {
+  background: #F3F4F6;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+}
+
+.modal-cancel-btn:hover {
+  background: #E5E7EB;
+  color: #111827;
+  font-weight: 700;
+  border-color: #D1D5DB;
+}
+
+.modal-cancel-btn:active {
+  background: #D1D5DB;
+  transform: scale(0.98);
+}
+
+/* Delete Button - Red (Clean & Minimal) */
+.modal-delete-btn {
+  background: #EF4444;
+  color: #FFFFFF;
+  border: 1px solid #EF4444;
+}
+
+.modal-delete-btn:hover {
+  background: #DC2626;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-color: #DC2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
+}
+
+.modal-delete-btn:active {
+  background: #B91C1C;
+  border-color: #B91C1C;
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
+}
+
+.modal-delete-btn .icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* Reduced Motion */
