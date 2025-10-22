@@ -1152,38 +1152,57 @@ const confirmAction = () => {
 // 團隊管理函數
 // 新增團隊
 const submitAddTeam = async () => {
-  addTeamLoading.value = true
+  // ① 立即關閉模態框和顯示成功提示（樂觀更新）
+  const teamName = addTeamForm.name
+  const memberCount = addTeamForm.selectedMembers.length
+  const selectedMemberIds = [...addTeamForm.selectedMembers]
+
+  // 立即重置表單並關閉模態框
+  Object.assign(addTeamForm, { name: '', description: '', selectedMembers: [] })
+  closeAddTeamModal()
+  showSuccess('新增團隊成功', `正在建立團隊並加入 ${memberCount} 位成員...`)
+
+  // ② 背景執行實際操作（不使用 loading 狀態）
   try {
-    // 先建立團隊
+    // 建立團隊
     const response = await teamApi.createTeam({
-      name: addTeamForm.name,
+      name: teamName,
       description: addTeamForm.description
     })
-    
+
     if (response.success && response.data) {
       const newTeamId = response.data.id
-      
-      // 如果有選擇成員，將他們加入團隊
-      if (addTeamForm.selectedMembers.length > 0) {
-        for (const memberId of addTeamForm.selectedMembers) {
-          try {
-            await teamStore.updateMember(memberId, { teamId: newTeamId })
-          } catch (memberError) {
-            console.error(`新增成員 ${memberId} 到團隊失敗:`, memberError)
-          }
-        }
+
+      // ③ 樂觀更新：直接將新團隊添加到列表（避免 loadTeams）
+      teams.value = [...teams.value, response.data]
+
+      // ④ 如果有選擇成員，將他們加入團隊
+      if (selectedMemberIds.length > 0) {
+        // 並行處理成員更新（提高效率）
+        await Promise.all(
+          selectedMemberIds.map(async (memberId) => {
+            try {
+              await teamStore.updateMember(memberId, { teamId: newTeamId })
+              // ⑤ 樂觀更新：直接更新成員的 teamId（避免 loadMembers）
+              const member = teamStore.members.find(m => m.id === memberId)
+              if (member) {
+                member.teamId = newTeamId
+              }
+            } catch (memberError) {
+              console.error(`新增成員 ${memberId} 到團隊失敗:`, memberError)
+            }
+          })
+        )
       }
-      
-      showSuccess('新增團隊成功', `已成功建立團隊並加入 ${addTeamForm.selectedMembers.length} 位成員`)
-      Object.assign(addTeamForm, { name: '', description: '', selectedMembers: [] })
-      closeAddTeamModal()
-      await Promise.all([loadTeams(), teamStore.loadMembers()])
+
+      console.log('✅ 團隊創建完成，已優化更新本地數據')
+    } else {
+      // API 失敗，顯示錯誤但不影響 UI 流程
+      showError('新增團隊失敗', '團隊創建失敗，請重試')
     }
   } catch (error) {
     console.error('新增團隊失敗:', error)
     showError('新增團隊失敗', error instanceof Error ? error.message : '請稍後重試')
-  } finally {
-    addTeamLoading.value = false
   }
 }
 
