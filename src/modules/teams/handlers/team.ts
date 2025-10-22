@@ -509,7 +509,7 @@ app.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
   }
 });
 
-// Delete team (soft delete)
+// Delete team (hard delete - permanently removes from database)
 app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -597,9 +597,19 @@ app.get('/', jwtAuth, async (c) => {
     };
 
     const result = await teamService.listTeams(params);
+
+    // 診斷日誌
+    console.log('📊 Teams List Result:', {
+      teamsCount: result.teams?.length || 0,
+      teams: result.teams,
+      pagination: result.pagination,
+      user: { id: user.id, role: user.role, teamId: user.teamId }
+    });
+
     return c.json({
       success: true,
-      ...result,
+      data: result.teams,  // ✅ 修復：使用 data 字段而不是 teams
+      pagination: result.pagination,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
