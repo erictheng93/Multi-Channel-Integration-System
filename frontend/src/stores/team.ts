@@ -70,23 +70,27 @@ export const useTeamStore = defineStore('team', () => {
     group?: string
     isActive: boolean
   }) => {
+    // ① 清除錯誤狀態
+    error.value = null
+
     try {
-      loading.value = true
-      error.value = null
+      // ② 背景調用 API（不使用 loading.value）
       const response = await teamApi.addMember(request)
+
       if (response.success && response.data) {
-        await loadMembers() // 重新載入成員列表
+        // ③ API 成功，直接將新成員添加到列表（避免 loadMembers）
+        members.value = [...members.value, response.data]
         return response.data
       } else {
+        // ④ API 失敗，設置錯誤訊息
         error.value = '新增成員失敗'
         throw new Error('新增成員失敗')
       }
     } catch (err: unknown) {
+      // ④ 發生錯誤，設置錯誤訊息
       error.value = (err as Error)?.message || '新增成員失敗'
       console.error('新增成員失敗:', err)
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
@@ -195,23 +199,38 @@ export const useTeamStore = defineStore('team', () => {
   }
 
   const removeMember = async (memberId: string) => {
+    // ① 查找成員
+    const member = members.value.find(m => m.id === memberId)
+    if (!member) {
+      console.error('Member not found:', memberId)
+      error.value = '找不到該成員'
+      throw new Error('找不到該成員')
+    }
+
+    // ② 保存原始列表（用於失敗恢復）
+    const originalMembers = [...members.value]
+
+    // ③ 樂觀更新：立即從列表中移除
+    members.value = members.value.filter(m => m.id !== memberId)
+    error.value = null
+
     try {
-      loading.value = true
-      error.value = null
+      // ④ 背景調用 API（不使用 loading.value，UI 已更新）
       const response = await teamApi.removeMember(memberId)
-      if (response.success) {
-        // 從本地狀態中移除
-        members.value = members.value.filter(m => m.id !== memberId)
-      } else {
+
+      if (!response.success) {
+        // ⑤ API 失敗，恢復原列表
+        members.value = originalMembers
         error.value = '移除成員失敗'
         throw new Error('移除成員失敗')
       }
+      // 成功：無需操作，UI 已更新
     } catch (err: unknown) {
+      // ⑤ 發生錯誤，恢復原列表
+      members.value = originalMembers
       error.value = (err as Error)?.message || '移除成員失敗'
       console.error('移除成員失敗:', err)
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
