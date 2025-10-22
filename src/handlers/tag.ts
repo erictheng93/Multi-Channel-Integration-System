@@ -300,7 +300,7 @@ export const tagHandler = {
 
       // 更新標籤
       await drizzleDb.run(sql`
-        UPDATE tags 
+        UPDATE tags
         SET name = COALESCE(${name || null}, name),
             color = COALESCE(${color || null}, color),
             description = COALESCE(${description !== undefined ? description : null}, description),
@@ -309,7 +309,42 @@ export const tagHandler = {
         WHERE id = ${tagId}
       `);
 
-      return successResponse(c, null, 'Tag updated successfully');
+      // 查詢更新後的標籤以返回完整數據
+      const updatedTag = await drizzleDb.get(sql`
+        SELECT t.*,
+               COALESCE(customer_count.count, 0) as customer_count,
+               COALESCE(conversation_count.count, 0) as conversation_count
+        FROM tags t
+        LEFT JOIN (
+          SELECT tag_id, COUNT(DISTINCT customer_id) as count
+          FROM customer_tags
+          WHERE tag_id = ${tagId}
+        ) customer_count ON t.id = customer_count.tag_id
+        LEFT JOIN (
+          SELECT tag_id, COUNT(DISTINCT conversation_id) as count
+          FROM conversation_tags
+          WHERE tag_id = ${tagId}
+        ) conversation_count ON t.id = conversation_count.tag_id
+        WHERE t.id = ${tagId}
+      `);
+
+      if (!updatedTag) {
+        return errorResponse(c, 'Failed to retrieve updated tag', 500);
+      }
+
+      return successResponse(c, {
+        id: (updatedTag as any).id,
+        name: (updatedTag as any).name,
+        color: (updatedTag as any).color,
+        description: (updatedTag as any).description,
+        teamId: (updatedTag as any).team_id,
+        isActive: Boolean((updatedTag as any).is_active),
+        createdBy: (updatedTag as any).created_by,
+        customerCount: (updatedTag as any).customer_count,
+        conversationCount: (updatedTag as any).conversation_count,
+        createdAt: (updatedTag as any).created_at,
+        updatedAt: (updatedTag as any).updated_at
+      }, 'Tag updated successfully');
 
     } catch (error) {
       return handleApiError(error, c);

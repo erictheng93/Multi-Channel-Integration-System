@@ -461,35 +461,57 @@
 
             <div class="form-group">
               <label class="form-label">顏色</label>
-              <div class="color-picker">
-                <div
-                  v-for="color in predefinedColors"
-                  :key="color"
-                  class="color-option"
-                  :class="{ selected: formData.color === color }"
-                  :style="{ backgroundColor: color }"
-                  @click="formData.color = color"
-                >
-                  <svg
-                    v-if="formData.color === color"
-                    class="check-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <polyline
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      points="20 6 9 17 4 12"
-                    />
-                  </svg>
+
+              <!-- 預設顏色選擇 -->
+              <div class="color-section">
+                <div class="color-section-label">
+                  預設顏色
                 </div>
-                <input
-                  v-model="formData.color"
-                  type="color"
-                  class="color-input"
-                >
+                <div class="color-picker-grid">
+                  <div
+                    v-for="color in predefinedColors"
+                    :key="color"
+                    class="color-option"
+                    :class="{ selected: formData.color === color }"
+                    :style="{ backgroundColor: color }"
+                    @click="formData.color = color"
+                  >
+                    <svg
+                      v-if="formData.color === color"
+                      class="check-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                    >
+                      <polyline
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        points="20 6 9 17 4 12"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 自定義顏色選擇 -->
+              <div class="color-section custom-color-section">
+                <div class="color-section-label">
+                  自定義顏色
+                </div>
+                <div class="custom-color-picker">
+                  <input
+                    v-model="formData.color"
+                    type="color"
+                    class="color-input"
+                  >
+                  <span class="custom-color-hint">點擊選擇任意顏色</span>
+                  <div
+                    class="current-color-preview"
+                    :style="{ backgroundColor: formData.color }"
+                    :title="`當前顏色: ${formData.color}`"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1383,10 +1405,27 @@ onMounted(() => {
   min-height: 80px;
 }
 
-.color-picker {
+/* 顏色選擇區域容器 */
+.color-section {
+  margin-bottom: var(--space-4);
+}
+
+.color-section-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  margin-bottom: var(--space-2);
   display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 預設顏色網格 - 2行4列 */
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-3);
-  flex-wrap: wrap;
+  max-width: 240px; /* 4個顏色 * 48px + 間距 */
 }
 
 .color-option {
@@ -1399,15 +1438,18 @@ onMounted(() => {
   justify-content: center;
   transition: all var(--transition-fast);
   border: 3px solid transparent;
+  position: relative;
 }
 
 .color-option:hover {
   transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .color-option.selected {
   border-color: var(--gray-900);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
 }
 
 .check-icon {
@@ -1417,12 +1459,62 @@ onMounted(() => {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
+/* 自定義顏色選擇器 */
+.custom-color-section {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--gray-200);
+}
+
+.custom-color-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--gray-300);
+  transition: all var(--transition-fast);
+}
+
+.custom-color-picker:hover {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+}
+
 .color-input {
-  width: 48px;
-  height: 48px;
-  border: none;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--gray-300);
   border-radius: var(--radius-xl);
   cursor: pointer;
+  transition: all var(--transition-fast);
+  background: white;
+}
+
+.color-input:hover {
+  border-color: var(--primary-500);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.custom-color-hint {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  flex: 1;
+}
+
+.current-color-preview {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--gray-300);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all var(--transition-fast);
+}
+
+.current-color-preview:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .scope-options {

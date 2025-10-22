@@ -976,12 +976,19 @@ const loadData = async (force = false) => {
 // 載入團隊數據
 const loadTeams = async () => {
   try {
+    console.log('🔄 開始載入團隊列表...')
     const response = await teamApi.getTeams(true) // Include inactive teams
+    console.log('📥 API 響應:', response)
+    console.log('✅ success:', response.success, '📦 data:', response.data, '📊 data length:', response.data?.length)
+
     if (response.success && response.data) {
       teams.value = response.data
+      console.log('✔️ 團隊數據已更新:', teams.value.length, '個團隊')
+    } else {
+      console.warn('⚠️ API 調用成功但沒有數據或失敗:', response)
     }
   } catch (error) {
-    console.error('載入團隊失敗:', error)
+    console.error('❌ 載入團隊失敗:', error)
     showError('載入團隊失敗', '請檢查網路連線或稍後重試')
   }
 }

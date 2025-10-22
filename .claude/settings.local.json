@@ -83,7 +83,11 @@
       "Bash(npm run test:handlers:main)",
       "Bash(npm run build:*)",
       "Bash(npx eslint:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:pages:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(Select-String -Pattern \"(error|warning|✓)\")"
     ],
     "deny": [],
     "ask": [],
