@@ -1008,13 +1008,16 @@ export {
   ConversationRoom,
   UserConnection,
   MessageBroadcaster,
-  DelayedMessageScheduler,
   LatestMessageCacheCoordinator,
   LockCoordinator,
   // Customer Conversation System (Chat-Style)
   CustomerConversationDO,
   CustomerMessageDO
 };
+
+// Export legacy Delayed Message DO names (kept for backward compatibility)
+export { DelayedMessageScheduler as DelayedMessageBuffer };
+export { DelayedMessageScheduler as DelayedMessageProcessor };
 
 // ==================== 導出 Worker 處理器 ====================
 // Phase 2.1: Queue Consumer 已移除 (2025-10-17)
