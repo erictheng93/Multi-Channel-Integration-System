@@ -283,6 +283,142 @@ console.log('   • GET /api/websocket/dashboard/trends (Admin/Team)');
 console.log('   • GET /api/websocket/dashboard/durable-objects (Admin)');
 console.log('   • GET /api/websocket/dashboard/alerts (Admin/Team)');
 
+// ==================== 🔧 CUSTOMER CONVERSATION SYSTEM (Chat-Style) ====================
+//
+// NEW: Simplified conversation system inspired by Chat Project architecture
+// Routes for customer conversations with WebSocket real-time communication
+//
+// Architecture:
+// - CustomerConversationDO: WebSocket connection management
+// - CustomerMessageDO: Message CRUD operations and R2 file uploads
+//
+// ⚠️  Registered BEFORE unified route system to prevent route conflicts
+// =================================================================================
+
+// WebSocket upgrade endpoint for customer conversations
+app.get('/api/customer-ws', async (c) => {
+  const conversationId = c.req.query('conversationId');
+  const sessionId = c.req.query('sessionId');
+
+  if (!conversationId || !sessionId) {
+    return c.json({
+      success: false,
+      error: 'Missing required parameters: conversationId and sessionId'
+    }, 400);
+  }
+
+  console.log('🔌 [Customer WebSocket] Connection request:', { conversationId, sessionId });
+
+  try {
+    // Get CustomerConversationDO instance by conversationId
+    const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+    const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
+
+    // Forward the request to the Durable Object
+    const url = new URL(c.req.url);
+    url.pathname = '/ws';
+    const modifiedRequest = new Request(url.toString(), c.req.raw);
+
+    return doStub.fetch(modifiedRequest);
+  } catch (error) {
+    console.error('❌ [Customer WebSocket] Connection error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to establish WebSocket connection'
+    }, 500);
+  }
+});
+
+// Message operations endpoint (GET messages, POST new message)
+app.all('/api/customer-conversations/:id/messages', async (c) => {
+  const conversationId = c.req.param('id');
+
+  if (!conversationId) {
+    return c.json({
+      success: false,
+      error: 'Missing conversation ID'
+    }, 400);
+  }
+
+  console.log(`📨 [Customer Messages] ${c.req.method} request for conversation: ${conversationId}`);
+
+  try {
+    // Get CustomerMessageDO instance by conversationId
+    const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
+    const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
+
+    // Create a new request with conversation ID in header
+    const headers = new Headers(c.req.raw.headers);
+    headers.set('X-Conversation-Id', conversationId);
+
+    const modifiedRequest = new Request(c.req.raw.url, {
+      method: c.req.raw.method,
+      headers: headers,
+      body: c.req.method === 'POST' ? c.req.raw.body : undefined
+    });
+
+    // Modify URL to use DO internal path
+    const url = new URL(modifiedRequest.url);
+    url.pathname = '/messages';
+
+    return doStub.fetch(new Request(url.toString(), modifiedRequest));
+  } catch (error) {
+    console.error('❌ [Customer Messages] Operation error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to process message operation'
+    }, 500);
+  }
+});
+
+// File upload endpoint
+app.post('/api/customer-conversations/:id/upload', async (c) => {
+  const conversationId = c.req.param('id');
+
+  if (!conversationId) {
+    return c.json({
+      success: false,
+      error: 'Missing conversation ID'
+    }, 400);
+  }
+
+  console.log(`📤 [Customer Upload] File upload for conversation: ${conversationId}`);
+
+  try {
+    // Get CustomerMessageDO instance by conversationId
+    const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
+    const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
+
+    // Create a new request with conversation ID in header
+    const headers = new Headers(c.req.raw.headers);
+    headers.set('X-Conversation-Id', conversationId);
+
+    const modifiedRequest = new Request(c.req.raw.url, {
+      method: 'POST',
+      headers: headers,
+      body: c.req.raw.body
+    });
+
+    // Modify URL to use DO internal path
+    const url = new URL(modifiedRequest.url);
+    url.pathname = '/upload';
+
+    return doStub.fetch(new Request(url.toString(), modifiedRequest));
+  } catch (error) {
+    console.error('❌ [Customer Upload] Upload error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to upload file'
+    }, 500);
+  }
+});
+
+console.log('✅ Customer Conversation System (Chat-Style) endpoints registered:');
+console.log('   • GET /api/customer-ws (WebSocket upgrade, query: conversationId, sessionId)');
+console.log('   • GET /api/customer-conversations/:id/messages (Fetch messages with pagination)');
+console.log('   • POST /api/customer-conversations/:id/messages (Create new message)');
+console.log('   • POST /api/customer-conversations/:id/upload (Upload file to R2)');
+
 // ❌ LEGACY PRE-REGISTRATION REMOVED
 // GET /api/teams/members is now handled by the new modular team handler
 // (src/modules/teams/handlers/team.ts:319)
@@ -863,6 +999,10 @@ import { DelayedMessageScheduler } from './durable-objects/DelayedMessageSchedul
 import { LatestMessageCacheCoordinator } from './durable-objects/LatestMessageCacheCoordinator';
 import { LockCoordinator } from './services/distributed-lock-service';
 
+// Import Customer Conversation Durable Objects (Chat-Style Architecture)
+import { CustomerConversationDO } from './durable-objects/CustomerConversationDO';
+import { CustomerMessageDO } from './durable-objects/CustomerMessageDO';
+
 // Export Durable Objects (must match wrangler.toml class_name exactly)
 export {
   ConversationRoom,
@@ -870,7 +1010,10 @@ export {
   MessageBroadcaster,
   DelayedMessageScheduler,
   LatestMessageCacheCoordinator,
-  LockCoordinator
+  LockCoordinator,
+  // Customer Conversation System (Chat-Style)
+  CustomerConversationDO,
+  CustomerMessageDO
 };
 
 // ==================== 導出 Worker 處理器 ====================
