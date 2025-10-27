@@ -209,7 +209,8 @@
 import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
-import { useMessages } from '@/composables/useMessages' // HTTP API fallback
+// ✅ CUSTOMER API: 使用新的 Customer Conversation System
+import { useCustomerMessages } from '@/composables/useCustomerMessages' // Customer HTTP API
 import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
@@ -221,8 +222,10 @@ import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
 import type { Message } from '@/types'
-// 🚀 Phase 2.1: Unified Connection Manager
-import { createRealtimeConnection, type RealtimeConnection, type ConnectionType, type ConnectionState } from '@/services/realtimeConnectionManager'
+// ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
+import { createCustomerRealtimeConnection, type CustomerRealtimeConnection, type ConnectionState } from '@/services/customerWebSocketManager'
+type RealtimeConnection = CustomerRealtimeConnection
+type ConnectionType = 'websocket'
 
 // Core components
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -272,8 +275,8 @@ const conversationId = computed(() => route.params.id as string)
 
 
 
-// 🛡️ Final Fallback: HTTP API System
-const httpMessages = useMessages(conversationId.value, {
+// ✅ CUSTOMER API: HTTP API System for Customer Conversations
+const httpMessages = useCustomerMessages(conversationId.value, {
   enablePagination: true,
   pageSize: 10 // 🎯 初始加載10條消息，優化首屏加載速度
 })
@@ -1047,10 +1050,10 @@ let performanceReportInterval: ReturnType<typeof setInterval> | null = null
 
 async function initializeUnifiedConnection() {
   try {
-    console.log(`[Phase 2.1] Initializing unified connection for conversation: ${conversationId.value}`)
+    console.log(`✅ [CUSTOMER API] Initializing Customer WebSocket for conversation: ${conversationId.value}`)
 
-    // Create connection (automatically selects WebSocket or SSE based on rolloutPercentage)
-    const conn = await createRealtimeConnection(conversationId.value)
+    // ✅ CUSTOMER API: Create Customer WebSocket connection
+    const conn = await createCustomerRealtimeConnection(conversationId.value)
     unifiedConnection.value = conn
 
     // Store connection type for display
@@ -1064,9 +1067,9 @@ async function initializeUnifiedConnection() {
     // Connect
     await conn.connect()
 
-    console.log(`✅ [Phase 2.1] Unified connection established: ${unifiedConnectionType.value}`)
+    console.log(`✅ [CUSTOMER API] Customer WebSocket connection established: ${unifiedConnectionType.value}`)
   } catch (error) {
-    console.error('[Phase 2.1] Failed to initialize unified connection:', error)
+    console.error('❌ [CUSTOMER API] Failed to initialize Customer WebSocket:', error)
     unifiedConnectionState.value = 'error'
   }
 }
@@ -1078,16 +1081,21 @@ function handleUnifiedStateChange(newState: ConnectionState) {
 }
 
 function handleUnifiedMessage(message: unknown) {
-  const msg = message as { type?: string }
-  console.log('[Phase 2.1] Unified connection received message:', msg.type, message)
+  const msg = message as { type?: string; message?: Message }
+  console.log('✅ [CUSTOMER API] Received message:', msg.type, message)
 
-  // 🔧 CRITICAL FIX: Force reactivity update when messages arrive
-  // The SSE connection internally updates its messages ref, but Vue's computed
-  // may not detect the change. We need to ensure the messages computed re-runs.
+  // ✅ CUSTOMER API: Handle NEW_MESSAGE events
+  if (msg.type === 'NEW_MESSAGE' && msg.message) {
+    // Add message to httpMessages using the addMessage method
+    httpMessages.addMessage(msg.message)
+    console.log('📨 [CUSTOMER API] New message added to conversation')
+  }
+
+  // Force reactivity update
   const conn = unifiedConnection.value
   if (conn && conn.messages) {
     const currentMsgCount = ((conn.messages as unknown) as Ref<Message[]>).value?.length || 0
-    console.log(`📊 [handleUnifiedMessage] Current unified messages count: ${currentMsgCount}`)
+    console.log(`📊 [CUSTOMER API] Current messages count: ${currentMsgCount}`)
   }
 }
 
