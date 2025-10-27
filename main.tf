@@ -148,10 +148,46 @@ resource "cloudflare_worker_script" "main" {
     namespace_id = cloudflare_workers_kv_namespace.cache.id
   }
 
-  # Durable Objects 綁定
+  # Durable Objects 綁定 (7 個生產環境 Durable Objects)
   durable_object_namespace_binding {
     name         = "CONVERSATION_ROOM"
     class_name   = "ConversationRoom"
+    script_name  = cloudflare_worker_script.main.name
+  }
+
+  durable_object_namespace_binding {
+    name         = "USER_CONNECTION"
+    class_name   = "UserConnection"
+    script_name  = cloudflare_worker_script.main.name
+  }
+
+  durable_object_namespace_binding {
+    name         = "MESSAGE_BROADCASTER"
+    class_name   = "MessageBroadcaster"
+    script_name  = cloudflare_worker_script.main.name
+  }
+
+  durable_object_namespace_binding {
+    name         = "DELAYED_MESSAGE_PROCESSOR"
+    class_name   = "DelayedMessageProcessor"
+    script_name  = cloudflare_worker_script.main.name
+  }
+
+  durable_object_namespace_binding {
+    name         = "DELAYED_MESSAGE_BUFFER"
+    class_name   = "DelayedMessageBuffer"
+    script_name  = cloudflare_worker_script.main.name
+  }
+
+  durable_object_namespace_binding {
+    name         = "DISTRIBUTED_LOCK"
+    class_name   = "LockCoordinator"
+    script_name  = cloudflare_worker_script.main.name
+  }
+
+  durable_object_namespace_binding {
+    name         = "LATEST_MESSAGE_COORDINATOR"
+    class_name   = "LatestMessageCacheCoordinator"
     script_name  = cloudflare_worker_script.main.name
   }
   
@@ -213,19 +249,18 @@ resource "cloudflare_pages_domain" "frontend" {
   domain     = var.frontend_custom_domain
 }
 
-# 資料庫初始化 (使用 null_resource 執行本地命令)
+# 資料庫初始化 (使用 Drizzle migrations)
 resource "null_resource" "database_init" {
   depends_on = [cloudflare_d1_database.main]
-  
+
   provisioner "local-exec" {
     command = <<-EOT
-      echo "正在初始化資料庫..."
-      wrangler d1 execute ${cloudflare_d1_database.main.name} --file=./database/schema.sql
-      wrangler d1 execute ${cloudflare_d1_database.main.name} --file=./database/file-attachments-schema.sql
-      echo "資料庫初始化完成"
+      echo "正在應用資料庫 migrations..."
+      wrangler d1 migrations apply ${cloudflare_d1_database.main.name} --remote
+      echo "資料庫 migrations 應用完成"
     EOT
   }
-  
+
   triggers = {
     database_id = cloudflare_d1_database.main.id
   }

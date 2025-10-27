@@ -257,8 +257,7 @@ healthApp.get('/health-detail', async (c) => {
         conversationRoom: await checkDurableObjectDetailed(c.env, 'CONVERSATION_ROOM', 'conversation-health-check'),
         userConnection: await checkDurableObjectDetailed(c.env, 'USER_CONNECTION', 'user-health-check'),
         messageBroadcaster: await checkDurableObjectDetailed(c.env, 'MESSAGE_BROADCASTER', 'broadcaster-health-check'),
-        delayedMessageProcessor: await checkDurableObjectDetailed(c.env, 'DELAYED_MESSAGE_PROCESSOR', 'processor-health-check'),
-        delayedMessageBuffer: await checkDurableObjectDetailed(c.env, 'DELAYED_MESSAGE_BUFFER', 'buffer-health-check')
+        delayedMessageScheduler: await checkDurableObjectDetailed(c.env, 'DELAYED_MESSAGE_SCHEDULER', 'scheduler-health-check')
       },
       infrastructure: {
         kv: await checkKVStorageDetailed(c.env),
@@ -427,8 +426,8 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
       'CONVERSATION_ROOM',
       'USER_CONNECTION',
       'MESSAGE_BROADCASTER',
-      'DELAYED_MESSAGE_PROCESSOR',
-      'DELAYED_MESSAGE_BUFFER'
+      'DELAYED_MESSAGE_SCHEDULER',
+      'DELAYED_MESSAGE_SCHEDULER'
     ];
 
     const missingBindings = requiredBindings.filter(binding => !env[binding]);
@@ -609,9 +608,7 @@ async function getDurableObjectsMetrics(env: Bindings): Promise<Record<string, b
     conversationRoom: !!env.CONVERSATION_ROOM,
     userConnection: !!env.USER_CONNECTION,
     messageBroadcaster: !!env.MESSAGE_BROADCASTER,
-    delayedMessageProcessor: !!env.DELAYED_MESSAGE_PROCESSOR,
-    delayedMessageBuffer: !!env.DELAYED_MESSAGE_BUFFER,
-    distributedLock: !!env.DISTRIBUTED_LOCK,
+    delayedMessageScheduler: !!env.DELAYED_MESSAGE_SCHEDULER,
     latestMessageCoordinator: !!env.LATEST_MESSAGE_COORDINATOR
   };
 

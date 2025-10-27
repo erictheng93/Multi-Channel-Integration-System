@@ -1,20 +1,29 @@
 /**
- * DelayedMessageBuffer Durable Object
- * 專案名稱：Multi-Channel Support MVP - 延遲訊息容錯緩衝區
+ * DelayedMessageScheduler Durable Object
+ * 專案名稱：Multi-Channel Support MVP - 統一延遲訊息調度器
  *
- * 核心目的：為客服提供「後悔藥」機制，允許即時撤銷剛發送的訊息
+ * Unified delayed message scheduler (consolidates DelayedMessageBuffer + DelayedMessageProcessor)
  *
- * 設計理念：
- * - 這不是「任務調度器」，而是「撤銷緩衝區」(Undo Buffer)
- * - 訊息在發送前有 5-10 秒的「後悔期」
- * - 客服可以在此期間即時撤銷，響應時間 <100ms
- * - 使用 Alarm API 實現精確的時間控制
+ * Core Features:
+ * - Schedule messages with 1-120 second delays using Alarm API
+ * - Instant cancellation capability (<100ms response time)
+ * - Platform support: LINE OA, Facebook Messenger
+ * - Automatic retry with exponential backoff (1s, 2s, 4s)
+ * - Dead Letter Queue (DLQ) for permanently failed messages
+ * - Comprehensive metrics and structured logging
+ * - Idempotency checks prevent duplicate sends
  *
- * 適用場景：
- * - 客服發現打錯字
- * - 發錯對象
- * - 發錯內容
- * - 臨時改變主意
+ * Use Cases:
+ * - Agent "regret period" - cancel messages before they're sent
+ * - Delayed announcements and notifications
+ * - Scheduled customer follow-ups
+ * - Time-based campaign messages
+ *
+ * Architecture:
+ * - One DO instance per conversation for isolation
+ * - Uses Cloudflare Alarm API for efficient scheduling
+ * - Stateful with Durable Object Storage persistence
+ * - Event-driven with precise timing guarantees
  */
 
 import type { Bindings } from '../types';
@@ -60,12 +69,12 @@ interface StatusResult {
 }
 
 /**
- * DelayedMessageBuffer Durable Object
+ * DelayedMessageScheduler Durable Object
  *
  * 每個 conversation 有一個獨立的 DO 實例
  * 使用 Alarm API 實現精確的延遲發送
  */
-export class DelayedMessageBuffer implements DurableObject {
+export class DelayedMessageScheduler implements DurableObject {
   private state: DurableObjectState;
   private env: Bindings;
 
@@ -139,7 +148,7 @@ export class DelayedMessageBuffer implements DurableObject {
       console.log(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'info',
-        service: 'DelayedMessageBuffer',
+        service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
         action,
         ...context
@@ -150,7 +159,7 @@ export class DelayedMessageBuffer implements DurableObject {
       console.log(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'success',
-        service: 'DelayedMessageBuffer',
+        service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
         action,
         ...context
@@ -161,7 +170,7 @@ export class DelayedMessageBuffer implements DurableObject {
       console.warn(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'warn',
-        service: 'DelayedMessageBuffer',
+        service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
         action,
         ...context
@@ -172,7 +181,7 @@ export class DelayedMessageBuffer implements DurableObject {
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'error',
-        service: 'DelayedMessageBuffer',
+        service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
         action,
         error: error instanceof Error ? {
@@ -188,7 +197,7 @@ export class DelayedMessageBuffer implements DurableObject {
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'CRITICAL',
-        service: 'DelayedMessageBuffer',
+        service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
         action,
         error: error instanceof Error ? {

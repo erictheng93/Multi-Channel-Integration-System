@@ -74,8 +74,8 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
     }
 
     // 🎯 使用 Durable Objects 方案
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 生成 messageId
     const messageId = crypto.randomUUID();
@@ -193,8 +193,8 @@ delayedMessageHandler.post('/recall/:messageId', jwtAuth, async (c) => {
     }
 
     // 🎯 使用 Durable Objects 方案
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 調用 DO 的 cancel 方法
     const response = await doStub.fetch('https://do/cancel', {
@@ -304,8 +304,8 @@ delayedMessageHandler.get('/pending', jwtAuth, async (c) => {
     }
 
     // 🎯 使用 Durable Objects 方案
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 查詢待發送列表
     const response = await doStub.fetch('https://do/list');

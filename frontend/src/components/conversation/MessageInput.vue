@@ -149,6 +149,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { messageApi } from '@/api/message'
+import { useAuthStore } from '@/stores/auth'
 import { 
   SendIcon, 
   SmileIcon, 
@@ -178,6 +179,8 @@ const emit = defineEmits<{
   'message-sent': [data: { content: string; attachments: Attachment[] }]
   'attachment-upload': [attachment: Attachment]
 }>()
+// Auth Store
+const authStore = useAuthStore()
 
 // defineExpose moved to end of script section
 
@@ -308,7 +311,8 @@ const sendMessage = async () => {
       content,
       messageType: currentAttachments.length > 0 ? 'file' : 'text',
       platform: 'line',
-      attachmentIds
+      attachmentIds,
+      senderId: authStore.currentAgent?.id
     })
     
     if (response.success) {

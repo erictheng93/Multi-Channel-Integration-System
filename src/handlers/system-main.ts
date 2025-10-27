@@ -112,11 +112,11 @@ systemHandler.get('/system/status', async (c) => {
         durableObjects: {
           status: 'available',
           objects: [
-            'DELAYED_MESSAGE_BUFFER',
+            'DELAYED_MESSAGE_SCHEDULER',
             'CONVERSATION_ROOM',
             'USER_CONNECTION',
             'MESSAGE_BROADCASTER',
-            'DELAYED_MESSAGE_PROCESSOR',
+            'DELAYED_MESSAGE_SCHEDULER',
             'DISTRIBUTED_LOCK'
           ]
         }

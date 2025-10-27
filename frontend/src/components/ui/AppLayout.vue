@@ -322,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -348,12 +348,12 @@ const authStore = useAuthStore()
 const { showError } = useToast()
 const { confirmInfo } = useConfirm()
 
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = shallowRef(false)
 const isAutoCollapsed = ref(false)
-const showMobileMenu = ref(false)
+const showMobileMenu = shallowRef(false)
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
-const isMobile = ref(false)
+const isMobile = shallowRef(false)
 const isReportsExpanded = ref(false)
 const notifications = ref([
   {
