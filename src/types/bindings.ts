@@ -51,6 +51,10 @@ export interface Bindings {
   DELAYED_MESSAGE_SCHEDULER?: DurableObjectNamespace; // Unified delayed message scheduling
   DISTRIBUTED_LOCK?: DurableObjectNamespace;
   LATEST_MESSAGE_COORDINATOR?: DurableObjectNamespace; // Phase 1.4b: Batch cache updates via alarm
+
+  // NEW: Customer Conversation System (Chat-Style)
+  CUSTOMER_CONVERSATION_DO: DurableObjectNamespace; // Simplified WebSocket management
+  CUSTOMER_MESSAGE_DO: DurableObjectNamespace; // Message operations and R2 uploads
   
   // Environment variables - LINE
   LINE_CHANNEL_ACCESS_TOKEN: string;
