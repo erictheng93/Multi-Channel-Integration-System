@@ -48,8 +48,7 @@ export interface Bindings {
   CONVERSATION_ROOM?: DurableObjectNamespace;
   USER_CONNECTION?: DurableObjectNamespace;
   MESSAGE_BROADCASTER?: DurableObjectNamespace;
-  DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
-  DELAYED_MESSAGE_BUFFER?: DurableObjectNamespace; // Instant-cancel undo buffer
+  DELAYED_MESSAGE_SCHEDULER?: DurableObjectNamespace; // Unified delayed message scheduling
   DISTRIBUTED_LOCK?: DurableObjectNamespace;
   LATEST_MESSAGE_COORDINATOR?: DurableObjectNamespace; // Phase 1.4b: Batch cache updates via alarm
   

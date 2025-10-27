@@ -22,7 +22,7 @@ import { reportsHandler } from '@modules/reports';
 import { ConversationRoom } from './durable-objects/ConversationRoom';
 import { UserConnection } from './durable-objects/UserConnection';
 import { MessageBroadcaster } from './durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from './durable-objects/DelayedMessageProcessor';
+import { DelayedMessageScheduler } from './durable-objects/DelayedMessageScheduler';
 import { LockCoordinator } from './services/distributed-lock-service';
 
 // 創建 Hono 應用實例
@@ -86,7 +86,7 @@ app.notFound((c) => {
 // ==================== Queue Consumer ====================
 
 // ⚠️ REMOVED: AgentQueueService has been deprecated
-// Delayed messages are now handled by DelayedMessageBuffer Durable Object
+// Delayed messages are now handled by DelayedMessageScheduler Durable Object
 
 export default {
   fetch: app.fetch,
@@ -103,7 +103,7 @@ export default {
 
       } else if (queueName === 'agent-queue') {
         // ⚠️ DEPRECATED: agent-queue is no longer processed
-        // Delayed messages are now handled by DelayedMessageBuffer Durable Object
+        // Delayed messages are now handled by DelayedMessageScheduler Durable Object
         console.warn('⚠️ [DEPRECATED] agent-queue is deprecated. Messages will be ignored.');
       } else {
         console.warn(`Unknown queue: ${queueName}`);
@@ -116,4 +116,4 @@ export default {
 };
 
 // Export Durable Objects for Cloudflare Workers
-export { ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageProcessor, LockCoordinator };
+export { ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageScheduler, LockCoordinator };

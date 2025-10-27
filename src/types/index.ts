@@ -54,7 +54,7 @@ export interface LegacyBindings {
   CONVERSATION_ROOM?: DurableObjectNamespace;
   USER_CONNECTION?: DurableObjectNamespace;
   MESSAGE_BROADCASTER?: DurableObjectNamespace;
-  DELAYED_MESSAGE_PROCESSOR?: DurableObjectNamespace;
+  DELAYED_MESSAGE_SCHEDULER?: DurableObjectNamespace;
   DISTRIBUTED_LOCK?: DurableObjectNamespace;
   LATEST_MESSAGE_COORDINATOR?: DurableObjectNamespace; // Phase 1.4b: Batch cache updates via alarm
 }

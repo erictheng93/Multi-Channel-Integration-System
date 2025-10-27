@@ -25,6 +25,7 @@ import type {
 
 export class UserConnection implements DurableObject {
   private state: DurableObjectState;
+  private env: any;
   private userId: string;
   private connections = new Map<string, WebSocketConnection>();
   private subscriptions = new Set<string>(); // conversation IDs
@@ -55,6 +56,7 @@ export class UserConnection implements DurableObject {
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
+    this.env = env;
     this.userId = env.userId || 'unknown';
 
     // Initialize from storage
@@ -559,9 +561,25 @@ export class UserConnection implements DurableObject {
     }
   }
 
-  private async verifyAuthToken(_token: string, _userId: string): Promise<boolean> {
-    // Integration with existing JWT verification
-    return true; // Placeholder
+  private async verifyAuthToken(token: string, userId: string): Promise<boolean> {
+    try {
+      // Import JWT verification utility
+      const { verifyJWT } = await import('../utils/auth');
+      const jwtSecret = this.env.JWT_SECRET || 'default-secret-key';
+      const payload = await verifyJWT(token, jwtSecret);
+
+      // Verify that the token belongs to the expected user
+      if (payload.userId !== userId) {
+        console.error(`❌ [UserConnection] Token userId mismatch: expected ${userId}, got ${payload.userId}`);
+        return false;
+      }
+
+      console.log(`✅ [UserConnection] Token valid for user ${userId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ [UserConnection] Token validation failed:', error);
+      return false;
+    }
   }
 
   private async checkConversationPermission(_userId: string, _conversationId: string, _action: string): Promise<boolean> {

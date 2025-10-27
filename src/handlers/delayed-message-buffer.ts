@@ -77,8 +77,8 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
 
     // 獲取 DelayedMessageBuffer DO 實例
     // 使用 conversationId 作為 DO 的名稱，確保同一對話的訊息在同一個 DO 中
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 生成 messageId
     const messageId = crypto.randomUUID();
@@ -171,8 +171,8 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
     }
 
     // 獲取對應的 DO 實例
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 調用 DO 的 cancel 方法
     const response = await doStub.fetch('https://do/cancel', {
@@ -235,8 +235,8 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
     }
 
     // 獲取對應的 DO 實例
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 查詢狀態
     const response = await doStub.fetch(`https://do/status?messageId=${messageId}`);
@@ -279,8 +279,8 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
     }
 
     // 獲取對應的 DO 實例
-    const doId = c.env.DELAYED_MESSAGE_BUFFER.idFromName(conversationId);
-    const doStub = c.env.DELAYED_MESSAGE_BUFFER.get(doId);
+    const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
+    const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
 
     // 查詢待發送列表
     const response = await doStub.fetch('https://do/list');

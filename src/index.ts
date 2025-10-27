@@ -161,7 +161,7 @@ console.log('✅ WebSocket connection endpoints registered:');
 console.log('   • GET /api/websocket/connect (with websocketAuth)');
 console.log('   • POST /api/websocket/disconnect (with websocketAuth)');
 
-// 🔧 Pre-register DelayedMessageBuffer health endpoint BEFORE unified route system
+// 🔧 Pre-register DelayedMessageScheduler health endpoint BEFORE unified route system
 // This ensures /health endpoint is public (no auth required)
 app.get('/api/delayed-messages-v2/health', async (c) => {
   return c.json({
@@ -176,7 +176,7 @@ app.get('/api/delayed-messages-v2/health', async (c) => {
     timestamp: new Date().toISOString()
   });
 });
-console.log('✅ DelayedMessageBuffer public endpoint registered:');
+console.log('✅ DelayedMessageScheduler public endpoint registered:');
 console.log('   • GET /api/delayed-messages-v2/health (public, no auth)');
 
 // 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
@@ -859,8 +859,7 @@ app.notFound((c) => {
 import { ConversationRoom } from './durable-objects/ConversationRoom';
 import { UserConnection } from './durable-objects/UserConnection';
 import { MessageBroadcaster } from './durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from './durable-objects/DelayedMessageProcessor';
-import { DelayedMessageBuffer } from './durable-objects/DelayedMessageBuffer';
+import { DelayedMessageScheduler } from './durable-objects/DelayedMessageScheduler';
 import { LatestMessageCacheCoordinator } from './durable-objects/LatestMessageCacheCoordinator';
 import { LockCoordinator } from './services/distributed-lock-service';
 
@@ -869,8 +868,7 @@ export {
   ConversationRoom,
   UserConnection,
   MessageBroadcaster,
-  DelayedMessageProcessor,
-  DelayedMessageBuffer,
+  DelayedMessageScheduler,
   LatestMessageCacheCoordinator,
   LockCoordinator
 };
@@ -878,7 +876,7 @@ export {
 // ==================== 導出 Worker 處理器 ====================
 // Phase 2.1: Queue Consumer 已移除 (2025-10-17)
 // - REALTIME_QUEUE 由 LatestMessageCacheCoordinator Durable Object 替代
-// - AGENT_QUEUE 已在 Phase 1 移除，由 DelayedMessageBuffer DO 替代
+// - AGENT_QUEUE 已在 Phase 1 移除，由 DelayedMessageScheduler DO 替代
 // - Queue 现在完全可选，仅用于大规模广播和背景任务
 
 // ✅ Queue handler removed (2025-10-17)

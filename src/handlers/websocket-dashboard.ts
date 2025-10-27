@@ -487,8 +487,7 @@ async function getDurableObjectsHealth(env: Bindings) {
       'CONVERSATION_ROOM',
       'USER_CONNECTION',
       'MESSAGE_BROADCASTER',
-      'DELAYED_MESSAGE_PROCESSOR',
-      'DELAYED_MESSAGE_BUFFER'
+      'DELAYED_MESSAGE_SCHEDULER'
     ];
 
     for (const binding of bindings) {

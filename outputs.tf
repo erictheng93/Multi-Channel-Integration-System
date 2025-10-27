@@ -77,16 +77,10 @@ output "cache_kv_id" {
   value       = cloudflare_workers_kv_namespace.cache.id
 }
 
-# Queue 資訊
-output "message_queue_name" {
-  description = "訊息佇列名稱"
-  value       = cloudflare_queue.message_queue.name
-}
-
-output "delayed_message_queue_name" {
-  description = "延遲訊息佇列名稱"
-  value       = cloudflare_queue.delayed_message_queue.name
-}
+# Queue 資訊 (已移除 - 使用 Durable Objects 替代)
+# AGENT_QUEUE 和 REALTIME_QUEUE 已在 Phase 1.4b 完全移除
+# 延遲訊息現由 DelayedMessageBuffer Durable Object 處理
+# 實時事件由 MessageBroadcaster 和 LatestMessageCacheCoordinator Durable Objects 處理
 
 # 管理員資訊
 output "admin_email" {

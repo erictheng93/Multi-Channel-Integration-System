@@ -1,10 +1,6 @@
-// Unified ConversationRoom Durable Object
+// ConversationRoom Durable Object
 // 專案名稱：Multi-Channel Support MVP - WebSocket Real-time System
 // 管理特定對話的 WebSocket 連接和實時消息傳遞
-//
-// Mode Configuration:
-// - 'full': Complete features including message history, advanced auth, permissions
-// - 'simplified': Minimal features for high-traffic rooms with reduced memory footprint
 
 import type {
   WebSocketConnection,
@@ -15,16 +11,6 @@ import type { RealtimeEvent } from '../types';
 import type { WebSocketAuthChallenge, WebSocketAuthResponse } from '../services/websocket-auth-service';
 
 /**
- * Configuration for ConversationRoom behavior
- */
-export interface ConversationRoomConfig {
-  mode: 'full' | 'simplified';
-  maxConnections?: number;
-  maxMessageHistory?: number;
-  inactivityTimeout?: number;
-}
-
-/**
  * Architecture Overview:
  *
  * ConversationRoom Durable Object manages:
@@ -32,9 +18,7 @@ export interface ConversationRoomConfig {
  * 2. Real-time message broadcasting within the conversation
  * 3. Participant management and typing indicators
  * 4. Connection lifecycle and error handling
- * 5. Optional message history (full mode only)
- * 6. Optional advanced authentication (full mode only)
- * 7. Optional permission checking (full mode only)
+ * 5. Distributed locking for message ordering
  *
  * Each conversation gets its own Durable Object instance identified by conversationId
  * This ensures strong consistency for message ordering and participant state
@@ -42,57 +26,32 @@ export interface ConversationRoomConfig {
 
 export class ConversationRoom implements DurableObject {
   private state: DurableObjectState;
-  private env: any;
-  private config: ConversationRoomConfig;
-
-  // Core state (both modes)
+  private env: any // Used in state initialization and auth verification
   private connections = new Map<string, WebSocketConnection>();
   private participants = new Set<string>();
-  private conversationId: string;
-  private messageCounter = 0;
-  private lastActivity = Date.now();
-  private isActive = true;
-
-  // Full mode only
   private messageHistory: RealtimeEvent[] = [];
-  private challenges = new Map<string, WebSocketAuthChallenge>();
+  private isActive = true;
+  private lastActivity = Date.now();
+  private conversationId: string;
+  private messageCounter = 0; // Simple counter for message ordering
+  private challenges = new Map<string, WebSocketAuthChallenge>(); // Store auth challenges
 
-  // Configuration with defaults
-  private readonly MAX_CONNECTIONS: number;
-  private readonly MAX_MESSAGE_HISTORY: number;
-  private readonly INACTIVITY_TIMEOUT: number;
+  // Configuration
+  private readonly MAX_CONNECTIONS = 100;
+  private readonly MAX_MESSAGE_HISTORY = 50;
+  private readonly INACTIVITY_TIMEOUT = 300000; // 5 minutes
   private readonly CHALLENGE_TTL = 30000; // 30 seconds for challenge expiration
 
-  constructor(state: DurableObjectState, env: any, config?: ConversationRoomConfig) {
+  constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.env = env;
-    this.config = config || { mode: 'full' };
     this.conversationId = 'unknown'; // Will be set from request URL
-
-    // Set configuration values
-    this.MAX_CONNECTIONS = this.config.maxConnections || 100;
-    this.MAX_MESSAGE_HISTORY = this.config.maxMessageHistory || 50;
-    this.INACTIVITY_TIMEOUT = this.config.inactivityTimeout || 300000;
 
     // Initialize state from storage
     this.initializeFromStorage();
 
-    // Set up periodic cleanup (full mode only)
-    if (this.isFullMode()) {
-      this.setupCleanupTasks();
-    }
-
-    console.log(`🏗️ [ConversationRoom] Initialized in ${this.config.mode} mode`);
-  }
-
-  // =================== Mode Detection Helpers ===================
-
-  private isFullMode(): boolean {
-    return this.config.mode === 'full';
-  }
-
-  private isSimplifiedMode(): boolean {
-    return this.config.mode === 'simplified';
+    // Set up periodic cleanup
+    this.setupCleanupTasks();
   }
 
   // =================== WebSocket Handling ===================
@@ -110,10 +69,6 @@ export class ConversationRoom implements DurableObject {
       // Handle HTTP API requests
       switch (pathname) {
         case '/challenge':
-          // Full mode only
-          if (!this.isFullMode()) {
-            return new Response('Challenge endpoint not available in simplified mode', { status: 404 });
-          }
           return this.handleGenerateChallenge(request);
         case '/connect':
           return this.handleConnect(request);
@@ -123,6 +78,7 @@ export class ConversationRoom implements DurableObject {
           return this.handleBroadcast(request);
         case '/participants':
           return this.handleGetParticipants(request);
+        // Removed lock operations - no longer needed
         case '/metrics':
           return this.handleGetMetrics(request);
         default:
@@ -137,37 +93,30 @@ export class ConversationRoom implements DurableObject {
   private async handleWebSocketUpgrade(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
+      const challengeId = url.searchParams.get('challengeId');
+      const signature = url.searchParams.get('signature');
       const conversationId = url.searchParams.get('conversationId');
 
-      // Set conversationId
+      if (!challengeId || !signature) {
+        return new Response('Missing authentication parameters. Use challenge-response flow.', { status: 400 });
+      }
+
+      // 🔧 設定 conversationId
       if (conversationId) {
         this.conversationId = conversationId;
       }
 
-      let userId: string;
-      let role: string;
-
-      // Full mode: Support both token and challenge-response authentication
-      // Simplified mode: Only query parameter authentication
-      if (this.isFullMode()) {
-        const authResult = await this.authenticateFullMode(url, request);
-        if (!authResult.success) {
-          return new Response(authResult.error, { status: authResult.status });
-        }
-        userId = authResult.userId!;
-        role = authResult.role!;
-      } else {
-        const authResult = await this.authenticateSimplifiedMode(url);
-        if (!authResult.success) {
-          return new Response(authResult.error, { status: authResult.status });
-        }
-        userId = authResult.userId!;
-        role = authResult.role!;
+      // Verify challenge-response authentication
+      const authResult = await this.verifyAuthResponse(challengeId, signature);
+      if (!authResult.isValid || !authResult.userId || !authResult.role) {
+        return new Response('Unauthorized - Invalid challenge response', { status: 401 });
       }
+
+      const { userId, role } = authResult;
 
       // Check connection limits
       if (this.connections.size >= this.MAX_CONNECTIONS) {
-        return new Response('Connection limit reached', { status: 429 });
+        return new Response('Connection limit reached', { status:429 });
       }
 
       // Create WebSocket pair
@@ -182,14 +131,14 @@ export class ConversationRoom implements DurableObject {
         websocket: server,
         userId,
         conversationId: this.conversationId,
-        role: role as 'admin' | 'agent',
+        role,
         connectionId,
         lastActivity: Date.now(),
         isActive: true,
-        metadata: this.isFullMode() ? {
+        metadata: {
           userAgent: request.headers.get('User-Agent'),
           ip: request.headers.get('CF-Connecting-IP')
-        } : undefined
+        }
       };
 
       // Set up WebSocket event handlers
@@ -207,102 +156,6 @@ export class ConversationRoom implements DurableObject {
       console.error('❌ [ConversationRoom] WebSocket upgrade error:', error);
       return new Response('WebSocket upgrade failed', { status: 500 });
     }
-  }
-
-  /**
-   * Full mode authentication: Token-based or Challenge-Response
-   */
-  private async authenticateFullMode(url: URL, request: Request): Promise<{
-    success: boolean;
-    userId?: string;
-    role?: string;
-    error?: string;
-    status?: number;
-  }> {
-    const challengeId = url.searchParams.get('challengeId');
-    const signature = url.searchParams.get('signature');
-    const token = url.searchParams.get('token');
-
-    // Authentication Method 1: Token-based (recommended, used by frontend)
-    if (token) {
-      console.log('🔐 [ConversationRoom] Using token authentication');
-
-      try {
-        const { verifyJWT } = await import('../utils/auth');
-        const jwtSecret = this.env.JWT_SECRET || 'default-secret-key';
-        const payload = await verifyJWT(token, jwtSecret);
-
-        console.log(`✅ [ConversationRoom] Token valid for user ${payload.userId} with role ${payload.role}`);
-        return {
-          success: true,
-          userId: String(payload.userId),
-          role: payload.role
-        };
-      } catch (error) {
-        console.error('❌ [ConversationRoom] Token validation failed:', error);
-        return {
-          success: false,
-          error: 'Unauthorized - Invalid token',
-          status: 401
-        };
-      }
-    }
-    // Authentication Method 2: Challenge-Response (backward compatibility)
-    else if (challengeId && signature) {
-      console.log('🔐 [ConversationRoom] Using challenge-response authentication');
-
-      const authResult = await this.verifyAuthResponse(challengeId, signature);
-      if (!authResult.isValid || !authResult.userId || !authResult.role) {
-        return {
-          success: false,
-          error: 'Unauthorized - Invalid challenge response',
-          status: 401
-        };
-      }
-
-      return {
-        success: true,
-        userId: authResult.userId,
-        role: authResult.role
-      };
-    }
-    // No valid authentication method provided
-    else {
-      return {
-        success: false,
-        error: 'Missing authentication parameters. Provide either token or challengeId+signature.',
-        status: 400
-      };
-    }
-  }
-
-  /**
-   * Simplified mode authentication: Query parameters only
-   */
-  private async authenticateSimplifiedMode(url: URL): Promise<{
-    success: boolean;
-    userId?: string;
-    role?: string;
-    error?: string;
-    status?: number;
-  }> {
-    const userId = url.searchParams.get('userId');
-    const token = url.searchParams.get('token');
-    const role = url.searchParams.get('role') as 'admin' | 'agent';
-
-    if (!userId || !token || !role) {
-      return {
-        success: false,
-        error: 'Missing required parameters (userId, token, role)',
-        status: 400
-      };
-    }
-
-    return {
-      success: true,
-      userId,
-      role
-    };
   }
 
   private setupWebSocketHandlers(connection: WebSocketConnection): void {
@@ -335,8 +188,7 @@ export class ConversationRoom implements DurableObject {
         type: 'connection_established',
         conversationId: this.conversationId,
         connectionId,
-        participants: Array.from(this.participants),
-        mode: this.config.mode // Inform client of room mode
+        participants: Array.from(this.participants)
       },
       timestamp: Date.now()
     });
@@ -357,15 +209,11 @@ export class ConversationRoom implements DurableObject {
         break;
 
       case 'subscribe':
-        if (this.isFullMode()) {
-          await this.handleSubscribe(connection, message);
-        }
+        await this.handleSubscribe(connection, message);
         break;
 
       case 'unsubscribe':
-        if (this.isFullMode()) {
-          await this.handleUnsubscribe(connection, message);
-        }
+        await this.handleUnsubscribe(connection, message);
         break;
 
       case 'message':
@@ -373,9 +221,7 @@ export class ConversationRoom implements DurableObject {
         break;
 
       case 'event':
-        if (this.isFullMode()) {
-          await this.handleEventMessage(connection, message);
-        }
+        await this.handleEventMessage(connection, message);
         break;
 
       default:
@@ -388,7 +234,7 @@ export class ConversationRoom implements DurableObject {
   private async addConnection(connection: WebSocketConnection): Promise<void> {
     const { connectionId, userId } = connection;
 
-    // Add connection
+    // Add connection (no locking needed for simple operations)
     this.connections.set(connectionId, connection);
     this.participants.add(userId);
 
@@ -471,31 +317,19 @@ export class ConversationRoom implements DurableObject {
   private async handleChatMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
     const { userId, role } = connection;
 
-    // Check permissions (full mode only)
-    if (this.isFullMode()) {
-      const hasPermission = await this.checkMessagePermission(userId, role, this.conversationId);
-      if (!hasPermission) {
-        this.sendError(connection, 'Permission denied to send messages');
-        return;
-      }
+    // Check permissions (integrate with existing permission service)
+    const hasPermission = await this.checkMessagePermission(userId, role, this.conversationId);
+    if (!hasPermission) {
+      this.sendError(connection, 'Permission denied to send messages');
+      return;
     }
 
-    // Message ordering with counter
+    // Simple message ordering with counter (eliminates distributed locking)
     const messageOrder = this.getNextMessageOrder();
 
     // Type guard for message data
     const messageData = message.data as any;
     const isValidMessageData = messageData && typeof messageData === 'object';
-
-    // Check if this is a typing indicator
-    const isTypingMessage = isValidMessageData &&
-      (messageData.messageType === 'typing_start' || messageData.messageType === 'typing_stop');
-
-    if (isTypingMessage) {
-      // Typing indicators: broadcast to others only (no storage)
-      await this.broadcastToOthers(connection, message);
-      return;
-    }
 
     // Create real-time event
     const event: DurableObjectEvent = {
@@ -515,31 +349,27 @@ export class ConversationRoom implements DurableObject {
       priority: 'high'
     };
 
-    // Store in message history (full mode only)
-    if (this.isFullMode()) {
-      const realtimeEvent: RealtimeEvent = {
-        id: event.id,
-        type: event.type as any,
-        timestamp: event.timestamp.toString(),
-        source: event.source,
-        data: event.data as any
-      };
-      this.messageHistory.push(realtimeEvent);
-      if (this.messageHistory.length > this.MAX_MESSAGE_HISTORY) {
-        this.messageHistory.shift();
-      }
-
-      // Persist message history
-      await this.state.storage.put('messageHistory', this.messageHistory);
+    // Store in message history (convert to RealtimeEvent format)
+    const realtimeEvent: RealtimeEvent = {
+      id: event.id,
+      type: event.type as any, // Type assertion for compatibility
+      timestamp: event.timestamp.toString(),
+      source: event.source,
+      data: event.data as any
+    };
+    this.messageHistory.push(realtimeEvent);
+    if (this.messageHistory.length > this.MAX_MESSAGE_HISTORY) {
+      this.messageHistory.shift();
     }
+
+    // Persist message history
+    await this.state.storage.put('messageHistory', this.messageHistory);
 
     // Broadcast to all connections in this conversation
     await this.broadcastEvent(event);
 
-    // Send to external message queue for persistence (full mode only)
-    if (this.isFullMode()) {
-      await this.sendToMessageQueue(event);
-    }
+    // Send to external message queue for persistence
+    await this.sendToMessageQueue(event);
 
     console.log(`📤 [ConversationRoom] Message broadcast: ${event.id} (order: ${messageOrder})`);
   }
@@ -557,14 +387,6 @@ export class ConversationRoom implements DurableObject {
 
     await Promise.allSettled(broadcasts);
     console.log(`📡 [ConversationRoom] Event broadcast to ${this.connections.size} connections`);
-  }
-
-  private async broadcastToOthers(sender: WebSocketConnection, message: WebSocketMessage): Promise<void> {
-    const otherConnections = Array.from(this.connections.values())
-      .filter(conn => conn.connectionId !== sender.connectionId);
-
-    const broadcasts = otherConnections.map(conn => this.sendMessage(conn, message));
-    await Promise.allSettled(broadcasts);
   }
 
   private sendMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
@@ -590,7 +412,7 @@ export class ConversationRoom implements DurableObject {
     });
   }
 
-  // =================== Message Ordering ===================
+  // =================== Simple Message Ordering ===================
 
   private getNextMessageOrder(): number {
     return ++this.messageCounter;
@@ -606,22 +428,20 @@ export class ConversationRoom implements DurableObject {
         this.participants = new Set(participants);
       }
 
-      // Restore message history (full mode only)
-      if (this.isFullMode()) {
-        const messageHistory = await this.state.storage.get('messageHistory') as RealtimeEvent[];
-        if (messageHistory) {
-          this.messageHistory = messageHistory;
-        }
+      // Restore message history
+      const messageHistory = await this.state.storage.get('messageHistory') as RealtimeEvent[];
+      if (messageHistory) {
+        this.messageHistory = messageHistory;
       }
 
-      console.log(`📂 [ConversationRoom] State restored: ${this.participants.size} participants${this.isFullMode() ? `, ${this.messageHistory.length} messages` : ''}`);
+      console.log(`📂 [ConversationRoom] State restored: ${this.participants.size} participants, ${this.messageHistory.length} messages`);
     } catch (error) {
       console.error('❌ [ConversationRoom] State restoration error:', error);
     }
   }
 
   private setupCleanupTasks(): void {
-    // Clean up inactive connections every 5 minutes (full mode only)
+    // Clean up inactive connections every 5 minutes
     setInterval(() => {
       this.cleanupInactiveConnections();
     }, 300000);
@@ -638,10 +458,8 @@ export class ConversationRoom implements DurableObject {
     }
   }
 
-  // =================== Full Mode: Challenge-Response Authentication ===================
-
   /**
-   * Generate authentication challenge for WebSocket connection (Full Mode Only)
+   * Generate authentication challenge for WebSocket connection
    * Called via HTTP before WebSocket upgrade
    */
   private async handleGenerateChallenge(request: Request): Promise<Response> {
@@ -680,7 +498,7 @@ export class ConversationRoom implements DurableObject {
         ...challenge,
         userId: payload.userId,
         role: payload.role,
-        token
+        token // Store the JWT token securely for later verification
       });
 
       // Also keep in memory for fast access
@@ -709,7 +527,7 @@ export class ConversationRoom implements DurableObject {
   }
 
   /**
-   * Verify authentication response during WebSocket handshake (Full Mode Only)
+   * Verify authentication response during WebSocket handshake
    */
   private async verifyAuthResponse(challengeId: string, signature: string): Promise<{
     isValid: boolean;
@@ -761,7 +579,7 @@ export class ConversationRoom implements DurableObject {
   }
 
   /**
-   * Generate HMAC signature for challenge + token (Full Mode Only)
+   * Generate HMAC signature for challenge + token
    */
   private async generateSignature(challengeId: string, token: string): Promise<string> {
     const data = challengeId + ':' + token;
@@ -782,22 +600,22 @@ export class ConversationRoom implements DurableObject {
   }
 
   /**
-   * Clean up expired challenges (Full Mode Only)
+   * Clean up expired challenges
    */
   private cleanupExpiredChallenges(): void {
     const now = Date.now();
     for (const [challengeId, challenge] of this.challenges.entries()) {
       if (now > challenge.expiresAt) {
         this.challenges.delete(challengeId);
+        // Also clean up from storage (fire and forget)
         this.state.storage.delete(`challenge:${challengeId}`).catch(() => {});
       }
     }
   }
 
-  // =================== Full Mode: Permission Checking ===================
-
   private async checkMessagePermission(userId: string, role: string, _conversationId: string): Promise<boolean> {
     try {
+      // Get user role from connection metadata
       const userConnections = Array.from(this.connections.values())
         .filter(conn => conn.userId === userId);
 
@@ -806,6 +624,7 @@ export class ConversationRoom implements DurableObject {
       const userRole = userConnections[0]?.role || role;
 
       // Basic permission checks based on role hierarchy
+      // All authenticated users can send messages in conversations they're part of
       return ['admin', 'team', 'agent'].includes(userRole);
     } catch (error) {
       console.error('❌ [ConversationRoom] Permission check failed:', error);
@@ -813,50 +632,44 @@ export class ConversationRoom implements DurableObject {
     }
   }
 
-  // =================== Full Mode: External Queue Integration ===================
-
   private async sendToMessageQueue(_event: DurableObjectEvent): Promise<void> {
     // Integration point with existing Cloudflare Queue
-    // This would send the event to REALTIME_QUEUE for persistence
+    // This would send the event to REALTIME_QUEUE for persistence and external processing
   }
 
-  // =================== Utility Methods ===================
-
   private generateConnectionId(): string {
+    // Use crypto.randomUUID() for cryptographically secure IDs
     return `conn_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
   }
 
   private generateEventId(): string {
+    // Use crypto.randomUUID() for cryptographically secure IDs
     return `event_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
   }
+
+
 
   // =================== HTTP API Handlers ===================
 
   private async handleConnect(_request: Request): Promise<Response> {
+    // Handle programmatic connection requests
     return new Response(JSON.stringify({
       success: true,
       conversationId: this.conversationId,
-      activeConnections: this.connections.size,
-      mode: this.config.mode
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+      activeConnections: this.connections.size
+    }));
   }
 
   private async handleDisconnect(request: Request): Promise<Response> {
     const { connectionId } = await request.json() as { connectionId: string };
     await this.removeConnection(connectionId);
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ success: true }));
   }
 
   private async handleBroadcast(request: Request): Promise<Response> {
     const event = await request.json() as DurableObjectEvent;
     await this.broadcastEvent(event);
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ success: true }));
   }
 
   private async handleGetParticipants(_request: Request): Promise<Response> {
@@ -864,42 +677,37 @@ export class ConversationRoom implements DurableObject {
       participants: Array.from(this.participants),
       activeConnections: this.connections.size,
       lastActivity: this.lastActivity
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    }));
   }
 
+
   private async handleGetMetrics(_request: Request): Promise<Response> {
-    const baseMetrics = {
+    const metrics = {
       conversationId: this.conversationId,
-      mode: this.config.mode,
       activeConnections: this.connections.size,
       participants: this.participants.size,
+      messageHistory: this.messageHistory.length,
       messageCounter: this.messageCounter,
       lastActivity: this.lastActivity,
-      isActive: this.isActive
+      isActive: this.isActive,
+      uptime: Date.now() - (this.lastActivity - 300000) // Approximate uptime
     };
 
-    const fullMetrics = this.isFullMode() ? {
-      ...baseMetrics,
-      messageHistory: this.messageHistory.length,
-      uptime: Date.now() - (this.lastActivity - 300000)
-    } : baseMetrics;
-
-    return new Response(JSON.stringify(fullMetrics), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify(metrics));
   }
 
   private async handleSubscribe(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
+    // Handle subscription to specific event types or conversations
     console.log(`🔔 [ConversationRoom] Subscription request from ${connection.connectionId}:`, message.data);
   }
 
   private async handleUnsubscribe(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
+    // Handle unsubscription
     console.log(`🔕 [ConversationRoom] Unsubscription request from ${connection.connectionId}:`, message.data);
   }
 
   private async handleEventMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
+    // Handle custom event messages (typing indicators, read receipts, etc.)
     const event = message.data as DurableObjectEvent;
 
     if (event.type === 'typing_start' || event.type === 'typing_stop') {
@@ -910,6 +718,7 @@ export class ConversationRoom implements DurableObject {
         timestamp: Date.now()
       };
 
+      // Send to all connections except the sender
       const otherConnections = Array.from(this.connections.values())
         .filter(conn => conn.connectionId !== connection.connectionId);
 
