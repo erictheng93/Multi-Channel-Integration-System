@@ -272,12 +272,21 @@
             </div>
             <div class="form-group">
               <label for="group">群組 (可選)</label>
-              <input
+              <select
                 id="group"
                 v-model="addMemberForm.group"
-                type="text"
-                placeholder="請輸入群組名稱"
               >
+                <option value="">
+                  未指派群組
+                </option>
+                <option
+                  v-for="team in teams"
+                  :key="team.id"
+                  :value="team.name"
+                >
+                  {{ team.name }}
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label class="checkbox-label">

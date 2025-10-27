@@ -15,8 +15,11 @@ export const ALLOWED_ORIGINS = [
 
   // 開發環境
   'http://localhost:3000',                                  // Vite dev server
+  'http://localhost:3001',                                  // Vite dev server (alt port)
   'https://localhost:3000',                                 // Vite dev server (SSL)
+  'https://localhost:3001',                                 // Vite dev server (SSL, alt port)
   'http://127.0.0.1:3000',                                  // Local IP
+  'http://127.0.0.1:3001',                                  // Local IP (alt port)
   'http://localhost:8787',                                  // Wrangler dev server
 ] as const;
 

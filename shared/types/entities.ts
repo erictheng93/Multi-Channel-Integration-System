@@ -56,6 +56,7 @@ export interface Conversation {
   assignedTo?: EntityId
   assignedAgent?: Agent
   assignedAgentId?: EntityId // 向後兼容字段
+  assignedTeamId?: number // 🆕 團隊指派欄位
   status: ConversationStatus
   platform?: Platform // 向後兼容字段
   lastMessageAt: Timestamp

@@ -724,6 +724,62 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 🆕 指派對話給團隊（僅管理員）
+  const assignConversationToTeam = async (conversationId: string, teamId: number) => {
+    if (!conversationId || !teamId) {return false}
+
+    // Optimistic update
+    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
+    let originalConversation: Conversation | null = null
+
+    if (conversationIndex !== -1) {
+      const current = conversations.value[conversationIndex]
+      if (current) {
+        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
+        const updatedConversation: Conversation = {
+          ...current,
+          id: current.id,
+          userId: current.userId,
+          customer: current.customer,
+          status: 'assigned' as const
+        }
+        conversations.value[conversationIndex] = updatedConversation
+      }
+    }
+
+    if (currentConversation.value && currentConversation.value.id === conversationId) {
+      currentConversation.value = {
+        ...currentConversation.value,
+        status: 'assigned' as const
+      }
+    }
+
+    error.value = null
+
+    try {
+      const response = await conversationApi.assignConversation(conversationId, { teamId })
+      if (response.success) {
+        // Refresh the specific conversation to get updated data
+        await fetchConversation(conversationId)
+        return true
+      } else {
+        // Revert optimistic update
+        if (originalConversation && conversationIndex !== -1) {
+          conversations.value[conversationIndex] = originalConversation
+        }
+        handleError(response.error, '團隊指派失敗')
+        return false
+      }
+    } catch (err) {
+      // Revert optimistic update
+      if (originalConversation && conversationIndex !== -1) {
+        conversations.value[conversationIndex] = originalConversation
+      }
+      handleError(err, '網路錯誤，團隊指派失敗')
+      return false
+    }
+  }
+
   const closeConversation = async (conversationId: string, reason?: string) => {
     if (!conversationId) {return false}
 
@@ -895,6 +951,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     fetchMessages,
     sendMessage,
     assignConversation,
+    assignConversationToTeam,
     closeConversation,
     markAsRead,
     loadMore,

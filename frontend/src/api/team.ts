@@ -94,7 +94,7 @@ export const teamApi = {
 
   // 更新成員狀態
   updateMemberStatus: async (memberId: string, status: 'active' | 'inactive'): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/teams/members/${memberId}/status`, { status })
+    return apiClient.put(`/teams/members/${memberId}/status`, { isActive: status === 'active' })
   },
 
   // 重設成員密碼

@@ -5,17 +5,18 @@ import { DatabaseService } from '../services/database';
 import { databaseMiddleware, authMiddleware } from '../middleware/database';
 import type { HonoContext } from '../types/bindings';
 import type { Bindings } from '../types';
-import { 
-  successResponse, 
-  errorResponse, 
-  validationErrorResponse, 
+import {
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
   notFoundResponse,
-  handleApiError 
+  handleApiError
 } from '../utils/api-response';
 import { drizzle } from 'drizzle-orm/d1';
 import { sql, eq, and, desc, inArray, count, aliasedTable } from 'drizzle-orm';
 import { realtime } from '@modules/realtime';
 import { conversations as conversationTable, agents, conversationTransfers, teams, conversationTags } from '../db/schema';
+import { requireAdmin } from '../middleware/auth';
 
 const conversations = new Hono<HonoContext>();
 
@@ -259,28 +260,15 @@ conversations.post('/:id/mark-read', async (c) => {
   }
 });
 
-// 分配對話
-conversations.post('/:id/assign', async (c) => {
+// 分配對話 - 僅管理員可執行
+conversations.post('/:id/assign', requireAdmin(), async (c) => {
   const drizzleDb = drizzle(c.env.DB);
   try {
     const conversationId = c.req.param('id');
     const agent = c.get('agent');
     const { teamId, userId, reason } = await c.req.json();
 
-    // 檢查權限 - 需要 assign 權限
-    const { PermissionService } = await import('../services/permission-service');
-    const hasPermission = await PermissionService.checkPermission(
-      agent!.id,
-      'conversation',
-      'assign'
-    );
-
-    if (!hasPermission) {
-      return c.json({
-        success: false,
-        error: 'Permission denied'
-      }, 403);
-    }
+    // 管理員權限已由 requireAdmin() 中間件確認，移除冗餘檢查
 
     // 更新對話指派
     await drizzleDb.update(conversationTable)

@@ -169,9 +169,6 @@
                 <option value="agent">
                   客服
                 </option>
-                <option value="team">
-                  團隊負責人
-                </option>
                 <option value="admin">
                   管理員
                 </option>
@@ -179,12 +176,21 @@
             </div>
             <div class="form-group">
               <label for="editGroup">群組</label>
-              <input
+              <select
                 id="editGroup"
                 v-model="editForm.group"
-                type="text"
-                placeholder="請輸入群組名稱"
               >
+                <option value="">
+                  未指派群組
+                </option>
+                <option
+                  v-for="team in teams"
+                  :key="team.id"
+                  :value="team.name"
+                >
+                  {{ team.name }}
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label class="checkbox-label">
@@ -221,7 +227,7 @@
 <script setup lang="ts">
 import { computed, ref, reactive, watch, nextTick, onUnmounted } from 'vue'
 import type { TeamMember } from '@/types'
-// import { teamApi } from '@/api/team'
+import { teamApi } from '@/api/team'
 import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
 
@@ -254,6 +260,25 @@ const { showSuccess, showError } = useToast()
 const showEditModal = ref(false)
 const editLoading = ref(false)
 
+// 團隊列表狀態
+const teams = ref<Array<{
+  id: number;
+  name: string;
+  isActive: boolean;
+}>>([])
+
+// 載入團隊列表
+const loadTeams = async () => {
+  try {
+    const response = await teamApi.getTeams(false) // 只獲取活躍的團隊
+    if (response.success && response.data) {
+      teams.value = response.data.filter(team => team.isActive)
+    }
+  } catch (error) {
+    console.error('獲取團隊列表失敗:', error)
+  }
+}
+
 // 計算密碼欄位狀態
 const passwordFieldStatus = computed(() => {
   if (editForm.password && editForm.password.trim() !== '') {
@@ -273,7 +298,7 @@ const editForm = reactive({
 })
 
 // Initialize form when modal opens
-watch(() => showEditModal.value, (newVal) => {
+watch(() => showEditModal.value, async (newVal) => {
   if (newVal) {
     editForm.name = props.member.name || ''
     editForm.email = props.member.email || ''
@@ -281,6 +306,9 @@ watch(() => showEditModal.value, (newVal) => {
     editForm.role = props.member.role
     editForm.group = props.member.group || ''
     editForm.isActive = props.member.status === 'active'
+
+    // 載入團隊列表
+    await loadTeams()
   }
 })
 
