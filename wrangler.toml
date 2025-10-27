@@ -70,11 +70,10 @@ class_name = "UserConnection"
 name = "MESSAGE_BROADCASTER"
 class_name = "MessageBroadcaster"
 
-# DelayedMessageScheduler - Unified delayed message scheduling with Alarm API
-# Consolidates former DelayedMessageBuffer + DelayedMessageProcessor (2025-10-27)
+# DelayedMessageBuffer - Delayed message scheduling with Alarm API
 [[durable_objects.bindings]]
-name = "DELAYED_MESSAGE_SCHEDULER"
-class_name = "DelayedMessageScheduler"
+name = "DELAYED_MESSAGE_BUFFER"
+class_name = "DelayedMessageBuffer"
 
 # DistributedLock - Cross-Durable Object coordination and locking
 [[durable_objects.bindings]]
@@ -101,28 +100,28 @@ class_name = "CustomerMessageDO"
 
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
-# Initial migration - Original Durable Objects
+# Initial migration - Original Durable Objects (v1 - DO NOT MODIFY!)
 [[migrations]]
 tag = "v1"
 new_classes = [
   "ConversationRoom",
   "UserConnection",
   "MessageBroadcaster",
+  "DelayedMessageProcessor",
   "LockCoordinator"
 ]
 
-# Migration v2 - Add LatestMessageCacheCoordinator (Phase 1.4b: REALTIME_QUEUE → DO)
+# Migration v2 - Add DelayedMessageBuffer (v2 - DO NOT MODIFY!)
 [[migrations]]
 tag = "v2"
-new_classes = ["LatestMessageCacheCoordinator"]
+new_classes = ["DelayedMessageBuffer"]
 
-# Migration v3 - Add delayed messaging scheduler (2025-10-27)
-# Note: DelayedMessageBuffer was renamed to DelayedMessageScheduler in production
+# Migration v3 - Add LatestMessageCacheCoordinator (NEW)
 [[migrations]]
 tag = "v3"
-new_classes = ["DelayedMessageScheduler"]
+new_classes = ["LatestMessageCacheCoordinator"]
 
-# Migration v4 - Add Customer Conversation System (Chat-Style)
+# Migration v4 - Add Customer Conversation System (NEW)
 # Adds simplified WebSocket architecture for customer conversations
 [[migrations]]
 tag = "v4"
