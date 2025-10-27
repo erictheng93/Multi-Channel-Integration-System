@@ -495,7 +495,9 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     const hasPermission = await PermissionService.checkPermission(
       user.id,
       'conversation',
-      'assign'
+      'assign',
+      undefined, // context
+      c.env.DB   // 傳入資料庫以正確檢查用戶角色
     );
 
     if (!hasPermission) {

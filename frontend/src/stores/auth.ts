@@ -226,17 +226,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 驗證會話是否有效
+  // 驗證會話是否有效 (PURE FUNCTION - No side effects)
   function validateSession(): boolean {
     if (!token.value) {return false;}
 
     // 🔧 增強：檢查 Token 格式和內容有效性
     if (!isTokenValid()) {
       console.warn('[Auth] Invalid token detected during session validation');
-      // 清除無效 Token
-      setTimeout(() => {
-        logout(false);
-      }, 0);
+      // ⚠️  Do NOT call logout here - validation functions must be pure
+      // Caller should handle logout based on validation result
       return false;
     }
 
@@ -308,17 +306,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 檢查是否需要刷新 token
+  // 檢查是否需要刷新 token (PURE FUNCTION - No side effects)
   function shouldRefreshToken(): boolean {
     if (!token.value || !sessionExpiry.value) {return false;}
 
     // 🔧 增強：先檢查 Token 是否已經完全過期
     if (isTokenExpired()) {
       console.warn('[Auth] Token has expired, cannot refresh');
-      // 自動觸發登出
-      setTimeout(() => {
-        logout(false);
-      }, 0);
+      // ⚠️  Do NOT call logout here - validation functions must be pure
+      // Caller should handle logout based on expiration check
       return false;
     }
 
@@ -460,18 +456,11 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     sessionExpiry,
     sessionStatus,
-    // 計算屬性
+    // 計算屬性 (PURE COMPUTED - No side effects)
     isAuthenticated: computed(() => {
-      const result = !!token.value && validateSession() && !!currentAgent.value;
-
-      // 自動清除過時錯誤
-      if (result && error.value) {
-        setTimeout(() => {
-          if (error.value) {error.value = null;}
-        }, 0);
-      }
-
-      return result;
+      // ✅ Pure computation without any state mutations
+      // Error clearing should be handled explicitly by caller, not automatically
+      return !!token.value && validateSession() && !!currentAgent.value;
     }),
     isAdmin,
     isAgent,

@@ -260,12 +260,17 @@ export class TeamService implements TeamServiceInterface {
 
     return {
       id: agent.id,
+      name: agent.displayName, // ✅ Map displayName to name
       displayName: agent.displayName,
+      loginId: agent.email || agent.id, // ✅ Add loginId
       email: agent.email,
       role: agent.role,
+      status: agent.isActive ? 'active' : 'inactive', // ✅ Add status
       isActive: agent.isActive,
       lastActive: agent.lastActive,
-      joinedAt: agent.updatedAt
+      joinedAt: agent.updatedAt,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt || agent.createdAt
     };
   }
 
@@ -314,12 +319,17 @@ export class TeamService implements TeamServiceInterface {
 
     return {
       id: agent.id,
+      name: agent.displayName, // ✅ Map displayName to name
       displayName: agent.displayName,
+      loginId: agent.email || agent.id, // ✅ Add loginId
       email: agent.email,
       role: agent.role,
+      status: agent.isActive ? 'active' : 'inactive', // ✅ Add status
       isActive: agent.isActive,
       lastActive: agent.lastActive,
-      joinedAt: agent.createdAt
+      joinedAt: agent.createdAt,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt || agent.createdAt
     };
   }
 
@@ -333,12 +343,17 @@ export class TeamService implements TeamServiceInterface {
 
     return members.map(agent => ({
       id: agent.id,
-      displayName: agent.displayName,
+      name: agent.displayName, // ✅ Map displayName to name for frontend compatibility
+      displayName: agent.displayName, // Keep for backward compatibility
+      loginId: agent.email || agent.id, // ✅ Add loginId field (fallback to id if no email)
       email: agent.email,
       role: agent.role,
+      status: agent.isActive ? 'active' : 'inactive', // ✅ Add status field for frontend
       isActive: agent.isActive,
       lastActive: agent.lastActive,
-      joinedAt: agent.createdAt
+      joinedAt: agent.createdAt,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt || agent.createdAt
     }));
   }
 

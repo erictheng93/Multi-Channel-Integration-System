@@ -31,6 +31,13 @@ interface RawConversationData {
   unreadCount?: number
 }
 
+// 指派對話選項
+export interface AssignConversationOptions {
+  teamId?: number;    // 團隊 ID (指派給團隊)
+  userId?: string;    // 用戶 ID (指派給個人)
+  reason?: string;    // 指派原因
+}
+
 // 數據轉換適配器
 function adaptConversationData(rawData: RawConversationData): Conversation {
   // 狀態映射: API 的 'active' 對應前端的 'open'
@@ -233,12 +240,30 @@ export const conversationApi = {
     });
   },
 
-  // 指派對話
-  assignConversation: async (conversationId: string, agentId: string): Promise<ApiResponse<void>> => {
-    if (!conversationId?.trim() || !agentId?.trim()) {
-      return { success: false, error: '對話 ID 和客服 ID 不能為空' };
+  // 指派對話 (支持團隊或個人指派)
+  assignConversation: async (
+    conversationId: string,
+    optionsOrAgentId: AssignConversationOptions | string
+  ): Promise<ApiResponse<void>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/conversations/${conversationId}/assign`, { agentId });
+
+    // 向後兼容：如果傳入的是字符串，視為 agentId
+    let options: AssignConversationOptions;
+    if (typeof optionsOrAgentId === 'string') {
+      options = { userId: optionsOrAgentId };
+    } else {
+      options = optionsOrAgentId;
+    }
+
+    // 驗證：至少需要 teamId 或 userId 其中之一
+    if (!options.teamId && !options.userId) {
+      return { success: false, error: '請指定團隊或客服人員' };
+    }
+
+    // 使用 POST 方法 (後端使用 POST)
+    return apiClient.post(`/conversations/${conversationId}/assign`, options);
   },
 
   // 關閉對話

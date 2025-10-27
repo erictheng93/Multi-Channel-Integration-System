@@ -12,6 +12,7 @@ import type { CustomerPermissions, CustomerAccessScope } from '@modules/customer
 declare module 'hono' {
   interface ContextVariableMap {
     user: DbUser;
+    agent: DbUser; // Added for database.ts authMiddleware compatibility
     session: Record<string, unknown>;
     jwtPayload: JWTPayload;
     // 客戶模組變數
@@ -194,21 +195,52 @@ export function requireRole(requiredRole: 'admin' | 'agent') {
  */
 export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
+    // Check for both 'user' and 'agent' in context (different auth middlewares use different keys)
     const user = c.get('user');
-    
-    if (!user) {
-      return c.json({ error: 'Authentication required' }, 401);
+    const agent = c.get('agent');
+    const actualUser = user || agent;
+
+    console.log('[requireRoleLevel] Debug:', {
+      hasUser: !!user,
+      hasAgent: !!agent,
+      actualUser: actualUser ? { id: actualUser.id, role: actualUser.role, email: actualUser.email } : null,
+      requiredRole
+    });
+
+    if (!actualUser) {
+      console.log('[requireRoleLevel] No user found in context');
+      return c.json({
+        error: 'Authentication required',
+        debug: {
+          hasUser: !!user,
+          hasAgent: !!agent,
+          requiredRole
+        }
+      }, 401);
     }
 
     // Import PermissionService dynamically to avoid circular dependency
     const { PermissionService } = await import('../services/permission-service');
-    
+
+    const hasAuthority = PermissionService.hasRoleAuthority(actualUser.role, requiredRole);
+    console.log('[requireRoleLevel] Authority check:', {
+      userRole: actualUser.role,
+      requiredRole,
+      hasAuthority
+    });
+
     // 檢查是否有足夠的角色層級
-    if (!PermissionService.hasRoleAuthority(user.role, requiredRole)) {
-      return c.json({ 
+    if (!hasAuthority) {
+      return c.json({
         error: 'Insufficient role level',
         required: requiredRole,
-        current: user.role
+        current: actualUser.role,
+        debug: {
+          hasUser: !!user,
+          hasAgent: !!agent,
+          userId: actualUser.id,
+          userEmail: actualUser.email
+        }
       }, 403);
     }
 

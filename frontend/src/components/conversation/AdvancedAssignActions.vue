@@ -1,20 +1,21 @@
 <template>
   <div class="advanced-assign-actions">
     <!-- 當前指派狀態 -->
-    <div 
-      v-if="conversation.status === 'assigned' && conversation.assignedAgent"
+    <div
+      v-if="conversation.status === 'assigned' && (conversation.assignedTeamId || conversation.assignedAgent)"
       class="current-assignment"
     >
       <div class="assignment-info">
         <div class="assignee-avatar">
-          {{ getInitials(conversation.assignedAgent.name) }}
+          <TeamIcon v-if="conversation.assignedTeamId" />
+          <span v-else>{{ getInitials(conversation.assignedAgent?.name) }}</span>
         </div>
         <div class="assignee-details">
           <div class="assignee-name">
-            {{ conversation.assignedAgent.name }}
+            {{ getAssignedDisplayName() }}
           </div>
           <div class="assignee-role">
-            {{ getRoleDisplayName(conversation.assignedAgent.role) }}
+            {{ conversation.assignedTeamId ? '團隊' : getRoleDisplayName(conversation.assignedAgent?.role) }}
           </div>
         </div>
       </div>
@@ -29,25 +30,15 @@
       <!-- 主要操作按鈕 -->
       <div class="primary-actions">
         <button
-          v-if="canAssignToMe"
+          v-if="canAssignToTeam"
           class="assign-btn primary"
-          :disabled="isAssigning"
-          @click="handleAssignToMe"
-        >
-          <UserPlusIcon class="btn-icon" />
-          {{ isAssigning ? '指派中...' : '指派給我' }}
-        </button>
-
-        <button
-          v-if="canReassign"
-          class="assign-btn secondary"
-          :disabled="isAssigning"
-          @click="toggleAdvancedOptions"
+          :disabled="isAssigning || loadingTeams"
+          @click="toggleTeamSelector"
         >
           <TeamIcon class="btn-icon" />
-          重新指派
-          <ChevronDownIcon 
-            :class="`dropdown-icon ${showAdvancedOptions ? 'rotated' : ''}`"
+          {{ isAssigning ? '指派中...' : (conversation.status === 'assigned' ? '重新指派團隊' : '指派給團隊') }}
+          <ChevronDownIcon
+            :class="`dropdown-icon ${showTeamSelector ? 'rotated' : ''}`"
           />
         </button>
 
@@ -62,16 +53,16 @@
         </button>
       </div>
 
-      <!-- 高級選項面板 -->
-      <div 
-        v-if="showAdvancedOptions"
-        class="advanced-options"
+      <!-- 團隊選擇面板 -->
+      <div
+        v-if="showTeamSelector"
+        class="team-selector-panel"
       >
-        <div class="options-header">
-          <h4>選擇指派對象</h4>
-          <button 
-            class="close-options-btn"
-            @click="closeAdvancedOptions"
+        <div class="panel-header">
+          <h4>選擇指派團隊</h4>
+          <button
+            class="close-panel-btn"
+            @click="closeTeamSelector"
           >
             <XIcon />
           </button>
@@ -82,99 +73,79 @@
           <div class="search-input-wrapper">
             <SearchIcon class="search-icon" />
             <input
-              v-model="searchTerm"
+              v-model="teamSearchTerm"
               type="text"
-              placeholder="搜索成員..."
+              placeholder="搜索團隊..."
               class="search-input"
             >
           </div>
         </div>
 
-        <!-- 角色篩選 -->
-        <div class="filter-section">
-          <div class="filter-tabs">
-            <button
-              v-for="filter in roleFilters"
-              :key="filter.value"
-              class="filter-tab"
-              :class="{ 'active': activeRoleFilter === filter.value }"
-              @click="activeRoleFilter = filter.value"
-            >
-              {{ filter.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- 成員列表 -->
-        <div class="members-section">
-          <div 
-            v-if="loadingMembers"
-            class="loading-members"
+        <!-- 團隊列表 -->
+        <div class="teams-section">
+          <div
+            v-if="loadingTeams"
+            class="loading-teams"
           >
-            <HamsterLoader message="處理中..." />
-            <span>載入成員中...</span>
+            <HamsterLoader message="載入團隊中..." />
+            <span>載入團隊中...</span>
           </div>
 
-          <div 
-            v-else-if="filteredMembers.length === 0"
-            class="no-members"
+          <div
+            v-else-if="filteredTeams.length === 0"
+            class="no-teams"
           >
-            <div class="no-members-icon">
-              <UsersIcon />
+            <div class="no-teams-icon">
+              <TeamIcon />
             </div>
-            <p>沒有找到符合條件的成員</p>
+            <p>沒有找到可用的團隊</p>
           </div>
 
-          <div 
+          <div
             v-else
-            class="members-grid"
+            class="teams-grid"
           >
             <div
-              v-for="member in filteredMembers"
-              :key="member.id"
-              class="member-card"
-              :class="{ 
-                'selected': selectedMember?.id === member.id,
-                'current': member.id === conversation.assignedAgentId,
-                'disabled': member.id === conversation.assignedAgentId && !canReassignSelf
+              v-for="team in filteredTeams"
+              :key="team.id"
+              class="team-card"
+              :class="{
+                'selected': selectedTeam === team.id,
+                'current': conversation.assignedTeamId === team.id
               }"
-              @click="selectMember(member)"
+              @click="selectTeam(team.id)"
             >
-              <div class="member-avatar">
-                {{ getInitials(member.name || member.loginId) }}
+              <div class="team-icon">
+                <TeamIcon />
               </div>
-              <div class="member-info">
-                <div class="member-name">
-                  {{ member.name }}
+              <div class="team-info">
+                <div class="team-name">
+                  {{ team.name }}
                 </div>
-                <div class="member-details">
-                  <span class="member-role">{{ getRoleDisplayName(member.role) }}</span>
-                  <span 
-                    v-if="member.id === conversation.assignedAgentId"
+                <div class="team-details">
+                  <span class="team-member-count">
+                    {{ team.memberCount || 0 }} 位成員
+                  </span>
+                  <span
+                    v-if="conversation.assignedTeamId === team.id"
                     class="current-tag"
                   >
-                    目前負責
+                    目前指派
                   </span>
                 </div>
-              </div>
-              <div class="member-status">
-                <div 
-                  class="status-dot" 
-                  :class="getStatusColor(member.status)"
-                />
               </div>
             </div>
           </div>
         </div>
 
         <!-- 確認操作 -->
-        <div 
-          v-if="selectedMember"
+        <div
+          v-if="selectedTeam"
           class="confirm-section"
         >
           <div class="confirm-info">
-            <span>將對話指派給：</span>
-            <strong>{{ selectedMember.name || selectedMember.loginId }}</strong>
+            <span>{{ selectedTeam === conversation.assignedTeamId ? '重新確認指派給團隊：' : '將對話指派給團隊：' }}</span>
+            <strong>{{ selectedTeamName || '未知團隊' }}</strong>
           </div>
           <div class="confirm-actions">
             <button
@@ -185,7 +156,7 @@
             </button>
             <button
               class="confirm-btn confirm"
-              :disabled="isAssigning"
+              :disabled="isAssigning || !selectedTeam"
               @click="confirmAssignment"
             >
               {{ isAssigning ? '處理中...' : '確認指派' }}
@@ -198,23 +169,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '@/composables'
 import { useConversationsStore } from '@/stores/conversations'
 import { usePermissions } from '@/services/permissionService'
-import type { Conversation, TeamMember, Agent } from '@/types'
+import type { Conversation, Agent } from '@/types'
 import { teamApi } from '@/api/team'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import {
-  UserPlusIcon,
   UserCheckIcon,
   TeamIcon,
   ChevronDownIcon,
   XCircleIcon,
   XIcon,
-  SearchIcon,
-  UsersIcon
+  SearchIcon
 } from '@/components/icons'
 
 interface Props {
@@ -231,42 +200,32 @@ const emit = defineEmits<{
 
 const { currentAgent } = useAuth()
 const conversationsStore = useConversationsStore()
-const { 
-  canAssignConversation, 
-  canUnassignConversation, 
-  canViewTeamMembers 
+const {
+  canAssignConversation,
+  canUnassignConversation
 } = usePermissions()
 
 // State
 const isAssigning = ref(false)
-const showAdvancedOptions = ref(false)
-const loadingMembers = ref(false)
-const searchTerm = ref('')
+const showTeamSelector = ref(false)
+const loadingTeams = ref(false)
+const teamSearchTerm = ref('')
+const teams = ref<Array<{ id: number; name: string; memberCount?: number }>>([])
+const selectedTeam = ref<number | null>(null)
 
 // Confirm dialog
 const { showWarning } = useConfirmDialog()
-const activeRoleFilter = ref<'all' | 'admin' | 'team' | 'agent'>('all')
-const selectedMember = ref<TeamMember | null>(null)
-const availableMembers = ref<TeamMember[]>([])
-
-// 角色篩選選項
-const roleFilters = [
-  { value: 'all' as const, label: '全部成員' },
-  { value: 'admin' as const, label: '管理員' },
-  { value: 'team' as const, label: '團隊主管' },
-  { value: 'agent' as const, label: '客服專員' }
-]
 
 // 類型適配函數
-const agentToTeamMember = (agent: Agent): TeamMember | null => {
+const agentToTeamMember = (agent: Agent) => {
   if (!agent) {return null}
   return {
     id: agent.id,
-    loginId: agent.email, // 使用email作為loginId
+    loginId: agent.email,
     name: agent.displayName || agent.name,
     email: agent.email,
     role: agent.role,
-    status: agent.isActive ? 'active' : 'inactive',
+    status: (agent.isActive ? 'active' : 'inactive') as 'active' | 'inactive' | 'pending',
     group: undefined,
     teamId: agent.teamId,
     avatar: undefined,
@@ -277,81 +236,128 @@ const agentToTeamMember = (agent: Agent): TeamMember | null => {
 }
 
 // Computed
-const canAssignToMe = computed(() => {
-  if (!currentAgent.value) {return false}
-  
-  // 如果已經指派給我，就不顯示
-  if (props.conversation.assignedAgentId === currentAgent.value.id) {
-    return false
-  }
-  
-  // 使用權限服務檢查是否可以指派給自己
-  const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  return canAssignConversation(teamMemberAgent, props.conversation, currentAgent.value.id)
-})
+const canAssignToTeam = computed(() => {
+  if (!currentAgent.value || currentAgent.value.role !== 'admin') {return false}
 
-const canReassign = computed(() => {
-  if (!currentAgent.value) {return false}
-  
-  // 使用權限服務檢查是否可以指派對話，並檢查是否可以查看團隊成員
   const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  return canAssignConversation(teamMemberAgent, props.conversation) && 
-         canViewTeamMembers(teamMemberAgent) &&
+  return canAssignConversation(teamMemberAgent, props.conversation) &&
          ['open', 'assigned'].includes(props.conversation.status)
 })
 
 const canUnassign = computed(() => {
   if (!currentAgent.value) {return false}
-  
-  // 使用權限服務檢查是否可以取消指派
+
   const teamMemberAgent = agentToTeamMember(currentAgent.value)
   return canUnassignConversation(teamMemberAgent, props.conversation)
 })
 
-const canReassignSelf = computed(() => {
-  // 是否允許重新指派給當前已指派的人（通常不允許）
-  return false
-})
-
-const filteredMembers = computed(() => {
-  let members = availableMembers.value
-
-  // 角色篩選
-  if (activeRoleFilter.value !== 'all') {
-    members = members.filter(member => member.role === activeRoleFilter.value)
-  }
+const filteredTeams = computed(() => {
+  let teamList = teams.value
 
   // 搜索篩選
-  if (searchTerm.value.trim()) {
-    const term = searchTerm.value.toLowerCase()
-    members = members.filter(member => 
-      (member.name && member.name.toLowerCase().includes(term)) ||
-      (member.email && member.email.toLowerCase().includes(term)) ||
-      (member.loginId && member.loginId.toLowerCase().includes(term))
+  if (teamSearchTerm.value.trim()) {
+    const term = teamSearchTerm.value.toLowerCase()
+    teamList = teamList.filter(team =>
+      team.name.toLowerCase().includes(term)
     )
   }
 
-  return members
+  return teamList
+})
+
+const selectedTeamName = computed(() => {
+  if (!selectedTeam.value) {return ''}
+  const team = teams.value.find(t => t.id === selectedTeam.value)
+  return team?.name || '未知團隊'
 })
 
 // Methods
-const handleAssignToMe = async () => {
-  if (!currentAgent.value || isAssigning.value) {return}
+const getAssignedDisplayName = () => {
+  if (props.conversation.assignedTeamId) {
+    // 從 teams 列表中查找團隊名稱
+    const team = teams.value.find(t => t.id === props.conversation.assignedTeamId)
+    return team?.name || `團隊 #${props.conversation.assignedTeamId}`
+  }
+  return props.conversation.assignedAgent?.name || '未知'
+}
+
+const toggleTeamSelector = async () => {
+  if (showTeamSelector.value) {
+    closeTeamSelector()
+  } else {
+    showTeamSelector.value = true
+    await loadTeams()
+  }
+}
+
+const closeTeamSelector = () => {
+  showTeamSelector.value = false
+  selectedTeam.value = null
+  teamSearchTerm.value = ''
+}
+
+const loadTeams = async () => {
+  if (teams.value.length > 0) {return} // 已載入
+
+  loadingTeams.value = true
+  try {
+    const response = await teamApi.getTeams(true) // 只獲取活躍團隊
+
+    if (response.success && response.data) {
+      teams.value = response.data.map(team => ({
+        id: team.id,
+        name: team.name,
+        memberCount: team.memberCount
+      }))
+    } else {
+      emit('error', response.error || '載入團隊列表失敗')
+    }
+  } catch (error) {
+    console.error('Load teams failed:', error)
+    emit('error', '無法載入團隊列表')
+  } finally {
+    loadingTeams.value = false
+  }
+}
+
+const selectTeam = (teamId: number) => {
+  // 允許選擇任何團隊，包括當前已指派的團隊（用於重新確認指派）
+  selectedTeam.value = selectedTeam.value === teamId ? null : teamId
+}
+
+const cancelSelection = () => {
+  selectedTeam.value = null
+}
+
+const confirmAssignment = async () => {
+  if (!selectedTeam.value || isAssigning.value) {
+    console.warn('[AdvancedAssignActions] Invalid selection or already assigning')
+    return
+  }
+
+  // 驗證團隊存在
+  const teamExists = teams.value.some(t => t.id === selectedTeam.value)
+  if (!teamExists) {
+    emit('error', '選中的團隊不存在，請重新選擇')
+    return
+  }
 
   isAssigning.value = true
   try {
-    const success = await conversationsStore.assignConversation(
+    const success = await conversationsStore.assignConversationToTeam(
       props.conversation.id,
-      currentAgent.value.id
+      selectedTeam.value
     )
-    
+
     if (success) {
-      emit('assigned', props.conversation, currentAgent.value.id)
+      emit('assigned', props.conversation, `team-${selectedTeam.value}`)
+      closeTeamSelector()
     } else {
-      emit('error', '指派失敗，請重試')
+      const teamName = selectedTeamName.value || '未知團隊'
+      emit('error', `指派給團隊 ${teamName} 失敗`)
     }
   } catch (error) {
-    console.error('Assign to me failed:', error)
+    console.error('Confirm assignment failed:', error)
     emit('error', '指派過程中發生錯誤')
   } finally {
     isAssigning.value = false
@@ -361,7 +367,6 @@ const handleAssignToMe = async () => {
 const handleUnassign = async () => {
   if (isAssigning.value) {return}
 
-  // 确认对话框
   const confirmed = await showWarning('確定要取消對話指派嗎？')
   if (!confirmed) {
     return
@@ -370,7 +375,6 @@ const handleUnassign = async () => {
   isAssigning.value = true
   try {
     // TODO: 實作取消指派API
-    // 暫時使用指派給null或空值的方式
     console.log('Unassigning conversation:', props.conversation.id)
     emit('unassigned', props.conversation)
     emit('error', '取消指派功能開發中')
@@ -382,92 +386,13 @@ const handleUnassign = async () => {
   }
 }
 
-const toggleAdvancedOptions = async () => {
-  if (showAdvancedOptions.value) {
-    closeAdvancedOptions()
-  } else {
-    showAdvancedOptions.value = true
-    await loadAvailableMembers()
-  }
-}
-
-const closeAdvancedOptions = () => {
-  showAdvancedOptions.value = false
-  selectedMember.value = null
-  searchTerm.value = ''
-  activeRoleFilter.value = 'all'
-}
-
-const loadAvailableMembers = async () => {
-  if (availableMembers.value.length > 0) {return} // 已載入
-
-  loadingMembers.value = true
-  try {
-    let response
-
-    if (currentAgent.value?.role === 'admin') {
-      // Admin 可以看到所有可指派的成員
-      response = await teamApi.getAvailableAssignees()
-    } else {
-      // Team 和 Agent 只能看到同團隊的成員
-      response = await teamApi.getTeamMembers(currentAgent.value?.teamId)
-    }
-
-    if (response.success && response.data) {
-      availableMembers.value = response.data
-    } else {
-      emit('error', response.error || '載入成員列表失敗')
-    }
-  } catch (error) {
-    console.error('Load available members failed:', error)
-    emit('error', '無法載入成員列表')
-  } finally {
-    loadingMembers.value = false
-  }
-}
-
-const selectMember = (member: TeamMember) => {
-  if (member.id === props.conversation.assignedAgentId && !canReassignSelf.value) {
-    return
-  }
-  
-  selectedMember.value = selectedMember.value?.id === member.id ? null : member
-}
-
-const cancelSelection = () => {
-  selectedMember.value = null
-}
-
-const confirmAssignment = async () => {
-  if (!selectedMember.value || isAssigning.value) {return}
-
-  isAssigning.value = true
-  try {
-    const success = await conversationsStore.assignConversation(
-      props.conversation.id,
-      selectedMember.value.id
-    )
-    
-    if (success) {
-      emit('assigned', props.conversation, selectedMember.value.id)
-      closeAdvancedOptions()
-    } else {
-      emit('error', `指派給 ${selectedMember.value.name || selectedMember.value.loginId} 失敗`)
-    }
-  } catch (error) {
-    console.error('Confirm assignment failed:', error)
-    emit('error', '指派過程中發生錯誤')
-  } finally {
-    isAssigning.value = false
-  }
-}
-
 const getInitials = (name: string | undefined): string => {
   if (!name) {return 'U'}
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-const getRoleDisplayName = (role: string): string => {
+const getRoleDisplayName = (role: string | undefined): string => {
+  if (!role) {return ''}
   const roleNames = {
     'admin': '管理員',
     'team': '團隊主管',
@@ -476,14 +401,12 @@ const getRoleDisplayName = (role: string): string => {
   return roleNames[role as keyof typeof roleNames] || role
 }
 
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    case 'active': return 'status-active'
-    case 'inactive': return 'status-inactive'
-    case 'pending': return 'status-pending'
-    default: return 'status-unknown'
+// 初始載入團隊列表（如果是管理員）
+onMounted(() => {
+  if (currentAgent.value?.role === 'admin') {
+    loadTeams()
   }
-}
+})
 </script>
 
 <style scoped>
@@ -520,6 +443,11 @@ const getStatusColor = (status: string): string => {
   justify-content: center;
   font-weight: 600;
   font-size: 0.875rem;
+}
+
+.assignee-avatar svg {
+  width: 20px;
+  height: 20px;
 }
 
 .assignee-details {
@@ -590,17 +518,6 @@ const getStatusColor = (status: string): string => {
   border-color: var(--primary-700);
 }
 
-.assign-btn.secondary {
-  background: white;
-  border-color: var(--gray-300);
-  color: var(--gray-700);
-}
-
-.assign-btn.secondary:hover:not(:disabled) {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
-}
-
 .assign-btn.danger {
   background: white;
   border-color: var(--red-300);
@@ -633,15 +550,27 @@ const getStatusColor = (status: string): string => {
   transform: rotate(180deg);
 }
 
-.advanced-options {
+.team-selector-panel {
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
+  animation: panel-appear 0.3s ease-out;
 }
 
-.options-header {
+@keyframes panel-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -650,14 +579,14 @@ const getStatusColor = (status: string): string => {
   border-bottom: 1px solid var(--gray-200);
 }
 
-.options-header h4 {
+.panel-header h4 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--gray-900);
 }
 
-.close-options-btn {
+.close-panel-btn {
   padding: var(--space-1);
   border: none;
   background: none;
@@ -667,7 +596,7 @@ const getStatusColor = (status: string): string => {
   transition: all var(--transition-fast);
 }
 
-.close-options-btn:hover {
+.close-panel-btn:hover {
   background: var(--gray-200);
   color: var(--gray-700);
 }
@@ -707,46 +636,14 @@ const getStatusColor = (status: string): string => {
   box-shadow: 0 0 0 3px var(--primary-100);
 }
 
-.filter-section {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--gray-100);
-}
-
-.filter-tabs {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.filter-tab {
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  background: none;
-  color: var(--gray-600);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-}
-
-.filter-tab:hover {
-  background: var(--gray-100);
-  color: var(--gray-800);
-}
-
-.filter-tab.active {
-  background: var(--primary-100);
-  color: var(--primary-700);
-}
-
-.members-section {
+.teams-section {
   padding: var(--space-4);
   max-height: 400px;
   overflow-y: auto;
 }
 
-.loading-members,
-.no-members {
+.loading-teams,
+.no-teams {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -757,80 +654,88 @@ const getStatusColor = (status: string): string => {
   text-align: center;
 }
 
-.no-members-icon {
+.no-teams-icon {
   color: var(--gray-400);
+  width: 48px;
+  height: 48px;
 }
 
-.members-grid {
+.no-teams-icon svg {
+  width: 48px;
+  height: 48px;
+}
+
+.teams-grid {
   display: grid;
   gap: var(--space-2);
 }
 
-.member-card {
+.team-card {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-4);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--transition-fast);
+  background: white;
 }
 
-.member-card:hover:not(.disabled) {
+.team-card:hover {
   background: var(--gray-50);
   border-color: var(--gray-300);
+  box-shadow: var(--shadow-sm);
 }
 
-.member-card.selected {
+.team-card.selected {
   background: var(--primary-50);
-  border-color: var(--primary-300);
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px var(--primary-100);
 }
 
-.member-card.current {
+.team-card.current {
   background: var(--green-50);
   border-color: var(--green-200);
 }
 
-.member-card.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.member-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+.team-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 0.75rem;
   flex-shrink: 0;
 }
 
-.member-info {
+.team-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.team-info {
   flex: 1;
   min-width: 0;
 }
 
-.member-name {
-  font-size: 0.875rem;
-  font-weight: 500;
+.team-name {
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--gray-900);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
-.member-details {
+.team-details {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.member-role {
-  font-size: 0.75rem;
+.team-member-count {
+  font-size: 0.875rem;
   color: var(--gray-600);
 }
 
@@ -841,33 +746,6 @@ const getStatusColor = (status: string): string => {
   font-size: 0.625rem;
   font-weight: 500;
   border-radius: var(--radius-full);
-}
-
-.member-status {
-  display: flex;
-  align-items: center;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-dot.status-active {
-  background: var(--green-500);
-}
-
-.status-dot.status-inactive {
-  background: var(--gray-400);
-}
-
-.status-dot.status-pending {
-  background: var(--yellow-500);
-}
-
-.status-dot.status-unknown {
-  background: var(--gray-300);
 }
 
 .confirm-section {
@@ -936,48 +814,8 @@ const getStatusColor = (status: string): string => {
     justify-content: center;
   }
 
-  .members-grid {
-    grid-template-columns: 1fr;
-  }
-
   .confirm-actions {
     flex-direction: column;
   }
-}
-
-/* 動畫效果 */
-.advanced-options {
-  animation: options-appear 0.3s ease-out;
-}
-
-@keyframes options-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.member-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.member-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
-  transition: left 0.3s ease;
-}
-
-.member-card:hover::before {
-  left: 100%;
 }
 </style>

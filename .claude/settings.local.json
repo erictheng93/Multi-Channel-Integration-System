@@ -87,7 +87,10 @@
       "Bash(npm run build:pages:*)",
       "Bash(npm run deploy:*)",
       "Bash(npm run type-check:*)",
-      "Bash(Select-String -Pattern \"(error|warning|✓)\")"
+      "Bash(Select-String -Pattern \"(error|warning|✓)\")",
+      "mcp__chrome-devtools__get_console_message",
+      "mcp__chrome-devtools__select_page",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": [],
