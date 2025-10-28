@@ -23,6 +23,22 @@ tagMainHandler.use('/*', async (c, next) => {
 // Route registration order: STATIC → SPECIFIC → PARAMETERIZED → WILDCARD
 // ========================================
 
+// ========================================
+// 健康檢查端點
+// Route Order: Registered first to prevent any potential interception
+// ========================================
+tagMainHandler.get('/health', (c) => {
+  return c.json({
+    success: true,
+    data: {
+      status: 'healthy',
+      handler: 'tag-main',
+      timestamp: new Date().toISOString()
+    },
+    message: 'Tag handler is operational'
+  });
+});
+
 // ==================== Priority 1: SPECIFIC multi-segment routes ====================
 // 批量操作標籤 (must be before /:id routes)
 tagMainHandler.post('/bulk', tagHandler.bulkOperation);
@@ -47,20 +63,5 @@ tagMainHandler.get('/', tagHandler.list);
 
 // 創建標籤
 tagMainHandler.post('/', tagHandler.create);
-
-// ========================================
-// 健康檢查端點
-// ========================================
-tagMainHandler.get('/health', (c) => {
-  return c.json({
-    success: true,
-    data: {
-      status: 'healthy',
-      handler: 'tag-main',
-      timestamp: new Date().toISOString()
-    },
-    message: 'Tag handler is operational'
-  });
-});
 
 export default tagMainHandler;
