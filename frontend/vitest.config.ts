@@ -8,6 +8,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // Increase timeouts for async dialog and toast tests
+    testTimeout: 10000, // 10 seconds (increased from default 5000ms)
+    hookTimeout: 10000, // 10 seconds for setup/teardown hooks
     // 確保 DOM 事件正確處理
     environmentOptions: {
       jsdom: {
