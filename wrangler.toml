@@ -70,11 +70,10 @@ class_name = "UserConnection"
 name = "MESSAGE_BROADCASTER"
 class_name = "MessageBroadcaster"
 
-# DelayedMessageScheduler - Unified delayed message scheduling with Alarm API
-# Consolidates former DelayedMessageBuffer + DelayedMessageProcessor (2025-10-27)
+# DelayedMessageBuffer - Delayed message scheduling with Alarm API
 [[durable_objects.bindings]]
-name = "DELAYED_MESSAGE_SCHEDULER"
-class_name = "DelayedMessageScheduler"
+name = "DELAYED_MESSAGE_BUFFER"
+class_name = "DelayedMessageBuffer"
 
 # DistributedLock - Cross-Durable Object coordination and locking
 [[durable_objects.bindings]]
@@ -86,33 +85,50 @@ class_name = "LockCoordinator"
 name = "LATEST_MESSAGE_COORDINATOR"
 class_name = "LatestMessageCacheCoordinator"
 
+# =================== NEW: CUSTOMER CONVERSATION SYSTEM (Chat-Style) ===================
+# CustomerConversationDO - Simplified WebSocket management for customer conversations
+# Inspired by Chat Project's AuthorizationDurableObject
+[[durable_objects.bindings]]
+name = "CUSTOMER_CONVERSATION_DO"
+class_name = "CustomerConversationDO"
+
+# CustomerMessageDO - Message operations and R2 file uploads
+# Inspired by Chat Project's ConversationDurableObject
+[[durable_objects.bindings]]
+name = "CUSTOMER_MESSAGE_DO"
+class_name = "CustomerMessageDO"
+
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
-# Initial migration - Original Durable Objects
+# Initial migration - Original Durable Objects (v1 - DO NOT MODIFY!)
 [[migrations]]
 tag = "v1"
 new_classes = [
   "ConversationRoom",
   "UserConnection",
   "MessageBroadcaster",
+  "DelayedMessageProcessor",
   "LockCoordinator"
 ]
 
-# Migration v2 - Add LatestMessageCacheCoordinator (Phase 1.4b: REALTIME_QUEUE → DO)
+# Migration v2 - Add DelayedMessageBuffer (v2 - DO NOT MODIFY!)
 [[migrations]]
 tag = "v2"
-new_classes = ["LatestMessageCacheCoordinator"]
+new_classes = ["DelayedMessageBuffer"]
 
-# Migration v3 - Consolidate delayed messaging (2025-10-27)
-# Renames DelayedMessageBuffer → DelayedMessageScheduler
-# Removes unused DelayedMessageProcessor
+# Migration v3 - Add LatestMessageCacheCoordinator (NEW)
 [[migrations]]
 tag = "v3"
-new_classes = ["DelayedMessageScheduler"]
-renamed_classes = [
-  { from = "DelayedMessageBuffer", to = "DelayedMessageScheduler" }
+new_classes = ["LatestMessageCacheCoordinator"]
+
+# Migration v4 - Add Customer Conversation System (NEW)
+# Adds simplified WebSocket architecture for customer conversations
+[[migrations]]
+tag = "v4"
+new_classes = [
+  "CustomerConversationDO",
+  "CustomerMessageDO"
 ]
-deleted_classes = ["DelayedMessageProcessor"]
 
 # Development environment
 [env.development]

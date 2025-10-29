@@ -209,7 +209,8 @@
 import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
-import { useMessages } from '@/composables/useMessages' // HTTP API fallback
+// ✅ CUSTOMER API: 使用新的 Customer Conversation System
+import { useCustomerMessages } from '@/composables/useCustomerMessages' // Customer HTTP API
 import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
@@ -220,9 +221,12 @@ import { useLoadingState } from '@/composables/useLoadingState'
 import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler'
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
+import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Prevent duplicate sending
 import type { Message } from '@/types'
-// 🚀 Phase 2.1: Unified Connection Manager
-import { createRealtimeConnection, type RealtimeConnection, type ConnectionType, type ConnectionState } from '@/services/realtimeConnectionManager'
+// ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
+import { createCustomerRealtimeConnection, type CustomerRealtimeConnection, type ConnectionState } from '@/services/customerWebSocketManager'
+type RealtimeConnection = CustomerRealtimeConnection
+type ConnectionType = 'websocket'
 
 // Core components
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -272,8 +276,8 @@ const conversationId = computed(() => route.params.id as string)
 
 
 
-// 🛡️ Final Fallback: HTTP API System
-const httpMessages = useMessages(conversationId.value, {
+// ✅ CUSTOMER API: HTTP API System for Customer Conversations
+const httpMessages = useCustomerMessages(conversationId.value, {
   enablePagination: true,
   pageSize: 10 // 🎯 初始加載10條消息，優化首屏加載速度
 })
@@ -319,6 +323,12 @@ const errorHandler = useErrorHandler({
   autoRetry: true,
   showToast: true,
   logToConsole: import.meta.env.DEV
+})
+
+// 🚫 Message Debounce - Prevent duplicate sending
+const messageDebounce = useMessageDebounce({
+  delay: 500, // 500ms 防抖延迟
+  enabled: true // 启用防抖保护
 })
 
 // 🧠 Unified Message Source Strategy (Unified Connection + HTTP)
@@ -614,10 +624,17 @@ const lastUserActivity = ref(Date.now())
 // const USER_INACTIVE_THRESHOLD = 60000 // Unused - commented out
 
 // Enhanced message handlers with WebSocket support and error handling
-// 📤 Enhanced Message Sending with SSE Support
+// 📤 Enhanced Message Sending with SSE Support + 🚫 Debounce Protection
 const handleMessageSent = async (data: { content: string; attachments: unknown[] }) => {
   console.log('📤 [Message] Sending via:', currentProtocol.value)
   trackUserActivity()
+
+  // 🚫 STEP 1: Debounce Check - Prevent duplicate sending
+  if (!messageDebounce.canSend()) {
+    console.warn('⚠️ [Debounce] Message sending blocked - too fast or already sending')
+    console.warn('⚠️ [Debounce Stats]:', messageDebounce.getStats())
+    return // Exit early - request blocked
+  }
 
   // Stop typing indicators
   stopTyping()
@@ -626,6 +643,10 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     console.warn('Empty message content, skipping send')
     return
   }
+
+  // 🚫 STEP 2: Mark as sending (start debounce timer)
+  messageDebounce.markSending()
+  console.log('🔒 [Debounce] Marked as sending, other requests will be blocked')
 
   try {
     // Priority 1: Send via HTTP API (SSE doesn't send messages, only receives)
@@ -637,11 +658,17 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
       scrollToNewest()
       migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
 
+      // 🚫 STEP 3: Mark complete (successful send)
+      messageDebounce.markComplete()
+      console.log('🔓 [Debounce] Marked as complete, ready for next message')
+
       // SSE will automatically receive the new message from the server
       // No need to manually add to SSE messages
       return
     }
 
+    // If not successful, mark failed
+    messageDebounce.markFailed(new Error('Message send failed'))
 
     errorHandler.handleError(
       '所有訊息發送方式都失敗了',
@@ -650,6 +677,10 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     )
 
   } catch (error) {
+    // 🚫 STEP 3b: Mark failed (error occurred)
+    messageDebounce.markFailed(error as Error)
+    console.log('🔓 [Debounce] Marked as failed, ready for retry')
+
     errorHandler.handleError(
       error as Error,
       { operation: 'send_message_exception' },
@@ -1047,10 +1078,10 @@ let performanceReportInterval: ReturnType<typeof setInterval> | null = null
 
 async function initializeUnifiedConnection() {
   try {
-    console.log(`[Phase 2.1] Initializing unified connection for conversation: ${conversationId.value}`)
+    console.log(`✅ [CUSTOMER API] Initializing Customer WebSocket for conversation: ${conversationId.value}`)
 
-    // Create connection (automatically selects WebSocket or SSE based on rolloutPercentage)
-    const conn = await createRealtimeConnection(conversationId.value)
+    // ✅ CUSTOMER API: Create Customer WebSocket connection
+    const conn = await createCustomerRealtimeConnection(conversationId.value)
     unifiedConnection.value = conn
 
     // Store connection type for display
@@ -1064,9 +1095,9 @@ async function initializeUnifiedConnection() {
     // Connect
     await conn.connect()
 
-    console.log(`✅ [Phase 2.1] Unified connection established: ${unifiedConnectionType.value}`)
+    console.log(`✅ [CUSTOMER API] Customer WebSocket connection established: ${unifiedConnectionType.value}`)
   } catch (error) {
-    console.error('[Phase 2.1] Failed to initialize unified connection:', error)
+    console.error('❌ [CUSTOMER API] Failed to initialize Customer WebSocket:', error)
     unifiedConnectionState.value = 'error'
   }
 }
@@ -1078,16 +1109,21 @@ function handleUnifiedStateChange(newState: ConnectionState) {
 }
 
 function handleUnifiedMessage(message: unknown) {
-  const msg = message as { type?: string }
-  console.log('[Phase 2.1] Unified connection received message:', msg.type, message)
+  const msg = message as { type?: string; message?: Message }
+  console.log('✅ [CUSTOMER API] Received message:', msg.type, message)
 
-  // 🔧 CRITICAL FIX: Force reactivity update when messages arrive
-  // The SSE connection internally updates its messages ref, but Vue's computed
-  // may not detect the change. We need to ensure the messages computed re-runs.
+  // ✅ CUSTOMER API: Handle NEW_MESSAGE events
+  if (msg.type === 'NEW_MESSAGE' && msg.message) {
+    // Add message to httpMessages using the addMessage method
+    httpMessages.addMessage(msg.message)
+    console.log('📨 [CUSTOMER API] New message added to conversation')
+  }
+
+  // Force reactivity update
   const conn = unifiedConnection.value
   if (conn && conn.messages) {
     const currentMsgCount = ((conn.messages as unknown) as Ref<Message[]>).value?.length || 0
-    console.log(`📊 [handleUnifiedMessage] Current unified messages count: ${currentMsgCount}`)
+    console.log(`📊 [CUSTOMER API] Current messages count: ${currentMsgCount}`)
   }
 }
 
