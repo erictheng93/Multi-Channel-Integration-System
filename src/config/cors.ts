@@ -52,7 +52,7 @@ export function isOriginAllowed(origin: string | undefined): boolean {
  */
 export const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, X-Session-Id, X-Conversation-Id',
   'Access-Control-Max-Age': '86400', // 24 hours
   'Access-Control-Allow-Credentials': 'true',
 } as const;

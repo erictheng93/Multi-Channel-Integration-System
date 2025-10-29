@@ -158,7 +158,7 @@ export const webhookHandler = {
 };
 
 // 輸入驗證函數
-function validateLineWebhook(data: unknown): data is LineWebhookBody {
+export function validateLineWebhook(data: unknown): data is LineWebhookBody {
   if (!data || typeof data !== 'object' || data === null) return false;
   
   const webhook = data as Record<string, unknown>;
@@ -201,7 +201,7 @@ function logSecurely(platform: string, userId: string, messageLength: number) {
 }
 
 // 驗證 Line 簽名（使用 Web Crypto API）
-async function verifyLineSignature(body: string, signature: string, secret: string): Promise<boolean> {
+export async function verifyLineSignature(body: string, signature: string, secret: string): Promise<boolean> {
   try {
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
@@ -223,7 +223,7 @@ async function verifyLineSignature(body: string, signature: string, secret: stri
 }
 
 // 處理 Line 訊息
-async function processLineMessage(env: Bindings, event: LineEvent) {
+export async function processLineMessage(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
   const message = event.message;
   
@@ -568,7 +568,7 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
         'message_created',
         {
           messageId: messageId,
-          conversationId: parseInt(conversation!.id),
+          conversationId: conversation!.id,  // ✅ UUID 字符串，不需要 parseInt
           content: messageContent,
           messageType: messageType as 'text' | 'image' | 'file',
           senderType: 'customer',
@@ -581,8 +581,8 @@ async function processLineMessage(env: Bindings, event: LineEvent) {
           isRead: false
         },
         {
-          conversationId: parseInt(conversation!.id),
-          userIds: conversation!.assignedUserId ? [parseInt(conversation!.assignedUserId)] : [],
+          conversationId: conversation!.id,  // ✅ UUID 字符串，不需要 parseInt
+          userIds: conversation!.assignedUserId ? [conversation!.assignedUserId] : [],  // ✅ 字符串数组，不需要 parseInt
           broadcast: !conversation!.assignedUserId // 如果沒有分配用戶，則廣播給所有在線用戶
         },
         'urgent', // LINE 客戶消息是最高優先級

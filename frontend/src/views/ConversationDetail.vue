@@ -221,6 +221,7 @@ import { useLoadingState } from '@/composables/useLoadingState'
 import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler'
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
+import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Prevent duplicate sending
 import type { Message } from '@/types'
 // ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
 import { createCustomerRealtimeConnection, type CustomerRealtimeConnection, type ConnectionState } from '@/services/customerWebSocketManager'
@@ -322,6 +323,12 @@ const errorHandler = useErrorHandler({
   autoRetry: true,
   showToast: true,
   logToConsole: import.meta.env.DEV
+})
+
+// 🚫 Message Debounce - Prevent duplicate sending
+const messageDebounce = useMessageDebounce({
+  delay: 500, // 500ms 防抖延迟
+  enabled: true // 启用防抖保护
 })
 
 // 🧠 Unified Message Source Strategy (Unified Connection + HTTP)
@@ -617,10 +624,17 @@ const lastUserActivity = ref(Date.now())
 // const USER_INACTIVE_THRESHOLD = 60000 // Unused - commented out
 
 // Enhanced message handlers with WebSocket support and error handling
-// 📤 Enhanced Message Sending with SSE Support
+// 📤 Enhanced Message Sending with SSE Support + 🚫 Debounce Protection
 const handleMessageSent = async (data: { content: string; attachments: unknown[] }) => {
   console.log('📤 [Message] Sending via:', currentProtocol.value)
   trackUserActivity()
+
+  // 🚫 STEP 1: Debounce Check - Prevent duplicate sending
+  if (!messageDebounce.canSend()) {
+    console.warn('⚠️ [Debounce] Message sending blocked - too fast or already sending')
+    console.warn('⚠️ [Debounce Stats]:', messageDebounce.getStats())
+    return // Exit early - request blocked
+  }
 
   // Stop typing indicators
   stopTyping()
@@ -629,6 +643,10 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     console.warn('Empty message content, skipping send')
     return
   }
+
+  // 🚫 STEP 2: Mark as sending (start debounce timer)
+  messageDebounce.markSending()
+  console.log('🔒 [Debounce] Marked as sending, other requests will be blocked')
 
   try {
     // Priority 1: Send via HTTP API (SSE doesn't send messages, only receives)
@@ -640,11 +658,17 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
       scrollToNewest()
       migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
 
+      // 🚫 STEP 3: Mark complete (successful send)
+      messageDebounce.markComplete()
+      console.log('🔓 [Debounce] Marked as complete, ready for next message')
+
       // SSE will automatically receive the new message from the server
       // No need to manually add to SSE messages
       return
     }
 
+    // If not successful, mark failed
+    messageDebounce.markFailed(new Error('Message send failed'))
 
     errorHandler.handleError(
       '所有訊息發送方式都失敗了',
@@ -653,6 +677,10 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     )
 
   } catch (error) {
+    // 🚫 STEP 3b: Mark failed (error occurred)
+    messageDebounce.markFailed(error as Error)
+    console.log('🔓 [Debounce] Marked as failed, ready for retry')
+
     errorHandler.handleError(
       error as Error,
       { operation: 'send_message_exception' },

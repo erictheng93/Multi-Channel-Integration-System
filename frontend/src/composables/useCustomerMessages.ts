@@ -23,10 +23,8 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   const hasMore = ref(true)
   const loadingHistory = ref(false)
 
-  // API Base URL
-  const apiUrl = import.meta.env.DEV
-    ? 'http://localhost:8787'
-    : 'https://multi-channel.imfinethankyouandyou.com'
+  // API Base URL - 永遠使用遠端後端
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
 
   // 獲取認證 token
   const getAuthHeaders = () => {

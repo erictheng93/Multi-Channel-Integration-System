@@ -60,9 +60,10 @@ export function createCustomerWebSocketConnection(
    * 構建 WebSocket URL
    */
   const buildWebSocketUrl = (): string => {
-    const isDev = import.meta.env.DEV
-    const wsProtocol = isDev ? 'ws' : 'wss'
-    const wsHost = isDev ? 'localhost:8787' : 'multi-channel.imfinethankyouandyou.com'
+    // 永遠使用遠端後端
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws'
+    const wsHost = apiUrl.replace(/^https?:\/\//, '')
 
     const sessionId = authStore.token || localStorage.getItem('token')
 

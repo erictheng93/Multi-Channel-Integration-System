@@ -1,0 +1,1979 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mD:/Code/Multi_Channel_Integration_System[39m
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould select shard-0 for new conversation
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould select shard-0 for new conversation
+[22m[39m🔍 [ShardingService] Finding shard for conversation: conv-e2e-001 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould select shard-0 for new conversation
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:204:34
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould select shard-0 for new conversation
+[22m[39m🎉 [ShardingService] Allocating shard-0 for conv-e2e-001
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould select shard-0 for new conversation
+[22m[39mℹ️ [ShardingService] Shard-0 already initialized, skipping init
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould select shard-0 for new conversation
+[22m[39m📦 [ShardingService] Cache updated for conv-e2e-001: 1 shards
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:220:34
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m🗑️ [ShardingService] Cache cleared for conv-e2e-002
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-002 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m❌ [ShardingService] Shard-0 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:220:20
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m🎉 [ShardingService] Allocating shard-1 for conv-e2e-002
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39mℹ️ [ShardingService] Shard-1 already initialized, skipping init
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould distribute connections across multiple shards when capacity is reached
+[22m[39m📦 [ShardingService] Cache updated for conv-e2e-002: 1 shards
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould handle concurrent shard selection requests
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould handle concurrent shard selection requests
+[22m[39m🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🔍 [ShardingService] Finding shard for conversation: conv-e2e-003 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould handle concurrent shard selection requests
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:230:17
+    at Function.from (<anonymous>)
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:229:30
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould handle concurrent shard selection requests
+[22m[39m🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+🎉 [ShardingService] Allocating shard-0 for conv-e2e-003
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mEnd-to-End Shard Selection[2m > [22m[2mshould handle concurrent shard selection requests
+[22m[39mℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+ℹ️ [ShardingService] Shard-0 already initialized, skipping init
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+📦 [ShardingService] Cache updated for conv-e2e-003: 1 shards
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast message from shard-0 to all other shards
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast message from shard-0 to all other shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:264:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:264:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:264:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:264:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast message from shard-0 to all other shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-001 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast message from shard-0 to all other shards
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (1 connections)
+✅ [ShardingService] Shard-4 broadcast successful (1 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast message from shard-0 to all other shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 4 total deliveries, 2ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:305:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:305:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:305:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:305:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-002 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 2 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-002 (excluding shard-0)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 2 total deliveries, 3ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-002 (excluding shard-0)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 2 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-002 (excluding shard-0)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 2 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-002 (excluding shard-0)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould handle broadcasting with multiple messages in sequence
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 2 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast from different source shards correctly
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast from different source shards correctly
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-broadcast-003 (excluding shard-2)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast from different source shards correctly
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:339:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:339:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:339:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:339:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast from different source shards correctly
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (1 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (1 connections)
+✅ [ShardingService] Shard-4 broadcast successful (1 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mCross-Shard Message Broadcasting[2m > [22m[2mshould broadcast from different source shards correctly
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 4 total deliveries, 2ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:374:35
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m🗑️ [ShardingService] Cache cleared for conv-load-001
+🔍 [ShardingService] Finding shard for conversation: conv-load-001 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m❌ [ShardingService] Shard-0 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:374:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m❌ [ShardingService] Shard-1 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:374:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m🎉 [ShardingService] Allocating shard-2 for conv-load-001
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39mℹ️ [ShardingService] Shard-2 already initialized, skipping init
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould evenly distribute 25,000 connections across 3 shards
+[22m[39m📦 [ShardingService] Cache updated for conv-load-001: 1 shards
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:411:17
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m🗑️ [ShardingService] Cache cleared for conv-load-002
+🔍 [ShardingService] Finding shard for conversation: conv-load-002 (attempt 1)
+🆕 [ShardingService] Searching for new shard (0-4)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-0 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:410:7
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-1 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:410:7
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-2 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:410:7
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-3 full (10000/10000)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at ConversationShardingService.getAvailableShardForConversation [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:114:27[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:410:7
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-4 full (10000/10000)
+🔄 [ShardingService] Retrying shard allocation in 500ms (attempt 1/3)...
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m🔍 [ShardingService] Finding shard for conversation: conv-load-002 (attempt 2)
+🆕 [ShardingService] Searching for new shard (0-4)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-0 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-1 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-2 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-3 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-4 full (10000/10000)
+🔄 [ShardingService] Retrying shard allocation in 1000ms (attempt 2/3)...
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m🔍 [ShardingService] Finding shard for conversation: conv-load-002 (attempt 3)
+🆕 [ShardingService] Searching for new shard (0-4)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-0 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-1 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-2 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-3 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-4 full (10000/10000)
+🔄 [ShardingService] Retrying shard allocation in 1500ms (attempt 3/3)...
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m🔍 [ShardingService] Finding shard for conversation: conv-load-002 (attempt 4)
+🆕 [ShardingService] Searching for new shard (0-4)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-0 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-1 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-2 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-3 full (10000/10000)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Shard-4 full (10000/10000)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mLoad Distribution[2m > [22m[2mshould handle maximum capacity (50,000 connections across 5 shards)
+[22m[39m❌ [ShardingService] Critical error in shard selection for conv-load-002: {
+  type: [32m'all_shards_full'[39m,
+  conversationId: [32m'conv-load-002'[39m,
+  message: [32m'All shards full for conversation conv-load-002 (50000 connections limit reached)'[39m,
+  timestamp: [33m1761631589649[39m,
+  retryable: [33mfalse[39m
+}
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould continue operating when one shard fails
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould continue operating when one shard fails
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:428:43
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1574:12[90m)[39m
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:449:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:449:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:449:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould continue operating when one shard fails
+[22m[39m🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🌐 [ShardingService] Broadcasting to all shards for conv-failover-001 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould continue operating when one shard fails
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (1 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould continue operating when one shard fails
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 3 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould handle graceful degradation on shard failures
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould handle graceful degradation on shard failures
+[22m[39m🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🌐 [ShardingService] Broadcasting to all shards for conv-failover-002 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould handle graceful degradation on shard failures
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:469:44
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1574:12[90m)[39m
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:469:44
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1574:12[90m)[39m
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:469:44
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1574:12[90m)[39m
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:488:36
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould handle graceful degradation on shard failures
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (0 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mFailover and Resilience[2m > [22m[2mshould handle graceful degradation on shard failures
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 2ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:529:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:529:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:529:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:529:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-2 broadcast successful (5 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 8 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-0)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-2 broadcast successful (5 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 8 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-1)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:529:23
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-2 broadcast successful (5 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 7 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-1)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-2 broadcast successful (5 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 7 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-1)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-2 broadcast successful (5 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 7 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-2)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 5 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-2)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 5 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-2)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 5 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-2)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 5 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-001 (excluding shard-2)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m✅ [ShardingService] Shard-0 broadcast successful (2 connections)
+✅ [ShardingService] Shard-1 broadcast successful (3 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle complete multi-user conversation across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 5 total deliveries, 0ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle typing indicators across shards
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle typing indicators across shards
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:568:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:568:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:568:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:568:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle typing indicators across shards
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-flow-002 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle typing indicators across shards
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mComplete Conversation Flow[2m > [22m[2mshould handle typing indicators across shards
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 2 total deliveries, 1ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould complete broadcast to 5 shards within 100ms
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould complete broadcast to 5 shards within 100ms
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-perf-001 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould complete broadcast to 5 shards within 100ms
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:597:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:597:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:597:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:597:21
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///D:/Code/Multi_Channel_Integration_System/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould complete broadcast to 5 shards within 100ms
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (1 connections)
+✅ [ShardingService] Shard-3 broadcast successful (1 connections)
+✅ [ShardingService] Shard-4 broadcast successful (1 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould complete broadcast to 5 shards within 100ms
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 4 total deliveries, 2ms
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould handle 100 concurrent broadcasts efficiently
+[22m[39m🗑️ [ShardingService] All cache cleared
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould handle 100 concurrent broadcasts efficiently
+[22m[39m🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🏗️ [ConversationRoom] Initialized in full mode (max connections: 100)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+🌐 [ShardingService] Broadcasting to all shards for conv-perf-002 (excluding shard-0)
+
+[90mstderr[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould handle 100 concurrent broadcasts efficiently
+[22m[39m❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:618:24
+    at Function.from (<anonymous>)
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:611:30
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:618:24
+    at Function.from (<anonymous>)
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:611:30
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:618:24
+    at Function.from (<anonymous>)
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:611:30
+❌ [ConversationRoom] State restoration error: TypeError: Cannot read properties of undefined (reading 'get')
+    at ConversationRoom.initializeFromStorage [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:639:53[90m)[39m
+    at new ConversationRoom [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\durable-objects\ConversationRoom.ts:96:10[90m)[39m
+    at Object.get [90m(D:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:38:22[90m)[39m
+    at ConversationShardingService.getShardStub [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:296:39[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:464:31
+    at Array.map (<anonymous>)
+    at ConversationShardingService.broadcastToAllShards [90m(D:\Code\Multi_Channel_Integration_System\[39msrc\services\conversation-sharding-service.ts:462:10[90m)[39m
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:618:24
+    at Function.from (<anonymous>)
+    at [90mD:\Code\Multi_Channel_Integration_System\[39mtests\integration\multi-shard-integration.test.ts:611:30
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould handle 100 concurrent broadcasts efficiently
+[22m[39m✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+✅ [ShardingService] Shard-1 broadcast successful (1 connections)
+✅ [ShardingService] Shard-2 broadcast successful (0 connections)
+✅ [ShardingService] Shard-3 broadcast successful (0 connections)
+✅ [ShardingService] Shard-4 broadcast successful (0 connections)
+
+[90mstdout[2m | tests/integration/multi-shard-integration.test.ts[2m > [22m[2mMulti-Shard Integration Tests[2m > [22m[2mPerformance and Scalability[2m > [22m[2mshould handle 100 concurrent broadcasts efficiently
+[22m[39m📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 29ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 28ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 27ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 26ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 25ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 25ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 25ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 25ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 24ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 23ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 23ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 23ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 20ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 19ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 18ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 17ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 16ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 15ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 14ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 13ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 13ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 13ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 13ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 13ms
+📊 [ShardingService] Cross-shard broadcast complete: 4 shards notified, 1 total deliveries, 13ms
+
+ [31m❯[39m tests/integration/multi-shard-integration.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 3150[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mEnd-to-End Shard Selection[2m > [22mshould select shard-0 for new conversation[32m 11[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mEnd-to-End Shard Selection[2m > [22mshould distribute connections across multiple shards when capacity is reached[32m 5[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mEnd-to-End Shard Selection[2m > [22mshould handle concurrent shard selection requests[32m 10[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mCross-Shard Message Broadcasting[2m > [22mshould broadcast message from shard-0 to all other shards[32m 3[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mCross-Shard Message Broadcasting[2m > [22mshould handle broadcasting with multiple messages in sequence[32m 6[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mCross-Shard Message Broadcasting[2m > [22mshould broadcast from different source shards correctly[32m 2[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mLoad Distribution[2m > [22mshould evenly distribute 25,000 connections across 3 shards[32m 9[2mms[22m[39m
+   [33m[2m✓[22m[39m Multi-Shard Integration Tests[2m > [22mLoad Distribution[2m > [22mshould handle maximum capacity (50,000 connections across 5 shards) [33m 3056[2mms[22m[39m
+[31m   [31m×[31m Multi-Shard Integration Tests[2m > [22mFailover and Resilience[2m > [22mshould continue operating when one shard fails[39m[32m 4[2mms[22m[39m
+[31m     → expected true to be false // Object.is equality[39m
+[31m   [31m×[31m Multi-Shard Integration Tests[2m > [22mFailover and Resilience[2m > [22mshould handle graceful degradation on shard failures[39m[32m 3[2mms[22m[39m
+[31m     → expected +0 to be 3 // Object.is equality[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mComplete Conversation Flow[2m > [22mshould handle complete multi-user conversation across shards[32m 6[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mComplete Conversation Flow[2m > [22mshould handle typing indicators across shards[32m 2[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mPerformance and Scalability[2m > [22mshould complete broadcast to 5 shards within 100ms[32m 2[2mms[22m[39m
+   [32m✓[39m Multi-Shard Integration Tests[2m > [22mPerformance and Scalability[2m > [22mshould handle 100 concurrent broadcasts efficiently[32m 30[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/integration/multi-shard-integration.test.ts[2m > [22mMulti-Shard Integration Tests[2m > [22mFailover and Resilience[2m > [22mshould continue operating when one shard fails
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m tests/integration/multi-shard-integration.test.ts:[2m452:30[22m[39m
+    [90m450| [39m
+    [90m451| [39m      [90m// Should report failure for shard-1[39m
+    [90m452| [39m      [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   | [39m                             [31m^[39m
+    [90m453| [39m      [34mexpect[39m(result[33m.[39mfailedShards)[33m.[39m[34mtoContain[39m([34m1[39m)[33m;[39m
+    [90m454| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/integration/multi-shard-integration.test.ts[2m > [22mMulti-Shard Integration Tests[2m > [22mFailover and Resilience[2m > [22mshould handle graceful degradation on shard failures
+[31m[1mAssertionError[22m: expected +0 to be 3 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 3[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m tests/integration/multi-shard-integration.test.ts:[2m491:42[22m[39m
+    [90m489| [39m
+    [90m490| [39m      [90m// Should have partial success (only shard-2 succeeded)[39m
+    [90m491| [39m      [34mexpect[39m(result[33m.[39mfailedShards[33m.[39mlength)[33m.[39m[34mtoBe[39m([34m3[39m)[33m;[39m
+    [90m   | [39m                                         [31m^[39m
+    [90m492| [39m      [34mexpect[39m(result[33m.[39mshardsNotified)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m [90m// Only shard-2 succeeded[39m
+    [90m493| [39m      [34mexpect[39m(result[33m.[39msuccess)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m12 passed[39m[22m[90m (14)[39m
+[2m   Start at [22m 14:06:25
+[2m   Duration [22m 3.85s[2m (transform 185ms, setup 0ms, collect 118ms, tests 3.15s, environment 0ms, prepare 232ms)[22m
+
