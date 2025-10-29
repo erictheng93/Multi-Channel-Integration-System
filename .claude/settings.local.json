@@ -90,7 +90,8 @@
       "Bash(Select-String -Pattern \"(error|warning|✓)\")",
       "mcp__chrome-devtools__get_console_message",
       "mcp__chrome-devtools__select_page",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(npm update:*)"
     ],
     "deny": [],
     "ask": [],

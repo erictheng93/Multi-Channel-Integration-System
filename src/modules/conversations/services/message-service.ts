@@ -3,7 +3,7 @@
 
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and } from 'drizzle-orm';
-import { messages, conversations } from '@/db/schema';
+import { messages, conversations, customers } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   Message,
@@ -11,6 +11,7 @@ import type {
   MessageSendRequest,
   MessageSendResponse,
 } from '../types/conversation-types';
+import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 
 export interface MessageServiceInterface {
   sendMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
@@ -30,13 +31,91 @@ export class MessageService implements MessageServiceInterface {
 
   /**
    * Send a new message in a conversation
+   * ✅ FIXED: Now integrates with LINE API to actually send messages
    */
   async sendMessage(request: MessageSendRequest): Promise<MessageSendResponse> {
-    try {
-      const messageId = crypto.randomUUID();
-      const timestamp = new Date().toISOString();
+    const messageId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
 
-      // Create the message record
+    try {
+      // Step 1: Get conversation with customer details to get platformUserId
+      const [conversationData] = await this.db
+        .select({
+          conversation: conversations,
+          customer: customers
+        })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(eq(conversations.id, request.conversationId))
+        .limit(1);
+
+      if (!conversationData) {
+        throw new Error(`Conversation ${request.conversationId} not found`);
+      }
+
+      if (!conversationData.customer) {
+        throw new Error(`Customer not found for conversation ${request.conversationId}`);
+      }
+
+      const { customer } = conversationData;
+      let platformMessageId: string | null = null;
+      let isSent = false;
+      let deliveryStatus: 'sent' | 'failed' | 'pending' = 'pending';
+      let errorMessage: string | undefined;
+
+      // Step 2: Send message via LINE API (only for LINE platform)
+      if (customer.platform === 'line' && customer.platformUserId) {
+        try {
+          console.log(`[MessageService] Sending LINE message to user ${customer.platformUserId}`);
+
+          // Initialize LINE service
+          const lineService = new LineIntegrationService(
+            this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
+            this.bindings.LINE_CHANNEL_SECRET,
+            {
+              channelId: 'default',
+              enabled: true,
+              autoRetry: true,
+              maxRetries: 3,
+              retryDelayMs: 1000
+            },
+            this.bindings
+          );
+
+          // Send message via LINE API
+          const lineResponse = await lineService.sendMessage(
+            customer.platformUserId,
+            request.content
+          );
+
+          if (lineResponse.success) {
+            platformMessageId = lineResponse.messageId;
+            isSent = true;
+            deliveryStatus = 'sent';
+            console.log(`[MessageService] ✅ LINE message sent successfully: ${platformMessageId}`);
+          } else {
+            errorMessage = 'LINE API returned failure';
+            deliveryStatus = 'failed';
+            console.error(`[MessageService] ❌ LINE API failed:`, errorMessage);
+          }
+
+        } catch (lineError) {
+          errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
+          deliveryStatus = 'failed';
+          console.error(`[MessageService] ❌ LINE API error:`, lineError);
+        }
+      } else if (customer.platform !== 'line') {
+        // For non-LINE platforms, mark as pending (not yet implemented)
+        deliveryStatus = 'pending';
+        errorMessage = `Platform ${customer.platform} not yet supported`;
+        console.warn(`[MessageService] ⚠️ Platform ${customer.platform} not yet supported`);
+      } else {
+        errorMessage = 'Missing platformUserId for LINE customer';
+        deliveryStatus = 'failed';
+        console.error(`[MessageService] ❌ Missing platformUserId`);
+      }
+
+      // Step 3: Save message to database with correct status
       const messageData: NewMessage = {
         id: messageId,
         conversationId: request.conversationId,
@@ -44,15 +123,21 @@ export class MessageService implements MessageServiceInterface {
         senderType: 'agent',
         agentSenderId: request.senderId,
         messageType: request.messageType || 'text',
-        isSent: true,
-        deliveryStatus: 'sent',
+        platformMessageId,  // ✅ NOW SET from LINE API response
+        isSent,             // ✅ NOW based on actual LINE API result
+        deliveryStatus,     // ✅ NOW reflects real delivery status
         createdAt: timestamp,
-        metadata: JSON.stringify(request.metadata || {})
+        metadata: JSON.stringify({
+          ...request.metadata,
+          platform: customer.platform,
+          platformUserId: customer.platformUserId,
+          ...(errorMessage && { error: errorMessage })
+        })
       };
 
       await this.db.insert(messages).values(messageData);
 
-      // Update conversation last message time
+      // Step 4: Update conversation last message time
       await this.db
         .update(conversations)
         .set({
@@ -61,7 +146,7 @@ export class MessageService implements MessageServiceInterface {
         })
         .where(eq(conversations.id, request.conversationId));
 
-      // ✅ Query back the complete message object to ensure consistency
+      // Step 5: Query back the complete message object
       const [insertedMessage] = await this.db
         .select()
         .from(messages)
@@ -73,16 +158,42 @@ export class MessageService implements MessageServiceInterface {
       }
 
       return {
-        success: true,
+        success: isSent, // ✅ NOW reflects actual LINE API success
         messageId,
-        message: insertedMessage,  // ✅ Return complete message object
+        message: insertedMessage,
         conversationId: request.conversationId,
         content: request.content,
         timestamp,
+        ...(errorMessage && { error: errorMessage })
       };
 
     } catch (error) {
-      console.error('MessageService.sendMessage error:', error);
+      console.error('[MessageService] sendMessage error:', error);
+
+      // Save failed message to database for tracking
+      try {
+        const failedMessageData: NewMessage = {
+          id: messageId,
+          conversationId: request.conversationId,
+          content: request.content,
+          senderType: 'agent',
+          agentSenderId: request.senderId,
+          messageType: request.messageType || 'text',
+          platformMessageId: null,
+          isSent: false,
+          deliveryStatus: 'failed',
+          createdAt: timestamp,
+          metadata: JSON.stringify({
+            ...request.metadata,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        };
+
+        await this.db.insert(messages).values(failedMessageData);
+      } catch (dbError) {
+        console.error('[MessageService] Failed to save error message to DB:', dbError);
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to send message',

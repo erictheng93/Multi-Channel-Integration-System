@@ -698,7 +698,7 @@ onUnmounted(() => {
 // Methods
 const formatTime = (date: Date | string | number) => {
   let messageDate: Date
-  
+
   if (typeof date === 'number') {
     messageDate = new Date(date)
   } else if (typeof date === 'string') {
@@ -706,11 +706,29 @@ const formatTime = (date: Date | string | number) => {
   } else {
     messageDate = date
   }
-  
-  return messageDate.toLocaleTimeString('zh-TW', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+
+  // 智能时间戳显示：今天显示时分，历史显示完整日期时间
+  const now = new Date()
+  const isToday = messageDate.toDateString() === now.toDateString()
+
+  if (isToday) {
+    // 今天的消息：仅显示时分 (例如: "14:30")
+    return messageDate.toLocaleTimeString('zh-TW', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false  // 使用24小时制
+    })
+  } else {
+    // 历史消息：显示完整日期和时间 (例如: "2025/01/27 15:30")
+    return messageDate.toLocaleString('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false  // 使用24小时制
+    })
+  }
 }
 
 const formatFileSize = (bytes: number): string => {

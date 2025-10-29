@@ -283,6 +283,172 @@ console.log('   • GET /api/websocket/dashboard/trends (Admin/Team)');
 console.log('   • GET /api/websocket/dashboard/durable-objects (Admin)');
 console.log('   • GET /api/websocket/dashboard/alerts (Admin/Team)');
 
+// ==================== 🔧 CUSTOMER CONVERSATION SYSTEM (Chat-Style) ====================
+//
+// NEW: Simplified conversation system inspired by Chat Project architecture
+// Routes for customer conversations with WebSocket real-time communication
+//
+// Architecture:
+// - CustomerConversationDO: WebSocket connection management
+// - CustomerMessageDO: Message CRUD operations and R2 file uploads
+//
+// ⚠️  Registered BEFORE unified route system to prevent route conflicts
+// =================================================================================
+
+// WebSocket upgrade endpoint for customer conversations
+app.get('/api/customer-ws', async (c) => {
+  const conversationId = c.req.query('conversationId');
+  const sessionId = c.req.query('sessionId');
+
+  if (!conversationId || !sessionId) {
+    return c.json({
+      success: false,
+      error: 'Missing required parameters: conversationId and sessionId'
+    }, 400);
+  }
+
+  console.log('🔌 [Customer WebSocket] Connection request:', { conversationId, sessionId });
+
+  try {
+    // Get CustomerConversationDO instance by conversationId
+    const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+    const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
+
+    // Forward the request to the Durable Object
+    const url = new URL(c.req.url);
+    url.pathname = '/ws';
+    const modifiedRequest = new Request(url.toString(), c.req.raw);
+
+    return doStub.fetch(modifiedRequest);
+  } catch (error) {
+    console.error('❌ [Customer WebSocket] Connection error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to establish WebSocket connection'
+    }, 500);
+  }
+});
+
+// Message operations endpoint (GET messages, POST new message)
+app.all('/api/customer-conversations/:id/messages', async (c) => {
+  const conversationId = c.req.param('id');
+
+  if (!conversationId) {
+    return c.json({
+      success: false,
+      error: 'Missing conversation ID'
+    }, 400);
+  }
+
+  console.log(`📨 [Customer Messages] ${c.req.method} request for conversation: ${conversationId}`);
+
+  try {
+    // Get CustomerMessageDO instance by conversationId
+    const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
+    const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
+
+    // Create a new request with conversation ID in header
+    const headers = new Headers(c.req.raw.headers);
+    headers.set('X-Conversation-Id', conversationId);
+
+    const modifiedRequest = new Request(c.req.raw.url, {
+      method: c.req.raw.method,
+      headers: headers,
+      body: c.req.method === 'POST' ? c.req.raw.body : undefined
+    });
+
+    // Modify URL to use DO internal path
+    const url = new URL(modifiedRequest.url);
+    url.pathname = '/messages';
+
+    return doStub.fetch(new Request(url.toString(), modifiedRequest));
+  } catch (error) {
+    console.error('❌ [Customer Messages] Operation error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to process message operation'
+    }, 500);
+  }
+});
+
+// File upload endpoint
+app.post('/api/customer-conversations/:id/upload', async (c) => {
+  const conversationId = c.req.param('id');
+
+  if (!conversationId) {
+    return c.json({
+      success: false,
+      error: 'Missing conversation ID'
+    }, 400);
+  }
+
+  console.log(`📤 [Customer Upload] File upload for conversation: ${conversationId}`);
+
+  try {
+    // Get CustomerMessageDO instance by conversationId
+    const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
+    const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
+
+    // Create a new request with conversation ID in header
+    const headers = new Headers(c.req.raw.headers);
+    headers.set('X-Conversation-Id', conversationId);
+
+    const modifiedRequest = new Request(c.req.raw.url, {
+      method: 'POST',
+      headers: headers,
+      body: c.req.raw.body
+    });
+
+    // Modify URL to use DO internal path
+    const url = new URL(modifiedRequest.url);
+    url.pathname = '/upload';
+
+    return doStub.fetch(new Request(url.toString(), modifiedRequest));
+  } catch (error) {
+    console.error('❌ [Customer Upload] Upload error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to upload file'
+    }, 500);
+  }
+});
+
+console.log('✅ Customer Conversation System (Chat-Style) endpoints registered:');
+console.log('   • GET /api/customer-ws (WebSocket upgrade, query: conversationId, sessionId)');
+console.log('   • GET /api/customer-conversations/:id/messages (Fetch messages with pagination)');
+console.log('   • POST /api/customer-conversations/:id/messages (Create new message)');
+console.log('   • POST /api/customer-conversations/:id/upload (Upload file to R2)');
+
+// ==================== 🔧 CHANNEL INTEGRATION MANAGEMENT ====================
+//
+// Multi-tenant channel configuration system (LINE, Facebook, WhatsApp)
+// Allows customers to configure their own messaging platform credentials
+//
+// ⚠️  Registered BEFORE unified route system to prevent route conflicts
+// Routes require authentication (jwtAuth middleware)
+// Only Admin role can create/update/delete channels
+// =============================================================================
+
+import channelHandler from '@modules/integrations/handlers/channel-handler';
+
+// Apply JWT auth middleware to all channel routes
+// Note: Must apply to both base path and sub-paths for Hono pattern matching
+app.use('/api/channels', jwtAuth);
+app.use('/api/channels/*', jwtAuth);
+
+// Register channel management routes
+app.route('/api/channels', channelHandler);
+
+console.log('✅ Channel Integration Management endpoints registered:');
+console.log('   • GET    /api/channels           (List all channels for team)');
+console.log('   • POST   /api/channels           (Create new channel - Admin only)');
+console.log('   • GET    /api/channels/:id       (Get channel details)');
+console.log('   • PUT    /api/channels/:id       (Update channel - Admin only)');
+console.log('   • DELETE /api/channels/:id       (Deactivate channel - Admin only)');
+console.log('   • POST   /api/channels/:id/verify (Verify channel configuration)');
+console.log('   • GET    /api/channels/:id/stats (Get channel statistics)');
+console.log('   • GET    /api/channels/:id/health (Check channel health)');
+
 // ❌ LEGACY PRE-REGISTRATION REMOVED
 // GET /api/teams/members is now handled by the new modular team handler
 // (src/modules/teams/handlers/team.ts:319)
@@ -796,15 +962,31 @@ if (securityConfig.debug.enabled) {
 // ==================== Webhook 處理 ====================
 
 import { webhookHandler } from './handlers/webhook';
+import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from './handlers/webhook-multitenant';
 
-// LINE Webhook 路由 - 使用正確的處理器
-app.post('/api/webhook', webhookHandler.line);
-app.post('/api/webhooks/line', webhookHandler.line);
+// ==================== Multi-Tenant LINE Webhook (New) ====================
+// Route: POST /api/webhooks/line/:teamId/:token
+// Supports per-team channel configurations
+app.post('/api/webhooks/line/:teamId/:token', handleLineWebhookMultiTenant);
+
+console.log('✅ Multi-Tenant LINE Webhook endpoint registered:');
+console.log('   • POST /api/webhooks/line/:teamId/:token (Team-specific webhook)');
+
+// ==================== Legacy LINE Webhook (Backward Compatibility) ====================
+// Route: POST /api/webhooks/line (no parameters)
+// Uses global LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from env
+app.post('/api/webhook', handleLineWebhookLegacy);
+app.post('/api/webhooks/line', handleLineWebhookLegacy);
+
+console.log('⚠️  Legacy LINE Webhook endpoints (backward compatibility):');
+console.log('   • POST /api/webhook');
+console.log('   • POST /api/webhooks/line');
+console.log('   Note: These use global credentials. Consider migrating to multi-tenant webhook.');
 
 // Facebook Webhook 路由
 app.all('/api/webhooks/facebook', webhookHandler.facebook);
 
-// Webhook 事件處理由 handlers/webhook.ts 負責
+// Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
 
 // ==================== 錯誤處理 ====================
 
@@ -863,15 +1045,25 @@ import { DelayedMessageScheduler } from './durable-objects/DelayedMessageSchedul
 import { LatestMessageCacheCoordinator } from './durable-objects/LatestMessageCacheCoordinator';
 import { LockCoordinator } from './services/distributed-lock-service';
 
+// Import Customer Conversation Durable Objects (Chat-Style Architecture)
+import { CustomerConversationDO } from './durable-objects/CustomerConversationDO';
+import { CustomerMessageDO } from './durable-objects/CustomerMessageDO';
+
 // Export Durable Objects (must match wrangler.toml class_name exactly)
 export {
   ConversationRoom,
   UserConnection,
   MessageBroadcaster,
-  DelayedMessageScheduler,
   LatestMessageCacheCoordinator,
-  LockCoordinator
+  LockCoordinator,
+  // Customer Conversation System (Chat-Style)
+  CustomerConversationDO,
+  CustomerMessageDO
 };
+
+// Export legacy Delayed Message DO names (kept for backward compatibility)
+export { DelayedMessageScheduler as DelayedMessageBuffer };
+export { DelayedMessageScheduler as DelayedMessageProcessor };
 
 // ==================== 導出 Worker 處理器 ====================
 // Phase 2.1: Queue Consumer 已移除 (2025-10-17)

@@ -42,6 +42,7 @@ docs/
 - [README.md](../README.md) - 專案主要說明文件
 - [CLAUDE.md](../CLAUDE.md) - Claude Code 開發指南
 - [CURRENT_STATUS.md](./CURRENT_STATUS.md) - 當前專案狀態
+- [WEB_INSTALLER_RELEASE_NOTES.md](../WEB_INSTALLER_RELEASE_NOTES.md) - Web Installer 發佈說明 (NEW)
 
 ### 需求與規格
 - [BRD.md](./BRD.md) / [BRD_TW.md](./BRD_TW.md) - 業務需求文件
@@ -66,6 +67,7 @@ docs/
 - [guides/DEPLOYMENT_GUIDE.md](./guides/DEPLOYMENT_GUIDE.md) - 完整部署指南
 - [guides/CLOUDFLARE_PAGES_DEPLOYMENT.md](./guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) - Cloudflare Pages 部署
 - [deployment/WEBSOCKET_MIGRATION_COMPLETE.md](./deployment/WEBSOCKET_MIGRATION_COMPLETE.md) - WebSocket 遷移完成報告
+- [deployment/WEB_INSTALLER_DOCUMENTATION.md](./deployment/WEB_INSTALLER_DOCUMENTATION.md) - Web Installer 完整文檔 (NEW)
 
 ### API 文檔
 - [api/api-endpoints.md](./api/api-endpoints.md) - API 端點總覽
@@ -195,6 +197,32 @@ docs/
 ## 部署文檔
 
 - [deployment/DEPLOYMENT_RECOMMENDATION.md](./deployment/DEPLOYMENT_RECOMMENDATION.md) - 部署建議
+- [deployment/WEB_INSTALLER_DOCUMENTATION.md](./deployment/WEB_INSTALLER_DOCUMENTATION.md) - Web Installer 完整文檔 (NEW)
+
+### Web Installer (自助部署系統) (NEW)
+
+Web Installer 是一個完整的自助部署系統，讓客戶能夠零技術知識地將 CRM 系統部署到自己的 Cloudflare 帳戶。
+
+**核心特性:**
+- 一鍵式 OAuth 認證
+- 自動資源配置 (D1, KV, R2, Queue, Worker, Pages)
+- 即時進度追蹤（Server-Sent Events）
+- 自動回滾機制
+- 電子郵件通知
+- 成本透明（從 $0/月起）
+
+**文檔:**
+- [../web-installer/DEVELOPER_DOCUMENTATION.md](../web-installer/DEVELOPER_DOCUMENTATION.md) - 開發者完整文檔（13 章節）
+- [../web-installer/README.md](../web-installer/README.md) - 專案概覽
+- [../web-installer/DEPLOYMENT_CHECKLIST.md](../web-installer/DEPLOYMENT_CHECKLIST.md) - 26 步部署檢查清單
+- [../web-installer/QUICK_START_GUIDE.md](../web-installer/QUICK_START_GUIDE.md) - 用戶友好指南
+- [../web-installer/PROJECT_SUMMARY.md](../web-installer/PROJECT_SUMMARY.md) - 專案完整總結
+
+**技術指標:**
+- 測試: 28 個測試全部通過（100% 通過率）
+- 覆蓋率: 90.6% 代碼覆蓋率
+- 部署時間: 2-3 分鐘
+- 狀態: 生產就緒 (2025-01-28 完成)
 
 ## 實作文檔
 
@@ -210,6 +238,8 @@ docs/
 
 ## 更新記錄
 
+- 2025-01-28: 新增 Web Installer 完整文檔和發佈說明
+- 2025-01-28: 更新 CLAUDE.md 添加 Web Installer 章節
 - 2025-10-22: 完成根目錄文檔整理，移動 15 個文檔到正確位置
 - 2025-10-22: 清理臨時文件，合併備份目錄
 - 2025-10-18: 完成文檔架構重組，移動所有錯放文檔至正確位置

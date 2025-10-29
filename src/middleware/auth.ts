@@ -86,9 +86,15 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     
     // 獲取用戶信息
     const user = await getUserById(c.env.DB, payload.userId);
-    
+
     if (!user.isActive) {
       return c.json({ error: 'User account is inactive' }, 401);
+    }
+
+    // Fallback: use JWT payload teamId if database teamId is null (for admin users)
+    if (!user.teamId && payload.teamId) {
+      console.log('[jwtAuth] Using JWT payload teamId as fallback:', payload.teamId);
+      user.teamId = payload.teamId;
     }
 
     // 將用戶信息和 JWT payload 添加到 context
