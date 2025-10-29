@@ -340,6 +340,7 @@ import ActivityIcon from '@/components/icons/ActivityIcon.vue'
 import SettingsIcon from '@/components/icons/SettingsIcon.vue'
 import MonitorIcon from '@/components/icons/MonitorIcon.vue'
 import ReportsIcon from '@/components/icons/ReportsIcon.vue'
+import ChannelIcon from '@/components/icons/ChannelIcon.vue'
 
 // Icons are now imported from separate .vue files
 
@@ -375,6 +376,7 @@ const baseNavigationItems = [
 const adminNavigationItems = [
   ...baseNavigationItems,
   { path: '/team', label: '團隊管理', icon: UsersIcon },
+  { path: '/channels', label: '頻道管理', icon: ChannelIcon },
   { path: '/activities', label: '活動記錄', icon: ActivityIcon },
   { path: '/api-monitor', label: 'API監控', icon: MonitorIcon },
   { path: '/settings', label: '系統設定', icon: SettingsIcon }

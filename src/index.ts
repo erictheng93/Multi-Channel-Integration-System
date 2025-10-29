@@ -419,6 +419,36 @@ console.log('   • GET /api/customer-conversations/:id/messages (Fetch messages
 console.log('   • POST /api/customer-conversations/:id/messages (Create new message)');
 console.log('   • POST /api/customer-conversations/:id/upload (Upload file to R2)');
 
+// ==================== 🔧 CHANNEL INTEGRATION MANAGEMENT ====================
+//
+// Multi-tenant channel configuration system (LINE, Facebook, WhatsApp)
+// Allows customers to configure their own messaging platform credentials
+//
+// ⚠️  Registered BEFORE unified route system to prevent route conflicts
+// Routes require authentication (jwtAuth middleware)
+// Only Admin role can create/update/delete channels
+// =============================================================================
+
+import channelHandler from '@modules/integrations/handlers/channel-handler';
+
+// Apply JWT auth middleware to all channel routes
+// Note: Must apply to both base path and sub-paths for Hono pattern matching
+app.use('/api/channels', jwtAuth);
+app.use('/api/channels/*', jwtAuth);
+
+// Register channel management routes
+app.route('/api/channels', channelHandler);
+
+console.log('✅ Channel Integration Management endpoints registered:');
+console.log('   • GET    /api/channels           (List all channels for team)');
+console.log('   • POST   /api/channels           (Create new channel - Admin only)');
+console.log('   • GET    /api/channels/:id       (Get channel details)');
+console.log('   • PUT    /api/channels/:id       (Update channel - Admin only)');
+console.log('   • DELETE /api/channels/:id       (Deactivate channel - Admin only)');
+console.log('   • POST   /api/channels/:id/verify (Verify channel configuration)');
+console.log('   • GET    /api/channels/:id/stats (Get channel statistics)');
+console.log('   • GET    /api/channels/:id/health (Check channel health)');
+
 // ❌ LEGACY PRE-REGISTRATION REMOVED
 // GET /api/teams/members is now handled by the new modular team handler
 // (src/modules/teams/handlers/team.ts:319)
@@ -932,15 +962,31 @@ if (securityConfig.debug.enabled) {
 // ==================== Webhook 處理 ====================
 
 import { webhookHandler } from './handlers/webhook';
+import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from './handlers/webhook-multitenant';
 
-// LINE Webhook 路由 - 使用正確的處理器
-app.post('/api/webhook', webhookHandler.line);
-app.post('/api/webhooks/line', webhookHandler.line);
+// ==================== Multi-Tenant LINE Webhook (New) ====================
+// Route: POST /api/webhooks/line/:teamId/:token
+// Supports per-team channel configurations
+app.post('/api/webhooks/line/:teamId/:token', handleLineWebhookMultiTenant);
+
+console.log('✅ Multi-Tenant LINE Webhook endpoint registered:');
+console.log('   • POST /api/webhooks/line/:teamId/:token (Team-specific webhook)');
+
+// ==================== Legacy LINE Webhook (Backward Compatibility) ====================
+// Route: POST /api/webhooks/line (no parameters)
+// Uses global LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from env
+app.post('/api/webhook', handleLineWebhookLegacy);
+app.post('/api/webhooks/line', handleLineWebhookLegacy);
+
+console.log('⚠️  Legacy LINE Webhook endpoints (backward compatibility):');
+console.log('   • POST /api/webhook');
+console.log('   • POST /api/webhooks/line');
+console.log('   Note: These use global credentials. Consider migrating to multi-tenant webhook.');
 
 // Facebook Webhook 路由
 app.all('/api/webhooks/facebook', webhookHandler.facebook);
 
-// Webhook 事件處理由 handlers/webhook.ts 負責
+// Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
 
 // ==================== 錯誤處理 ====================
 

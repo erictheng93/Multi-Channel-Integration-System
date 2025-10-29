@@ -1,0 +1,12 @@
+name = "crm-installer-backend"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[durable_objects]
+bindings = [
+  { name = "DEPLOYMENT_ORCHESTRATOR", class_name = "DeploymentOrchestrator" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["DeploymentOrchestrator"]

@@ -56,6 +56,16 @@ const router = createRouter({
       }
     },
     {
+      path: '/channels',
+      name: 'ChannelManagement',
+      component: () => import('@/views/ChannelManagement.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+        title: '頻道管理'
+      }
+    },
+    {
       path: '/invite/:token',
       name: 'InviteAcceptance',
       component: () => import('@/views/InviteAcceptance.vue'),

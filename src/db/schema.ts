@@ -265,7 +265,7 @@ export const systemSettings = sqliteTable('system_settings', {
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Metrics table - 企業分析指標 
+// Metrics table - 企業分析指標
 export const metrics = sqliteTable('metrics', {
   id: integer('id').primaryKey(),
   metricName: text('metric_name').notNull(),
@@ -274,6 +274,54 @@ export const metrics = sqliteTable('metrics', {
   tags: text('tags'), // JSON string for additional tags
   unit: text('unit'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Channel Integrations table - 渠道集成配置（多租户支持）
+export const channelIntegrations = sqliteTable('channel_integrations', {
+  id: integer('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id),
+
+  // Channel type
+  platform: text('platform').notNull(), // 'line', 'facebook', 'whatsapp'
+
+  // LINE-specific configuration
+  lineChannelId: text('line_channel_id'),
+  lineChannelAccessToken: text('line_channel_access_token'), // Encrypted
+  lineChannelSecret: text('line_channel_secret'), // Encrypted
+  lineWebhookUrl: text('line_webhook_url'),
+  lineWebhookToken: text('line_webhook_token'), // Random token for verification
+
+  // Facebook-specific configuration (future use)
+  facebookPageId: text('facebook_page_id'),
+  facebookAccessToken: text('facebook_access_token'),
+  facebookAppSecret: text('facebook_app_secret'),
+
+  // WhatsApp-specific configuration (future use)
+  whatsappPhoneNumber: text('whatsapp_phone_number'),
+  whatsappBusinessAccountId: text('whatsapp_business_account_id'),
+  whatsappAccessToken: text('whatsapp_access_token'),
+
+  // Configuration status
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  isVerified: integer('is_verified', { mode: 'boolean' }).default(false),
+  lastVerifiedAt: text('last_verified_at'),
+
+  // Usage statistics
+  totalMessagesSent: integer('total_messages_sent').default(0),
+  totalMessagesReceived: integer('total_messages_received').default(0),
+  lastMessageAt: text('last_message_at'),
+
+  // Configuration metadata
+  configuredBy: text('configured_by').references(() => agents.id),
+  configMetadata: text('config_metadata'), // JSON
+
+  // Error tracking
+  lastError: text('last_error'), // JSON
+  errorCount: integer('error_count').default(0),
+
+  // Timestamps
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Type definitions
