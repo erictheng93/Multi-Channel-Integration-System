@@ -781,57 +781,55 @@ class MemoryProfiler {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<MemoryProfilerConfig> = {};
+const args = process.argv.slice(2);
+const config: Partial<MemoryProfilerConfig> = {};
 
-  // Parse command line arguments
-  for (let i = 0; i < args.length; i += 2) {
-    const key = args[i].replace('--', '');
-    const value = args[i + 1];
+// Parse command line arguments
+for (let i = 0; i < args.length; i += 2) {
+  const key = args[i].replace('--', '');
+  const value = args[i + 1];
 
-    if (key === 'url') config.workerUrl = value;
-    else if (key === 'websocket-url') config.websocketUrl = value;
-    else if (key === 'duration') config.profileDurationMs = parseInt(value) * 1000;
-    else if (key === 'connections') config.connectionCycles = parseInt(value);
-    else if (key === 'messages') config.messageVolume = parseInt(value);
-    else if (key === 'threshold') config.leakDetectionThreshold = parseInt(value);
-    else if (key === 'output') config.outputDirectory = value;
-    else if (key === 'token') config.authToken = value;
-    else if (key === 'gc') config.enableGarbageCollection = value === 'true';
-  }
-
-  async function runMemoryProfiler() {
-    const profiler = new MemoryProfiler(config);
-
-    try {
-      const report = await profiler.runMemoryProfile();
-
-      console.log('\n🧠 Memory Profile Report:');
-      console.log('='.repeat(60));
-      console.log('Summary:', JSON.stringify(report.summary, null, 2));
-
-      if (report.leaks.length > 0) {
-        console.log('\n🚨 Memory Leaks Detected:');
-        report.leaks.forEach(leak => {
-          console.log(`- ${leak.component}: ${leak.leakRate.toFixed(2)} MB/min (${leak.severity})`);
-        });
-      }
-
-      console.log('\n💡 Recommendations:');
-      report.recommendations.forEach(rec => console.log(`- ${rec}`));
-
-      // Save detailed report
-      const filename = await profiler.saveReport(report);
-      console.log(`\n📁 Detailed report saved to: ${filename}`);
-
-    } catch (error) {
-      console.error('❌ Memory profiling failed:', error);
-      process.exit(1);
-    }
-  }
-
-  runMemoryProfiler();
+  if (key === 'url') config.workerUrl = value;
+  else if (key === 'websocket-url') config.websocketUrl = value;
+  else if (key === 'duration') config.profileDurationMs = parseInt(value) * 1000;
+  else if (key === 'connections') config.connectionCycles = parseInt(value);
+  else if (key === 'messages') config.messageVolume = parseInt(value);
+  else if (key === 'threshold') config.leakDetectionThreshold = parseInt(value);
+  else if (key === 'output') config.outputDirectory = value;
+  else if (key === 'token') config.authToken = value;
+  else if (key === 'gc') config.enableGarbageCollection = value === 'true';
 }
+
+async function runMemoryProfiler() {
+  const profiler = new MemoryProfiler(config);
+
+  try {
+    const report = await profiler.runMemoryProfile();
+
+    console.log('\n🧠 Memory Profile Report:');
+    console.log('='.repeat(60));
+    console.log('Summary:', JSON.stringify(report.summary, null, 2));
+
+    if (report.leaks.length > 0) {
+      console.log('\n🚨 Memory Leaks Detected:');
+      report.leaks.forEach(leak => {
+        console.log(`- ${leak.component}: ${leak.leakRate.toFixed(2)} MB/min (${leak.severity})`);
+      });
+    }
+
+    console.log('\n💡 Recommendations:');
+    report.recommendations.forEach(rec => console.log(`- ${rec}`));
+
+    // Save detailed report
+    const filename = await profiler.saveReport(report);
+    console.log(`\n📁 Detailed report saved to: ${filename}`);
+
+  } catch (error) {
+    console.error('❌ Memory profiling failed:', error);
+    process.exit(1);
+  }
+}
+
+runMemoryProfiler();
 
 export { MemoryProfiler, MemoryProfilerConfig, MemoryProfileReport };

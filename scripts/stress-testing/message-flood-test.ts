@@ -827,52 +827,50 @@ export class MessageFloodTester {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<MessageFloodConfig> = {};
+const args = process.argv.slice(2);
+const config: Partial<MessageFloodConfig> = {};
 
-  // Parse command line arguments
-  for (let i = 0; i < args.length; i += 2) {
-    const key = args[i].replace('--', '');
-    const value = args[i + 1];
+// Parse command line arguments
+for (let i = 0; i < args.length; i += 2) {
+  const key = args[i].replace('--', '');
+  const value = args[i + 1];
 
-    if (key === 'url') config.targetUrl = value;
-    else if (key === 'websocket-url') config.websocketUrl = value;
-    else if (key === 'messages') config.totalMessages = parseInt(value);
-    else if (key === 'rate') config.messagesPerSecond = parseInt(value);
-    else if (key === 'connections') config.concurrentConnections = parseInt(value);
-    else if (key === 'size') config.messageSize = parseInt(value);
-    else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
-    else if (key === 'token') config.authToken = value;
-    else if (key === 'output') config.outputFile = value;
-  }
-
-  async function runMessageFlood() {
-    const tester = new MessageFloodTester(config);
-
-    try {
-      const results = await tester.runMessageFlood();
-
-      console.log('\n🌊 Message Flood Test Results:');
-      console.log('='.repeat(60));
-      console.log('Summary:', JSON.stringify(results.summary, null, 2));
-      console.log('\n🚨 System Behavior:', JSON.stringify(results.systemBehavior, null, 2));
-      console.log('\n💡 Recommendations:');
-      results.recommendations.forEach(rec => console.log(`- ${rec}`));
-
-      // Save results if output file specified
-      const savedFile = await tester.saveResults();
-      if (savedFile) {
-        console.log(`\n📁 Detailed results saved to: ${savedFile}`);
-      }
-
-    } catch (error) {
-      console.error('❌ Message flood test failed:', error);
-      process.exit(1);
-    }
-  }
-
-  runMessageFlood();
+  if (key === 'url') config.targetUrl = value;
+  else if (key === 'websocket-url') config.websocketUrl = value;
+  else if (key === 'messages') config.totalMessages = parseInt(value);
+  else if (key === 'rate') config.messagesPerSecond = parseInt(value);
+  else if (key === 'connections') config.concurrentConnections = parseInt(value);
+  else if (key === 'size') config.messageSize = parseInt(value);
+  else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
+  else if (key === 'token') config.authToken = value;
+  else if (key === 'output') config.outputFile = value;
 }
+
+async function runMessageFlood() {
+  const tester = new MessageFloodTester(config);
+
+  try {
+    const results = await tester.runMessageFlood();
+
+    console.log('\n🌊 Message Flood Test Results:');
+    console.log('='.repeat(60));
+    console.log('Summary:', JSON.stringify(results.summary, null, 2));
+    console.log('\n🚨 System Behavior:', JSON.stringify(results.systemBehavior, null, 2));
+    console.log('\n💡 Recommendations:');
+    results.recommendations.forEach(rec => console.log(`- ${rec}`));
+
+    // Save results if output file specified
+    const savedFile = await tester.saveResults();
+    if (savedFile) {
+      console.log(`\n📁 Detailed results saved to: ${savedFile}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Message flood test failed:', error);
+    process.exit(1);
+  }
+}
+
+runMessageFlood();
 
 export { MessageFloodTester, MessageFloodConfig, MessageFloodResults };

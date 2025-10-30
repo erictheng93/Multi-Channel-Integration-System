@@ -442,47 +442,84 @@ const toggleReportsSubmenu = () => {
   isReportsExpanded.value = !isReportsExpanded.value
 }
 
-// Fix: Debounced resize handler to prevent recursive updates
-let resizeTimeout: ReturnType<typeof setTimeout>
+// Fix: Enhanced resize handler with re-entrant guard and state snapshot
+let resizeTimeout: ReturnType<typeof setTimeout> | null = null
+let isResizing = false
 
 const handleResize = () => {
-  // Clear the previous timeout on every call to debounce the event
-  clearTimeout(resizeTimeout)
+  // Prevent re-entrant calls
+  if (isResizing) {
+    return
+  }
 
+  // Clear any pending resize operations
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+
+  // Throttle resize operations with state snapshot
   resizeTimeout = setTimeout(() => {
-    const width = window.innerWidth
-    const newIsMobile = width <= 768
+    isResizing = true
 
-    // Apply mobile state change
-    if (isMobile.value !== newIsMobile) {
-      isMobile.value = newIsMobile
-    }
+    try {
+      const width = window.innerWidth
 
-    // Logic for sidebar visibility based on width
-    if (newIsMobile) {
-      // On mobile, ensure the desktop-style collapsed state is not active
-      // and let showMobileMenu control visibility.
-      sidebarCollapsed.value = false
-      isAutoCollapsed.value = false
-    } else {
-      // On desktop/tablet
-      if (width >= 1025) {
-        // Large screens: restore from auto-collapse
-        if (isAutoCollapsed.value) {
-          sidebarCollapsed.value = false
-          isAutoCollapsed.value = false
-        }
-      } else { // width >= 769 && width <= 1024
-        // Medium screens: auto-collapse
-        if (!sidebarCollapsed.value || isAutoCollapsed.value) {
-          sidebarCollapsed.value = true
-          isAutoCollapsed.value = true
-        }
+      // Snapshot current state
+      const oldState = {
+        isMobile: isMobile.value,
+        sidebarCollapsed: sidebarCollapsed.value,
+        isAutoCollapsed: isAutoCollapsed.value,
+        showMobileMenu: showMobileMenu.value
       }
-      // Always hide mobile menu on non-mobile screens
-      showMobileMenu.value = false
+
+      // Calculate new state
+      const newState = { ...oldState }
+      newState.isMobile = width <= 768
+
+      if (width >= 1025) {
+        // 大屏幕 - 恢復展開狀態（除非用戶手動摺疊）
+        if (oldState.isAutoCollapsed) {
+          newState.sidebarCollapsed = false
+          newState.isAutoCollapsed = false
+        }
+        newState.showMobileMenu = false
+      } else if (width >= 769 && width <= 1024) {
+        // 中等屏幕 - 自動摺疊
+        if (!oldState.sidebarCollapsed || oldState.isAutoCollapsed) {
+          newState.sidebarCollapsed = true
+          newState.isAutoCollapsed = true
+        }
+        newState.showMobileMenu = false
+      } else {
+        // 小屏幕 - 隱藏側邊欄
+        newState.showMobileMenu = false
+      }
+
+      // 移動端切換時關閉菜單
+      if (oldState.isMobile !== newState.isMobile && newState.showMobileMenu) {
+        newState.showMobileMenu = false
+      }
+
+      // Apply only changed values
+      if (oldState.isMobile !== newState.isMobile) {
+        isMobile.value = newState.isMobile
+      }
+      if (oldState.sidebarCollapsed !== newState.sidebarCollapsed) {
+        sidebarCollapsed.value = newState.sidebarCollapsed
+      }
+      if (oldState.isAutoCollapsed !== newState.isAutoCollapsed) {
+        isAutoCollapsed.value = newState.isAutoCollapsed
+      }
+      if (oldState.showMobileMenu !== newState.showMobileMenu) {
+        showMobileMenu.value = newState.showMobileMenu
+      }
+    } finally {
+      // Reset flag after a brief delay to allow DOM updates
+      setTimeout(() => {
+        isResizing = false
+      }, 50)
     }
-  }, 150) // 150ms debounce delay
+  }, 150) // Increased throttle for stability
 }
 
 const handleUserProfileClick = () => {

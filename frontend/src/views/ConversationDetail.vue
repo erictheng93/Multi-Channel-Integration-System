@@ -25,10 +25,11 @@
 
       <!-- High Performance Virtual Message List with WebSocket -->
       <div class="messages-container-wrapper">
-        <!-- Loading States -->
-        <HamsterLoader
+        <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
+        <MessageListSkeleton
           v-if="isInitialLoading && !hasLoadedInitially"
-          message="載入對話中..."
+          :count="skeletonCount"
+          :loading-text="skeletonLoadingText"
         />
 
         <!-- Empty State -->
@@ -211,6 +212,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 // ✅ CUSTOMER API: 使用新的 Customer Conversation System
 import { useCustomerMessages } from '@/composables/useCustomerMessages' // Customer HTTP API
+import { conversationCache } from '@/utils/conversationCache' // 🚀 Conversation metadata cache
 import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
@@ -231,7 +233,8 @@ type ConnectionType = 'websocket'
 // Core components
 import AppLayout from '@/components/ui/AppLayout.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+// import HamsterLoader from '@/components/ui/HamsterLoader.vue' // 替換為 MessageListSkeleton
+import MessageListSkeleton from '@/components/conversation/MessageListSkeleton.vue'
 import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
@@ -276,10 +279,11 @@ const conversationId = computed(() => route.params.id as string)
 
 
 
-// ✅ CUSTOMER API: HTTP API System for Customer Conversations
+// ✅ CUSTOMER API: HTTP API System for Customer Conversations with Progressive Loading
 const httpMessages = useCustomerMessages(conversationId.value, {
   enablePagination: true,
-  pageSize: 10 // 🎯 初始加載10條消息，優化首屏加載速度
+  pageSize: 30, // 🚀 Progressive loading: 10 recent + 20 history
+  enableProgressiveLoading: true // 🚀 Enable two-phase loading
 })
 
 // 🚀 Unified Connection Manager (Primary Real-time System)
@@ -388,11 +392,11 @@ const typingUsers = computed(() => [])// 🎨 Smooth loading for SSE messages (s
 const {
   messages: smoothMessages,
   isUpdating,
-  updateMessages,
-  getAnimationClasses
+  updateMessages
+  // getAnimationClasses - 未使用，已註釋
 } = useSmoothLoading({
   animationDuration: 400,
-  enableAnimations: true,
+  enableAnimations: false, // 🔧 RECURSION FIX: Disable animations to test if they cause the loop
   debounceDelay: 50
 })
 
@@ -418,16 +422,19 @@ const debouncedUpdateMessages = eventHandler.debounce(((newMessages: Message[]) 
   try {
     updateMessages(newMessages, true)
   } finally {
-    // Reset flag after a delay to allow updates to complete
+    // 🔧 RECURSION FIX: Extended protection window to 300ms
+    // This covers the full animation duration (200ms) + 100ms buffer
+    // Previous 100ms was too short and allowed setTimeout cleanup to trigger unprotected
     setTimeout(() => {
       isUpdatingMessages = false
-    }, 100)
+    }, 300)
   }
 }) as AnyFunction, 50)
 
 // CRITICAL FIX: Watch messages but prevent infinite recursion
 // The key is that updateMessages in useSmoothLoading does NOT trigger messages computed
 // because it only updates smoothMessages, which is separate from messages
+// 🔧 RECURSION FIX: Removed immediate: true to prevent early triggering during mount
 watch(
   () => messages.value,
   (newMessages) => {
@@ -435,7 +442,7 @@ watch(
       debouncedUpdateMessages(newMessages)
     }
   },
-  { immediate: true, flush: 'post' }
+  { flush: 'post' }
 )
 
 // Core state with null safety
@@ -445,6 +452,22 @@ const isTyping = ref(false)
 
 // Use new composable state management
 const { hasLoadedInitially, isInitialLoading, loadingHistory } = loadingState
+
+// 🚀 Dynamic skeleton screen based on cached message count
+const skeletonCount = computed(() =>
+  conversationCache.getEstimatedMessageCount(conversationId.value)
+)
+
+// 🚀 Dynamic loading text based on progressive loading phase
+const skeletonLoadingText = computed(() => {
+  if (httpMessages.isLoadingInitial?.value) {
+    return '正在載入最近消息...'
+  }
+  if (httpMessages.loadingHistory?.value) {
+    return '載入對話歷史...'
+  }
+  return '載入對話歷史...'
+})
 
 // Component refs
 const virtualMessageListRef = ref()
@@ -583,29 +606,30 @@ const connectionStatusClass = computed(() => {
 
 // Removed unused computed property: statusIndicatorClass
 
-// Memoized animation class generation for better performance
-const memoizedAnimationClasses = performanceOptimizer.memoize(
-  (messages: Message[], getClassesFn: Function | undefined) => {
-    const result: Record<string, string> = {}
-
-    if (typeof getClassesFn === 'function' && messages.length > 0) {
-      messages.forEach(message => {
-        const classes = getClassesFn(message.id)
-        if (classes && classes['message-fade-in']) {
-          result[message.id] = 'message-fade-in'
-        }
-      })
-    }
-
-    return result
-  },
-  (messages, getClassesFn) => `${messages.length}-${typeof getClassesFn}`
-)
+// 🔧 Memoized animation class generation - 暫時禁用以避免遞歸問題
+// const memoizedAnimationClasses = performanceOptimizer.memoize(
+//   (messages: Message[], getClassesFn: Function | undefined) => {
+//     const result: Record<string, string> = {}
+//
+//     if (typeof getClassesFn === 'function' && messages.length > 0) {
+//       messages.forEach(message => {
+//         const classes = getClassesFn(message.id)
+//         if (classes && classes['message-fade-in']) {
+//           result[message.id] = 'message-fade-in'
+//         }
+//       })
+//     }
+//
+//     return result
+//   },
+//   (messages, getClassesFn) => `${messages.length}-${typeof getClassesFn}`
+// )
 
 // Animation classes for smooth message transitions
-const animationClasses = performanceOptimizer.cachedComputed(() => {
-  return memoizedAnimationClasses(smoothMessages.value, getAnimationClasses)
-}, 'animation-classes', { timeout: 1000 })
+// 🔧 RECURSION FIX: Temporarily disable to test if this causes the loop
+const animationClasses = computed(() => {
+  return {} // Return empty object - no animations
+})
 
 // Quick replies
 const quickReplies = ref([
@@ -1232,6 +1256,11 @@ watch(
 
       // Load conversation
       await loadConversation()
+
+      // 🔧 RECURSION FIX: No need to manually trigger updateMessages
+      // The watch on messages.value will automatically trigger when
+      // httpMessages.messages.value changes after loadConversation()
+      // Manual triggering causes double updates and infinite loops
 
       measure('conversation-load', 'conversation-load-start')
 

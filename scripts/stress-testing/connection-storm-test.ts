@@ -671,51 +671,49 @@ export class ConnectionStormTester extends EventEmitter {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<ConnectionStormConfig> = {};
+const args = process.argv.slice(2);
+const config: Partial<ConnectionStormConfig> = {};
 
-  // Parse command line arguments
-  for (let i = 0; i < args.length; i += 2) {
-    const key = args[i].replace('--', '');
-    const value = args[i + 1];
+// Parse command line arguments
+for (let i = 0; i < args.length; i += 2) {
+  const key = args[i].replace('--', '');
+  const value = args[i + 1];
 
-    if (key === 'url') config.targetUrl = value;
-    else if (key === 'waves') config.stormWaves = parseInt(value);
-    else if (key === 'connections') config.connectionsPerWave = parseInt(value);
-    else if (key === 'interval') config.waveIntervalMs = parseInt(value);
-    else if (key === 'hold-time') config.connectionHoldTimeMs = parseInt(value);
-    else if (key === 'rapid-ratio') config.rapidDisconnectRatio = parseFloat(value);
-    else if (key === 'token') config.authToken = value;
-    else if (key === 'output') config.outputFile = value;
-  }
-
-  async function runConnectionStorm() {
-    const tester = new ConnectionStormTester(config);
-
-    try {
-      const results = await tester.runConnectionStorm();
-
-      console.log('\n⛈️ Connection Storm Test Results:');
-      console.log('='.repeat(60));
-      console.log('Summary:', JSON.stringify(results.summary, null, 2));
-      console.log('\n🚨 System Stress Indicators:', JSON.stringify(results.systemStress, null, 2));
-      console.log('\n💡 Recommendations:');
-      results.recommendations.forEach(rec => console.log(`- ${rec}`));
-
-      // Save results if output file specified
-      const savedFile = await tester.saveResults();
-      if (savedFile) {
-        console.log(`\n📁 Detailed results saved to: ${savedFile}`);
-      }
-
-    } catch (error) {
-      console.error('❌ Connection storm test failed:', error);
-      process.exit(1);
-    }
-  }
-
-  runConnectionStorm();
+  if (key === 'url') config.targetUrl = value;
+  else if (key === 'waves') config.stormWaves = parseInt(value);
+  else if (key === 'connections') config.connectionsPerWave = parseInt(value);
+  else if (key === 'interval') config.waveIntervalMs = parseInt(value);
+  else if (key === 'hold-time') config.connectionHoldTimeMs = parseInt(value);
+  else if (key === 'rapid-ratio') config.rapidDisconnectRatio = parseFloat(value);
+  else if (key === 'token') config.authToken = value;
+  else if (key === 'output') config.outputFile = value;
 }
+
+async function runConnectionStorm() {
+  const tester = new ConnectionStormTester(config);
+
+  try {
+    const results = await tester.runConnectionStorm();
+
+    console.log('\n⛈️ Connection Storm Test Results:');
+    console.log('='.repeat(60));
+    console.log('Summary:', JSON.stringify(results.summary, null, 2));
+    console.log('\n🚨 System Stress Indicators:', JSON.stringify(results.systemStress, null, 2));
+    console.log('\n💡 Recommendations:');
+    results.recommendations.forEach(rec => console.log(`- ${rec}`));
+
+    // Save results if output file specified
+    const savedFile = await tester.saveResults();
+    if (savedFile) {
+      console.log(`\n📁 Detailed results saved to: ${savedFile}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Connection storm test failed:', error);
+    process.exit(1);
+  }
+}
+
+runConnectionStorm();
 
 export { ConnectionStormTester, ConnectionStormConfig, ConnectionStormResults };

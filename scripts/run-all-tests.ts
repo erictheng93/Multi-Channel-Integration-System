@@ -170,7 +170,7 @@ interface TestReport {
 
 // =================== Test Runner ===================
 
-export class ComprehensiveTestRunner {
+class ComprehensiveTestRunner {
   private config: TestConfig;
   private results: TestResult[] = [];
   private startTime: number = 0;
@@ -572,10 +572,9 @@ export class ComprehensiveTestRunner {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<TestConfig> = {};
-  let suiteFilter: string[] = [];
+const args = process.argv.slice(2);
+const config: Partial<TestConfig> = {};
+let suiteFilter: string[] = [];
 
   // Parse command line arguments
   for (let i = 0; i < args.length; i += 2) {
@@ -613,7 +612,7 @@ if (require.main === module) {
       }
 
       // Exit with failure code if any required tests failed
-      const requiredTestsf Лайled = report.results.filter(r =>
+      const requiredTestsFailed = report.results.filter(r =>
         r.status === 'failed' &&
         TEST_SUITES.find(s => s.name === r.suiteName)?.required
       );
@@ -630,6 +629,5 @@ if (require.main === module) {
   }
 
   runTests();
-}
 
 export { ComprehensiveTestRunner, TestConfig, TestReport };
