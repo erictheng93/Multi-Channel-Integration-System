@@ -896,51 +896,49 @@ class DurableObjectsStressTester {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<StressTestConfig> = {};
+const args = process.argv.slice(2);
+const config: Partial<StressTestConfig> = {};
 
-  // Parse command line arguments
-  for (let i = 0; i < args.length; i += 2) {
-    const key = args[i].replace('--', '');
-    const value = args[i + 1];
+// Parse command line arguments
+for (let i = 0; i < args.length; i += 2) {
+  const key = args[i].replace('--', '');
+  const value = args[i + 1];
 
-    if (key === 'url') config.workerUrl = value;
-    else if (key === 'rooms') config.conversationRooms = parseInt(value);
-    else if (key === 'users') config.userConnections = parseInt(value);
-    else if (key === 'messages') config.messagesPerRoom = parseInt(value);
-    else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
-    else if (key === 'concurrency') config.concurrentRequests = parseInt(value);
-    else if (key === 'token') config.authToken = value;
-  }
-
-  async function runStressTest() {
-    const tester = new DurableObjectsStressTester(config);
-
-    try {
-      const results = await tester.runStressTest();
-
-      console.log('\n🔥 Stress Test Results:');
-      console.log('='.repeat(60));
-      console.log('Summary:', JSON.stringify(results.summary, null, 2));
-      console.log('\n📊 Performance:', JSON.stringify(results.performance, null, 2));
-      console.log('\n❌ Errors:', JSON.stringify(results.errors, null, 2));
-
-      // Save detailed results
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const resultsFile = `stress-test-results-${timestamp}.json`;
-
-      const fs = require('fs');
-      fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
-      console.log(`\n📁 Detailed results saved to: ${resultsFile}`);
-
-    } catch (error) {
-      console.error('❌ Stress test failed:', error);
-      process.exit(1);
-    }
-  }
-
-  runStressTest();
+  if (key === 'url') config.workerUrl = value;
+  else if (key === 'rooms') config.conversationRooms = parseInt(value);
+  else if (key === 'users') config.userConnections = parseInt(value);
+  else if (key === 'messages') config.messagesPerRoom = parseInt(value);
+  else if (key === 'duration') config.testDurationMs = parseInt(value) * 1000;
+  else if (key === 'concurrency') config.concurrentRequests = parseInt(value);
+  else if (key === 'token') config.authToken = value;
 }
+
+async function runStressTest() {
+  const tester = new DurableObjectsStressTester(config);
+
+  try {
+    const results = await tester.runStressTest();
+
+    console.log('\n🔥 Stress Test Results:');
+    console.log('='.repeat(60));
+    console.log('Summary:', JSON.stringify(results.summary, null, 2));
+    console.log('\n📊 Performance:', JSON.stringify(results.performance, null, 2));
+    console.log('\n❌ Errors:', JSON.stringify(results.errors, null, 2));
+
+    // Save detailed results
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const resultsFile = `stress-test-results-${timestamp}.json`;
+
+    const fs = require('fs');
+    fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
+    console.log(`\n📁 Detailed results saved to: ${resultsFile}`);
+
+  } catch (error) {
+    console.error('❌ Stress test failed:', error);
+    process.exit(1);
+  }
+}
+
+runStressTest();
 
 export { DurableObjectsStressTester, StressTestConfig, StressTestResults };

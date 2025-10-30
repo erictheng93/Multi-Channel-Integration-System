@@ -594,9 +594,8 @@ class WebSocketLoadTester extends EventEmitter {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<LoadTestConfig> = {};
+const args = process.argv.slice(2);
+const config: Partial<LoadTestConfig> = {};
 
   // Parse command line arguments
   for (let i = 0; i < args.length; i += 2) {
@@ -643,6 +642,5 @@ if (require.main === module) {
   }
 
   runTest();
-}
 
 export { WebSocketLoadTester, LoadTestConfig, TestResults };

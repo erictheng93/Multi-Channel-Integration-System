@@ -1,0 +1,19 @@
+{
+  "summary": {
+    "totalSuites": 8,
+    "passedSuites": 0,
+    "failedSuites": 8,
+    "skippedSuites": 0,
+    "totalDuration": 35469.7994,
+    "startTime": 119.8667,
+    "endTime": 35589.6661
+  },
+  "timestamp": "2025-10-30T01:26:15.961Z",
+  "recommendations": [
+    "🔧 8 tests failed - investigate and fix underlying issues",
+    "🔍 Review error logs and stderr output for specific failure causes",
+    "📋 Review individual test results for detailed performance insights",
+    "🚀 Use results to establish performance baselines and SLA targets",
+    "🔄 Run tests regularly to monitor performance regression"
+  ]
+}

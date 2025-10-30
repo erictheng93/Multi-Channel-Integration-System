@@ -42,7 +42,12 @@ export function useLoadingState(options: LoadingStateOptions): LoadingState {
   const isInitialLoading = ref(true)
   const loadingHistory = ref(false)
 
-  // 自動同步初始載入狀態
+  // 🔧 追蹤是否已經經歷過加載過程（loading 從 true 變為 false）
+  const hasEverLoaded = ref(false)
+
+  // 🎯 優化的初始載入狀態管理
+  // 關鍵改進：只在真正完成過一次加載後才標記為已加載
+  // 避免 WebSocket 連接成功但 HTTP 請求未完成時顯示錯誤的空狀態
   watch(
     [
       () => sseIsConnected.value,
@@ -50,13 +55,28 @@ export function useLoadingState(options: LoadingStateOptions): LoadingState {
       () => shouldUseWebSocket.value && wsIsJoined.value,
       () => isLoading.value
     ],
-    ([sseConnected, messagesCount, wsConnected, loading]) => {
-      const shouldMarkLoaded = sseConnected || messagesCount > 0 || wsConnected
+    ([_sseConnected, messagesCount, _wsConnected, loading]) => {
+      // 🔧 追蹤加載過程：當 loading = true 時，標記已經開始加載
+      if (loading) {
+        hasEverLoaded.value = true
+      }
+
+      const hasMessages = messagesCount > 0
+      const loadingCompleted = hasEverLoaded.value && !loading
+
+      // 標記為已加載的條件（修復後）：
+      // 1. 有消息已加載 (messagesCount > 0)
+      // 2. 或者已經完成過一次加載（loading 曾經是 true，現在是 false）
+      //
+      // ❌ 移除的錯誤邏輯：(hasConnection && !loading)
+      //    這會在 WebSocket 連接成功但 HTTP 未完成時觸發
+      const shouldMarkLoaded = hasMessages || loadingCompleted
 
       if (shouldMarkLoaded && !hasLoadedInitially.value) {
         hasLoadedInitially.value = true
         isInitialLoading.value = false
       } else if (!shouldMarkLoaded && loading) {
+        // 仍在加載中
         isInitialLoading.value = !hasLoadedInitially.value
       }
     },
@@ -73,6 +93,7 @@ export function useLoadingState(options: LoadingStateOptions): LoadingState {
     hasLoadedInitially.value = false
     isInitialLoading.value = true
     loadingHistory.value = false
+    hasEverLoaded.value = false // 🔧 重置加載追蹤狀態
   }
 
   const setHistoryLoading = (loading: boolean) => {

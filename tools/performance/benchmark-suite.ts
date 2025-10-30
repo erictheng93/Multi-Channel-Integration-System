@@ -878,56 +878,54 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
 // =================== CLI Interface ===================
 
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  const config: Partial<BenchmarkConfig> = {};
+const args = process.argv.slice(2);
+const config: Partial<BenchmarkConfig> = {};
 
-  // Parse command line arguments
-  for (let i = 0; i < args.length; i += 2) {
-    const key = args[i].replace('--', '');
-    const value = args[i + 1];
+// Parse command line arguments
+for (let i = 0; i < args.length; i += 2) {
+  const key = args[i].replace('--', '');
+  const value = args[i + 1];
 
-    if (key === 'url') config.workerUrl = value;
-    else if (key === 'websocket-url') config.websocketUrl = value;
-    else if (key === 'iterations') config.iterations = parseInt(value);
-    else if (key === 'suites') config.benchmarkSuites = value.split(',');
-    else if (key === 'format') config.outputFormat = value as 'json' | 'csv' | 'console';
-    else if (key === 'token') config.authToken = value;
-  }
-
-  async function runBenchmarks() {
-    const benchmarkSuite = new PerformanceBenchmarkSuite(config);
-
-    try {
-      const report = await benchmarkSuite.runBenchmarks();
-
-      console.log('\n🏆 Benchmark Report:');
-      console.log('='.repeat(60));
-      console.log('Summary:', JSON.stringify(report.summary, null, 2));
-
-      // Display top performing tests
-      const sortedResults = report.results
-        .sort((a, b) => a.metrics.latency.mean - b.metrics.latency.mean)
-        .slice(0, 10);
-
-      console.log('\n🥇 Top 10 Fastest Tests:');
-      sortedResults.forEach((result, index) => {
-        console.log(`${index + 1}. ${result.testName} (${result.suiteName}): ${result.metrics.latency.mean.toFixed(2)}ms`);
-      });
-
-      // Save report
-      const filename = await benchmarkSuite.saveReport(report);
-      if (filename) {
-        console.log(`\n📁 Report saved to: ${filename}`);
-      }
-
-    } catch (error) {
-      console.error('❌ Benchmark failed:', error);
-      process.exit(1);
-    }
-  }
-
-  runBenchmarks();
+  if (key === 'url') config.workerUrl = value;
+  else if (key === 'websocket-url') config.websocketUrl = value;
+  else if (key === 'iterations') config.iterations = parseInt(value);
+  else if (key === 'suites') config.benchmarkSuites = value.split(',');
+  else if (key === 'format') config.outputFormat = value as 'json' | 'csv' | 'console';
+  else if (key === 'token') config.authToken = value;
 }
+
+async function runBenchmarks() {
+  const benchmarkSuite = new PerformanceBenchmarkSuite(config);
+
+  try {
+    const report = await benchmarkSuite.runBenchmarks();
+
+    console.log('\n🏆 Benchmark Report:');
+    console.log('='.repeat(60));
+    console.log('Summary:', JSON.stringify(report.summary, null, 2));
+
+    // Display top performing tests
+    const sortedResults = report.results
+      .sort((a, b) => a.metrics.latency.mean - b.metrics.latency.mean)
+      .slice(0, 10);
+
+    console.log('\n🥇 Top 10 Fastest Tests:');
+    sortedResults.forEach((result, index) => {
+      console.log(`${index + 1}. ${result.testName} (${result.suiteName}): ${result.metrics.latency.mean.toFixed(2)}ms`);
+    });
+
+    // Save report
+    const filename = await benchmarkSuite.saveReport(report);
+    if (filename) {
+      console.log(`\n📁 Report saved to: ${filename}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Benchmark failed:', error);
+    process.exit(1);
+  }
+}
+
+runBenchmarks();
 
 export { PerformanceBenchmarkSuite, BenchmarkConfig, BenchmarkReport };
