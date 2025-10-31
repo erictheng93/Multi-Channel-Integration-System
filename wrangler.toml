@@ -130,25 +130,25 @@ new_classes = [
   "CustomerMessageDO"
 ]
 
-# Development environment
-[env.development]
-name = "multi-channel-platform-dev"
-
-[env.development.vars]
-ENVIRONMENT = "development"
-R2_PUBLIC_URL = "http://localhost:8787"
-
-# Development resources (inherit from production but with dev IDs)
-[[env.development.d1_databases]]
-binding = "DB"
-database_name = "multi-channel-platform-dev"
-database_id = "dev-database-id-placeholder"
-
-[[env.development.kv_namespaces]]
-binding = "SESSIONS"
-id = "dev-sessions-kv-placeholder"
-
-[[env.development.kv_namespaces]]
-binding = "CACHE"
-id = "dev-cache-kv-placeholder"
+# =================== DEPLOYMENT ENVIRONMENT POLICY ===================
+#
+# ⚠️ THIS PROJECT USES PRODUCTION ENVIRONMENT ONLY
+#
+# This project does NOT use a separate development environment.
+# All configuration above is for PRODUCTION deployment only.
+#
+# Local Development:
+#   - Use `wrangler dev` for local testing (uses temporary resources)
+#   - Local dev automatically creates temporary D1, KV, and R2 bindings
+#   - No separate dev environment configuration needed
+#
+# Production Deployment:
+#   - Use `wrangler deploy` or `npm run deploy`
+#   - Deploys to production resources defined above
+#   - Domain: multi-channel.imfinethankyouandyou.com
+#
+# DO NOT add [env.development] or [env.staging] sections.
+# All deployments go to production after testing locally with `wrangler dev`.
+#
+# ======================================================================
 

@@ -460,6 +460,20 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 
 ## Production Deployment
 
+### ⚠️ Deployment Environment Policy
+
+**THIS PROJECT USES PRODUCTION ENVIRONMENT ONLY**
+
+- **No Development Environment**: This project does NOT use a separate `[env.development]` configuration in `wrangler.toml`
+- **Local Development**: Use `wrangler dev` which automatically creates temporary resources (D1, KV, R2)
+- **Production Deployment**: Use `wrangler deploy` or `npm run deploy` to deploy to production
+- **No Staging Environment**: All testing happens locally, then deploys directly to production
+- **Environment Configuration**: See `wrangler.toml` - all config is for production only
+
+**Important**: DO NOT add `[env.development]` or `[env.staging]` sections to `wrangler.toml`. The default configuration IS the production configuration.
+
+### Production Infrastructure
+
 The system is production-ready and deployed on Cloudflare infrastructure:
 - **Automated deployment** with Wrangler for Workers and Pages
 - **Zero-downtime deployments** with Cloudflare's edge network
