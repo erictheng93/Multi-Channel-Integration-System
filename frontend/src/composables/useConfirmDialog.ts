@@ -140,9 +140,17 @@ class ConfirmDialogManager {
    * 关闭所有对话框
    */
   clear() {
+    // Create a copy of dialog IDs to avoid modifying array during iteration
+    const dialogIds = this.dialogs.map(d => d.id)
+
+    // Resolve all promises first
     this.dialogs.forEach(dialog => {
       dialog.promise.resolve(false)
-      this.remove(dialog.id)
+    })
+
+    // Then remove each dialog
+    dialogIds.forEach(id => {
+      this.remove(id)
     })
   }
 }

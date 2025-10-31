@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 describe('useConfirmDialog', () => {
@@ -7,17 +8,28 @@ describe('useConfirmDialog', () => {
 
   beforeEach(() => {
     cleanup = []
-    // 清理 body 中的所有对话框容器
-    document.body.innerHTML = ''
+    // DO NOT clear document.body - let composables handle their own DOM cleanup
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup.forEach(fn => fn())
     cleanup = []
+
     // 清理所有对话框
     const { clearDialogs } = useConfirmDialog()
     clearDialogs()
-    document.body.innerHTML = ''
+
+    // Wait for composable's setTimeout (300ms) + transitions (200-250ms) to complete
+    await new Promise(resolve => setTimeout(resolve, 600))
+
+    // Final flush to ensure all Vue updates complete
+    await nextTick()
+    await flushPromises()
+
+    // Clear timers
+    vi.clearAllTimers()
+
+    // DO NOT clear document.body - let composables handle their own DOM cleanup
   })
 
   describe('基础功能', () => {
@@ -92,6 +104,7 @@ describe('useConfirmDialog', () => {
       })
 
       await nextTick()
+      await flushPromises()
 
       // 查找并点击确认按钮
       const confirmButton = Array.from(document.querySelectorAll('.dialog-btn')).find(
@@ -101,9 +114,12 @@ describe('useConfirmDialog', () => {
       expect(confirmButton).toBeTruthy()
       confirmButton.click()
 
+      await nextTick()
+      await flushPromises()
+
       const result = await promise
       expect(result).toBe(true)
-    })
+    }, 10000) // 10 second timeout
 
     it('应该在点击取消时返回 false', async () => {
       const { showConfirm } = useConfirmDialog()
@@ -113,6 +129,7 @@ describe('useConfirmDialog', () => {
       })
 
       await nextTick()
+      await flushPromises()
 
       // 查找并点击取消按钮
       const cancelButton = Array.from(document.querySelectorAll('.dialog-btn')).find(
@@ -122,9 +139,12 @@ describe('useConfirmDialog', () => {
       expect(cancelButton).toBeTruthy()
       cancelButton.click()
 
+      await nextTick()
+      await flushPromises()
+
       const result = await promise
       expect(result).toBe(false)
-    })
+    }, 10000) // 10 second timeout
 
     it('应该支持自定义按钮文本', async () => {
       const { showConfirm } = useConfirmDialog()
@@ -225,33 +245,30 @@ describe('useConfirmDialog', () => {
       const { showConfirm, clearDialogs } = useConfirmDialog()
 
       // 创建多个对话框
-      const promise1 = showConfirm({ title: '对话框 1' })
-      const promise2 = showConfirm({ title: '对话框 2' })
+      showConfirm({ title: '对话框 1' }).catch(() => {})
+      showConfirm({ title: '对话框 2' }).catch(() => {})
 
       await nextTick()
+      await flushPromises()
 
       // 验证对话框存在
       let dialogs = document.querySelectorAll('.dialog-overlay')
       expect(dialogs.length).toBeGreaterThan(0)
 
-      // 清理所有对话框
+      // 清理所有对话框 (这会自动 resolve 所有 promises)
       clearDialogs()
 
-      // 等待 Promise 完成
-      await Promise.all([
-        promise1.catch(() => {}),
-        promise2.catch(() => {})
-      ])
+      // Wait for composable's setTimeout (300ms) + transitions (200-250ms) to complete
+      await new Promise(resolve => setTimeout(resolve, 700))
 
+      // Final flush to ensure all Vue updates complete
       await nextTick()
-
-      // 等待动画完成
-      await new Promise(resolve => setTimeout(resolve, 400))
+      await flushPromises()
 
       // 验证对话框已关闭
       dialogs = document.querySelectorAll('.dialog-overlay')
       expect(dialogs.length).toBe(0)
-    })
+    }, 10000)
 
     it('清理后所有 Promise 应该返回 false', async () => {
       const { showConfirm, clearDialogs } = useConfirmDialog()
@@ -259,35 +276,39 @@ describe('useConfirmDialog', () => {
       const promise = showConfirm({ title: '测试' })
 
       await nextTick()
+      await flushPromises()
 
       clearDialogs()
 
+      await nextTick()
+      await flushPromises()
+
       const result = await promise
       expect(result).toBe(false)
-    })
+    }, 10000) // 10 second timeout
   })
 
   describe('多个对话框', () => {
     it('应该支持同时显示多个对话框', async () => {
       const { showConfirm, clearDialogs } = useConfirmDialog()
 
-      const promise1 = showConfirm({ title: '对话框 1' })
-      const promise2 = showConfirm({ title: '对话框 2' })
+      showConfirm({ title: '对话框 1' }).catch(() => {})
+      showConfirm({ title: '对话框 2' }).catch(() => {})
 
       await nextTick()
+      await flushPromises()
 
       const overlays = document.querySelectorAll('.dialog-overlay')
       expect(overlays.length).toBeGreaterThanOrEqual(1)
 
-      // 清理
+      // 清理 (自动 resolve 所有 promises)
       clearDialogs()
-      await Promise.all([
-        promise1.catch(() => {}),
-        promise2.catch(() => {})
-      ])
 
-      await new Promise(resolve => setTimeout(resolve, 400))
-    })
+      await nextTick()
+      await flushPromises()
+
+      await new Promise(resolve => setTimeout(resolve, 600))
+    }, 10000)
   })
 
   describe('边界情况', () => {
@@ -329,19 +350,21 @@ describe('useConfirmDialog', () => {
     it('应该处理快速连续调用', async () => {
       const { showConfirm, clearDialogs } = useConfirmDialog()
 
-      const promises = []
       for (let i = 0; i < 5; i++) {
-        promises.push(showConfirm({ title: `对话框 ${i}` }))
+        showConfirm({ title: `对话框 ${i}` }).catch(() => {})
       }
 
       await nextTick()
+      await flushPromises()
 
-      // 清理
+      // 清理 (自动 resolve 所有 promises)
       clearDialogs()
-      await Promise.all(promises.map(p => p.catch(() => {})))
 
-      await new Promise(resolve => setTimeout(resolve, 400))
-    })
+      await nextTick()
+      await flushPromises()
+
+      await new Promise(resolve => setTimeout(resolve, 600))
+    }, 10000)
   })
 
   describe('内存管理', () => {

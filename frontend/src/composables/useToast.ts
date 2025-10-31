@@ -107,8 +107,12 @@ class ToastManager {
   }
 
   clear() {
-    this.toasts.value.forEach(toast => {
-      this.remove(toast.id)
+    // Create a copy of toast IDs to avoid modifying array during iteration
+    const toastIds = this.toasts.value.map(t => t.id)
+
+    // Remove each toast
+    toastIds.forEach(id => {
+      this.remove(id)
     })
   }
 }
