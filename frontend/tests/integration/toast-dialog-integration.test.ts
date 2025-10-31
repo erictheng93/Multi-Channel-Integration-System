@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
@@ -14,15 +15,28 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 describe('Toast 和 ConfirmDialog 集成测试', () => {
   beforeEach(() => {
-    document.body.innerHTML = ''
+    // DO NOT clear document.body - let composables handle their own DOM cleanup
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Clear toasts and dialogs first
     const { clearToasts } = useToast()
     const { clearDialogs } = useConfirmDialog()
     clearToasts()
     clearDialogs()
-    document.body.innerHTML = ''
+
+    // Wait for composables' setTimeout (300ms) + transitions (200-250ms) to complete
+    await new Promise(resolve => setTimeout(resolve, 600))
+
+    // Final flush to ensure all Vue updates complete
+    await nextTick()
+    await flushPromises()
+
+    // Clear timers
+    vi.clearAllTimers()
+    vi.useRealTimers()
+
+    // DO NOT clear document.body - let composables handle their own DOM cleanup
   })
 
   describe('useToast 集成', () => {
@@ -103,14 +117,19 @@ describe('Toast 和 ConfirmDialog 集成测试', () => {
       // 快进时间
       vi.advanceTimersByTime(1500)
       await nextTick()
-      await new Promise(resolve => setTimeout(resolve, 400))
+      await flushPromises()
+
+      // 快进动画时间
+      vi.advanceTimersByTime(400)
+      await nextTick()
+      await flushPromises()
 
       toast = document.querySelector('.toast-container')
       // Toast 应该已经关闭或正在关闭
       expect(toast === null || toast.classList.contains('toast-leave-to')).toBe(true)
 
-      vi.restoreAllMocks()
-    })
+      vi.useRealTimers()
+    }, 10000)
   })
 
   describe('useConfirmDialog 集成', () => {
@@ -284,20 +303,22 @@ describe('Toast 和 ConfirmDialog 集成测试', () => {
     })
 
     it('应该能够正确处理快速连续的对话框调用', async () => {
-      const { showConfirm } = useConfirmDialog()
+      const { showConfirm, clearDialogs } = useConfirmDialog()
 
-      const promises = []
       for (let i = 0; i < 3; i++) {
-        promises.push(showConfirm({ title: `对话框 ${i}` }))
+        showConfirm({ title: `对话框 ${i}` }).catch(() => {})
       }
 
       await nextTick()
+      await flushPromises()
 
-      // 清理
-      const { clearDialogs } = useConfirmDialog()
+      // 清理 (自动 resolve 所有 promises)
       clearDialogs()
-      await Promise.all(promises.map(p => p.catch(() => {})))
-    })
+
+      await nextTick()
+      await flushPromises()
+      await new Promise(resolve => setTimeout(resolve, 600))
+    }, 10000)
   })
 
   describe('清理功能', () => {
@@ -309,18 +330,24 @@ describe('Toast 和 ConfirmDialog 集成测试', () => {
       showSuccess('Toast 3')
 
       await nextTick()
+      await flushPromises()
 
       let toasts = document.querySelectorAll('.toast-container')
       expect(toasts.length).toBeGreaterThan(0)
 
       clearToasts()
 
-      // 等待清理完成
-      await new Promise(resolve => setTimeout(resolve, 400))
+      // Wait for composable's setTimeout (300ms) + transitions (200-250ms) to complete
+      // Using 700ms to ensure full cleanup
+      await new Promise(resolve => setTimeout(resolve, 700))
+
+      // Final flush to ensure all Vue updates complete
+      await nextTick()
+      await flushPromises()
 
       toasts = document.querySelectorAll('.toast-container')
       expect(toasts.length).toBe(0)
-    })
+    }, 10000)
 
     it('clearDialogs 应该关闭所有对话框', async () => {
       const { showConfirm, clearDialogs } = useConfirmDialog()
@@ -329,12 +356,27 @@ describe('Toast 和 ConfirmDialog 集成测试', () => {
       const promise2 = showConfirm({ title: '对话框 2' })
 
       await nextTick()
+      await flushPromises()
 
+      // clearDialogs will resolve all promises with false
       clearDialogs()
 
+      // Promises should be resolved immediately
       const results = await Promise.all([promise1, promise2])
       expect(results).toEqual([false, false])
-    })
+
+      // Wait for composable's setTimeout (300ms) + transitions (200-250ms) to complete
+      // Using 700ms to ensure full cleanup
+      await new Promise(resolve => setTimeout(resolve, 700))
+
+      // Final flush to ensure all Vue updates complete
+      await nextTick()
+      await flushPromises()
+
+      // Verify cleanup completed
+      const dialogs = document.querySelectorAll('.dialog-overlay')
+      expect(dialogs.length).toBe(0)
+    }, 10000)
   })
 
   describe('性能测试', () => {
@@ -359,9 +401,8 @@ describe('Toast 和 ConfirmDialog 集成测试', () => {
 
       const startTime = performance.now()
 
-      const promises = []
       for (let i = 0; i < 20; i++) {
-        promises.push(showConfirm({ title: `对话框 ${i}` }))
+        showConfirm({ title: `对话框 ${i}` }).catch(() => {})
       }
 
       const endTime = performance.now()
@@ -370,9 +411,12 @@ describe('Toast 和 ConfirmDialog 集成测试', () => {
       // 创建 20 个对话框应该在 500ms 内完成
       expect(duration).toBeLessThan(500)
 
-      // 清理
+      // 清理 (自动 resolve 所有 promises)
       clearDialogs()
-      await Promise.all(promises.map(p => p.catch(() => {})))
-    })
+
+      await nextTick()
+      await flushPromises()
+      await new Promise(resolve => setTimeout(resolve, 600))
+    }, 10000)
   })
 })

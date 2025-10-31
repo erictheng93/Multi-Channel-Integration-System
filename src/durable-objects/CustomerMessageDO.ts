@@ -143,9 +143,24 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       }
 
       try {
-        // TODO: Validate session and get agentId from KV
-        // For now, use sessionId as agentId (simplified)
-        const agentId = sessionId;
+        // Extract userId from JWT token
+        // JWT format: header.payload.signature
+        // Payload contains: { userId, displayName, email, role, ... }
+        let agentId: string;
+        try {
+          const parts = sessionId.split('.');
+          if (parts.length === 3) {
+            // Decode the payload (base64url)
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            agentId = payload.userId || sessionId;
+          } else {
+            // Not a JWT, use as-is (for backward compatibility with direct user ID)
+            agentId = sessionId;
+          }
+        } catch (decodeError) {
+          console.error('⚠️  [CustomerMessageDO] Failed to decode JWT, using sessionId as-is:', decodeError);
+          agentId = sessionId;
+        }
 
         const { content, assets } = await c.req.json();
 
@@ -161,34 +176,50 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         });
 
         const messageId = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
 
         // Store assets in metadata field as JSON
         const metadata = JSON.stringify({
           assets: assets || []
         });
 
-        // Store message in D1 database
-        const db = drizzle(this.env.DB);
-
-        await db.insert(messages).values({
+        // Construct the complete message object with ALL required fields
+        // This prevents Drizzle ORM schema mismatch errors
+        const messageData = {
           id: messageId,
           conversationId: conversationId,
-          senderType: 'agent',
+          senderType: 'agent' as const,
+          customerSenderId: null,
           agentSenderId: agentId,
           content: content,
-          messageType: 'text',
+          messageType: 'text' as const,
+          platformMessageId: null,
+          isRecalled: false,
+          recallDeadline: null,
+          recalledAt: null,
+          isSent: true,
+          sentAt: null,
+          deliveryStatus: 'delivered' as const,
+          replyToMessageId: null,
+          threadId: null,
+          sessionId: null,
+          sessionSequence: 1,
           metadata: metadata,
-          createdAt: new Date().toISOString()
-        });
+          createdAt: createdAt
+        };
 
-        // Fetch the created message
-        const [createdMessage] = await db
-          .select()
-          .from(messages)
-          .where(eq(messages.id, messageId))
-          .limit(1);
+        // Store message in D1 database
+        const db = drizzle(this.env.DB);
+        await db.insert(messages).values(messageData);
 
         console.log(`✅ [CustomerMessageDO] Message created: ${messageId}`);
+
+        // Use the inserted data directly for broadcasting
+        // This avoids D1 eventual consistency issues
+        const createdMessage = messageData;
+
+        console.log(`📋 [CustomerMessageDO] Using direct message data for broadcast`);
+
 
         // Notify CustomerConversationDO to broadcast the message
         // This triggers real-time delivery to all connected clients
@@ -196,15 +227,34 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           const conversationDOId = this.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
           const conversationDO = this.env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
 
-          await (conversationDO as any).notifyNewMessage(conversationId, createdMessage);
+          console.log(`📡 [CustomerMessageDO] Preparing to notify CustomerConversationDO`);
 
-          console.log(`📡 [CustomerMessageDO] Notified CustomerConversationDO for broadcast`);
+          // Use fetch() to send notification to CustomerConversationDO
+          // Cannot directly call methods on other Durable Objects!
+          const notifyRequest = new Request('https://fake-host/notify-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId,
+              message: createdMessage
+            })
+          });
+
+          const response = await conversationDO.fetch(notifyRequest);
+
+          if (response.ok) {
+            console.log(`✅ [CustomerMessageDO] Notified CustomerConversationDO for broadcast`);
+          } else {
+            const errorText = await response.text();
+            console.error(`⚠️  [CustomerMessageDO] CustomerConversationDO returned error:`, errorText);
+          }
         } catch (error) {
           console.error('⚠️  [CustomerMessageDO] Failed to notify CustomerConversationDO:', error);
           // Message is still stored, just not broadcasted in real-time
           // Clients will receive it on next fetch
         }
 
+        console.log(`📤 [CustomerMessageDO] Returning success response`);
         return c.json({
           success: true,
           message: createdMessage

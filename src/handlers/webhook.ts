@@ -9,7 +9,6 @@ import { drizzle } from 'drizzle-orm/d1';
 import { customers, conversations, messages, fileAttachments } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
-import { realtime } from '@modules/realtime';
 import type { 
   Bindings, 
   LineWebhookBody, 
@@ -562,36 +561,60 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         throw new Error(`Failed to create message: ${messageError}`);
       }
 
-    // 🚀 事件驅動推送：立即推送 LINE 新消息事件到隊列
+    // 🚀 WebSocket Real-time Broadcast: Notify CustomerConversationDO
+    // This triggers instant UI updates for all connected agents viewing this conversation
     try {
-      await realtime.createEvent(
-        'message_created',
-        {
-          messageId: messageId,
-          conversationId: conversation!.id,  // ✅ UUID 字符串，不需要 parseInt
-          content: messageContent,
-          messageType: messageType as 'text' | 'image' | 'file',
-          senderType: 'customer',
-          senderId: user.id,
-          senderName: user.displayName || `Customer ${user.id}`,
-          customerName: user.displayName || 'Unknown',
-          agentName: 'System',
-          metadata: mediaData ? (mediaData as Record<string, unknown>) : {},
-          createdAt: timestamp,
-          isRead: false
-        },
-        {
-          conversationId: conversation!.id,  // ✅ UUID 字符串，不需要 parseInt
-          userIds: conversation!.assignedUserId ? [conversation!.assignedUserId] : [],  // ✅ 字符串数组，不需要 parseInt
-          broadcast: !conversation!.assignedUserId // 如果沒有分配用戶，則廣播給所有在線用戶
-        },
-        'urgent', // LINE 客戶消息是最高優先級
-        'webhook'
-      );
-      console.log(`🚀 [LINE Webhook] Event queued for message ${messageId} from LINE user ${user.id}`);
-    } catch (eventError) {
-      console.error('❌ [LINE Webhook] Failed to queue event:', eventError);
-      // 不影響 webhook 處理的成功，只記錄錯誤
+      // Construct complete message object for broadcasting
+      const broadcastMessage = {
+        id: messageId,
+        conversationId: conversation!.id,
+        senderType: 'customer' as const,
+        customerSenderId: user.id,
+        agentSenderId: null,
+        content: messageContent,
+        messageType: messageType,
+        platformMessageId: message.id,
+        isRecalled: false,
+        recallDeadline: null,
+        recalledAt: null,
+        isSent: true,
+        sentAt: null,
+        deliveryStatus: 'delivered' as const,
+        replyToMessageId: null,
+        threadId: null,
+        sessionId: null,
+        sessionSequence: 1,
+        metadata: mediaData ? JSON.stringify(mediaData) : null,
+        createdAt: timestamp
+      };
+
+      // Get CustomerConversationDO instance
+      const conversationDOId = env.CUSTOMER_CONVERSATION_DO.idFromName(conversation!.id);
+      const conversationDO = env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
+
+      console.log(`📡 [LINE Webhook] Preparing to notify CustomerConversationDO for conversation: ${conversation!.id}`);
+
+      // Use fetch() to send notification to CustomerConversationDO
+      const notifyRequest = new Request('https://fake-host/notify-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: conversation!.id,
+          message: broadcastMessage
+        })
+      });
+
+      const response = await conversationDO.fetch(notifyRequest);
+
+      if (response.ok) {
+        console.log(`✅ [LINE Webhook] Notified CustomerConversationDO for WebSocket broadcast`);
+      } else {
+        const errorText = await response.text();
+        console.error(`⚠️ [LINE Webhook] CustomerConversationDO returned error:`, errorText);
+      }
+    } catch (broadcastError) {
+      console.error('❌ [LINE Webhook] Failed to broadcast via WebSocket:', broadcastError);
+      // Don't fail webhook processing - message is saved to database
     }
 
     // 記錄活動以觸發 SSE 更新

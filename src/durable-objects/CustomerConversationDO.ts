@@ -34,6 +34,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Handle incoming HTTP requests
    * Routes:
    * - /ws - WebSocket upgrade endpoint
+   * - /notify-message - Notify about new message (for broadcasting)
    */
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -49,6 +50,30 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         return this.clientConnected(sessionId, conversationId);
       }
       return new Response('Expected WebSocket', { status: 400 });
+    }
+
+    // Notify about new message endpoint (called by CustomerMessageDO)
+    if (url.pathname === '/notify-message' && request.method === 'POST') {
+      try {
+        const { conversationId, message } = await request.json() as { conversationId: string; message: any };
+
+        console.log(`📬 [CustomerConversationDO] Received notify-message request:`, {
+          conversationId,
+          messageId: message?.id
+        });
+
+        await this.notifyNewMessage(conversationId, message);
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('❌ [CustomerConversationDO] Error handling notify-message:', error);
+        return new Response(JSON.stringify({ success: false, error: String(error) }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     return new Response('Not Found', { status: 404 });

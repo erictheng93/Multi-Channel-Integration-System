@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type { VueWrapper} from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 import type { Message } from '@/types'
 
 describe('MessageBubble - Timestamp Display', () => {
   let mockMessage: Message
+  let wrapper: VueWrapper | null = null
 
   beforeEach(() => {
     // 基础消息模板
@@ -20,6 +22,23 @@ describe('MessageBubble - Timestamp Display', () => {
     }
   })
 
+  afterEach(async () => {
+    // Wait for all pending promises to resolve
+    await flushPromises()
+
+    // Unmount the wrapper if it exists
+    if (wrapper) {
+      wrapper.unmount()
+      wrapper = null
+    }
+
+    // Clear all timers
+    vi.clearAllTimers()
+
+    // Clean up DOM
+    document.body.innerHTML = ''
+  })
+
   describe('智能时间戳显示', () => {
     it('今天的消息应该只显示时分 (HH:MM)', () => {
       // 设置为今天的消息 (2小时前)
@@ -27,7 +46,7 @@ describe('MessageBubble - Timestamp Display', () => {
       today.setHours(today.getHours() - 2)
       mockMessage.timestamp = today.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -51,7 +70,7 @@ describe('MessageBubble - Timestamp Display', () => {
       yesterday.setHours(15, 30, 0, 0)
       mockMessage.timestamp = yesterday.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -74,7 +93,7 @@ describe('MessageBubble - Timestamp Display', () => {
       lastWeek.setHours(10, 15, 0, 0)
       mockMessage.timestamp = lastWeek.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -97,7 +116,7 @@ describe('MessageBubble - Timestamp Display', () => {
       lastMonth.setHours(9, 45, 0, 0)
       mockMessage.timestamp = lastMonth.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -118,7 +137,7 @@ describe('MessageBubble - Timestamp Display', () => {
     it('应该正确处理 ISO 字符串格式', () => {
       mockMessage.timestamp = '2025-01-27T15:30:00.000Z'
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -135,7 +154,7 @@ describe('MessageBubble - Timestamp Display', () => {
       yesterday.setDate(yesterday.getDate() - 1)
       mockMessage.timestamp = yesterday.getTime()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -153,7 +172,7 @@ describe('MessageBubble - Timestamp Display', () => {
       const today = new Date()
       mockMessage.timestamp = today
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -176,7 +195,7 @@ describe('MessageBubble - Timestamp Display', () => {
         createdAt: new Date().toISOString()
       }
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: messageWithoutTimestamp as Message,
           delivered: true
@@ -195,7 +214,7 @@ describe('MessageBubble - Timestamp Display', () => {
       yesterday.setDate(yesterday.getDate() - 1)
       mockMessage.timestamp = yesterday.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -218,7 +237,7 @@ describe('MessageBubble - Timestamp Display', () => {
       midnight.setHours(0, 0, 0, 0)
       mockMessage.timestamp = midnight.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -234,7 +253,7 @@ describe('MessageBubble - Timestamp Display', () => {
       lateNight.setHours(23, 59, 0, 0)
       mockMessage.timestamp = lateNight.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true
@@ -250,7 +269,7 @@ describe('MessageBubble - Timestamp Display', () => {
       lastYear.setFullYear(lastYear.getFullYear() - 1)
       mockMessage.timestamp = lastYear.toISOString()
 
-      const wrapper = mount(MessageBubble, {
+      wrapper = mount(MessageBubble, {
         props: {
           message: mockMessage,
           delivered: true

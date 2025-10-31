@@ -249,13 +249,13 @@ describe('Conversations API', () => {
       const conversationId = 'conv-123'
       const agentId = 'agent-456'
       const mockResponse = { success: true }
-      mockPut.mockResolvedValue(mockResponse)
-      
+      mockPost.mockResolvedValue(mockResponse)
+
       const result = await conversationApi.assignConversation(conversationId, agentId)
-      
-      expect(mockPut).toHaveBeenCalledWith(
+
+      expect(mockPost).toHaveBeenCalledWith(
         `/conversations/${conversationId}/assign`,
-        { agentId }
+        { userId: agentId }
       )
       expect(result).toEqual(mockResponse)
     })
@@ -263,23 +263,23 @@ describe('Conversations API', () => {
     it('should reject empty IDs for assignment', async () => {
       const result1 = await conversationApi.assignConversation('', 'agent-123')
       const result2 = await conversationApi.assignConversation('conv-123', '')
-      
-      expect(result1).toEqual({ success: false, error: '對話 ID 和客服 ID 不能為空' })
-      expect(result2).toEqual({ success: false, error: '對話 ID 和客服 ID 不能為空' })
-      expect(mockPut).not.toHaveBeenCalled()
+
+      expect(result1).toEqual({ success: false, error: '對話 ID 不能為空' })
+      expect(result2).toEqual({ success: false, error: '請指定團隊或客服人員' })
+      expect(mockPost).not.toHaveBeenCalled()
     })
 
     it('should use alias assign method', async () => {
       const conversationId = 'conv-123'
       const agentId = 'agent-456'
       const mockResponse = { success: true }
-      mockPut.mockResolvedValue(mockResponse)
-      
+      mockPost.mockResolvedValue(mockResponse)
+
       const result = await conversationApi.assign(conversationId, agentId)
-      
-      expect(mockPut).toHaveBeenCalledWith(
+
+      expect(mockPost).toHaveBeenCalledWith(
         `/conversations/${conversationId}/assign`,
-        { agentId }
+        { userId: agentId }
       )
       expect(result).toEqual(mockResponse)
     })

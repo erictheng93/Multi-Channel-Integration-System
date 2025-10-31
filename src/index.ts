@@ -271,6 +271,75 @@ console.log('   • POST /api/cors/cleanup (Admin only - internal auth check)');
 console.log('   • GET /api/cors/health (Public - no auth required)');
 console.log('   • GET /api/cors/config (Public - no auth required)');
 
+// =================================================================================
+// ⚠️  CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
+// =================================================================================
+//
+// LINE and Facebook webhooks MUST be registered BEFORE the unified route system
+// to prevent 401 authentication errors from catch-all routes.
+//
+// Why this matters:
+// - Webhooks use signature verification (X-Line-Signature, X-Hub-Signature)
+// - They do NOT use JWT authentication
+// - If registered after unified system, catch-all routes intercept them
+// - Results in 401 "Missing or invalid authorization header" errors
+//
+// Reference: Same fix applied to CORS endpoints (see lines 218-260)
+// =================================================================================
+
+import { webhookHandler } from './handlers/webhook';
+import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from './handlers/webhook-multitenant';
+
+// ==================== Multi-Tenant LINE Webhook (New) ====================
+// Route: POST /api/webhooks/line/:teamId/:token
+// Supports per-team channel configurations
+app.post('/api/webhooks/line/:teamId/:token', handleLineWebhookMultiTenant);
+
+console.log('✅ Multi-Tenant LINE Webhook endpoint PRE-REGISTERED (before unified route system):');
+console.log('   • POST /api/webhooks/line/:teamId/:token (Team-specific webhook)');
+
+// ==================== Legacy LINE Webhook (Backward Compatibility) ====================
+// Route: POST /api/webhooks/line (no parameters)
+// Uses global LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from env
+app.post('/api/webhook', handleLineWebhookLegacy);
+app.post('/api/webhooks/line', handleLineWebhookLegacy);
+
+// GET handlers for webhook verification and browser access
+app.get('/api/webhook', (c) => {
+  return c.json({
+    success: true,
+    message: 'LINE Webhook endpoint is ready',
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/webhook',
+    method: 'POST'
+  });
+});
+
+app.get('/api/webhooks/line', (c) => {
+  return c.json({
+    success: true,
+    message: 'LINE Webhook endpoint is ready',
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/webhooks/line',
+    method: 'POST'
+  });
+});
+
+console.log('⚠️  Legacy LINE Webhook endpoints PRE-REGISTERED (backward compatibility):');
+console.log('   • POST /api/webhook (message processing)');
+console.log('   • GET /api/webhook (verification)');
+console.log('   • POST /api/webhooks/line (message processing)');
+console.log('   • GET /api/webhooks/line (verification)');
+console.log('   Note: These use global credentials. Consider migrating to multi-tenant webhook.');
+
+// Facebook Webhook 路由
+app.all('/api/webhooks/facebook', webhookHandler.facebook);
+
+console.log('✅ Facebook Webhook endpoint PRE-REGISTERED:');
+console.log('   • GET/POST /api/webhooks/facebook');
+
+// Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
+
 // Register P1 Optimization: WebSocket Dashboard (requires auth)
 // 🔒 添加 JWT 認證中間件保護所有 Dashboard 端點
 app.use('/api/websocket/dashboard/*', jwtAuth);
@@ -331,6 +400,11 @@ app.get('/api/customer-ws', async (c) => {
 
 // Message operations endpoint (GET messages, POST new message)
 app.all('/api/customer-conversations/:id/messages', async (c) => {
+  // CRITICAL: Read body FIRST before any other c.req operations that might consume it
+  // This prevents "body already consumed" errors when forwarding to Durable Object
+  const requestMethod = c.req.method;
+  const bodyText = requestMethod === 'POST' ? await c.req.text() : undefined;
+
   const conversationId = c.req.param('id');
 
   if (!conversationId) {
@@ -340,28 +414,36 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
     }, 400);
   }
 
-  console.log(`📨 [Customer Messages] ${c.req.method} request for conversation: ${conversationId}`);
+  console.log(`📨 [Customer Messages] ${requestMethod} request for conversation: ${conversationId}`);
 
   try {
     // Get CustomerMessageDO instance by conversationId
     const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
     const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
 
-    // Create a new request with conversation ID in header
+    // Create a new request with conversation ID and session ID in headers
     const headers = new Headers(c.req.raw.headers);
     headers.set('X-Conversation-Id', conversationId);
 
-    const modifiedRequest = new Request(c.req.raw.url, {
-      method: c.req.raw.method,
-      headers: headers,
-      body: c.req.method === 'POST' ? c.req.raw.body : undefined
-    });
+    // Pass through session ID from original request
+    const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id');
+    if (sessionId) {
+      headers.set('X-Session-Id', sessionId);
+    }
 
-    // Modify URL to use DO internal path
-    const url = new URL(modifiedRequest.url);
+    // Create the target URL for CustomerMessageDO
+    const url = new URL(c.req.url);
     url.pathname = '/messages';
 
-    return doStub.fetch(new Request(url.toString(), modifiedRequest));
+    // Create request with buffered body text
+    const doRequest = new Request(url.toString(), {
+      method: requestMethod,
+      headers: headers,
+      body: bodyText
+    });
+
+    console.log(`📤 [Proxy] Forwarding to CustomerMessageDO: ${requestMethod} ${conversationId}`);
+    return doStub.fetch(doRequest);
   } catch (error) {
     console.error('❌ [Customer Messages] Operation error:', error);
     return c.json({
@@ -389,14 +471,23 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
     const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
     const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
 
-    // Create a new request with conversation ID in header
+    // Create a new request with conversation ID and session ID in headers
     const headers = new Headers(c.req.raw.headers);
     headers.set('X-Conversation-Id', conversationId);
 
-    const modifiedRequest = new Request(c.req.raw.url, {
+    // Pass through session ID from original request
+    const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id');
+    if (sessionId) {
+      headers.set('X-Session-Id', sessionId);
+    }
+
+    // Clone the request to avoid body consumption issues
+    const clonedRequest = c.req.raw.clone();
+
+    const modifiedRequest = new Request(clonedRequest.url, {
       method: 'POST',
       headers: headers,
-      body: c.req.raw.body
+      body: clonedRequest.body
     });
 
     // Modify URL to use DO internal path
@@ -960,33 +1051,9 @@ if (securityConfig.debug.enabled) {
 }
 
 // ==================== Webhook 處理 ====================
-
-import { webhookHandler } from './handlers/webhook';
-import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from './handlers/webhook-multitenant';
-
-// ==================== Multi-Tenant LINE Webhook (New) ====================
-// Route: POST /api/webhooks/line/:teamId/:token
-// Supports per-team channel configurations
-app.post('/api/webhooks/line/:teamId/:token', handleLineWebhookMultiTenant);
-
-console.log('✅ Multi-Tenant LINE Webhook endpoint registered:');
-console.log('   • POST /api/webhooks/line/:teamId/:token (Team-specific webhook)');
-
-// ==================== Legacy LINE Webhook (Backward Compatibility) ====================
-// Route: POST /api/webhooks/line (no parameters)
-// Uses global LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from env
-app.post('/api/webhook', handleLineWebhookLegacy);
-app.post('/api/webhooks/line', handleLineWebhookLegacy);
-
-console.log('⚠️  Legacy LINE Webhook endpoints (backward compatibility):');
-console.log('   • POST /api/webhook');
-console.log('   • POST /api/webhooks/line');
-console.log('   Note: These use global credentials. Consider migrating to multi-tenant webhook.');
-
-// Facebook Webhook 路由
-app.all('/api/webhooks/facebook', webhookHandler.facebook);
-
-// Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
+// MOVED: Webhook routes now registered BEFORE unified route system (Priority 1)
+// See lines ~273-310 for webhook registration
+// This prevents 401 errors from catch-all routes in unified system
 
 // ==================== 錯誤處理 ====================
 
