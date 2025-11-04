@@ -262,23 +262,22 @@ conversations.post('/:id/mark-read', async (c) => {
 
 // 分配對話 - 僅管理員可執行
 conversations.post('/:id/assign', requireAdmin(), async (c) => {
-  const drizzleDb = drizzle(c.env.DB);
   try {
     const conversationId = c.req.param('id');
     const agent = c.get('agent');
     const { teamId, userId, reason } = await c.req.json();
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
 
     // 管理員權限已由 requireAdmin() 中間件確認，移除冗餘檢查
 
-    // 更新對話指派
-    await drizzleDb.update(conversationTable)
-      .set({
-        assignedTeamId: teamId || null,
-        assignedUserId: userId || null,
-        status: 'assigned',
-        updatedAt: sql`datetime('now')`
-      })
-      .where(eq(conversationTable.id, conversationId));
+    // ✅ 使用 DatabaseService.updateConversation 方法，自動處理緩存清除
+    await dbService.updateConversation(conversationId, {
+      assignedTeamId: teamId || null,
+      assignedUserId: userId || null,
+      status: 'assigned'
+    });
 
     return c.json({
       success: true,
