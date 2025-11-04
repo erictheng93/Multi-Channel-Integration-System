@@ -93,7 +93,7 @@ export const conversations = sqliteTable('conversations', {
   customerId: integer('customer_id').notNull().references(() => customers.id),
   assignedTeamId: integer('assigned_team_id').references(() => teams.id),
   assignedUserId: text('assigned_user_id').references(() => agents.id),
-  status: text('status').notNull().default('active'), // 'active', 'pending', 'closed'
+  status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'closed'
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
