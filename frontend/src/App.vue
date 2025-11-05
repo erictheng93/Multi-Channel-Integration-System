@@ -18,6 +18,8 @@ import { useActivityTracker } from '@/composables/useActivityTracker'
 import { useTokenRefresh } from '@/composables/useTokenRefresh'
 import { useAccountStatusMonitor } from '@/composables/useAccountStatusMonitor'
 import AccountDisabledModal from '@/components/ui/AccountDisabledModal.vue'
+import { preloadService } from '@/services/preloadService'
+import { tagCacheService } from '@/services/tagCacheService'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -44,15 +46,43 @@ watch(() => route.path, (newPath, oldPath) => {
   console.log('🔄 Route key updated:', routeKey.value)
 }, { immediate: true })
 
-onMounted(() => {
+onMounted(async () => {
   console.log('🚀 App.vue mounted')
-  
+
   // ✅ 優化：智能初始化認證狀態
   if (authStore.token) {
     // 使用統一的會話初始化邏輯，避免重複 API 請求
     authStore.initializeSession()
   }
-  
+
+  // ⚡ 優化：預加載關鍵數據（團隊、標籤等）
+  // 在背景預先載入常用數據，減少後續操作延遲
+  console.log('⚡ [App.vue] Initializing preload services...')
+  const preloadStart = performance.now()
+
+  await Promise.allSettled([
+    preloadService.init(),
+    tagCacheService.init()
+  ]).then(results => {
+    const duration = performance.now() - preloadStart
+    const successCount = results.filter(r => r.status === 'fulfilled').length
+    console.log(`✅ [App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
+
+    results.forEach((result, index) => {
+      const serviceName = index === 0 ? 'preloadService' : 'tagCacheService'
+      if (result.status === 'rejected') {
+        console.error(`❌ [App.vue] ${serviceName} initialization failed:`, result.reason)
+      }
+    })
+  })
+
+  // 🧹 設置定期清理過期緩存（每5分鐘）
+  setInterval(() => {
+    console.log('🧹 [App.vue] Running periodic cache cleanup...')
+    preloadService.cleanup()
+    tagCacheService.cleanup()
+  }, 5 * 60 * 1000)
+
   // Start activity tracking for session extension
   if (authStore.isAuthenticated) {
     startTracking()

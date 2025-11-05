@@ -1,264 +1,118 @@
-# Documentation Index
-
-本文檔提供專案文檔的完整索引和導航指南。
-
-## 文檔架構概覽
-
-```
-docs/
- analytics/ # 分析功能相關文檔
- api/ # API 參考文檔
- architecture/ # 系統架構設計文檔
- components/ # 前端元件文檔
- database/ # 資料庫相關文檔
- deployment/ # 部署相關文檔
- enterprise/ # 企業級功能文檔
- features/ # 功能特性文檔
- message-search/ # 訊息搜尋功能文檔
- fixes/ # 修復報告
- guides/ # 操作指南
- implementation/ # 實作報告
- migration/ # 遷移指南
- monitoring/ # 監控相關文檔
- optimization/ # 效能優化文檔
- performance/ # 效能測試報告
- reports/ # 各類報告
- analytics/ # 分析功能報告
- deployment/ # 部署報告
- enhancement/ # 功能增強報告
- migration/ # 遷移報告
- modules/ # 模組報告
- monitoring/ # 監控報告
- verification/ # 驗證報告
- websocket/ # WebSocket 相關報告
- standards/ # 編碼標準和規範
- testing/ # 測試文檔
- troubleshooting/ # 故障排除指南
-```
-
-## 核心文檔
-
-### 專案概覽
-- [README.md](../README.md) - 專案主要說明文件
-- [CLAUDE.md](../CLAUDE.md) - Claude Code 開發指南
-- [CURRENT_STATUS.md](./CURRENT_STATUS.md) - 當前專案狀態
-- [WEB_INSTALLER_RELEASE_NOTES.md](../WEB_INSTALLER_RELEASE_NOTES.md) - Web Installer 發佈說明 (NEW)
-
-### 需求與規格
-- [BRD.md](./BRD.md) / [BRD_TW.md](./BRD_TW.md) - 業務需求文件
-- [FRS.md](./FRS.md) / [FRS_TW.md](./FRS_TW.md) - 功能需求規格
-- [SRS.md](./SRS.md) / [SRS_TW.md](./SRS_TW.md) - 軟體需求規格
-- [NFR.md](./NFR.md) / [NFR_TW.md](./NFR_TW.md) - 非功能性需求
-
-### 系統架構
-- [architecture/WEBSOCKET_FINAL_ARCHITECTURE.md](./architecture/WEBSOCKET_FINAL_ARCHITECTURE.md) - WebSocket 最終架構
-- [architecture/ROUTE_REGISTRATION_ORDER.md](./architecture/ROUTE_REGISTRATION_ORDER.md) - 路由註冊順序指南
-- [architecture/MODULE_DEPENDENCY_DIAGRAM.md](./architecture/MODULE_DEPENDENCY_DIAGRAM.md) - 模組依賴關係圖
-- [architecture/MULTI_TENANT_ARCHITECTURE_EVALUATION.md](./architecture/MULTI_TENANT_ARCHITECTURE_EVALUATION.md) - 多租戶架構評估
-
-## 開發指南
-
-### 快速開始
-- [guides/QUICK_START.md](./guides/QUICK_START.md) - 快速開始指南
-- [guides/SETUP_GUIDE.md](./guides/SETUP_GUIDE.md) - 環境設定指南
-- [guides/LOCAL_DEVELOPMENT_SETUP.md](./guides/LOCAL_DEVELOPMENT_SETUP.md) - 本地開發設定
-
-### 部署指南
-- [guides/DEPLOYMENT_GUIDE.md](./guides/DEPLOYMENT_GUIDE.md) - 完整部署指南
-- [guides/CLOUDFLARE_PAGES_DEPLOYMENT.md](./guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) - Cloudflare Pages 部署
-- [deployment/WEBSOCKET_MIGRATION_COMPLETE.md](./deployment/WEBSOCKET_MIGRATION_COMPLETE.md) - WebSocket 遷移完成報告
-- [deployment/WEB_INSTALLER_DOCUMENTATION.md](./deployment/WEB_INSTALLER_DOCUMENTATION.md) - Web Installer 完整文檔 (NEW)
-
-### API 文檔
-- [api/api-endpoints.md](./api/api-endpoints.md) - API 端點總覽
-- [api/MESSAGING_API_REFERENCE.md](./api/MESSAGING_API_REFERENCE.md) - 訊息 API 參考
-- [api/MODULAR_API_REFERENCE.md](./api/MODULAR_API_REFERENCE.md) - 模組化 API 參考
-
-## 功能文檔
-
-### 核心功能
-- [DELAYED_MESSAGING_GUIDE.md](./DELAYED_MESSAGING_GUIDE.md) - 延遲訊息功能指南
-- [QUEUE_MANAGEMENT_GUIDE.md](./QUEUE_MANAGEMENT_GUIDE.md) - 佇列管理指南
-- [CORS_CONFIGURATION_GUIDE.md](./CORS_CONFIGURATION_GUIDE.md) - CORS 配置指南
-- [TAG_SYSTEM_IMPLEMENTATION.md](./TAG_SYSTEM_IMPLEMENTATION.md) - 標籤系統實作
-
-### 訊息搜尋
-- [features/message-search/MESSAGE_SEARCH_README.md](./features/message-search/MESSAGE_SEARCH_README.md) - 訊息搜尋功能總覽
-- [features/message-search/MESSAGE_SEARCH_API_REFERENCE.md](./features/message-search/MESSAGE_SEARCH_API_REFERENCE.md) - 訊息搜尋 API
-- [features/message-search/MESSAGE_SEARCH_USER_GUIDE.md](./features/message-search/MESSAGE_SEARCH_USER_GUIDE.md) - 訊息搜尋使用指南
-
-### 企業功能
-- [enterprise/ENTERPRISE_ROLES_SYSTEM.md](./enterprise/ENTERPRISE_ROLES_SYSTEM.md) - 企業角色系統
-- [enterprise/RBAC_DESIGN.md](./enterprise/RBAC_DESIGN.md) - 角色權限設計
-- [enterprise/AUDIT_LOGGING_DESIGN.md](./enterprise/AUDIT_LOGGING_DESIGN.md) - 審計日誌設計
-
-## 測試文檔
-
-### 測試指南
-- [testing/testing-guide.md](./testing/testing-guide.md) - 測試總指南
-- [testing/ANALYTICS_TESTING_STRATEGY.md](./testing/ANALYTICS_TESTING_STRATEGY.md) - 分析功能測試策略
-- [../tests/README.md](../tests/README.md) - 測試套件說明
-
-### 測試報告
-- [testing/FINAL_TEST_REPORT.md](./testing/FINAL_TEST_REPORT.md) - 最終測試報告
-- [testing/FRONTEND_TEST_COMPLETION_REPORT.md](./testing/FRONTEND_TEST_COMPLETION_REPORT.md) - 前端測試完成報告
+# 📚 Multi-Channel Integration System - 文檔索引
 
-## 效能與優化
+> **最後更新**: 2025-11-05  
+> **專案狀態**: 生產就緒 (Production Ready)
 
-### 效能文檔
-- [PERFORMANCE_OPTIMIZATION_GUIDE.md](./PERFORMANCE_OPTIMIZATION_GUIDE.md) - 效能優化指南
-- [performance/LOAD_TESTING_GUIDE.md](./performance/LOAD_TESTING_GUIDE.md) - 負載測試指南
-- [performance/performance_baseline_report.md](./performance/performance_baseline_report.md) - 效能基準報告
+本文檔提供完整的文檔導航，幫助開發者快速找到所需資源。
 
-### 優化報告
-- [optimization/FRONTEND_STATE_MANAGEMENT_OPTIMIZATION.md](./optimization/FRONTEND_STATE_MANAGEMENT_OPTIMIZATION.md) - 前端狀態管理優化
-- [optimization/OPTIMIZED_CHAT_EXPERIENCE.md](./optimization/OPTIMIZED_CHAT_EXPERIENCE.md) - 聊天體驗優化
+## 📖 核心文檔（根目錄）
 
-## 故障排除
+| 文檔 | 說明 |
+|------|------|
+| [README.md](../README.md) | 專案概述和快速入門 |
+| [CLAUDE.md](../CLAUDE.md) | Claude AI 開發指引（完整系統說明） |
+| [GEMINI.md](../GEMINI.md) | Gemini AI 開發指引 |
+| [CHANGELOG.md](../CHANGELOG.md) | 專案變更日誌 |
 
-### 故障排除指南
-- [troubleshooting/SSE_CONNECTION_ISSUE_ANALYSIS.md](./troubleshooting/SSE_CONNECTION_ISSUE_ANALYSIS.md) - SSE 連線問題分析
-- [troubleshooting/TYPESCRIPT_ERRORS_RESOLUTION_COMPLETE.md](./troubleshooting/TYPESCRIPT_ERRORS_RESOLUTION_COMPLETE.md) - TypeScript 錯誤解決方案
-- [troubleshooting/debug-line-webhook.md](./troubleshooting/debug-line-webhook.md) - LINE Webhook 除錯
+---
 
-## 遷移報告
+## 🏗️ 架構文檔 (architecture/)
 
-### WebSocket 遷移
-- [reports/websocket/WEBSOCKET_DEPLOYMENT_REPORT.md](./reports/websocket/WEBSOCKET_DEPLOYMENT_REPORT.md) - WebSocket 部署報告
-- [reports/websocket/WEBSOCKET_IMPLEMENTATION_SUMMARY.md](./reports/websocket/WEBSOCKET_IMPLEMENTATION_SUMMARY.md) - WebSocket 實作總結
-- [reports/websocket/WEBSOCKET_FINAL_VERIFICATION.md](./reports/websocket/WEBSOCKET_FINAL_VERIFICATION.md) - WebSocket 最終驗證
+| 文檔 | 說明 |
+|------|------|
+| [PERMISSION_MATRIX.md](architecture/PERMISSION_MATRIX.md) | 系統權限對照表（Admin/Agent 2-tier 架構） |
+| [WEBSOCKET_FINAL_ARCHITECTURE.md](architecture/WEBSOCKET_FINAL_ARCHITECTURE.md) | WebSocket 最終架構設計 |
+| [ARCHITECTURE_IMPROVEMENT_PLAN.md](architecture/ARCHITECTURE_IMPROVEMENT_PLAN.md) | 架構改進計劃 |
 
-### 系統遷移
-- [reports/migration/MIGRATION_TO_DURABLE_OBJECTS_COMPLETE.md](./reports/migration/MIGRATION_TO_DURABLE_OBJECTS_COMPLETE.md) - Durable Objects 遷移完成
-- [reports/migration/ERROR_HANDLING_MIGRATION_REPORT.md](./reports/migration/ERROR_HANDLING_MIGRATION_REPORT.md) - 錯誤處理遷移報告
-- [migration/MIGRATION_HISTORY.md](./migration/MIGRATION_HISTORY.md) - 遷移歷史記錄
+---
 
-## 監控與分析
+## 🔌 API 文檔 (api/)
 
-### 監控文檔
-- [API_MONITORING.md](./API_MONITORING.md) - API 監控
-- [monitoring/API_MONITOR_IMPROVEMENTS.md](./monitoring/API_MONITOR_IMPROVEMENTS.md) - API 監控改進
-- [reports/monitoring/SHORT_TERM_MONITORING_REPORT.md](./reports/monitoring/SHORT_TERM_MONITORING_REPORT.md) - 短期監控報告
+| 文檔 | 說明 |
+|------|------|
+| [MESSAGING_API_REFERENCE.md](api/MESSAGING_API_REFERENCE.md) | 完整訊息系統 API 參考（17 個端點） |
+| [MODULAR_API_REFERENCE.md](api/MODULAR_API_REFERENCE.md) | 模組化 API 參考 |
+| [api-endpoints.md](api/api-endpoints.md) | API 端點總覽 |
 
-### 分析功能
-- [analytics/COMPARISON_QUICK_START.md](./analytics/COMPARISON_QUICK_START.md) - 比較分析快速開始
-- [analytics/PERIOD_COMPARISON_INTEGRATION_GUIDE.md](./analytics/PERIOD_COMPARISON_INTEGRATION_GUIDE.md) - 期間比較整合指南
+---
 
-## 模組文檔
+## 🧩 組件分析 (components/)
 
-### 後端模組
-- [../src/modules/activities/README.md](../src/modules/activities/README.md) - 活動模組
-- [../src/modules/analytics/README.md](../src/modules/analytics/README.md) - 分析模組
-- [../src/modules/auth/README.md](../src/modules/auth/README.md) - 認證模組
-- [../src/modules/collaboration/README.md](../src/modules/collaboration/README.md) - 協作模組
-- [../src/modules/realtime/README.md](../src/modules/realtime/README.md) - 即時通訊模組
+| 文檔 | 說明 |
+|------|------|
+| [ConversationCard.analysis.md](components/ConversationCard.analysis.md) | ConversationCard 組件分析報告 |
 
-### 模組報告
-- [reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md](./reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md) - 訊息模組增強報告
-- [reports/modules/FILE_MANAGEMENT_MODULE_REPORT.md](./reports/modules/FILE_MANAGEMENT_MODULE_REPORT.md) - 檔案管理模組報告
+---
 
-## 編碼標準
+## 🚀 部署文檔 (deployment/)
 
-- [standards/PATH_ALIAS_GUIDE.md](./standards/PATH_ALIAS_GUIDE.md) - 路徑別名指南
-- [standards/MODULE_EXPORT_STANDARD.md](./standards/MODULE_EXPORT_STANDARD.md) - 模組匯出標準
+| 文檔 | 說明 |
+|------|------|
+| [TERRAFORM_DEPLOYMENT_READINESS_REPORT.md](deployment/TERRAFORM_DEPLOYMENT_READINESS_REPORT.md) | Terraform 部署就緒報告 |
 
-## 使用手冊
+---
 
-- [USER_GUIDE.md](./USER_GUIDE.md) - 使用者指南
-- [reports/USER_MANUAL.md](./reports/USER_MANUAL.md) - 使用者手冊
-- [reports/DEVELOPER_GUIDE.md](./reports/DEVELOPER_GUIDE.md) - 開發者指南
+## 📊 報告文檔 (reports/)
 
-## 系統報告
+### 功能開發報告 (reports/features/)
+| 文檔 | 說明 |
+|------|------|
+| [CHANNEL_MANAGEMENT_COMPLETE_GUIDE.md](reports/features/CHANNEL_MANAGEMENT_COMPLETE_GUIDE.md) | 頻道管理完整指南 |
+| [CHANNEL_MANAGEMENT_PHASE1_REPORT.md](reports/features/CHANNEL_MANAGEMENT_PHASE1_REPORT.md) | 頻道管理階段 1 報告 |
+| [CHANNEL_MANAGEMENT_PHASE2_COMPLETE.md](reports/features/CHANNEL_MANAGEMENT_PHASE2_COMPLETE.md) | 頻道管理階段 2 完成報告 |
+| [CHANNEL_MANAGEMENT_PHASE2_TEST_REPORT.md](reports/features/CHANNEL_MANAGEMENT_PHASE2_TEST_REPORT.md) | 頻道管理階段 2 測試報告 |
+| [CHANNEL_MANAGEMENT_PHASE3_COMPLETE.md](reports/features/CHANNEL_MANAGEMENT_PHASE3_COMPLETE.md) | 頻道管理階段 3 完成報告 |
+| [CHANNEL_MANAGEMENT_PHASE4_DEPLOYMENT_STATUS.md](reports/features/CHANNEL_MANAGEMENT_PHASE4_DEPLOYMENT_STATUS.md) | 頻道管理階段 4 部署狀態 |
+| [CHANNEL_MANAGEMENT_PHASE4_FINAL_REPORT.md](reports/features/CHANNEL_MANAGEMENT_PHASE4_FINAL_REPORT.md) | 頻道管理階段 4 最終報告 |
+| [CHANNEL_MANAGEMENT_PHASE4_TEST_COMPLETE.md](reports/features/CHANNEL_MANAGEMENT_PHASE4_TEST_COMPLETE.md) | 頻道管理階段 4 測試完成 |
+| [DEBOUNCE_IMPLEMENTATION_GUIDE.md](reports/features/DEBOUNCE_IMPLEMENTATION_GUIDE.md) | 防抖實作指南 |
+| [TEAM_ASSIGNMENT_STATUS.md](reports/features/TEAM_ASSIGNMENT_STATUS.md) | 團隊指派狀態 |
+| [TEAM_DROPDOWN_UPDATE.md](reports/features/TEAM_DROPDOWN_UPDATE.md) | 團隊下拉選單更新 |
 
-### 架構與設計報告
-- [reports/ARCHITECTURAL_REVIEW.md](./reports/ARCHITECTURAL_REVIEW.md) - 系統架構審查報告
-- [reports/SMART_REGISTRY_FAILURE_ANALYSIS.md](./reports/SMART_REGISTRY_FAILURE_ANALYSIS.md) - Smart Registry 失敗分析
-- [reports/ROUTE_CONFLICT_RESOLUTION_PATH_FORWARD.md](./reports/ROUTE_CONFLICT_RESOLUTION_PATH_FORWARD.md) - 路由衝突解決方案
+### 前端報告 (reports/frontend/)
+| 文檔 | 說明 |
+|------|------|
+| [FIX_COMPLETE_REPORT.md](reports/frontend/FIX_COMPLETE_REPORT.md) | 前端修復完成報告 |
+| [PERFORMANCE_OPTIMIZATION_REPORT.md](reports/frontend/PERFORMANCE_OPTIMIZATION_REPORT.md) | 前端性能優化報告 |
 
-### 安全報告
-- [reports/SECURITY_AUDIT_REPORT.md](./reports/SECURITY_AUDIT_REPORT.md) - 安全審計報告
-- [reports/SECURITY_FIXES_SUMMARY_DETAILED.md](./reports/SECURITY_FIXES_SUMMARY_DETAILED.md) - 安全修復總結（詳細版）
+### 技術報告 (reports/technical/)
+| 文檔 | 說明 |
+|------|------|
+| [DOCUMENTATION_UPDATE_SUMMARY.md](reports/technical/DOCUMENTATION_UPDATE_SUMMARY.md) | 文檔更新摘要 |
+| [TECHNICAL_DEBT_CLEANUP_REPORT.md](reports/technical/TECHNICAL_DEBT_CLEANUP_REPORT.md) | 技術債務清理報告 |
 
-### UI/UX 改進報告
-- [reports/TOAST_DIALOG_REPLACEMENT_REPORT.md](./reports/TOAST_DIALOG_REPLACEMENT_REPORT.md) - Toast 對話框替換報告
+### 類型系統報告 (reports/types/)
+| 文檔 | 說明 |
+|------|------|
+| [TYPE_CONSISTENCY_REPORT.md](reports/types/TYPE_CONSISTENCY_REPORT.md) | 類型一致性報告 |
+| [TYPE_UNIFICATION_COMPLETE.md](reports/types/TYPE_UNIFICATION_COMPLETE.md) | 類型統一完成報告 |
 
-### 模組重組報告
-- [reports/modules/AGENTS_MODULE_REORDERING_PLAN.md](./reports/modules/AGENTS_MODULE_REORDERING_PLAN.md) - 代理模組重排計劃
-- [reports/modules/TEAMS_MODULE_REORDERING_PLAN.md](./reports/modules/TEAMS_MODULE_REORDERING_PLAN.md) - 團隊模組重排計劃
+---
 
-### 驗證報告
-- [reports/verification/PASSWORD_RESET_VERIFICATION_REPORT.md](./reports/verification/PASSWORD_RESET_VERIFICATION_REPORT.md) - 密碼重置功能驗證報告
+## 🧪 測試文檔 (testing/)
 
-## 修復報告
+| 文檔 | 說明 |
+|------|------|
+| [DOM_EVENT_INTERFACE_SOLUTION.md](testing/DOM_EVENT_INTERFACE_SOLUTION.md) | DOM 事件介面解決方案 |
+| [RECALL_TEST_COVERAGE_ANALYSIS.md](testing/RECALL_TEST_COVERAGE_ANALYSIS.md) | 訊息撤回測試覆蓋分析 |
+| [TEST_INFRASTRUCTURE_FIXES.md](testing/TEST_INFRASTRUCTURE_FIXES.md) | 測試基礎設施修復 |
+| [ULTIMATE_PINIA_SOLUTION.md](testing/ULTIMATE_PINIA_SOLUTION.md) | Pinia 終極解決方案 |
 
-- [fixes/QRCODE_FIX_SUCCESS_REPORT.md](./fixes/QRCODE_FIX_SUCCESS_REPORT.md) - QR Code 功能修復成功報告
-- [fixes/CUSTOMER_HANDLER_ROUTE_FIX_SUMMARY.md](./fixes/CUSTOMER_HANDLER_ROUTE_FIX_SUMMARY.md) - 客戶處理器路由修復總結
-
-## 部署文檔
-
-- [deployment/DEPLOYMENT_RECOMMENDATION.md](./deployment/DEPLOYMENT_RECOMMENDATION.md) - 部署建議
-- [deployment/WEB_INSTALLER_DOCUMENTATION.md](./deployment/WEB_INSTALLER_DOCUMENTATION.md) - Web Installer 完整文檔 (NEW)
-
-### Web Installer (自助部署系統) (NEW)
-
-Web Installer 是一個完整的自助部署系統，讓客戶能夠零技術知識地將 CRM 系統部署到自己的 Cloudflare 帳戶。
-
-**核心特性:**
-- 一鍵式 OAuth 認證
-- 自動資源配置 (D1, KV, R2, Queue, Worker, Pages)
-- 即時進度追蹤（Server-Sent Events）
-- 自動回滾機制
-- 電子郵件通知
-- 成本透明（從 $0/月起）
-
-**文檔:**
-- [../web-installer/DEVELOPER_DOCUMENTATION.md](../web-installer/DEVELOPER_DOCUMENTATION.md) - 開發者完整文檔（13 章節）
-- [../web-installer/README.md](../web-installer/README.md) - 專案概覽
-- [../web-installer/DEPLOYMENT_CHECKLIST.md](../web-installer/DEPLOYMENT_CHECKLIST.md) - 26 步部署檢查清單
-- [../web-installer/QUICK_START_GUIDE.md](../web-installer/QUICK_START_GUIDE.md) - 用戶友好指南
-- [../web-installer/PROJECT_SUMMARY.md](../web-installer/PROJECT_SUMMARY.md) - 專案完整總結
-
-**技術指標:**
-- 測試: 28 個測試全部通過（100% 通過率）
-- 覆蓋率: 90.6% 代碼覆蓋率
-- 部署時間: 2-3 分鐘
-- 狀態: 生產就緒 (2025-01-28 完成)
-
-## 實作文檔
-
-- [implementation/IMPLEMENTATION_SUMMARY.md](./implementation/IMPLEMENTATION_SUMMARY.md) - 實作總結
-
-## 效能文檔
-
-- [performance/PERFORMANCE_ANALYSIS_REPORT.md](./performance/PERFORMANCE_ANALYSIS_REPORT.md) - 效能分析報告
-
-## 測試文檔
-
-- [testing/TEST_COVERAGE_QUALITY_EVALUATION.md](./testing/TEST_COVERAGE_QUALITY_EVALUATION.md) - 測試覆蓋率品質評估
-
-## 更新記錄
-
-- 2025-01-28: 新增 Web Installer 完整文檔和發佈說明
-- 2025-01-28: 更新 CLAUDE.md 添加 Web Installer 章節
-- 2025-10-22: 完成根目錄文檔整理，移動 15 個文檔到正確位置
-- 2025-10-22: 清理臨時文件，合併備份目錄
-- 2025-10-18: 完成文檔架構重組，移動所有錯放文檔至正確位置
-- 2025-10-18: 移除所有文檔中的 emoji（95% 完成）
-- 2025-10-18: 建立文檔索引系統
-
-## 貢獻指南
-
-當新增或更新文檔時，請確保：
-
-1. 文檔放置在正確的文件夾中
-2. 在本索引文件中添加相應的連結
-3. 使用清晰的文件命名（英文大寫加底線）
-4. 不使用 emoji 符號
-5. 包含適當的元數據（日期、作者、版本等）
-
-## 相關資源
-
-- [Cloudflare Workers 文檔](https://developers.cloudflare.com/workers/)
-- [Vue 3 文檔](https://vuejs.org/)
-- [TypeScript 文檔](https://www.typescriptlang.org/docs/)
-- [Drizzle ORM 文檔](https://orm.drizzle.team/)
+---
+
+## 🔧 Web Installer 文檔 (../web-installer/)
+
+| 文檔 | 說明 |
+|------|------|
+| [PROJECT_SUMMARY.md](../web-installer/PROJECT_SUMMARY.md) | Web Installer 專案總覽 |
+| [WEB_INSTALLER_RELEASE_NOTES.md](../web-installer/docs/WEB_INSTALLER_RELEASE_NOTES.md) | Web Installer 發佈說明 |
+| [CLOUDFLARE_OAUTH_SETUP.md](../web-installer/CLOUDFLARE_OAUTH_SETUP.md) | Cloudflare OAuth 設定指南 |
+| [DEPLOYMENT_GUIDE.md](../web-installer/DEPLOYMENT_GUIDE.md) | Web Installer 部署指南 |
+| [PRODUCTION_CHECKLIST.md](../web-installer/PRODUCTION_CHECKLIST.md) | 生產環境檢查清單 |
+| [SETUP_GUIDE.md](../web-installer/SETUP_GUIDE.md) | Web Installer 設定指南 |
+
+---
+
+**最後更新**: 2025-11-05 13:30 UTC+8
+**維護者**: Development Team
+**狀態**: ✅ 所有文檔已重組至標準目錄結構

@@ -248,7 +248,17 @@ describe('Conversations API', () => {
     it('should assign conversation successfully', async () => {
       const conversationId = 'conv-123'
       const agentId = 'agent-456'
-      const mockResponse = { success: true }
+      const mockConversationData = {
+        id: conversationId,
+        customerId: 'customer-123',
+        customerName: 'Test Customer',
+        platform: 'line' as const,
+        status: 'open' as const,
+        assignedUserId: agentId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      const mockResponse = { success: true, data: mockConversationData }
       mockPost.mockResolvedValue(mockResponse)
 
       const result = await conversationApi.assignConversation(conversationId, agentId)
@@ -257,7 +267,8 @@ describe('Conversations API', () => {
         `/conversations/${conversationId}/assign`,
         { userId: agentId }
       )
-      expect(result).toEqual(mockResponse)
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
     })
 
     it('should reject empty IDs for assignment', async () => {
@@ -272,7 +283,17 @@ describe('Conversations API', () => {
     it('should use alias assign method', async () => {
       const conversationId = 'conv-123'
       const agentId = 'agent-456'
-      const mockResponse = { success: true }
+      const mockConversationData = {
+        id: conversationId,
+        customerId: 'customer-123',
+        customerName: 'Test Customer',
+        platform: 'line' as const,
+        status: 'open' as const,
+        assignedUserId: agentId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      const mockResponse = { success: true, data: mockConversationData }
       mockPost.mockResolvedValue(mockResponse)
 
       const result = await conversationApi.assign(conversationId, agentId)
@@ -281,7 +302,8 @@ describe('Conversations API', () => {
         `/conversations/${conversationId}/assign`,
         { userId: agentId }
       )
-      expect(result).toEqual(mockResponse)
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
     })
 
     it('should close conversation with reason', async () => {

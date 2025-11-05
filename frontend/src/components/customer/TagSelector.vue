@@ -118,7 +118,7 @@
 
         <!-- 標籤列表 -->
         <div
-          v-if="!loading"
+          v-if="availableTags.length > 0"
           class="tags-list"
         >
           <div
@@ -225,7 +225,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { getTags, createTag, type Tag } from '@/api/tags'
+import { createTag, type Tag } from '@/api/tags'
+import { tagCacheService } from '@/services/tagCacheService'
+import { debounce } from 'lodash-es'
 
 interface Props {
   modelValue: number[]
@@ -248,10 +250,11 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const isOpen = ref(false)
-const loading = ref(false)
 const searchQuery = ref('')
-const availableTags = ref<Tag[]>([])
 const selectedTags = ref<number[]>([...props.modelValue])
+
+// 🚀 优化：使用缓存服务获取标签数据
+const availableTags = computed(() => tagCacheService.getAllTags())
 
 // 過濾標籤
 const filteredTags = computed(() => {
@@ -275,10 +278,9 @@ const toggleTag = (tag: Tag) => {
   }
 }
 
-// 快速創建標籤
+// 🚀 优化：快速创建标籤并更新缓存
 const quickCreateTag = async () => {
   try {
-    loading.value = true
     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
     const randomColor = colors[Math.floor(Math.random() * colors.length)]
 
@@ -288,25 +290,33 @@ const quickCreateTag = async () => {
     })
 
     if (response.success && response.data) {
-      availableTags.value.unshift(response.data)
+      // 🚀 乐观更新：立即添加到缓存
+      tagCacheService.optimisticAddTag(response.data)
+
       selectedTags.value.push(response.data.id)
       searchQuery.value = ''
+
+      console.log('✅ [TagSelector] Tag created and cached:', response.data.name)
     }
   } catch (error) {
-    console.error('Failed to create tag:', error)
-  } finally {
-    loading.value = false
+    console.error('❌ [TagSelector] Failed to create tag:', error)
   }
 }
 
-// 確認選擇
-const handleConfirm = () => {
+// 🚀 优化：防抖的确认操作（500ms延迟）
+const debouncedConfirm = debounce(() => {
   emit('update:modelValue', selectedTags.value)
   const selected = availableTags.value.filter(t => selectedTags.value.includes(t.id))
   emit('change', selected)
+  console.log('✅ [TagSelector] Tags updated (debounced):', selected.map(t => t.name))
+}, 500)
+
+const handleConfirm = () => {
   if (!props.alwaysOpen) {
     isOpen.value = false
   }
+  // 使用防抖版本，避免快速点击时多次触发
+  debouncedConfirm()
 }
 
 // 取消
@@ -317,28 +327,15 @@ const handleCancel = () => {
   }
 }
 
-// 載入標籤
-const loadTags = async () => {
-  try {
-    loading.value = true
-    const response = await getTags({ pageSize: 100 })
-    if (response.success) {
-      availableTags.value = response.data
-    }
-  } catch (error) {
-    console.error('Failed to load tags:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 // 監聽外部值變化
 watch(() => props.modelValue, (newVal) => {
   selectedTags.value = [...newVal]
 })
 
-onMounted(() => {
-  loadTags()
+// 🚀 优化：组件挂载时确保标签已加载
+onMounted(async () => {
+  await tagCacheService.ensureTagsLoaded()
+  console.log('✅ [TagSelector] Tags loaded from cache')
 })
 </script>
 

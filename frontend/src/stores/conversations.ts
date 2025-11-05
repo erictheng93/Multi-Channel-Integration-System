@@ -1026,6 +1026,77 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 🆕 重新打開對話 (撤銷關閉操作)
+  const reopenConversation = async (conversationId: string) => {
+    if (!conversationId) {return false}
+
+    console.log(`📝 [ConversationsStore] Reopening conversation ${conversationId}`)
+
+    // Optimistic update - 將狀態改回 'open'
+    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
+    let originalConversation: Conversation | null = null
+
+    if (conversationIndex !== -1) {
+      const current = conversations.value[conversationIndex]
+      if (current) {
+        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
+        const updatedConversation: Conversation = {
+          ...current,
+          id: current.id,
+          userId: current.userId,
+          customer: current.customer,
+          status: 'open' as const
+        }
+        conversations.value[conversationIndex] = updatedConversation
+        console.log(`⚡ [ConversationsStore] Optimistic update applied to list (reopened)`)
+      }
+    }
+
+    // 同時更新 currentConversation
+    if (currentConversation.value && currentConversation.value.id === conversationId) {
+      currentConversation.value = {
+        ...currentConversation.value,
+        status: 'open' as const
+      }
+      console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (reopened)`)
+    }
+
+    error.value = null
+
+    try {
+      const response = await conversationApi.reopenConversation(conversationId)
+      if (response.success) {
+        console.log(`✅ [ConversationsStore] Reopen API call succeeded`)
+
+        // 刷新對話以獲取最新狀態
+        await fetchConversation(conversationId)
+        return true
+      } else {
+        console.error(`❌ [ConversationsStore] Reopen API call failed:`, response.error)
+        // Revert optimistic update
+        if (originalConversation && conversationIndex !== -1) {
+          conversations.value[conversationIndex] = originalConversation
+        }
+        if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+          currentConversation.value = originalConversation
+        }
+        handleError(response.error, '重新打開對話失敗')
+        return false
+      }
+    } catch (err) {
+      console.error(`❌ [ConversationsStore] Reopen failed with exception:`, err)
+      // Revert optimistic update
+      if (originalConversation && conversationIndex !== -1) {
+        conversations.value[conversationIndex] = originalConversation
+      }
+      if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+        currentConversation.value = originalConversation
+      }
+      handleError(err, '網路錯誤，重新打開對話失敗')
+      return false
+    }
+  }
+
   const markAsRead = async (conversationId: string) => {
     if (!conversationId) {return false}
 
@@ -1147,6 +1218,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     assignConversationToTeam,
     unassignConversation,
     closeConversation,
+    reopenConversation,
     markAsRead,
     loadMore,
     loadMoreConversations,

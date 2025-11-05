@@ -186,6 +186,7 @@
               @toggle-status="toggleTeamStatus"
               @generate-qr="generateTeamQR"
               @remove-team="confirmRemoveTeam"
+              @member-updated="handleMemberUpdated"
             />
           </div>
         </div>
@@ -1579,6 +1580,17 @@ const toggleTeamStatus = async (team: Team) => {
     // 4️⃣ 發生錯誤，恢復原狀態
     teamObj.isActive = originalStatus
     showError('更新團隊狀態失敗', '請稍後重試')
+  }
+}
+
+// 處理成員更新事件 - 重新載入團隊數據以更新成員計數
+const handleMemberUpdated = async () => {
+  console.log('🔄 團隊成員已更新，重新載入團隊數據...')
+  try {
+    await loadTeams()
+    console.log('✅ 團隊數據重新載入完成')
+  } catch (error) {
+    console.error('❌ 重新載入團隊數據失敗:', error)
   }
 }
 

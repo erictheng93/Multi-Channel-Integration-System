@@ -48,6 +48,7 @@
           :message="item.message"
           :is-loading="false"
           :show-avatar="true"
+          @retry="handleRetry"
         />
       </div>
     </div>
@@ -73,6 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
 // 🔼 處理加載更多（加載更早的消息）
 const emit = defineEmits<{
   loadMore: []
+  retry: [messageId: string] // ⚡ Retry failed message
 }>()
 // Refs
 const scrollContainer = ref<HTMLElement>()
@@ -218,6 +220,12 @@ const scrollToBottom = (smooth = false) => {
 
     console.log(`📜 [VirtualMessageList] Scrolled to bottom: scrollTop=${targetScrollTop}, ${smooth ? 'smooth' : 'instant'}`)
   }
+}
+
+// ⚡ Handle retry event from MessageBubble
+const handleRetry = (messageId: string) => {
+  console.log('🔄 [VirtualMessageList] Retry event received for message:', messageId)
+  emit('retry', messageId)
 }
 
 // Lifecycle

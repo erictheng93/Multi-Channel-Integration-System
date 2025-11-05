@@ -72,7 +72,7 @@ class_name = "MessageBroadcaster"
 
 # DelayedMessageBuffer - Delayed message scheduling with Alarm API
 [[durable_objects.bindings]]
-name = "DELAYED_MESSAGE_BUFFER"
+name = "DELAYED_MESSAGE_SCHEDULER"
 class_name = "DelayedMessageBuffer"
 
 # DistributedLock - Cross-Durable Object coordination and locking

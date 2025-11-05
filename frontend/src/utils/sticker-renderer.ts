@@ -281,30 +281,45 @@ export class ComprehensiveStickerRenderer {
    * 創建圖片結果
    */
   private async createImageResult(
-    url: string, 
-    alt: string, 
+    url: string,
+    alt: string,
     size: keyof typeof STICKER_SIZES,
     dataAttributes: Record<string, string> = {}
   ): Promise<StickerRenderResult> {
-    
+
     console.log('🔍 [StickerRenderer] createImageResult called with:', { url, alt, size, dataAttributes })
-    
+
+    // 检测空文件：发送 HEAD 请求检查 Content-Length
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const contentLength = response.headers.get('content-length');
+
+      if (contentLength === '0' || contentLength === null) {
+        console.warn(`⚠️ [StickerRenderer] Empty or missing sticker file at ${url}, using fallback`);
+        return this.createFallbackResult(alt, size);
+      }
+    } catch (error) {
+      console.warn(`⚠️ [StickerRenderer] Failed to check sticker file at ${url}, using fallback:`, error);
+      return this.createFallbackResult(alt, size);
+    }
+
     const sizeStyle = STICKER_SIZES[size];
     const dataAttrs = Object.entries(dataAttributes)
       .map(([key, value]) => `${key}="${value}"`)
       .join(' ');
-    
+
     const content = `
-      <img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs} 
-           style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;" 
-           onload="this.style.opacity=1; console.log('✅ Sticker loaded:', '${url}')" 
+      <img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs}
+           style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;"
+           onload="this.style.opacity=1; console.log('✅ Sticker loaded:', '${url}')"
            onerror="console.log('❌ Sticker failed to load:', '${url}'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
-      <div class="sticker-fallback" style="display: none; text-align: center; padding: 8px; background: #f0f0f0; border: 1px dashed #ccc; border-radius: 8px; font-size: 12px; color: #666;">
-        <span style="font-size: 16px;">🖼️</span><br>
-        [${alt}]
+      <div class="sticker-fallback" style="display: none; text-align: center; padding: 12px 16px; background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); border: 2px solid #d4dbe3; border-radius: 12px; font-size: 13px; color: #5a6c7d; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <span style="font-size: 32px; margin-bottom: 8px; opacity: 0.7;">🎭</span><br>
+        <span style="font-weight: 500;">[${alt}]</span><br>
+        <span style="font-size: 11px; color: #8b96a3; margin-top: 4px;">貼圖暫時無法顯示</span>
       </div>
     `.trim();
-    
+
     const result = {
       type: 'image' as const,
       content,
@@ -316,10 +331,10 @@ export class ComprehensiveStickerRenderer {
         margin: '4px'
       }
     };
-    
+
     console.log('🔍 [StickerRenderer] Created image result:', result)
     console.log('🔍 [StickerRenderer] Image HTML content:', content)
-    
+
     return result;
   }
 
@@ -327,19 +342,20 @@ export class ComprehensiveStickerRenderer {
    * 創建後備顯示結果
    */
   private createFallbackResult(
-    label: string, 
+    label: string,
     size: keyof typeof STICKER_SIZES
   ): StickerRenderResult {
-    
+
     console.log('🔍 [StickerRenderer] createFallbackResult called with:', { label, size })
-    
+
     const sizeStyle = STICKER_SIZES[size];
-    
+
     const result = {
       type: 'fallback' as const,
-      content: `<div class="sticker-fallback" style="display: inline-flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 8px; background: #f0f0f0; border: 1px dashed #ccc; border-radius: 8px; font-size: 12px; color: #666; ${Object.entries(sizeStyle).map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`).join('; ')}">
-        <span style="font-size: 16px; margin-bottom: 4px;">🖼️</span>
-        <span>[${label}]</span>
+      content: `<div class="sticker-fallback" style="display: inline-flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 12px 16px; background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); border: 2px solid #d4dbe3; border-radius: 12px; font-size: 13px; color: #5a6c7d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); ${Object.entries(sizeStyle).map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`).join('; ')}">
+        <span style="font-size: 32px; margin-bottom: 8px; opacity: 0.7;">🎭</span>
+        <span style="font-weight: 500; margin-bottom: 4px;">[${label}]</span>
+        <span style="font-size: 11px; color: #8b96a3; margin-top: 2px;">貼圖暫時無法顯示</span>
       </div>`,
       alt: label,
       className: 'sticker-container sticker-fallback-container',
@@ -348,9 +364,9 @@ export class ComprehensiveStickerRenderer {
         margin: '4px'
       }
     };
-    
+
     console.log('🔍 [StickerRenderer] Created fallback result:', result)
-    
+
     return result;
   }
 

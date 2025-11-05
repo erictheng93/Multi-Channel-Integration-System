@@ -144,22 +144,6 @@
               >
             </div>
             <div class="form-group">
-              <label for="editPassword">密碼</label>
-              <input
-                id="editPassword"
-                v-model="editForm.password"
-                type="password"
-                placeholder="留空則不更改密碼，或輸入新密碼進行重設"
-                autocomplete="new-password"
-              >
-              <small 
-                class="form-help-text password-status"
-                :class="`status-${passwordFieldStatus.type}`"
-              >
-                {{ passwordFieldStatus.message }}
-              </small>
-            </div>
-            <div class="form-group">
               <label for="editRole">角色</label>
               <select
                 id="editRole"
@@ -279,19 +263,10 @@ const loadTeams = async () => {
   }
 }
 
-// 計算密碼欄位狀態
-const passwordFieldStatus = computed(() => {
-  if (editForm.password && editForm.password.trim() !== '') {
-    return { type: 'changing', message: '⚠️ 將重設為新密碼' }
-  }
-  return { type: 'empty', message: '留空則不更改密碼' }
-})
-
 // Edit form data - Simplified from 3-tier to 2-tier role system
 const editForm = reactive({
   name: '',
   email: '',
-  password: '',
   role: 'agent' as 'admin' | 'agent',
   group: '',
   isActive: true
@@ -302,7 +277,6 @@ watch(() => showEditModal.value, async (newVal) => {
   if (newVal) {
     editForm.name = props.member.name || ''
     editForm.email = props.member.email || ''
-    editForm.password = '' // 初始化為空
     editForm.role = props.member.role
     editForm.group = props.member.group || ''
     editForm.isActive = props.member.status === 'active'
@@ -366,7 +340,6 @@ const submitEdit = async () => {
       role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
       group: string;
       status: 'active' | 'inactive';
-      password?: string;
     } = {
       name: editForm.name,
       email: editForm.email,
@@ -374,12 +347,7 @@ const submitEdit = async () => {
       group: editForm.group,
       status: editForm.isActive ? 'active' as const : 'inactive' as const
     }
-    
-    // 只有當密碼欄位有值時才包含密碼更新
-    if (editForm.password && editForm.password.trim() !== '') {
-      updateData.password = editForm.password
-    }
-    
+
     // 使用teamStore統一處理，避免雙重調用
     await teamStore.updateMember(props.member.id, updateData)
     
@@ -831,27 +799,6 @@ const formatDate = (date: string | Date) => {
   color: var(--gray-500);
   font-size: 0.75rem;
   line-height: 1.4;
-}
-
-/* Password status styling */
-.password-status {
-  font-weight: 500;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-2);
-}
-
-.password-status.status-changing {
-  color: #ea580c;
-  background-color: #fff7ed;
-  border-left: 3px solid #ea580c;
-  font-weight: 600;
-}
-
-.password-status.status-empty {
-  color: var(--gray-500);
-  background-color: var(--gray-25);
-  border-left: 3px solid var(--gray-200);
 }
 
 .form-instructions {
