@@ -219,9 +219,15 @@ export const customerTagsHandler = {
 
       // 添加新的標籤關聯
       if (newTagIds.length > 0) {
-        const assignedBy = typeof payload?.userId === 'string'
-          ? payload.userId
-          : payload?.userId?.toString() || 'system';
+        // 確保有有效的用戶ID（JWT認證已確保payload.userId存在）
+        console.log('[customer-tags] Debug - payload:', payload);
+        console.log('[customer-tags] Debug - payload.userId:', payload?.userId);
+        const assignedBy = payload?.userId;
+
+        if (!assignedBy) {
+          console.error('[customer-tags] Error - No assignedBy found, payload:', payload);
+          return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
+        }
 
         for (const tagId of newTagIds) {
           await drizzleDb
@@ -229,7 +235,7 @@ export const customerTagsHandler = {
             .values({
               customerId,
               tagId,
-              assignedBy
+              assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
             });
         }
       }
@@ -348,9 +354,12 @@ export const customerTagsHandler = {
 
       // 添加新的標籤關聯
       if (tagIds.length > 0) {
-        const assignedBy = typeof payload?.userId === 'string'
-          ? payload.userId
-          : payload?.userId?.toString() || 'system';
+        // 確保有有效的用戶ID（JWT認證已確保payload.userId存在）
+        const assignedBy = payload?.userId;
+
+        if (!assignedBy) {
+          return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
+        }
 
         for (const tagId of tagIds) {
           await drizzleDb
@@ -358,7 +367,7 @@ export const customerTagsHandler = {
             .values({
               customerId,
               tagId,
-              assignedBy
+              assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
             });
         }
       }

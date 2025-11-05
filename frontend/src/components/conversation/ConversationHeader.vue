@@ -29,6 +29,14 @@
                 v-if="conversation"
                 :status="conversation.status"
               />
+              <!-- 🆕 指派資訊徽章 -->
+              <AssignmentBadge
+                v-if="conversation"
+                :team-id="conversation.assignedTeamId"
+                :team-name="conversation.assignedTeam?.name"
+                :agent-id="conversation.assignedUserId"
+                :agent-name="conversation.assignedAgent?.name"
+              />
             </div>
 
             <!-- 客戶標籤顯示區 -->
@@ -69,11 +77,17 @@
       >
         <button
           class="assign-action-btn"
-          :class="{ 'has-assignment': conversation.assignedTo }"
+          :class="{ 'has-assignment': conversation.assignedTeamId || conversation.assignedUserId }"
           @click="toggleAssignPanel"
         >
           <UserPlusIcon class="action-icon" />
-          <span v-if="conversation.assignedTo">已指派</span>
+          <!-- 🆕 顯示團隊或代理名稱 -->
+          <span v-if="conversation.assignedUserId && conversation.assignedAgent?.name">
+            {{ conversation.assignedAgent.name }}
+          </span>
+          <span v-else-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
+            {{ conversation.assignedTeam.name }}
+          </span>
           <span v-else>指派管理</span>
           <ChevronDownIcon
             class="dropdown-icon"
@@ -109,11 +123,16 @@
       <button
         v-if="conversation?.status !== 'closed'"
         class="close-conversation-btn"
+        :class="{ 'is-closing': closing }"
         :disabled="closing"
         @click="$emit('close')"
       >
-        <XCircleIcon />
-        <span>{{ closing ? '結束中...' : '結束對話' }}</span>
+        <AlertCircleIcon
+          :size="20"
+          class="btn-icon"
+        />
+        <span class="btn-text">{{ closing ? '結束中...' : '結束對話' }}</span>
+        <span class="btn-warning">此操作不可恢復</span>
       </button>
 
       <button
@@ -129,13 +148,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { ArrowLeftIcon, XCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon } from '@/components/icons'
+import { ArrowLeftIcon, AlertCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
+import AssignmentBadge from '../ui/AssignmentBadge.vue'
 import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'
-import { getCustomerTags, addTagsToCustomer, type Tag } from '@/api/tags'
+import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
 import { useToast } from '@/composables/useToast'
 
 interface Props {
@@ -158,7 +178,7 @@ const showAllTags = ref(false)
 const showAssignPanel = ref(false)
 
 // Toast notifications
-const { showError } = useToast()
+const { showSuccess, showError } = useToast()
 
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
@@ -191,22 +211,91 @@ const loadCustomerTags = async () => {
 
 // 處理標籤變更
 const handleTagsChange = async (tags: Tag[]) => {
+  // 計算變化
+  const previousTagIds = new Set(customerTags.value.map(t => t.id))
+  const newTagIds = new Set(tags.map(t => t.id))
+
+  const added = tags.filter(t => !previousTagIds.has(t.id))
+  const removed = customerTags.value.filter(t => !newTagIds.has(t.id))
+
   customerTags.value = tags
 
-  // 可選：自動同步到後端
+  // 自動同步到後端 - 使用 setCustomerTags 替換所有標籤
   if (customerIdNumber.value) {
     try {
       const tagIds = tags.map(t => t.id)
-      await addTagsToCustomer(customerIdNumber.value, tagIds)
+      await setCustomerTags(customerIdNumber.value, tagIds)
+
+      // 顯示成功提示（參考團隊管理的 Toast 風格）
+      if (added.length > 0 && removed.length > 0) {
+        showSuccess('標籤更新成功', `已新增 ${added.length} 個標籤，移除 ${removed.length} 個標籤`)
+      } else if (added.length > 0) {
+        const tagNames = added.map(t => t.name).join('、')
+        showSuccess('標籤新增成功', `已成功新增標籤：${tagNames}`)
+      } else if (removed.length > 0) {
+        const tagNames = removed.map(t => t.name).join('、')
+        showSuccess('標籤移除成功', `已成功移除標籤：${tagNames}`)
+      } else {
+        showSuccess('標籤更新成功', '客戶標籤已更新')
+      }
     } catch (error) {
       console.error('Failed to update customer tags:', error)
+      showError('標籤更新失敗', '無法更新客戶標籤，請稍後再試')
     }
   }
 }
 
 // 指派管理功能
 const toggleAssignPanel = () => {
+  const before = showAssignPanel.value
   showAssignPanel.value = !showAssignPanel.value
+  const after = showAssignPanel.value
+
+  // 🔧 DEBUG: 添加调试日志
+  console.log('🔍 [AssignPanel] Toggle clicked', {
+    before,
+    after,
+    conversation: {
+      id: props.conversation?.id,
+      status: props.conversation?.status,
+      assignedTeamId: props.conversation?.assignedTeamId,
+      assignedUserId: props.conversation?.assignedUserId
+    },
+    timestamp: new Date().toISOString()
+  })
+
+  // 验证 DOM 渲染
+  setTimeout(() => {
+    const dropdown = document.querySelector('.assign-panel-dropdown')
+    console.log('🔍 [AssignPanel] Dropdown element:', dropdown)
+
+    if (dropdown) {
+      const rect = dropdown.getBoundingClientRect()
+      const styles = window.getComputedStyle(dropdown)
+      console.log('🔍 [AssignPanel] Dropdown styles:', {
+        display: styles.display,
+        visibility: styles.visibility,
+        opacity: styles.opacity,
+        position: styles.position,
+        zIndex: styles.zIndex,
+        rect: {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height
+        }
+      })
+
+      // 检查 AdvancedAssignActions 内容
+      const content = dropdown.innerHTML
+      console.log('🔍 [AssignPanel] Dropdown content length:', content.length)
+      if (content.length < 100) {
+        console.warn('⚠️ [AssignPanel] Dropdown content seems empty or very small!')
+      }
+    } else {
+      console.error('❌ [AssignPanel] Dropdown element NOT found in DOM!')
+    }
+  }, 100)
 }
 
 const handleAssigned = (conversation: Conversation, assignedTo: string) => {
@@ -331,26 +420,153 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
+/* ====== 漸進式警示按鈕設計 (Progressive Alert Design) ====== */
 .close-conversation-btn {
-  display: flex;
+  /* 佈局與間距 */
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--danger-color);
-  color: white;
-  border: none;
+  padding: 0.75rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+
+  /* 文字樣式 */
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  user-select: none;
+
+  /* Level 1: 默認警告狀態 (Mint Green Warning) - 方案 D */
+  color: #064e3b; /* green-900 */
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); /* green-100 to green-200 */
+  border: 2px solid #10b981; /* green-500 */
   border-radius: 0.5rem;
+
+  /* 陰影與過渡 */
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 圖標樣式 */
+.close-conversation-btn .btn-icon {
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 主文字 */
+.close-conversation-btn .btn-text {
+  transition: opacity 0.3s ease;
+}
+
+/* 警告文字 (默認隱藏) */
+.close-conversation-btn .btn-warning {
+  position: absolute;
+  bottom: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 0.25rem 0.75rem;
+  background: rgba(239, 68, 68, 0.95); /* red-500 with opacity */
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  white-space: nowrap;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+
+  /* 小箭頭 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.close-conversation-btn .btn-warning::before {
+  content: '';
+  position: absolute;
+  top: -0.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 0.25rem solid transparent;
+  border-right: 0.25rem solid transparent;
+  border-bottom: 0.25rem solid rgba(239, 68, 68, 0.95);
+}
+
+/* Level 2: Hover 警示狀態 (Red Alert) */
 .close-conversation-btn:hover:not(:disabled) {
-  background: var(--danger-color-hover);
+  /* 顏色漸變到紅色 */
+  color: #991b1b; /* red-900 */
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); /* red-100 to red-200 */
+  border-color: #ef4444; /* red-500 */
+
+  /* 增強陰影 */
+  box-shadow:
+    0 4px 12px rgba(239, 68, 68, 0.2),
+    0 2px 4px rgba(239, 68, 68, 0.1);
+
+  /* 輕微上浮 */
+  transform: translateY(-2px);
 }
 
-.close-conversation-btn:disabled {
+/* Hover 時圖標震動效果 */
+.close-conversation-btn:hover:not(:disabled) .btn-icon {
+  animation: icon-shake 0.5s ease-in-out;
+}
+
+/* Hover 時顯示警告文字 */
+.close-conversation-btn:hover:not(:disabled) .btn-warning {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0.25rem);
+}
+
+/* Active 按下狀態 */
+.close-conversation-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15);
+}
+
+/* Disabled/Loading 狀態 */
+.close-conversation-btn:disabled,
+.close-conversation-btn.is-closing {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  background: #e5e7eb; /* gray-200 */
+  border-color: #d1d5db; /* gray-300 */
+  color: #6b7280; /* gray-500 */
+  box-shadow: none;
+}
+
+.close-conversation-btn:disabled .btn-warning,
+.close-conversation-btn.is-closing .btn-warning {
+  display: none;
+}
+
+/* 圖標震動動畫 */
+@keyframes icon-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+  75% { transform: rotate(-8deg); }
+}
+
+/* 移動端優化 */
+@media (max-width: 768px) {
+  .close-conversation-btn {
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .close-conversation-btn .btn-warning {
+    bottom: -1.25rem;
+    font-size: 0.6875rem;
+    padding: 0.2rem 0.625rem;
+  }
 }
 
 .btn {

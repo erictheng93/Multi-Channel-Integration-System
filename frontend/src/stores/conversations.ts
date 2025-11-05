@@ -725,10 +725,12 @@ export const useConversationsStore = defineStore('conversations', () => {
   }
 
   // 🆕 指派對話給團隊（僅管理員）
-  const assignConversationToTeam = async (conversationId: string, teamId: number) => {
+  const assignConversationToTeam = async (conversationId: string, teamId: number, teamName?: string) => {
     if (!conversationId || !teamId) {return false}
 
-    // Optimistic update
+    console.log(`📝 [ConversationsStore] Assigning conversation ${conversationId} to team ${teamId} (${teamName || 'Unknown'})`)
+
+    // Optimistic update - 完整更新所有團隊相關字段
     const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
     let originalConversation: Conversation | null = null
 
@@ -736,22 +738,44 @@ export const useConversationsStore = defineStore('conversations', () => {
       const current = conversations.value[conversationIndex]
       if (current) {
         originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
+        // 🔧 樂觀更新：立即更新UI顯示的所有字段（包括team對象）
         const updatedConversation: Conversation = {
           ...current,
           id: current.id,
           userId: current.userId,
           customer: current.customer,
-          status: 'assigned' as const
+          status: 'assigned' as const,
+          assignedTeamId: teamId, // ✨ 新增：設置團隊ID
+          assignedTeam: teamName ? { // ✨ 新增：設置團隊對象（臨時）
+            id: teamId,
+            name: teamName,
+            description: null
+          } : undefined,
+          assignedTo: undefined, // 清除個人指派
+          assignedAgentId: undefined, // 清除代理指派
+          assignedAgent: undefined // 清除代理資訊
         }
         conversations.value[conversationIndex] = updatedConversation
+        console.log(`⚡ [ConversationsStore] Optimistic update applied to list (team: ${teamName})`)
       }
     }
 
+    // 同時更新 currentConversation
     if (currentConversation.value && currentConversation.value.id === conversationId) {
       currentConversation.value = {
         ...currentConversation.value,
-        status: 'assigned' as const
+        status: 'assigned' as const,
+        assignedTeamId: teamId, // ✨ 新增：設置團隊ID
+        assignedTeam: teamName ? { // ✨ 新增：設置團隊對象（臨時）
+          id: teamId,
+          name: teamName,
+          description: null
+        } : undefined,
+        assignedTo: undefined,
+        assignedAgentId: undefined,
+        assignedAgent: undefined
       }
+      console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (team: ${teamName})`)
     }
 
     error.value = null
@@ -759,23 +783,192 @@ export const useConversationsStore = defineStore('conversations', () => {
     try {
       const response = await conversationApi.assignConversation(conversationId, { teamId })
       if (response.success) {
-        // Refresh the specific conversation to get updated data
-        await fetchConversation(conversationId)
+        console.log(`✅ [ConversationsStore] Team assignment API call succeeded`)
+
+        // 🔧 FIX: 直接使用 assign API 返回的完整对话对象
+        // Backend now returns complete conversation object with assignedTeam
+        if (response.data) {
+          const updatedConv = response.data
+          console.log(`📥 [ConversationsStore] Received updated conversation from assign API:`, {
+            id: updatedConv.id,
+            status: updatedConv.status,
+            assignedTeamId: updatedConv.assignedTeamId,
+            assignedTeam: updatedConv.assignedTeam
+          })
+
+          // 更新列表中的對話
+          if (conversationIndex !== -1) {
+            conversations.value[conversationIndex] = updatedConv
+            console.log(`✨ [ConversationsStore] Updated conversation in list`)
+          }
+
+          // 更新當前對話
+          if (currentConversation.value && currentConversation.value.id === conversationId) {
+            currentConversation.value = updatedConv
+            console.log(`✨ [ConversationsStore] Updated currentConversation`)
+          }
+        } else {
+          // Fallback: 如果 assign API 没有返回 data,则获取完整的更新后数据
+          console.warn(`⚠️ [ConversationsStore] Assign API didn't return data, fetching conversation`)
+          const detailResponse = await conversationApi.getConversation(conversationId)
+          if (detailResponse.success && detailResponse.data) {
+            const updatedConv = detailResponse.data
+
+            // 更新列表中的對話
+            if (conversationIndex !== -1) {
+              conversations.value[conversationIndex] = updatedConv
+            }
+
+            // 更新當前對話
+            if (currentConversation.value && currentConversation.value.id === conversationId) {
+              currentConversation.value = updatedConv
+            }
+          }
+        }
+
         return true
       } else {
+        console.error(`❌ [ConversationsStore] Team assignment API call failed:`, response.error)
         // Revert optimistic update
         if (originalConversation && conversationIndex !== -1) {
           conversations.value[conversationIndex] = originalConversation
+        }
+        if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+          currentConversation.value = originalConversation
         }
         handleError(response.error, '團隊指派失敗')
         return false
       }
     } catch (err) {
+      console.error(`❌ [ConversationsStore] Team assignment failed with exception:`, err)
       // Revert optimistic update
       if (originalConversation && conversationIndex !== -1) {
         conversations.value[conversationIndex] = originalConversation
       }
+      if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+        currentConversation.value = originalConversation
+      }
       handleError(err, '網路錯誤，團隊指派失敗')
+      return false
+    }
+  }
+
+  // 🆕 取消指派對話（僅管理員）
+  const unassignConversation = async (conversationId: string, reason?: string) => {
+    if (!conversationId) {return false}
+
+    console.log(`📝 [ConversationsStore] Unassigning conversation ${conversationId}`, reason ? `(reason: ${reason})` : '')
+
+    // Optimistic update - 清除指派資訊，狀態改回 'open'
+    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
+    let originalConversation: Conversation | null = null
+
+    if (conversationIndex !== -1) {
+      const current = conversations.value[conversationIndex]
+      if (current) {
+        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
+        // 🔧 樂觀更新：立即清除指派資訊
+        const updatedConversation: Conversation = {
+          ...current,
+          id: current.id,
+          userId: current.userId,
+          customer: current.customer,
+          status: 'open' as const, // 改回 'open' 狀態（前端使用 'open'）
+          assignedTeamId: undefined,
+          assignedTeam: undefined,
+          assignedTo: undefined,
+          assignedAgentId: undefined,
+          assignedAgent: undefined
+        }
+        conversations.value[conversationIndex] = updatedConversation
+        console.log(`⚡ [ConversationsStore] Optimistic update applied to list (unassigned)`)
+      }
+    }
+
+    // 同時更新 currentConversation
+    if (currentConversation.value && currentConversation.value.id === conversationId) {
+      currentConversation.value = {
+        ...currentConversation.value,
+        status: 'open' as const,
+        assignedTeamId: undefined,
+        assignedTeam: undefined,
+        assignedTo: undefined,
+        assignedAgentId: undefined,
+        assignedAgent: undefined
+      }
+      console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (unassigned)`)
+    }
+
+    error.value = null
+
+    try {
+      const response = await conversationApi.unassignConversation(conversationId, reason)
+      if (response.success) {
+        console.log(`✅ [ConversationsStore] Unassign API call succeeded`)
+
+        // 使用 API 返回的完整對話對象更新
+        if (response.data) {
+          const updatedConv = response.data
+          console.log(`📥 [ConversationsStore] Received updated conversation from unassign API:`, {
+            id: updatedConv.id,
+            status: updatedConv.status,
+            assignedTeamId: updatedConv.assignedTeamId,
+            assignedUserId: updatedConv.assignedUserId
+          })
+
+          // 更新列表中的對話
+          if (conversationIndex !== -1) {
+            conversations.value[conversationIndex] = updatedConv
+            console.log(`✨ [ConversationsStore] Updated conversation in list`)
+          }
+
+          // 更新當前對話
+          if (currentConversation.value && currentConversation.value.id === conversationId) {
+            currentConversation.value = updatedConv
+            console.log(`✨ [ConversationsStore] Updated currentConversation`)
+          }
+        } else {
+          // Fallback: 如果 API 沒有返回 data，則獲取完整的更新後數據
+          console.warn(`⚠️ [ConversationsStore] Unassign API didn't return data, fetching conversation`)
+          const detailResponse = await conversationApi.getConversation(conversationId)
+          if (detailResponse.success && detailResponse.data) {
+            const updatedConv = detailResponse.data
+
+            // 更新列表中的對話
+            if (conversationIndex !== -1) {
+              conversations.value[conversationIndex] = updatedConv
+            }
+
+            // 更新當前對話
+            if (currentConversation.value && currentConversation.value.id === conversationId) {
+              currentConversation.value = updatedConv
+            }
+          }
+        }
+
+        return true
+      } else {
+        console.error(`❌ [ConversationsStore] Unassign API call failed:`, response.error)
+        // Revert optimistic update
+        if (originalConversation && conversationIndex !== -1) {
+          conversations.value[conversationIndex] = originalConversation
+        }
+        if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+          currentConversation.value = originalConversation
+        }
+        handleError(response.error, '取消指派失敗')
+        return false
+      }
+    } catch (err) {
+      console.error(`❌ [ConversationsStore] Unassign failed with exception:`, err)
+      // Revert optimistic update
+      if (originalConversation && conversationIndex !== -1) {
+        conversations.value[conversationIndex] = originalConversation
+      }
+      if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+        currentConversation.value = originalConversation
+      }
+      handleError(err, '取消指派失敗')
       return false
     }
   }
@@ -952,6 +1145,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     sendMessage,
     assignConversation,
     assignConversationToTeam,
+    unassignConversation,
     closeConversation,
     markAsRead,
     loadMore,

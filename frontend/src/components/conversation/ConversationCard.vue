@@ -32,7 +32,10 @@
       </div>
       
       <div class="conversation-status">
-        <StatusBadge :status="conversation.status" />
+        <StatusBadge
+          :status="effectiveStatus"
+          :text="statusText"
+        />
         <div
           v-if="conversation.unreadCount && conversation.unreadCount > 0"
           class="unread-badge"
@@ -53,11 +56,11 @@
       </div>
       
       <div
-        v-if="conversation.assignedAgent"
+        v-if="assignedToDisplay"
         class="assigned-agent"
       >
         <UserIcon />
-        <span>{{ conversation.assignedAgent.name }}</span>
+        <span>{{ assignedToDisplay }}</span>
       </div>
     </div>
     
@@ -97,9 +100,39 @@ const emit = defineEmits<{
 // 第五階段：簡單預載入
 const { prefetchApiData } = usePrefetch()
 
-const hasUnreadMessages = computed(() => 
+const hasUnreadMessages = computed(() =>
   Boolean(props.conversation.unreadCount && props.conversation.unreadCount > 0)
 )
+
+// 計算有效的狀態：當有指派時顯示 'assigned' 狀態
+const effectiveStatus = computed(() => {
+  // 如果有團隊或代理指派，則顯示為 'assigned' 狀態
+  if (props.conversation.assignedTeam || props.conversation.assignedAgent) {
+    return 'assigned'
+  }
+  return props.conversation.status
+})
+
+// 計算狀態文本：當有指派時顯示"處理中"
+const statusText = computed(() => {
+  if (props.conversation.assignedTeam || props.conversation.assignedAgent) {
+    return '處理中'
+  }
+  return '' // 使用 StatusBadge 的預設文本
+})
+
+// 計算指派對象顯示文本
+const assignedToDisplay = computed(() => {
+  // 優先顯示個人指派
+  if (props.conversation.assignedAgent?.name) {
+    return `👤 ${props.conversation.assignedAgent.name}`
+  }
+  // 其次顯示團隊指派
+  if (props.conversation.assignedTeam?.name) {
+    return `👥 ${props.conversation.assignedTeam.name}`
+  }
+  return null
+})
 
 const conversationAriaLabel = computed(() => {
   const customerName = props.conversation.customer?.name || props.conversation.user?.name || '未知用戶'

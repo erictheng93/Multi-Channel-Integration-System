@@ -577,7 +577,7 @@
         class="modal-overlay"
       >
         <div
-          class="modal"
+          class="modal modal-large"
           @click.stop
         >
           <div class="modal-header">
@@ -593,34 +593,142 @@
             class="modal-body"
             @submit.prevent="submitEditTeam"
           >
-            <div class="form-group">
-              <label for="editTeamName">團隊名稱 *</label>
-              <input
-                id="editTeamName"
-                v-model="editTeamForm.name"
-                type="text"
-                required
-                placeholder="請輸入團隊名稱"
-              >
-            </div>
-            <div class="form-group">
-              <label for="editTeamDescription">團隊描述</label>
-              <textarea
-                id="editTeamDescription"
-                v-model="editTeamForm.description"
-                rows="3"
-                placeholder="請輸入團隊描述（可選）"
-              />
-            </div>
-            <div class="form-group">
-              <label class="checkbox-label">
+            <!-- 基本資訊 -->
+            <div class="form-section">
+              <h3 class="section-title">
+                基本資訊
+              </h3>
+              <div class="form-group">
+                <label for="editTeamName">團隊名稱 *</label>
                 <input
-                  v-model="editTeamForm.isActive"
-                  type="checkbox"
+                  id="editTeamName"
+                  v-model="editTeamForm.name"
+                  type="text"
+                  required
+                  placeholder="請輸入團隊名稱"
                 >
-                啟用團隊
-              </label>
+              </div>
+              <div class="form-group">
+                <label for="editTeamDescription">團隊描述</label>
+                <textarea
+                  id="editTeamDescription"
+                  v-model="editTeamForm.description"
+                  rows="3"
+                  placeholder="請輸入團隊描述（可選）"
+                />
+              </div>
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input
+                    v-model="editTeamForm.isActive"
+                    type="checkbox"
+                  >
+                  啟用團隊
+                </label>
+              </div>
             </div>
+
+            <!-- 成員管理 -->
+            <div class="form-section">
+              <h3 class="section-title">
+                👥 團隊成員管理
+                <span class="member-count-badge">{{ editTeamCurrentMembers.length }} 位成員</span>
+              </h3>
+
+              <!-- 當前成員列表 -->
+              <div
+                v-if="editTeamCurrentMembers.length > 0"
+                class="current-members-section"
+              >
+                <label>當前成員</label>
+                <div class="members-list-compact">
+                  <div
+                    v-for="member in editTeamCurrentMembers"
+                    :key="member.id"
+                    class="member-item-compact"
+                  >
+                    <div class="member-avatar-small">
+                      {{ getInitials(member.name || member.loginId) }}
+                    </div>
+                    <div class="member-info-compact">
+                      <span class="member-name">{{ member.name || member.loginId }}</span>
+                      <span
+                        class="member-role-badge-small"
+                        :class="`role-${member.role}`"
+                      >
+                        {{ getRoleDisplayName(member.role) }}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn-remove-member"
+                      :disabled="editTeamLoading"
+                      @click="removeMemberFromTeam(member.id)"
+                    >
+                      ✕ 移除
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-else
+                class="no-members-message"
+              >
+                此團隊目前沒有成員
+              </div>
+
+              <!-- 可新增成員列表 -->
+              <div
+                v-if="editTeamAvailableMembers.length > 0"
+                class="available-members-section"
+              >
+                <label>可新增成員 ({{ editTeamAvailableMembers.length }} 位可用)</label>
+                <div class="member-selection-header">
+                  <span class="selection-count">已選擇: {{ editTeamForm.membersToAdd.length }} 位</span>
+                  <button
+                    type="button"
+                    class="btn-link"
+                    @click="toggleSelectAllAvailableMembers"
+                  >
+                    {{ isAllAvailableMembersSelected ? '取消全選' : '全選' }}
+                  </button>
+                </div>
+                <div class="member-grid-compact">
+                  <div
+                    v-for="member in editTeamAvailableMembers"
+                    :key="member.id"
+                    class="member-card-compact"
+                    :class="{ 'selected': editTeamForm.membersToAdd.includes(member.id) }"
+                    @click="toggleAvailableMemberSelection(member.id)"
+                  >
+                    <div class="member-avatar-small">
+                      {{ getInitials(member.name || member.loginId) }}
+                    </div>
+                    <div class="member-info-compact">
+                      <div class="member-name">
+                        {{ member.name || member.loginId }}
+                      </div>
+                      <div
+                        class="member-role-badge-small"
+                        :class="`role-${member.role}`"
+                      >
+                        {{ getRoleDisplayName(member.role) }}
+                      </div>
+                    </div>
+                    <div class="selection-indicator-small">
+                      <CheckIcon v-if="editTeamForm.membersToAdd.includes(member.id)" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-else
+                class="no-available-members-message"
+              >
+                沒有可新增的成員（所有成員都已分配到團隊）
+              </div>
+            </div>
+
             <div class="modal-actions">
               <button
                 type="button"
@@ -634,7 +742,7 @@
                 class="btn btn-primary"
                 :disabled="editTeamLoading"
               >
-                {{ editTeamLoading ? '更新中...' : '更新團隊' }}
+                {{ editTeamLoading ? '更新中...' : '更新團隊 + 成員' }}
               </button>
             </div>
           </form>
@@ -883,8 +991,13 @@ const editTeamForm = reactive({
   id: 0,
   name: '',
   description: '',
-  isActive: true
+  isActive: true,
+  membersToAdd: [] as string[], // 待新增的成員 ID 列表
+  membersToRemove: [] as string[] // 待移除的成員 ID 列表
 })
+
+// 編輯團隊時的成員數據
+const editTeamCurrentMembers = ref<TeamMember[]>([]) // 當前團隊成員
 
 // 確認操作
 const confirmMessage = ref('')
@@ -913,16 +1026,72 @@ const availableMembers = computed(() => {
 
 // 是否全選所有成員
 const isAllMembersSelected = computed(() => {
-  return availableMembers.value.length > 0 && 
+  return availableMembers.value.length > 0 &&
          addTeamForm.selectedMembers.length === availableMembers.value.length
 })
 
-// 切換全選狀態
+// 編輯團隊時：可新增的成員列表（未分配團隊 + 不在當前成員中）
+const editTeamAvailableMembers = computed(() => {
+  const currentMemberIds = editTeamCurrentMembers.value.map(m => m.id)
+  return teamMembers.value.filter(member =>
+    member.role !== 'admin' && // 排除管理員
+    !member.teamId && // 沒有團隊
+    !currentMemberIds.includes(member.id) // 不在當前成員中
+  )
+})
+
+// 是否全選所有可用成員（編輯團隊時）
+const isAllAvailableMembersSelected = computed(() => {
+  return editTeamAvailableMembers.value.length > 0 &&
+         editTeamForm.membersToAdd.length === editTeamAvailableMembers.value.length
+})
+
+// 切換全選狀態（新增團隊時）
 const toggleSelectAllMembers = () => {
   if (isAllMembersSelected.value) {
     addTeamForm.selectedMembers = []
   } else {
     addTeamForm.selectedMembers = availableMembers.value.map(member => member.id)
+  }
+}
+
+// 切換全選可用成員（編輯團隊時）
+const toggleSelectAllAvailableMembers = () => {
+  if (isAllAvailableMembersSelected.value) {
+    editTeamForm.membersToAdd = []
+  } else {
+    editTeamForm.membersToAdd = editTeamAvailableMembers.value.map(member => member.id)
+  }
+}
+
+// 切換可用成員選擇狀態（編輯團隊時）
+const toggleAvailableMemberSelection = (memberId: string) => {
+  const index = editTeamForm.membersToAdd.indexOf(memberId)
+  if (index > -1) {
+    editTeamForm.membersToAdd.splice(index, 1)
+  } else {
+    editTeamForm.membersToAdd.push(memberId)
+  }
+}
+
+// 從團隊移除成員
+const removeMemberFromTeam = (memberId: string) => {
+  // 找到該成員
+  const memberIndex = editTeamCurrentMembers.value.findIndex(m => m.id === memberId)
+  if (memberIndex === -1) {return}
+
+  // 樂觀更新：立即從當前成員列表移除
+  editTeamCurrentMembers.value.splice(memberIndex, 1)
+
+  // 記錄到待移除列表
+  if (!editTeamForm.membersToRemove.includes(memberId)) {
+    editTeamForm.membersToRemove.push(memberId)
+  }
+
+  // 如果該成員在待新增列表中，移除它
+  const addIndex = editTeamForm.membersToAdd.indexOf(memberId)
+  if (addIndex > -1) {
+    editTeamForm.membersToAdd.splice(addIndex, 1)
   }
 }
 
@@ -1222,17 +1391,34 @@ const closeAddTeamModal = () => {
 }
 
 // 編輯團隊
-const editTeam = (team: Team) => {
+const editTeam = async (team: Team) => {
+  // 重置表單數據
   Object.assign(editTeamForm, {
     id: team.id,
     name: team.name,
     description: team.description || '',
-    isActive: team.isActive
+    isActive: team.isActive,
+    membersToAdd: [],
+    membersToRemove: []
   })
+
+  // 載入當前團隊成員
+  try {
+    const response = await teamApi.getTeamMembersByTeam(team.id)
+    if (response.success && response.data) {
+      editTeamCurrentMembers.value = response.data
+    } else {
+      editTeamCurrentMembers.value = []
+    }
+  } catch (error) {
+    console.error('載入團隊成員失敗:', error)
+    editTeamCurrentMembers.value = []
+  }
+
   showEditTeamModal.value = true
 }
 
-// 提交編輯團隊（樂觀更新）
+// 提交編輯團隊（樂觀更新 + 成員管理）
 const submitEditTeam = async () => {
   editTeamLoading.value = true
 
@@ -1255,29 +1441,78 @@ const submitEditTeam = async () => {
   const originalName = team.name
   const originalDescription = team.description
   const originalIsActive = team.isActive
-  const { id, ...updateData } = editTeamForm
+  const originalMemberCount = team.memberCount || 0
+  const { id, membersToAdd, membersToRemove, ...updateData } = editTeamForm
+
+  // 計算成員數量變化
+  const memberCountChange = membersToAdd.length - membersToRemove.length
+  const newMemberCount = originalMemberCount + memberCountChange
 
   // 2️⃣ 樂觀更新：立即更新 UI
   team.name = updateData.name
   team.description = updateData.description
   team.isActive = updateData.isActive
+  team.memberCount = newMemberCount
 
   // 3️⃣ 立即關閉模態框和顯示成功消息
+  const totalChanges = membersToAdd.length + membersToRemove.length
+  const changeMessage = totalChanges > 0
+    ? `正在更新團隊資訊並處理 ${totalChanges} 位成員變更...`
+    : '已成功更新團隊資訊'
+
   closeEditTeamModal()
   editTeamLoading.value = false
-  showSuccess('更新團隊成功', '已成功更新團隊資訊')
+  showSuccess('更新團隊成功', changeMessage)
 
   try {
-    // 4️⃣ 背景調用 API
-    const response = await teamApi.updateTeam(id, updateData)
+    // 4️⃣ 背景調用 API - 更新團隊基本資訊
+    const response = await teamApi.updateTeam(id, {
+      name: updateData.name,
+      description: updateData.description,
+      isActive: updateData.isActive
+    })
 
     if (!response.success) {
       // 5️⃣ API 返回失敗，恢復原數據
       team.name = originalName
       team.description = originalDescription
       team.isActive = originalIsActive
+      team.memberCount = originalMemberCount
       showError('更新團隊失敗', response.error || '請稍後重試')
+      return
     }
+
+    // 6️⃣ 處理成員變更
+    const memberUpdatePromises: Promise<TeamMember | { success: false; memberId: string }>[] = []
+
+    // 移除成員：設置 teamId = undefined (移除團隊關聯)
+    membersToRemove.forEach(memberId => {
+      memberUpdatePromises.push(
+        teamStore.updateMember(memberId, { teamId: undefined })
+          .catch(error => {
+            console.error(`移除成員 ${memberId} 失敗:`, error)
+            return { success: false, memberId }
+          })
+      )
+    })
+
+    // 新增成員：設置 teamId = 當前團隊 ID
+    membersToAdd.forEach(memberId => {
+      memberUpdatePromises.push(
+        teamStore.updateMember(memberId, { teamId: id })
+          .catch(error => {
+            console.error(`新增成員 ${memberId} 到團隊失敗:`, error)
+            return { success: false, memberId }
+          })
+      )
+    })
+
+    // 等待所有成員更新完成
+    if (memberUpdatePromises.length > 0) {
+      await Promise.all(memberUpdatePromises)
+      console.log('✅ 團隊成員更新完成')
+    }
+
     // 成功的情況不需要做任何事，UI 已經更新了
   } catch (error) {
     console.error('更新團隊失敗:', error)
@@ -1285,6 +1520,7 @@ const submitEditTeam = async () => {
     team.name = originalName
     team.description = originalDescription
     team.isActive = originalIsActive
+    team.memberCount = originalMemberCount
     showError('更新團隊失敗', error instanceof Error ? error.message : '請稍後重試')
   }
 }
@@ -1292,7 +1528,17 @@ const submitEditTeam = async () => {
 // 關閉編輯團隊模態框
 const closeEditTeamModal = () => {
   showEditTeamModal.value = false
-  Object.assign(editTeamForm, { id: 0, name: '', description: '', isActive: true })
+  // 重置表單數據
+  Object.assign(editTeamForm, {
+    id: 0,
+    name: '',
+    description: '',
+    isActive: true,
+    membersToAdd: [],
+    membersToRemove: []
+  })
+  // 清空當前成員列表
+  editTeamCurrentMembers.value = []
 }
 
 // 切換團隊狀態
@@ -1622,6 +1868,11 @@ onMounted(() => {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+/* 大型模態框（用於編輯團隊 + 成員管理） */
+.modal-large {
+  max-width: 800px;
 }
 
 .modal-header {
@@ -2452,6 +2703,235 @@ onMounted(() => {
   display: flex;
   gap: var(--space-3);
   align-items: center;
+}
+
+/* 成員管理樣式 */
+.form-section {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0 0 var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.member-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  background: var(--gray-100);
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.current-members-section,
+.available-members-section {
+  margin-bottom: var(--space-4);
+}
+
+.no-members-message,
+.no-available-members-message {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 0.875rem;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--gray-300);
+}
+
+/* 當前成員列表樣式 */
+.members-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+}
+
+.member-item-compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.member-item-compact:hover {
+  border-color: var(--gray-300);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.member-avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.member-info-compact {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.member-info-compact .member-name {
+  font-weight: 600;
+  color: var(--gray-900);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-role-badge-small {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  flex-shrink: 0;
+}
+
+.member-role-badge-small.role-admin {
+  background: var(--gray-900);
+  color: white;
+}
+
+.member-role-badge-small.role-agent {
+  background: var(--gray-200);
+  color: var(--gray-800);
+  border: 1px solid var(--gray-300);
+}
+
+.btn-remove-member {
+  padding: var(--space-2) var(--space-3);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.btn-remove-member:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+  transform: translateY(-1px);
+}
+
+.btn-remove-member:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 可新增成員網格樣式 */
+.member-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+}
+
+.member-card-compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: white;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.member-card-compact:hover {
+  border-color: var(--gray-400);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.member-card-compact.selected {
+  border-color: var(--gray-900);
+  background: var(--gray-50);
+  box-shadow: 0 0 0 1px var(--gray-900);
+}
+
+.member-card-compact .member-info-compact {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.member-card-compact .member-info-compact .member-name {
+  font-size: 0.875rem;
+  max-width: 120px;
+}
+
+.selection-indicator-small {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.member-card-compact.selected .selection-indicator-small {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.selection-indicator-small svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Reduced Motion Preference */

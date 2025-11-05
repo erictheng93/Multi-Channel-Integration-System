@@ -279,13 +279,135 @@ conversations.post('/:id/assign', requireAdmin(), async (c) => {
       status: 'assigned'
     });
 
+    // 🔧 FIX: 获取更新后的完整对话对象,包括 assignedTeam 和 assignedAgent
+    const updatedConversation = await dbService.getConversationById(conversationId);
+
+    if (!updatedConversation) {
+      return c.json({
+        success: false,
+        error: 'Failed to retrieve updated conversation'
+      }, 500);
+    }
+
+    console.log('✅ [Assign API] Conversation assigned:', {
+      id: conversationId,
+      status: updatedConversation.status,
+      assignedTeamId: updatedConversation.assignedTeamId,
+      assignedTeam: updatedConversation.assignedTeam,
+      assignedUserId: updatedConversation.assignedUserId
+    });
+
     return c.json({
       success: true,
-      message: 'Conversation assigned successfully'
+      message: 'Conversation assigned successfully',
+      data: updatedConversation  // 返回完整的对话对象
     });
 
   } catch (error) {
     console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// 取消指派對話
+conversations.post('/:id/unassign', requireAdmin(), async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+    const { reason } = await c.req.json().catch(() => ({}));
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    // 管理員權限已由 requireAdmin() 中間件確認
+
+    // 檢查對話是否存在
+    const conversation = await dbService.getConversationById(conversationId);
+    if (!conversation) {
+      return c.json({
+        success: false,
+        error: 'Conversation not found'
+      }, 404);
+    }
+
+    // 檢查對話是否已指派
+    if (!conversation.assignedTeamId && !conversation.assignedUserId) {
+      return c.json({
+        success: false,
+        error: 'Conversation is not assigned'
+      }, 400);
+    }
+
+    // 記錄取消指派前的狀態
+    const previousAssignment = {
+      teamId: conversation.assignedTeamId,
+      teamName: conversation.assignedTeam?.name,
+      userId: conversation.assignedUserId,
+      userName: conversation.assignedAgent?.name
+    };
+
+    // 取消指派：清除 teamId 和 userId，將狀態改回 'open'
+    await dbService.updateConversation(conversationId, {
+      assignedTeamId: null,
+      assignedUserId: null,
+      status: 'open'
+    });
+
+    // 獲取更新後的完整對話對象
+    const updatedConversation = await dbService.getConversationById(conversationId);
+
+    if (!updatedConversation) {
+      return c.json({
+        success: false,
+        error: 'Failed to retrieve updated conversation'
+      }, 500);
+    }
+
+    console.log('✅ [Unassign API] Conversation unassigned:', {
+      id: conversationId,
+      previousAssignment,
+      newStatus: updatedConversation.status,
+      reason: reason || 'No reason provided',
+      unassignedBy: agent?.displayName || agent?.id
+    });
+
+    // 發送 WebSocket 事件通知取消指派
+    try {
+      await realtime.createEvent(
+        'conversation_unassigned',
+        {
+          conversationId,
+          previousTeamId: previousAssignment.teamId,
+          previousTeamName: previousAssignment.teamName,
+          previousUserId: previousAssignment.userId,
+          previousUserName: previousAssignment.userName,
+          reason: reason || 'No reason provided',
+          unassignedBy: agent?.displayName || agent?.id,
+          timestamp: Date.now()
+        },
+        {
+          conversationId: conversationId,
+          // 通知之前指派的團隊或用戶
+          ...(previousAssignment.teamId && { teamId: previousAssignment.teamId }),
+          ...(previousAssignment.userId && { userId: previousAssignment.userId }),
+          broadcast: true // 廣播給所有相關用戶
+        },
+        'high', // 高優先級通知
+        'api'
+      );
+    } catch (eventError) {
+      console.error('❌ [Unassign API] Failed to send realtime event:', eventError);
+      // 繼續執行，不中斷流程
+    }
+
+    return c.json({
+      success: true,
+      message: 'Conversation unassigned successfully',
+      data: updatedConversation
+    });
+
+  } catch (error) {
+    console.error('Unassign operation failed:', error);
     return handleApiError(error, c);
   }
 });

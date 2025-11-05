@@ -195,7 +195,7 @@
                     </td>
                     <td class="agent-cell">
                       <div class="assigned-agent">
-                        {{ conversation.assignedAgent?.name || '未指派' }}
+                        {{ getAssignedTo(conversation) }}
                       </div>
                     </td>
                     <td class="time-cell">
@@ -252,7 +252,7 @@
                   </div>
                   <div class="card-footer">
                     <div class="assigned-agent">
-                      負責人: {{ conversation.assignedAgent?.name || '未指派' }}
+                      負責人: {{ getAssignedTo(conversation) }}
                     </div>
                     <div class="timestamp">
                       {{ formatTime(conversation.updatedAt || (conversation as any).updated_at) }}
@@ -403,6 +403,19 @@ const goToConversation = (id: string) => {
 const getLastMessageText = (conversation: Conversation) => {
   const content = conversation.lastMessage?.content || '暫無訊息'
   return convertEmojiForConversationList(content)
+}
+
+const getAssignedTo = (conversation: Conversation) => {
+  // 優先顯示個人指派
+  if (conversation.assignedAgent?.name) {
+    return `👤 ${conversation.assignedAgent.name}`
+  }
+  // 其次顯示團隊指派
+  if (conversation.assignedTeam?.name) {
+    return `👥 ${conversation.assignedTeam.name}`
+  }
+  // 都沒有則顯示未指派
+  return '未指派'
 }
 
 const applyFilters = () => {

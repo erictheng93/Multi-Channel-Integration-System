@@ -47,6 +47,13 @@ export interface Agent {
   lastActive?: Timestamp
 }
 
+// 團隊資訊（簡化版）
+export interface TeamInfo {
+  id: number
+  name: string
+  description?: string | null
+}
+
 // 對話相關
 export interface Conversation {
   id: EntityId
@@ -56,7 +63,9 @@ export interface Conversation {
   assignedTo?: EntityId
   assignedAgent?: Agent
   assignedAgentId?: EntityId // 向後兼容字段
+  assignedUserId?: EntityId // 🆕 資料庫欄位名稱 (與 assignedAgentId 同義)
   assignedTeamId?: number // 🆕 團隊指派欄位
+  assignedTeam?: TeamInfo | null // 🆕 團隊資訊 (包含完整資訊)
   status: ConversationStatus
   platform?: Platform // 向後兼容字段
   lastMessageAt: Timestamp

@@ -136,7 +136,7 @@ export class WebSocketBroadcastService {
    * Broadcast conversation events
    */
   async broadcastConversationEvent(event: {
-    type: 'conversation_assigned' | 'conversation_transferred' | 'conversation_status_changed' | 'participant_joined' | 'participant_left';
+    type: 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'conversation_status_changed' | 'participant_joined' | 'participant_left';
     conversationId: string;
     userId?: string;
     data: any;

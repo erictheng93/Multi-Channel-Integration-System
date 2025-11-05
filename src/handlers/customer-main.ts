@@ -3,11 +3,15 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { handleApiError } from '../utils/api-response';
 import { customerTagsHandler } from './customer-tags';
+import { jwtAuth } from '../middleware/auth';
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 
 // ✅ CORS 處理已移至 src/index.ts 統一管理
 // 不再需要 handler 級別的 CORS middleware
+
+// 🔒 應用 JWT 認證中間件到所有端點
+customerHandler.use('/*', jwtAuth);
 
 // ========================================
 // 客戶標籤管理端點（需要在其他路由之前定義）
