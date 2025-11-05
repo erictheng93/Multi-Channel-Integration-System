@@ -67,12 +67,35 @@
       >
         <div class="panel-header">
           <h4>選擇指派團隊</h4>
-          <button
-            class="close-panel-btn"
-            @click="closeTeamSelector"
-          >
-            <XIcon />
-          </button>
+          <div class="panel-header-actions">
+            <!-- 🆕 手动刷新按钮 -->
+            <button
+              class="refresh-btn"
+              :disabled="isLoadingTeams"
+              :title="isLoadingTeams ? '載入中...' : '重新載入團隊列表'"
+              @click="handleManualRefresh"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                :class="{ 'spinning': isLoadingTeams }"
+              >
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+              </svg>
+            </button>
+            <button
+              class="close-panel-btn"
+              @click="closeTeamSelector"
+            >
+              <XIcon />
+            </button>
+          </div>
         </div>
 
         <!-- 搜索框 -->
@@ -90,8 +113,20 @@
 
         <!-- 團隊列表 -->
         <div class="teams-section">
+          <!-- 🆕 加载状态：显示骨架屏 -->
           <div
-            v-if="teams.length === 0"
+            v-if="isLoadingTeams"
+            class="loading-state"
+          >
+            <TeamListSkeleton :count="3" />
+            <p class="loading-text">
+              載入團隊中...
+            </p>
+          </div>
+
+          <!-- 空状态：确认无团队数据 -->
+          <div
+            v-else-if="teams.length === 0"
             class="no-teams"
           >
             <div class="no-teams-icon">
@@ -100,6 +135,7 @@
             <p>沒有找到可用的團隊</p>
           </div>
 
+          <!-- 团队列表 -->
           <div
             v-else
             class="teams-grid"
@@ -184,6 +220,7 @@ import {
   XIcon,
   SearchIcon
 } from '@/components/icons'
+import TeamListSkeleton from '@/components/ui/TeamListSkeleton.vue'
 
 interface Props {
   conversation: Conversation
@@ -209,6 +246,7 @@ const isAssigning = ref(false)
 const showTeamSelector = ref(false)
 const teamSearchTerm = ref('')
 const selectedTeam = ref<number | null>(null)
+const isLoadingTeams = ref(false) // 🆕 加载状态
 
 // Confirm dialog
 const { showWarning } = useConfirmDialog()
@@ -300,8 +338,17 @@ const toggleTeamSelector = async () => {
     closeTeamSelector()
   } else {
     showTeamSelector.value = true
+
+    // 🆕 如果团队数据为空，显示加载状态
+    if (teams.value.length === 0) {
+      isLoadingTeams.value = true
+    }
+
     // 🚀 优化：确保团队数据已加载（如果已在缓存中，立即返回）
     await preloadService.ensureTeamsLoaded()
+
+    // 🆕 加载完成，关闭加载状态
+    isLoadingTeams.value = false
   }
 }
 
@@ -309,6 +356,7 @@ const closeTeamSelector = () => {
   showTeamSelector.value = false
   selectedTeam.value = null
   teamSearchTerm.value = ''
+  isLoadingTeams.value = false // 🆕 重置加载状态
 }
 
 const selectTeam = (teamId: number) => {
@@ -318,6 +366,25 @@ const selectTeam = (teamId: number) => {
 
 const cancelSelection = () => {
   selectedTeam.value = null
+}
+
+// 🆕 手动刷新团队列表
+const handleManualRefresh = async () => {
+  if (isLoadingTeams.value) {return}
+
+  console.log('🔄 [AdvancedAssignActions] Manual refresh triggered by user')
+  isLoadingTeams.value = true
+
+  try {
+    // 强制刷新团队数据
+    await preloadService.refreshTeams()
+    showSuccess('刷新成功', '團隊列表已更新')
+  } catch (error) {
+    console.error('❌ [AdvancedAssignActions] Manual refresh failed:', error)
+    showError('刷新失敗', '無法重新載入團隊列表，請稍後重試')
+  } finally {
+    isLoadingTeams.value = false
+  }
 }
 
 // 🚀 优化：添加乐观更新支持
@@ -673,6 +740,51 @@ onMounted(async () => {
   color: var(--gray-900);
 }
 
+/* 🆕 Header actions group */
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 🆕 Refresh button styles */
+.refresh-btn {
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--gray-200);
+  color: var(--primary-600);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 🆕 Spinning animation for refresh icon */
+.refresh-btn svg.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .close-panel-btn {
   padding: var(--space-1);
   border: none;
@@ -751,6 +863,30 @@ onMounted(async () => {
 
 .teams-section::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
+}
+
+/* 🆕 加载状态样式 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.loading-text {
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 0.875rem;
+  margin-top: var(--space-2);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .no-teams {

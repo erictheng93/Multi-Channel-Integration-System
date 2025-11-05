@@ -35,6 +35,7 @@
             class="role"
             :class="member.role"
           >
+            <span class="role-icon">{{ getRoleIcon(member.role) }}</span>
             {{ getRoleText(member.role) }}
           </span>
           <span
@@ -56,20 +57,7 @@
       class="member-actions"
       @click.stop
     >
-      <select 
-        :value="member.role"
-        :disabled="isCurrentUser || loading"
-        class="role-select"
-        @change="$emit('updateRole', member.id, ($event.target as HTMLSelectElement).value)"
-      >
-        <option value="agent">
-          客服
-        </option>
-        <option value="admin">
-          管理員
-        </option>
-      </select>
-      <button 
+      <button
         class="btn btn-sm"
         :class="member.status === 'active' ? 'btn-warning' : 'btn-success'"
         :disabled="isCurrentUser || loading"
@@ -151,26 +139,54 @@
                 :disabled="isCurrentUser"
               >
                 <option value="agent">
-                  客服
+                  🎧 客服
                 </option>
                 <option value="admin">
-                  管理員
+                  👑 管理員
                 </option>
               </select>
+              <div
+                v-if="editForm.role"
+                class="role-permissions-info"
+              >
+                <div
+                  v-if="editForm.role === 'admin'"
+                  class="permission-warning"
+                >
+                  <strong>⚠️ 管理員權限包括：</strong>
+                  <ul>
+                    <li>管理所有團隊成員</li>
+                    <li>修改系統設定</li>
+                    <li>查看所有對話紀錄</li>
+                    <li>刪除資料</li>
+                  </ul>
+                </div>
+                <div
+                  v-else-if="editForm.role === 'agent'"
+                  class="permission-info"
+                >
+                  <strong>ℹ️ 客服權限包括：</strong>
+                  <ul>
+                    <li>查看對話</li>
+                    <li>回覆訊息</li>
+                    <li>標記客戶</li>
+                  </ul>
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label for="editGroup">群組</label>
               <select
                 id="editGroup"
-                v-model="editForm.group"
+                v-model="editForm.teamId"
               >
-                <option value="">
+                <option :value="null">
                   未指派群組
                 </option>
                 <option
                   v-for="team in teams"
                   :key="team.id"
-                  :value="team.name"
+                  :value="team.id"
                 >
                   {{ team.name }}
                 </option>
@@ -214,6 +230,7 @@ import type { TeamMember } from '@/types'
 import { teamApi } from '@/api/team'
 import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 interface Props {
   member: TeamMember
@@ -227,7 +244,6 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  updateRole: [memberId: string, role: string]
   toggleStatus: [member: TeamMember]
   resetPassword: [member: TeamMember]
   removeMember: [member: TeamMember]
@@ -239,6 +255,7 @@ if (typeof emit !== 'undefined') { /* noop */ }
 // 組合式函數
 const teamStore = useTeamStore()
 const { showSuccess, showError } = useToast()
+const { showWarning } = useConfirmDialog()
 
 // Modal state
 const showEditModal = ref(false)
@@ -268,7 +285,7 @@ const editForm = reactive({
   name: '',
   email: '',
   role: 'agent' as 'admin' | 'agent',
-  group: '',
+  teamId: null as number | null,
   isActive: true
 })
 
@@ -278,7 +295,7 @@ watch(() => showEditModal.value, async (newVal) => {
     editForm.name = props.member.name || ''
     editForm.email = props.member.email || ''
     editForm.role = props.member.role
-    editForm.group = props.member.group || ''
+    editForm.teamId = props.member.teamId ?? null
     editForm.isActive = props.member.status === 'active'
 
     // 載入團隊列表
@@ -334,29 +351,47 @@ onUnmounted(() => {
 const submitEdit = async () => {
   editLoading.value = true
   try {
-    const updateData: {
-      name: string;
-      email: string;
-      role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
-      group: string;
-      status: 'active' | 'inactive';
-    } = {
+    // 檢查角色是否變更
+    const roleChanged = editForm.role !== props.member.role
+
+    // 如果角色變更，顯示確認對話框
+    if (roleChanged) {
+      const roleChangeMessage = editForm.role === 'admin'
+        ? '您確定要將此用戶提升為管理員嗎？管理員將擁有所有系統權限。'
+        : '您確定要將此用戶降級為客服嗎？將失去管理員權限。'
+
+      const confirmed = await showWarning(
+        '確認角色變更',
+        roleChangeMessage,
+        {
+          confirmText: '確認變更',
+          cancelText: '取消'
+        }
+      )
+
+      if (!confirmed) {
+        editLoading.value = false
+        return
+      }
+    }
+
+    const updateData: Partial<TeamMember> = {
       name: editForm.name,
       email: editForm.email,
       role: editForm.role,
-      group: editForm.group,
+      teamId: editForm.teamId ?? undefined,
       status: editForm.isActive ? 'active' as const : 'inactive' as const
     }
 
     // 使用teamStore統一處理，避免雙重調用
     await teamStore.updateMember(props.member.id, updateData)
-    
+
     // 顯示成功訊息
     showSuccess(
       '更新成功',
       `已成功更新 ${props.member.name || props.member.loginId} 的資訊`
     )
-    
+
     closeEditModal()
   } catch (error) {
     console.error('更新成員失敗:', error)
@@ -388,6 +423,15 @@ const getRoleText = (role: string) => {
     agent: '客服'
   }
   return roleMap[role as keyof typeof roleMap] || role
+}
+
+const getRoleIcon = (role: string) => {
+  const iconMap = {
+    admin: '👑',
+    team: '👥',
+    agent: '🎧'
+  }
+  return iconMap[role as keyof typeof iconMap] || '👤'
 }
 
 const formatDate = (date: string | Date) => {
@@ -486,12 +530,20 @@ const formatDate = (date: string | Date) => {
 
 .role,
 .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 600;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.role-icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .role.admin {
@@ -543,35 +595,6 @@ const formatDate = (date: string | Date) => {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-}
-
-.role-select {
-  padding: 14px 16px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: white;
-  min-width: 140px;
-  color: #475569;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.role-select:hover {
-  border-color: #94a3b8;
-  background: #f8fafc;
-}
-
-.role-select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.role-select:disabled {
-  background: #f1f5f9;
-  color: #64748b;
-  cursor: not-allowed;
 }
 
 .btn {
@@ -791,6 +814,42 @@ const formatDate = (date: string | Date) => {
   width: auto;
 }
 
+/* Role permissions info styling */
+.role-permissions-info {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.permission-warning {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  color: #92400e;
+}
+
+.permission-info {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  color: #1e40af;
+}
+
+.role-permissions-info strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+}
+
+.role-permissions-info ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.role-permissions-info li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
 
 /* Form help text styling */
 .form-help-text {
@@ -831,11 +890,6 @@ const formatDate = (date: string | Date) => {
     justify-content: flex-start;
     flex-wrap: wrap;
     gap: var(--space-2);
-  }
-
-  .role-select {
-    min-width: auto;
-    flex: 1;
   }
 
   .btn-sm {
@@ -902,10 +956,6 @@ const formatDate = (date: string | Date) => {
     grid-template-columns: 1fr 1fr;
     display: grid;
     gap: var(--space-2);
-  }
-
-  .role-select {
-    grid-column: 1 / -1;
   }
 }
 </style>

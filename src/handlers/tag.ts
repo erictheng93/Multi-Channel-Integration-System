@@ -424,28 +424,28 @@ export const tagHandler = {
       `);
 
       // 最近使用趨勢（最近30天）
-      const usageTrend = await drizzleDb.run(sql`
-        SELECT 
+      const usageTrendResults = await drizzleDb.all(sql`
+        SELECT
           DATE(ct.assigned_at) as date,
           COUNT(*) as assignments
         FROM customer_tags ct
-        WHERE ct.tag_id = ${tagId} 
+        WHERE ct.tag_id = ${tagId}
         AND ct.assigned_at >= date('now', '-30 days')
         GROUP BY DATE(ct.assigned_at)
         ORDER BY date DESC
         LIMIT 30
       `);
 
-      // 最活躍的使用者
-      const topAssigners = await drizzleDb.run(sql`
-        SELECT 
-          u.display_name,
+      // 最活躍的使用者 (Fixed: use agents table instead of users)
+      const topAssignersResults = await drizzleDb.all(sql`
+        SELECT
+          a.display_name,
           COUNT(*) as assignments
         FROM customer_tags ct
-        JOIN users u ON ct.assigned_by = u.id
+        JOIN agents a ON ct.assigned_by = a.id
         WHERE ct.tag_id = ${tagId}
         AND ct.assigned_at >= date('now', '-30 days')
-        GROUP BY ct.assigned_by, u.display_name
+        GROUP BY ct.assigned_by, a.display_name
         ORDER BY assignments DESC
         LIMIT 10
       `);
@@ -468,11 +468,11 @@ export const tagHandler = {
           active: (conversationStats as any)?.active_conversations || 0,
           closed: (conversationStats as any)?.closed_conversations || 0
         },
-        usageTrend: usageTrend.results || [].map((row: any) => ({
+        usageTrend: (usageTrendResults || []).map((row: any) => ({
           date: row.date,
           assignments: row.assignments
         })),
-        topAssigners: topAssigners.results || [].map((row: any) => ({
+        topAssigners: (topAssignersResults || []).map((row: any) => ({
           name: row.display_name,
           assignments: row.assignments
         }))
@@ -535,6 +535,70 @@ export const tagHandler = {
       }
 
       return successResponse(c, null, `Bulk ${operation} completed successfully`);
+
+    } catch (error) {
+      return handleApiError(error, c);
+    }
+  },
+
+  // 獲取標籤的客戶列表
+  async getTagCustomers(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = drizzle(c.env.DB);
+    try {
+      const tagId = c.req.param('id');
+      const page = parseInt(c.req.query('page') || '1');
+      const limit = Math.min(parseInt(c.req.query('limit') || '50'), 100);
+      const offset = (page - 1) * limit;
+
+      // 檢查標籤是否存在
+      const tag = await drizzleDb.get(sql`
+        SELECT * FROM tags WHERE id = ${tagId}
+      `);
+
+      if (!tag) {
+        return notFoundResponse(c, 'Tag');
+      }
+
+      // 獲取使用該標籤的客戶列表
+      // Optimized query: removed LEFT JOIN on agents table since assigned_by_name is not displayed in UI
+      const customers = await drizzleDb.all(sql`
+        SELECT
+          c.id,
+          c.platform,
+          c.platform_user_id,
+          c.display_name,
+          c.avatar_url,
+          c.email,
+          c.phone,
+          c.created_at,
+          ct.assigned_at,
+          ct.assigned_by
+        FROM customer_tags ct
+        JOIN customers c ON ct.customer_id = c.id
+        WHERE ct.tag_id = ${tagId}
+        ORDER BY ct.assigned_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+
+      // 獲取總數
+      const countResult = await drizzleDb.get(sql`
+        SELECT COUNT(*) as total
+        FROM customer_tags
+        WHERE tag_id = ${tagId}
+      `);
+
+      const total = (countResult as any)?.total || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      return successResponse(c, {
+        customers: customers || [],
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages
+        }
+      }, 'Tag customers retrieved successfully');
 
     } catch (error) {
       return handleApiError(error, c);

@@ -262,3 +262,67 @@ export const setCustomerTags = async (
   }
   return { success: true, message: 'Tags set successfully' }
 }
+
+/**
+ * 獲取標籤的客戶列表
+ */
+export interface TagCustomer {
+  id: number
+  platform: 'line' | 'facebook'
+  platform_user_id: string
+  display_name: string
+  avatar_url?: string | null
+  email?: string | null
+  phone?: string | null
+  created_at: string
+  assigned_at: string
+  assigned_by?: string | null
+  assigned_by_name?: string | null
+}
+
+export interface TagCustomersResponse {
+  success: boolean
+  data: {
+    customers: TagCustomer[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+    }
+  }
+  message: string
+}
+
+export const getTagCustomers = async (
+  tagId: number,
+  params?: {
+    page?: number
+    limit?: number
+  }
+): Promise<TagCustomersResponse> => {
+  const queryString = params
+    ? `?${new URLSearchParams(
+        Object.entries(params)
+          .filter(([, value]) => value !== undefined)
+          .map(([key, value]) => [key, String(value)])
+      ).toString()}`
+    : ''
+  const response = await apiClient.get<{
+    customers: TagCustomer[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+    }
+  }>(`/tags/${tagId}/customers${queryString}`)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch tag customers')
+  }
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || 'Tag customers retrieved successfully'
+  }
+}

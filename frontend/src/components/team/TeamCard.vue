@@ -29,15 +29,8 @@
       class="team-actions"
       @click.stop
     >
-      <button 
-        class="btn btn-sm btn-secondary" 
-        :disabled="loading"
-        @click="$emit('edit-team', team)"
-      >
-        編輯團隊
-      </button>
-      <button 
-        :class="['btn', 'btn-sm', team.isActive ? 'btn-warning' : 'btn-success']" 
+      <button
+        :class="['btn', 'btn-sm', team.isActive ? 'btn-warning' : 'btn-success']"
         :disabled="loading"
         @click="$emit('toggle-status', team)"
       >
@@ -50,8 +43,8 @@
       >
         QR 碼
       </button>
-      <button 
-        class="btn btn-sm btn-danger" 
+      <button
+        class="btn btn-sm btn-danger"
         :disabled="loading"
         @click="$emit('remove-team', team)"
       >
@@ -61,14 +54,12 @@
   </div>
 
   <!-- 團隊詳情 Modal -->
-  <div 
-    v-if="showModal" 
+  <div
+    v-if="showModal"
     class="modal-overlay"
-    @click="closeModal"
   >
-    <div 
-      class="modal-content" 
-      @click.stop
+    <div
+      class="modal-content"
     >
       <!-- Modal Header -->
       <div class="modal-header">
@@ -83,10 +74,74 @@
 
       <!-- Modal Body -->
       <div class="modal-body">
+        <!-- 團隊編輯表單 -->
+        <div
+          v-if="isEditing"
+          class="team-edit-form"
+        >
+          <h3>編輯團隊資訊</h3>
+          <form @submit.prevent="saveTeamEdit">
+            <div class="form-group">
+              <label for="teamName">團隊名稱</label>
+              <input
+                id="teamName"
+                v-model="editForm.name"
+                type="text"
+                placeholder="請輸入團隊名稱"
+                required
+              >
+            </div>
+            <div class="form-group">
+              <label for="teamDescription">團隊描述</label>
+              <textarea
+                id="teamDescription"
+                v-model="editForm.description"
+                rows="3"
+                placeholder="請輸入團隊描述"
+              />
+            </div>
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="cancelEdit"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="editLoading"
+              >
+                {{ editLoading ? '儲存中...' : '儲存變更' }}
+              </button>
+            </div>
+          </form>
+        </div>
+
         <!-- 團隊統計資訊 -->
-        <div class="team-stats">
-          <h3>團隊資訊</h3>
+        <div
+          v-else
+          class="team-stats"
+        >
+          <div class="section-header">
+            <h3>團隊資訊</h3>
+            <button
+              class="btn btn-sm btn-secondary"
+              @click="startEdit"
+            >
+              ✏️ 編輯
+            </button>
+          </div>
           <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">團隊名稱</span>
+              <span class="stat-value">{{ team.name }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">團隊描述</span>
+              <span class="stat-value">{{ team.description || '無描述' }}</span>
+            </div>
             <div class="stat-item">
               <span class="stat-label">創建時間</span>
               <span class="stat-value">{{ formatDate(team.createdAt) }}</span>
@@ -238,7 +293,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, reactive } from 'vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { teamApi } from '@/api/team'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
@@ -262,11 +317,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'edit-team': [team: Team];
   'toggle-status': [team: Team];
   'generate-qr': [team: Team];
   'remove-team': [team: Team];
   'member-updated': [];
+  'team-updated': [];
 }>();
 
 // Composables
@@ -277,6 +332,14 @@ const { showSuccess, showError } = useToast()
 const showModal = ref(false)
 const members = ref<TeamMember[]>([])
 const loadingMembers = ref(false)
+
+// 編輯狀態
+const isEditing = ref(false)
+const editLoading = ref(false)
+const editForm = reactive({
+  name: '',
+  description: ''
+})
 
 // 成員管理狀態
 const showAddMemberSelector = ref(false)
@@ -337,7 +400,8 @@ const formatDate = (dateString: string): string => {
 // Modal 控制功能
 const showTeamDetails = async () => {
   showModal.value = true
-  
+  isEditing.value = false
+
   // 如果還沒載入成員，則載入成員資料
   if (members.value.length === 0) {
     await loadTeamMembers()
@@ -346,6 +410,51 @@ const showTeamDetails = async () => {
 
 const closeModal = () => {
   showModal.value = false
+  isEditing.value = false
+}
+
+// 編輯功能
+const startEdit = () => {
+  editForm.name = props.team.name
+  editForm.description = props.team.description || ''
+  isEditing.value = true
+}
+
+const cancelEdit = () => {
+  isEditing.value = false
+}
+
+const saveTeamEdit = async () => {
+  try {
+    const confirmed = await showWarning(
+      '確定要更新團隊資訊？',
+      `團隊名稱將更新為 "${editForm.name}"`
+    )
+
+    if (!confirmed) {return}
+
+    editLoading.value = true
+
+    const response = await teamApi.updateTeam(props.team.id, {
+      name: editForm.name,
+      description: editForm.description
+    })
+
+    if (response.success) {
+      showSuccess('團隊更新成功')
+      isEditing.value = false
+
+      // 通知父組件更新
+      emit('team-updated')
+    } else {
+      showError(response.error || '更新團隊失敗')
+    }
+  } catch (error) {
+    console.error('更新團隊失敗:', error)
+    showError('更新團隊時發生錯誤')
+  } finally {
+    editLoading.value = false
+  }
 }
 
 // 載入團隊成員
@@ -695,6 +804,72 @@ watch(() => props.team.id, () => {
   max-height: 65vh;
   overflow-y: auto;
   background: #f8fafc;
+}
+
+/* 團隊編輯表單 */
+.team-edit-form {
+  margin-bottom: 28px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.team-edit-form h3 {
+  color: #1e293b;
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+  color: #475569;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+}
+
+.form-group input:hover,
+.form-group textarea:hover {
+  border-color: #94a3b8;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
 }
 
 .team-stats {

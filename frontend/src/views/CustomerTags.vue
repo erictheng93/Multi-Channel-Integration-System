@@ -106,31 +106,6 @@
               </svg>
             </div>
           </div>
-
-          <div class="stat-card conversations">
-            <div class="stat-content">
-              <div class="stat-number">
-                {{ totalConversations }}
-              </div>
-              <div class="stat-label">
-                已標記對話
-              </div>
-            </div>
-            <div class="stat-icon">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                />
-              </svg>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -239,175 +214,19 @@
 
         <div
           v-else
-          class="tags-grid"
+          class="tags-list"
         >
-          <div
+          <TagCard
             v-for="tag in filteredTags"
             :key="tag.id"
-            class="tag-card"
-            :class="{ selected: selectedTags.includes(tag.id) }"
-          >
-            <div class="tag-card-header">
-              <input
-                type="checkbox"
-                :checked="selectedTags.includes(tag.id)"
-                class="tag-checkbox"
-                @change="toggleTagSelection(tag.id)"
-              >
-              <div
-                class="tag-color-badge"
-                :style="{ backgroundColor: tag.color }"
-              />
-            </div>
-
-            <div class="tag-card-body">
-              <h3 class="tag-card-title">
-                {{ tag.name }}
-              </h3>
-              <p
-                v-if="tag.description"
-                class="tag-card-description"
-              >
-                {{ tag.description }}
-              </p>
-
-              <div class="tag-meta">
-                <span class="meta-item">
-                  <svg
-                    class="meta-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                  {{ tag.customerCount || 0 }} 客戶
-                </span>
-                <span class="meta-item">
-                  <svg
-                    class="meta-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                    />
-                  </svg>
-                  {{ tag.conversationCount || 0 }} 對話
-                </span>
-              </div>
-
-              <div class="tag-badges">
-                <div
-                  v-if="tag.teamId"
-                  class="tag-badge team"
-                >
-                  <svg
-                    class="badge-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                  團隊標籤
-                </div>
-                <div
-                  v-else
-                  class="tag-badge global"
-                >
-                  <svg
-                    class="badge-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  全局
-                </div>
-              </div>
-            </div>
-
-            <div class="tag-card-footer">
-              <button
-                class="action-btn"
-                @click="viewTagStats(tag)"
-              >
-                <svg
-                  class="icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-                統計
-              </button>
-              <button
-                class="action-btn"
-                @click="editTag(tag)"
-              >
-                <svg
-                  class="icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-                編輯
-              </button>
-              <button
-                class="action-btn danger"
-                @click="confirmDelete(tag)"
-              >
-                <svg
-                  class="icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-                刪除
-              </button>
-            </div>
-          </div>
+            :tag="tag"
+            :selected="selectedTags.includes(tag.id)"
+            :loading="loading"
+            @toggle-selection="toggleTagSelection(tag.id)"
+            @view-stats="viewTagStats(tag)"
+            @edit="editTag(tag)"
+            @delete="confirmDelete(tag)"
+          />
         </div>
       </div>
     </div>
@@ -680,6 +499,14 @@
         </button>
       </template>
     </Modal>
+
+    <!-- Tag Stats Modal -->
+    <TagStatsModal
+      v-if="statsTag"
+      :show="showStatsModal"
+      :tag="statsTag"
+      @close="showStatsModal = false"
+    />
   </AppLayout>
 </template>
 
@@ -691,6 +518,8 @@ import AppLayout from '@/components/ui/AppLayout.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Modal from '@/components/ui/Modal.vue'
+import TagCard from '@/components/customer/TagCard.vue'
+import TagStatsModal from '@/components/customer/TagStatsModal.vue'
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
@@ -704,8 +533,10 @@ const showBulkMenu = ref(false)
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
+const showStatsModal = ref(false)
 const editingTag = ref<Tag | null>(null)
 const deletingTag = ref<Tag | null>(null)
+const statsTag = ref<Tag | null>(null)
 
 const formData = ref({
   name: '',
@@ -722,7 +553,6 @@ const predefinedColors = [
 // Computed Properties
 const totalTags = computed(() => tags.value.length)
 const totalCustomers = computed(() => tags.value.reduce((sum, t) => sum + (t.customerCount || 0), 0))
-const totalConversations = computed(() => tags.value.reduce((sum, t) => sum + (t.conversationCount || 0), 0))
 
 const filteredTags = computed(() => {
   let result = tags.value
@@ -976,8 +806,8 @@ const cancelDelete = () => {
 
 // View tag stats
 const viewTagStats = (tag: Tag) => {
-  console.log('View stats for:', tag)
-  // TODO: Implement stats page
+  statsTag.value = tag
+  showStatsModal.value = true
 }
 
 // Close modals
@@ -1085,10 +915,6 @@ onMounted(() => {
 
 .stat-card.customers::before {
   background: linear-gradient(180deg, #10b981, #059669);
-}
-
-.stat-card.conversations::before {
-  background: linear-gradient(180deg, #f59e0b, #d97706);
 }
 
 .stat-card:hover {
@@ -1215,158 +1041,11 @@ onMounted(() => {
   margin-top: var(--space-8);
 }
 
-/* Tags Grid */
-.tags-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--space-6);
-}
-
-.tag-card {
-  background: white;
-  border-radius: var(--radius-2xl);
-  padding: var(--space-6);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  border: 1px solid var(--gray-100);
-  transition: all var(--transition-fast);
-  cursor: pointer;
-}
-
-.tag-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-.tag-card.selected {
-  border-color: var(--primary-500);
-  background: var(--primary-50);
-}
-
-.tag-card-header {
+/* Tags List - Desktop Optimized */
+.tags-list {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.tag-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  border-radius: var(--radius-md);
-}
-
-.tag-color-badge {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-xl);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.tag-card-body {
-  margin-bottom: var(--space-4);
-}
-
-.tag-card-title {
-  margin: 0 0 var(--space-2) 0;
-  color: var(--gray-900);
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.tag-card-description {
-  margin: 0 0 var(--space-4) 0;
-  color: var(--gray-600);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.tag-meta {
-  display: flex;
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--gray-600);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.meta-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--gray-400);
-}
-
-.tag-badges {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.tag-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-lg);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.tag-badge.global {
-  background: var(--primary-100);
-  color: var(--primary-700);
-}
-
-.tag-badge.team {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.badge-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.tag-card-footer {
-  display: flex;
-  gap: var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--gray-100);
-}
-
-.action-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  background: var(--gray-50);
-  color: var(--gray-700);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.action-btn:hover {
-  background: white;
-  border-color: var(--gray-300);
-  color: var(--gray-900);
-}
-
-.action-btn.danger:hover {
-  background: var(--danger-50);
-  border-color: var(--danger-200);
-  color: var(--danger-700);
+  flex-direction: column;
+  gap: 0;
 }
 
 /* Buttons */
@@ -1721,9 +1400,6 @@ onMounted(() => {
     max-width: none;
   }
 
-  .tags-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
 }
 
 @media (max-width: 768px) {
@@ -1738,10 +1414,6 @@ onMounted(() => {
   .stats-grid {
     grid-template-columns: 1fr;
   }
-
-  .tags-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
@@ -1749,14 +1421,6 @@ onMounted(() => {
     flex-direction: column;
     width: 100%;
     gap: var(--space-3);
-  }
-
-  .tag-card-footer {
-    flex-direction: column;
-  }
-
-  .action-btn {
-    width: 100%;
   }
 }
 
