@@ -96,7 +96,7 @@ class PreloadService {
         this.cache.set(cacheKey, {
           data: teams,
           timestamp: Date.now(),
-          ttl: 5 * 60 * 1000  // 5分钟 TTL
+          ttl: 30 * 60 * 1000  // 30分钟 TTL (优化: 延长缓存时间，减少 API 调用频率)
         })
 
         console.log(`✅ [PreloadService] ${teams.length} teams cached`)
@@ -113,25 +113,37 @@ class PreloadService {
 
   /**
    * 获取团队列表（同步方法）
-   * 如果缓存中没有数据，返回空数组并触发后台加载
+   * 🚀 Stale-While-Revalidate 策略：
+   * - 如果缓存有效，立即返回
+   * - 如果缓存过期但存在，返回旧数据并后台刷新
+   * - 如果缓存不存在，返回空数组并触发后台加载
    */
   getTeams(): Team[] {
     const cached = this.cache.get('teams') as CacheEntry<Team[]> | undefined
 
+    // 情况1: 缓存有效，直接返回
     if (cached && this.isCacheValid(cached)) {
       return cached.data
     }
 
-    // 缓存失效或不存在，触发后台刷新
-    if (!cached || !this.isCacheValid(cached)) {
-      console.log('🔄 [PreloadService] Cache expired, refreshing teams in background...')
+    // 情况2: 缓存过期但存在数据 - Stale-While-Revalidate
+    if (cached && !this.isCacheValid(cached)) {
+      console.log('⚡ [PreloadService] Using stale cache while revalidating...')
+      // 后台刷新，不阻塞当前请求
       this.preloadTeams().catch(err => {
         console.error('❌ [PreloadService] Background refresh failed:', err)
       })
+      // 立即返回过期的数据，用户无感知
+      return cached.data
     }
 
-    // 返回过期的缓存数据（如果有）或空数组
-    return cached?.data || []
+    // 情况3: 缓存不存在，触发后台加载
+    console.log('🔄 [PreloadService] No cache found, loading teams in background...')
+    this.preloadTeams().catch(err => {
+      console.error('❌ [PreloadService] Background load failed:', err)
+    })
+
+    return []
   }
 
   /**

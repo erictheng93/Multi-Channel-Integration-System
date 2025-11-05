@@ -4,6 +4,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, or, desc, sql, ne } from 'drizzle-orm';
 import { agents } from '@/db/schema';
+import { hashPassword } from '@/utils/auth';
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
   TeamMember,
@@ -28,8 +29,8 @@ export class MemberService {
   async addMember(data: AddTeamMemberRequest, createdBy: string): Promise<TeamMember> {
     const memberId = `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Hash password (simplified - in production use proper hashing)
-    const hashedPassword = data.password; // TODO: Implement proper password hashing
+    // Hash password using bcrypt (12 rounds)
+    const hashedPassword = await hashPassword(data.password);
 
     const [newMember] = await this.db
       .insert(agents)

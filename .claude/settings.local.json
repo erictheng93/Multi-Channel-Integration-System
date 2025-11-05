@@ -100,7 +100,9 @@
       "Bash(Select-String -Pattern \"status|connections\")",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:store.line.me)",
-      "Bash(Select-String -Pattern \"(error|AdvancedAssignActions)\" -Context 2,2)"
+      "Bash(Select-String -Pattern \"(error|AdvancedAssignActions)\" -Context 2,2)",
+      "Bash(test:*)",
+      "Bash(Select-String -Pattern \"(PASS|FAIL|Tests:|Test Files:)\")"
     ],
     "deny": [],
     "ask": [],

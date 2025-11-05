@@ -47,6 +47,9 @@ tagMainHandler.post('/bulk', tagHandler.bulkOperation);
 // 獲取標籤使用統計
 tagMainHandler.get('/:id/stats', tagHandler.getUsageStats);
 
+// 獲取標籤的客戶列表
+tagMainHandler.get('/:id/customers', tagHandler.getTagCustomers);
+
 // ==================== Priority 3: PARAMETERIZED single-segment routes ====================
 // 獲取單一標籤詳情
 tagMainHandler.get('/:id', tagHandler.get);

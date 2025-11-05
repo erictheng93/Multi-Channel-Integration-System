@@ -1,0 +1,12 @@
+    if (tempMessageIndex !== -1) {
+      // 找到匹配的臨時消息，替換它
+      const tempMessage = messages.value[tempMessageIndex]
+      if (tempMessage) {
+        console.log(`🔄 [useCustomerMessages] Replacing temp message ${tempMessage.id} with real message ${message.id}`)
+        messages.value[tempMessageIndex] = message
+      }
+    } else {
+      // 沒有找到臨時消息，正常添加
+      messages.value.push(message)
+      console.log('✅ [useCustomerMessages] Added new message via WebSocket:', message.id)
+    }

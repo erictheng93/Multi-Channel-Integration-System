@@ -182,11 +182,11 @@
               :key="team.id"
               :team="team"
               :loading="loading"
-              @edit-team="editTeam"
               @toggle-status="toggleTeamStatus"
               @generate-qr="generateTeamQR"
               @remove-team="confirmRemoveTeam"
               @member-updated="handleMemberUpdated"
+              @team-updated="handleMemberUpdated"
             />
           </div>
         </div>
@@ -1304,8 +1304,11 @@ const confirmRemoveMember = (member: TeamMember) => {
   confirmCallback.value = async () => {
     try {
       await teamStore.removeMember(member.id)
+      showSuccess('移除成員成功', `已成功移除成員 ${member.name || member.loginId}`)
     } catch (error) {
       console.error('移除成員失敗:', error)
+      const errorMessage = error instanceof Error ? error.message : '移除成員失敗，請稍後重試'
+      showError('移除成員失敗', errorMessage)
     }
   }
   showConfirmModal.value = true
@@ -1391,8 +1394,9 @@ const closeAddTeamModal = () => {
   Object.assign(addTeamForm, { name: '', description: '', selectedMembers: [] })
 }
 
-// 編輯團隊
-const editTeam = async (team: Team) => {
+// 編輯團隊 (預留功能，暫未啟用)
+// @ts-ignore - Reserved for future use
+const _editTeam = async (team: Team) => {
   // 重置表單數據
   Object.assign(editTeamForm, {
     id: team.id,

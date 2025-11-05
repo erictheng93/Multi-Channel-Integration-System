@@ -13,6 +13,9 @@ import { initializeSecurity } from '@/utils/securityInit'
 // Service Worker 和 PWA 支援
 import { swManager } from '@/services/serviceWorkerManager'
 
+// 🚀 数据预加载服务
+import { preloadService } from '@/services/preloadService'
+
 const startApp = async () => {
   try {
     // 首先嘗試初始化安全配置，但不讓它阻止應用啟動
@@ -37,10 +40,20 @@ const startApp = async () => {
 
     // 🔧 CRITICAL FIX: 使用統一的會話初始化 - 解決競爭條件
     const authStore = useAuthStore()
-    
+
     console.log('🏁 App startup: Initializing session...')
     await authStore.initializeSession()
     console.log(`✅ App startup: Session initialization completed, status: ${authStore.sessionStatus}`)
+
+    // 🚀 Phase 2 优化：应用启动时预加载数据
+    // 仅对已登录的管理员用户预加载团队数据，提升用户体验
+    if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
+      console.log('🔥 App startup: Preloading data for admin user...')
+      // 非阻塞预加载，不影响应用启动速度
+      preloadService.warmup().catch(err => {
+        console.warn('⚠️ App startup: Preload warmup failed (non-critical):', err)
+      })
+    }
 
     // Performance monitoring enabled in development
     if (import.meta.env.DEV) {

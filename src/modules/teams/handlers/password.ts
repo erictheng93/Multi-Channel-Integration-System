@@ -7,7 +7,7 @@ import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { agents } from '@/db/schema';
-import { hashPassword } from '@/modules/auth/services/auth';
+import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
 import type {
   ResetPasswordRequest,
   ChangePasswordRequest
@@ -124,8 +124,9 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
       }, 404);
     }
 
-    // TODO: Verify password with proper hashing
-    if (member.passwordHash !== data.currentPassword) {
+    // Verify current password using bcrypt
+    const isCurrentPasswordValid = await verifyPassword(data.currentPassword, member.passwordHash);
+    if (!isCurrentPasswordValid) {
       return c.json({
         success: false,
         error: 'Current password is incorrect'
