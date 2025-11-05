@@ -132,7 +132,7 @@
           class="btn-icon"
         />
         <span class="btn-text">{{ closing ? '結束中...' : '結束對話' }}</span>
-        <span class="btn-warning">此操作不可恢復</span>
+        <span class="btn-warning">隨時可重新打開</span>
       </button>
 
       <button

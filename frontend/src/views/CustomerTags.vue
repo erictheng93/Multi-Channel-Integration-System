@@ -760,6 +760,53 @@ const loadTags = async () => {
   }
 }
 
+// ===== 🚀 乐观UI更新辅助函数 =====
+// 临时ID生成器（用于创建标签的乐观更新）
+let tempIdCounter = -1
+
+const optimisticAddTag = (tag: Tag): number => {
+  const tempId = tempIdCounter--
+  const newTag = { ...tag, id: tempId }
+  tags.value.unshift(newTag)
+  return tempId
+}
+
+const optimisticUpdateTag = (id: number, updates: Partial<Tag>): Tag | null => {
+  const index = tags.value.findIndex(t => t.id === id)
+  if (index === -1) {return null}
+
+  const oldTag: Tag = { ...tags.value[index] } as Tag
+  tags.value[index] = { ...tags.value[index], ...updates } as Tag
+  return oldTag
+}
+
+const optimisticDeleteTag = (id: number): Tag | null => {
+  const index = tags.value.findIndex(t => t.id === id)
+  if (index === -1) {return null}
+
+  const deletedTag: Tag = tags.value[index] as Tag
+  tags.value.splice(index, 1)
+  return deletedTag
+}
+
+const rollbackAddTag = (tempId: number) => {
+  const index = tags.value.findIndex(t => t.id === tempId)
+  if (index !== -1) {
+    tags.value.splice(index, 1)
+  }
+}
+
+const rollbackUpdateTag = (oldTag: Tag) => {
+  const index = tags.value.findIndex(t => t.id === oldTag.id)
+  if (index !== -1) {
+    tags.value[index] = oldTag
+  }
+}
+
+const rollbackDeleteTag = (deletedTag: Tag) => {
+  tags.value.push(deletedTag)
+}
+
 // Toggle tag selection
 const toggleTagSelection = (tagId: number) => {
   const index = selectedTags.value.indexOf(tagId)
@@ -782,39 +829,98 @@ const editTag = (tag: Tag) => {
   showEditModal.value = true
 }
 
-// Save tag
+// Save tag - 🚀 乐观UI更新版本
 const saveTag = async () => {
-  try {
-    loading.value = true
-    const isEdit = showEditModal.value && editingTag.value
+  const isEdit = showEditModal.value && editingTag.value
+  const tagName = formData.value.name
 
+  try {
     if (isEdit && editingTag.value) {
-      await updateTag(editingTag.value.id, formData.value)
+      // ===== 编辑标签 - 乐观更新 =====
+      const oldTag = optimisticUpdateTag(editingTag.value.id, {
+        name: formData.value.name,
+        color: formData.value.color,
+        description: formData.value.description || null,
+        teamId: formData.value.teamId,
+        updatedAt: new Date().toISOString()
+      })
+
+      // ✅ 立即显示成功提示
       showSuccess(
         '標籤更新成功',
-        `成功更新標籤「${formData.value.name}」`,
-        { duration: 4000 }
+        `成功更新標籤「${tagName}」`,
+        { duration: 3000 }
       )
+      closeModals()
+
+      // 🔄 后台验证
+      try {
+        await updateTag(editingTag.value.id, formData.value)
+        console.log('✅ [CustomerTags] Tag updated (verified):', tagName)
+      } catch (error) {
+        // ❌ 失败 - 回滚UI
+        if (oldTag) {
+          rollbackUpdateTag(oldTag)
+        }
+        showError(
+          '標籤更新失敗',
+          '請檢查網路連線或稍後重試'
+        )
+        console.error('❌ [CustomerTags] Failed to update tag:', error)
+      }
     } else {
-      await createTag(formData.value)
+      // ===== 创建标签 - 乐观更新 =====
+      const newTag: Tag = {
+        id: 0, // 临时ID，稍后替换
+        name: formData.value.name,
+        color: formData.value.color,
+        description: formData.value.description || null,
+        teamId: formData.value.teamId,
+        isActive: true,
+        createdBy: 'current-user', // TODO: 从认证状态获取
+        customerCount: 0,
+        conversationCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      const tempId = optimisticAddTag(newTag)
+
+      // ✅ 立即显示成功提示
       showSuccess(
         '標籤創建成功',
-        `成功創建標籤「${formData.value.name}」`,
-        { duration: 4000 }
+        `成功創建標籤「${tagName}」`,
+        { duration: 3000 }
       )
-    }
+      closeModals()
 
-    await loadTags()
-    closeModals()
+      // 🔄 后台验证
+      try {
+        const response = await createTag(formData.value)
+        if (response.success && response.data) {
+          // 更新临时ID为真实ID
+          const index = tags.value.findIndex(t => t.id === tempId)
+          if (index !== -1) {
+            tags.value[index] = response.data
+          }
+          console.log('✅ [CustomerTags] Tag created (verified):', tagName)
+        }
+      } catch (error) {
+        // ❌ 失败 - 回滚UI
+        rollbackAddTag(tempId)
+        showError(
+          '標籤創建失敗',
+          '請檢查網路連線或稍後重試'
+        )
+        console.error('❌ [CustomerTags] Failed to create tag:', error)
+      }
+    }
   } catch (error) {
-    console.error('Failed to save tag:', error)
-    const isEdit = showEditModal.value && editingTag.value
+    console.error('❌ [CustomerTags] Unexpected error in saveTag:', error)
     showError(
       isEdit ? '標籤更新失敗' : '標籤創建失敗',
-      '請檢查網路連線或稍後重試'
+      '發生未預期的錯誤'
     )
-  } finally {
-    loading.value = false
   }
 }
 
@@ -824,30 +930,41 @@ const confirmDelete = (tag: Tag) => {
   showDeleteModal.value = true
 }
 
-// Execute delete
+// Execute delete - 🚀 乐观UI更新版本
 const executeDelete = async () => {
   if (!deletingTag.value) {return}
 
+  const tagToDelete = deletingTag.value
+  const tagName = tagToDelete.name
+
+  // ===== 乐观删除 - 立即更新UI =====
+  const deletedTag = optimisticDeleteTag(tagToDelete.id)
+
+  // ✅ 立即显示成功提示
+  showSuccess(
+    '標籤刪除成功',
+    `成功刪除標籤「${tagName}」`,
+    { duration: 3000 }
+  )
+
+  // 关闭模态框和清理状态
+  showDeleteModal.value = false
+  deletingTag.value = null
+
+  // 🔄 后台验证
   try {
-    loading.value = true
-    const tagName = deletingTag.value.name
-    await deleteTag(deletingTag.value.id)
-    await loadTags()
-    showSuccess(
-      '標籤刪除成功',
-      `成功刪除標籤「${tagName}」`,
-      { duration: 4000 }
-    )
+    await deleteTag(tagToDelete.id)
+    console.log('✅ [CustomerTags] Tag deleted (verified):', tagName)
   } catch (error) {
-    console.error('Failed to delete tag:', error)
+    // ❌ 失败 - 回滚UI
+    if (deletedTag) {
+      rollbackDeleteTag(deletedTag)
+    }
     showError(
       '標籤刪除失敗',
       '請檢查網路連線或稍後重試'
     )
-  } finally {
-    loading.value = false
-    showDeleteModal.value = false
-    deletingTag.value = null
+    console.error('❌ [CustomerTags] Failed to delete tag:', error)
   }
 }
 

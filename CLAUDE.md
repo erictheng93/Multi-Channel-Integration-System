@@ -519,7 +519,7 @@ The system is production-ready and deployed on Cloudflare infrastructure:
 
 ### Messaging Module Documentation
 - `docs/api/MESSAGING_API_REFERENCE.md` - Complete API documentation for all 17 messaging endpoints
-- `MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Implementation report with metrics and test status
+- `docs/reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Implementation report with metrics and test status
 - Full endpoint coverage: health checks, CRUD, bulk operations, attachments, forwarding, tagging, export
 
 ### CORS Configuration Documentation

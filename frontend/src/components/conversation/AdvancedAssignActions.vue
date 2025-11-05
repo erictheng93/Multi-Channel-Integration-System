@@ -32,7 +32,7 @@
         <button
           v-if="canAssignToTeam"
           class="assign-btn primary"
-          :disabled="isAssigning || loadingTeams"
+          :disabled="isAssigning"
           @click="toggleTeamSelector"
         >
           <TeamIcon class="btn-icon" />
@@ -52,6 +52,13 @@
           取消指派
         </button>
       </div>
+
+      <!-- 遮罩層 -->
+      <div
+        v-if="showTeamSelector"
+        class="modal-backdrop"
+        @click="closeTeamSelector"
+      />
 
       <!-- 團隊選擇面板 -->
       <div
@@ -84,15 +91,7 @@
         <!-- 團隊列表 -->
         <div class="teams-section">
           <div
-            v-if="loadingTeams"
-            class="loading-teams"
-          >
-            <HamsterLoader message="載入團隊中..." />
-            <span>載入團隊中...</span>
-          </div>
-
-          <div
-            v-else-if="filteredTeams.length === 0"
+            v-if="teams.length === 0"
             class="no-teams"
           >
             <div class="no-teams-icon">
@@ -174,8 +173,7 @@ import { useAuth } from '@/composables'
 import { useConversationsStore } from '@/stores/conversations'
 import { usePermissions } from '@/services/permissionService'
 import type { Conversation, Agent } from '@/types'
-import { teamApi } from '@/api/team'
-import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+import { preloadService } from '@/services/preloadService'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 import {
@@ -209,9 +207,7 @@ const {
 // State
 const isAssigning = ref(false)
 const showTeamSelector = ref(false)
-const loadingTeams = ref(false)
 const teamSearchTerm = ref('')
-const teams = ref<Array<{ id: number; name: string; memberCount?: number }>>([])
 const selectedTeam = ref<number | null>(null)
 
 // Confirm dialog
@@ -219,6 +215,16 @@ const { showWarning } = useConfirmDialog()
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
+
+// 🚀 优化：使用预加载的团队数据（computed 实时获取最新缓存）
+const teams = computed(() => {
+  const cachedTeams = preloadService.getTeams()
+  return cachedTeams.map(team => ({
+    id: team.id,
+    name: team.name,
+    memberCount: team.memberCount
+  }))
+})
 
 // 類型適配函數
 const agentToTeamMember = (agent: Agent) => {
@@ -241,21 +247,7 @@ const agentToTeamMember = (agent: Agent) => {
 
 // Computed
 const canAssignToTeam = computed(() => {
-  const hasAgent = !!currentAgent.value
-  const isAdmin = currentAgent.value?.role === 'admin'
-  const conversationStatus = props.conversation.status
-
-  // 🔧 DEBUG: 添加权限检查日志
-  console.log('🔍 [AdvancedAssignActions] Permission check:', {
-    hasAgent,
-    isAdmin,
-    currentRole: currentAgent.value?.role,
-    conversationStatus,
-    validStatus: ['open', 'assigned'].includes(conversationStatus)
-  })
-
   if (!currentAgent.value || currentAgent.value.role !== 'admin') {
-    console.warn('⚠️ [AdvancedAssignActions] User cannot assign to team - not admin')
     return false
   }
 
@@ -263,7 +255,6 @@ const canAssignToTeam = computed(() => {
   const result = canAssignConversation(teamMemberAgent, props.conversation) &&
          ['open', 'assigned'].includes(props.conversation.status)
 
-  console.log('🔍 [AdvancedAssignActions] canAssignToTeam result:', result)
   return result
 })
 
@@ -309,7 +300,8 @@ const toggleTeamSelector = async () => {
     closeTeamSelector()
   } else {
     showTeamSelector.value = true
-    await loadTeams()
+    // 🚀 优化：确保团队数据已加载（如果已在缓存中，立即返回）
+    await preloadService.ensureTeamsLoaded()
   }
 }
 
@@ -317,32 +309,6 @@ const closeTeamSelector = () => {
   showTeamSelector.value = false
   selectedTeam.value = null
   teamSearchTerm.value = ''
-}
-
-const loadTeams = async () => {
-  if (teams.value.length > 0) {return} // 已載入
-
-  loadingTeams.value = true
-  try {
-    const response = await teamApi.getTeams(true) // 只獲取活躍團隊
-
-    if (response.success && response.data) {
-      teams.value = response.data.map(team => ({
-        id: team.id,
-        name: team.name,
-        memberCount: team.memberCount
-      }))
-    } else {
-      showError('載入團隊失敗', response.error || '無法載入團隊列表，請稍後重試')
-      emit('error', response.error || '載入團隊列表失敗')
-    }
-  } catch (error) {
-    console.error('Load teams failed:', error)
-    showError('載入團隊失敗', '無法連接到伺服器，請檢查網路連線')
-    emit('error', '無法載入團隊列表')
-  } finally {
-    loadingTeams.value = false
-  }
 }
 
 const selectTeam = (teamId: number) => {
@@ -354,6 +320,7 @@ const cancelSelection = () => {
   selectedTeam.value = null
 }
 
+// 🚀 优化：添加乐观更新支持
 const confirmAssignment = async () => {
   if (!selectedTeam.value || isAssigning.value) {
     console.warn('[AdvancedAssignActions] Invalid selection or already assigning')
@@ -368,30 +335,44 @@ const confirmAssignment = async () => {
     return
   }
 
-  const selectedTeamData = teams.value.find(t => t.id === selectedTeam.value)
+  // ✅ 修复：保存 selectedTeam 到局部变量，避免被 closeTeamSelector() 清空
+  const selectedTeamId = selectedTeam.value
+  const selectedTeamData = teams.value.find(t => t.id === selectedTeamId)
   const teamName = selectedTeamData?.name || '團隊'
-  console.log(`🎯 [AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeam.value})`)
+  console.log(`🎯 [AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeamId})`)
 
+  // 🚀 步骤 1: 乐观更新 - 立即显示成功状态
+  showSuccess('指派成功', `已成功將對話指派給「${teamName}」`)
+  closeTeamSelector()  // 立即关闭面板，提升用户体验
+
+  // 发送已指派事件（乐观）
+  const optimisticConv = {
+    ...props.conversation,
+    assignedTeamId: selectedTeamId,
+    assignedTeam: {
+      id: selectedTeamId,
+      name: teamName,
+      description: null
+    }
+  }
+  emit('assigned', optimisticConv, `team-${selectedTeamId}`)
+
+  // 🔄 步骤 2: 后台同步到服务器
   isAssigning.value = true
   try {
-    // 🔧 傳遞完整的團隊信息給Store
     const success = await conversationsStore.assignConversationToTeam(
       props.conversation.id,
-      selectedTeam.value,
-      teamName // 傳遞團隊名稱用於樂觀更新
+      selectedTeamId,  // ✅ 使用保存的局部变量
+      teamName
     )
 
     if (success) {
-      console.log(`✅ [AdvancedAssignActions] Assignment successful`)
-      showSuccess('指派成功', `已成功將對話指派給「${teamName}」`)
-
-      // Emit事件，傳遞更新後的conversation（從store獲取）
-      const updatedConv = conversationsStore.currentConversation || props.conversation
-      emit('assigned', updatedConv, `team-${selectedTeam.value}`)
-      closeTeamSelector()
+      console.log(`✅ [AdvancedAssignActions] Assignment confirmed by server`)
+      // 成功后不需要额外操作，UI已经更新
     } else {
-      console.error(`❌ [AdvancedAssignActions] Assignment failed`)
-      showError('指派失敗', `無法將對話指派給「${teamName}」，請稍後重試`)
+      console.error(`❌ [AdvancedAssignActions] Server rejected assignment`)
+      // 🔙 步骤 3: 失败时通知用户（不回滚UI，因为store会处理）
+      showError('指派失敗', `服務器拒絕指派，請稍後重試`)
       emit('error', `指派給團隊 ${teamName} 失敗`)
     }
   } catch (error) {
@@ -428,9 +409,27 @@ const handleUnassign = async () => {
     return
   }
 
-  isAssigning.value = true
   console.log(`🗑️ [AdvancedAssignActions] Starting unassign for conversation:`, props.conversation.id)
 
+  // 🚀 步驟 1: 樂觀更新 - 立即顯示成功狀態
+  showSuccess('取消指派成功', `已成功取消對話指派`)
+
+  // 立即發送 unassigned 事件（樂觀）
+  const optimisticConv: Conversation = {
+    ...props.conversation,
+    status: 'open',
+    assignedTeamId: undefined,
+    assignedUserId: undefined,
+    assignedTeam: undefined,
+    assignedAgent: undefined
+  }
+  emit('unassigned', optimisticConv)
+
+  // 立即關閉面板，提升用戶體驗
+  closeTeamSelector()
+
+  // 🔄 步驟 2: 後台同步到服務器
+  isAssigning.value = true
   try {
     // 調用 Store 的取消指派方法
     const success = await conversationsStore.unassignConversation(
@@ -439,18 +438,12 @@ const handleUnassign = async () => {
     )
 
     if (success) {
-      console.log(`✅ [AdvancedAssignActions] Unassign successful`)
-      showSuccess('取消指派成功', `已成功取消對話指派`)
-
-      // Emit事件，傳遞更新後的conversation（從store獲取）
-      const updatedConv = conversationsStore.currentConversation || props.conversation
-      emit('unassigned', updatedConv)
-
-      // 關閉團隊選擇面板（如果開著）
-      closeTeamSelector()
+      console.log(`✅ [AdvancedAssignActions] Unassign confirmed by server`)
+      // 成功後不需要額外操作，UI已經更新
     } else {
-      console.error(`❌ [AdvancedAssignActions] Unassign failed`)
-      showError('取消指派失敗', '無法取消對話指派，請稍後重試')
+      console.error(`❌ [AdvancedAssignActions] Server rejected unassign`)
+      // 🔙 步驟 3: 失敗時通知用戶（不回滾UI，因為store會處理）
+      showError('取消指派失敗', '服務器拒絕取消指派，請稍後重試')
       emit('error', '取消指派失敗')
     }
   } catch (error) {
@@ -477,15 +470,17 @@ const getRoleDisplayName = (role: string | undefined): string => {
   return roleNames[role as keyof typeof roleNames] || role
 }
 
-// 初始載入團隊列表（如果是管理員）
-onMounted(() => {
+// 🚀 优化：组件挂载时确保数据已预加载
+onMounted(async () => {
   if (currentAgent.value?.role === 'admin') {
-    loadTeams()
+    // 确保团队数据已加载（如果已在缓存中，立即返回，用户感知延迟 < 50ms）
+    await preloadService.ensureTeamsLoaded()
   }
 })
 </script>
 
 <style scoped>
+/* ... 样式保持不变 ... */
 .advanced-assign-actions {
   display: flex;
   flex-direction: column;
@@ -627,12 +622,28 @@ onMounted(() => {
 }
 
 .team-selector-panel {
+  /* ✅ 固定定位 + 居中 */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+
+  /* ✅ 尺寸约束 */
+  width: min(480px, 90vw);  /* 最大480px，小屏幕时90%宽度 */
+  max-height: 85vh;  /* 最大85%视口高度 */
+
+  /* 原有样式 */
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-2xl);
   animation: panel-appear 0.3s ease-out;
+
+  /* ✅ 弹性布局 */
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes panel-appear {
@@ -714,11 +725,34 @@ onMounted(() => {
 
 .teams-section {
   padding: var(--space-4);
-  max-height: 400px;
+  /* ✅ 弹性增长，占据剩余空间 */
+  flex: 1;
   overflow-y: auto;
+  /* ✅ 平滑滚动 */
+  scroll-behavior: smooth;
+  /* ✅ 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) var(--gray-100);
 }
 
-.loading-teams,
+.teams-section::-webkit-scrollbar {
+  width: 8px;
+}
+
+.teams-section::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 4px;
+}
+
+.teams-section::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+.teams-section::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
 .no-teams {
   display: flex;
   flex-direction: column;
@@ -828,6 +862,8 @@ onMounted(() => {
   padding: var(--space-4);
   background: var(--gray-50);
   border-top: 1px solid var(--gray-200);
+  /* ✅ 固定在底部，不滚动 */
+  flex-shrink: 0;
 }
 
 .confirm-info {
@@ -879,6 +915,28 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
+/* ✅ 遮罩層樣式 */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  animation: backdrop-appear 0.3s ease-out;
+  backdrop-filter: blur(2px);
+}
+
+@keyframes backdrop-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* 移動端適配 */
 @media (max-width: 768px) {
   .primary-actions {
@@ -892,6 +950,24 @@ onMounted(() => {
 
   .confirm-actions {
     flex-direction: column;
+  }
+
+  /* ✅ 移动端面板优化 */
+  .team-selector-panel {
+    width: 95vw;
+    max-height: 90vh;
+  }
+
+  .panel-header h4 {
+    font-size: 0.875rem;
+  }
+
+  .teams-grid {
+    gap: var(--space-3);
+  }
+
+  .team-card {
+    padding: var(--space-3);
   }
 }
 </style>

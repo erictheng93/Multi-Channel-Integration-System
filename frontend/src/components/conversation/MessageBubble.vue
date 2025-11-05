@@ -234,18 +234,50 @@
         <time class="message-time">
           {{ formatTime(message.timestamp || message.createdAt) }}
         </time>
-        
+
+        <!-- ⚡ Enhanced Message Status with Optimistic UI -->
         <div
           v-if="isOutgoing"
           class="message-status"
         >
+          <!-- ⏳ Sending状态 -->
+          <div
+            v-if="messageStatus === 'sending' || messageStatus === 'pending'"
+            class="status-sending"
+            title="发送中..."
+          >
+            <div class="spinner-small" />
+          </div>
+
+          <!-- ✅ Sent/Delivered状态 -->
           <CheckIcon
-            v-if="delivered"
+            v-else-if="messageStatus === 'sent' || messageStatus === 'delivered' || delivered"
             class="status-delivered"
+            title="已送达"
           />
-          <XIcon
+
+          <!-- ❌ Failed状态 with重试按钮 -->
+          <div
+            v-else-if="messageStatus === 'failed'"
+            class="status-failed-wrapper"
+          >
+            <XIcon
+              class="status-failed"
+              title="发送失败"
+            />
+            <button
+              class="retry-btn"
+              title="重试发送"
+              @click.stop="handleRetry"
+            >
+              🔄
+            </button>
+          </div>
+
+          <!-- Default状态 -->
+          <CheckIcon
             v-else
-            class="status-failed"
+            class="status-delivered"
           />
         </div>
       </div>
@@ -446,6 +478,7 @@ const emit = defineEmits<{
   forward: [message: Message]
   recall: [message: Message]
   select: [message: Message]
+  retry: [messageId: string] // ⚡ New: Retry failed message
 }>()
 
 // State
@@ -507,6 +540,27 @@ const attachmentSize = computed(() => {
 
 const isFileOnlyContent = computed(() => {
   return /^\[(?:檔案|圖片)\]\s*.+$/.test(props.message.content || '')
+})
+
+// ⚡ Message Status for Optimistic UI
+const messageStatus = computed(() => {
+  // Priority 1: Use message.status (new optimistic UI field)
+  if (props.message.status) {
+    return props.message.status
+  }
+
+  // Priority 2: Use message.deliveryStatus (legacy field)
+  if (props.message.deliveryStatus) {
+    return props.message.deliveryStatus
+  }
+
+  // Priority 3: Fallback to delivered prop
+  if (props.delivered) {
+    return 'delivered'
+  }
+
+  // Default: assume sent
+  return 'sent'
 })
 
 const stickerMetadata = computed(() => {
@@ -935,6 +989,12 @@ const selectMessage = () => {
   emit('select', props.message)
   showActionsMenu.value = false
 }
+
+// ⚡ Retry failed message
+const handleRetry = () => {
+  console.log('🔄 [MessageBubble] Retry button clicked for message:', props.message.id)
+  emit('retry', props.message.id)
+}
 </script>
 
 <style scoped>
@@ -1013,6 +1073,56 @@ const selectMessage = () => {
 
 .status-failed {
   color: var(--red-400);
+}
+
+/* ⚡ Optimistic UI Status Styles */
+.status-sending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-failed-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.retry-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.retry-btn:active {
+  transform: scale(0.95);
 }
 
 .sender-info {

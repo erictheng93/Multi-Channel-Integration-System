@@ -1,0 +1,16 @@
+# Web Installer Backend - Development Variables
+# Copy this file to .dev.vars and fill in your actual values
+
+# Cloudflare OAuth (Get from: https://dash.cloudflare.com/profile/api-tokens)
+CF_CLIENT_ID=your_cloudflare_oauth_client_id_here
+CF_CLIENT_SECRET=your_cloudflare_oauth_client_secret_here
+
+# Resend Email API (Get from: https://resend.com/api-keys)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Email Configuration
+FROM_EMAIL=installer@yourcompany.com
+SUPPORT_EMAIL=support@yourcompany.com
+
+# Environment
+ENVIRONMENT=development

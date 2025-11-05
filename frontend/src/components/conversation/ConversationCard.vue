@@ -1,7 +1,11 @@
 <template>
-  <div 
+  <div
     class="conversation-card"
-    :class="{ 'selected': selected, 'unread': hasUnreadMessages }"
+    :class="{
+      'selected': selected,
+      'unread': hasUnreadMessages,
+      'is-closed': conversation.status === 'closed'
+    }"
     tabindex="0"
     role="button"
     :aria-selected="selected"
@@ -245,6 +249,27 @@ const formatTime = (date: Date | string | number) => {
 
 .conversation-card.unread {
   border-left: 4px solid var(--primary-500);
+}
+
+/* 🆕 Closed conversation styles */
+.conversation-card.is-closed {
+  opacity: 0.7;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-color: #d1d5db;
+}
+
+.conversation-card.is-closed:hover {
+  opacity: 0.85;
+  border-color: #9ca3af;
+}
+
+.conversation-card.is-closed .customer-name,
+.conversation-card.is-closed .message-content {
+  color: #6b7280;
+}
+
+.conversation-card.is-closed .customer-avatar {
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
 }
 
 .card-header {

@@ -11,6 +11,68 @@
         @refresh="handleRefreshMessages"
       />
 
+      <!-- 🆕 Closed Conversation Banner -->
+      <div
+        v-if="conversation && conversation.status === 'closed'"
+        class="closed-conversation-banner"
+      >
+        <div class="banner-content">
+          <div class="banner-icon">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+              />
+              <line
+                x1="12"
+                y1="8"
+                x2="12"
+                y2="12"
+              />
+              <line
+                x1="12"
+                y1="16"
+                x2="12.01"
+                y2="16"
+              />
+            </svg>
+          </div>
+          <div class="banner-text">
+            <strong>此對話已關閉</strong>
+            <span class="banner-hint">對話已結束，無法發送訊息</span>
+          </div>
+          <button
+            class="reopen-btn"
+            @click="reopenConversation"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>重新打開對話</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Enhanced Search -->
       <div class="message-search-container">
         <Suspense>
@@ -72,6 +134,7 @@
           @load-more="loadMoreMessages"
           @scroll="handleVirtualScroll"
           @new-message-while-scrolled="handleNewMessageWhileScrolled"
+          @retry="retryFailedMessage"
         />
       </div>
 
@@ -218,12 +281,14 @@ import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
 import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
 import { useSmoothLoading } from '@/composables/useSmoothLoading'
 import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
 import { useConnectionState } from '@/composables/useConnectionState'
 import { useLoadingState } from '@/composables/useLoadingState'
 import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler'
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
 import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Prevent duplicate sending
+import { useAuthStore } from '@/stores/auth' // ⚡ For optimistic message creation
 import type { Message } from '@/types'
 // ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
 import { createCustomerRealtimeConnection, type CustomerRealtimeConnection, type ConnectionState } from '@/services/customerWebSocketManager'
@@ -647,8 +712,8 @@ const isPageVisible = ref(true)
 const lastUserActivity = ref(Date.now())
 // const USER_INACTIVE_THRESHOLD = 60000 // Unused - commented out
 
-// Enhanced message handlers with WebSocket support and error handling
-// 📤 Enhanced Message Sending with SSE Support + 🚫 Debounce Protection
+// ⚡ Enhanced message handlers with Optimistic UI Update
+// 📤 Optimistic Message Sending - Instant UI feedback with background API sync
 const handleMessageSent = async (data: { content: string; attachments: unknown[] }) => {
   console.log('📤 [Message] Sending via:', currentProtocol.value)
   trackUserActivity()
@@ -672,38 +737,69 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
   messageDebounce.markSending()
   console.log('🔒 [Debounce] Marked as sending, other requests will be blocked')
 
+  const authStore = useAuthStore()
+
+  // ⚡ STEP 3: Create Optimistic Message - Instant UI Update
+  const optimisticMessage: Message = {
+    id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    conversationId: conversationId.value,
+    senderId: authStore.currentAgent?.id || 'unknown',
+    senderType: 'agent' as const,
+    content: data.content.trim(),
+    messageType: 'text' as const,
+    platform: conversation.value?.platform || 'line',
+    timestamp: Date.now(),
+    createdAt: Date.now(),
+    status: 'sending' as const, // ✨ 标记为发送中
+    deliveryStatus: 'sending' as const,
+    senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我'
+  }
+
   try {
-    // Priority 1: Send via HTTP API (SSE doesn't send messages, only receives)
-    // Messages will appear in SSE stream after successful HTTP send
+    // ⚡ STEP 4: Add message to UI immediately (< 10ms response)
+    httpMessages.addMessage(optimisticMessage)
+    console.log('⚡ [Optimistic] Message added to UI instantly:', optimisticMessage.id)
+
+    // Scroll to show the new message
+    setTimeout(() => scrollToNewest(), 50)
+    // ✨ 用户立即看到消息，可以继续对话，无需等待
+
+    // 🌐 STEP 5: Send via HTTP API in background (non-blocking)
     const success = await httpMessages.sendMessage(data.content)
 
     if (success) {
       console.log('✅ [Message] Sent successfully via HTTP API')
-      scrollToNewest()
+
+      // ⚡ STEP 6: Update optimistic message status to 'sent'
+      updateOptimisticMessageStatus(optimisticMessage.id, 'sent')
+
       migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
 
-      // 🚫 STEP 3: Mark complete (successful send)
+      // 🚫 Mark complete
       messageDebounce.markComplete()
       console.log('🔓 [Debounce] Marked as complete, ready for next message')
 
-      // SSE will automatically receive the new message from the server
-      // No need to manually add to SSE messages
+      // WebSocket will push the real message with real ID
+      // The temporary message will be replaced automatically
       return
     }
 
-    // If not successful, mark failed
+    // ❌ STEP 7: If failed, mark as failed and provide retry option
     messageDebounce.markFailed(new Error('Message send failed'))
+    updateOptimisticMessageStatus(optimisticMessage.id, 'failed')
+    console.error('❌ [Message] Send failed, message marked as failed')
 
     errorHandler.handleError(
-      '所有訊息發送方式都失敗了',
+      '訊息發送失敗',
       { operation: 'send_message', content: data.content.substring(0, 50) },
       ErrorType._NETWORK
     )
 
   } catch (error) {
-    // 🚫 STEP 3b: Mark failed (error occurred)
+    // ❌ STEP 8: Exception handling - mark as failed
     messageDebounce.markFailed(error as Error)
-    console.log('🔓 [Debounce] Marked as failed, ready for retry')
+    updateOptimisticMessageStatus(optimisticMessage.id, 'failed')
+    console.error('❌ [Message] Exception during send:', error)
 
     errorHandler.handleError(
       error as Error,
@@ -712,9 +808,53 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     )
   }
 
-  // Reset polling and scroll regardless
+  // Reset polling
   resetPollingDelay()
-  scrollToNewest()
+}
+
+// ⚡ Helper function to update optimistic message status
+const updateOptimisticMessageStatus = (messageId: string, newStatus: 'sending' | 'sent' | 'failed') => {
+  const messageList = httpMessages.messages.value
+  const message = messageList.find(m => m.id === messageId)
+
+  if (message) {
+    // ⚡ Update message properties directly (Vue will track changes)
+    message.status = newStatus
+    message.deliveryStatus = newStatus
+
+    console.log(`⚡ [Optimistic] Updated message ${messageId} status to: ${newStatus}`)
+  }
+}
+
+// 🔄 Retry failed message
+const retryFailedMessage = async (messageId: string) => {
+  const messageList = httpMessages.messages.value
+  const failedMessage = messageList.find(m => m.id === messageId && m.status === 'failed')
+
+  if (!failedMessage) {
+    console.warn('⚠️ [Retry] Failed message not found:', messageId)
+    return
+  }
+
+  console.log('🔄 [Retry] Retrying failed message:', messageId)
+
+  // Update status to sending
+  updateOptimisticMessageStatus(messageId, 'sending')
+
+  try {
+    const success = await httpMessages.sendMessage(failedMessage.content)
+
+    if (success) {
+      updateOptimisticMessageStatus(messageId, 'sent')
+      console.log('✅ [Retry] Message sent successfully')
+    } else {
+      updateOptimisticMessageStatus(messageId, 'failed')
+      console.error('❌ [Retry] Message send failed again')
+    }
+  } catch (error) {
+    updateOptimisticMessageStatus(messageId, 'failed')
+    console.error('❌ [Retry] Exception during retry:', error)
+  }
 }
 
 // 🔄 Enhanced Message Refresh with SSE Support
@@ -912,14 +1052,14 @@ const handleSearchClear = () => {
 //   console.error('Assignment error:', error)
 // }
 
-// Close conversation with enhanced error handling
+// 🆕 Close conversation with permanent undo capability
 const closeConversation = async () => {
   if (closing.value) {return}
 
   try {
     const confirmed = await useConfirm().confirmWarning(
       '結束對話',
-      '確定要結束這個對話嗎？結束後將無法再次開啟。',
+      '確定要結束這個對話嗎？結束後仍可隨時重新打開。',
       '結束對話'
     )
 
@@ -927,16 +1067,60 @@ const closeConversation = async () => {
 
     closing.value = true
     const success = await conversationsStore.closeConversation(conversationId.value)
+
     if (success) {
-      router.push('/conversations')
+      console.log('✅ [CloseConversation] Conversation closed successfully')
+
+      // 🎯 显示简单的成功通知（不跳转）
+      const { showSuccess } = useToast()
+      showSuccess(
+        '對話已結束',
+        '您可以隨時重新打開此對話',
+        { duration: 3000 }
+      )
+
+      // ✅ 停留在当前页面，显示"已关闭"横幅和"重新打开"按钮
+      // UI会自动更新显示关闭状态（通过computed属性）
     } else {
-      console.error('Failed to close conversation: Server returned failure')
+      console.error('❌ [CloseConversation] Failed to close conversation: Server returned failure')
+      const { showError } = useToast()
+      showError('結束對話失敗', '無法結束對話，請稍後再試')
     }
   } catch (error) {
-    console.error('Failed to close conversation:', error)
-    // Show user-friendly error message
+    console.error('❌ [CloseConversation] Exception when closing conversation:', error)
+    const { showError } = useToast()
+    showError('操作失敗', '發生錯誤，請稍後再試')
   } finally {
     closing.value = false
+  }
+}
+
+// 🆕 Reopen closed conversation
+const reopenConversation = async () => {
+  try {
+    const confirmed = await useConfirm().confirmInfo(
+      '重新打開對話',
+      '確定要重新打開這個對話嗎？',
+      '重新打開'
+    )
+
+    if (!confirmed) {return}
+
+    const success = await conversationsStore.reopenConversation(conversationId.value)
+
+    if (success) {
+      console.log('✅ [ReopenConversation] Conversation reopened successfully')
+      const { showSuccess } = useToast()
+      showSuccess('對話已重新打開', '您可以繼續使用此對話')
+    } else {
+      console.error('❌ [ReopenConversation] Failed to reopen conversation')
+      const { showError } = useToast()
+      showError('重新打開失敗', '無法重新打開對話，請稍後再試')
+    }
+  } catch (error) {
+    console.error('❌ [ReopenConversation] Exception when reopening:', error)
+    const { showError } = useToast()
+    showError('操作失敗', '發生錯誤，請稍後再試')
   }
 }
 
@@ -1306,6 +1490,96 @@ if (import.meta.env.DEV) {
   background-color: var(--gray-50);
   overflow: hidden;
   margin: -24px;
+}
+
+/* 🆕 Closed Conversation Banner Styles */
+.closed-conversation-banner {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #f59e0b;
+  padding: 16px 24px;
+  margin: 0;
+  border-bottom: 1px solid #f59e0b;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.banner-icon {
+  flex-shrink: 0;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 50%;
+}
+
+.banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.banner-text strong {
+  font-size: 16px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.banner-hint {
+  font-size: 14px;
+  color: #b45309;
+}
+
+.reopen-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.reopen-btn:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+.reopen-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+.reopen-btn svg {
+  flex-shrink: 0;
 }
 
 .top-bar-stats-container {
