@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { conversations, customers, messages, agents, conversationTransfers } from '@/db/schema';
+import { conversations, customers, messages, agents, conversationTransfers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   NewConversationTransfer
@@ -508,14 +508,24 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     const drizzleDb = drizzle(c.env.DB);
     const timestamp = new Date().toISOString();
 
+    console.log('🔧 [Assign API] Updating conversation:', {
+      conversationId,
+      teamId,
+      userId,
+      status: 'assigned'
+    });
+
     await drizzleDb
       .update(conversations)
       .set({
         assignedTeamId: teamId || null,
         assignedUserId: userId || null,
+        status: 'assigned',  // 🔧 FIX: Add status field
         updatedAt: timestamp
       })
       .where(eq(conversations.id, conversationId));
+
+    console.log('✅ [Assign API] Database UPDATE completed');
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
     if (reason) {
@@ -556,9 +566,65 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       console.warn('⚠️ [WebSocket] Assignment broadcast failed, continuing with fallback:', broadcastError);
     }
 
+    // 🔧 FIX: 获取并返回完整的对话对象
+    console.log('🔍 [Assign API] Fetching updated conversation with JOIN:', {
+      conversationId,
+      expectedTeamId: teamId
+    });
+
+    const [updatedConversation] = await drizzleDb
+      .select()
+      .from(conversations)
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+      .leftJoin(customers, eq(conversations.customerId, customers.id))  // 🔧 FIX: Add customer JOIN
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+
+    console.log('📊 [Assign API] JOIN query result:', {
+      hasResult: !!updatedConversation,
+      hasConversation: !!updatedConversation?.conversations,
+      hasTeam: !!updatedConversation?.teams,
+      hasCustomer: !!updatedConversation?.customers,
+      conversationId: updatedConversation?.conversations?.id,
+      assignedTeamIdInDB: updatedConversation?.conversations?.assignedTeamId,
+      teamId: updatedConversation?.teams?.id,
+      teamName: updatedConversation?.teams?.name,
+      customerId: updatedConversation?.customers?.id,
+      customerName: updatedConversation?.customers?.displayName  // 🔧 FIX: Use displayName
+    });
+
+    if (!updatedConversation) {
+      console.error('❌ [Assign API] Failed to retrieve updated conversation');
+      return c.json({
+        success: false,
+        error: 'Failed to retrieve updated conversation'
+      }, 500);
+    }
+
+    // 构建返回对象，確保 customer 對象包含 name 字段
+    const conversationData: any = {
+      ...updatedConversation.conversations,
+      assignedTeam: updatedConversation.teams || undefined,
+      customer: updatedConversation.customers ? {
+        ...updatedConversation.customers,
+        name: updatedConversation.customers.displayName  // 🔧 FIX: 添加 name 字段以匹配前端類型定義
+      } : undefined
+    };
+
+    console.log('✅ [Assign API] Conversation assigned successfully:', {
+      id: conversationId,
+      status: conversationData.status,
+      assignedTeamId: conversationData.assignedTeamId,
+      hasAssignedTeam: !!conversationData.assignedTeam,
+      assignedTeamName: conversationData.assignedTeam?.name,
+      hasCustomer: !!conversationData.customer,
+      customerName: conversationData.customer?.displayName  // 🔧 FIX: Use displayName
+    });
+
     return c.json({
       success: true,
       message: 'Conversation assigned successfully',
+      data: conversationData,
       timestamp: new Date().toISOString()
     });
 
@@ -567,6 +633,167 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 取消指派對話
+conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const conversationId = c.req.param('id');
+    const { reason } = await c.req.json().catch(() => ({}));
+
+    // 檢查權限（需要 assign 權限才能取消指派）
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'conversation',
+      'assign',
+      undefined,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
+      return c.json({ error: 'Permission denied' }, 403);
+    }
+
+    const drizzleDb = drizzle(c.env.DB);
+
+    // 檢查對話是否存在
+    const [conversation] = await drizzleDb
+      .select()
+      .from(conversations)
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+
+    if (!conversation || !conversation.conversations) {
+      return c.json({ error: 'Conversation not found' }, 404);
+    }
+
+    // 檢查對話是否已指派
+    const conv = conversation.conversations;
+    if (!conv.assignedTeamId && !conv.assignedUserId) {
+      return c.json({ error: 'Conversation is not assigned' }, 400);
+    }
+
+    // 記錄取消指派前的狀態
+    const previousAssignment = {
+      teamId: conv.assignedTeamId,
+      teamName: conversation.teams?.name,
+      userId: conv.assignedUserId
+    };
+
+    console.log('🗑️ [Unassign API] Unassigning conversation:', {
+      conversationId,
+      previousAssignment,
+      unassignedBy: user.displayName || user.id
+    });
+
+    // 取消指派：清除 teamId 和 userId，將狀態改回 'open'
+    const timestamp = new Date().toISOString();
+
+    try {
+      // 使用原始 SQL 执行 UPDATE（避免 Drizzle ORM 的 NULL 处理问题）
+      await c.env.DB.prepare(
+        `UPDATE conversations
+         SET assigned_team_id = NULL,
+             assigned_user_id = NULL,
+             status = ?,
+             updated_at = ?
+         WHERE id = ?`
+      ).bind('active', timestamp, conversationId).run();
+
+      console.log('✅ [Unassign API] Database UPDATE completed (raw SQL)');
+    } catch (dbError) {
+      console.error('❌ [Unassign API] Database UPDATE failed:', {
+        error: dbError,
+        errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+        conversationId
+      });
+      throw dbError;
+    }
+
+    // 記錄取消指派歷史
+    if (reason) {
+      const transferRecord: NewConversationTransfer = {
+        conversationId,
+        fromTeamId: previousAssignment.teamId || null,
+        fromUserId: previousAssignment.userId || null,
+        toTeamId: null,
+        toUserId: null,
+        transferReason: reason || '取消指派',
+        transferredBy: String(user.id),
+        createdAt: timestamp
+      };
+
+      await drizzleDb.insert(conversationTransfers).values(transferRecord);
+    }
+
+    // 🚀 WebSocket Broadcasting: Conversation Unassignment
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastConversationEvent({
+        type: 'conversation_unassigned',
+        conversationId,
+        userId: String(user.id),
+        data: {
+          previousTeamId: previousAssignment.teamId,
+          previousTeamName: previousAssignment.teamName,
+          previousUserId: previousAssignment.userId,
+          unassignedBy: {
+            id: user.id,
+            name: user.displayName,
+            role: user.role
+          },
+          reason: reason || '取消指派',
+          timestamp
+        },
+        priority: 'high'
+      });
+      console.log('✅ [WebSocket] Conversation unassignment broadcasted');
+    } catch (broadcastError) {
+      console.warn('⚠️ [WebSocket] Unassignment broadcast failed, continuing:', broadcastError);
+    }
+
+    // 獲取並返回更新後的完整對話對象
+    const [updatedConversation] = await drizzleDb
+      .select()
+      .from(conversations)
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+      .leftJoin(customers, eq(conversations.customerId, customers.id))
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+
+    const conversationData: any = {
+      ...updatedConversation?.conversations,
+      assignedTeam: updatedConversation?.teams || undefined,
+      customer: updatedConversation?.customers ? {
+        id: updatedConversation.customers.id,
+        name: updatedConversation.customers.displayName, // 🔧 FIX: 添加 name 字段以匹配前端類型定義
+        displayName: updatedConversation.customers.displayName, // 保留向後兼容
+        platformUserId: updatedConversation.customers.platformUserId,
+        platform: updatedConversation.customers.platform,
+        avatarUrl: updatedConversation.customers.avatarUrl,
+        createdAt: updatedConversation.customers.createdAt
+      } : undefined
+    };
+
+    console.log('✅ [Unassign API] Conversation unassigned successfully');
+
+    return c.json({
+      success: true,
+      message: 'Conversation unassigned successfully',
+      data: conversationData,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Unassign conversation error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to unassign conversation',
       timestamp: new Date().toISOString()
     }, 500);
   }
@@ -1003,28 +1230,17 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
     }
 
     const drizzleDb = drizzle(c.env.DB);
-    const conversation = await drizzleDb
-      .select({
-        // 對話資料
-        id: conversations.id,
-        customerId: conversations.customerId,
-        assignedTeamId: conversations.assignedTeamId,
-        assignedUserId: conversations.assignedUserId,
-        status: conversations.status,
-        lastMessageAt: conversations.lastMessageAt,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        // 客戶資料
-        customerName: customers.displayName,
-        platform: customers.platform,
-        platformUserId: customers.platformUserId
-      })
+
+    // 🔧 FIX: 使用完整的 JOIN 查詢，返回與 assign/unassign API 相同的數據結構
+    const [result] = await drizzleDb
+      .select()
       .from(conversations)
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .where(eq(conversations.id, conversationId))
-      .get();
+      .limit(1);
 
-    if (!conversation) {
+    if (!result || !result.conversations) {
       return c.json({
         success: false,
         error: 'Conversation not found',
@@ -1032,9 +1248,31 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
       }, 404);
     }
 
+    // 構建完整的對話對象，包含嵌套的 customer 和 assignedTeam 對象
+    const conversationData: any = {
+      ...result.conversations,
+      // 包含完整的 assignedTeam 對象（如果已指派）
+      assignedTeam: result.teams || undefined,
+      // 包含完整的 customer 對象
+      customer: result.customers ? {
+        id: result.customers.id,
+        name: result.customers.displayName, // 🔧 FIX: 添加 name 字段以匹配前端類型定義
+        displayName: result.customers.displayName, // 保留向後兼容
+        platformUserId: result.customers.platformUserId,
+        platform: result.customers.platform,
+        avatarUrl: result.customers.avatarUrl,
+        email: result.customers.email,
+        phone: result.customers.phone,
+        sourceTeamId: result.customers.sourceTeamId,
+        metadata: result.customers.metadata,
+        createdAt: result.customers.createdAt,
+        updatedAt: result.customers.updatedAt
+      } : undefined
+    };
+
     return c.json({
       success: true,
-      data: conversation,
+      data: conversationData,
       timestamp: new Date().toISOString()
     });
 
@@ -1073,29 +1311,41 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       });
     }
 
-    // 使用 Drizzle ORM 查詢對話列表
+    // 🔧 FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
     console.log('🔍 [Conversation Handler] Querying conversation data with IDs:', visibleConversationIds);
     const drizzleDb = drizzle(c.env.DB);
-    const conversationData = await drizzleDb
-      .select({
-        // 對話資料
-        id: conversations.id,
-        customerId: conversations.customerId,
-        assignedTeamId: conversations.assignedTeamId,
-        assignedUserId: conversations.assignedUserId,
-        status: conversations.status,
-        lastMessageAt: conversations.lastMessageAt,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        // 客戶資料
-        customerName: customers.displayName,
-        platform: customers.platform,
-        platformUserId: customers.platformUserId
-      })
+    const conversationResults = await drizzleDb
+      .select()
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .where(inArray(conversations.id, visibleConversationIds))
       .orderBy(desc(conversations.updatedAt));
+
+    // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
+    const conversationData = conversationResults.map(result => ({
+      ...result.conversations,
+      // 🔧 完整的 customer 對象 (匹配前端類型定義)
+      customer: result.customers ? {
+        id: result.customers.id,
+        name: result.customers.displayName,        // 🔧 映射到 name 字段
+        displayName: result.customers.displayName, // 保留向後兼容
+        platform: result.customers.platform,
+        platformUserId: result.customers.platformUserId,
+        avatarUrl: result.customers.avatarUrl,
+        createdAt: result.customers.createdAt
+      } : undefined,
+      // 🔧 完整的 assignedTeam 對象
+      assignedTeam: result.teams ? {
+        id: result.teams.id,
+        name: result.teams.name,
+        description: result.teams.description
+      } : undefined,
+      // 保留扁平字段以向後兼容舊版前端
+      customerName: result.customers?.displayName,
+      platform: result.customers?.platform,
+      platformUserId: result.customers?.platformUserId
+    }));
 
     console.log('📊 [Conversation Handler] Retrieved conversation data:', conversationData);
 

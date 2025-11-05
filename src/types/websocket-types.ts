@@ -144,7 +144,7 @@ export interface LockAcquisitionOptions {
 export type DurableObjectEventType =
   | 'connection_opened' | 'connection_closed' | 'message_sent' | 'message_delivered' | 'message_read'
   | 'user_joined' | 'user_left' | 'typing_start' | 'typing_stop' | 'message_recalled'
-  | 'conversation_assigned' | 'conversation_transferred' | 'system_notification'
+  | 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'system_notification'
   | 'conversation_status_changed' | 'participant_joined' | 'participant_left'
   | 'delayed_message_countdown' | 'delayed_message_sent' | 'delayed_message_recalled'
   | 'delayed_message_failed' | 'user_online' | 'user_offline' | 'user_away'

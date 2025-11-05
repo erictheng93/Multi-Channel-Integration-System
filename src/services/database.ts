@@ -130,12 +130,39 @@ export class DatabaseService {
     const cached = await this.kv.getCache(`conversation:${id}`);
     if (cached) return cached;
 
-    const conversation = await this.db.select().from(schema.conversations)
-      .where(eq(schema.conversations.id, id)).get();
+    // Fetch conversation with team and agent information using LEFT JOIN
+    const result = await this.db.select()
+      .from(schema.conversations)
+      .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
+      .where(eq(schema.conversations.id, id))
+      .get();
 
-    if (conversation) {
-      await this.kv.setCache(`conversation:${id}`, conversation, 3600);
-    }
+    if (!result) return null;
+
+    // Enrich conversation with team and agent data
+    const conversation = {
+      ...result.conversations,
+      assignedTeam: result.teams ? {
+        id: result.teams.id,
+        name: result.teams.name,
+        description: result.teams.description
+      } : null,
+      assignedAgent: result.agents ? {
+        id: result.agents.id,
+        email: result.agents.email,
+        name: result.agents.displayName, // Map displayName to name for consistency
+        displayName: result.agents.displayName,
+        role: result.agents.role,
+        teamId: result.agents.teamId,
+        isActive: result.agents.isActive,
+        createdAt: result.agents.createdAt,
+        lastActive: result.agents.lastActive
+      } : null
+    };
+
+    // Cache the enriched conversation
+    await this.kv.setCache(`conversation:${id}`, conversation, 3600);
 
     return conversation;
   }
@@ -215,15 +242,38 @@ export class DatabaseService {
   }
 
   async updateConversation(id: string, updates: Partial<schema.NewConversation>) {
-    const conversation = await this.db.update(schema.conversations)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(eq(schema.conversations.id, id))
-      .returning();
+    console.log('🔧 [DatabaseService] updateConversation called:', {
+      id,
+      updates,
+      timestamp: new Date().toISOString()
+    });
 
-    // Invalidate cache
-    await this.kv.deleteCache(`conversation:${id}`);
-    
-    return conversation[0];
+    try {
+      const conversation = await this.db.update(schema.conversations)
+        .set({ ...updates, updatedAt: new Date().toISOString() })
+        .where(eq(schema.conversations.id, id))
+        .returning();
+
+      console.log('✅ [DatabaseService] Update executed, result:', {
+        success: !!conversation,
+        resultLength: conversation?.length,
+        updatedConversation: conversation[0] ? {
+          id: conversation[0].id,
+          status: conversation[0].status,
+          assignedTeamId: conversation[0].assignedTeamId,
+          assignedUserId: conversation[0].assignedUserId
+        } : null
+      });
+
+      // Invalidate cache
+      await this.kv.deleteCache(`conversation:${id}`);
+      console.log('🗑️  [DatabaseService] Cache cleared for conversation:', id);
+
+      return conversation[0];
+    } catch (error) {
+      console.error('❌ [DatabaseService] updateConversation failed:', error);
+      throw error;
+    }
   }
 
   // Message operations - 並行化優化

@@ -23,9 +23,43 @@ interface RawConversationData {
   lastMessageAt: string
   createdAt: string
   updatedAt: string
+
+  // 🔧 FIX: 旧格式（扁平字段，向后兼容）
   customerName?: string
-  platform: Platform
-  platformUserId: string
+  platform?: Platform  // 改为可选，因为新格式中 platform 在 customer 对象内
+  platformUserId?: string  // 改为可选
+
+  // 🔧 FIX: 新格式（嵌套 customer 对象）- 后端现在返回完整的 customer 对象
+  customer?: {
+    id: number | string
+    name?: string
+    displayName?: string
+    platform?: Platform
+    platformUserId?: string
+    avatarUrl?: string
+    email?: string
+    phone?: string
+    sourceTeamId?: number
+    metadata?: string
+    createdAt?: string
+    updatedAt?: string
+  }
+
+  // 🔧 FIX: 新格式（嵌套 assignedTeam 对象）
+  assignedTeam?: {
+    id: number
+    name: string
+    description?: string
+  }
+
+  // 🔧 FIX: 新格式（嵌套 assignedAgent 对象）
+  assignedAgent?: {
+    id: string
+    name: string
+    displayName?: string
+    email?: string
+  }
+
   lastMessageContent?: string
   lastMessageAtActual?: string
   unreadCount?: number
@@ -48,27 +82,60 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
   }
 
   const customerId = rawData.customerId || rawData.customer_id
+
+  // 🔧 FIX: 優先使用嵌套的 customer 對象，fallback 到扁平字段
+  // 這樣可以同時支援新舊版本的 API 響應格式
+  const customerName = rawData.customer?.name ||
+                       rawData.customer?.displayName ||
+                       rawData.customerName ||
+                       '未知用戶'
+
+  const customerPlatform = rawData.customer?.platform ||
+                           rawData.platform ||
+                           'line'
+
+  const platformUserId = rawData.customer?.platformUserId ||
+                         rawData.platformUserId ||
+                         ''
+
   return {
     id: rawData.id,
     userId: customerId ? customerId.toString() : '',
-    user: rawData.customerName ? {
+    user: {
       id: customerId ? customerId.toString() : '',
-      name: rawData.customerName,
-      platform: rawData.platform,
-      platformUserId: rawData.platformUserId,
+      name: customerName,
+      platform: customerPlatform,
+      platformUserId,
       createdAt: new Date(rawData.createdAt).getTime()
+    },
+    customer: {
+      id: customerId ? customerId.toString() : '',
+      name: customerName,
+      platform: customerPlatform,
+      platformUserId,
+      createdAt: new Date(rawData.createdAt).getTime()
+    },
+    // 🔧 FIX: 处理嵌套的 assignedTeam 对象
+    assignedTeam: rawData.assignedTeam ? {
+      id: rawData.assignedTeam.id,
+      name: rawData.assignedTeam.name,
+      description: rawData.assignedTeam.description
     } : undefined,
-    customer: rawData.customerName ? {
-      id: customerId ? customerId.toString() : '',
-      name: rawData.customerName,
-      platform: rawData.platform,
-      platformUserId: rawData.platformUserId,
-      createdAt: new Date(rawData.createdAt).getTime()
+    assignedTeamId: rawData.assignedTeamId || undefined,
+    // 🔧 FIX: 处理嵌套的 assignedAgent 对象
+    assignedAgent: rawData.assignedAgent ? {
+      id: rawData.assignedAgent.id,
+      name: rawData.assignedAgent.name || rawData.assignedAgent.displayName || '',
+      displayName: rawData.assignedAgent.displayName || rawData.assignedAgent.name || '',
+      email: rawData.assignedAgent.email || '',
+      role: 'agent' as const, // 默認角色，因為後端可能不返回此字段
+      isActive: true, // 默認為活躍狀態
+      createdAt: Date.now() // 使用當前時間作為默認值
     } : undefined,
     assignedTo: rawData.assignedUserId || undefined,
     assignedAgentId: rawData.assignedUserId || undefined,
     status: statusMap[rawData.status] || 'open',
-    platform: rawData.platform,
+    platform: customerPlatform,
     lastMessageAt: new Date(rawData.lastMessageAt).getTime(),
     lastMessage: rawData.lastMessageContent ? {
       id: `last-${rawData.id}`,
@@ -77,7 +144,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       senderType: 'customer' as const,
       content: rawData.lastMessageContent,
       messageType: 'text' as const,
-      platform: rawData.platform,
+      platform: customerPlatform,
       timestamp: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime(),
       createdAt: rawData.lastMessageAtActual ? new Date(rawData.lastMessageAtActual).getTime() : new Date(rawData.lastMessageAt).getTime()
     } : undefined,
@@ -244,7 +311,7 @@ export const conversationApi = {
   assignConversation: async (
     conversationId: string,
     optionsOrAgentId: AssignConversationOptions | string
-  ): Promise<ApiResponse<void>> => {
+  ): Promise<ApiResponse<Conversation>> => {  // 🔧 FIX: 返回完整的 Conversation 对象
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
@@ -263,7 +330,45 @@ export const conversationApi = {
     }
 
     // 使用 POST 方法 (後端使用 POST)
-    return apiClient.post(`/conversations/${conversationId}/assign`, options);
+    // Backend now returns complete conversation object with assignedTeam
+    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/assign`, options);
+
+    // 🔧 FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
+    if (response.success && response.data) {
+      const adaptedConversation = adaptConversationData(response.data);
+      return {
+        success: true,
+        data: adaptedConversation
+      };
+    }
+
+    return { success: false, error: response.error || '指派對話失敗' };
+  },
+
+  // 取消指派對話
+  unassignConversation: async (
+    conversationId: string,
+    reason?: string
+  ): Promise<ApiResponse<Conversation>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+
+    // 使用 POST 方法調用取消指派 API
+    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/unassign`, {
+      reason: reason || undefined
+    });
+
+    // 🔧 FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
+    if (response.success && response.data) {
+      const adaptedConversation = adaptConversationData(response.data);
+      return {
+        success: true,
+        data: adaptedConversation
+      };
+    }
+
+    return { success: false, error: response.error || '取消指派失敗' };
   },
 
   // 關閉對話
@@ -318,7 +423,7 @@ export const conversationApi = {
     return conversationApi.getConversation(conversationId);
   },
 
-  assign: async (conversationId: string, agentId: string): Promise<ApiResponse<void>> => {
+  assign: async (conversationId: string, agentId: string): Promise<ApiResponse<Conversation>> => {
     return conversationApi.assignConversation(conversationId, agentId);
   },
 

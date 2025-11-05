@@ -177,6 +177,7 @@ import type { Conversation, Agent } from '@/types'
 import { teamApi } from '@/api/team'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useToast } from '@/composables/useToast'
 import {
   UserCheckIcon,
   TeamIcon,
@@ -216,6 +217,9 @@ const selectedTeam = ref<number | null>(null)
 // Confirm dialog
 const { showWarning } = useConfirmDialog()
 
+// Toast notifications
+const { showSuccess, showError } = useToast()
+
 // 類型適配函數
 const agentToTeamMember = (agent: Agent) => {
   if (!agent) {return null}
@@ -237,11 +241,30 @@ const agentToTeamMember = (agent: Agent) => {
 
 // Computed
 const canAssignToTeam = computed(() => {
-  if (!currentAgent.value || currentAgent.value.role !== 'admin') {return false}
+  const hasAgent = !!currentAgent.value
+  const isAdmin = currentAgent.value?.role === 'admin'
+  const conversationStatus = props.conversation.status
+
+  // 🔧 DEBUG: 添加权限检查日志
+  console.log('🔍 [AdvancedAssignActions] Permission check:', {
+    hasAgent,
+    isAdmin,
+    currentRole: currentAgent.value?.role,
+    conversationStatus,
+    validStatus: ['open', 'assigned'].includes(conversationStatus)
+  })
+
+  if (!currentAgent.value || currentAgent.value.role !== 'admin') {
+    console.warn('⚠️ [AdvancedAssignActions] User cannot assign to team - not admin')
+    return false
+  }
 
   const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  return canAssignConversation(teamMemberAgent, props.conversation) &&
+  const result = canAssignConversation(teamMemberAgent, props.conversation) &&
          ['open', 'assigned'].includes(props.conversation.status)
+
+  console.log('🔍 [AdvancedAssignActions] canAssignToTeam result:', result)
+  return result
 })
 
 const canUnassign = computed(() => {
@@ -310,10 +333,12 @@ const loadTeams = async () => {
         memberCount: team.memberCount
       }))
     } else {
+      showError('載入團隊失敗', response.error || '無法載入團隊列表，請稍後重試')
       emit('error', response.error || '載入團隊列表失敗')
     }
   } catch (error) {
     console.error('Load teams failed:', error)
+    showError('載入團隊失敗', '無法連接到伺服器，請檢查網路連線')
     emit('error', '無法載入團隊列表')
   } finally {
     loadingTeams.value = false
@@ -338,26 +363,40 @@ const confirmAssignment = async () => {
   // 驗證團隊存在
   const teamExists = teams.value.some(t => t.id === selectedTeam.value)
   if (!teamExists) {
+    showError('指派失敗', '選中的團隊不存在，請重新選擇')
     emit('error', '選中的團隊不存在，請重新選擇')
     return
   }
 
+  const selectedTeamData = teams.value.find(t => t.id === selectedTeam.value)
+  const teamName = selectedTeamData?.name || '團隊'
+  console.log(`🎯 [AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeam.value})`)
+
   isAssigning.value = true
   try {
+    // 🔧 傳遞完整的團隊信息給Store
     const success = await conversationsStore.assignConversationToTeam(
       props.conversation.id,
-      selectedTeam.value
+      selectedTeam.value,
+      teamName // 傳遞團隊名稱用於樂觀更新
     )
 
     if (success) {
-      emit('assigned', props.conversation, `team-${selectedTeam.value}`)
+      console.log(`✅ [AdvancedAssignActions] Assignment successful`)
+      showSuccess('指派成功', `已成功將對話指派給「${teamName}」`)
+
+      // Emit事件，傳遞更新後的conversation（從store獲取）
+      const updatedConv = conversationsStore.currentConversation || props.conversation
+      emit('assigned', updatedConv, `team-${selectedTeam.value}`)
       closeTeamSelector()
     } else {
-      const teamName = selectedTeamName.value || '未知團隊'
+      console.error(`❌ [AdvancedAssignActions] Assignment failed`)
+      showError('指派失敗', `無法將對話指派給「${teamName}」，請稍後重試`)
       emit('error', `指派給團隊 ${teamName} 失敗`)
     }
   } catch (error) {
-    console.error('Confirm assignment failed:', error)
+    console.error('❌ [AdvancedAssignActions] Confirm assignment failed:', error)
+    showError('指派失敗', '指派過程中發生錯誤，請稍後重試')
     emit('error', '指派過程中發生錯誤')
   } finally {
     isAssigning.value = false
@@ -367,19 +406,56 @@ const confirmAssignment = async () => {
 const handleUnassign = async () => {
   if (isAssigning.value) {return}
 
-  const confirmed = await showWarning('確定要取消對話指派嗎？')
+  // 確認對話是否已指派
+  if (!props.conversation.assignedTeamId && !props.conversation.assignedUserId) {
+    showError('無法取消指派', '此對話尚未指派')
+    return
+  }
+
+  // 取得當前指派資訊用於提示
+  const assignedName = props.conversation.assignedAgent?.name ||
+                       props.conversation.assignedTeam?.name ||
+                       '未知'
+  const assignedType = props.conversation.assignedTeamId ? '團隊' : '客服人員'
+
+  // 顯示確認對話框
+  const confirmed = await showWarning(
+    `確定要取消指派嗎？`,
+    `此對話目前指派給${assignedType}「${assignedName}」，取消後將變為待處理狀態。`
+  )
+
   if (!confirmed) {
     return
   }
 
   isAssigning.value = true
+  console.log(`🗑️ [AdvancedAssignActions] Starting unassign for conversation:`, props.conversation.id)
+
   try {
-    // TODO: 實作取消指派API
-    console.log('Unassigning conversation:', props.conversation.id)
-    emit('unassigned', props.conversation)
-    emit('error', '取消指派功能開發中')
+    // 調用 Store 的取消指派方法
+    const success = await conversationsStore.unassignConversation(
+      props.conversation.id,
+      '管理員手動取消指派'
+    )
+
+    if (success) {
+      console.log(`✅ [AdvancedAssignActions] Unassign successful`)
+      showSuccess('取消指派成功', `已成功取消對話指派`)
+
+      // Emit事件，傳遞更新後的conversation（從store獲取）
+      const updatedConv = conversationsStore.currentConversation || props.conversation
+      emit('unassigned', updatedConv)
+
+      // 關閉團隊選擇面板（如果開著）
+      closeTeamSelector()
+    } else {
+      console.error(`❌ [AdvancedAssignActions] Unassign failed`)
+      showError('取消指派失敗', '無法取消對話指派，請稍後重試')
+      emit('error', '取消指派失敗')
+    }
   } catch (error) {
-    console.error('Unassign failed:', error)
+    console.error('❌ [AdvancedAssignActions] Unassign failed with exception:', error)
+    showError('取消指派失敗', '取消指派過程中發生錯誤，請稍後重試')
     emit('error', '取消指派過程中發生錯誤')
   } finally {
     isAssigning.value = false

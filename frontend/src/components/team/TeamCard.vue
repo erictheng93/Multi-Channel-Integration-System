@@ -110,31 +110,40 @@
 
         <!-- 成員列表 -->
         <div class="team-members-section">
-          <h3>團隊成員</h3>
-          
-          <div 
-            v-if="loadingMembers" 
+          <div class="section-header">
+            <h3>團隊成員</h3>
+            <button
+              class="btn btn-sm btn-primary"
+              :disabled="loadingMembers || addingMember"
+              @click="showAddMemberDialog"
+            >
+              + 新增成員
+            </button>
+          </div>
+
+          <div
+            v-if="loadingMembers"
             class="loading-members"
           >
             <HamsterLoader
               message="載入成員中..."
             />
           </div>
-          
-          <div 
-            v-else-if="members.length === 0" 
+
+          <div
+            v-else-if="members.length === 0"
             class="no-members"
           >
             <EmptyIcon />
             <span>此團隊暫無成員</span>
           </div>
-          
-          <div 
-            v-else 
+
+          <div
+            v-else
             class="members-grid"
           >
-            <div 
-              v-for="member in members" 
+            <div
+              v-for="member in members"
               :key="member.id"
               class="member-item"
             >
@@ -145,6 +154,71 @@
                 <span class="member-name">{{ member.name || member.loginId }}</span>
                 <span class="member-role">{{ getRoleDisplayName(member.role) }}</span>
               </div>
+              <button
+                class="btn-remove"
+                :disabled="removingMemberId === member.id"
+                title="從團隊移除"
+                @click.stop="handleRemoveMember(member)"
+              >
+                {{ removingMemberId === member.id ? '移除中...' : '✕' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 新增成員選擇器 -->
+        <div
+          v-if="showAddMemberSelector"
+          class="add-member-section"
+        >
+          <div class="add-member-header">
+            <h4>選擇要新增的成員</h4>
+            <button
+              class="close-selector"
+              @click="showAddMemberSelector = false"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div
+            v-if="loadingAvailableMembers"
+            class="loading-members"
+          >
+            <HamsterLoader message="載入可用成員中..." />
+          </div>
+
+          <div
+            v-else-if="availableMembers.length === 0"
+            class="no-members"
+          >
+            <EmptyIcon />
+            <span>沒有可新增的成員</span>
+          </div>
+
+          <div
+            v-else
+            class="available-members-list"
+          >
+            <div
+              v-for="member in availableMembers"
+              :key="member.id"
+              class="available-member-item"
+              @click="handleAddMember(member)"
+            >
+              <div class="member-avatar-small">
+                {{ getInitials(member) }}
+              </div>
+              <div class="member-info-small">
+                <span class="member-name-small">{{ member.name || member.loginId }}</span>
+                <span class="member-role-small">{{ getRoleDisplayName(member.role) }}</span>
+              </div>
+              <button
+                class="btn-add-small"
+                :disabled="addingMember"
+              >
+                {{ addingMember ? '新增中...' : '+ 新增' }}
+              </button>
             </div>
           </div>
         </div>
@@ -167,6 +241,8 @@
 import { ref, watch } from 'vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { teamApi } from '@/api/team'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useToast } from '@/composables/useToast'
 import type { TeamMember } from '@/types'
 
 interface Team {
@@ -185,17 +261,29 @@ const props = defineProps<{
   loading?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   'edit-team': [team: Team];
   'toggle-status': [team: Team];
   'generate-qr': [team: Team];
   'remove-team': [team: Team];
+  'member-updated': [];
 }>();
+
+// Composables
+const { showDanger, showWarning } = useConfirmDialog()
+const { showSuccess, showError } = useToast()
 
 // 組件狀態
 const showModal = ref(false)
 const members = ref<TeamMember[]>([])
 const loadingMembers = ref(false)
+
+// 成員管理狀態
+const showAddMemberSelector = ref(false)
+const availableMembers = ref<TeamMember[]>([])
+const loadingAvailableMembers = ref(false)
+const addingMember = ref(false)
+const removingMemberId = ref<string | null>(null)
 
 // 圖標組件
 const EmptyIcon = {
@@ -279,10 +367,118 @@ const loadTeamMembers = async () => {
   }
 }
 
+// 載入可用成員（未分配到此團隊的成員）
+const loadAvailableMembers = async () => {
+  loadingAvailableMembers.value = true
+  try {
+    const [allMembersResponse] = await Promise.all([
+      teamApi.getMembers()
+    ])
+
+    if (allMembersResponse.success && allMembersResponse.data) {
+      // 過濾出未分配到當前團隊的成員
+      const currentMemberIds = new Set(members.value.map(m => m.id))
+      availableMembers.value = allMembersResponse.data.filter(
+        member => !currentMemberIds.has(member.id) && member.status === 'active'
+      )
+    } else {
+      console.error('載入可用成員失敗:', allMembersResponse.error)
+      availableMembers.value = []
+    }
+  } catch (error) {
+    console.error('載入可用成員失敗:', error)
+    availableMembers.value = []
+  } finally {
+    loadingAvailableMembers.value = false
+  }
+}
+
+// 顯示新增成員對話框
+const showAddMemberDialog = async () => {
+  showAddMemberSelector.value = true
+  await loadAvailableMembers()
+}
+
+// 新增成員到團隊
+const handleAddMember = async (member: TeamMember) => {
+  try {
+    const confirmed = await showWarning(
+      '確定要新增此成員？',
+      `將 ${member.name || member.loginId} 新增到 ${props.team.name}`
+    )
+
+    if (!confirmed) {return}
+
+    addingMember.value = true
+
+    const response = await teamApi.addMemberToTeam(props.team.id, member.id)
+
+    if (response.success) {
+      showSuccess('成員新增成功')
+
+      // 重新載入團隊成員列表
+      await loadTeamMembers()
+
+      // 重新載入可用成員列表
+      await loadAvailableMembers()
+
+      // 通知父組件更新
+      emit('member-updated')
+    } else {
+      showError(response.error || '新增成員失敗')
+    }
+  } catch (error) {
+    console.error('新增成員失敗:', error)
+    showError('新增成員時發生錯誤')
+  } finally {
+    addingMember.value = false
+  }
+}
+
+// 從團隊移除成員
+const handleRemoveMember = async (member: TeamMember) => {
+  try {
+    const confirmed = await showDanger(
+      '確定要移除此成員？',
+      `將 ${member.name || member.loginId} 從 ${props.team.name} 移除`
+    )
+
+    if (!confirmed) {return}
+
+    removingMemberId.value = member.id
+
+    const response = await teamApi.removeMemberFromTeam(props.team.id, member.id)
+
+    if (response.success) {
+      showSuccess('成員移除成功')
+
+      // 重新載入團隊成員列表
+      await loadTeamMembers()
+
+      // 如果正在顯示新增成員選擇器，也重新載入可用成員
+      if (showAddMemberSelector.value) {
+        await loadAvailableMembers()
+      }
+
+      // 通知父組件更新
+      emit('member-updated')
+    } else {
+      showError(response.error || '移除成員失敗')
+    }
+  } catch (error) {
+    console.error('移除成員失敗:', error)
+    showError('移除成員時發生錯誤')
+  } finally {
+    removingMemberId.value = null
+  }
+}
+
 // 監聽 team 變化，重置 modal 狀態
 watch(() => props.team.id, () => {
   showModal.value = false
   members.value = []
+  showAddMemberSelector.value = false
+  availableMembers.value = []
 })
 </script>
 
@@ -568,6 +764,24 @@ watch(() => props.team.id, () => {
   border: 1px solid #fecaca;
 }
 
+.team-members-section {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  color: #1e293b;
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0;
+}
+
 .team-members-section h3 {
   color: #1e293b;
   font-size: 1.375rem;
@@ -656,6 +870,175 @@ watch(() => props.team.id, () => {
   font-weight: 500;
 }
 
+.btn-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.btn-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  font-size: 0.75rem;
+}
+
+.add-member-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.add-member-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.add-member-header h4 {
+  color: #1e293b;
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.close-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.25rem;
+  font-weight: normal;
+  line-height: 1;
+}
+
+.close-selector:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.available-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.available-member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.available-member-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.member-avatar-small {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.member-info-small {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.member-name-small {
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-role-small {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.btn-add-small {
+  padding: 8px 16px;
+  border: 1px solid #16a34a;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-add-small:hover:not(:disabled) {
+  background: #bbf7d0;
+  border-color: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+}
+
+.btn-add-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .modal-footer {
   padding: 20px 28px;
   border-top: 1px solid #e2e8f0;
@@ -736,6 +1119,20 @@ watch(() => props.team.id, () => {
   background: #fecaca;
   border-color: #dc2626;
   transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a67d8, #6b4598);
+  border-color: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 @media (max-width: 768px) {

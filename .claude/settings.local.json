@@ -91,7 +91,11 @@
       "mcp__chrome-devtools__get_console_message",
       "mcp__chrome-devtools__select_page",
       "Bash(npm view:*)",
-      "Bash(npm update:*)"
+      "Bash(npm update:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc1OTg4NzQ3MSwiZXhwIjoxNzU5ODk0NjcxfQ.8oCdZz5Sn_u-ucS1O2ectr6PPjWL3INEBlLiTwCGyWs\" CONVERSATION_ID=\"2f11b76c-672b-461f-9eca-e799cd54f0aa\")",
+      "Bash(echo \"🧪 Testing assign API...\" echo \"Conversation: $CONVERSATION_ID\" echo \"Team: 業務 A 組 (ID: 1)\" echo \"\")",
+      "Bash(tee:*)",
+      "Bash(Select-String -Pattern \"TeamCard\" -Context 2,2)"
     ],
     "deny": [],
     "ask": [],

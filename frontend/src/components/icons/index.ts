@@ -117,6 +117,9 @@ export const UserPlusIcon = defineComponent<IconProps>({
 
 export const UsersIcon = createIcon('M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75')
 
+// Alias for UsersIcon
+export const UserGroupIcon = UsersIcon
+
 export const TeamIcon = defineComponent<IconProps>({
   name: 'TeamIcon',
   props: {

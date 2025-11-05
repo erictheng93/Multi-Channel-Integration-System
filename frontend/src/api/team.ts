@@ -396,18 +396,69 @@ export const teamApi = {
       }
 
       const response = await apiClient.get<TeamMember>(`/teams/members/${memberId}`)
-      
+
       if (response.success && response.data) {
         return {
           success: true,
           data: response.data
         }
       }
-      
+
       return { success: false, error: response.error || '獲取成員詳情失敗' }
     } catch (error) {
       console.error('Get member failed:', error)
       return { success: false, error: '網路錯誤，無法載入成員詳情' }
+    }
+  },
+
+  // 添加成員到團隊
+  addMemberToTeam: async (teamId: number, agentId: string): Promise<ApiResponse<TeamMember>> => {
+    try {
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      if (!agentId?.trim()) {
+        return { success: false, error: '成員 ID 不能為空' }
+      }
+
+      const response = await apiClient.post<TeamMember>(`/teams/${teamId}/members`, { agentId })
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data
+        }
+      }
+
+      return { success: false, error: response.error || '添加成員到團隊失敗' }
+    } catch (error) {
+      console.error('Add member to team failed:', error)
+      return { success: false, error: '網路錯誤，無法添加成員到團隊' }
+    }
+  },
+
+  // 從團隊移除成員
+  removeMemberFromTeam: async (teamId: number, agentId: string): Promise<ApiResponse<void>> => {
+    try {
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      if (!agentId?.trim()) {
+        return { success: false, error: '成員 ID 不能為空' }
+      }
+
+      const response = await apiClient.delete<void>(`/teams/${teamId}/members/${agentId}`)
+
+      if (response.success) {
+        return {
+          success: true
+        }
+      }
+
+      return { success: false, error: response.error || '從團隊移除成員失敗' }
+    } catch (error) {
+      console.error('Remove member from team failed:', error)
+      return { success: false, error: '網路錯誤，無法從團隊移除成員' }
     }
   }
 }
