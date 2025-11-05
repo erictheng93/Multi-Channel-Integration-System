@@ -310,9 +310,7 @@ export class ComprehensiveStickerRenderer {
 
     const content = `
       <img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs}
-           style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;"
-           onload="this.style.opacity=1; console.log('✅ Sticker loaded:', '${url}')"
-           onerror="console.log('❌ Sticker failed to load:', '${url}'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
+           style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;" />
       <div class="sticker-fallback" style="display: none; text-align: center; padding: 12px 16px; background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); border: 2px solid #d4dbe3; border-radius: 12px; font-size: 13px; color: #5a6c7d; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         <span style="font-size: 32px; margin-bottom: 8px; opacity: 0.7;">🎭</span><br>
         <span style="font-weight: 500;">[${alt}]</span><br>

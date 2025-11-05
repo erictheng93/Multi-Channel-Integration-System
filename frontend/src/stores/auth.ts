@@ -69,7 +69,8 @@ export const useAuthStore = defineStore('auth', () => {
     sessionExpiry.value = null;
   }
 
-  // Initialize from localStorage with simplified logic
+  // Initialize from localStorage with JWT validation
+  // 🔧 修復無限刷新問題：檢查 JWT token 的有效性
   if (typeof window !== 'undefined' && window.localStorage) {
     const storedToken = localStorage.getItem('token');
     const expiry = localStorage.getItem('sessionExpiry');
@@ -78,18 +79,50 @@ export const useAuthStore = defineStore('auth', () => {
     const isSessionValid = expiry && Date.now() <= parseInt(expiry, 10);
 
     if (isSessionValid && storedToken) {
-      token.value = storedToken;
-      refreshToken.value = localStorage.getItem('refreshToken');
-      sessionExpiry.value = parseInt(expiry || '0', 10);
-
-      // Restore agent data
-      const storedAgent = localStorage.getItem('currentAgent');
-      if (storedAgent) {
-        try {
-          currentAgent.value = JSON.parse(storedAgent);
-        } catch {
-          clearAuthStorage();
+      // ✅ 驗證 JWT token 是否有效（檢查格式和過期時間）
+      let isJwtValid = false;
+      try {
+        const parts = storedToken.split('.');
+        if (parts.length === 3 && parts[1]) {
+          const payload = JSON.parse(atob(parts[1]));
+          // 檢查必要字段
+          if (payload.userId && payload.role) {
+            // 檢查 JWT 是否過期
+            if (payload.exp) {
+              const currentTime = Math.floor(Date.now() / 1000);
+              isJwtValid = payload.exp > currentTime;
+              if (!isJwtValid) {
+                console.warn('[Auth Init] JWT token expired, clearing storage');
+              }
+            } else {
+              // 沒有 exp 字段，假設有效
+              isJwtValid = true;
+            }
+          }
         }
+      } catch (e) {
+        console.error('[Auth Init] JWT validation failed:', e);
+        isJwtValid = false;
+      }
+
+      // ✅ 只有 JWT 有效時才恢復 token
+      if (isJwtValid) {
+        token.value = storedToken;
+        refreshToken.value = localStorage.getItem('refreshToken');
+        sessionExpiry.value = parseInt(expiry || '0', 10);
+
+        // Restore agent data
+        const storedAgent = localStorage.getItem('currentAgent');
+        if (storedAgent) {
+          try {
+            currentAgent.value = JSON.parse(storedAgent);
+          } catch {
+            clearAuthStorage();
+          }
+        }
+      } else {
+        // JWT 已過期或無效，清除所有數據
+        clearAuthStorage();
       }
     } else {
       clearAuthStorage();

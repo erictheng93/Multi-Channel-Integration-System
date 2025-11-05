@@ -110,9 +110,13 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         console.log(`✅ [CustomerMessageDO] Fetched ${fetchedMessages.length} messages`);
 
+        // 🔧 FIX: Map agentSenderId/customerSenderId to senderId for frontend compatibility
         return c.json({
           success: true,
-          messages: fetchedMessages,
+          messages: fetchedMessages.map(msg => ({
+            ...msg,
+            senderId: msg.agentSenderId || msg.customerSenderId
+          })),
           hasMore: fetchedMessages.length === limit
         });
       } catch (error) {
@@ -216,7 +220,11 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // Use the inserted data directly for broadcasting
         // This avoids D1 eventual consistency issues
-        const createdMessage = messageData;
+        // 🔧 FIX: Add senderId field for frontend compatibility
+        const createdMessage = {
+          ...messageData,
+          senderId: messageData.agentSenderId || messageData.customerSenderId
+        };
 
         console.log(`📋 [CustomerMessageDO] Using direct message data for broadcast`);
 

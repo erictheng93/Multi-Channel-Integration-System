@@ -56,25 +56,29 @@ onMounted(async () => {
   }
 
   // ⚡ 優化：預加載關鍵數據（團隊、標籤等）
-  // 在背景預先載入常用數據，減少後續操作延遲
-  console.log('⚡ [App.vue] Initializing preload services...')
-  const preloadStart = performance.now()
+  // 🔧 修復閃爍問題：只在已登入時預加載數據
+  if (authStore.isAuthenticated) {
+    console.log('⚡ [App.vue] Initializing preload services...')
+    const preloadStart = performance.now()
 
-  await Promise.allSettled([
-    preloadService.init(),
-    tagCacheService.init()
-  ]).then(results => {
-    const duration = performance.now() - preloadStart
-    const successCount = results.filter(r => r.status === 'fulfilled').length
-    console.log(`✅ [App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
+    await Promise.allSettled([
+      preloadService.init(),
+      tagCacheService.init()
+    ]).then(results => {
+      const duration = performance.now() - preloadStart
+      const successCount = results.filter(r => r.status === 'fulfilled').length
+      console.log(`✅ [App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
 
-    results.forEach((result, index) => {
-      const serviceName = index === 0 ? 'preloadService' : 'tagCacheService'
-      if (result.status === 'rejected') {
-        console.error(`❌ [App.vue] ${serviceName} initialization failed:`, result.reason)
-      }
+      results.forEach((result, index) => {
+        const serviceName = index === 0 ? 'preloadService' : 'tagCacheService'
+        if (result.status === 'rejected') {
+          console.error(`❌ [App.vue] ${serviceName} initialization failed:`, result.reason)
+        }
+      })
     })
-  })
+  } else {
+    console.log('⏭️  [App.vue] Skipping preload (not authenticated)')
+  }
 
   // 🧹 設置定期清理過期緩存（每5分鐘）
   setInterval(() => {

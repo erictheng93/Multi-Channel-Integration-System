@@ -114,11 +114,14 @@ export function createCustomerWebSocketConnection(
           console.log('📨 [CustomerWebSocket] Received:', data.type, data)
 
           if (data.type === 'NEW_MESSAGE' && data.message) {
-            // 添加新消息到列表
-            messages.value.push(data.message as Message)
+            // 🔧 FIX: 不在這裡添加消息，避免重複
+            // 消息會通過 callback → handleUnifiedMessage → httpMessages.addMessage() 添加
+            // 這樣可以使用 useCustomerMessages 的智能去重邏輯
+
+            // 只更新計數器
             messageCount.value++
 
-            // 通知回調
+            // 通知回調（由 ConversationDetail.vue 的 handleUnifiedMessage 處理）
             messageCallback?.(data)
           } else if (data.type === 'USER_CONNECTED' || data.type === 'USER_DISCONNECTED') {
             // 用戶在線狀態變化

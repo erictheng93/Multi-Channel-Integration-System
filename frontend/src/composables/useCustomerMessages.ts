@@ -298,11 +298,55 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
   /**
    * 添加新消息到列表（用於 WebSocket 實時推送）
+   * 🔧 智能去重：會識別並替換臨時消息（optimistic UI）
    */
   const addMessage = (message: Message) => {
-    // 避免重複添加
-    const exists = messages.value.some(m => m.id === message.id)
-    if (!exists) {
+    // 第一步：檢查是否已存在相同ID的消息
+    const existsById = messages.value.some(m => m.id === message.id)
+    if (existsById) {
+      console.log('⚠️ [useCustomerMessages] Message already exists, skipping:', message.id)
+      return
+    }
+
+    // 第二步：檢查是否存在需要替換的臨時消息（optimistic UI）
+    // 匹配條件：
+    // 1. ID以"temp-"開頭（臨時消息）
+    // 2. 內容完全相同
+    // 3. 發送者相同
+    // 4. 時間戳接近（10秒內）
+    const tempMessageIndex = messages.value.findIndex(m => {
+      const isTempMessage = m.id.startsWith('temp-')
+      const sameContent = m.content === message.content
+      const sameSender = m.senderId === message.senderId
+
+      // 計算時間差（允許10秒誤差）
+      const msgTime = new Date(message.createdAt).getTime()
+      const tempTime = new Date(m.createdAt).getTime()
+      const timeDiff = Math.abs(msgTime - tempTime)
+      const withinTimeWindow = timeDiff < 10000 // 10秒內
+
+      // 🔍 調試日誌：檢查匹配條件
+      if (isTempMessage) {
+        console.log('🔍 [Dedupe Debug] Checking temp message:', m.id)
+        console.log('  - Content match:', sameContent, `("${m.content}" === "${message.content}")`)
+        console.log('  - Sender match:', sameSender, `(${m.senderId} === ${message.senderId})`)
+        console.log('  - Time diff:', timeDiff, 'ms, within window:', withinTimeWindow)
+        console.log('  - All match:', isTempMessage && sameContent && sameSender && withinTimeWindow)
+      }
+
+      return isTempMessage && sameContent && sameSender && withinTimeWindow
+    })
+
+
+    if (tempMessageIndex !== -1) {
+      // 找到匹配的臨時消息，替換它
+      const tempMessage = messages.value[tempMessageIndex]
+      if (tempMessage) {
+        console.log(`🔄 [useCustomerMessages] Replacing temp message ${tempMessage.id} with real message ${message.id}`)
+        messages.value[tempMessageIndex] = message
+      }
+    } else {
+      // 沒有找到臨時消息，正常添加
       messages.value.push(message)
       console.log('✅ [useCustomerMessages] Added new message via WebSocket:', message.id)
     }
