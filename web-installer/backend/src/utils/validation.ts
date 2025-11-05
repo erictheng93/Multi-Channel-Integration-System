@@ -106,3 +106,12 @@ export function validateAll(
 
   return errors;
 }
+
+// Specific validation helper functions
+export function validateProjectName(projectName: string): ValidationError | null {
+  return validateField('projectName', projectName, ValidationRules);
+}
+
+export function validateEmail(email: string): ValidationError | null {
+  return validateField('adminEmail', email, ValidationRules);
+}

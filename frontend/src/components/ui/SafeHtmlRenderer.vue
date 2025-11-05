@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 
 interface Props {
   html?: string
@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   allowedTags: () => ['span', 'img', 'div'],
   allowedAttributes: () => ({
     span: ['class', 'title', 'style'],
-    img: ['src', 'alt', 'title', 'class', 'style', 'width', 'height'],
+    img: ['src', 'alt', 'title', 'class', 'style', 'width', 'height', 'data-sticker-package', 'data-sticker-id', 'data-sticker-type'],
     div: ['class', 'style']
   })
 })
@@ -127,12 +127,62 @@ const isValidStyle = (style: string): boolean => {
 }
 
 /**
+ * 為貼圖圖片添加加載失敗處理
+ */
+const setupImageErrorHandlers = () => {
+  if (!containerRef.value) {return}
+
+  // 找到所有貼圖圖片元素
+  const images = containerRef.value.querySelectorAll('img.sticker-image')
+
+  images.forEach((img) => {
+    const imgElement = img as HTMLImageElement
+
+    // 添加 load 事件處理
+    imgElement.addEventListener('load', () => {
+      // 圖片加載成功，設置透明度
+      imgElement.style.opacity = '1'
+      console.log('✅ Sticker loaded:', imgElement.src)
+    })
+
+    // 添加 error 事件處理
+    imgElement.addEventListener('error', () => {
+      console.log('❌ Sticker failed to load:', imgElement.src)
+
+      // 隱藏圖片
+      imgElement.style.display = 'none'
+
+      // 顯示 Fallback
+      const fallback = imgElement.nextElementSibling as HTMLElement
+      if (fallback && fallback.classList.contains('sticker-fallback')) {
+        fallback.style.display = 'block'
+      }
+    })
+
+    // 如果圖片已經加載完成（從緩存），立即觸發相應事件
+    if (imgElement.complete) {
+      if (imgElement.naturalWidth === 0) {
+        // 圖片加載失敗
+        imgElement.dispatchEvent(new Event('error'))
+      } else {
+        // 圖片加載成功
+        imgElement.dispatchEvent(new Event('load'))
+      }
+    }
+  })
+}
+
+/**
  * 渲染安全的HTML内容
  */
-const renderSafeHtml = () => {
+const renderSafeHtml = async () => {
   if (containerRef.value && props.html) {
     const safeHtml = sanitizeHtml(props.html)
     containerRef.value.innerHTML = safeHtml
+
+    // 等待 DOM 更新後設置事件處理器
+    await nextTick()
+    setupImageErrorHandlers()
   } else if (containerRef.value) {
     containerRef.value.innerHTML = ''
   }

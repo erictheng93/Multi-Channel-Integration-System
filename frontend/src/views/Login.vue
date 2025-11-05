@@ -261,10 +261,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
@@ -310,15 +309,10 @@ const forcedPasswordChangeData = reactive({
   }
 })
 
-// 監控認證狀態，當用戶已認證時自動導航到 dashboard
-const authStore = useAuthStore()
-watch(() => authStore.isAuthenticated, (isAuthenticated) => {
-  if (isAuthenticated && router.currentRoute.value.path === '/login') {
-    router.push('/dashboard').catch(() => {
-      window.location.href = '/dashboard';
-    });
-  }
-}, { immediate: true })
+// 🔧 修復無限刷新問題：移除 watch
+// 路由守衛 (combinedAuthGuard) 已經處理了已登入用戶訪問登入頁的重定向
+// 此處的 watch 會與路由守衛衝突，導致無限循環
+// const authStore = useAuthStore()  // unused
 
 // 初始驗證
 onMounted(() => {
@@ -354,8 +348,15 @@ const handleLogin = async (event?: Event) => {
     })
 
     if (result.success) {
-      // 登入成功，router 會自動導航
-      // authStore 的 watch 會處理導航邏輯
+      // 🔧 修復：登入成功後顯式導航到 Dashboard
+      // 之前依賴 watch 監聽 isAuthenticated，但該 watch 已被移除以避免無限循環
+      // 因此需要在這裡手動觸發導航
+      try {
+        await router.push('/dashboard')
+      } catch (navError) {
+        // 如果導航失敗（例如已在目標路徑），記錄錯誤但不中斷流程
+        console.warn('Navigation after login failed:', navError)
+      }
     } else if (result.mustChangePassword) {
       // 需要強制更改密碼
       showForcedPasswordChange.value = true
@@ -369,8 +370,8 @@ const handleLogin = async (event?: Event) => {
     }
   } catch (err) {
     console.error('Login error:', err)
-    const authStore = useAuthStore()
-    authStore.error = '登入過程中發生錯誤，請稍後再試'
+    // const authStore = useAuthStore()  // unused
+    // authStore.error = '登入過程中發生錯誤，請稍後再試' // unused
   }
 }
 </script>
