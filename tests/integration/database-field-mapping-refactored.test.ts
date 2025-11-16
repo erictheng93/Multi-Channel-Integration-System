@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseTestEnvironment } from '../helpers/DatabaseTestEnvironment';
 import { DelayedMessageService } from '@modules/messaging/services/delayed-message-service';
-import type { Bindings } from '../../src/types';
+import type { Bindings } from '@/types';
 import type { DelayedSendRequest } from '@modules/messaging/types/message-types';
 import * as schema from '@backend/db/schema';
 

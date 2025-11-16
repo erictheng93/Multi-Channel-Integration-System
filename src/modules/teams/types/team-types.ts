@@ -52,6 +52,7 @@ export interface TeamMember {
 export interface TeamCreateRequest {
   name: string;
   description?: string;
+  qrCode?: string;
   isActive?: boolean;
 }
 

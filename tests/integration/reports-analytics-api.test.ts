@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import { reportsHandler } from '@modules/reports/handlers/reports-main';
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
-import type { Bindings } from '../../src/types';
+import type { Bindings } from '@/types';
 
 // ======================== 測試環境設置 ========================
 

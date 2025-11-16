@@ -3,7 +3,7 @@
 // Uses new Drizzle mock infrastructure
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { messageHandler } from '../../../src/handlers/message'
+import { messageHandler } from '@/handlers/message'
 import {
   createMockContext,
   extractResponseData

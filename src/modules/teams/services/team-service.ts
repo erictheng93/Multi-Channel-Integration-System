@@ -32,9 +32,23 @@ export class TeamService implements TeamServiceInterface {
 
   // Create new team
   async createTeam(data: TeamCreateRequest): Promise<Team> {
+    // Check for duplicate QR code if provided
+    if (data.qrCode) {
+      const existingTeam = await this.db
+        .select()
+        .from(teams)
+        .where(eq(teams.qrCode, data.qrCode))
+        .limit(1);
+
+      if (existingTeam.length > 0) {
+        throw new Error('DUPLICATE_QR_CODE');
+      }
+    }
+
     const teamData: NewTeam = {
       name: data.name,
       description: data.description || null,
+      qrCode: data.qrCode || null,
       isActive: data.isActive ?? true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -123,21 +137,16 @@ export class TeamService implements TeamServiceInterface {
     return result[0];
   }
 
-  // Delete team (hard delete - permanently removes from database)
+  // Delete team (soft delete - marks as inactive)
   async deleteTeam(id: number): Promise<boolean> {
     try {
-      // First, remove team assignment from all agents in this team
+      // Soft delete: mark team as inactive instead of deleting
       await this.db
-        .update(agents)
+        .update(teams)
         .set({
-          teamId: null,
+          isActive: false,
           updatedAt: new Date().toISOString()
         })
-        .where(eq(agents.teamId, id));
-
-      // Then delete the team permanently
-      await this.db
-        .delete(teams)
         .where(eq(teams.id, id));
 
       return true;

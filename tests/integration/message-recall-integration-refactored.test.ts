@@ -3,8 +3,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseTestEnvironment } from '../helpers/DatabaseTestEnvironment';
-import { MessageRecallService } from '../../src/services/message-recall-service';
-import type { Bindings } from '../../src/types';
+import { MessageRecallService } from '@/services/message-recall-service';
+import type { Bindings } from '@/types';
 import { webcrypto } from 'node:crypto';
 
 // Module-level variable for test environment

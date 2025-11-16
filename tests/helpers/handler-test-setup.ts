@@ -1,7 +1,7 @@
 // Handler 測試共用設置工具
 import { vi } from 'vitest';
 import { Hono } from 'hono';
-import type { Bindings } from '../../src/types';
+import type { Bindings } from '@/types';
 
 /**
  * 創建標準的測試環境設置

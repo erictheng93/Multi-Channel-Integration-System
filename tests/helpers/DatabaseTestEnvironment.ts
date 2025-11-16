@@ -179,7 +179,23 @@ export class DatabaseTestEnvironment {
       );
     `)
 
-    // 5. Messages table (depends on conversations, customers, agents)
+    // 5. Conversation Transfers table (depends on conversations, teams, agents)
+    this.sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS conversation_transfers (
+        id INTEGER PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES conversations(id),
+        from_team_id INTEGER REFERENCES teams(id),
+        to_team_id INTEGER REFERENCES teams(id),
+        from_user_id TEXT REFERENCES agents(id),
+        to_user_id TEXT REFERENCES agents(id),
+        transfer_reason TEXT,
+        transferred_by TEXT NOT NULL REFERENCES agents(id),
+        transfer_type TEXT DEFAULT 'manual',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
+
+    // 6. Messages table (depends on conversations, customers, agents)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
@@ -205,7 +221,7 @@ export class DatabaseTestEnvironment {
       );
     `)
 
-    // 6. Delayed Messages table (depends on conversations, agents)
+    // 7. Delayed Messages table (depends on conversations, agents)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS delayed_messages (
         id TEXT PRIMARY KEY,
@@ -223,7 +239,7 @@ export class DatabaseTestEnvironment {
       );
     `)
 
-    // 7. Message Recall Logs table (depends on messages, agents)
+    // 8. Message Recall Logs table (depends on messages, agents)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS message_recall_logs (
         id INTEGER PRIMARY KEY,
@@ -234,7 +250,7 @@ export class DatabaseTestEnvironment {
       );
     `)
 
-    // 8. Activities table (depends on agents for audit trail)
+    // 9. Activities table (depends on agents for audit trail)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS activities (
         id INTEGER PRIMARY KEY,
@@ -251,7 +267,7 @@ export class DatabaseTestEnvironment {
       );
     `)
 
-    // 9. System Settings table (no dependencies)
+    // 10. System Settings table (no dependencies)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS system_settings (
         key TEXT PRIMARY KEY,
@@ -262,38 +278,56 @@ export class DatabaseTestEnvironment {
       );
     `)
 
-    // 10. Tags table (no dependencies)
+    // 11. Tags table (depends on teams and agents)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS tags (
         id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        color TEXT,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT '#3B82F6',
         description TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        team_id INTEGER REFERENCES teams(id),
+        is_active INTEGER DEFAULT 1,
+        created_by TEXT NOT NULL REFERENCES agents(id),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(name, team_id)
       );
     `)
 
-    // 11. Conversation Tags junction table
+    // 11. Customer Tags junction table
+    this.sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS customer_tags (
+        customer_id INTEGER NOT NULL REFERENCES customers(id),
+        tag_id INTEGER NOT NULL REFERENCES tags(id),
+        assigned_by TEXT NOT NULL REFERENCES agents(id),
+        assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (customer_id, tag_id)
+      );
+    `)
+
+    // 12. Conversation Tags junction table
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS conversation_tags (
         conversation_id TEXT NOT NULL REFERENCES conversations(id),
         tag_id INTEGER NOT NULL REFERENCES tags(id),
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        assigned_by TEXT NOT NULL REFERENCES agents(id),
+        assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (conversation_id, tag_id)
       );
     `)
 
-    // 12. Message Tags junction table
+    // 13. Message Tags junction table
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS message_tags (
         message_id TEXT NOT NULL REFERENCES messages(id),
         tag_id INTEGER NOT NULL REFERENCES tags(id),
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        assigned_by TEXT NOT NULL REFERENCES agents(id),
+        assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (message_id, tag_id)
       );
     `)
 
-    // 13. Reports table (depends on teams, agents)
+    // 14. Reports table (depends on teams, agents)
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS reports (
         id TEXT PRIMARY KEY,
@@ -357,8 +391,12 @@ export class DatabaseTestEnvironment {
     // Re-enable foreign keys
     this.sqlite.exec('PRAGMA foreign_keys = ON;')
 
-    // Reset autoincrement sequences
-    this.sqlite.exec("DELETE FROM sqlite_sequence;")
+    // Reset autoincrement sequences (only if table exists)
+    try {
+      this.sqlite.exec("DELETE FROM sqlite_sequence;")
+    } catch (error) {
+      // sqlite_sequence doesn't exist yet - that's fine
+    }
   }
 
   /**

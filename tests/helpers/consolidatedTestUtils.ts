@@ -5,7 +5,7 @@
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { vi } from 'vitest'
 import { Context } from 'hono'
-import type { Bindings } from '../../src/types'
+import type { Bindings } from '@/types'
 import { createMockDatabase } from './mockDatabase'
 
 // =================== Core Test Environment ===================

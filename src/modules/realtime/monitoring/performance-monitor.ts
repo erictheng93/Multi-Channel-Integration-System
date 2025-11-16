@@ -178,7 +178,7 @@ export class RealtimePerformanceMonitor {
           });
 
           if (response.ok) {
-            const wsData = await response.json();
+            const wsData = await response.json() as any;
             connectionStats = {
               totalConnections: wsData.connections?.totalConnections || 0,
               activeConnections: wsData.connections?.activeConnections || 0,
@@ -233,8 +233,8 @@ export class RealtimePerformanceMonitor {
         totalDataTransferred: 0, // 需要從 WebSocket metrics 獲取
         averageResponseTime: 0, // 需要額外追蹤
         heartbeatSuccessRate: this.calculateHeartbeatSuccessRate(),
-        errorRate: 0, // 需要額外追蹤
-        activeConnections: connectionStats.activeConnections || 0
+        sseErrorRate: 0, // 需要額外追蹤 (renamed from errorRate for interface compatibility)
+        activeStreams: connectionStats.activeConnections || 0 // renamed from activeConnections for interface compatibility
       };
 
       // 計算隊列指標

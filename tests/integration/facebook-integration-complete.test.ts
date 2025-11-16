@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Context } from 'hono';
-import { webhookHandler } from '../../src/handlers/webhook';
-import { messageHandler } from '../../src/handlers/message';
-import { createUserSyncService } from '../../src/services/user-sync';
+import { webhookHandler } from '@/handlers/webhook';
+import { messageHandler } from '@/handlers/message';
+import { createUserSyncService } from '@/services/user-sync';
 import { FacebookIntegrationService } from '@modules/integration/services/facebook-integration-service';
-import type { Bindings } from '../../src/types';
+import type { Bindings } from '@/types';
 import { createMockDatabase } from '../helpers/mockDatabase';
 
 // Mock globals

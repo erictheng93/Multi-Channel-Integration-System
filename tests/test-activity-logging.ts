@@ -1,5 +1,5 @@
 // 測試活動記錄功能
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../src/services/activity-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
 
 // 模擬 D1 資料庫
 class MockD1Database {
