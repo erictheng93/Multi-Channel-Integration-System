@@ -75,10 +75,12 @@ export default defineConfig({
     // Minification settings
     minify: 'terser',
     terserOptions: {
+      /* eslint-disable camelcase */
       compress: {
         drop_console: true,
         drop_debugger: true,
         pure_funcs: ['console.log', 'console.info', 'console.debug']
+      /* eslint-enable camelcase */
       },
       mangle: {
         safari10: true

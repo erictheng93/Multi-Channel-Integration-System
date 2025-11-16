@@ -30,5 +30,10 @@
       "Bash(npx wrangler d1 execute:*)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "chrome-devtools",
+    "playwright",
+    "context7"
+  ]
 }

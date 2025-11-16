@@ -45,7 +45,7 @@
       "@teams/*": ["modules/teams/*"],
       "@customer/*": ["modules/customer/*"],
       "@integrations/*": ["modules/integrations/*"],
-      "@real-time/*": ["modules/real-time/*"],
+      "@real-time/*": ["modules/realtime/*"],
       "@messaging/*": ["modules/messaging/*"],
       "@analytics/*": ["modules/analytics/*"],
       "@file-management/*": ["modules/file-management/*"],

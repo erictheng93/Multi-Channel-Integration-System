@@ -160,7 +160,7 @@ export class AnalyticsService {
     const summary = await this.calculateActivitySummary(activities);
 
     return {
-      conversation_id: conversationId,
+      conversationId: conversationId,
       timeRange,
       activities,
       summary

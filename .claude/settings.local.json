@@ -102,7 +102,16 @@
       "WebFetch(domain:store.line.me)",
       "Bash(Select-String -Pattern \"(error|AdvancedAssignActions)\" -Context 2,2)",
       "Bash(test:*)",
-      "Bash(Select-String -Pattern \"(PASS|FAIL|Tests:|Test Files:)\")"
+      "Bash(Select-String -Pattern \"(PASS|FAIL|Tests:|Test Files:)\")",
+      "Bash(Select-String -Pattern \"performance-monitor\" -Context 2,2)",
+      "Bash(Select-Object -First 30)",
+      "Bash(Select-Object -First 1)",
+      "Bash(Select-Object -First 100)",
+      "Bash(Select-String -Pattern \"(Test Files|Tests|pass|fail|FAIL|PASS)\")",
+      "Bash(Select-String -Pattern \"(FAIL|✓|×)\" -Context 0,1)",
+      "Bash(Select-String -Pattern \"(Test Files|Tests|✓|×|passed|failed)\")",
+      "Bash(Select-Object -First 40)",
+      "Bash(Select-String -Pattern \"(PASS|FAIL|Test Files|Tests:)\" -Context 0,1)"
     ],
     "deny": [],
     "ask": [],

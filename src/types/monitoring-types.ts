@@ -217,7 +217,12 @@ export interface PerformanceMetrics {
     throughput: number;
     errorRate: number;
   };
-  sse: {
+  /**
+   * @deprecated SSE has been fully replaced by WebSocket architecture (Phase 4 Complete)
+   * This property is kept for backward compatibility but will be removed in future versions.
+   * All connection statistics are now tracked via WebSocket metrics.
+   */
+  sse?: {
     connections: number;
     latency: number;
     averageLatency: number;

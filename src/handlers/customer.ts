@@ -207,16 +207,16 @@ export const customerHandler = {
         .select({
           id: customers.id,
           platform: customers.platform,
-          platform_user_id: customers.platformUserId,
-          display_name: customers.displayName,
-          avatar_url: customers.avatarUrl,
+          platformUserId: customers.platformUserId,
+          displayName: customers.displayName,
+          avatarUrl: customers.avatarUrl,
           phone: customers.phone,
           email: customers.email,
-          source_team_id: customers.sourceTeamId,
+          sourceTeamId: customers.sourceTeamId,
           metadata: customers.metadata,
-          created_at: customers.createdAt,
-          updated_at: customers.updatedAt,
-          team_name: teams.name
+          createdAt: customers.createdAt,
+          updatedAt: customers.updatedAt,
+          teamName: teams.name
         })
         .from(customers)
         .leftJoin(teams, eq(customers.sourceTeamId, teams.id))
@@ -230,9 +230,9 @@ export const customerHandler = {
       // 獨立查詢標籤資料
       const customerTagsData = await drizzleDb
         .select({
-          tag_id: tags.id,
-          tag_name: tags.name,
-          tag_color: tags.color
+          tagId: tags.id,
+          tagName: tags.name,
+          tagColor: tags.color
         })
         .from(customerTags)
         .innerJoin(tags, eq(customerTags.tagId, tags.id))
@@ -272,8 +272,8 @@ export const customerHandler = {
       // 使用 Drizzle ORM 查詢對話日期
       const conversationDates = await drizzleDb
         .select({
-          last_conversation_at: sql<string>`MAX(${conversations.createdAt})`,
-          first_conversation_at: sql<string>`MIN(${conversations.createdAt})`
+          lastConversationAt: sql<string>`MAX(${conversations.createdAt})`,
+          firstConversationAt: sql<string>`MIN(${conversations.createdAt})`
         })
         .from(conversations)
         .where(eq(conversations.customerId, parseInt(customerId)))
@@ -299,35 +299,35 @@ export const customerHandler = {
       const customerData = {
         id: customer.id,
         platform: customer.platform,
-        platformUserId: customer.platform_user_id,
-        displayName: customer.display_name,
-        avatarUrl: customer.avatar_url,
+        platformUserId: customer.platformUserId,
+        displayName: customer.displayName,
+        avatarUrl: customer.avatarUrl,
         phone: customer.phone,
         email: customer.email,
-        sourceTeamId: customer.source_team_id,
-        teamName: customer.team_name,
+        sourceTeamId: customer.sourceTeamId,
+        teamName: customer.teamName,
         tags: customerTagsData.map(tag => ({
-          id: tag.tag_id,
-          name: tag.tag_name,
-          color: tag.tag_color || '#3B82F6'
+          id: tag.tagId,
+          name: tag.tagName,
+          color: tag.tagColor || '#3B82F6'
         })),
         conversationStats: {
           total: totalConversations?.count || 0,
           active: activeConversations?.count || 0,
           closed: closedConversations?.count || 0,
-          lastConversationAt: conversationDates?.last_conversation_at,
-          firstConversationAt: conversationDates?.first_conversation_at
+          lastConversationAt: conversationDates?.lastConversationAt,
+          firstConversationAt: conversationDates?.firstConversationAt
         },
         recentMessages: recentMessages.map((msg: any) => ({
           id: msg.id,
-          conversationId: msg.conversation_id,
-          senderType: msg.sender_type,
+          conversationId: msg.conversationId,
+          senderType: msg.senderType,
           content: msg.content,
-          messageType: msg.message_type,
-          createdAt: msg.created_at
+          messageType: msg.messageType,
+          createdAt: msg.createdAt
         })),
-        createdAt: customer.created_at,
-        updatedAt: customer.updated_at,
+        createdAt: customer.createdAt,
+        updatedAt: customer.updatedAt,
         metadata: customer.metadata && typeof customer.metadata === 'string' 
           ? JSON.parse(customer.metadata) 
           : null
@@ -489,7 +489,7 @@ export const customerHandler = {
 
       const teamStats = await drizzleDb
         .select({
-          team_name: sql<string>`COALESCE(${teams.name}, '未分配')`,
+          teamName: sql<string>`COALESCE(${teams.name}, '未分配')`,
           count: count(customers.id)
         })
         .from(customers)
@@ -549,7 +549,7 @@ export const customerHandler = {
       });
 
       teamStats.forEach(row => {
-        stats.byTeam[row.team_name] = row.count;
+        stats.byTeam[row.teamName] = row.count;
       });
 
       return successResponse(c, stats, 'Customer statistics retrieved successfully');
@@ -602,9 +602,9 @@ export const customerHandler = {
         .select({
           id: customers.id,
           platform: customers.platform,
-          platform_user_id: customers.platformUserId,
-          display_name: customers.displayName,
-          avatar_url: customers.avatarUrl,
+          platformUserId: customers.platformUserId,
+          displayName: customers.displayName,
+          avatarUrl: customers.avatarUrl,
           email: customers.email,
           phone: customers.phone
         })
@@ -617,9 +617,9 @@ export const customerHandler = {
       const customersData = searchResults.map(row => ({
         id: row.id,
         platform: row.platform,
-        platformUserId: row.platform_user_id,
-        displayName: row.display_name,
-        avatarUrl: row.avatar_url,
+        platformUserId: row.platformUserId,
+        displayName: row.displayName,
+        avatarUrl: row.avatarUrl,
         email: row.email,
         phone: row.phone
       }));

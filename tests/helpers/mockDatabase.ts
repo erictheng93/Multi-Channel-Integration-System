@@ -15,19 +15,25 @@ export interface MockD1Statement {
   run: () => Promise<MockD1Result>
   first: <T = any>() => Promise<T | null>
   all: <T = any>() => Promise<{ results: T[] }>
+  raw: <T = any>() => Promise<T[][]>
 }
 
 export class MockD1Database {
   private mockStatements = new Map<string, MockD1Statement>()
-  
+
   prepare = vi.fn((query: string): MockD1Statement => {
     const statement: MockD1Statement = {
       bind: vi.fn((...values: any[]) => statement),
-      run: vi.fn(),
-      first: vi.fn(),
-      all: vi.fn()
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        meta: { changes: 0 },
+        results: []
+      }),
+      first: vi.fn().mockResolvedValue(null),
+      all: vi.fn().mockResolvedValue({ results: [] }),
+      raw: vi.fn().mockResolvedValue([])
     }
-    
+
     this.mockStatements.set(query, statement)
     return statement
   })
@@ -38,10 +44,13 @@ export class MockD1Database {
     if (statement) {
       if (Array.isArray(response)) {
         statement.all = vi.fn().mockResolvedValue({ results: response })
+        statement.raw = vi.fn().mockResolvedValue(response.map(row => Object.values(row)))
       } else if (response === null || response === undefined) {
         statement.first = vi.fn().mockResolvedValue(null)
+        statement.raw = vi.fn().mockResolvedValue([])
       } else {
         statement.first = vi.fn().mockResolvedValue(response)
+        statement.raw = vi.fn().mockResolvedValue([Object.values(response)])
       }
     }
   }
@@ -53,6 +62,7 @@ export class MockD1Database {
         success: true,
         meta: { last_row_id: insertId }
       })
+      statement.raw = vi.fn().mockResolvedValue([[insertId]])
     }
   }
 
@@ -63,6 +73,7 @@ export class MockD1Database {
         success: true,
         meta: { changes }
       })
+      statement.raw = vi.fn().mockResolvedValue([[changes]])
     }
   }
 
@@ -72,6 +83,7 @@ export class MockD1Database {
       statement.run = vi.fn().mockRejectedValue(error)
       statement.first = vi.fn().mockRejectedValue(error)
       statement.all = vi.fn().mockRejectedValue(error)
+      statement.raw = vi.fn().mockRejectedValue(error)
     }
   }
 
@@ -82,3 +94,36 @@ export class MockD1Database {
 }
 
 export const createMockDatabase = () => new MockD1Database()
+
+/**
+ * Helper function to create a complete D1 PreparedStatement mock
+ * Ensures all required methods (including .raw()) are present
+ */
+export function createMockStatement(overrides?: Partial<MockD1Statement>): MockD1Statement {
+  const statement: MockD1Statement = {
+    bind: vi.fn((...values: any[]) => statement),
+    run: vi.fn().mockResolvedValue({
+      success: true,
+      meta: { changes: 0 },
+      results: []
+    }),
+    first: vi.fn().mockResolvedValue(null),
+    all: vi.fn().mockResolvedValue({ results: [] }),
+    raw: vi.fn().mockResolvedValue([]),
+    ...overrides
+  }
+
+  // Ensure bind always returns a complete statement
+  statement.bind = vi.fn((...values: any[]) => {
+    if (overrides?.bind) {
+      return overrides.bind(...values)
+    }
+    return statement
+  })
+
+  return statement
+}
+
+// Export new refactored test helpers
+export { MockDatabaseFactory } from './MockDatabaseFactory'
+export { DatabaseTestHelper } from './DatabaseTestHelper'

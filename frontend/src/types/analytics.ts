@@ -77,64 +77,64 @@ export interface MetricDefinition {
 }
 
 export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
-  total_conversations: {
-    key: 'total_conversations',
+  totalConversations: {
+    key: 'totalConversations',
     label: '總對話數',
     description: '系統中所有對話的總數',
     unit: '個',
     category: 'conversation'
   },
-  active_conversations: {
-    key: 'active_conversations',
+  activeConversations: {
+    key: 'activeConversations',
     label: '活躍對話',
     description: '當前活躍狀態的對話數量',
     unit: '個',
     category: 'conversation'
   },
-  closed_conversations: {
-    key: 'closed_conversations',
+  closedConversations: {
+    key: 'closedConversations',
     label: '已關閉對話',
     description: '已結束的對話數量',
     unit: '個',
     category: 'conversation'
   },
-  total_messages: {
-    key: 'total_messages',
+  totalMessages: {
+    key: 'totalMessages',
     label: '總消息數',
     description: '系統中所有消息的總數',
     unit: '則',
     category: 'message'
   },
-  customer_messages: {
-    key: 'customer_messages',
+  customerMessages: {
+    key: 'customerMessages',
     label: '客戶消息',
     description: '客戶發送的消息數量',
     unit: '則',
     category: 'message'
   },
-  agent_messages: {
-    key: 'agent_messages',
+  agentMessages: {
+    key: 'agentMessages',
     label: '客服消息',
     description: '客服發送的消息數量',
     unit: '則',
     category: 'message'
   },
-  active_users: {
-    key: 'active_users',
+  activeUsers: {
+    key: 'activeUsers',
     label: '活躍用戶',
     description: '活躍的用戶數量',
     unit: '人',
     category: 'user'
   },
-  total_activities: {
-    key: 'total_activities',
+  totalActivities: {
+    key: 'totalActivities',
     label: '總活動數',
     description: '用戶活動的總數',
     unit: '次',
     category: 'user'
   },
-  average_response_time: {
-    key: 'average_response_time',
+  averageResponseTime: {
+    key: 'averageResponseTime',
     label: '平均回應時間',
     description: '客服平均回應時間',
     unit: '秒',
@@ -145,8 +145,8 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
       return `${(_value / 3600).toFixed(1)}小時`;
     }
   },
-  first_response_time: {
-    key: 'first_response_time',
+  firstResponseTime: {
+    key: 'firstResponseTime',
     label: '首次回應時間',
     description: '首次回應客戶的平均時間',
     unit: '秒',

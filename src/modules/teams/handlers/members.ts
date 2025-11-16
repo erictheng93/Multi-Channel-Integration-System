@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import { MemberService } from '../services/member-service';
+import { MemberService } from '@modules/teams/services/member-service';
 import {
   jwtAuth,
   requireAdmin,

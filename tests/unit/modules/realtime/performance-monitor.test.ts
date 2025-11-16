@@ -1,21 +1,66 @@
 // Realtime 性能監控器測試
 // 測試性能指標收集、警報和健康檢查功能
+//
+// Phase 4 Update: Replaced SSE mocks with WebSocket endpoint mocks
+// All connection statistics now come from /api/websocket/metrics
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
 
-// Mock dependencies
-vi.mock('@real-time/handlers/sse-handler', () => ({
-  enhancedSSEManager: {
-    getDetailedStats: vi.fn().mockReturnValue({
-      totalConnections: 10,
-      connectionsByUser: { 1: 5, 2: 3, 3: 2 },
-      connectionsByConversation: { 101: 4, 102: 3, 103: 3 },
-      averageUptime: 3600000,
-      totalEventsSent: 150
-    })
+// Mock global fetch for WebSocket metrics endpoint
+const mockWebSocketMetrics = {
+  connections: {
+    totalConnections: 10,
+    activeConnections: 10,
+    connectionsByUser: { 1: 5, 2: 3, 3: 2 },
+    connectionsByRole: { admin: 2, agent: 8 },
+    averageLatency: 50,
+    messagesThroughput: { inbound: 100, outbound: 150 },
+    errorRate: 0.01
   }
-}));
+};
+
+// Store original fetch
+const originalFetch = global.fetch;
+
+// Mock fetch before tests
+beforeAll(() => {
+  global.fetch = vi.fn((url: string | URL) => {
+    const urlString = url.toString();
+
+    // Mock WebSocket metrics endpoint
+    if (urlString.includes('/api/websocket/metrics')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockWebSocketMetrics)
+      } as Response);
+    }
+
+    // Mock delayed messages metrics endpoint
+    if (urlString.includes('/api/delayed-messages/metrics')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          totalScheduled: 50,
+          processingRate: 10,
+          averageProcessingTime: 100,
+          queueDepth: 5,
+          successRate: 0.98
+        })
+      } as Response);
+    }
+
+    // Default fallback
+    return Promise.reject(new Error(`Unexpected URL: ${urlString}`));
+  }) as any;
+});
+
+// Restore original fetch after tests
+afterAll(() => {
+  global.fetch = originalFetch;
+});
 
 vi.mock('@real-time/handlers/event-handler', () => ({
   eventStats: {
@@ -62,7 +107,10 @@ describe('RealtimePerformanceMonitor', () => {
   let mockEnv: any;
 
   beforeEach(async () => {
+    // Setup mock environment with WORKER_URL for WebSocket metrics
     mockEnv = {
+      WORKER_URL: 'http://localhost:8787',
+      ADMIN_TOKEN: 'test-admin-token',
       SESSIONS: {
         put: vi.fn().mockResolvedValue(undefined),
         get: vi.fn().mockResolvedValue(null)
@@ -81,18 +129,9 @@ describe('RealtimePerformanceMonitor', () => {
     (monitor as any).alerts = [];
     (monitor as any).isMonitoring = false;
 
-    // Reset mocks to default values after clearing
-    const { enhancedSSEManager } = await import('@real-time/handlers/sse-handler');
+    // Reset event stats and realtime manager mocks to default values
     const { eventStats } = await import('@real-time/handlers/event-handler');
     const { RealtimeManager } = await import('@real-time/services/realtime-manager');
-
-    vi.mocked(enhancedSSEManager.getDetailedStats).mockReturnValue({
-      totalConnections: 10,
-      connectionsByUser: { 1: 5, 2: 3, 3: 2 },
-      connectionsByConversation: { 101: 4, 102: 3, 103: 3 },
-      averageUptime: 3600000,
-      totalEventsSent: 150
-    });
 
     vi.mocked(eventStats.getStats).mockReturnValue({
       totalEvents: 200,
@@ -119,6 +158,35 @@ describe('RealtimePerformanceMonitor', () => {
         errorRate: 0.02,
         retryRate: 0.05
       }
+    });
+
+    // Reset fetch mock to default WebSocket metrics
+    vi.mocked(global.fetch).mockImplementation((url: string | URL) => {
+      const urlString = url.toString();
+
+      if (urlString.includes('/api/websocket/metrics')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(mockWebSocketMetrics)
+        } as Response);
+      }
+
+      if (urlString.includes('/api/delayed-messages/metrics')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({
+            totalScheduled: 50,
+            processingRate: 10,
+            averageProcessingTime: 100,
+            queueDepth: 5,
+            successRate: 0.98
+          })
+        } as Response);
+      }
+
+      return Promise.reject(new Error(`Unexpected URL: ${urlString}`));
     });
   });
 
@@ -440,22 +508,33 @@ describe('RealtimePerformanceMonitor', () => {
 
   describe('Recommendations', () => {
     it('should generate performance recommendations', async () => {
-      // Create high connection scenario by temporarily overriding mock
-      const { enhancedSSEManager } = await import('@real-time/handlers/sse-handler');
-      const originalMock = vi.mocked(enhancedSSEManager.getDetailedStats);
+      // Create high connection scenario by temporarily overriding WebSocket metrics
+      const highConnectionMetrics = {
+        connections: {
+          totalConnections: 150, // High connection count
+          activeConnections: 150,
+          connectionsByUser: { 1: 50, 2: 50, 3: 50 },
+          connectionsByRole: { admin: 10, agent: 140 },
+          averageLatency: 50,
+          messagesThroughput: { inbound: 500, outbound: 750 },
+          errorRate: 0.01
+        }
+      };
 
-      vi.mocked(enhancedSSEManager.getDetailedStats).mockReturnValue({
-        totalConnections: 150, // High connection count
-        connectionsByUser: { 1: 50, 2: 50, 3: 50 },
-        connectionsByConversation: {},
-        averageUptime: 3600000,
-        totalEventsSent: 1500
+      // Override fetch for this test
+      vi.mocked(global.fetch).mockImplementationOnce((url: string | URL) => {
+        const urlString = url.toString();
+        if (urlString.includes('/api/websocket/metrics')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(highConnectionMetrics)
+          } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${urlString}`));
       });
 
       await monitor['collectMetrics']();
-
-      // Restore original mock
-      enhancedSSEManager.getDetailedStats = originalMock;
 
       const summary = monitor.getPerformanceSummary();
       const hasConnectionRecommendation = summary.recommendations.some(

@@ -22,7 +22,7 @@ export default defineConfig({
       '@teams': path.resolve(__dirname, './src/modules/teams'),
       '@customer': path.resolve(__dirname, './src/modules/customer'),
       '@integrations': path.resolve(__dirname, './src/modules/integrations'),
-      '@real-time': path.resolve(__dirname, './src/modules/real-time'),
+      '@real-time': path.resolve(__dirname, './src/modules/realtime'),
       '@messaging': path.resolve(__dirname, './src/modules/messaging'),
       '@analytics': path.resolve(__dirname, './src/modules/analytics'),
       '@file-management': path.resolve(__dirname, './src/modules/file-management'),

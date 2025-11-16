@@ -131,8 +131,8 @@ export default [
       // General rules
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
       'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-      'no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_', 
+      'no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_'
       }],
@@ -141,7 +141,19 @@ export default [
       'object-shorthand': 'error',
       'prefer-template': 'error',
       'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all']
+      'curly': ['error', 'all'],
+
+      // Naming conventions - 強制使用 camelCase
+      'camelcase': ['error', {
+        'properties': 'always',
+        'ignoreDestructuring': false,
+        'allow': [
+          // 允許環境變量使用 SCREAMING_SNAKE_CASE
+          '^VITE_',
+          'API_BASE_URL',
+          'JWT_SECRET'
+        ]
+      }]
     },
   },
   

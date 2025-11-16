@@ -232,7 +232,7 @@ sessionHandler.get(
 
       const sessionService = new SessionService(c.env.DB);
       const activityStats = await sessionService.getActivityStats({
-        conversation_id,
+        conversationId: conversation_id,
         timeRange
       });
 

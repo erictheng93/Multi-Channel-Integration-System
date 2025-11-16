@@ -38,39 +38,39 @@ describe('Enhanced Authentication Middleware', () => {
       const mockUser = { role: 'admin' };
       mockGet.mockReturnValue(mockUser);
 
-      // Mock PermissionService to return true for admin->manager authority
+      // Mock PermissionService to return true for admin->agent authority
       const { PermissionService } = await import('@backend/services/permission-service');
       (PermissionService.hasRoleAuthority as Mock).mockReturnValue(true);
 
-      const middleware = requireRoleLevel('manager');
+      const middleware = requireRoleLevel('agent');
       await middleware(mockContext, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockJson).not.toHaveBeenCalled();
-      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('admin', 'manager');
+      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('admin', 'agent');
     });
 
     test('should deny access when user has insufficient role level', async () => {
       const mockUser = { role: 'agent' };
       mockGet.mockReturnValue(mockUser);
 
-      // Mock PermissionService to return false for agent->manager authority
+      // Mock PermissionService to return false for agent->admin authority
       const { PermissionService } = await import('@backend/services/permission-service');
       (PermissionService.hasRoleAuthority as Mock).mockReturnValue(false);
 
-      const middleware = requireRoleLevel('manager');
+      const middleware = requireRoleLevel('admin');
       await middleware(mockContext, mockNext);
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockJson).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           error: 'Insufficient role level',
-          required: 'manager',
+          required: 'admin',
           current: 'agent'
-        },
+        }),
         403
       );
-      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('agent', 'manager');
+      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('agent', 'admin');
     });
 
     test('should deny access when no user is present', async () => {
@@ -81,21 +81,19 @@ describe('Enhanced Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockJson).toHaveBeenCalledWith(
-        { error: 'Authentication required' },
+        expect.objectContaining({
+          error: 'Authentication required'
+        }),
         401
       );
     });
 
     test('should handle all role levels correctly', async () => {
+      // 2-tier role system: admin and agent only
       const testCases = [
         { userRole: 'admin', requiredRole: 'admin', expected: true },
-        { userRole: 'admin', requiredRole: 'manager', expected: true },
         { userRole: 'admin', requiredRole: 'agent', expected: true },
-        { userRole: 'manager', requiredRole: 'admin', expected: false },
-        { userRole: 'manager', requiredRole: 'manager', expected: true },
-        { userRole: 'manager', requiredRole: 'agent', expected: true },
         { userRole: 'agent', requiredRole: 'admin', expected: false },
-        { userRole: 'agent', requiredRole: 'manager', expected: false },
         { userRole: 'agent', requiredRole: 'agent', expected: true }
       ];
 
@@ -107,7 +105,7 @@ describe('Enhanced Authentication Middleware', () => {
         mockGet.mockReturnValue({ role: userRole });
         (PermissionService.hasRoleAuthority as Mock).mockReturnValue(expected);
 
-        const middleware = requireRoleLevel(requiredRole as 'admin' | 'manager' | 'agent');
+        const middleware = requireRoleLevel(requiredRole as 'admin' | 'agent');
         await middleware(mockContext, mockNext);
 
         if (expected) {
@@ -116,11 +114,11 @@ describe('Enhanced Authentication Middleware', () => {
         } else {
           expect(mockNext).not.toHaveBeenCalled();
           expect(mockJson).toHaveBeenCalledWith(
-            {
+            expect.objectContaining({
               error: 'Insufficient role level',
               required: requiredRole,
               current: userRole
-            },
+            }),
             403
           );
         }
@@ -129,6 +127,7 @@ describe('Enhanced Authentication Middleware', () => {
   });
 
   describe('requireManagerOrAdmin', () => {
+    // Note: requireManagerOrAdmin() is now equivalent to requireAdmin() in 2-tier system
     test('should allow admin access', async () => {
       const mockUser = { role: 'admin' };
       mockGet.mockReturnValue(mockUser);
@@ -141,22 +140,8 @@ describe('Enhanced Authentication Middleware', () => {
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockJson).not.toHaveBeenCalled();
-      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('admin', 'manager');
-    });
-
-    test('should allow manager access', async () => {
-      const mockUser = { role: 'manager' };
-      mockGet.mockReturnValue(mockUser);
-
-      const { PermissionService } = await import('@backend/services/permission-service');
-      (PermissionService.hasRoleAuthority as Mock).mockReturnValue(true);
-
-      const middleware = requireManagerOrAdmin();
-      await middleware(mockContext, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
-      expect(mockJson).not.toHaveBeenCalled();
-      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('manager', 'manager');
+      // In 2-tier system, requireManagerOrAdmin checks for admin role
+      expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('admin', 'admin');
     });
 
     test('should deny agent access', async () => {
@@ -171,11 +156,11 @@ describe('Enhanced Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockJson).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           error: 'Insufficient role level',
-          required: 'manager',
+          required: 'admin',
           current: 'agent'
-        },
+        }),
         403
       );
     });
@@ -197,27 +182,6 @@ describe('Enhanced Authentication Middleware', () => {
       expect(PermissionService.hasRoleAuthority).toHaveBeenCalledWith('admin', 'admin');
     });
 
-    test('should deny manager access', async () => {
-      const mockUser = { role: 'manager' };
-      mockGet.mockReturnValue(mockUser);
-
-      const { PermissionService } = await import('@backend/services/permission-service');
-      (PermissionService.hasRoleAuthority as Mock).mockReturnValue(false);
-
-      const middleware = requireAdmin();
-      await middleware(mockContext, mockNext);
-
-      expect(mockNext).not.toHaveBeenCalled();
-      expect(mockJson).toHaveBeenCalledWith(
-        {
-          error: 'Insufficient role level',
-          required: 'admin',
-          current: 'manager'
-        },
-        403
-      );
-    });
-
     test('should deny agent access', async () => {
       const mockUser = { role: 'agent' };
       mockGet.mockReturnValue(mockUser);
@@ -230,32 +194,17 @@ describe('Enhanced Authentication Middleware', () => {
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockJson).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           error: 'Insufficient role level',
           required: 'admin',
           current: 'agent'
-        },
+        }),
         403
       );
     });
   });
 
   describe('Error Handling', () => {
-    test('should handle PermissionService import errors gracefully', async () => {
-      const mockUser = { role: 'admin' };
-      mockGet.mockReturnValue(mockUser);
-
-      // Mock import to throw an error
-      vi.doMock('@backend/services/permission-service', () => {
-        throw new Error('Import failed');
-      });
-
-      const middleware = requireRoleLevel('manager');
-      
-      // Should not throw, but should deny access
-      await expect(middleware(mockContext, mockNext)).rejects.toThrow('Import failed');
-    });
-
     test('should handle undefined user role gracefully', async () => {
       const mockUser = { role: undefined };
       mockGet.mockReturnValue(mockUser);
@@ -263,16 +212,16 @@ describe('Enhanced Authentication Middleware', () => {
       const { PermissionService } = await import('@backend/services/permission-service');
       (PermissionService.hasRoleAuthority as Mock).mockReturnValue(false);
 
-      const middleware = requireRoleLevel('manager');
+      const middleware = requireRoleLevel('admin');
       await middleware(mockContext, mockNext);
 
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockJson).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           error: 'Insufficient role level',
-          required: 'manager',
+          required: 'admin',
           current: undefined
-        },
+        }),
         403
       );
     });

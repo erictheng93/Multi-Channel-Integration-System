@@ -852,7 +852,7 @@ app.get('/api/credentials/backup', jwtAuth, backupCredentials);
 // 🔧 SPECIAL ROUTE: Password change endpoint needs to be under /api/auth
 // ========================================================================
 
-import passwordHandler from './modules/teams/handlers/password';
+import passwordHandler from '@modules/teams/handlers/password';
 
 // Mount change-password under /api/auth (user self-service)
 app.route('/api/auth', passwordHandler);

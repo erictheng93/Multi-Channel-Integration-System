@@ -679,7 +679,8 @@ for (let i = 0; i < args.length; i += 2) {
   const key = args[i].replace('--', '');
   const value = args[i + 1];
 
-  if (key === 'url') config.targetUrl = value;
+  if (key === 'websocket-url') config.targetUrl = value;
+  else if (key === 'url' && !config.targetUrl) config.targetUrl = value;
   else if (key === 'waves') config.stormWaves = parseInt(value);
   else if (key === 'connections') config.connectionsPerWave = parseInt(value);
   else if (key === 'interval') config.waveIntervalMs = parseInt(value);

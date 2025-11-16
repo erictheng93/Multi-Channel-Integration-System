@@ -53,12 +53,14 @@ vi.mock('@/api/reports', () => {
       failed: 1
     },
     reportsByType: {
+      /* eslint-disable camelcase */
       conversation_summary: 5,
       agent_performance: 3,
       customer_analysis: 2
     },
     reportsByFormat: {
       pdf: 6,
+      /* eslint-enable camelcase */
       excel: 3,
       csv: 1
     },

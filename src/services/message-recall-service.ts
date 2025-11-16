@@ -280,11 +280,10 @@ export class MessageRecallService {
         sentAt: delayedMessages.sentAt,
         cancelledAt: delayedMessages.cancelledAt,
         // joined fields
-        conversation_id: conversations.id,
-        customer_name: customers.displayName,
+        customerName: customers.displayName,
         // calculated field using sql template
-        can_recall: sql<number>`
-          CASE 
+        canRecall: sql<number>`
+          CASE
             WHEN ${delayedMessages.status} = 'pending' AND datetime('now') < ${delayedMessages.scheduledAt} THEN 1
             ELSE 0
           END

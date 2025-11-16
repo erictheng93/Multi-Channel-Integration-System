@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
+import { verifyJWT } from '@backend/utils/auth';
 import {
   DurableObjectsTestEnvironment,
   MockDurableObjectState,
@@ -14,19 +15,12 @@ import {
   WebSocketRoomTestController,
   WebSocketTestClientFactory
 } from '../../helpers/websocket/websocket-test-client';
-import {
-  TestDataFactory,
-  TestAssertions,
-  TestScenarios
-} from '../../helpers/websocket/websocket-test-utils';
-import type {
-  WebSocketMessage,
-  DurableObjectEvent,
-  WebSocketConnection,
-  DistributedLock
-} from '@backend/types/websocket-types';
+import { TestDataFactory, TestAssertions, TestScenarios } from '../../helpers/websocket/websocket-test-utils';
+import type { WebSocketMessage, DurableObjectEvent, WebSocketConnection, DistributedLock } from '@backend/types/websocket-types';
 // ⚠️ Import unified helper for global WebSocketPair setup
 import { setupGlobalWebSocketPair } from '../../helpers/durable-objects-test-helper';
+
+vi.mock('@backend/utils/auth');
 
 describe('ConversationRoom Durable Object', () => {
   let testEnv: DurableObjectsTestEnvironment;
@@ -99,7 +93,7 @@ describe('ConversationRoom Durable Object', () => {
       const response = await conversationRoom.fetch(request);
 
       expect(response.status).toBe(400);
-      expect(await response.text()).toBe('Missing required parameters');
+      expect(await response.text()).toBe('Missing authentication parameters. Provide either token or challengeId+signature.');
     });
 
     it('should reject unauthorized WebSocket connections', async () => {
@@ -109,13 +103,12 @@ describe('ConversationRoom Durable Object', () => {
       });
 
       // Mock failed auth verification
-      vi.spyOn(conversationRoom as any, 'verifyAuthToken')
-        .mockResolvedValue(false);
+      (verifyJWT as any).mockRejectedValue(new Error('Invalid token'));
 
       const response = await conversationRoom.fetch(request);
 
       expect(response.status).toBe(401);
-      expect(await response.text()).toBe('Unauthorized');
+      expect(await response.text()).toBe('Unauthorized - Invalid token');
     });
 
     it('should enforce connection limits', async () => {
@@ -138,8 +131,7 @@ describe('ConversationRoom Durable Object', () => {
         headers: { 'Upgrade': 'websocket' }
       });
 
-      vi.spyOn(conversationRoom as any, 'verifyAuthToken')
-        .mockResolvedValue(true);
+      (verifyJWT as any).mockResolvedValue({ userId: 'user_new', role: 'agent' });
 
       const response = await conversationRoom.fetch(request);
 

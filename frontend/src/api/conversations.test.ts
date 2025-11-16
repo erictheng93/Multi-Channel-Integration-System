@@ -88,18 +88,18 @@ describe('Conversations API', () => {
       const conversationId = 'conv-123'
       const mockConversation = {
         id: conversationId,
-        customer_id: 1,
-        assigned_team_id: null,
-        assigned_user_id: null,
+        customerId: 1,
+        assignedTeamId: null,
+        assignedUserId: null,
         status: 'active' as const,
-        last_message_at: '2024-01-01T00:00:00Z',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        customer_name: 'Test Customer',
+        lastMessageAt: '2024-01-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        customerName: 'Test Customer',
         platform: 'line' as const,
-        platform_user_id: 'user123',
-        last_message_content: 'Hello',
-        unread_count: 0
+        platformUserId: 'user123',
+        lastMessageContent: 'Hello',
+        unreadCount: 0
       }
       const mockResponse = { success: true, data: mockConversation }
       mockGet.mockResolvedValue(mockResponse)
@@ -133,18 +133,18 @@ describe('Conversations API', () => {
       const conversationId = 'conv-123'
       const mockConversation = {
         id: conversationId,
-        customer_id: 1,
-        assigned_team_id: null,
-        assigned_user_id: null,
+        customerId: 1,
+        assignedTeamId: null,
+        assignedUserId: null,
         status: 'active' as const,
-        last_message_at: '2024-01-01T00:00:00Z',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        customer_name: 'Test Customer',
+        lastMessageAt: '2024-01-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        customerName: 'Test Customer',
         platform: 'line' as const,
-        platform_user_id: 'user123',
-        last_message_content: 'Hello',
-        unread_count: 0
+        platformUserId: 'user123',
+        lastMessageContent: 'Hello',
+        unreadCount: 0
       }
       const mockResponse = { success: true, data: mockConversation }
       mockGet.mockResolvedValue(mockResponse)
@@ -392,18 +392,18 @@ describe('Conversations API', () => {
       const query = 'test search'
       const mockConversation = {
         id: 'conv-123',
-        customer_id: 1,
-        assigned_team_id: null,
-        assigned_user_id: null,
+        customerId: 1,
+        assignedTeamId: null,
+        assignedUserId: null,
         status: 'active' as const,
-        last_message_at: '2024-01-01T00:00:00Z',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        customer_name: 'Test Customer',
+        lastMessageAt: '2024-01-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        customerName: 'Test Customer',
         platform: 'line' as const,
-        platform_user_id: 'user123',
-        last_message_content: 'Hello',
-        unread_count: 0
+        platformUserId: 'user123',
+        lastMessageContent: 'Hello',
+        unreadCount: 0
       }
       const mockResponse = { 
         success: true, 
