@@ -3,10 +3,10 @@
 // 測試完整的多分片系統端到端流程
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ConversationShardingService } from '../../src/services/conversation-sharding-service';
-import { ConversationRoom } from '../../src/durable-objects/ConversationRoom';
-import { SHARD_CONFIG } from '../../src/types/sharding-types';
-import type { ShardCapacityResponse } from '../../src/types/sharding-types';
+import { ConversationShardingService } from '@/services/conversation-sharding-service';
+import { ConversationRoom } from '@/durable-objects/ConversationRoom';
+import { SHARD_CONFIG } from '@/types/sharding-types';
+import type { ShardCapacityResponse } from '@/types/sharding-types';
 
 /**
  * Integration Test Environment Setup

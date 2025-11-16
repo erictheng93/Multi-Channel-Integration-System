@@ -960,7 +960,7 @@ const loadStatistics = async () => {
 
     // 計算本月生成數量
     const thisMonth = new Date().getMonth();
-    const thisMonthData = statistics.monthlyTrends.find(trend =>
+    const thisMonthData = statistics.monthlyTrends?.find(trend =>
       new Date(trend.month).getMonth() === thisMonth
     );
     stats.thisMonthGenerated = thisMonthData?.reportsGenerated || 0;

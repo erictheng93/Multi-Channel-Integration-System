@@ -1,5 +1,5 @@
 // 測試權限控制功能
-import { PermissionService } from '../src/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 
 // 模擬 D1 資料庫
 class MockD1Database {

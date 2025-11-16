@@ -3,14 +3,16 @@
 
 import { Context } from 'hono';
 import type { Bindings } from '../types';
-import { 
-  successResponse, 
+import {
+  successResponse,
   paginatedResponse,
-  errorResponse, 
-  validationErrorResponse, 
+  errorResponse,
+  validationErrorResponse,
   unauthorizedResponse,
+  forbiddenResponse,
+  badRequestResponse,
   notFoundResponse,
-  handleApiError 
+  handleApiError
 } from '../utils/api-response';
 import { tags } from '../db/schema';
 import { drizzle } from 'drizzle-orm/d1';
@@ -135,14 +137,12 @@ export const tagHandler = {
 
       // 驗證必填欄位
       if (!name || !name.trim()) {
-        return validationErrorResponse(c, [
-          { field: 'name', message: 'Tag name is required' }
-        ]);
+        return badRequestResponse(c, 'Tag name is required');
       }
 
       // 驗證權限：只有管理員可以創建全局標籤
       if (!teamId && payload?.role !== 'admin') {
-        return unauthorizedResponse(c, 'Only administrators can create global tags');
+        return forbiddenResponse(c, 'Only administrators can create global tags');
       }
 
       // 檢查標籤名稱是否已存在（同一團隊內）
@@ -159,9 +159,7 @@ export const tagHandler = {
         .limit(1);
 
       if (existingTag.length > 0) {
-        return validationErrorResponse(c, [
-          { field: 'name', message: 'Tag name already exists in this scope' }
-        ]);
+        return errorResponse(c, 'Tag name already exists in this scope', 409);
       }
 
       // 創建標籤
@@ -194,9 +192,13 @@ export const tagHandler = {
         conversationCount: 0,
         createdAt: insertedTag.createdAt,
         updatedAt: insertedTag.updatedAt
-      }, 'Tag created successfully');
+      }, 'Tag created successfully', 201);
 
     } catch (error) {
+      // Handle JSON parsing errors
+      if (error instanceof SyntaxError) {
+        return badRequestResponse(c, 'Invalid JSON');
+      }
       return handleApiError(error, c);
     }
   },
@@ -215,7 +217,7 @@ export const tagHandler = {
                COALESCE(conversation_count.count, 0) as conversation_count
         FROM tags t
         LEFT JOIN teams team ON t.team_id = team.id
-        LEFT JOIN users creator ON t.created_by = creator.id
+        LEFT JOIN agents creator ON t.created_by = creator.id
         LEFT JOIN (
           SELECT tag_id, COUNT(DISTINCT customer_id) as count
           FROM customer_tags

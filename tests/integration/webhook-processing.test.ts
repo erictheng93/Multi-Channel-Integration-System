@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Context } from 'hono';
-import { webhookHandler } from '../../src/handlers/webhook';
-import type { Bindings } from '../../src/types';
+import { webhookHandler } from '@/handlers/webhook';
+import type { Bindings } from '@/types';
 import { createMockDatabase } from '../helpers/mockDatabase';
 
 // Mock crypto API

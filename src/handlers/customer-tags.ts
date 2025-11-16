@@ -80,7 +80,7 @@ export const customerTagsHandler = {
         LIMIT ${limit} OFFSET ${offset}
       `;
 
-      const tagsResult = await drizzleDb.run(sql.raw(tagsQuery));
+      const tagsResult = await drizzleDb.all(sql.raw(tagsQuery));
 
       // 獲取總數
       const countQuery = `
@@ -89,14 +89,16 @@ export const customerTagsHandler = {
         WHERE ${whereClause}
       `;
 
-      const countResult = await drizzleDb.run(sql.raw(countQuery));
-
-      const totalCount = ((countResult as any)?.results?.[0] as any)?.total || 0;
+      const countResult = await drizzleDb.all(sql.raw(countQuery));
+      const countData = Array.isArray(countResult) ? countResult : ((countResult as any)?.results || []);
+      const totalCount = (countData[0] as any)?.total || 0;
       const totalPages = Math.ceil(totalCount / limit);
+
+      const tagsData = Array.isArray(tagsResult) ? tagsResult : ((tagsResult as any)?.results || []);
 
       return c.json({
         success: true,
-        data: (tagsResult as any)?.results || [],
+        data: tagsData,
         pagination: {
           page: parseInt(page),
           limit,
@@ -148,9 +150,10 @@ export const customerTagsHandler = {
         ORDER BY ct.assigned_at DESC
       `;
 
-      const customerTagsData = await drizzleDb.run(sql.raw(customerTagsQuery));
+      const customerTagsData = await drizzleDb.all(sql.raw(customerTagsQuery));
+      const tagsData = Array.isArray(customerTagsData) ? customerTagsData : ((customerTagsData as any)?.results || []);
 
-      return successResponse(c, (customerTagsData as any)?.results || [], 'Customer tags retrieved successfully');
+      return successResponse(c, tagsData, 'Customer tags retrieved successfully');
 
     } catch (error) {
       return handleApiError(error, c);

@@ -2,8 +2,8 @@
 // Tests the entire flow from customer inquiry to resolution
 
 import { describe, it, expect, vi } from 'vitest'
-import { messageHandler } from '../../src/handlers/message'
-import { conversationHandler } from '../../src/handlers/conversation'
+import { messageHandler } from '@/handlers/message'
+import { conversationHandler } from '@/handlers/conversation'
 import { createMockContext } from '../helpers/testUtils'
 
 // Mock all external dependencies

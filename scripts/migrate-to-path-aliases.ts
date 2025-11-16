@@ -14,6 +14,7 @@ import { glob } from 'glob';
 
 // 路徑別名映射（對應 tsconfig.json）
 const ALIAS_MAPPINGS = {
+  '@': 'src',
   '@modules': 'src/modules',
   '@shared': 'src/shared',
   '@infrastructure': 'src/infrastructure',

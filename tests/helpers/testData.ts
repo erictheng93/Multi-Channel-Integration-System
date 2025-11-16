@@ -1,4 +1,4 @@
-import type { DbUser } from '../../src/types'
+import type { DbUser } from '@/types'
 
 export const mockUsers = {
   admin: {

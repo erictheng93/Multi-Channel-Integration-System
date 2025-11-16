@@ -75,7 +75,7 @@ app.get('/info', (c) => {
 
 // ==================== Priority 2: SPECIFIC routes ====================
 // Get all teams statistics
-app.get('/stats/all', async (c) => {
+app.get('/stats/all', jwtAuth, requireAdmin(), async (c) => {
   try {
     const dateFromParam = c.req.query('dateFrom');
     const dateToParam = c.req.query('dateTo');
@@ -501,6 +501,16 @@ app.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
     });
   } catch (error) {
     console.error('Update team error:', error);
+
+    // Handle team not found
+    if (error instanceof Error && error.message === 'Team not found after update') {
+      return c.json({
+        success: false,
+        error: 'Team not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_UPDATE_TEAM,
@@ -656,6 +666,25 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     }, 201);
   } catch (error) {
     console.error('Create team error:', error);
+
+    // Handle specific errors
+    if (error instanceof Error && error.message === 'DUPLICATE_QR_CODE') {
+      return c.json({
+        success: false,
+        error: 'QR code already exists',
+        timestamp: new Date().toISOString()
+      }, 409);
+    }
+
+    // Handle JSON parsing errors
+    if (error instanceof SyntaxError) {
+      return c.json({
+        success: false,
+        error: 'Invalid JSON',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_CREATE_TEAM,
