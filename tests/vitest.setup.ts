@@ -187,6 +187,57 @@ config.global.mocks = {
   }
 }
 
+// Mock Drizzle D1 database to ensure all PreparedStatements have .raw() method
+// This comprehensive mock ensures that all D1 database operations in tests
+// have complete PreparedStatement implementations including the .raw() method
+vi.mock('drizzle-orm/d1', async () => {
+  const actual = await vi.importActual('drizzle-orm/d1') as any
+
+  // Create a complete mock PreparedStatement with all required methods
+  function createMockStatement(): any {
+    const mockStmt: any = {
+      bind: vi.fn((..._args: any[]) => mockStmt),
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        meta: { changes: 0, last_row_id: 0 },
+        results: []
+      }),
+      first: vi.fn().mockResolvedValue(null),
+      all: vi.fn().mockResolvedValue({
+        results: [],
+        success: true,
+        meta: {}
+      }),
+      raw: vi.fn().mockResolvedValue([])
+    }
+    return mockStmt
+  }
+
+  return {
+    ...actual,
+    drizzle: vi.fn((db: any) => {
+      // Create a mock database wrapper with complete PreparedStatement support
+      const mockDb = {
+        ...db,
+        prepare: vi.fn((_query: string) => createMockStatement())
+      }
+
+      // Call the actual drizzle function with our mock db
+      const drizzleInstance = actual.drizzle(mockDb)
+
+      // Override the db property to use our mock
+      return new Proxy(drizzleInstance, {
+        get(target: any, prop: string) {
+          if (prop === 'db') {
+            return mockDb
+          }
+          return target[prop]
+        }
+      })
+    })
+  }
+})
+
 // Global mock setup for all API modules
 vi.mock('../frontend/src/api/auth', () => ({
   authApi: {

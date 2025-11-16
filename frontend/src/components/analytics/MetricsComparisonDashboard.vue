@@ -249,16 +249,16 @@ const periodPresets = [
 
 // 指標標籤映射
 const metricLabels: Record<string, string> = {
-  total_conversations: '總對話數',
-  active_conversations: '活躍對話',
-  closed_conversations: '已關閉對話',
-  total_messages: '總消息數',
-  customer_messages: '客戶消息',
-  agent_messages: '客服消息',
-  active_users: '活躍用戶',
-  total_activities: '總活動數',
-  average_response_time: '平均回應時間',
-  first_response_time: '首次回應時間'
+  totalConversations: '總對話數',
+  activeConversations: '活躍對話',
+  closedConversations: '已關閉對話',
+  totalMessages: '總消息數',
+  customerMessages: '客戶消息',
+  agentMessages: '客服消息',
+  activeUsers: '活躍用戶',
+  totalActivities: '總活動數',
+  averageResponseTime: '平均回應時間',
+  firstResponseTime: '首次回應時間'
 };
 
 // 計算當前與上一期間

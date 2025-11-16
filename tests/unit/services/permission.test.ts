@@ -46,95 +46,7 @@ describe('PermissionService', () => {
       });
     });
 
-    describe('Team Leader role permissions', () => {
-      beforeEach(() => {
-        (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-          id: 2,
-          role: 'team',
-          teamId: 1
-        });
-      });
 
-      test('should allow team leader to view conversations in their team', async () => {
-        const result = await PermissionService.checkPermission(
-          2,
-          'conversation',
-          'view',
-          { teamId: 1 }
-        );
-        expect(result).toBe(true);
-      });
-
-      test('should deny team leader to view conversations outside their team', async () => {
-        const result = await PermissionService.checkPermission(
-          2,
-          'conversation',
-          'view',
-          { teamId: 2 }
-        );
-        expect(result).toBe(false);
-      });
-
-      test('should allow team leader to transfer conversations', async () => {
-        const result = await PermissionService.checkPermission(2, 'conversation', 'transfer');
-        expect(result).toBe(true);
-      });
-
-      test('should allow team leader to close conversations', async () => {
-        const result = await PermissionService.checkPermission(2, 'conversation', 'close');
-        expect(result).toBe(true);
-      });
-
-      test('should allow team leader to manage their own team', async () => {
-        const result = await PermissionService.checkPermission(
-          2,
-          'team',
-          'manage',
-          { teamId: 1 }
-        );
-        expect(result).toBe(true);
-      });
-
-      test('should deny team leader to manage other teams', async () => {
-        const result = await PermissionService.checkPermission(
-          2,
-          'team',
-          'manage',
-          { teamId: 2 }
-        );
-        expect(result).toBe(false);
-      });
-
-      test('should allow team leader to generate QR codes', async () => {
-        const result = await PermissionService.checkPermission(2, 'qrcode', 'generate');
-        expect(result).toBe(true);
-      });
-
-      test('should allow team leader all tag actions in team scope', async () => {
-        const result = await PermissionService.checkPermission(
-          2,
-          'tag',
-          'delete',
-          { teamId: 1 }
-        );
-        expect(result).toBe(true);
-      });
-
-      test('should deny team leader tag actions outside team scope', async () => {
-        const result = await PermissionService.checkPermission(
-          2,
-          'tag',
-          'delete',
-          { teamId: 2 }
-        );
-        expect(result).toBe(false);
-      });
-
-      test('should deny team leader unauthorized actions', async () => {
-        const result = await PermissionService.checkPermission(2, 'user', 'delete');
-        expect(result).toBe(false);
-      });
-    });
 
     describe('Agent role permissions', () => {
       beforeEach(() => {
@@ -323,11 +235,6 @@ describe('PermissionService', () => {
 
   describe('Role Hierarchy Methods', () => {
     describe('hasRoleAuthority', () => {
-      test('should allow admin to have authority over team leader', () => {
-        const result = PermissionService.hasRoleAuthority('admin', 'team');
-        expect(result).toBe(true);
-      });
-
       test('should allow admin to have authority over agent', () => {
         const result = PermissionService.hasRoleAuthority('admin', 'agent');
         expect(result).toBe(true);
@@ -338,29 +245,9 @@ describe('PermissionService', () => {
         expect(result).toBe(true);
       });
 
-      test('should allow team leader to have authority over agent', () => {
-        const result = PermissionService.hasRoleAuthority('team', 'agent');
-        expect(result).toBe(true);
-      });
-
-      test('should allow team leader to have authority over team (same level)', () => {
-        const result = PermissionService.hasRoleAuthority('team', 'team');
-        expect(result).toBe(true);
-      });
-
-      test('should deny team leader authority over admin', () => {
-        const result = PermissionService.hasRoleAuthority('team', 'admin');
-        expect(result).toBe(false);
-      });
-
       test('should allow agent to have authority over agent (same level)', () => {
         const result = PermissionService.hasRoleAuthority('agent', 'agent');
         expect(result).toBe(true);
-      });
-
-      test('should deny agent authority over team leader', () => {
-        const result = PermissionService.hasRoleAuthority('agent', 'team');
-        expect(result).toBe(false);
       });
 
       test('should deny agent authority over admin', () => {
@@ -385,14 +272,8 @@ describe('PermissionService', () => {
     });
 
     describe('getManagedRoles', () => {
-      test('should return team and agent for admin', () => {
+      test('should return agent for admin', () => {
         const result = PermissionService.getManagedRoles('admin');
-        expect(result).toEqual(expect.arrayContaining(['team', 'agent']));
-        expect(result).toHaveLength(2);
-      });
-
-      test('should return only agent for team leader', () => {
-        const result = PermissionService.getManagedRoles('team');
         expect(result).toEqual(['agent']);
       });
 
@@ -409,130 +290,9 @@ describe('PermissionService', () => {
       test('should not include the role itself in managed roles', () => {
         const adminResult = PermissionService.getManagedRoles('admin');
         expect(adminResult).not.toContain('admin');
-
-        const teamResult = PermissionService.getManagedRoles('team');
-        expect(teamResult).not.toContain('team');
       });
     });
   });
 
-  describe('Enhanced Team Leader Permissions', () => {
-    beforeEach(() => {
-      (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-        id: 2,
-        role: 'team',
-        teamId: 1
-      });
-    });
 
-    test('should allow team leader to close conversations', async () => {
-      const result = await PermissionService.checkPermission(2, 'conversation', 'close');
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to reopen conversations', async () => {
-      const result = await PermissionService.checkPermission(2, 'conversation', 'reopen');
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to view team agents', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'agent',
-        'view',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to invite agents to team', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'agent',
-        'invite',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to view team customers', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'customer',
-        'view',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to edit team customers', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'customer',
-        'edit',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to tag team customers', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'customer',
-        'tag',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to view team messages', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'message',
-        'view',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to recall team messages', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'message',
-        'recall',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to view team analytics', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'analytics',
-        'view',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should allow team leader to generate team reports', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'report',
-        'generate',
-        { teamId: 1 }
-      );
-      expect(result).toBe(true);
-    });
-
-    test('should deny team leader access to other team resources', async () => {
-      const result = await PermissionService.checkPermission(
-        2,
-        'customer',
-        'view',
-        { teamId: 2 }
-      );
-      expect(result).toBe(false);
-    });
-  });
 });

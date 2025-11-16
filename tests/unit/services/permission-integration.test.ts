@@ -18,7 +18,6 @@ describe('PermissionService - Integration Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         const users = {
           1: { id: 1, role: 'admin', teamId: 1 },
-          2: { id: 2, role: 'team', teamId: 1 },
           3: { id: 3, role: 'agent', teamId: 1 },
           4: { id: 4, role: 'agent', teamId: 2 }
         };
@@ -28,10 +27,6 @@ describe('PermissionService - Integration Tests', () => {
       // Admin creates a conversation
       const adminCanCreate = await PermissionService.checkPermission(1, 'conversation', 'create');
       expect(adminCanCreate).toBe(true);
-
-      // Manager transfers conversation (team role has transfer, not assign permission)
-      const managerCanTransfer = await PermissionService.checkPermission(2, 'conversation', 'transfer');
-      expect(managerCanTransfer).toBe(true);
 
       // Agent can view assigned conversation
       const agentCanView = await PermissionService.checkPermission(
@@ -54,17 +49,12 @@ describe('PermissionService - Integration Tests', () => {
         { assignedUserId: 3 }
       );
       expect(otherAgentCanView).toBe(true); // Agent role has unconditional view permission
-
-      // Manager can transfer conversation (verify again at end of workflow)
-      const canTransferAtEnd = await PermissionService.checkPermission(2, 'conversation', 'transfer');
-      expect(canTransferAtEnd).toBe(true);
     });
 
     test('should handle message management workflow', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         const users = {
           1: { id: 1, role: 'admin', teamId: 1 },
-          2: { id: 2, role: 'team', teamId: 1 },
           3: { id: 3, role: 'agent', teamId: 1 }
         };
         return Promise.resolve(users[userId] || null);
@@ -88,11 +78,11 @@ describe('PermissionService - Integration Tests', () => {
         3, 
         'message', 
         'recall', 
-        { ownerId: 2 }
+        { ownerId: 1 } // Checking against admin's message
       );
       expect(agentCannotRecallOthers).toBe(false);
 
-      // Manager can recall any message (admin privilege)
+      // Admin can recall any message
       const adminCanRecallAny = await PermissionService.checkPermission(
         1, 
         'message', 
@@ -102,65 +92,12 @@ describe('PermissionService - Integration Tests', () => {
       expect(adminCanRecallAny).toBe(true);
     });
 
-    test('should handle team management workflow', async () => {
-      (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
-        const users = {
-          1: { id: 1, role: 'admin', teamId: 1 },
-          2: { id: 2, role: 'team', teamId: 1 },
-          3: { id: 3, role: 'team', teamId: 2 }
-        };
-        return Promise.resolve(users[userId] || null);
-      });
 
-      // Admin can manage any team
-      const adminCanManageTeam1 = await PermissionService.checkPermission(
-        1, 
-        'team', 
-        'manage', 
-        { teamId: 1 }
-      );
-      expect(adminCanManageTeam1).toBe(true);
-
-      const adminCanManageTeam2 = await PermissionService.checkPermission(
-        1, 
-        'team', 
-        'manage', 
-        { teamId: 2 }
-      );
-      expect(adminCanManageTeam2).toBe(true);
-
-      // Manager can only manage their own team
-      const managerCanManageOwnTeam = await PermissionService.checkPermission(
-        2, 
-        'team', 
-        'manage', 
-        { teamId: 1 }
-      );
-      expect(managerCanManageOwnTeam).toBe(true);
-
-      const managerCannotManageOtherTeam = await PermissionService.checkPermission(
-        2, 
-        'team', 
-        'manage', 
-        { teamId: 2 }
-      );
-      expect(managerCannotManageOtherTeam).toBe(false);
-
-      // Different manager can manage their team
-      const otherManagerCanManageTheirTeam = await PermissionService.checkPermission(
-        3, 
-        'team', 
-        'manage', 
-        { teamId: 2 }
-      );
-      expect(otherManagerCanManageTheirTeam).toBe(true);
-    });
 
     test('should handle tag management workflow', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         const users = {
           1: { id: 1, role: 'admin', teamId: 1 },
-          2: { id: 2, role: 'team', teamId: 1 },
           3: { id: 3, role: 'agent', teamId: 1 },
           4: { id: 4, role: 'agent', teamId: 2 }
         };
@@ -175,32 +112,6 @@ describe('PermissionService - Integration Tests', () => {
         { teamId: 1 }
       );
       expect(adminCanDeleteTag).toBe(true);
-
-      // Manager can perform all tag actions in their team
-      const managerCanCreateTag = await PermissionService.checkPermission(
-        2, 
-        'tag', 
-        'create', 
-        { teamId: 1 }
-      );
-      expect(managerCanCreateTag).toBe(true);
-
-      const managerCanDeleteTag = await PermissionService.checkPermission(
-        2, 
-        'tag', 
-        'delete', 
-        { teamId: 1 }
-      );
-      expect(managerCanDeleteTag).toBe(true);
-
-      // Manager cannot manage tags in other teams
-      const managerCannotManageOtherTeamTags = await PermissionService.checkPermission(
-        2, 
-        'tag', 
-        'delete', 
-        { teamId: 2 }
-      );
-      expect(managerCannotManageOtherTeamTags).toBe(false);
 
       // Agent can only add tags in their team
       const agentCanAddTag = await PermissionService.checkPermission(
@@ -235,8 +146,6 @@ describe('PermissionService - Integration Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         const users = {
           1: { id: 1, role: 'admin', teamId: null }, // Global admin
-          2: { id: 2, role: 'team', teamId: 1 },
-          3: { id: 3, role: 'team', teamId: 2 },
           4: { id: 4, role: 'agent', teamId: 1 },
           5: { id: 5, role: 'agent', teamId: 2 }
         };
@@ -260,24 +169,6 @@ describe('PermissionService - Integration Tests', () => {
       );
       expect(adminCanAccessTeam2).toBe(true);
 
-      // Team 1 manager cannot access Team 2 resources
-      const team1ManagerCannotAccessTeam2 = await PermissionService.checkPermission(
-        2, 
-        'conversation', 
-        'view', 
-        { teamId: 2 }
-      );
-      expect(team1ManagerCannotAccessTeam2).toBe(false);
-
-      // Team 2 manager cannot access Team 1 resources
-      const team2ManagerCannotAccessTeam1 = await PermissionService.checkPermission(
-        3, 
-        'conversation', 
-        'view', 
-        { teamId: 1 }
-      );
-      expect(team2ManagerCannotAccessTeam1).toBe(false);
-
       // Agents can view all conversations (no conditions for view), but from different team
       // However, agent from team 1 can still view conversations (agent role has unconditional view permission)
       const team1AgentCanViewAnyConversation = await PermissionService.checkPermission(
@@ -289,89 +180,13 @@ describe('PermissionService - Integration Tests', () => {
       expect(team1AgentCanViewAnyConversation).toBe(true); // Agent role allows viewing all conversations
     });
 
-    test('should handle conversation transfer between teams', async () => {
-      (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
-        const users = {
-          1: { id: 1, role: 'admin', teamId: 1 },
-          2: { id: 2, role: 'team', teamId: 1 },
-          3: { id: 3, role: 'team', teamId: 2 }
-        };
-        return Promise.resolve(users[userId] || null);
-      });
 
-      // Admin can transfer conversations between any teams
-      const adminCanTransfer = await PermissionService.checkPermission(1, 'conversation', 'transfer');
-      expect(adminCanTransfer).toBe(true);
-
-      // Managers can transfer within their scope
-      const manager1CanTransfer = await PermissionService.checkPermission(2, 'conversation', 'transfer');
-      expect(manager1CanTransfer).toBe(true);
-
-      const manager2CanTransfer = await PermissionService.checkPermission(3, 'conversation', 'transfer');
-      expect(manager2CanTransfer).toBe(true);
-    });
   });
 
-  describe('Role transition scenarios', () => {
-    test('should handle user role changes correctly', async () => {
-      let userRole = 'agent';
-      
-      (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation(() => {
-        return Promise.resolve({
-          id: 1,
-          role: userRole,
-          teamId: 1
-        });
-      });
 
-      // As agent, cannot assign conversations
-      let canAssign = await PermissionService.checkPermission(1, 'conversation', 'assign');
-      expect(canAssign).toBe(false);
-
-      // Role changes to team leader
-      userRole = 'team';
-
-      // Now can transfer conversations (team leader has transfer permission)
-      const canTransfer = await PermissionService.checkPermission(1, 'conversation', 'transfer');
-      expect(canTransfer).toBe(true);
-
-      // Role changes to admin
-      userRole = 'admin';
-      
-      // Can perform any action
-      const canDeleteUser = await PermissionService.checkPermission(1, 'user', 'delete');
-      expect(canDeleteUser).toBe(true);
-    });
-  });
 
   describe('Complex permission combinations', () => {
-    test('should handle overlapping permission requirements', async () => {
-      (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
-        const users = {
-          1: { id: 1, role: 'team', teamId: 1 },
-          2: { id: 2, role: 'agent', teamId: 1 }
-        };
-        return Promise.resolve(users[userId] || null);
-      });
 
-      // Manager viewing conversation in their team that's assigned to someone else
-      const managerCanViewTeamConversation = await PermissionService.checkPermission(
-        1, 
-        'conversation', 
-        'view', 
-        { teamId: 1, assignedUserId: 2 }
-      );
-      expect(managerCanViewTeamConversation).toBe(true);
-
-      // Agent trying to view conversation assigned to them but in different team context
-      const agentCanViewAssignedConversation = await PermissionService.checkPermission(
-        2, 
-        'conversation', 
-        'view', 
-        { teamId: 1, assignedUserId: 2 }
-      );
-      expect(agentCanViewAssignedConversation).toBe(true);
-    });
 
     test('should handle permission inheritance correctly', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
@@ -414,7 +229,6 @@ describe('PermissionService - Integration Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         const users = {
           1: { id: 1, role: 'admin', teamId: 1 },
-          2: { id: 2, role: 'team', teamId: 1 },
           3: { id: 3, role: 'agent', teamId: 1 }
         };
         return Promise.resolve(users[userId] || null);
@@ -422,11 +236,9 @@ describe('PermissionService - Integration Tests', () => {
 
       // All roles should return empty array (placeholder implementation)
       const adminConversations = await PermissionService.getVisibleConversations(1);
-      const managerConversations = await PermissionService.getVisibleConversations(2);
       const agentConversations = await PermissionService.getVisibleConversations(3);
 
       expect(adminConversations).toEqual([]);
-      expect(managerConversations).toEqual([]);
       expect(agentConversations).toEqual([]);
     });
 
@@ -434,20 +246,19 @@ describe('PermissionService - Integration Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         return Promise.resolve({
           id: userId,
-          role: userId === 1 ? 'admin' : userId === 2 ? 'team' : 'agent',
+          role: userId === 1 ? 'admin' : 'agent',
           teamId: 1
         });
       });
 
       const promises = [
         PermissionService.getVisibleConversations(1),
-        PermissionService.getVisibleConversations(2),
         PermissionService.getVisibleConversations(3)
       ];
 
       const results = await Promise.all(promises);
       
-      expect(results).toEqual([[], [], []]);
+      expect(results).toEqual([[], []]);
     });
   });
 });

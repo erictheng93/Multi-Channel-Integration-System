@@ -131,6 +131,16 @@ export class WebhookSecurityService {
     };
 
     try {
+      // 解析 body (如果是字串)
+      let parsedBody: any = body;
+      if (typeof body === 'string') {
+        try {
+          parsedBody = JSON.parse(body);
+        } catch (e) {
+          // 如果解析失敗，保持原樣 (可能是某些平台使用其他格式)
+        }
+      }
+
       // 1. 簽章驗證
       const signatureResult = await this.verifySignature(platform, integrationId, headers, body);
       result.details.signatureValid = signatureResult.valid;
@@ -149,7 +159,7 @@ export class WebhookSecurityService {
       }
 
       // 2. 時間戳驗證 (防重放攻擊)
-      const timestampResult = this.validateTimestamp(platform, headers, body);
+      const timestampResult = this.validateTimestamp(platform, headers, parsedBody);
       result.details.timestampValid = timestampResult.valid;
 
       if (!timestampResult.valid) {
@@ -166,7 +176,7 @@ export class WebhookSecurityService {
       }
 
       // 3. Request ID 去重檢查
-      const requestId = this.extractRequestId(platform, headers, body);
+      const requestId = this.extractRequestId(platform, headers, parsedBody);
       if (requestId) {
         result.metadata!.requestId = requestId;
         const replayCheck = await this.checkReplayAttack(requestId);
@@ -564,7 +574,7 @@ export class WebhookSecurityService {
   ): Promise<RateLimitResult> {
     try {
       const now = Date.now();
-      const windowStart = now - this.RATE_LIMIT_WINDOW_MS;
+      const windowStart = Math.floor(now / this.RATE_LIMIT_WINDOW_MS) * this.RATE_LIMIT_WINDOW_MS;
 
       // 整合級別速率限制
       const integrationKey = `rate_limit:integration:${integrationId}`;
@@ -622,8 +632,6 @@ export class WebhookSecurityService {
         windowStart: number;
       } | null;
 
-      const now = Date.now();
-
       if (cached && cached.windowStart === windowStart) {
         // 在同一個時間窗口內
         const updated = {
@@ -641,7 +649,7 @@ export class WebhookSecurityService {
       // 新的時間窗口
       const newData = {
         count: 1,
-        windowStart: Math.floor(now / this.RATE_LIMIT_WINDOW_MS) * this.RATE_LIMIT_WINDOW_MS
+        windowStart
       };
 
       await this.cache.put(key, JSON.stringify(newData), {

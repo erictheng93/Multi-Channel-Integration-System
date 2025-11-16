@@ -189,16 +189,12 @@ export class PerformanceMonitor {
     // Collect Message processing metrics
     const messageMetrics = await this.collectMessageMetrics();
 
+    // SSE has been fully deprecated and replaced with WebSocket architecture
+    // All connection statistics are now tracked via WebSocket metrics
     return {
       timestamp,
       websocket: websocketMetrics,
-      sse: {
-        connections: 0,
-        latency: 0,
-        averageLatency: 0,
-        throughput: 0,
-        errorRate: 0
-      },
+      // sse: Removed - fully replaced by WebSocket architecture (Phase 4 Complete)
       system: systemMetrics,
       durableObjects: durableObjectMetrics,
       messaging: messageMetrics,
@@ -209,6 +205,7 @@ export class PerformanceMonitor {
         systemLoad: systemMetrics.cpuUsage + systemMetrics.memoryUsage
       },
       comparison: {
+        // These values can be populated from historical data or removed
         latencyImprovement: 0,
         throughputIncrease: 0,
         reliabilityGain: 0

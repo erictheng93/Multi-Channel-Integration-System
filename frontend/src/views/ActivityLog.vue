@@ -526,6 +526,7 @@ const getActivityIcon = (action: string) => {
 
 const getActivityDescription = (activity: ActivityLog) => {
   const actionMap: Record<string, string> = {
+  /* eslint-disable camelcase */
     conversation_assign: '指派了對話',
     conversation_transfer: '轉移了對話',
     conversation_close: '關閉了對話',
@@ -543,6 +544,7 @@ const getActivityDescription = (activity: ActivityLog) => {
     team_member_remove: '移除了團隊成員'
   }
 
+  /* eslint-enable camelcase */
   const description = actionMap[activity.action] || activity.action
   const resourceInfo = activity.resourceId ? ` (${activity.resourceType}: ${activity.resourceId})` : ''
 

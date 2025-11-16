@@ -18,8 +18,8 @@ const createMockDb = (): any => ({
       first: vi.fn().mockResolvedValue({
         platform: 'line',
         credentials: JSON.stringify({
-          channelSecret: 'test-line-secret',
-          appSecret: 'test-fb-secret'
+          channelSecret: 'test-secret',
+          appSecret: 'test-secret'
         })
       }),
       run: vi.fn().mockResolvedValue({ success: true }),

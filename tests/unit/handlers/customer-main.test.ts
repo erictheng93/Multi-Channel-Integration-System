@@ -1,7 +1,21 @@
 // 客戶管理主要處理器測試 - Handler-based 架構
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import customerMainHandler from '@backend/handlers/customer-main';
-import { setupHandlerTest } from '../../helpers/handler-test-setup';
+
+// ✅ CRITICAL: Mock auth middleware BEFORE importing the handler
+vi.mock('../../../src/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('user', {
+      id: 'user-123',
+      username: 'test-user',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      role: 'admin',
+      teamId: 1,
+      isActive: true
+    });
+    return next();
+  })
+}));
 
 // Mock utilities
 vi.mock('../../../src/utils/database', () => ({
@@ -10,6 +24,9 @@ vi.mock('../../../src/utils/database', () => ({
   getCustomerConversations: vi.fn(),
   getCustomerByPlatformId: vi.fn()
 }));
+
+import customerMainHandler from '@backend/handlers/customer-main';
+import { setupHandlerTest } from '../../helpers/handler-test-setup';
 
 describe('Customer Main Handler', () => {
   let app: any;

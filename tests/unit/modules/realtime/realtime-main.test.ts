@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Context } from 'hono';
-import { realtimeMainHandler, realtimeManagementHandler } from '@modules/realtime/handlers/realtime-main';
+import { realtimeMainHandler, realtimeManagementHandler } from '@real-time/handlers/realtime-main';
 
 // REMOVED: SSE handler mocks (Phase 3 cleanup - SSE removed, WebSocket only)
 // vi.mock('@real-time/handlers/sse-handler', ...)

@@ -602,7 +602,8 @@ const config: Partial<LoadTestConfig> = {};
     const key = args[i].replace('--', '');
     const value = args[i + 1];
 
-    if (key === 'url') config.targetUrl = value;
+    if (key === 'websocket-url') config.targetUrl = value;
+    else if (key === 'url' && !config.targetUrl) config.targetUrl = value;
     else if (key === 'connections') config.maxConnections = parseInt(value);
     else if (key === 'rate') config.connectionsPerSecond = parseInt(value);
     else if (key === 'messages') config.messagesPerConnection = parseInt(value);

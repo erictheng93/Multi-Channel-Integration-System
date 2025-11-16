@@ -42,7 +42,7 @@ sessionHandler.get('/search', jwtAuth, async (c) => {
   try {
     const searchQuery: SessionSearchQuery = {
       query: c.req.query('q') || '',
-      conversation_id: c.req.query('conversation_id'),
+      conversationId: c.req.query('conversation_id'),
       sessionType: c.req.query('sessionType') as any,
       limit: parseInt(c.req.query('limit') || '20')
     };
@@ -616,7 +616,7 @@ sessionHandler.delete('/:sessionId', jwtAuth, async (c) => {
 sessionHandler.get('/', jwtAuth, async (c) => {
   try {
     const query: SessionListQuery = {
-      conversation_id: c.req.query('conversation_id'),
+      conversationId: c.req.query('conversation_id'),
       isActive: c.req.query('isActive') === 'true' ? true : c.req.query('isActive') === 'false' ? false : undefined,
       sessionType: c.req.query('sessionType') as any,
       priority: c.req.query('priority') as any,
@@ -656,17 +656,17 @@ sessionHandler.post('/', jwtAuth, async (c) => {
     const createData: CreateSessionData = await c.req.json();
 
     // 驗證必要欄位
-    if (!createData.conversation_id || !createData.messageContent || !createData.senderType) {
+    if (!createData.conversationId || !createData.messageContent || !createData.senderType) {
       return c.json({
         success: false,
-        error: 'Missing required fields: conversation_id, messageContent, senderType'
+        error: 'Missing required fields: conversationId, messageContent, senderType'
       }, 400);
     }
 
     const sessionService = new SessionService(c.env.DB);
     const session = await sessionService.create(createData);
 
-    logger.info('Session created', { sessionId: session.id, conversation_id: session.conversation_id });
+    logger.info('Session created', { sessionId: session.id, conversationId: session.conversationId });
 
     return c.json({
       success: true,

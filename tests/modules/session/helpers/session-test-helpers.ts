@@ -15,17 +15,27 @@ import type {
 // ======================== 測試資料生成器 ========================
 
 /**
- * 生成測試用的會話ID
+ * 生成測試用的會話ID (UUID v4 格式)
  */
 export function generateTestSessionId(): string {
-  return `session_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  // 生成符合 UUID v4 格式的測試 ID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 /**
- * 生成測試用的對話ID
+ * 生成測試用的對話ID (UUID v4 格式)
  */
 export function generateTestConversationId(): string {
-  return `conv_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  // 生成符合 UUID v4 格式的測試 ID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 /**
@@ -60,7 +70,7 @@ export function createMockSession(overrides: Partial<ConversationSession> = {}):
  */
 export function createMockCreateSessionData(overrides: Partial<CreateSessionData> = {}): CreateSessionData {
   return {
-    conversation_id: generateTestConversationId(),
+    conversationId: generateTestConversationId(),
     sessionType: 'continuous',
     topic: 'Test Topic',
     messageContent: 'Hello, this is a test message',

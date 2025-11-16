@@ -85,7 +85,7 @@ export class ReportsService implements ReportsServiceInterface {
       // 檢查並發限制
       await this.checkConcurrentGenerations(userId);
 
-      const reportId = crypto.randomUUID();
+      const reportId = `report_${crypto.randomUUID()}`;
       const now = new Date().toISOString();
       const expiresAt = new Date(Date.now() + DEFAULT_REPORT_CONFIG.reportExpiryDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -280,16 +280,36 @@ export class ReportsService implements ReportsServiceInterface {
     let endDate: Date = now;
 
     if (timeRange === 'custom' && customStart && customEnd) {
-      startDate = new Date(customStart);
-      endDate = new Date(customEnd);
+      // 自訂日期範圍 - 設置開始時間為 00:00:00.000，結束時間為 23:59:59.999
+      let tempStart = new Date(customStart);
+      let tempEnd = new Date(customEnd);
+
+      // 自動調整：如果開始日期晚於結束日期，則交換它們
+      if (tempStart > tempEnd) {
+        [tempStart, tempEnd] = [tempEnd, tempStart];
+      }
+
+      startDate = tempStart;
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = tempEnd;
+      endDate.setHours(23, 59, 59, 999);
     } else {
-      // 預設時間範圍
+      // 預設時間範圍 - 支持簡化格式 (7d, 30d) 和完整格式 (last_7_days, last_30_days)
       const days = {
+        // 簡化格式
+        '24h': 1,
+        '7d': 7,
+        '30d': 30,
+        '90d': 90,
+        '1y': 365,
+        // 完整格式
+        'last_24_hours': 1,
         'last_7_days': 7,
         'last_30_days': 30,
         'last_90_days': 90,
         'last_year': 365
-      }[timeRange || 'last_30_days'] || 30;
+      }[timeRange || '30d'] || 30;
 
       startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     }
@@ -1134,14 +1154,14 @@ export class ReportsService implements ReportsServiceInterface {
       if (!params.startDate || !params.endDate) {
         errors.push('Start date and end date are required for custom time range');
       } else {
+        // 驗證日期格式是否有效
         const start = new Date(params.startDate);
         const end = new Date(params.endDate);
-        if (start >= end) {
-          errors.push('Start date must be before end date');
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          errors.push('Invalid date format');
         }
-        if (end > new Date()) {
-          errors.push('End date cannot be in the future');
-        }
+        // Note: 不驗證日期順序，允許系統自動調整
+        // 也不限制未來日期，提供更大彈性
       }
     }
 

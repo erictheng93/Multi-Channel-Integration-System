@@ -46,7 +46,7 @@ export class SessionService implements SessionServiceInterface {
    * 創建新會話
    */
   async create(data: CreateSessionData): Promise<ConversationSession> {
-    const sessionId = `session_${data.conversation_id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const sessionId = `session_${data.conversationId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const now = new Date().toISOString();
 
     // 智能提取主題
@@ -54,7 +54,7 @@ export class SessionService implements SessionServiceInterface {
 
     const sessionData = {
       id: sessionId,
-      conversation_id: data.conversation_id,
+      conversationId: data.conversationId,
       sessionType: data.sessionType || 'continuous',
       topic: topic,
       startTime: now,
@@ -173,7 +173,7 @@ export class SessionService implements SessionServiceInterface {
 
     // 構建查詢條件
     const conditions = [];
-    if (query.conversation_id) conditions.push(eq(conversationSessions.conversationId, query.conversation_id));
+    if (query.conversationId) conditions.push(eq(conversationSessions.conversationId, query.conversationId));
     if (query.isActive !== undefined) conditions.push(eq(conversationSessions.isActive, query.isActive));
     if (query.sessionType) conditions.push(eq(conversationSessions.sessionType, query.sessionType));
     // 注意：priority 和 sentiment 欄位在 conversationSessions 表中不存在
@@ -237,7 +237,7 @@ export class SessionService implements SessionServiceInterface {
       like(conversationSessions.topic, `%${query.query}%`)
     ];
 
-    if (query.conversation_id) conditions.push(eq(conversationSessions.conversationId, query.conversation_id));
+    if (query.conversationId) conditions.push(eq(conversationSessions.conversationId, query.conversationId));
     if (query.sessionType) conditions.push(eq(conversationSessions.sessionType, query.sessionType));
 
     try {
@@ -262,7 +262,7 @@ export class SessionService implements SessionServiceInterface {
    * 獲取或創建會話 (核心邏輯)
    */
   async getOrCreate(
-    conversation_id: string,
+    conversationId: string,
     messageContent: string,
     senderType: 'customer' | 'agent' | 'system'
   ): Promise<ConversationSession> {
@@ -273,7 +273,7 @@ export class SessionService implements SessionServiceInterface {
         .from(conversationSessions)
         .where(
           and(
-            eq(conversationSessions.conversationId, conversation_id),
+            eq(conversationSessions.conversationId, conversationId),
             eq(conversationSessions.isActive, true)
           )
         )
@@ -297,7 +297,7 @@ export class SessionService implements SessionServiceInterface {
 
         // 創建新會話
         return await this.create({
-          conversation_id: conversation_id,
+          conversationId: conversationId,
           messageContent,
           senderType,
           topic: boundaryDetection.suggestedTopic
@@ -399,7 +399,7 @@ export class SessionService implements SessionServiceInterface {
       const transformedMessages: SessionMessage[] = messageList.map(msg => ({
         id: msg.id.toString(),
         sessionId: sessionId,
-        conversation_id: msg.conversationId.toString(),
+        conversationId: msg.conversationId.toString(),
         senderId: msg.agentSenderId || msg.customerSenderId?.toString() || 'unknown',
         senderType: msg.senderType as any,
         content: msg.content,
@@ -451,7 +451,7 @@ export class SessionService implements SessionServiceInterface {
     const now = new Date().toISOString();
 
     const messageRecord = {
-      conversation_id: parseInt(messageData.conversation_id),
+      conversationId: parseInt(messageData.conversationId),
       sessionId: sessionId,
       senderType: messageData.senderType,
       agentSenderId: messageData.senderType === 'agent' ? messageData.senderId : null,
@@ -479,7 +479,8 @@ export class SessionService implements SessionServiceInterface {
           eq(messages.sessionSequence, sessionSequence),
           eq(messages.createdAt, now)
         ))
-        .limit(1);
+        .limit(1)
+        .all();
 
       const message = insertedMessage[0];
       if (!message) {
@@ -489,7 +490,7 @@ export class SessionService implements SessionServiceInterface {
       return {
         id: message.id.toString(),
         sessionId,
-        conversation_id: messageData.conversation_id,
+        conversationId: messageData.conversationId,
         senderId: messageData.senderId,
         senderType: messageData.senderType,
         content: messageData.content,
@@ -571,7 +572,7 @@ export class SessionService implements SessionServiceInterface {
   async getActivityStats(query: Omit<SessionActivityStats, 'activities' | 'summary'>): Promise<SessionActivityStats> {
     // TODO: Implement activity statistics
     return {
-      conversation_id: query.conversation_id || '',
+      conversationId: query.conversationId || '',
       timeRange: query.timeRange,
       activities: [],
       summary: {
@@ -726,22 +727,40 @@ export class SessionService implements SessionServiceInterface {
   async extractTopic(messageContent: string): Promise<string | null> {
     const content = messageContent.toLowerCase();
 
-    const topicKeywords = {
-      '產品諮詢': ['產品', '功能', '特色', '介紹', 'product', 'feature'],
-      '技術支援': ['問題', '錯誤', '故障', '不能', '無法', 'error', 'bug', 'issue'],
-      '訂單查詢': ['訂單', '購買', '付款', '配送', 'order', 'payment', 'delivery'],
-      '帳戶問題': ['帳戶', '登入', '密碼', '註冊', 'account', 'login', 'password'],
-      '投訴建議': ['投訴', '建議', '不滿', '改善', 'complaint', 'feedback', 'suggestion'],
-      '一般諮詢': ['你好', '哈囉', '請問', 'hello', 'hi', 'question']
-    };
+    // 主題關鍵字定義（按優先級從高到低排列）
+    const topicKeywords = [
+      { topic: '技術支援', keywords: ['錯誤', '故障', '不能', '無法', 'error', 'bug', 'issue'], priority: 5 },
+      { topic: '投訴建議', keywords: ['投訴', '建議', '不滿', '改善', 'complaint', 'feedback', 'suggestion'], priority: 4 },
+      { topic: '訂單查詢', keywords: ['訂單', '購買', '付款', '配送', 'order', 'payment', 'delivery'], priority: 3 },
+      { topic: '帳戶問題', keywords: ['帳戶', '登入', '密碼', '註冊', 'account', 'login', 'password'], priority: 3 },
+      { topic: '產品諮詢', keywords: ['產品', '功能', '特色', '介紹', 'product', 'feature'], priority: 2 },
+      { topic: '一般諮詢', keywords: ['你好', '哈囉', '請問', 'hello', 'hi'], priority: 1 }
+    ];
 
-    for (const [topic, keywords] of Object.entries(topicKeywords)) {
-      if (keywords.some(keyword => content.includes(keyword))) {
-        return topic;
+    // 收集所有匹配的主題及其匹配度
+    const matches: { topic: string; priority: number; matchCount: number }[] = [];
+
+    for (const { topic, keywords, priority } of topicKeywords) {
+      const matchCount = keywords.filter(keyword => content.includes(keyword)).length;
+      if (matchCount > 0) {
+        matches.push({ topic, priority, matchCount });
       }
     }
 
-    return null;
+    // 如果沒有匹配，返回 null
+    if (matches.length === 0) {
+      return null;
+    }
+
+    // 按優先級排序，優先級相同時按匹配數量排序
+    matches.sort((a, b) => {
+      if (b.priority !== a.priority) {
+        return b.priority - a.priority; // 優先級高的在前
+      }
+      return b.matchCount - a.matchCount; // 匹配數量多的在前
+    });
+
+    return matches[0].topic;
   }
 
   /**
@@ -799,7 +818,7 @@ export class SessionService implements SessionServiceInterface {
   private transformDbSession(dbSession: any): ConversationSession {
     return {
       id: dbSession.id,
-      conversation_id: dbSession.conversation_id,
+      conversationId: dbSession.conversationId,
       sessionType: dbSession.sessionType,
       topic: dbSession.topic,
       startTime: dbSession.startTime,

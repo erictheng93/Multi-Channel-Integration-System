@@ -554,69 +554,69 @@ export class DelayedMessageScheduler implements DurableObject {
       const metrics = {
         // === Counter Metrics ===
         counters: {
-          messages_scheduled_total: this.metrics.messagesScheduledTotal,
-          messages_sent_total: this.metrics.messagesSentTotal,
-          messages_failed_total: this.metrics.messagesFailedTotal,
-          messages_cancelled_total: this.metrics.messagesCancelledTotal,
-          retry_attempts_total: this.metrics.retryAttemptsTotal,
-          dlq_writes_total: this.metrics.dlqWritesTotal,
-          dlq_write_failures_total: this.metrics.dlqWriteFailuresTotal,
-          alarm_triggers_total: this.metrics.alarmTriggersTotal,
-          idempotency_preventions_total: this.metrics.idempotencyPreventionsTotal
+          messagesScheduledTotal: this.metrics.messagesScheduledTotal,
+          messagesSentTotal: this.metrics.messagesSentTotal,
+          messagesFailedTotal: this.metrics.messagesFailedTotal,
+          messagesCancelledTotal: this.metrics.messagesCancelledTotal,
+          retryAttemptsTotal: this.metrics.retryAttemptsTotal,
+          dlqWritesTotal: this.metrics.dlqWritesTotal,
+          dlqWriteFailuresTotal: this.metrics.dlqWriteFailuresTotal,
+          alarmTriggersTotal: this.metrics.alarmTriggersTotal,
+          idempotencyPreventionsTotal: this.metrics.idempotencyPreventionsTotal
         },
 
         // === Platform-specific Counters ===
-        platform_metrics: {
+        platformMetrics: {
           line: {
             successes: this.metrics.platformSuccesses.line,
             failures: this.metrics.platformFailures.line,
             total: lineTotal,
-            success_rate_percent: lineSuccessRate
+            successRatePercent: lineSuccessRate
           },
           facebook: {
             successes: this.metrics.platformSuccesses.facebook,
             failures: this.metrics.platformFailures.facebook,
             total: facebookTotal,
-            success_rate_percent: facebookSuccessRate
+            successRatePercent: facebookSuccessRate
           }
         },
 
         // === Gauge Metrics (Current State) ===
         gauges: {
-          pending_messages_count: pendingMessagesCount,
-          dlq_size: dlqSize,
-          next_alarm_scheduled: this.nextAlarmTime ? new Date(this.nextAlarmTime).toISOString() : null
+          pendingMessagesCount: pendingMessagesCount,
+          dlqSize: dlqSize,
+          nextAlarmScheduled: this.nextAlarmTime ? new Date(this.nextAlarmTime).toISOString() : null
         },
 
         // === Histogram Metrics ===
         histograms: {
-          send_duration_ms: {
+          sendDurationMs: {
             p50: p50Duration,
             p95: p95Duration,
             p99: p99Duration,
-            sample_count: this.metrics.sendDurations.length
+            sampleCount: this.metrics.sendDurations.length
           },
-          retry_count: {
+          retryCount: {
             p50: p50RetryCount,
             p95: p95RetryCount,
-            sample_count: this.metrics.retryCounts.length
+            sampleCount: this.metrics.retryCounts.length
           }
         },
 
         // === Derived Metrics ===
         derived: {
-          overall_success_rate_percent: successRate,
-          total_messages_processed: totalMessages,
-          retry_rate_percent: totalMessages > 0
+          overallSuccessRatePercent: successRate,
+          totalMessagesProcessed: totalMessages,
+          retryRatePercent: totalMessages > 0
             ? ((this.metrics.retryAttemptsTotal / totalMessages) * 100).toFixed(2)
             : '0.00'
         },
 
         // === Metadata ===
         metadata: {
-          durable_object_id: this.state.id.toString(),
+          durableObjectId: this.state.id.toString(),
           timestamp: new Date().toISOString(),
-          uptime_seconds: Math.floor((Date.now() - (this.metrics as any).startTime || Date.now()) / 1000)
+          uptimeSeconds: Math.floor((Date.now() - (this.metrics as any).startTime || Date.now()) / 1000)
         }
       };
 

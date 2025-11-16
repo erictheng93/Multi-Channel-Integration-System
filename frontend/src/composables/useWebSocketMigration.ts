@@ -11,7 +11,7 @@ export type MigrationStrategy = 'sse_only' | 'websocket_primary' | 'websocket_on
 export interface MigrationConfig {
   strategy: MigrationStrategy
   fallbackToSSE: boolean
-  enableA_B_Testing: boolean
+  enableABTesting: boolean
   rolloutPercentage: number
   userGroups: string[]
   featureFlags: Record<string, boolean>
@@ -29,16 +29,18 @@ export interface MigrationStatus {
 const DEFAULT_CONFIG: MigrationConfig = {
   strategy: 'websocket_primary',
   fallbackToSSE: true,
-  enableA_B_Testing: false,
+   
+  enableABTesting: false,
   rolloutPercentage: 50,
   userGroups: [],
   featureFlags: {
-    websocket_conversations: true,
-    websocket_presence: true,
-    websocket_typing: true,
-    websocket_notifications: true
+    websocketConversations: true,
+    websocketPresence: true,
+    websocketTyping: true,
+    websocketNotifications: true
   }
 }
+   
 
 export function useWebSocketMigration(customConfig?: Partial<MigrationConfig>) {
   const authStore = useAuthStore()
@@ -76,7 +78,7 @@ export function useWebSocketMigration(customConfig?: Partial<MigrationConfig>) {
         return evaluateWebSocketPrimary()
 
       case 'a_b_test':
-        return evaluateA_B_Test()
+        return evaluateABTest()
 
       default:
         return false
@@ -121,10 +123,12 @@ export function useWebSocketMigration(customConfig?: Partial<MigrationConfig>) {
     }
 
     return true
+   
   }
 
-  const evaluateA_B_Test = (): boolean => {
-    if (!config.value.enableA_B_Testing) { return false }
+   
+  const evaluateABTest = (): boolean => {
+    if (!config.value.enableABTesting) { return false }
 
     // Assign user to test group if not already assigned
     if (userMigrationGroup.value === 'control') {
@@ -298,16 +302,16 @@ export function useWebSocketMigration(customConfig?: Partial<MigrationConfig>) {
 
     // Convenience flags for features
     useWebSocketForConversations: computed(() =>
-      shouldUseWebSocket.value && isFeatureEnabled('websocket_conversations')
+      shouldUseWebSocket.value && isFeatureEnabled('websocketConversations')
     ),
     useWebSocketForPresence: computed(() =>
-      shouldUseWebSocket.value && isFeatureEnabled('websocket_presence')
+      shouldUseWebSocket.value && isFeatureEnabled('websocketPresence')
     ),
     useWebSocketForTyping: computed(() =>
-      shouldUseWebSocket.value && isFeatureEnabled('websocket_typing')
+      shouldUseWebSocket.value && isFeatureEnabled('websocketTyping')
     ),
     useWebSocketForNotifications: computed(() =>
-      shouldUseWebSocket.value && isFeatureEnabled('websocket_notifications')
+      shouldUseWebSocket.value && isFeatureEnabled('websocketNotifications')
     )
   }
 }

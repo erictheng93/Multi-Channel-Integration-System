@@ -11,7 +11,7 @@ import type { Context } from 'hono';
  */
 export interface ConversationSession {
   id: string;
-  conversation_id: string;
+  conversationId: string;
   sessionType: 'continuous' | 'scheduled' | 'support' | 'marketing';
   topic?: string | null;
   startTime: string;
@@ -32,7 +32,7 @@ export interface ConversationSession {
  * 會話創建資料
  */
 export interface CreateSessionData {
-  conversation_id: string;
+  conversationId: string;
   sessionType?: ConversationSession['sessionType'];
   topic?: string;
   messageContent?: string;
@@ -62,7 +62,7 @@ export interface UpdateSessionData {
  * 會話列表查詢參數
  */
 export interface SessionListQuery {
-  conversation_id?: string;
+  conversationId?: string;
   isActive?: boolean;
   sessionType?: ConversationSession['sessionType'];
   priority?: ConversationSession['priority'];
@@ -80,7 +80,7 @@ export interface SessionListQuery {
  */
 export interface SessionSearchQuery {
   query: string;
-  conversation_id?: string;
+  conversationId?: string;
   sessionType?: ConversationSession['sessionType'];
   limit?: number;
   [key: string]: unknown;
@@ -139,7 +139,7 @@ export interface SessionStats {
  * 會話活動統計
  */
 export interface SessionActivityStats {
-  conversation_id?: string;
+  conversationId?: string;
   timeRange: 'day' | 'week' | 'month' | 'year';
   activities: Array<{
     date: string;
@@ -192,7 +192,7 @@ export interface SessionBoundaryDetection {
 export interface SessionMessage {
   id: string;
   sessionId: string;
-  conversation_id: string;
+  conversationId: string;
   senderId: string;
   senderType: 'customer' | 'agent' | 'system';
   content: string;
@@ -269,7 +269,7 @@ export interface SessionServiceInterface {
   search(query: SessionSearchQuery): Promise<ConversationSession[]>;
 
   // 會話管理
-  getOrCreate(conversation_id: string, messageContent: string, senderType: 'customer' | 'agent' | 'system'): Promise<ConversationSession>;
+  getOrCreate(conversationId: string, messageContent: string, senderType: 'customer' | 'agent' | 'system'): Promise<ConversationSession>;
   closeSession(sessionId: string): Promise<boolean>;
   reopenSession(sessionId: string): Promise<boolean>;
 

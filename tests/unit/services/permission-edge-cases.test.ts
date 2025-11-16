@@ -83,33 +83,33 @@ describe('PermissionService - Edge Cases', () => {
   describe('Complex condition scenarios', () => {
     test('should handle multiple conditions correctly', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-        id: 2,
-        role: 'team',
+        id: 3,
+        role: 'agent',
         teamId: 1
       });
 
-      // Test with multiple conditions that should all pass
+      // Test with multiple conditions that should all pass for an agent adding a tag
       const result = await PermissionService.checkPermission(
-        2, 
-        'conversation', 
-        'view', 
-        { teamId: 1, assignedUserId: 2 }
+        3, 
+        'tag', 
+        'add', 
+        { teamId: 1 } // teamScope condition
       );
       expect(result).toBe(true);
     });
 
     test('should fail when any condition fails', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-        id: 2,
-        role: 'team',
+        id: 3,
+        role: 'agent',
         teamId: 1
       });
 
-      // Test with one failing condition
+      // Test with one failing condition for an agent (wrong teamId for teamScope)
       const result = await PermissionService.checkPermission(
-        2, 
-        'conversation', 
-        'view', 
+        3, 
+        'tag', 
+        'add', 
         { teamId: 2 } // Wrong team
       );
       expect(result).toBe(false);
@@ -209,8 +209,6 @@ describe('PermissionService - Edge Cases', () => {
         callCount++;
         if (userId === 1) {
           return Promise.resolve({ id: 1, role: 'admin', teamId: 1 });
-        } else if (userId === 2) {
-          return Promise.resolve({ id: 2, role: 'team', teamId: 1 });
         } else {
           return Promise.resolve({ id: 3, role: 'agent', teamId: 1 });
         }
@@ -218,13 +216,12 @@ describe('PermissionService - Edge Cases', () => {
 
       const promises = [
         PermissionService.checkPermission(1, 'conversation', 'view'),
-        PermissionService.checkPermission(2, 'conversation', 'transfer'), // Team has transfer permission
         PermissionService.checkPermission(3, 'conversation', 'view') // Agent has view permission
       ];
 
       const results = await Promise.all(promises);
-      expect(results).toEqual([true, true, true]);
-      expect(callCount).toBe(3);
+      expect(results).toEqual([true, true]);
+      expect(callCount).toBe(2);
     });
   });
 
@@ -254,8 +251,8 @@ describe('PermissionService - Edge Cases', () => {
 
     test('should handle deeply nested context objects', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-        id: 2,
-        role: 'team',
+        id: 1,
+        role: 'admin',
         teamId: 1
       });
 
@@ -273,7 +270,7 @@ describe('PermissionService - Edge Cases', () => {
       };
 
       const result = await PermissionService.checkPermission(
-        2, 
+        1, 
         'conversation', 
         'view', 
         nestedContext

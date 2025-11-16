@@ -130,9 +130,8 @@ export class StorageService implements DelayedMessageStorage {
           updatedAt: delayedMessages.updatedAt,
           sentAt: delayedMessages.sentAt,
           cancelledAt: delayedMessages.cancelledAt,
-          conversation_id: conversations.id,
-          customer_name: customers.displayName,
-          can_recall: sql<number>`
+          customerName: customers.displayName,
+          canRecall: sql<number>`
             CASE
               WHEN ${delayedMessages.status} = 'pending' AND datetime('now') < ${delayedMessages.scheduledAt} THEN 1
               ELSE 0

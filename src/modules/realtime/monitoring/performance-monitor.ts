@@ -3,8 +3,7 @@
 import type { Bindings } from '@/types';
 import type {
   EventType,
-  EventPriority,
-  SSEConnectionStats
+  EventPriority
 } from '../types';
 
 // 性能指標定義
@@ -153,13 +152,47 @@ export class RealtimePerformanceMonitor {
     const startTime = Date.now();
 
     try {
-      // REMOVED: SSE 連接統計 (Phase 3 cleanup - SSE removed, WebSocket only)
-      // const { enhancedSSEManager } = await import('../handlers/sse-handler');
-      // const sseStats = await enhancedSSEManager.getDetailedStats();
-      const sseStats = {
+      // =================== WebSocket-based Connection Statistics ===================
+      // Phase 4 Complete: All connection statistics now come from WebSocket architecture
+      // See: src/handlers/websocket-health.ts -> /api/websocket/metrics
+      //
+      // SSE has been fully deprecated and removed. Connection stats are retrieved from:
+      // 1. WebSocket handler metrics endpoint
+      // 2. Durable Objects connection tracking
+      // 3. Real-time connection state management
+      let connectionStats: any = {
         totalConnections: 0,
-        connectionsByUser: {} as Record<number, number>
-      }; // Placeholder for removed SSE
+        activeConnections: 0,
+        connectionsByUser: {} as Record<number, number>,
+        connectionsByRole: {} as Record<string, number>
+      };
+
+      try {
+        // Attempt to fetch WebSocket metrics from the WebSocket health endpoint
+        if (this.env && (this.env as any).WORKER_URL) {
+          const wsMetricsUrl = `${(this.env as any).WORKER_URL}/api/websocket/metrics`;
+          const response = await fetch(wsMetricsUrl, {
+            headers: {
+              'Authorization': `Bearer ${(this.env as any).ADMIN_TOKEN || ''}`
+            }
+          });
+
+          if (response.ok) {
+            const wsData = await response.json();
+            connectionStats = {
+              totalConnections: wsData.connections?.totalConnections || 0,
+              activeConnections: wsData.connections?.activeConnections || 0,
+              connectionsByUser: wsData.connections?.connectionsByUser || {},
+              connectionsByRole: wsData.connections?.connectionsByRole || {}
+            };
+          } else {
+            console.warn('[PerformanceMonitor] Failed to fetch WebSocket metrics:', response.status);
+          }
+        }
+      } catch (error) {
+        // WebSocket metrics unavailable (test environment or initialization) - use defaults
+        console.warn('[PerformanceMonitor] WebSocket metrics unavailable, using defaults:', error);
+      }
 
       // 收集事件統計
       const { eventStats } = await import('../handlers/event-handler');
@@ -176,10 +209,10 @@ export class RealtimePerformanceMonitor {
         // 隊列統計可能不可用
       }
 
-      // 計算連接指標
+      // 計算連接指標 (基於 WebSocket 統計)
       const connectionMetrics = {
-        totalConnections: sseStats.totalConnections || 0,
-        averageConnectionDuration: this.calculateAverageConnectionDuration(sseStats),
+        totalConnections: connectionStats.totalConnections || 0,
+        averageConnectionDuration: this.calculateAverageConnectionDuration(connectionStats),
         connectionEstablishmentTime: 0, // 需要額外追蹤
         connectionFailureRate: 0, // 需要額外追蹤
         connectionsPerSecond: this.calculateConnectionsPerSecond()
@@ -195,13 +228,13 @@ export class RealtimePerformanceMonitor {
         eventsByPriority: eventStatsData.eventsByPriority
       };
 
-      // 計算 SSE 指標
-      const sseMetrics = {
-        totalDataTransferred: (sseStats as any).totalDataTransferred || 0,
+      // 計算 WebSocket 連接指標 (替代舊的 SSE 指標)
+      const websocketMetrics = {
+        totalDataTransferred: 0, // 需要從 WebSocket metrics 獲取
         averageResponseTime: 0, // 需要額外追蹤
         heartbeatSuccessRate: this.calculateHeartbeatSuccessRate(),
-        sseErrorRate: 0, // 需要額外追蹤
-        activeStreams: sseStats.totalConnections || 0
+        errorRate: 0, // 需要額外追蹤
+        activeConnections: connectionStats.activeConnections || 0
       };
 
       // 計算隊列指標
@@ -224,7 +257,7 @@ export class RealtimePerformanceMonitor {
       const metrics: PerformanceMetrics = {
         connection: connectionMetrics,
         events: eventMetrics,
-        sse: sseMetrics,
+        sse: websocketMetrics, // Renamed from sseMetrics but kept property name for backward compatibility
         queue: queueMetrics,
         resources: resourceMetrics,
         timestamp: new Date().toISOString(),
@@ -490,8 +523,9 @@ export class RealtimePerformanceMonitor {
   }
 
   // 工具方法
-  private calculateAverageConnectionDuration(stats: SSEConnectionStats): number {
+  private calculateAverageConnectionDuration(stats: any): number {
     // 這裡需要額外的連接持續時間追蹤
+    // WebSocket 架構下可以從 Durable Objects 獲取連接持續時間
     return 0;
   }
 

@@ -13,8 +13,8 @@ describe('LINE Signature Verification - Advanced Tests', () => {
   };
 
   beforeEach(() => {
-    global.crypto = mockCrypto as any;
-    global.btoa = vi.fn();
+    vi.stubGlobal('crypto', mockCrypto);
+    vi.stubGlobal('btoa', vi.fn());
     vi.clearAllMocks();
   });
 

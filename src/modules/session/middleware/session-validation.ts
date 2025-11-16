@@ -24,7 +24,7 @@ export function sanitizeString(input: string): string {
     .trim()
     .replace(/[<>]/g, '') // 移除尖括號
     .replace(/javascript:/gi, '') // 移除 javascript: 協議
-    .replace(/on\w+=/gi, '') // 移除事件處理器
+    .replace(/on\w+\s*=\s*[^\s>]*/gi, '') // 移除事件處理器（包含值）
     .substring(0, 1000); // 限制長度
 }
 
@@ -40,10 +40,11 @@ export function validateNumberRange(value: any, min: number, max: number): numbe
 }
 
 /**
- * 驗證 UUID 格式
+ * 驗證 UUID 格式（支持 UUID v1-v5）
  */
 export function validateUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuid || typeof uuid !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
 }
 
@@ -146,9 +147,9 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
  */
 export async function validateConversationId(c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> {
   try {
-    const conversation_id = c.req.param('conversation_id');
+    const conversationId = c.req.param('conversationId');
 
-    if (!conversation_id) {
+    if (!conversationId) {
       return c.json({
         success: false,
         error: 'Conversation ID is required',
@@ -156,7 +157,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       }, 400);
     }
 
-    if (!validateUUID(conversation_id)) {
+    if (!validateUUID(conversationId)) {
       return c.json({
         success: false,
         error: 'Invalid conversation ID format',
@@ -185,18 +186,18 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
     const body = await c.req.json() as CreateSessionData;
 
     // 必填欄位檢查
-    if (!body.conversation_id) {
+    if (!body.conversationId) {
       return c.json({
         success: false,
-        error: 'conversation_id is required',
+        error: 'conversationId is required',
         timestamp: new Date().toISOString()
       }, 400);
     }
 
-    if (!validateUUID(body.conversation_id)) {
+    if (!validateUUID(body.conversationId)) {
       return c.json({
         success: false,
-        error: 'Invalid conversation_id format',
+        error: 'Invalid conversationId format',
         timestamp: new Date().toISOString()
       }, 400);
     }
@@ -383,16 +384,16 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
     const query: SessionListQuery = {};
 
     // 解析查詢參數
-    const conversation_id = c.req.query('conversation_id');
-    if (conversation_id) {
-      if (!validateUUID(conversation_id)) {
+    const conversationId = c.req.query('conversationId');
+    if (conversationId) {
+      if (!validateUUID(conversationId)) {
         return c.json({
           success: false,
-          error: 'Invalid conversation_id format',
+          error: 'Invalid conversationId format',
           timestamp: new Date().toISOString()
         }, 400);
       }
-      query.conversation_id = conversation_id;
+      query.conversationId = conversationId;
     }
 
     const isActive = c.req.query('isActive');
@@ -535,16 +536,16 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
       }, 400);
     }
 
-    const conversation_id = c.req.query('conversation_id');
-    if (conversation_id) {
-      if (!validateUUID(conversation_id)) {
+    const conversationId = c.req.query('conversationId');
+    if (conversationId) {
+      if (!validateUUID(conversationId)) {
         return c.json({
           success: false,
-          error: 'Invalid conversation_id format',
+          error: 'Invalid conversationId format',
           timestamp: new Date().toISOString()
         }, 400);
       }
-      query.conversation_id = conversation_id;
+      query.conversationId = conversationId;
     }
 
     const sessionType = c.req.query('sessionType') as ConversationSession['sessionType'];

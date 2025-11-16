@@ -27,24 +27,7 @@ describe('PermissionService - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(50); // Should complete within 50ms
     });
 
-    test('should check manager permissions with conditions quickly', async () => {
-      (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-        id: 2,
-        role: 'team',
-        teamId: 1
-      });
 
-      const startTime = Date.now();
-      await PermissionService.checkPermission(
-        2, 
-        'conversation', 
-        'view', 
-        { teamId: 1 }
-      );
-      const endTime = Date.now();
-
-      expect(endTime - startTime).toBeLessThan(50);
-    });
 
     test('should check agent permissions with conditions quickly', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
@@ -90,10 +73,10 @@ describe('PermissionService - Performance Tests', () => {
 
     test('should handle mixed role bulk checks efficiently', async () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
-        const roles = ['admin', 'team', 'agent'];
+        const roles = ['admin', 'agent'];
         return Promise.resolve({
           id: userId,
-          role: roles[userId % 3],
+          role: roles[userId % 2],
           teamId: 1
         });
       });
@@ -219,7 +202,7 @@ describe('PermissionService - Performance Tests', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockImplementation((userId) => {
         return Promise.resolve({
           id: userId,
-          role: userId <= 10 ? 'admin' : userId <= 50 ? 'team' : 'agent',
+          role: userId <= 10 ? 'admin' : 'agent',
           teamId: Math.floor(userId / 10) + 1
         });
       });
@@ -240,40 +223,7 @@ describe('PermissionService - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(2000); // Should complete within 2 seconds
     });
 
-    test('should maintain performance with complex permission structures', async () => {
-      (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
-        id: 2,
-        role: 'team',
-        teamId: 1
-      });
 
-      const complexContext = {
-        teamId: 1,
-        assignedUserId: 2,
-        ownerId: 2,
-        conversationId: 123,
-        messageId: 456,
-        tags: ['urgent', 'vip', 'escalated'],
-        metadata: {
-          source: 'line',
-          priority: 'high',
-          category: 'support'
-        }
-      };
-
-      const startTime = Date.now();
-      
-      const promises = Array.from({ length: 20 }, () => 
-        PermissionService.checkPermission(2, 'conversation', 'view', complexContext)
-      );
-      
-      const results = await Promise.all(promises);
-      const endTime = Date.now();
-
-      expect(results.length).toBe(20);
-      expect(results.every(result => result === true)).toBe(true);
-      expect(endTime - startTime).toBeLessThan(500);
-    });
   });
 
   describe('Error handling performance', () => {

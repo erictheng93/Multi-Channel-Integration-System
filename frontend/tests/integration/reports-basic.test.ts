@@ -116,8 +116,10 @@ describe('報表系統基礎整合測試', () => {
 
     vi.mocked(ReportsAPI.getReportStatistics).mockResolvedValue({
       totalReports: 1,
+      /* eslint-disable camelcase */
       reportsByType: { conversation_summary: 1 },
       reportsByFormat: { pdf: 1 },
+      /* eslint-enable camelcase */
       reportsByStatus: { completed: 1 },
       averageGenerationTime: 300,
       popularReports: [],

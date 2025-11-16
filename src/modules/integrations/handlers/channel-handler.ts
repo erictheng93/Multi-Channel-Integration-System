@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
-import { ChannelService } from '../services/channel-service';
+import { ChannelService } from '@modules/integrations/services/channel-service';
 import type {
   ChannelConfigRequest,
   ChannelUpdateRequest,

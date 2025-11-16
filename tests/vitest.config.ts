@@ -11,6 +11,7 @@ export default defineConfig({
       '@backend': path.resolve(__dirname, '../src'),
       '@shared': path.resolve(__dirname, '../src/shared'),
       '@modules': path.resolve(__dirname, '../src/modules'),
+      '@real-time': path.resolve(__dirname, '../src/modules/realtime'),
       '@tests': path.resolve(__dirname, './'),
       '@helpers': path.resolve(__dirname, './helpers')
     }
