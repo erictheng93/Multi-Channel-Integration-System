@@ -9,6 +9,7 @@ import {
   createStickerMessage
 } from '@backend/utils/line';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock global fetch and crypto
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -46,7 +47,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
   });
 
   describe('Complete webhook processing flow', () => {
-    it('should handle incoming webhook with signature verification and reply', async () => {
+    test('should handle incoming webhook with signature verification and reply', async () => {
       const webhookBody = JSON.stringify({
         destination: 'U1234567890abcdef1234567890abcdef',
         events: [{
@@ -102,7 +103,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       );
     });
 
-    it('should handle user profile fetching and personalized response', async () => {
+    test('should handle user profile fetching and personalized response', async () => {
       const mockProfile = {
         userId: mockConfig.userId,
         displayName: 'John Doe',
@@ -146,7 +147,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle group conversation with member profile', async () => {
+    test('should handle group conversation with member profile', async () => {
       const mockMemberProfile = {
         userId: mockConfig.userId,
         displayName: 'Group Member',
@@ -185,7 +186,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
   });
 
   describe('Error handling and recovery scenarios', () => {
-    it('should handle signature verification failure gracefully', async () => {
+    test('should handle signature verification failure gracefully', async () => {
       const webhookBody = '{"events":[]}';
       const invalidSignature = 'sha256=invalid-signature';
 
@@ -200,7 +201,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       expect(isValidSignature).toBe(false);
     });
 
-    it('should handle API rate limiting with exponential backoff simulation', async () => {
+    test('should handle API rate limiting with exponential backoff simulation', async () => {
       const messages = [createTextMessage('Rate limited message')];
 
       // First attempt - rate limited
@@ -227,7 +228,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle partial failure in batch operations', async () => {
+    test('should handle partial failure in batch operations', async () => {
       const userId1 = 'user1';
       const userId2 = 'user2';
       const message = createTextMessage('Broadcast message');
@@ -266,7 +267,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       expect(mockFetch).toHaveBeenCalledTimes(0);
     });
 
-    it('should handle concurrent message sending', async () => {
+    test('should handle concurrent message sending', async () => {
       const users = ['user1', 'user2', 'user3', 'user4', 'user5'];
       const message = createTextMessage('Concurrent broadcast');
 
@@ -307,7 +308,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       });
     });
 
-    it('should handle large message batches', async () => {
+    test('should handle large message batches', async () => {
       const largeTextMessage = createTextMessage('A'.repeat(4000)); // Near LINE's 5000 char limit
       const messages = [
         largeTextMessage,
@@ -337,7 +338,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       );
     });
 
-    it('should handle rapid sequential API calls', async () => {
+    test('should handle rapid sequential API calls', async () => {
       const rapidCalls = 10;
       const message = createTextMessage('Rapid call test');
 
@@ -370,7 +371,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
   });
 
   describe('Real-world integration patterns', () => {
-    it('should simulate customer service conversation flow', async () => {
+    test('should simulate customer service conversation flow', async () => {
       // Simulate incoming customer message (this would come from webhook)
       const incomingMessage = {
         type: 'message' as const,
@@ -433,7 +434,7 @@ describe('LINE Integration - End-to-End Scenarios', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle webhook signature verification in production-like scenario', async () => {
+    test('should handle webhook signature verification in production-like scenario', async () => {
       const realWebhookPayload = {
         destination: 'U1234567890abcdef1234567890abcdef',
         events: [

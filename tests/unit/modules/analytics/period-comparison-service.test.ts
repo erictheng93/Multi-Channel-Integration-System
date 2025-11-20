@@ -1,13 +1,15 @@
 // Period Comparison Service 單元測試
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
-import type { Period } from '@modules/analytics/services/period-comparison-service';
+import type { Period } from '@modules/analytics/servimport { MockFactory } from '@helpers/mockFactory';
+ices/period-comparison-service';
 
 describe('PeriodComparisonService', () => {
   let mockDb: any;
   let comparisonService: PeriodComparisonService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     // Mock Drizzle Database
     mockDb = {
       select: vi.fn().mockReturnThis(),
@@ -20,8 +22,12 @@ describe('PeriodComparisonService', () => {
     comparisonService = new PeriodComparisonService(mockDb);
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('calculatePreviousPeriod', () => {
-    it('should calculate previous period with same duration', () => {
+    test('should calculate previous period with same duration', () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z',
@@ -38,7 +44,7 @@ describe('PeriodComparisonService', () => {
       expect(new Date(previousPeriod.end).getTime()).toBeLessThan(new Date(currentPeriod.start).getTime()); // Previous ends before current starts
     });
 
-    it('should handle 1-hour periods', () => {
+    test('should handle 1-hour periods', () => {
       const currentPeriod: Period = {
         start: '2025-01-30T14:00:00Z',
         end: '2025-01-30T15:00:00Z'
@@ -53,7 +59,7 @@ describe('PeriodComparisonService', () => {
       expect(previousPeriod.label).toContain('上');
     });
 
-    it('should handle 24-hour periods', () => {
+    test('should handle 24-hour periods', () => {
       const currentPeriod: Period = {
         start: '2025-01-29T00:00:00Z',
         end: '2025-01-30T00:00:00Z'
@@ -67,7 +73,7 @@ describe('PeriodComparisonService', () => {
       expect(previousDuration).toBeCloseTo(currentDuration, -3); // Within 1 second
     });
 
-    it('should handle 30-day periods', () => {
+    test('should handle 30-day periods', () => {
       const currentPeriod: Period = {
         start: '2025-01-01T00:00:00Z',
         end: '2025-01-31T00:00:00Z'
@@ -83,7 +89,7 @@ describe('PeriodComparisonService', () => {
   });
 
   describe('compareMetric', () => {
-    it('should compare metric between two periods', async () => {
+    test('should compare metric between two periods', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -107,7 +113,7 @@ describe('PeriodComparisonService', () => {
       expect(comparison.trend).toBe('up');
     });
 
-    it('should handle zero previous value', async () => {
+    test('should handle zero previous value', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -128,7 +134,7 @@ describe('PeriodComparisonService', () => {
       expect(comparison.changePercentage).toBe(100); // 100% increase from 0
     });
 
-    it('should handle declining metrics', async () => {
+    test('should handle declining metrics', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -149,7 +155,7 @@ describe('PeriodComparisonService', () => {
       expect(comparison.trend).toBe('down');
     });
 
-    it('should mark stable trend for small changes', async () => {
+    test('should mark stable trend for small changes', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -171,7 +177,7 @@ describe('PeriodComparisonService', () => {
   });
 
   describe('compareMultipleMetrics', () => {
-    it('should compare multiple metrics in parallel', async () => {
+    test('should compare multiple metrics in parallel', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -203,7 +209,7 @@ describe('PeriodComparisonService', () => {
       expect(comparison.summary.totalMetrics).toBe(2);
     });
 
-    it('should calculate overall trend correctly', async () => {
+    test('should calculate overall trend correctly', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -238,7 +244,7 @@ describe('PeriodComparisonService', () => {
   });
 
   describe('formatComparisonText', () => {
-    it('should format comparison as readable text', () => {
+    test('should format comparison as readable text', () => {
       const comparison = {
         current: 1250,
         previous: 1100,
@@ -259,7 +265,7 @@ describe('PeriodComparisonService', () => {
       expect(text).toContain('13.64');
     });
 
-    it('should handle declining trends', () => {
+    test('should handle declining trends', () => {
       const comparison = {
         current: 900,
         previous: 1100,
@@ -278,7 +284,7 @@ describe('PeriodComparisonService', () => {
       expect(text).toContain('18.18');
     });
 
-    it('should handle stable trends', () => {
+    test('should handle stable trends', () => {
       const comparison = {
         current: 1020,
         previous: 1000,
@@ -304,7 +310,7 @@ describe('PeriodComparisonService', () => {
       mockDb.where.mockResolvedValue([{ count: 100 }]);
     });
 
-    it('should compare conversation metrics', async () => {
+    test('should compare conversation metrics', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -317,7 +323,7 @@ describe('PeriodComparisonService', () => {
       expect(comparison.metrics).toHaveProperty('closed_conversations');
     });
 
-    it('should compare message metrics', async () => {
+    test('should compare message metrics', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'
@@ -330,7 +336,7 @@ describe('PeriodComparisonService', () => {
       expect(comparison.metrics).toHaveProperty('agent_messages');
     });
 
-    it('should compare user activity metrics', async () => {
+    test('should compare user activity metrics', async () => {
       const currentPeriod: Period = {
         start: '2025-01-23T00:00:00Z',
         end: '2025-01-30T23:59:59Z'

@@ -12,7 +12,8 @@ import {
   TestDataFactory,
   TestAssertions,
   LoadTestHelper
-} from '../../helpers/websocket/websocket-test-utils';
+} from '../../helpers/websocket/websocimport { MockFactory } from '@helpers/mockFactory';
+ket-test-utils';
 import type {
   DurableObjectEvent,
   BroadcastTarget,
@@ -73,7 +74,7 @@ describe('MessageBroadcaster Durable Object', () => {
   });
 
   describe('Event Distribution', () => {
-    it('should distribute events to conversation rooms', async () => {
+    test('should distribute events to conversation rooms', async () => {
       const event = TestDataFactory.createEvent({
         type: 'message_sent',
         conversationId: 'conv_123',
@@ -101,7 +102,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(mockEnv.CONVERSATION_ROOM.idFromName).toHaveBeenCalledWith('conv_456');
     });
 
-    it('should distribute events to user connections', async () => {
+    test('should distribute events to user connections', async () => {
       const event = TestDataFactory.createEvent({
         type: 'user_notification',
         userId: 'user_123',
@@ -126,7 +127,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(mockEnv.USER_CONNECTION.idFromName).toHaveBeenCalledWith('user_456');
     });
 
-    it('should distribute events to team members', async () => {
+    test('should distribute events to team members', async () => {
       const event = TestDataFactory.createEvent({
         type: 'team_notification',
         data: { message: 'New team assignment' }
@@ -161,7 +162,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(mockEnv.DB.select).toHaveBeenCalled();
     });
 
-    it('should handle global broadcasts', async () => {
+    test('should handle global broadcasts', async () => {
       const event = TestDataFactory.createEvent({
         type: 'system_announcement',
         data: { message: 'System maintenance scheduled' }
@@ -198,7 +199,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(response.ok).toBe(true);
     });
 
-    it('should track distribution metrics', async () => {
+    test('should track distribution metrics', async () => {
       const event = TestDataFactory.createEvent({
         type: 'performance_test',
         data: { test: true }
@@ -229,7 +230,7 @@ describe('MessageBroadcaster Durable Object', () => {
   });
 
   describe('Batch Processing', () => {
-    it('should process multiple events in batch', async () => {
+    test('should process multiple events in batch', async () => {
       const events = [
         TestDataFactory.createEvent({ type: 'message_sent', conversationId: 'conv_1' }),
         TestDataFactory.createEvent({ type: 'message_sent', conversationId: 'conv_1' }),
@@ -258,7 +259,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(result).toHaveProperty('failed');
     });
 
-    it('should optimize batch processing for same targets', async () => {
+    test('should optimize batch processing for same targets', async () => {
       const events = Array.from({ length: 10 }, (_, i) =>
         TestDataFactory.createEvent({
           type: 'message_sent',
@@ -289,7 +290,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(mockEnv.CONVERSATION_ROOM.idFromName).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle batch processing errors gracefully', async () => {
+    test('should handle batch processing errors gracefully', async () => {
       // Mock one successful and one failing target
       mockEnv.CONVERSATION_ROOM.get
         .mockReturnValueOnce({
@@ -327,7 +328,7 @@ describe('MessageBroadcaster Durable Object', () => {
   });
 
   describe('Performance Monitoring', () => {
-    it('should track performance metrics', async () => {
+    test('should track performance metrics', async () => {
       const request = new Request('https://message-broadcaster/metrics');
       const response = await messageBroadcaster.fetch(request);
 
@@ -342,7 +343,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(metrics).toHaveProperty('memoryUsage');
     });
 
-    it('should monitor latency distribution', async () => {
+    test('should monitor latency distribution', async () => {
       // Send multiple events to collect latency data
       const eventCount = 20;
       const promises: Promise<Response>[] = [];
@@ -376,7 +377,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(metrics.averageLatency).toBeGreaterThan(0);
     });
 
-    it('should track throughput metrics', async () => {
+    test('should track throughput metrics', async () => {
       const startTime = Date.now();
       const eventCount = 50;
 
@@ -409,7 +410,7 @@ describe('MessageBroadcaster Durable Object', () => {
   });
 
   describe('Error Handling and Recovery', () => {
-    it('should handle Durable Object unavailability', async () => {
+    test('should handle Durable Object unavailability', async () => {
       // Mock all conversation room stubs to return null
       mockEnv.CONVERSATION_ROOM.get.mockReturnValue(null);
 
@@ -437,7 +438,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(result).toHaveProperty('failed');
     });
 
-    it('should handle network timeouts', async () => {
+    test('should handle network timeouts', async () => {
       // Mock slow-responding conversation room
       mockEnv.CONVERSATION_ROOM.get.mockReturnValue({
         fetch: vi.fn().mockImplementation(() =>
@@ -470,7 +471,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(duration).toBeLessThan(5000); // Should not take more than 5 seconds
     });
 
-    it('should handle malformed requests', async () => {
+    test('should handle malformed requests', async () => {
       const request = new Request('https://message-broadcaster/broadcast-to-conversations', {
         method: 'POST',
         body: 'invalid json',
@@ -483,7 +484,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(await response.text()).toContain('Invalid request');
     });
 
-    it('should recover from partial failures', async () => {
+    test('should recover from partial failures', async () => {
       // Mock mixed success/failure responses
       let callCount = 0;
       mockEnv.CONVERSATION_ROOM.get.mockImplementation(() => ({
@@ -524,7 +525,7 @@ describe('MessageBroadcaster Durable Object', () => {
   });
 
   describe('Load Testing and Scalability', () => {
-    it('should handle high-volume broadcasting', async () => {
+    test('should handle high-volume broadcasting', async () => {
       const eventCount = 1000;
       const conversationCount = 100;
 
@@ -567,7 +568,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(metrics.average).toBeLessThan(30000); // Less than 30 seconds
     });
 
-    it('should maintain performance under concurrent load', async () => {
+    test('should maintain performance under concurrent load', async () => {
       const concurrentRequests = 20;
       const eventsPerRequest = 50;
 
@@ -610,7 +611,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(duration).toBeLessThan(60000); // Less than 1 minute total
     });
 
-    it('should efficiently deduplicate broadcast targets', async () => {
+    test('should efficiently deduplicate broadcast targets', async () => {
       // Create events that target the same conversations
       const duplicateEvents = Array.from({ length: 100 }, (_, i) =>
         TestDataFactory.createEvent({
@@ -642,7 +643,7 @@ describe('MessageBroadcaster Durable Object', () => {
   });
 
   describe('Health Monitoring', () => {
-    it('should provide health status', async () => {
+    test('should provide health status', async () => {
       const request = new Request('https://message-broadcaster/health');
       const response = await messageBroadcaster.fetch(request);
 
@@ -657,7 +658,7 @@ describe('MessageBroadcaster Durable Object', () => {
       expect(health).toHaveProperty('timestamp');
     });
 
-    it('should detect performance degradation', async () => {
+    test('should detect performance degradation', async () => {
       // Simulate slow processing
       mockEnv.CONVERSATION_ROOM.get.mockReturnValue({
         fetch: vi.fn().mockImplementation(() =>

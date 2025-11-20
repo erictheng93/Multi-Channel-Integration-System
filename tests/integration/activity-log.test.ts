@@ -218,9 +218,9 @@ export async function runActivityLogTests(): Promise<boolean> {
 // 如果直接執行此文件
 if (import.meta.url === `file://${process.argv[1]}`) {
   runActivityLogTests().then(success => {
-    process.exit(success ? 0 : 1);
+    process.extest(success ? 0 : 1);
   }).catch(error => {
     console.error('測試執行失敗:', error);
-    process.exit(1);
+    process.extest(1);
   });
 }

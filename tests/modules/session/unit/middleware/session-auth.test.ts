@@ -12,8 +12,9 @@ import {
   checkSessionStatsPermission,
   checkSessionBatchPermission,
   logSessionOperation
-} from '../../../../../src/modules/session/middleware/session-auth';
+} from '@modules/session/middleware/session-auth';
 import { mockJwtPayloads } from '../../helpers/mock-data';
+import { MockFactory } from '@helpers/mockFactory';
 import type { Bindings } from '@shared/types';
 
 // ======================== Mock Setup ========================
@@ -22,6 +23,19 @@ import type { Bindings } from '@shared/types';
 const mockVerifyJWT = vi.fn();
 vi.mock('../../../../../src/utils/auth', () => ({
   verifyJWT: mockVerifyJWT
+}));
+
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
 }));
 
 describe('Session Authentication Middleware', () => {
@@ -46,7 +60,7 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow access with valid Bearer token', async () => {
+    test('should allow access with valid Bearer token', async () => {
       mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
 
       const response = await app.request('/test', {
@@ -64,7 +78,7 @@ describe('Session Authentication Middleware', () => {
       expect(mockVerifyJWT).toHaveBeenCalledWith('valid_token', undefined);
     });
 
-    it('should reject request without Authorization header', async () => {
+    test('should reject request without Authorization header', async () => {
       const response = await app.request('/test');
 
       expect(response.status).toBe(401);
@@ -75,7 +89,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.timestamp).toBeDefined();
     });
 
-    it('should reject request with invalid Authorization format', async () => {
+    test('should reject request with invalid Authorization format', async () => {
       const response = await app.request('/test', {
         headers: {
           'Authorization': 'Basic invalid_format'
@@ -89,7 +103,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Missing or invalid authorization header');
     });
 
-    it('should reject request with invalid JWT token', async () => {
+    test('should reject request with invalid JWT token', async () => {
       mockVerifyJWT.mockResolvedValue(null);
 
       const response = await app.request('/test', {
@@ -105,7 +119,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Invalid or expired token');
     });
 
-    it('should reject request with expired JWT token', async () => {
+    test('should reject request with expired JWT token', async () => {
       mockVerifyJWT.mockResolvedValue(mockJwtPayloads.expired);
 
       const response = await app.request('/test', {
@@ -121,7 +135,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Invalid or expired token');
     });
 
-    it('should handle JWT verification errors', async () => {
+    test('should handle JWT verification errors', async () => {
       mockVerifyJWT.mockRejectedValue(new Error('JWT verification failed'));
 
       const response = await app.request('/test', {
@@ -151,7 +165,7 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow admin to view sessions', async () => {
+    test('should allow admin to view sessions', async () => {
       const response = await app.request('/test', {
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.admin)
@@ -165,7 +179,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.message).toBe('View access granted');
     });
 
-    it('should allow team lead to view sessions', async () => {
+    test('should allow team lead to view sessions', async () => {
       const response = await app.request('/test', {
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.teamLead)
@@ -178,7 +192,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should allow agent to view sessions', async () => {
+    test('should allow agent to view sessions', async () => {
       const response = await app.request('/test', {
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.agent)
@@ -191,7 +205,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should reject request without authentication', async () => {
+    test('should reject request without authentication', async () => {
       const response = await app.request('/test');
 
       expect(response.status).toBe(401);
@@ -201,7 +215,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Authentication required');
     });
 
-    it('should reject user with invalid role', async () => {
+    test('should reject user with invalid role', async () => {
       const invalidUser = { ...mockJwtPayloads.admin, role: 'guest' };
 
       const response = await app.request('/test', {
@@ -229,12 +243,13 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow all valid roles to create sessions', async () => {
+    test('should allow all valid roles to create sessions', async () => {
       const validRoles = [mockJwtPayloads.admin, mockJwtPayloads.teamLead, mockJwtPayloads.agent];
 
       for (const payload of validRoles) {
         const response = await app.request('/test', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'mock-payload': JSON.stringify(payload)
           }
@@ -248,11 +263,15 @@ describe('Session Authentication Middleware', () => {
       }
     });
 
-    it('should reject invalid roles', async () => {
+    test('should reject invalid roles', async () => {
       const invalidUser = { ...mockJwtPayloads.admin, role: 'guest' };
 
       const response = await app.request('/test', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'mock-payload': JSON.stringify(invalidUser)
         }
@@ -277,9 +296,13 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow admin to update sessions', async () => {
+    test('should allow admin to update sessions', async () => {
       const response = await app.request('/test', {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.admin)
         }
@@ -291,7 +314,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should allow team lead to update sessions', async () => {
+    test('should allow team lead to update sessions', async () => {
       const response = await app.request('/test', {
         method: 'PUT',
         headers: {
@@ -305,7 +328,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should allow agent to update sessions (with restrictions)', async () => {
+    test('should allow agent to update sessions (with restrictions)', async () => {
       // Note: Real implementation should check conversation access for agents
       const response = await app.request('/test', {
         method: 'PUT',
@@ -320,7 +343,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should reject invalid roles', async () => {
+    test('should reject invalid roles', async () => {
       const invalidUser = { ...mockJwtPayloads.admin, role: 'guest' };
 
       const response = await app.request('/test', {
@@ -349,9 +372,12 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow only admin to delete sessions', async () => {
+    test('should allow only admin to delete sessions', async () => {
       const response = await app.request('/test', {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.admin)
         }
@@ -364,7 +390,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.message).toBe('Delete access granted');
     });
 
-    it('should reject team lead for delete operations', async () => {
+    test('should reject team lead for delete operations', async () => {
       const response = await app.request('/test', {
         method: 'DELETE',
         headers: {
@@ -379,7 +405,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Only administrators can delete sessions');
     });
 
-    it('should reject agent for delete operations', async () => {
+    test('should reject agent for delete operations', async () => {
       const response = await app.request('/test', {
         method: 'DELETE',
         headers: {
@@ -406,7 +432,7 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow admin to view statistics', async () => {
+    test('should allow admin to view statistics', async () => {
       const response = await app.request('/test', {
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.admin)
@@ -419,7 +445,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should allow team lead to view statistics', async () => {
+    test('should allow team lead to view statistics', async () => {
       const response = await app.request('/test', {
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.teamLead)
@@ -432,7 +458,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should reject agent for statistics access', async () => {
+    test('should reject agent for statistics access', async () => {
       const response = await app.request('/test', {
         headers: {
           'mock-payload': JSON.stringify(mockJwtPayloads.agent)
@@ -458,7 +484,7 @@ describe('Session Authentication Middleware', () => {
       });
     });
 
-    it('should allow admin for batch operations', async () => {
+    test('should allow admin for batch operations', async () => {
       const response = await app.request('/test', {
         method: 'POST',
         headers: {
@@ -472,7 +498,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should allow team lead for batch operations', async () => {
+    test('should allow team lead for batch operations', async () => {
       const response = await app.request('/test', {
         method: 'POST',
         headers: {
@@ -486,7 +512,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    it('should reject agent for batch operations', async () => {
+    test('should reject agent for batch operations', async () => {
       const response = await app.request('/test', {
         method: 'POST',
         headers: {
@@ -529,7 +555,7 @@ describe('Session Authentication Middleware', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should log successful operations', async () => {
+    test('should log successful operations', async () => {
       const response = await app.request('/test');
 
       expect(response.status).toBe(200);
@@ -541,7 +567,7 @@ describe('Session Authentication Middleware', () => {
       );
     });
 
-    it('should log failed operations', async () => {
+    test('should log failed operations', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await expect(app.request('/test-error')).rejects.toThrow();
@@ -554,7 +580,7 @@ describe('Session Authentication Middleware', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle missing user information', async () => {
+    test('should handle missing user information', async () => {
       app.get('/test-no-user', logSessionOperation, (c) => {
         return c.json({ success: true });
       });
@@ -567,7 +593,7 @@ describe('Session Authentication Middleware', () => {
       );
     });
 
-    it('should measure operation duration', async () => {
+    test('should measure operation duration', async () => {
       app.get('/test-delay', (c, next) => {
         c.set('jwtPayload', mockJwtPayloads.admin);
         return next();
@@ -605,7 +631,7 @@ describe('Session Authentication Middleware', () => {
       );
     });
 
-    it('should pass through all middleware with valid token', async () => {
+    test('should pass through all middleware with valid token', async () => {
       mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
 
       const response = await app.request('/protected', {
@@ -622,7 +648,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.role).toBe('admin');
     });
 
-    it('should fail at first middleware with invalid token', async () => {
+    test('should fail at first middleware with invalid token', async () => {
       mockVerifyJWT.mockResolvedValue(null);
 
       const response = await app.request('/protected', {
@@ -638,7 +664,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Invalid or expired token');
     });
 
-    it('should fail at permission check with insufficient role', async () => {
+    test('should fail at permission check with insufficient role', async () => {
       const guestUser = { ...mockJwtPayloads.admin, role: 'guest' };
       mockVerifyJWT.mockResolvedValue(guestUser);
 
@@ -659,7 +685,7 @@ describe('Session Authentication Middleware', () => {
   // ======================== 錯誤處理測試 ========================
 
   describe('Error Handling', () => {
-    it('should handle middleware exceptions gracefully', async () => {
+    test('should handle middleware exceptions gracefully', async () => {
       // Mock JWT verification to throw error
       mockVerifyJWT.mockRejectedValue(new Error('JWT service unavailable'));
 
@@ -680,7 +706,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.error).toBe('Authentication failed');
     });
 
-    it('should handle malformed JWT payload', async () => {
+    test('should handle malformed JWT payload', async () => {
       app.get('/malformed-test', (c, next) => {
         c.set('jwtPayload', { invalid: 'payload' }); // Missing required fields
         return next();
@@ -696,7 +722,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(false);
     });
 
-    it('should provide consistent error response format', async () => {
+    test('should provide consistent error response format', async () => {
       const errorEndpoints = [
         { path: '/auth-error', middleware: checkSessionAccess },
         { path: '/view-error', middleware: checkSessionViewPermission },
@@ -776,7 +802,7 @@ describe('Session Authentication Middleware', () => {
         ];
 
         for (const test of middlewareTests) {
-          it(`should ${test.expected ? 'allow' : 'deny'} ${test.name} permission for ${roleTest.role}`, async () => {
+          test(`should ${test.expected ? 'allow' : 'deny'} ${test.name} permission for ${roleTest.role}`, async () => {
             app.get(`/test-${test.name}`, (c, next) => {
               c.set('jwtPayload', roleTest.payload);
               return next();

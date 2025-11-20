@@ -9,6 +9,7 @@ import type {
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
   PerformanceAnalyticsQuery
+import { MockFactory } from '@helpers/mockFactory';
 } from '../../src/modules/analytics/types/analytics-types';
 
 /**
@@ -48,7 +49,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 並發查詢壓力測試 ========================
 
   describe('Concurrent Query Stress Tests', () => {
-    it('should handle 100 concurrent queries', async () => {
+    test('should handle 100 concurrent queries', async () => {
       console.log('\n📊 Testing 100 concurrent queries...');
       const startTime = Date.now();
 
@@ -77,7 +78,7 @@ describe('Analytics Performance Stress Test', () => {
       console.log(`   Average time per query: ${avgTime.toFixed(2)}ms`);
     });
 
-    it('should handle 500 concurrent queries', async () => {
+    test('should handle 500 concurrent queries', async () => {
       console.log('\n📊 Testing 500 concurrent queries...');
       const startTime = Date.now();
 
@@ -103,7 +104,7 @@ describe('Analytics Performance Stress Test', () => {
       console.log(`   Throughput: ${queriesPerSecond.toFixed(2)} queries/second`);
     });
 
-    it('should handle 1000 concurrent queries', async () => {
+    test('should handle 1000 concurrent queries', async () => {
       console.log('\n📊 Testing 1000 concurrent queries...');
       const startTime = Date.now();
 
@@ -129,7 +130,7 @@ describe('Analytics Performance Stress Test', () => {
       console.log(`   Throughput: ${queriesPerSecond.toFixed(2)} queries/second`);
     });
 
-    it('should handle 2000 concurrent queries (extreme stress)', async () => {
+    test('should handle 2000 concurrent queries (extreme stress)', async () => {
       console.log('\n📊 Testing 2000 concurrent queries (EXTREME)...');
       const startTime = Date.now();
 
@@ -166,7 +167,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 混合查詢類型壓力測試 ========================
 
   describe('Mixed Query Type Stress Tests', () => {
-    it('should handle 500 mixed concurrent queries', async () => {
+    test('should handle 500 mixed concurrent queries', async () => {
       console.log('\n📊 Testing 500 mixed query types...');
       const startTime = Date.now();
 
@@ -252,7 +253,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 複雜查詢壓力測試 ========================
 
   describe('Complex Query Stress Tests', () => {
-    it('should handle 100 complex queries with groupBy', async () => {
+    test('should handle 100 complex queries with groupBy', async () => {
       console.log('\n📊 Testing 100 complex queries with groupBy...');
       const startTime = Date.now();
 
@@ -277,7 +278,7 @@ describe('Analytics Performance Stress Test', () => {
       console.log(`   Average time per query: ${avgTime.toFixed(2)}ms`);
     });
 
-    it('should handle 100 queries with multiple filters', async () => {
+    test('should handle 100 queries with multiple filters', async () => {
       console.log('\n📊 Testing 100 queries with multiple filters...');
       const startTime = Date.now();
 
@@ -309,7 +310,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 導出功能壓力測試 ========================
 
   describe('Export Stress Tests', () => {
-    it('should handle 50 concurrent export requests', async () => {
+    test('should handle 50 concurrent export requests', async () => {
       console.log('\n📊 Testing 50 concurrent export requests...');
       const startTime = Date.now();
 
@@ -343,7 +344,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 錯誤恢復壓力測試 ========================
 
   describe('Error Recovery Stress Tests', () => {
-    it('should handle 100 queries with some invalid inputs', async () => {
+    test('should handle 100 queries with some invalid inputs', async () => {
       console.log('\n📊 Testing error recovery with 100 queries...');
       const startTime = Date.now();
 
@@ -387,7 +388,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 持續負載測試 ========================
 
   describe('Sustained Load Tests', () => {
-    it('should maintain performance under sustained load (5 rounds of 100 queries)', async () => {
+    test('should maintain performance under sustained load (5 rounds of 100 queries)', async () => {
       console.log('\n📊 Testing sustained load (5 rounds of 100 queries)...');
 
       const roundResults: { round: number; duration: number; avgTime: number }[] = [];
@@ -436,7 +437,7 @@ describe('Analytics Performance Stress Test', () => {
   // ======================== 記憶體壓力測試 ========================
 
   describe('Memory Stress Tests', () => {
-    it('should handle large result sets without memory issues', async () => {
+    test('should handle large result sets without memory issues', async () => {
       console.log('\n📊 Testing memory handling with large queries...');
 
       const queries = Array.from({ length: 100 }, () => ({

@@ -1,11 +1,16 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { PermissionService } from '@backend/services/permission-service';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('Role Transition and Permission Edge Cases', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('Invalid Role Scenarios', () => {
     test('should handle unknown role gracefully', () => {
       const hasAuthority = PermissionService.hasRoleAuthority('unknown_role', 'agent');

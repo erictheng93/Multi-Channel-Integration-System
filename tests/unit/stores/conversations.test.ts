@@ -51,7 +51,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Initial State', () => {
-    it('should have correct initial state', async () => {
+    test('should have correct initial state', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -75,7 +75,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Computed Properties', () => {
-    it('should get unread conversations', async () => {
+    test('should get unread conversations', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -126,7 +126,7 @@ describe('Conversations Store', () => {
       expect(unread[0].unreadCount).toBe(2)
     })
 
-    it('should combine messages with optimistic messages', async () => {
+    test('should combine messages with optimistic messages', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -146,7 +146,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Fetch Conversations', () => {
-    it('should fetch conversations successfully', async () => {
+    test('should fetch conversations successfully', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       const mockConversations = [
@@ -175,7 +175,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBeNull()
     })
 
-    it('should handle fetch conversations error', async () => {
+    test('should handle fetch conversations error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -196,7 +196,7 @@ describe('Conversations Store', () => {
       }
     })
 
-    it('should handle network error', async () => {
+    test('should handle network error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -214,7 +214,7 @@ describe('Conversations Store', () => {
       }
     })
 
-    it('should set loading state during fetch', async () => {
+    test('should set loading state during fetch', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -231,7 +231,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Fetch Conversation', () => {
-    it('should fetch conversation successfully', async () => {
+    test('should fetch conversation successfully', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -277,7 +277,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.currentConversation).toEqual(conversationsStore.conversations[0])
     })
 
-    it('should handle fetch conversation error', async () => {
+    test('should handle fetch conversation error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -292,7 +292,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBe('無法載入對話詳情')
     })
 
-    it('should handle empty conversation id', async () => {
+    test('should handle empty conversation id', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -303,7 +303,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Close Conversation', () => {
-    it('should close conversation successfully', async () => {
+    test('should close conversation successfully', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -331,7 +331,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBeNull()
     })
 
-    it('should handle close conversation error', async () => {
+    test('should handle close conversation error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -348,7 +348,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Assign Conversation', () => {
-    it('should assign conversation successfully', async () => {
+    test('should assign conversation successfully', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -394,7 +394,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBeNull()
     })
 
-    it('should handle assign conversation error', async () => {
+    test('should handle assign conversation error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -411,7 +411,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Send Message', () => {
-    it('should send message successfully', async () => {
+    test('should send message successfully', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -456,7 +456,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBeNull()
     })
 
-    it('should handle send message error', async () => {
+    test('should handle send message error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -476,7 +476,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBe('訊息發送失敗')
     })
 
-    it('should add optimistic message before sending', async () => {
+    test('should add optimistic message before sending', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -499,7 +499,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Mark As Read', () => {
-    it('should mark conversation as read successfully', async () => {
+    test('should mark conversation as read successfully', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -513,7 +513,7 @@ describe('Conversations Store', () => {
       expect(conversationsStore.error).toBeNull()
     })
 
-    it('should handle mark as read error', async () => {
+    test('should handle mark as read error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       
@@ -530,7 +530,7 @@ describe('Conversations Store', () => {
   })
 
   describe('Actions - Clear Error', () => {
-    it('should clear error', async () => {
+    test('should clear error', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const conversationsStore = useConversationsStore(pinia)
       

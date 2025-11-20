@@ -8,7 +8,8 @@ import { count } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 import type {
   ConversationAnalyticsQuery,
-  MessageAnalyticsQuery,
+ import { MockFactory } from '@helpers/mockFactory';
+ MessageAnalyticsQuery,
   UserAnalyticsQuery,
   PerformanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
@@ -140,7 +141,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
   })
 
   describe('Drizzle ORM 生產環境驗證', () => {
-    it('應該正確初始化 Drizzle 數據庫連接', () => {
+    test('應該正確初始化 Drizzle 數據庫連接', () => {
       const db = env.getDrizzleInstance()
 
       expect(db).toBeDefined()
@@ -150,7 +151,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(typeof db.delete).toBe('function')
     })
 
-    it('應該支持完整的查詢構建鏈', async () => {
+    test('應該支持完整的查詢構建鏈', async () => {
       const conversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.status, 'active')
       })
@@ -160,7 +161,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(conversations.length).toBeGreaterThan(0)
     })
 
-    it('應該支持 groupBy 和聚合函數', async () => {
+    test('應該支持 groupBy 和聚合函數', async () => {
       // Real database query with groupBy on customers (conversations link to customers with platform)
       const result = await env.db
         .select({
@@ -179,7 +180,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(platforms).toContain('facebook')
     })
 
-    it('應該支持複雜的 WHERE 條件組合', async () => {
+    test('應該支持複雜的 WHERE 條件組合', async () => {
       const now = new Date()
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
@@ -203,7 +204,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
 
   describe('AnalyticsService 數據庫集成測試', () => {
     describe('對話分析 (Conversation Analytics)', () => {
-      it('應該能夠執行對話統計查詢', async () => {
+      test('應該能夠執行對話統計查詢', async () => {
         const query: ConversationAnalyticsQuery = {
           timeRange: '7d',
           metrics: ['total_conversations', 'active_conversations'],
@@ -222,7 +223,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(result.data.summary.totalConversations).toBeGreaterThanOrEqual(2)
       })
 
-      it('應該支持時間範圍篩選', async () => {
+      test('應該支持時間範圍篩選', async () => {
         const query: ConversationAnalyticsQuery = {
           timeRange: '24h',
           metrics: ['total_conversations'],
@@ -260,7 +261,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(lineConversations.length).toBeGreaterThan(0)
       })
 
-      it('應該支持團隊篩選', async () => {
+      test('應該支持團隊篩選', async () => {
         const query: ConversationAnalyticsQuery = {
           timeRange: '7d',
           metrics: ['total_conversations'],
@@ -280,7 +281,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
     })
 
     describe('消息分析 (Message Analytics)', () => {
-      it('應該能夠執行消息統計查詢', async () => {
+      test('應該能夠執行消息統計查詢', async () => {
         // NOTE: AnalyticsService.getMessageSummary() is a stub implementation
         // See analytics-core.ts:1056-1066 - returns hardcoded zeros
         const query: MessageAnalyticsQuery = {
@@ -305,7 +306,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(allMessages.length).toBeGreaterThanOrEqual(8) // We created 8 messages
       })
 
-      it('應該計算消息量趨勢', async () => {
+      test('應該計算消息量趨勢', async () => {
         const query: MessageAnalyticsQuery = {
           timeRange: '7d',
           metrics: ['total_messages'],
@@ -322,7 +323,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(allMessages.length).toBeGreaterThanOrEqual(8)
       })
 
-      it('應該支持對話 ID 篩選', async () => {
+      test('應該支持對話 ID 篩選', async () => {
         const query: MessageAnalyticsQuery = {
           timeRange: '7d',
           metrics: ['total_messages'],
@@ -345,7 +346,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
     })
 
     describe('用戶分析 (User Analytics)', () => {
-      it('應該能夠執行用戶統計查詢', async () => {
+      test('應該能夠執行用戶統計查詢', async () => {
         // NOTE: AnalyticsService.getUserSummary() is a stub implementation
         // See analytics-core.ts:1134-1142 - returns hardcoded zeros
         const query: UserAnalyticsQuery = {
@@ -370,7 +371,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(allAgents.length).toBeGreaterThanOrEqual(2) // We created 2 agents
       })
 
-      it('應該區分不同用戶類型', async () => {
+      test('應該區分不同用戶類型', async () => {
         const agentQuery: UserAnalyticsQuery = {
           timeRange: '7d',
           metrics: ['active_users'],
@@ -403,7 +404,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
     })
 
     describe('性能分析 (Performance Analytics)', () => {
-      it('應該能夠執行性能統計查詢', async () => {
+      test('應該能夠執行性能統計查詢', async () => {
         const query: PerformanceAnalyticsQuery = {
           timeRange: '24h',
           metrics: ['response_times', 'throughput', 'error_rates']
@@ -418,7 +419,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(result.data.trends).toBeDefined()
       })
 
-      it('應該提供性能優化建議', async () => {
+      test('應該提供性能優化建議', async () => {
         const query: PerformanceAnalyticsQuery = {
           timeRange: '7d',
           metrics: ['response_times', 'error_rates']
@@ -432,7 +433,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
     })
 
     describe('自定義分析查詢', () => {
-      it('應該支持自定義 SQL 查詢', async () => {
+      test('應該支持自定義 SQL 查詢', async () => {
         const query = {
           timeRange: '7d' as const,
           query: 'SELECT COUNT(*) as total FROM conversations',
@@ -452,7 +453,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
     })
 
     describe('數據導出功能', () => {
-      it('應該支持 JSON 格式導出', async () => {
+      test('應該支持 JSON 格式導出', async () => {
         const query = {
           timeRange: '7d' as const,
           format: 'json' as const,
@@ -467,7 +468,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(result.data.fileUrl).toBeDefined()
       })
 
-      it('應該支持 CSV 格式導出', async () => {
+      test('應該支持 CSV 格式導出', async () => {
         const query = {
           timeRange: '7d' as const,
           format: 'csv' as const,
@@ -481,7 +482,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(result.data.format).toBe('csv')
       })
 
-      it('應該支持 Excel 格式導出', async () => {
+      test('應該支持 Excel 格式導出', async () => {
         const query = {
           timeRange: '7d' as const,
           format: 'xlsx' as const,
@@ -495,7 +496,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
         expect(result.data.format).toBe('xlsx')
       })
 
-      it('應該支持 PDF 格式導出', async () => {
+      test('應該支持 PDF 格式導出', async () => {
         const query = {
           timeRange: '7d' as const,
           format: 'pdf' as const,
@@ -512,7 +513,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
   })
 
   describe('錯誤處理和邊界情況', () => {
-    it('應該處理無效的時間範圍', async () => {
+    test('應該處理無效的時間範圍', async () => {
       const query = {
         startDate: '2024-01-31',
         endDate: '2024-01-01', // endDate < startDate
@@ -527,7 +528,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR')
     })
 
-    it('應該處理缺少必需參數', async () => {
+    test('應該處理缺少必需參數', async () => {
       const invalidQuery = {
         // 缺少 timeRange 和 startDate
         metrics: ['total_conversations']
@@ -541,7 +542,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR')
     })
 
-    it('應該處理空結果集', async () => {
+    test('應該處理空結果集', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '24h',
         metrics: ['total_conversations'],
@@ -557,7 +558,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(result.data.summary.totalConversations).toBe(0)
     })
 
-    it('應該驗證外鍵約束', async () => {
+    test('應該驗證外鍵約束', async () => {
       // Try to query with non-existent conversation
       const messages = await env.db.query.messages.findMany({
         where: (messages, { eq }) => eq(messages.conversationId, 'nonexistent-conv')
@@ -568,7 +569,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
   })
 
   describe('性能和優化驗證', () => {
-    it('查詢應該在合理時間內完成', async () => {
+    test('查詢應該在合理時間內完成', async () => {
       const startTime = Date.now()
 
       const query: ConversationAnalyticsQuery = {
@@ -585,7 +586,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(duration).toBeLessThan(1000) // 1 second for in-memory DB
     })
 
-    it('應該支持並發查詢', async () => {
+    test('應該支持並發查詢', async () => {
       const queries = Array.from({ length: 5 }, (_, i) => ({
         timeRange: '7d' as const,
         metrics: ['total_conversations'],
@@ -609,7 +610,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(duration).toBeLessThan(2000) // 2 seconds for 5 concurrent queries
     })
 
-    it('應該高效處理大量數據查詢', async () => {
+    test('應該高效處理大量數據查詢', async () => {
       // Create additional test messages for performance testing
       for (let i = 1; i <= 20; i++) {
         await env.createTestMessage(testConversation1.id, {
@@ -634,7 +635,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
   })
 
   describe('Real Database Features Validation', () => {
-    it('應該支持 JOIN 操作', async () => {
+    test('應該支持 JOIN 操作', async () => {
       // Test JOIN between conversations and customers (manual JOIN)
       const conversations = await env.db.query.conversations.findMany()
 
@@ -652,7 +653,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       })
     })
 
-    it('應該支持聚合函數 (COUNT, SUM, AVG)', async () => {
+    test('應該支持聚合函數 (COUNT, SUM, AVG)', async () => {
       // Count messages per conversation
       const messageCount = await env.db
         .select({
@@ -672,7 +673,7 @@ describe('Analytics Database Integration Tests - Refactored', () => {
       expect(conv1Count!.count).toBeGreaterThanOrEqual(5)
     })
 
-    it('應該支持排序和限制', async () => {
+    test('應該支持排序和限制', async () => {
       // Get latest 3 messages
       const latestMessages = await env.db.query.messages.findMany({
         orderBy: (messages, { desc }) => [desc(messages.createdAt)],

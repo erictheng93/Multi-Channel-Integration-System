@@ -3,7 +3,8 @@
 // 測試跨分片廣播功能
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ConversationShardingService } from '@/services/conversation-sharding-service';
+import { Conversatiimport { MockFactory } from '@helpers/mockFactory';
+onShardingService } from '@/services/conversation-sharding-service';
 import { SHARD_CONFIG } from '@/types/sharding-types';
 
 /**
@@ -60,12 +61,17 @@ describe('Cross-Shard Broadcasting', () => {
   let mockEnv: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockEnv = createMockEnv();
     service = new ConversationShardingService(mockEnv);
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('broadcastToAllShards', () => {
-    it('should broadcast event to all peer shards (excluding source)', async () => {
+    test('should broadcast event to all peer shards (excluding source)', async () => {
       const conversationId = 'conv-broadcast-001';
       const event = {
         id: 'event-001',
@@ -88,7 +94,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(result.failedShards).toHaveLength(0);
     });
 
-    it('should not broadcast to source shard', async () => {
+    test('should not broadcast to source shard', async () => {
       const conversationId = 'conv-broadcast-002';
       const event = {
         id: 'event-002',
@@ -115,7 +121,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(sourceShard.fetch).not.toHaveBeenCalled();
     });
 
-    it('should handle broadcast failures gracefully', async () => {
+    test('should handle broadcast failures gracefully', async () => {
       const conversationId = 'conv-broadcast-003';
       const event = {
         id: 'event-003',
@@ -139,7 +145,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(result.failedShards).toContain(1);
     });
 
-    it('should broadcast with correct priority', async () => {
+    test('should broadcast with correct priority', async () => {
       const conversationId = 'conv-broadcast-004';
       const event = {
         id: 'event-004',
@@ -164,7 +170,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(body.priority).toBe('urgent');
     });
 
-    it('should return correct delivery statistics', async () => {
+    test('should return correct delivery statistics', async () => {
       const conversationId = 'conv-broadcast-005';
       const event = {
         id: 'event-005',
@@ -198,7 +204,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(result.shardsNotified).toBe(4);
     });
 
-    it('should complete broadcast within reasonable time', async () => {
+    test('should complete broadcast within reasonable time', async () => {
       const conversationId = 'conv-broadcast-006';
       const event = {
         id: 'event-006',
@@ -218,7 +224,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(result.latencyMs).toBeLessThan(1000);
     });
 
-    it('should handle partial broadcast failures', async () => {
+    test('should handle partial broadcast failures', async () => {
       const conversationId = 'conv-broadcast-007';
       const event = {
         id: 'event-007',
@@ -248,7 +254,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(result.shardsNotified).toBe(2); // Shards 2 and 4 succeeded
     });
 
-    it('should broadcast typing indicators across shards', async () => {
+    test('should broadcast typing indicators across shards', async () => {
       const conversationId = 'conv-broadcast-008';
       const typingEvent = {
         id: 'typing-001',
@@ -268,7 +274,7 @@ describe('Cross-Shard Broadcasting', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle empty/uninitialized shards', async () => {
+    test('should handle empty/uninitialized shards', async () => {
       const conversationId = 'conv-broadcast-009';
       const event = {
         id: 'event-009',

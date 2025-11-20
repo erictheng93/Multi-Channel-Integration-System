@@ -10,6 +10,7 @@ import type { Bindings } from '@backend/types';
 import { TestJWTHelper } from '../../helpers/test-jwt-helper';
 import { hash } from 'bcryptjs';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Module-level variable for test environment
 let currentTestEnv: DatabaseTestEnvironment | null = null;
 
@@ -68,7 +69,7 @@ vi.mock('../../../src/middleware/auth', async () => {
       const token = authHeader.substring(7);
       try {
         // Decode test JWT
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const payload = JSON.parse(Buffer.from(token.spltest('.')[1], 'base64').toString());
 
         // Set full user object with all expected properties
         c.set('user', {

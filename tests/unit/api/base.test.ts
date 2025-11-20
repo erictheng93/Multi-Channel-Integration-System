@@ -2,7 +2,8 @@
 // 檔案路徑：/tests/unit/api/base.test.ts
 // Created by: API Test Developer
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { import { MockFactory } from '@helpers/mockFactory';
+describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiClient } from '@/api/base';
 
 // Mock fetch
@@ -46,7 +47,7 @@ describe('API Base Client Tests', () => {
   });
 
   describe('Authentication Header Management', () => {
-    it('should set authorization header correctly', async () => {
+    test('should set authorization header correctly', async () => {
       const token = 'test-token-123';
       apiClient.setAuthHeader(token);
 
@@ -67,7 +68,7 @@ describe('API Base Client Tests', () => {
       );
     });
 
-    it('should remove authorization header', async () => {
+    test('should remove authorization header', async () => {
       apiClient.setAuthHeader('test-token');
       apiClient.removeAuthHeader();
 
@@ -88,7 +89,7 @@ describe('API Base Client Tests', () => {
       );
     });
 
-    it('should include content-type header by default', async () => {
+    test('should include content-type header by default', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true, data: 'test' })
@@ -108,7 +109,7 @@ describe('API Base Client Tests', () => {
   });
 
   describe('HTTP Methods', () => {
-    it('should make GET request correctly', async () => {
+    test('should make GET request correctly', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true, data: 'test-data' })
@@ -131,7 +132,7 @@ describe('API Base Client Tests', () => {
       });
     });
 
-    it('should make POST request with data', async () => {
+    test('should make POST request with data', async () => {
       const testData = { name: 'test', value: 123 };
       
       mockFetch.mockResolvedValueOnce({
@@ -156,7 +157,7 @@ describe('API Base Client Tests', () => {
       });
     });
 
-    it('should make PUT request with data', async () => {
+    test('should make PUT request with data', async () => {
       const testData = { id: '1', name: 'updated' };
       
       mockFetch.mockResolvedValueOnce({
@@ -181,7 +182,7 @@ describe('API Base Client Tests', () => {
       });
     });
 
-    it('should make DELETE request correctly', async () => {
+    test('should make DELETE request correctly', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true })
@@ -205,7 +206,7 @@ describe('API Base Client Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle 401 unauthorized error', async () => {
+    test('should handle 401 unauthorized error', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
@@ -225,7 +226,7 @@ describe('API Base Client Tests', () => {
       });
     });
 
-    it('should handle HTTP error responses', async () => {
+    test('should handle HTTP error responses', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
@@ -241,7 +242,7 @@ describe('API Base Client Tests', () => {
       });
     });
 
-    it('should handle HTTP error without error message', async () => {
+    test('should handle HTTP error without error message', async () => {
       // Mock multiple failed responses for retry logic
       mockFetch.mockResolvedValue({
         ok: false,
@@ -258,7 +259,7 @@ describe('API Base Client Tests', () => {
       });
     }, 15000);
 
-    it('should handle network errors', async () => {
+    test('should handle network errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await apiClient.get('/test-endpoint');
@@ -270,7 +271,7 @@ describe('API Base Client Tests', () => {
       });
     }, 10000);
 
-    it('should handle JSON parsing errors', async () => {
+    test('should handle JSON parsing errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.reject(new Error('Invalid JSON'))
@@ -285,7 +286,7 @@ describe('API Base Client Tests', () => {
   });
 
   describe('Base URL Configuration', () => {
-    it('should use correct base URL for requests', async () => {
+    test('should use correct base URL for requests', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true })
@@ -301,7 +302,7 @@ describe('API Base Client Tests', () => {
   });
 
   describe('Request Body Handling', () => {
-    it('should not include body for GET requests', async () => {
+    test('should not include body for GET requests', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true })
@@ -317,7 +318,7 @@ describe('API Base Client Tests', () => {
       );
     });
 
-    it('should stringify JSON data for POST requests', async () => {
+    test('should stringify JSON data for POST requests', async () => {
       const data = { test: 'value', number: 42 };
       
       mockFetch.mockResolvedValueOnce({

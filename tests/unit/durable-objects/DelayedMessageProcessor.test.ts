@@ -7,7 +7,8 @@ import {
   setupDOTestEnvironment,
   cleanupDOTestEnvironment,
   createMockBindings,
-  MockDurableObjectState
+  MockDurableOimport { MockFactory } from '@helpers/mockFactory';
+bjectState
 } from '../../helpers/durable-objects-test-helper';
 import type {
   ScheduledMessage
@@ -20,6 +21,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   let mockBindings: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     testEnv = setupDOTestEnvironment();
     mockState = testEnv.createState();
 
@@ -41,7 +43,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Message Scheduling', () => {
-    it('should schedule messages successfully', async () => {
+    test('should schedule messages successfully', async () => {
       const scheduledMessage = {
         id: 'test-msg-123',
         conversationId: 'conv-456',
@@ -68,7 +70,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(result.scheduledAt).toBe(scheduledMessage.scheduledAt);
     });
 
-    it('should reject messages scheduled in the past', async () => {
+    test('should reject messages scheduled in the past', async () => {
       const pastMessage = {
         id: 'past-msg',
         conversationId: 'conv-123',
@@ -89,7 +91,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(response.status).toBe(400);
     });
 
-    it('should reject messages scheduled too far in the future', async () => {
+    test('should reject messages scheduled too far in the future', async () => {
       const farFutureMessage = {
         id: 'future-msg',
         conversationId: 'conv-123',
@@ -110,7 +112,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(response.status).toBe(400);
     });
 
-    it('should validate required fields', async () => {
+    test('should validate required fields', async () => {
       const invalidMessage = {
         id: 'invalid-msg',
         // Missing required fields
@@ -129,7 +131,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Message Cancellation', () => {
-    it('should cancel scheduled messages', async () => {
+    test('should cancel scheduled messages', async () => {
       const messageId = 'cancel-test-msg';
 
       // First schedule a message
@@ -168,7 +170,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(result.cancelledAt).toBeDefined();
     });
 
-    it('should return 404 for non-existent messages', async () => {
+    test('should return 404 for non-existent messages', async () => {
       const cancelRequest = new Request('https://processor/cancel', {
         method: 'POST',
         body: JSON.stringify({
@@ -181,7 +183,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should not cancel already processed messages', async () => {
+    test('should not cancel already processed messages', async () => {
       const messageId = 'processed-msg';
 
       // Schedule a message with immediate execution time
@@ -202,7 +204,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       }));
 
       // Wait for processing
-      await testEnv.wait(200);
+      await testEnv.watest(200);
 
       // Try to trigger processing
       await processor.fetch(new Request('https://processor/process-batch', {
@@ -225,7 +227,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Message Rescheduling', () => {
-    it('should reschedule pending messages', async () => {
+    test('should reschedule pending messages', async () => {
       const messageId = 'reschedule-msg';
       const originalTime = Date.now() + 60000;
       const newTime = Date.now() + 120000;
@@ -263,7 +265,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(result.newScheduledAt).toBe(newTime);
     });
 
-    it('should return 404 for non-existent messages', async () => {
+    test('should return 404 for non-existent messages', async () => {
       const rescheduleRequest = new Request('https://processor/reschedule', {
         method: 'POST',
         body: JSON.stringify({
@@ -279,7 +281,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Batch Processing', () => {
-    it('should process messages when scheduled time arrives', async () => {
+    test('should process messages when scheduled time arrives', async () => {
       const messageId = 'batch-msg-1';
       const scheduledAt = Date.now() + 100; // Process very soon
 
@@ -298,7 +300,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       }));
 
       // Wait for scheduled time
-      await testEnv.wait(150);
+      await testEnv.watest(150);
 
       // Trigger batch processing
       const processRequest = new Request('https://processor/process-batch', {
@@ -312,7 +314,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle multiple messages in batch', async () => {
+    test('should handle multiple messages in batch', async () => {
       const messageCount = 10;
       const scheduledAt = Date.now() + 100;
 
@@ -334,7 +336,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       }
 
       // Wait for all to be ready
-      await testEnv.wait(200);
+      await testEnv.watest(200);
 
       // Process batch
       await processor.fetch(new Request('https://processor/process-batch', {
@@ -350,7 +352,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Message Queries', () => {
-    it('should retrieve scheduled messages', async () => {
+    test('should retrieve scheduled messages', async () => {
       const messageId = 'query-msg';
       const scheduledAt = Date.now() + 60000;
 
@@ -380,7 +382,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(Array.isArray(result.messages)).toBe(true);
     });
 
-    it('should filter messages by agentId', async () => {
+    test('should filter messages by agentId', async () => {
       const agentId = 'agent-filter-test';
 
       await processor.fetch(new Request('https://processor/schedule', {
@@ -418,7 +420,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(result.messages.every((msg: ScheduledMessage) => msg.agentId === agentId)).toBe(true);
     });
 
-    it('should filter messages by conversationId', async () => {
+    test('should filter messages by conversationId', async () => {
       const conversationId = 'conv-filter-test';
 
       await processor.fetch(new Request('https://processor/schedule', {
@@ -444,7 +446,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Metrics and Monitoring', () => {
-    it('should provide comprehensive metrics', async () => {
+    test('should provide comprehensive metrics', async () => {
       const metricsRequest = new Request('https://processor/metrics');
       const response = await processor.fetch(metricsRequest);
 
@@ -462,7 +464,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(metrics).toHaveProperty('retryQueueSize');
     });
 
-    it('should provide status information', async () => {
+    test('should provide status information', async () => {
       const statusRequest = new Request('https://processor/status');
       const response = await processor.fetch(statusRequest);
 
@@ -477,7 +479,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(status).toHaveProperty('lastProcessed');
     });
 
-    it('should track cancellation metrics', async () => {
+    test('should track cancellation metrics', async () => {
       const messageId = 'cancel-metrics-msg';
 
       // Schedule and cancel a message
@@ -510,7 +512,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle malformed JSON', async () => {
+    test('should handle malformed JSON', async () => {
       const request = new Request('https://processor/schedule', {
         method: 'POST',
         body: 'invalid json',
@@ -521,7 +523,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(response.status).toBe(500);
     });
 
-    it('should handle storage errors gracefully', async () => {
+    test('should handle storage errors gracefully', async () => {
       // Mock storage failure
       vi.spyOn(mockState.storage, 'put').mockRejectedValueOnce(new Error('Storage error'));
 
@@ -543,7 +545,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(response.status).toBe(500);
     });
 
-    it('should return 404 for unknown endpoints', async () => {
+    test('should return 404 for unknown endpoints', async () => {
       const request = new Request('https://processor/unknown-endpoint');
       const response = await processor.fetch(request);
 
@@ -552,7 +554,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Cleanup Operations', () => {
-    it('should provide cleanup endpoint', async () => {
+    test('should provide cleanup endpoint', async () => {
       const cleanupRequest = new Request('https://processor/cleanup', {
         method: 'POST'
       });
@@ -566,7 +568,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
   });
 
   describe('Performance and Scalability', () => {
-    it('should handle bulk message scheduling', async () => {
+    test('should handle bulk message scheduling', async () => {
       const messageCount = 100;
       const startTime = Date.now();
 
@@ -601,7 +603,7 @@ describe('DelayedMessageProcessor Durable Object', () => {
       expect(metrics.pendingMessages).toBe(messageCount);
     }, 15000);
 
-    it('should maintain performance with queue depth', async () => {
+    test('should maintain performance with queue depth', async () => {
       const messageCount = 50;
 
       // Schedule messages

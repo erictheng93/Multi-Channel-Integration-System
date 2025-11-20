@@ -4,9 +4,12 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
-import { reportsHandler } from '@modules/reports/handlers/reports-main';
+import reportsHandler from '@modules/reports/handlers/reports-main';
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
 import type { Bindings } from '@/types';
+import { signJWT } from '@/utils/auth';
+import { PermissionService } from '@shared/services/permission-service';
+import { MockFactory } from '../helpers/mockFactory';
 
 // ======================== 測試環境設置 ========================
 
@@ -15,8 +18,13 @@ let mockD1: any;
 let mockKV: any;
 let testDb: ReturnType<typeof drizzle>;
 let authToken: string;
+let mockEnv: Partial<Bindings>;
+const TEST_JWT_SECRET = 'test-secret-key-for-integration-testing';
 
 beforeAll(async () => {
+  // Mock PermissionService to always return true for admin users
+  vi.spyOn(PermissionService, 'checkPermission').mockResolvedValue(true);
+
   // 創建測試應用
   app = new Hono<{ Bindings: Bindings }>();
 
@@ -80,12 +88,31 @@ beforeAll(async () => {
 
   testDb = drizzle(mockD1 as any);
 
+  // Create complete mock environment
+  mockEnv = {
+    DB: mockD1,
+    SESSION_CACHE: mockKV,
+    JWT_SECRET: TEST_JWT_SECRET,
+    ENVIRONMENT: 'test',
+    API_BASE_URL: 'http://localhost:8787'
+  };
+
   // Mount handlers
   app.route('/api/reports', reportsHandler);
   app.route('/api/analytics', analyticsHandler);
 
-  // Mock authentication token
-  authToken = 'Bearer test-jwt-token';
+  // Generate valid JWT token for testing
+  const token = await signJWT(
+    {
+      userId: 1,
+      username: 'test-admin',
+      role: 'admin',
+      teamId: 1
+    },
+    TEST_JWT_SECRET,
+    24 * 60 * 60 // 24 hours
+  );
+  authToken = `Bearer ${token}`;
 
   console.log('✅ Reports & Analytics API Test Environment Initialized');
 });
@@ -98,7 +125,7 @@ afterAll(async () => {
 
 describe('Reports API Integration', () => {
   describe('POST /api/reports/generate', () => {
-    it('should generate a new report successfully', async () => {
+    test('should generate a new report successfully', async () => {
       const req = new Request('http://localhost/api/reports/generate', {
         method: 'POST',
         headers: {
@@ -113,10 +140,7 @@ describe('Reports API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -124,7 +148,7 @@ describe('Reports API Integration', () => {
       expect(data.data).toBeDefined();
     });
 
-    it('should handle invalid report type', async () => {
+    test('should handle invalid report type', async () => {
       const req = new Request('http://localhost/api/reports/generate', {
         method: 'POST',
         headers: {
@@ -139,17 +163,14 @@ describe('Reports API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.success).toBe(false);
     });
 
-    it('should generate CSV format report', async () => {
+    test('should generate CSV format report', async () => {
       const req = new Request('http://localhost/api/reports/generate', {
         method: 'POST',
         headers: {
@@ -164,10 +185,7 @@ describe('Reports API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -175,7 +193,7 @@ describe('Reports API Integration', () => {
       expect(data.data?.format).toBe('csv');
     });
 
-    it('should support custom date ranges', async () => {
+    test('should support custom date ranges', async () => {
       const req = new Request('http://localhost/api/reports/generate', {
         method: 'POST',
         headers: {
@@ -192,10 +210,7 @@ describe('Reports API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -204,7 +219,7 @@ describe('Reports API Integration', () => {
   });
 
   describe('GET /api/reports', () => {
-    it('should list all reports', async () => {
+    test('should list all reports', async () => {
       const req = new Request('http://localhost/api/reports', {
         method: 'GET',
         headers: {
@@ -212,10 +227,7 @@ describe('Reports API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -224,7 +236,7 @@ describe('Reports API Integration', () => {
       expect(Array.isArray(data.data.reports)).toBe(true);
     });
 
-    it('should support pagination', async () => {
+    test('should support pagination', async () => {
       const req = new Request('http://localhost/api/reports?page=2&pageSize=10', {
         method: 'GET',
         headers: {
@@ -232,10 +244,7 @@ describe('Reports API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -244,7 +253,7 @@ describe('Reports API Integration', () => {
       expect(data.data.pagination.pageSize).toBe(10);
     });
 
-    it('should filter by report type', async () => {
+    test('should filter by report type', async () => {
       const req = new Request('http://localhost/api/reports?type=conversation_summary', {
         method: 'GET',
         headers: {
@@ -252,17 +261,14 @@ describe('Reports API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
     });
 
-    it('should filter by status', async () => {
+    test('should filter by status', async () => {
       const req = new Request('http://localhost/api/reports?status=completed', {
         method: 'GET',
         headers: {
@@ -270,10 +276,7 @@ describe('Reports API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -282,7 +285,7 @@ describe('Reports API Integration', () => {
   });
 
   describe('GET /api/reports/:id/status', () => {
-    it('should get report status', async () => {
+    test('should get report status', async () => {
       const req = new Request('http://localhost/api/reports/test-id/status', {
         method: 'GET',
         headers: {
@@ -290,10 +293,7 @@ describe('Reports API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -302,7 +302,7 @@ describe('Reports API Integration', () => {
   });
 
   describe('GET /api/reports/:id/download', () => {
-    it('should download completed report', async () => {
+    test('should download completed report', async () => {
       const req = new Request('http://localhost/api/reports/test-id/download', {
         method: 'GET',
         headers: {
@@ -310,10 +310,7 @@ describe('Reports API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -326,7 +323,7 @@ describe('Reports API Integration', () => {
 
 describe('Analytics API Integration', () => {
   describe('GET /api/analytics/conversations', () => {
-    it('should get conversation analytics', async () => {
+    test('should get conversation analytics', async () => {
       const req = new Request('http://localhost/api/analytics/conversations?timeRange=7d', {
         method: 'GET',
         headers: {
@@ -334,10 +331,7 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -345,7 +339,7 @@ describe('Analytics API Integration', () => {
       expect(data.data).toBeDefined();
     });
 
-    it('should support platform filtering', async () => {
+    test('should support platform filtering', async () => {
       const req = new Request('http://localhost/api/analytics/conversations?timeRange=7d&platform=line', {
         method: 'GET',
         headers: {
@@ -353,15 +347,12 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
 
-    it('should support custom date ranges', async () => {
+    test('should support custom date ranges', async () => {
       const req = new Request('http://localhost/api/analytics/conversations?timeRange=custom&startDate=2025-09-01&endDate=2025-09-30', {
         method: 'GET',
         headers: {
@@ -369,15 +360,12 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
 
-    it('should handle validation errors', async () => {
+    test('should handle validation errors', async () => {
       const req = new Request('http://localhost/api/analytics/conversations?timeRange=invalid', {
         method: 'GET',
         headers: {
@@ -385,10 +373,7 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(400);
       const data = await res.json();
@@ -398,7 +383,7 @@ describe('Analytics API Integration', () => {
   });
 
   describe('GET /api/analytics/messages', () => {
-    it('should get message analytics', async () => {
+    test('should get message analytics', async () => {
       const req = new Request('http://localhost/api/analytics/messages?timeRange=7d', {
         method: 'GET',
         headers: {
@@ -406,17 +391,14 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
     });
 
-    it('should filter by conversation ID', async () => {
+    test('should filter by conversation ID', async () => {
       const req = new Request('http://localhost/api/analytics/messages?timeRange=7d&conversationId=conv_123', {
         method: 'GET',
         headers: {
@@ -424,15 +406,12 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
 
-    it('should support multiple metrics', async () => {
+    test('should support multiple metrics', async () => {
       const req = new Request('http://localhost/api/analytics/messages?timeRange=7d&metrics=total_messages,messages_per_hour,avg_message_length', {
         method: 'GET',
         headers: {
@@ -440,17 +419,14 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('GET /api/analytics/users', () => {
-    it('should get user analytics', async () => {
+    test('should get user analytics', async () => {
       const req = new Request('http://localhost/api/analytics/users?timeRange=7d&userType=agent', {
         method: 'GET',
         headers: {
@@ -458,17 +434,14 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
     });
 
-    it('should filter by team ID', async () => {
+    test('should filter by team ID', async () => {
       const req = new Request('http://localhost/api/analytics/users?timeRange=7d&userType=agent&teamId=1', {
         method: 'GET',
         headers: {
@@ -476,17 +449,14 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('GET /api/analytics/performance', () => {
-    it('should get performance analytics', async () => {
+    test('should get performance analytics', async () => {
       const req = new Request('http://localhost/api/analytics/performance?timeRange=24h', {
         method: 'GET',
         headers: {
@@ -494,17 +464,14 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
     });
 
-    it('should support performance metrics', async () => {
+    test('should support performance metrics', async () => {
       const req = new Request('http://localhost/api/analytics/performance?timeRange=24h&metrics=response_times,throughput,error_rates', {
         method: 'GET',
         headers: {
@@ -512,17 +479,14 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('POST /api/analytics/custom', () => {
-    it('should execute custom analytics query', async () => {
+    test('should execute custom analytics query', async () => {
       const req = new Request('http://localhost/api/analytics/custom', {
         method: 'POST',
         headers: {
@@ -539,10 +503,7 @@ describe('Analytics API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -551,7 +512,7 @@ describe('Analytics API Integration', () => {
   });
 
   describe('POST /api/analytics/export', () => {
-    it('should export analytics data in JSON format', async () => {
+    test('should export analytics data in JSON format', async () => {
       const req = new Request('http://localhost/api/analytics/export', {
         method: 'POST',
         headers: {
@@ -568,17 +529,14 @@ describe('Analytics API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
     });
 
-    it('should export analytics data in CSV format', async () => {
+    test('should export analytics data in CSV format', async () => {
       const req = new Request('http://localhost/api/analytics/export', {
         method: 'POST',
         headers: {
@@ -595,17 +553,14 @@ describe('Analytics API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('GET /api/analytics/health', () => {
-    it('should check analytics service health', async () => {
+    test('should check analytics service health', async () => {
       const req = new Request('http://localhost/api/analytics/health', {
         method: 'GET',
         headers: {
@@ -613,10 +568,7 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -626,7 +578,7 @@ describe('Analytics API Integration', () => {
   });
 
   describe('POST /api/analytics/metrics', () => {
-    it('should collect metrics data', async () => {
+    test('should collect metrics data', async () => {
       const req = new Request('http://localhost/api/analytics/metrics', {
         method: 'POST',
         headers: {
@@ -643,17 +595,14 @@ describe('Analytics API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
     });
 
-    it('should collect batch metrics', async () => {
+    test('should collect batch metrics', async () => {
       const req = new Request('http://localhost/api/analytics/metrics', {
         method: 'POST',
         headers: {
@@ -668,17 +617,14 @@ describe('Analytics API Integration', () => {
         })
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('GET /api/analytics/metrics/:name', () => {
-    it('should query metrics data', async () => {
+    test('should query metrics data', async () => {
       const req = new Request('http://localhost/api/analytics/metrics/api_requests?startTime=0&aggregation=avg', {
         method: 'GET',
         headers: {
@@ -686,10 +632,7 @@ describe('Analytics API Integration', () => {
         }
       });
 
-      const res = await app.fetch(req, {
-        DB: mockD1,
-        KV: mockKV
-      } as any);
+      const res = await app.fetch(req, mockEnv as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -701,7 +644,7 @@ describe('Analytics API Integration', () => {
 // ======================== Error Handling 測試 ========================
 
 describe('Error Handling', () => {
-  it('should handle database errors gracefully', async () => {
+  test('should handle database errors gracefully', async () => {
     // Mock database error
     mockD1.prepare = vi.fn(() => {
       throw new Error('Database connection failed');
@@ -714,15 +657,12 @@ describe('Error Handling', () => {
       }
     });
 
-    const res = await app.fetch(req, {
-      DB: mockD1,
-      KV: mockKV
-    } as any);
+    const res = await app.fetch(req, mockEnv as any);
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('should return proper error codes', async () => {
+  test('should return proper error codes', async () => {
     const req = new Request('http://localhost/api/analytics/conversations?timeRange=invalid', {
       method: 'GET',
       headers: {
@@ -730,10 +670,7 @@ describe('Error Handling', () => {
       }
     });
 
-    const res = await app.fetch(req, {
-      DB: mockD1,
-      KV: mockKV
-    } as any);
+    const res = await app.fetch(req, mockEnv as any);
 
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -744,7 +681,7 @@ describe('Error Handling', () => {
 // ======================== Performance 測試 ========================
 
 describe('Performance', () => {
-  it('should complete API requests in reasonable time', async () => {
+  test('should complete API requests in reasonable time', async () => {
     const startTime = Date.now();
 
     const req = new Request('http://localhost/api/analytics/conversations?timeRange=7d', {
@@ -754,10 +691,7 @@ describe('Performance', () => {
       }
     });
 
-    await app.fetch(req, {
-      DB: mockD1,
-      KV: mockKV
-    } as any);
+    await app.fetch(req, mockEnv as any);
 
     const endTime = Date.now();
     const executionTime = endTime - startTime;

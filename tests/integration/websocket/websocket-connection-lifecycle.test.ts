@@ -20,7 +20,8 @@ import {
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
 import { UserConnection } from '@backend/durable-objects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
-import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
+import { WebSocketBroadcasimport { MockFactory } from '@helpers/mockFactory';
+tService } from '@backend/services/websocket-broadcast-service';
 import type {
   WebSocketMessage,
   DurableObjectEvent,
@@ -88,7 +89,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
   });
 
   describe('Connection Establishment', () => {
-    it('should establish WebSocket connections successfully', async () => {
+    test('should establish WebSocket connections successfully', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -111,7 +112,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(welcomeEvent.connectionId).toBe(client.id);
     });
 
-    it('should handle authentication during connection', async () => {
+    test('should handle authentication during connection', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'admin'
@@ -129,7 +130,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(client.role).toBe('admin');
     });
 
-    it('should handle connection failures gracefully', async () => {
+    test('should handle connection failures gracefully', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -147,7 +148,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       TestAssertions.assertClientDisconnected(client);
     });
 
-    it('should manage multiple concurrent connections', async () => {
+    test('should manage multiple concurrent connections', async () => {
       const clientCount = 10;
       const clients = WebSocketTestClientFactory.createClients(clientCount, {
         conversationId,
@@ -171,7 +172,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(roomStats.connectedClients).toBe(clientCount);
     });
 
-    it('should handle role-based connection limits', async () => {
+    test('should handle role-based connection limits', async () => {
       // Create many agent connections
       const agentCount = 15;
       const agents = WebSocketTestClientFactory.createClients(agentCount, {
@@ -191,7 +192,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
   });
 
   describe('Subscription Management', () => {
-    it('should handle conversation subscriptions', async () => {
+    test('should handle conversation subscriptions', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -230,7 +231,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(event.data.status).toBe('active');
     });
 
-    it('should handle user-specific subscriptions', async () => {
+    test('should handle user-specific subscriptions', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -269,7 +270,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(event.data.availability).toBe('online');
     });
 
-    it('should handle subscription cleanup on disconnect', async () => {
+    test('should handle subscription cleanup on disconnect', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -303,7 +304,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(eventCount).toBe(0);
     });
 
-    it('should handle unsubscription requests', async () => {
+    test('should handle unsubscription requests', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -347,7 +348,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
   });
 
   describe('Message Broadcasting Flow', () => {
-    it('should broadcast messages to conversation participants', async () => {
+    test('should broadcast messages to conversation participants', async () => {
       const { controller, admin, team, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -374,7 +375,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       TestAssertions.assertEventCount(agents[0], 'message_sent', 0);
     });
 
-    it('should handle typing indicators correctly', async () => {
+    test('should handle typing indicators correctly', async () => {
       const client1 = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent',
@@ -424,7 +425,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       TestAssertions.assertEventCount(client1, 'typing_stop', 0);
     });
 
-    it('should handle broadcast service failures with fallback', async () => {
+    test('should handle broadcast service failures with fallback', async () => {
       // Mock broadcast service to fail
       vi.spyOn(broadcastService, 'broadcastMessageEvent')
         .mockResolvedValue(false); // Simulate failure
@@ -446,7 +447,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
   });
 
   describe('Real-time Event Distribution', () => {
-    it('should distribute conversation assignment events', async () => {
+    test('should distribute conversation assignment events', async () => {
       const admin = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'admin'
@@ -486,7 +487,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(agentEvent.data.assignedTo).toBe(agent.userId);
     });
 
-    it('should handle delayed message countdown events', async () => {
+    test('should handle delayed message countdown events', async () => {
       const agent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -518,7 +519,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(countdownEvent.data.remainingSeconds).toBe(30);
     });
 
-    it('should handle message recall events', async () => {
+    test('should handle message recall events', async () => {
       const agent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -559,7 +560,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(observerEvent.data.messageId).toBe('recall_123');
     });
 
-    it('should handle presence updates', async () => {
+    test('should handle presence updates', async () => {
       const teamMember = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'team'
@@ -602,7 +603,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
   });
 
   describe('Connection Recovery and Resilience', () => {
-    it('should handle connection drops and reconnection', async () => {
+    test('should handle connection drops and reconnection', async () => {
       const client = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -632,7 +633,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(welcomeEvent.connectionId).toBe(client.id);
     });
 
-    it('should maintain message ordering during reconnection', async () => {
+    test('should maintain message ordering during reconnection', async () => {
       const sender = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent',
@@ -683,7 +684,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(allEvents[0].data.content).toBe('Message 3');
     });
 
-    it('should handle partial connection failures', async () => {
+    test('should handle partial connection failures', async () => {
       const clients = WebSocketTestClientFactory.createClients(5, {
         conversationId,
         role: 'agent'
@@ -726,7 +727,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
   });
 
   describe('Feature Flag Integration', () => {
-    it('should respect WebSocket feature flags', async () => {
+    test('should respect WebSocket feature flags', async () => {
       // Disable WebSocket in migration config
       const disabledConfig = TestDataFactory.createMigrationConfig({
         enableWebSocket: false,
@@ -750,7 +751,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(isAvailable).toBe(false);
     });
 
-    it('should handle gradual rollout', async () => {
+    test('should handle gradual rollout', async () => {
       // Configure 50% rollout
       const gradualConfig = TestDataFactory.createMigrationConfig({
         enableWebSocket: true,
@@ -773,7 +774,7 @@ describe('WebSocket Connection Lifecycle Integration', () => {
       expect(isAvailable).toBe(true);
     });
 
-    it('should handle feature flag updates', async () => {
+    test('should handle feature flag updates', async () => {
       let webSocketEnabled = true;
 
       mockEnv.SESSIONS.get.mockImplementation((key: string) => {

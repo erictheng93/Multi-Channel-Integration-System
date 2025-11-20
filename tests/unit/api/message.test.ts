@@ -3,7 +3,8 @@
 // Created by: API Test Developer
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { messageApi, type SendMessageRequest } from '@/api/message';
+iimport { MockFactory } from '@helpers/mockFactory';
+mport { messageApi, type SendMessageRequest } from '@/api/message';
 import { apiClient } from '@/api/base';
 
 // Mock the base API client
@@ -21,8 +22,12 @@ describe('Messages API Tests', () => {
     vi.clearAllMocks();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('Message List Retrieval', () => {
-    it('should get messages for conversation', async () => {
+    test('should get messages for conversation', async () => {
       const conversationId = 'conv-123';
       const mockMessages = [
         {
@@ -62,7 +67,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle empty message list', async () => {
+    test('should handle empty message list', async () => {
       const conversationId = 'conv-empty';
       const mockResponse = {
         success: true,
@@ -77,7 +82,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle conversation not found', async () => {
+    test('should handle conversation not found', async () => {
       const conversationId = 'non-existent';
       const mockResponse = {
         success: false,
@@ -93,7 +98,7 @@ describe('Messages API Tests', () => {
   });
 
   describe('Message Sending', () => {
-    it('should send text message to LINE platform', async () => {
+    test('should send text message to LINE platform', async () => {
       const conversationId = 'conv-123';
       const messageData: SendMessageRequest = {
         content: 'Thank you for contacting us!',
@@ -128,7 +133,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should send text message to Facebook platform', async () => {
+    test('should send text message to Facebook platform', async () => {
       const conversationId = 'conv-456';
       const messageData: SendMessageRequest = {
         content: 'We will help you shortly',
@@ -163,7 +168,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle message sending failure', async () => {
+    test('should handle message sending failure', async () => {
       const conversationId = 'conv-123';
       const messageData: SendMessageRequest = {
         content: 'Test message',
@@ -182,7 +187,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle platform-specific sending errors', async () => {
+    test('should handle platform-specific sending errors', async () => {
       const conversationId = 'conv-123';
       const messageData: SendMessageRequest = {
         content: 'Test message',
@@ -201,7 +206,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should validate message content length', async () => {
+    test('should validate message content length', async () => {
       const conversationId = 'conv-123';
       const longContent = 'A'.repeat(5001); // Assuming 5000 char limit
       const messageData: SendMessageRequest = {
@@ -223,7 +228,7 @@ describe('Messages API Tests', () => {
   });
 
   describe('Mark as Read Functionality', () => {
-    it('should mark messages as read', async () => {
+    test('should mark messages as read', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -241,7 +246,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle mark as read failure', async () => {
+    test('should handle mark as read failure', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -256,7 +261,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle unauthorized mark as read', async () => {
+    test('should handle unauthorized mark as read', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -273,7 +278,7 @@ describe('Messages API Tests', () => {
   });
 
   describe('Request Format Validation', () => {
-    it('should send message with correct request format', async () => {
+    test('should send message with correct request format', async () => {
       const conversationId = 'conv-test';
       const messageData: SendMessageRequest = {
         content: 'Hello world',
@@ -296,7 +301,7 @@ describe('Messages API Tests', () => {
       );
     });
 
-    it('should validate platform parameter', async () => {
+    test('should validate platform parameter', async () => {
       const conversationId = 'conv-test';
       const messageData: SendMessageRequest = {
         content: 'Test message',
@@ -314,7 +319,7 @@ describe('Messages API Tests', () => {
       expect(['line', 'facebook', 'instagram', 'whatsapp']).toContain(callArgs.platform);
     });
 
-    it('should handle empty message content', async () => {
+    test('should handle empty message content', async () => {
       const conversationId = 'conv-test';
       const messageData: SendMessageRequest = {
         content: '',
@@ -335,7 +340,7 @@ describe('Messages API Tests', () => {
   });
 
   describe('Response Data Transformation', () => {
-    it('should return properly typed message response', async () => {
+    test('should return properly typed message response', async () => {
       const conversationId = 'conv-123';
       const messageData: SendMessageRequest = {
         content: 'Type test message',
@@ -377,7 +382,7 @@ describe('Messages API Tests', () => {
       }
     });
 
-    it('should return properly typed message list response', async () => {
+    test('should return properly typed message list response', async () => {
       const conversationId = 'conv-123';
       const mockMessages = [
         {
@@ -418,7 +423,7 @@ describe('Messages API Tests', () => {
   });
 
   describe('Error Scenarios', () => {
-    it('should handle network timeout', async () => {
+    test('should handle network timeout', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -433,7 +438,7 @@ describe('Messages API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle server error during message send', async () => {
+    test('should handle server error during message send', async () => {
       const conversationId = 'conv-123';
       const messageData: SendMessageRequest = {
         content: 'Test message',

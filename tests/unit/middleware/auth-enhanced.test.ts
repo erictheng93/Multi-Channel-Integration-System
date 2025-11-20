@@ -7,6 +7,7 @@ import {
   requireAdmin 
 } from '@backend/middleware/auth';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock the PermissionService
 vi.mock('@backend/services/permission-service', () => ({
   PermissionService: {
@@ -33,6 +34,10 @@ describe('Enhanced Authentication Middleware', () => {
     vi.clearAllMocks();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('requireRoleLevel', () => {
     test('should allow access when user has sufficient role level', async () => {
       const mockUser = { role: 'admin' };

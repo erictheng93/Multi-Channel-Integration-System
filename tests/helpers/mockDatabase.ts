@@ -126,4 +126,5 @@ export function createMockStatement(overrides?: Partial<MockD1Statement>): MockD
 
 // Export new refactored test helpers
 export { MockDatabaseFactory } from './MockDatabaseFactory'
-export { DatabaseTestHelper } from './DatabaseTestHelper'
+// Note: DatabaseTestEnvironment is the modern replacement for test database setup
+// Import it directly: import { DatabaseTestEnvironment } from './DatabaseTestEnvironment'

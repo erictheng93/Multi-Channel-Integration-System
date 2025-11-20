@@ -2,7 +2,8 @@
  * LatestMessageCacheCoordinator Durable Object Unit Tests
  *
  * Comprehensive test suite for the latest message cache coordinator
- * Tests all functionality including:
+ * Tests all functionality includingimport { MockFactory } from '@helpers/mockFactory';
+:
  * - Batched cache update scheduling (5-second window)
  * - Immediate cache invalidation
  * - Cache warmup functionality
@@ -130,7 +131,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Schedule Update Endpoint', () => {
-    it('should schedule a cache update successfully', async () => {
+    test('should schedule a cache update successfully', async () => {
       const request = new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({
@@ -154,7 +155,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(mockState.storage.put).toHaveBeenCalledWith('stats', expect.any(Object));
     });
 
-    it('should reject schedule request without conversationId', async () => {
+    test('should reject schedule request without conversationId', async () => {
       const request = new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ priority: 'high' }),
@@ -169,7 +170,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.error).toContain('conversationId is required');
     });
 
-    it('should use default priority if not specified', async () => {
+    test('should use default priority if not specified', async () => {
       const request = new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_002' }),
@@ -183,7 +184,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should update existing queue entry for same conversation', async () => {
+    test('should update existing queue entry for same conversation', async () => {
       // Schedule first update
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
@@ -206,7 +207,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.queueSize).toBe(1); // Should still be 1, not 2
     });
 
-    it('should schedule alarm on first update', async () => {
+    test('should schedule alarm on first update', async () => {
       const setAlarmSpy = vi.spyOn(mockState.storage, 'setAlarm');
 
       await coordinator.fetch(new Request('http://test/schedule', {
@@ -217,7 +218,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(setAlarmSpy).toHaveBeenCalled();
     });
 
-    it('should not reschedule alarm if already scheduled', async () => {
+    test('should not reschedule alarm if already scheduled', async () => {
       // First update - should schedule alarm
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
@@ -237,7 +238,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(setAlarmSpy).not.toHaveBeenCalled();
     });
 
-    it('should handle multiple conversations in queue', async () => {
+    test('should handle multiple conversations in queue', async () => {
       const conversations = ['conv_007', 'conv_008', 'conv_009'];
 
       for (const convId of conversations) {
@@ -256,7 +257,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Invalidate Endpoint', () => {
-    it('should invalidate cache immediately', async () => {
+    test('should invalidate cache immediately', async () => {
       const request = new Request('http://test/invalidate', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_101' }),
@@ -271,7 +272,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.conversationId).toBe('conv_101');
     });
 
-    it('should reject invalidate request without conversationId', async () => {
+    test('should reject invalidate request without conversationId', async () => {
       const request = new Request('http://test/invalidate', {
         method: 'POST',
         body: JSON.stringify({}),
@@ -286,7 +287,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.error).toContain('conversationId is required');
     });
 
-    it('should handle cache service errors gracefully', async () => {
+    test('should handle cache service errors gracefully', async () => {
       // Mock cache service to throw error
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -311,7 +312,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Warmup Endpoint', () => {
-    it('should warmup cache with default limit', async () => {
+    test('should warmup cache with default limit', async () => {
       const request = new Request('http://test/warmup', {
         method: 'POST',
         body: JSON.stringify({}),
@@ -327,7 +328,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(typeof result.warmedUp).toBe('number');
     });
 
-    it('should warmup cache with custom limit', async () => {
+    test('should warmup cache with custom limit', async () => {
       const request = new Request('http://test/warmup', {
         method: 'POST',
         body: JSON.stringify({ limit: 50 }),
@@ -341,7 +342,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle warmup errors gracefully', async () => {
+    test('should handle warmup errors gracefully', async () => {
       // Mock cache service to throw error
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -363,7 +364,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should handle invalid JSON in warmup request', async () => {
+    test('should handle invalid JSON in warmup request', async () => {
       const request = new Request('http://test/warmup', {
         method: 'POST',
         body: 'invalid',
@@ -377,7 +378,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Status Endpoint', () => {
-    it('should return coordinator status', async () => {
+    test('should return coordinator status', async () => {
       // Schedule some updates first
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
@@ -400,7 +401,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.stats).toHaveProperty('averageProcessingTime');
     });
 
-    it('should show next alarm time when scheduled', async () => {
+    test('should show next alarm time when scheduled', async () => {
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_202' })
@@ -413,7 +414,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(typeof status.nextAlarmAt).toBe('string');
     });
 
-    it('should show null alarm time when not scheduled', async () => {
+    test('should show null alarm time when not scheduled', async () => {
       const statusResponse = await coordinator.fetch(new Request('http://test/status'));
       const status = await statusResponse.json();
 
@@ -423,7 +424,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Stats Endpoint', () => {
-    it('should return processing statistics', async () => {
+    test('should return processing statistics', async () => {
       const request = new Request('http://test/stats');
       const response = await coordinator.fetch(request);
       expect(response.status).toBe(200);
@@ -439,14 +440,14 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.stats).toHaveProperty('averageProcessingTime');
     });
 
-    it('should show N/A success rate when no messages processed', async () => {
+    test('should show N/A success rate when no messages processed', async () => {
       const statsResponse = await coordinator.fetch(new Request('http://test/stats'));
       const stats = await statsResponse.json();
 
       expect(stats.stats.successRate).toBe('N/A');
     });
 
-    it('should calculate success rate correctly after processing', async () => {
+    test('should calculate success rate correctly after processing', async () => {
       // Schedule and process updates
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
@@ -465,7 +466,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Queue Endpoint', () => {
-    it('should return empty queue initially', async () => {
+    test('should return empty queue initially', async () => {
       const request = new Request('http://test/queue');
       const response = await coordinator.fetch(request);
       expect(response.status).toBe(200);
@@ -476,7 +477,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.queue).toEqual([]);
     });
 
-    it('should list queued updates', async () => {
+    test('should list queued updates', async () => {
       // Schedule multiple updates
       const conversations = ['conv_401', 'conv_402', 'conv_403'];
 
@@ -502,7 +503,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(queue.queue[0]).toHaveProperty('retryCount');
     });
 
-    it('should show retry count in queue items', async () => {
+    test('should show retry count in queue items', async () => {
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_404' })
@@ -516,7 +517,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Manual Alarm Trigger', () => {
-    it('should trigger alarm manually', async () => {
+    test('should trigger alarm manually', async () => {
       // Schedule an update
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
@@ -537,7 +538,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Alarm Handler - Batch Processing', () => {
-    it('should process all queued updates on alarm', async () => {
+    test('should process all queued updates on alarm', async () => {
       // Schedule multiple updates
       const conversations = ['conv_601', 'conv_602', 'conv_603'];
 
@@ -559,7 +560,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(status.stats.totalProcessed).toBe(3);
     });
 
-    it('should handle empty queue gracefully', async () => {
+    test('should handle empty queue gracefully', async () => {
       // Trigger alarm with empty queue
       await expect(coordinator.alarm()).resolves.not.toThrow();
 
@@ -569,7 +570,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(status.queueSize).toBe(0);
     });
 
-    it('should update statistics after processing', async () => {
+    test('should update statistics after processing', async () => {
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_604' })
@@ -585,7 +586,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(stats.stats.averageProcessingTime).toBeGreaterThanOrEqual(0);
     });
 
-    it('should save state after processing', async () => {
+    test('should save state after processing', async () => {
       const putSpy = vi.spyOn(mockState.storage, 'put');
 
       await coordinator.fetch(new Request('http://test/schedule', {
@@ -602,7 +603,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(putSpy).toHaveBeenCalledWith('updateQueue', expect.any(Array));
     });
 
-    it('should reset alarm scheduled flag after processing', async () => {
+    test('should reset alarm scheduled flag after processing', async () => {
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_606' })
@@ -619,7 +620,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Retry Mechanism', () => {
-    it('should retry failed updates up to max retries', async () => {
+    test('should retry failed updates up to max retries', async () => {
       // Mock cache service to fail
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -661,7 +662,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(status2.queueSize).toBe(0); // Successfully processed
     });
 
-    it('should remove message after max retries exceeded', async () => {
+    test('should remove message after max retries exceeded', async () => {
       // Mock cache service to always fail
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -690,7 +691,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(status.stats.failedUpdates).toBeGreaterThan(0);
     });
 
-    it('should reschedule alarm when retries remaining', async () => {
+    test('should reschedule alarm when retries remaining', async () => {
       // Mock cache service to fail once
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -717,7 +718,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('WebSocket Broadcasting', () => {
-    it('should broadcast update after successful processing', async () => {
+    test('should broadcast update after successful processing', async () => {
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_801' })
@@ -738,7 +739,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       );
     });
 
-    it('should not fail processing if broadcast fails', async () => {
+    test('should not fail processing if broadcast fails', async () => {
       // Mock broadcaster to fail
       const failingBroadcaster = {
         fetch: vi.fn().mockRejectedValue(new Error('Broadcast failed'))
@@ -761,7 +762,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(status.stats.successfulUpdates).toBeGreaterThan(0);
     });
 
-    it('should handle missing broadcaster gracefully', async () => {
+    test('should handle missing broadcaster gracefully', async () => {
       // Remove broadcaster from env
       mockEnv.MESSAGE_BROADCASTER = null;
 
@@ -777,7 +778,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('State Persistence and Recovery', () => {
-    it('should restore queue from storage on initialization', async () => {
+    test('should restore queue from storage on initialization', async () => {
       const mockQueue = [
         ['conv_901', {
           conversationId: 'conv_901',
@@ -820,7 +821,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(status.stats.totalProcessed).toBe(10);
     });
 
-    it('should restore stats from storage on initialization', async () => {
+    test('should restore stats from storage on initialization', async () => {
       const mockStats = {
         totalProcessed: 100,
         successfulUpdates: 95,
@@ -848,18 +849,30 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(stats.stats.failedUpdates).toBe(5);
     });
 
-    it('should handle storage errors during restoration gracefully', async () => {
+    test('should handle storage errors during restoration gracefully', async () => {
       const newId = new MockDurableObjectId('test_restore_error');
       const newState = new MockDurableObjectState(newId);
-      newState.storage.get = vi.fn().mockRejectedValue(new Error('Storage error'));
 
-      // Should not throw during initialization
-      expect(() => new LatestMessageCacheCoordinator(newState, mockEnv)).not.toThrow();
+      // Mock storage.get to reject with error, but ensure it's handled
+      const storageError = new Error('Storage error');
+      newState.storage.get = vi.fn().mockRejectedValue(storageError);
+
+      // Create coordinator - should not throw synchronously
+      let coordinator: LatestMessageCacheCoordinator | null = null;
+      expect(() => {
+        coordinator = new LatestMessageCacheCoordinator(newState, mockEnv);
+      }).not.toThrow();
+
+      // Wait a tick to allow any async initialization to complete
+      await new Promise(resolve => setImmediate(resolve));
+
+      // Coordinator should be created successfully despite storage error
+      expect(coordinator).not.toBeNull();
     });
   });
 
   describe('Error Handling', () => {
-    it('should return 404 for unknown endpoints', async () => {
+    test('should return 404 for unknown endpoints', async () => {
       const request = new Request('http://test/unknown');
       const response = await coordinator.fetch(request);
 
@@ -867,7 +880,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(await response.text()).toBe('Not found');
     });
 
-    it('should handle malformed JSON gracefully', async () => {
+    test('should handle malformed JSON gracefully', async () => {
       const request = new Request('http://test/schedule', {
         method: 'POST',
         body: 'invalid json{',
@@ -883,7 +896,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(result.error).toBeDefined();
     });
 
-    it('should handle cache processing errors', async () => {
+    test('should handle cache processing errors', async () => {
       // Mock cache service to throw error
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -908,7 +921,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       expect(stats.stats.failedUpdates).toBeGreaterThan(0);
     });
 
-    it('should handle missing latest message gracefully', async () => {
+    test('should handle missing latest message gracefully', async () => {
       // Mock cache service to return null
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');
       const mockCache = {
@@ -930,7 +943,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Priority Handling', () => {
-    it('should accept different priority levels', async () => {
+    test('should accept different priority levels', async () => {
       const priorities: Array<'low' | 'normal' | 'high'> = ['low', 'normal', 'high'];
 
       for (const priority of priorities) {
@@ -956,7 +969,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
   });
 
   describe('Configuration Constants', () => {
-    it('should use 5-second batch delay', async () => {
+    test('should use 5-second batch delay', async () => {
       await coordinator.fetch(new Request('http://test/schedule', {
         method: 'POST',
         body: JSON.stringify({ conversationId: 'conv_config_001' })
@@ -979,7 +992,7 @@ describe('LatestMessageCacheCoordinator Durable Object', () => {
       }
     });
 
-    it('should use max 3 retry attempts', async () => {
+    test('should use max 3 retry attempts', async () => {
       // This is implicitly tested by the retry mechanism tests
       // Just verify the constant is being used correctly
       const LatestMessageCache = await import('../../../src/services/latest-message-cache');

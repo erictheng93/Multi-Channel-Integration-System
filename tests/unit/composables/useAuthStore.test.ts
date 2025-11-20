@@ -62,25 +62,25 @@ describe('FINAL Working Auth Store Tests', () => {
   })
 
   describe('initial state', () => {
-    it('should initialize with null token when localStorage is empty', async () => {
+    test('should initialize with null token when localStorage is empty', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       expect(authStore.token).toBeNull()
     })
 
-    it('should initialize with null currentAgent', async () => {
+    test('should initialize with null currentAgent', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       expect(authStore.currentAgent).toBeNull()
     })
 
-    it('should initialize with loading false', async () => {
+    test('should initialize with loading false', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       expect(authStore.loading).toBe(false)
     })
 
-    it('should initialize with null error', async () => {
+    test('should initialize with null error', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       expect(authStore.error).toBeNull()
@@ -89,14 +89,14 @@ describe('FINAL Working Auth Store Tests', () => {
 
   describe('computed properties', () => {
     describe('isAuthenticated', () => {
-      it('should return false when token is null', async () => {
+      test('should return false when token is null', async () => {
         const { useAuthStore } = await import('../../../frontend/src/stores/auth')
         const authStore = useAuthStore(pinia)
         authStore.token = null
         expect(authStore.isAuthenticated).toBe(false)
       })
 
-      it('should return true when token exists', async () => {
+      test('should return true when token exists', async () => {
         const { useAuthStore } = await import('../../../frontend/src/stores/auth')
         const authStore = useAuthStore(pinia)
         authStore.token = 'valid-token'
@@ -105,14 +105,14 @@ describe('FINAL Working Auth Store Tests', () => {
     })
 
     describe('isAdmin', () => {
-      it('should return false when currentAgent is null', async () => {
+      test('should return false when currentAgent is null', async () => {
         const { useAuthStore } = await import('../../../frontend/src/stores/auth')
         const authStore = useAuthStore(pinia)
         authStore.currentAgent = null
         expect(authStore.isAdmin).toBe(false)
       })
 
-      it('should return true when currentAgent role is admin', async () => {
+      test('should return true when currentAgent role is admin', async () => {
         const { useAuthStore } = await import('../../../frontend/src/stores/auth')
         const authStore = useAuthStore(pinia)
         authStore.currentAgent = {
@@ -153,7 +153,7 @@ describe('FINAL Working Auth Store Tests', () => {
       }
     }
 
-    it('should login successfully with valid credentials', async () => {
+    test('should login successfully with valid credentials', async () => {
       vi.mocked(mockAuthApi.login).mockResolvedValue(mockSuccessResponse)
 
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
@@ -168,7 +168,7 @@ describe('FINAL Working Auth Store Tests', () => {
       expect(authStore.error).toBeNull()
     })
 
-    it('should handle login failure with error message', async () => {
+    test('should handle login failure with error message', async () => {
       const mockFailureResponse = {
         success: false,
         error: '登入失敗：密碼錯誤'
@@ -187,7 +187,7 @@ describe('FINAL Working Auth Store Tests', () => {
       expect(authStore.loading).toBe(false)
     })
 
-    it('should handle network error during login', async () => {
+    test('should handle network error during login', async () => {
       vi.mocked(mockAuthApi.login).mockRejectedValue(new Error('Network error'))
 
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
@@ -202,7 +202,7 @@ describe('FINAL Working Auth Store Tests', () => {
   })
 
   describe('logout', () => {
-    it('should clear all auth state on logout', async () => {
+    test('should clear all auth state on logout', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       
@@ -242,7 +242,7 @@ describe('FINAL Working Auth Store Tests', () => {
       }
     }
 
-    it('should fetch current agent when token exists', async () => {
+    test('should fetch current agent when token exists', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       
@@ -255,7 +255,7 @@ describe('FINAL Working Auth Store Tests', () => {
       expect(mockAuthApi.me).toHaveBeenCalled()
     })
 
-    it('should not fetch when token is null', async () => {
+    test('should not fetch when token is null', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const authStore = useAuthStore(pinia)
       

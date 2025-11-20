@@ -2,7 +2,8 @@
 // 測試統一即時通訊模組的端到端功能
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { realtime } from '@modules/realtime';
+import import { MockFactory } from '@helpers/mockFactory';
+{ realtime } from '@modules/realtime';
 
 describe('Realtime Module Integration', () => {
   let mockEnv: any;
@@ -40,7 +41,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Module Initialization', () => {
-    it('should initialize realtime module successfully', async () => {
+    test('should initialize realtime module successfully', async () => {
       const manager = await realtime.initialize(mockEnv, {
         enableEventDriven: true,
         enableQueueProcessing: true
@@ -50,7 +51,7 @@ describe('Realtime Module Integration', () => {
       expect(manager.constructor.name).toBe('RealtimeManager');
     });
 
-    it('should initialize with custom configuration', async () => {
+    test('should initialize with custom configuration', async () => {
       const customConfig = {
         version: 'v2',
         enableEventDriven: true,
@@ -62,7 +63,7 @@ describe('Realtime Module Integration', () => {
       expect(manager).toBeDefined();
     });
 
-    it('should handle initialization errors gracefully', async () => {
+    test('should handle initialization errors gracefully', async () => {
       const invalidEnv = null;
 
       // Service initializes even with null env (doesn't throw)
@@ -73,7 +74,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Event Creation and Processing', () => {
-    it('should create events with queue processing enabled', async () => {
+    test('should create events with queue processing enabled', async () => {
       await realtime.initialize(mockEnv, { enableQueueProcessing: true });
 
       const result = await realtime.createEvent(
@@ -92,7 +93,7 @@ describe('Realtime Module Integration', () => {
       expect(typeof result.processingTime).toBe('number');
     });
 
-    it('should create events with KV storage when queue disabled', async () => {
+    test('should create events with KV storage when queue disabled', async () => {
       await realtime.initialize(mockEnv, { enableQueueProcessing: false });
 
       const result = await realtime.createEvent(
@@ -113,7 +114,7 @@ describe('Realtime Module Integration', () => {
       expect(typeof result.queueDelivered).toBe('boolean');
     });
 
-    it('should handle different event types', async () => {
+    test('should handle different event types', async () => {
       await realtime.initialize(mockEnv);
 
       const eventTypes = ['message', 'typing_status', 'notification', 'agent_joined'];
@@ -131,7 +132,7 @@ describe('Realtime Module Integration', () => {
       }
     });
 
-    it('should handle different priority levels', async () => {
+    test('should handle different priority levels', async () => {
       await realtime.initialize(mockEnv);
 
       const priorities = ['low', 'normal', 'high'];
@@ -151,7 +152,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Service Integration', () => {
-    it('should create realtime services successfully', async () => {
+    test('should create realtime services successfully', async () => {
       const services = realtime.services;
 
       expect(services.manager).toBeDefined();
@@ -163,7 +164,7 @@ describe('Realtime Module Integration', () => {
       expect(queue).toBeDefined();
     });
 
-    it('should maintain singleton pattern for manager', () => {
+    test('should maintain singleton pattern for manager', () => {
       const manager1 = realtime.services.manager;
       const manager2 = realtime.services.manager;
 
@@ -172,7 +173,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Handler Integration', () => {
-    it('should provide access to all handlers', () => {
+    test('should provide access to all handlers', () => {
       const handlers = realtime.handlers;
 
       expect(handlers.main).toBeDefined();
@@ -187,7 +188,7 @@ describe('Realtime Module Integration', () => {
       expect(handlers.management.healthCheck).toBeDefined();
     });
 
-    it('should integrate with middleware system', async () => {
+    test('should integrate with middleware system', async () => {
       const middleware = await realtime.middleware();
 
       expect(middleware.sse).toBeDefined();
@@ -203,7 +204,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Monitoring Integration', () => {
-    it('should provide monitoring capabilities', () => {
+    test('should provide monitoring capabilities', () => {
       const monitoring = realtime.monitoring;
 
       expect(monitoring.performance).toBeDefined();
@@ -214,7 +215,7 @@ describe('Realtime Module Integration', () => {
       expect(monitoring.config).toBeDefined();
     });
 
-    it('should initialize performance monitoring', () => {
+    test('should initialize performance monitoring', () => {
       const performanceMonitor = realtime.monitoring.performance;
 
       expect(performanceMonitor.getLatestMetrics).toBeDefined();
@@ -223,7 +224,7 @@ describe('Realtime Module Integration', () => {
       expect(performanceMonitor.getPerformanceSummary).toBeDefined();
     });
 
-    it('should collect performance metrics', async () => {
+    test('should collect performance metrics', async () => {
       const performanceMonitor = realtime.monitoring.performance;
       performanceMonitor.initialize(mockEnv);
 
@@ -242,7 +243,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Status and Health', () => {
-    it('should provide system status', async () => {
+    test('should provide system status', async () => {
       await realtime.initialize(mockEnv);
 
       const status = await realtime.getStatus();
@@ -255,7 +256,7 @@ describe('Realtime Module Integration', () => {
       // queue is optional
     });
 
-    it('should handle status retrieval errors', async () => {
+    test('should handle status retrieval errors', async () => {
       // 不初始化直接獲取狀態
       const status = await realtime.getStatus();
 
@@ -265,14 +266,14 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Configuration Management', () => {
-    it('should apply default configuration', () => {
+    test('should apply default configuration', () => {
       const defaultConfig = realtime.getConfig?.() || {};
 
       // 檢查是否有預設配置
       expect(typeof defaultConfig).toBe('object');
     });
 
-    it('should handle configuration updates', async () => {
+    test('should handle configuration updates', async () => {
       const manager = await realtime.initialize(mockEnv);
 
       // 測試配置更新（如果有此功能）
@@ -292,7 +293,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Error Handling and Resilience', () => {
-    it('should handle service failures gracefully', async () => {
+    test('should handle service failures gracefully', async () => {
       // Mock service failure
       mockEnv.SESSIONS.put.mockRejectedValue(new Error('Storage unavailable'));
 
@@ -314,7 +315,7 @@ describe('Realtime Module Integration', () => {
     // Queue functionality replaced by Durable Objects (MessageBroadcaster, LatestMessageCacheCoordinator)
     // Error handling for Durable Objects tested in separate DO-specific test files
 
-    it('should provide fallback mechanisms', async () => {
+    test('should provide fallback mechanisms', async () => {
       await realtime.initialize(mockEnv);
 
       // 測試版本回退
@@ -327,7 +328,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Cross-Service Communication', () => {
-    it('should integrate with other system components', async () => {
+    test('should integrate with other system components', async () => {
       await realtime.initialize(mockEnv);
 
       // 測試與認證系統的整合
@@ -337,7 +338,7 @@ describe('Realtime Module Integration', () => {
       }
     });
 
-    it('should handle cross-service events', async () => {
+    test('should handle cross-service events', async () => {
       await realtime.initialize(mockEnv);
 
       // 創建跨服務事件
@@ -360,7 +361,7 @@ describe('Realtime Module Integration', () => {
   });
 
   describe('Performance and Scalability', () => {
-    it('should handle multiple concurrent events', async () => {
+    test('should handle multiple concurrent events', async () => {
       await realtime.initialize(mockEnv);
 
       const events = Array.from({ length: 10 }, (_, i) =>
@@ -379,7 +380,7 @@ describe('Realtime Module Integration', () => {
       expect(successful.length).toBeGreaterThan(0);
     });
 
-    it('should handle high-frequency events', async () => {
+    test('should handle high-frequency events', async () => {
       await realtime.initialize(mockEnv);
 
       const startTime = Date.now();

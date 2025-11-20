@@ -68,7 +68,7 @@ const createMockContext = (method: string = 'GET', path: string = '/', body?: an
 
 describe('API 標準化測試', () => {
   describe('響應格式標準化', () => {
-    it('成功響應應該包含標準字段', async () => {
+    test('成功響應應該包含標準字段', async () => {
       const { successResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -83,7 +83,7 @@ describe('API 標準化測試', () => {
       expect(data.requestId).toMatch(/^req_\d+_[a-z0-9]+$/)
     })
 
-    it('錯誤響應應該包含標準字段', async () => {
+    test('錯誤響應應該包含標準字段', async () => {
       const { errorResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -97,7 +97,7 @@ describe('API 標準化測試', () => {
       expect(response.status).toBe(400)
     })
 
-    it('分頁響應應該包含分頁信息', async () => {
+    test('分頁響應應該包含分頁信息', async () => {
       const { paginatedResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -118,7 +118,7 @@ describe('API 標準化測試', () => {
       expect(data.pagination).toHaveProperty('hasPrev', false)
     })
 
-    it('驗證錯誤響應應該包含詳細錯誤信息', async () => {
+    test('驗證錯誤響應應該包含詳細錯誤信息', async () => {
       const { validationErrorResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -139,7 +139,7 @@ describe('API 標準化測試', () => {
   })
 
   describe('處理器標準化測試', () => {
-    it('認證處理器應該使用標準響應', async () => {
+    test('認證處理器應該使用標準響應', async () => {
       const { authHandler } = await import('../src/handlers/auth')
       const mockContext = createMockContext('POST', '/auth/login', {
         email: 'test@example.com',
@@ -168,7 +168,7 @@ describe('API 標準化測試', () => {
       expect(data).toHaveProperty('requestId')
     })
 
-    it('對話處理器應該使用標準響應', async () => {
+    test('對話處理器應該使用標準響應', async () => {
       const { conversationHandler } = await import('../src/handlers/conversation')
       const mockContext = createMockContext('GET', '/conversations')
       
@@ -184,7 +184,7 @@ describe('API 標準化測試', () => {
       }
     })
 
-    it('訊息處理器應該使用標準響應', async () => {
+    test('訊息處理器應該使用標準響應', async () => {
       const { messageHandler } = await import('../src/handlers/message')
       const mockContext = createMockContext('GET', '/conversations/test-id/messages')
       
@@ -196,7 +196,7 @@ describe('API 標準化測試', () => {
       expect(data).toHaveProperty('requestId')
     })
 
-    it('附件處理器應該使用標準響應', async () => {
+    test('附件處理器應該使用標準響應', async () => {
       const { attachmentHandler } = await import('../src/handlers/attachment')
       const mockContext = createMockContext('GET', '/conversations/test-id/attachments/test-attachment-id')
       
@@ -208,7 +208,7 @@ describe('API 標準化測試', () => {
       expect(data).toHaveProperty('requestId')
     })
 
-    it('系統處理器應該使用標準響應', async () => {
+    test('系統處理器應該使用標準響應', async () => {
       const { getSystemInfo } = await import('../src/handlers/system')
       const mockContext = createMockContext('GET', '/system/info')
       
@@ -220,7 +220,7 @@ describe('API 標準化測試', () => {
       expect(data).toHaveProperty('requestId')
     })
 
-    it('團隊處理器應該使用標準響應', async () => {
+    test('團隊處理器應該使用標準響應', async () => {
       const { getTeamMembers } = await import('../src/handlers/team')
       const mockContext = createMockContext('GET', '/team/members')
       
@@ -234,7 +234,7 @@ describe('API 標準化測試', () => {
   })
 
   describe('錯誤處理標準化測試', () => {
-    it('應該正確處理未授權錯誤', async () => {
+    test('應該正確處理未授權錯誤', async () => {
       const { unauthorizedResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -246,7 +246,7 @@ describe('API 標準化測試', () => {
       expect(response.status).toBe(401)
     })
 
-    it('應該正確處理禁止訪問錯誤', async () => {
+    test('應該正確處理禁止訪問錯誤', async () => {
       const { forbiddenResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -258,7 +258,7 @@ describe('API 標準化測試', () => {
       expect(response.status).toBe(403)
     })
 
-    it('應該正確處理資源未找到錯誤', async () => {
+    test('應該正確處理資源未找到錯誤', async () => {
       const { notFoundResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -270,7 +270,7 @@ describe('API 標準化測試', () => {
       expect(response.status).toBe(404)
     })
 
-    it('應該正確處理內部錯誤', async () => {
+    test('應該正確處理內部錯誤', async () => {
       const { internalErrorResponse } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -282,7 +282,7 @@ describe('API 標準化測試', () => {
       expect(response.status).toBe(500)
     })
 
-    it('handleApiError 應該正確處理不同類型的錯誤', async () => {
+    test('handleApiError 應該正確處理不同類型的錯誤', async () => {
       const { handleApiError } = await import('../src/utils/api-response')
       const mockContext = createMockContext()
       
@@ -301,7 +301,7 @@ describe('API 標準化測試', () => {
   })
 
   describe('類型定義一致性測試', () => {
-    it('共用類型應該正確導出', async () => {
+    test('共用類型應該正確導出', async () => {
       const apiTypes = await import('../shared/api-types')
       
       expect(apiTypes).toHaveProperty('API_ERROR_CODES')
@@ -312,7 +312,7 @@ describe('API 標準化測試', () => {
       expect(apiTypes.HTTP_STATUS).toHaveProperty('UNAUTHORIZED', 401)
     })
 
-    it('前端類型應該包含共用類型', async () => {
+    test('前端類型應該包含共用類型', async () => {
       const frontendTypes = await import('../frontend/src/types/index')
       
       expect(frontendTypes).toHaveProperty('API_ERROR_CODES')
@@ -322,7 +322,7 @@ describe('API 標準化測試', () => {
 })
 
 describe('API 客戶端標準化測試', () => {
-  it('現代化 API 客戶端應該正確處理標準響應', async () => {
+  test('現代化 API 客戶端應該正確處理標準響應', async () => {
     const { ModernApiClient } = await import('../frontend/src/api/modern-client')
     
     // 模擬 fetch
@@ -347,7 +347,7 @@ describe('API 客戶端標準化測試', () => {
     expect(response).toHaveProperty('status', 200)
   })
 
-  it('現代化 API 客戶端應該正確處理錯誤響應', async () => {
+  test('現代化 API 客戶端應該正確處理錯誤響應', async () => {
     const { ModernApiClient } = await import('../frontend/src/api/modern-client')
     
     // 模擬 fetch 錯誤響應

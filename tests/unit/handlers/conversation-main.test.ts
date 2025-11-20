@@ -1,5 +1,6 @@
 // 對話管理主要處理器測試 - Handler-based 架構
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEachimport { MockFactory } from '@helpers/mockFactory';
+, vi, afterEach } from 'vitest';
 
 // Mock problematic imports FIRST
 vi.mock('@modules/realtime', () => ({
@@ -121,6 +122,19 @@ vi.mock('drizzle-orm/d1', () => ({
   })
 }));
 
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
+}));
+
 describe('Conversation Main Handler', () => {
   let app: any;
   let mockPermissionService: any;
@@ -198,12 +212,15 @@ describe('Conversation Main Handler', () => {
       reason: 'Reassignment for better handling'
     };
 
-    it('should successfully assign conversation', async () => {
+    test('should successfully assign conversation', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
       mockError = null; // No error
 
       const response = await app.request(`/api/conversations/${conversationId}/assign`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assignRequest)
       });
@@ -222,7 +239,7 @@ describe('Conversation Main Handler', () => {
       );
     });
 
-    it('should reject assignment without permission', async () => {
+    test('should reject assignment without permission', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(false);
 
       const response = await app.request(`/api/conversations/${conversationId}/assign`, {
@@ -237,7 +254,7 @@ describe('Conversation Main Handler', () => {
       expect(result.error).toBe('Permission denied');
     });
 
-    it('should handle database errors', async () => {
+    test('should handle database errors', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
       mockError = new Error('Failed query: update "conversations" set "assigned_team_id" = ?, "assigned_user_id" = ?, "updated_at" = ? where "conversations"."id" = ?\nparams: 1,user-456,2025-09-08T13:39:50.723Z,123');
 
@@ -265,7 +282,7 @@ describe('Conversation Main Handler', () => {
       reason: 'Transfer to specialized team'
     };
 
-    it('should successfully transfer conversation', async () => {
+    test('should successfully transfer conversation', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
 
       // Mock drizzle查詢返回conversation數據
@@ -279,6 +296,8 @@ describe('Conversation Main Handler', () => {
 
       const response = await app.request(`/api/conversations/${conversationId}/transfer`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(transferRequest)
       });
@@ -297,7 +316,7 @@ describe('Conversation Main Handler', () => {
       );
     });
 
-    it('should reject transfer without permission', async () => {
+    test('should reject transfer without permission', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(false);
 
       const response = await app.request(`/api/conversations/${conversationId}/transfer`, {
@@ -314,7 +333,7 @@ describe('Conversation Main Handler', () => {
   });
 
   describe('GET /', () => {
-    it('should return visible conversations', async () => {
+    test('should return visible conversations', async () => {
       const mockConversations = [
         {
           id: 1,
@@ -367,7 +386,7 @@ describe('Conversation Main Handler', () => {
       expect(mockDbMethods.getConversationsByRole).toHaveBeenCalled();
     });
 
-    it('should return empty list when no visible conversations', async () => {
+    test('should return empty list when no visible conversations', async () => {
       mockPermissionService.getVisibleConversations.mockResolvedValue([]);
 
       const response = await app.request('/api/conversations');
@@ -379,7 +398,7 @@ describe('Conversation Main Handler', () => {
       expect(result.data.conversations).toEqual([]);
     });
 
-    it('should handle database errors', async () => {
+    test('should handle database errors', async () => {
       // Mock DatabaseService 拋出錯誤
       const dbError = new Error('Failed query: select "conversations"."id", "conversations"."customer_id", "conversations"."assigned_team_id", "conversations"."assigned_user_id", "conversations"."status", "conversations"."last_message_at", "conversations"."created_at", "conversations"."updated_at", "customers"."display_name", "customers"."platform", "customers"."platform_user_id" from "conversations" left join "customers" on "conversations"."customer_id" = "customers"."id" where "conversations"."id" in (?, ?) order by "conversations"."updated_at" desc\nparams: 1,2');
       mockDbMethods.getConversationsByRole.mockRejectedValue(dbError);
@@ -400,7 +419,7 @@ describe('Conversation Main Handler', () => {
   describe('GET /:id', () => {
     const conversationId = 123;
 
-    it('should return conversation details', async () => {
+    test('should return conversation details', async () => {
       const mockConversation = {
         id: conversationId,
         customerId: 'customer-123',
@@ -447,7 +466,7 @@ describe('Conversation Main Handler', () => {
       expect(mockDbMethods.getMessagesByConversationId).toHaveBeenCalled();
     });
 
-    it('should reject access without permission', async () => {
+    test('should reject access without permission', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(false);
       // Mock: access denied
       mockDbMethods.canAgentAccessConversation.mockResolvedValue(false);
@@ -460,7 +479,7 @@ describe('Conversation Main Handler', () => {
       expect(result.error).toBe('Access denied');
     });
 
-    it('should return 404 for non-existent conversation', async () => {
+    test('should return 404 for non-existent conversation', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
       // Mock: conversation not found
       mockDbMethods.canAgentAccessConversation.mockResolvedValue(true);
@@ -480,9 +499,11 @@ describe('Conversation Main Handler', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle JSON parsing errors', async () => {
+    test('should handle JSON parsing errors', async () => {
       const response = await app.request('/api/conversations/123/assign', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: 'invalid-json'
       });
@@ -490,7 +511,7 @@ describe('Conversation Main Handler', () => {
       expect(response.status).toBe(500);
     });
 
-    it('should handle permission service errors', async () => {
+    test('should handle permission service errors', async () => {
       mockPermissionService.checkPermission.mockRejectedValue(new Error('Permission service error'));
 
       const response = await app.request('/api/conversations/123/assign', {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { verifyLineSignature } from '@backend/utils/line';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('LINE Signature Verification - Advanced Tests', () => {
   const mockChannelSecret = 'test-channel-secret-123';
 
@@ -23,7 +24,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
   });
 
   describe('Real-world signature scenarios', () => {
-    it('should verify signature with actual LINE webhook payload', async () => {
+    test('should verify signature with actual LINE webhook payload', async () => {
       const realWebhookBody = JSON.stringify({
         destination: 'U1234567890abcdef1234567890abcdef',
         events: [
@@ -68,7 +69,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       );
     });
 
-    it('should handle empty webhook body', async () => {
+    test('should handle empty webhook body', async () => {
       const emptyBody = '';
       const signature = 'sha256=empty-signature';
 
@@ -81,7 +82,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       expect(result).toBe(true);
     });
 
-    it('should handle webhook body with special characters', async () => {
+    test('should handle webhook body with special characters', async () => {
       const bodyWithSpecialChars = JSON.stringify({
         events: [{
           message: {
@@ -103,7 +104,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
   });
 
   describe('Security edge cases', () => {
-    it('should reject signature with wrong prefix', async () => {
+    test('should reject signature with wrong prefix', async () => {
       const body = '{"test": "data"}';
       const signature = 'md5=wrong-prefix-signature';
 
@@ -120,7 +121,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       expect(mockCrypto.subtle.importKey).toHaveBeenCalled();
     });
 
-    it('should handle signature timing attack prevention', async () => {
+    test('should handle signature timing attack prevention', async () => {
       const body = '{"test": "data"}';
       const validSignature = 'valid-signature';
       const invalidSignature = 'invalid-signature';
@@ -143,7 +144,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       expect(mockCrypto.subtle.sign).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle malformed base64 signature', async () => {
+    test('should handle malformed base64 signature', async () => {
       const body = '{"test": "data"}';
       
       mockCrypto.subtle.importKey.mockResolvedValue('mock-key');
@@ -164,7 +165,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle very long channel secret', async () => {
+    test('should handle very long channel secret', async () => {
       const longChannelSecret = 'a'.repeat(1000);
       const body = '{"test": "data"}';
       const signature = 'sha256=test-signature';
@@ -187,7 +188,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
   });
 
   describe('Crypto API error handling', () => {
-    it('should handle importKey failure', async () => {
+    test('should handle importKey failure', async () => {
       const body = '{"test": "data"}';
       const signature = 'sha256=test-signature';
 
@@ -203,7 +204,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle sign operation failure', async () => {
+    test('should handle sign operation failure', async () => {
       const body = '{"test": "data"}';
       const signature = 'sha256=test-signature';
 
@@ -220,7 +221,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle missing crypto API', async () => {
+    test('should handle missing crypto API', async () => {
       // Temporarily remove crypto API
       const originalCrypto = global.crypto;
       delete (global as any).crypto;
@@ -242,7 +243,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
   });
 
   describe('Performance and edge cases', () => {
-    it('should handle very large webhook payload', async () => {
+    test('should handle very large webhook payload', async () => {
       // Create a large payload (simulating bulk message events)
       const largeEvents = Array.from({ length: 100 }, (_, i) => ({
         type: 'message',
@@ -268,7 +269,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       );
     });
 
-    it('should handle concurrent signature verifications', async () => {
+    test('should handle concurrent signature verifications', async () => {
       const body1 = '{"test": "data1"}';
       const body2 = '{"test": "data2"}';
       const signature1 = 'sha256=signature1';

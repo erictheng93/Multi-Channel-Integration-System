@@ -49,6 +49,19 @@ vi.mock('../../../src/middleware/database', () => ({
   })
 }))
 
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
+}));
+
 describe('conversationHandler - Hono App Routes', () => {
   let app: Hono
   let mockDB: any
@@ -56,6 +69,7 @@ describe('conversationHandler - Hono App Routes', () => {
   let mockDbService: any
 
   beforeEach(() => {
+    vi.clearAllMocks();
     // Create fresh Hono app
     app = new Hono()
 
@@ -116,7 +130,7 @@ describe('conversationHandler - Hono App Routes', () => {
   })
 
   describe('GET / - List conversations', () => {
-    it('should return conversations list with default pagination', async () => {
+    test('should return conversations list with default pagination', async () => {
       const mockConversations = [
         {
           id: '1',
@@ -144,7 +158,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.data.conversations).toHaveLength(1)
     })
 
-    it('should handle custom pagination parameters', async () => {
+    test('should handle custom pagination parameters', async () => {
       mockDrizzle.mockQueryResponses([], 25)
 
       const response = await app.request('/api/conversations?page=2&pageSize=10')
@@ -154,7 +168,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should filter by status when provided', async () => {
+    test('should filter by status when provided', async () => {
       const closedConversations = [
         {
           id: '1',
@@ -179,7 +193,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mockDrizzle.mockError(new Error('Database connection failed'))
 
       const response = await app.request('/api/conversations')
@@ -191,7 +205,7 @@ describe('conversationHandler - Hono App Routes', () => {
   })
 
   describe('GET /:id - Get single conversation', () => {
-    it('should return a single conversation', async () => {
+    test('should return a single conversation', async () => {
       const mockConversation = {
         id: '1',
         customerId: 1,
@@ -217,7 +231,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.data.conversation.id).toBe('1')
     })
 
-    it('should return 404 when conversation not found', async () => {
+    test('should return 404 when conversation not found', async () => {
       // Set up mocks for non-existent conversation
       mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
       mockDbService.getConversationById.mockResolvedValueOnce(null)
@@ -230,7 +244,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.error).toBe('Conversation not found')
     })
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mockDrizzle.mockError(new Error('Database error'))
 
       const response = await app.request('/api/conversations/1')
@@ -242,11 +256,14 @@ describe('conversationHandler - Hono App Routes', () => {
   })
 
   describe('POST /:id/assign - Assign conversation', () => {
-    it('should assign conversation to specified agent', async () => {
+    test('should assign conversation to specified agent', async () => {
       mockDrizzle.mockUpdateResponse('conversations', 1)
 
       const response = await app.request('/api/conversations/1/assign', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentId: '3' })
       })
@@ -256,7 +273,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should assign conversation to current user when no agentId provided', async () => {
+    test('should assign conversation to current user when no agentId provided', async () => {
       mockDrizzle.mockUpdateResponse('conversations', 1)
 
       const response = await app.request('/api/conversations/1/assign', {
@@ -270,7 +287,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mockDrizzle.mockError(new Error('Database error'))
 
       const response = await app.request('/api/conversations/1/assign', {
@@ -286,11 +303,14 @@ describe('conversationHandler - Hono App Routes', () => {
   })
 
   describe('POST /:id/close - Close conversation', () => {
-    it('should close conversation successfully', async () => {
+    test('should close conversation successfully', async () => {
       mockDrizzle.mockUpdateResponse('conversations', 1)
 
       const response = await app.request('/api/conversations/1/close', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' }
       })
       const result = await response.json()
 
@@ -298,7 +318,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mockDrizzle.mockError(new Error('Database error'))
 
       const response = await app.request('/api/conversations/1/close', {
@@ -310,7 +330,7 @@ describe('conversationHandler - Hono App Routes', () => {
       expect(result.success).toBe(false)
     })
 
-    it('should update conversation status to closed', async () => {
+    test('should update conversation status to closed', async () => {
       let capturedUpdateData: any = null
 
       mockDrizzle.update = vi.fn(() => {

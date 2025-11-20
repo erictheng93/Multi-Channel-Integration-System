@@ -7,18 +7,24 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
 import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';
-import type { FileValidationMetadata } from '@modules/file-management/types/validation-types';
+import type { FileValidationMetadatimport { MockFactory } from '@helpers/mockFactory';
+a } from '@modules/file-management/types/validation-types';
 
 describe('FileValidationService', () => {
   let validationService: FileValidationService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     validationService = new FileValidationService();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('validateFile', () => {
     describe('Basic validation', () => {
-      it('should accept valid file', async () => {
+      test('should accept valid file', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'test.jpg',
           size: 100000, // 100KB
@@ -35,7 +41,7 @@ describe('FileValidationService', () => {
         expect(result.errors).toHaveLength(0);
       });
 
-      it('should reject file without filename', async () => {
+      test('should reject file without filename', async () => {
         const metadata: FileValidationMetadata = {
           filename: '',
           size: 100000,
@@ -57,7 +63,7 @@ describe('FileValidationService', () => {
         );
       });
 
-      it('should reject file without mime type', async () => {
+      test('should reject file without mime type', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'test.jpg',
           size: 100000,
@@ -81,7 +87,7 @@ describe('FileValidationService', () => {
     });
 
     describe('File size validation', () => {
-      it('should reject file that is too large', async () => {
+      test('should reject file that is too large', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'large.jpg',
           size: FILE_SIZE_LIMITS.MAX_FILE_SIZE + 1,
@@ -103,7 +109,7 @@ describe('FileValidationService', () => {
         );
       });
 
-      it('should reject file that is too small', async () => {
+      test('should reject file that is too small', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'tiny.jpg',
           size: FILE_SIZE_LIMITS.MIN_FILE_SIZE - 1,
@@ -125,7 +131,7 @@ describe('FileValidationService', () => {
         );
       });
 
-      it('should accept file within size limits', async () => {
+      test('should accept file within size limits', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'normal.jpg',
           size: 1024 * 1024, // 1MB
@@ -143,15 +149,15 @@ describe('FileValidationService', () => {
     });
 
     describe('MIME type validation', () => {
-      it('should accept allowed image MIME types', async () => {
+      test('should accept allowed image MIME types', async () => {
         const mimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
         for (const mimeType of mimeTypes) {
           const metadata: FileValidationMetadata = {
-            filename: `test.${mimeType.split('/')[1]}`,
+            filename: `test.${mimeType.spltest('/')[1]}`,
             size: 100000,
             mimeType,
-            extension: mimeType.split('/')[1]
+            extension: mimeType.spltest('/')[1]
           };
 
           const result = await validationService.validateFile(
@@ -163,7 +169,7 @@ describe('FileValidationService', () => {
         }
       });
 
-      it('should accept allowed document MIME types', async () => {
+      test('should accept allowed document MIME types', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'document.pdf',
           size: 100000,
@@ -179,7 +185,7 @@ describe('FileValidationService', () => {
         expect(result.valid).toBe(true);
       });
 
-      it('should reject prohibited MIME types when specified', async () => {
+      test('should reject prohibited MIME types when specified', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'test.exe',
           size: 100000,
@@ -209,7 +215,7 @@ describe('FileValidationService', () => {
     });
 
     describe('Extension validation', () => {
-      it('should reject prohibited extensions', async () => {
+      test('should reject prohibited extensions', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'test.exe',
           size: 100000,
@@ -231,7 +237,7 @@ describe('FileValidationService', () => {
         );
       });
 
-      it('should accept allowed extensions when specified', async () => {
+      test('should accept allowed extensions when specified', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'document.pdf',
           size: 100000,
@@ -253,7 +259,7 @@ describe('FileValidationService', () => {
         expect(result.valid).toBe(true);
       });
 
-      it('should reject disallowed extensions when whitelist is specified', async () => {
+      test('should reject disallowed extensions when whitelist is specified', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'test.txt',
           size: 100000,
@@ -283,7 +289,7 @@ describe('FileValidationService', () => {
     });
 
     describe('Platform-specific validation', () => {
-      it('should apply LINE platform rules', async () => {
+      test('should apply LINE platform rules', async () => {
         const rules = validationService.getRulesForPlatform('line');
 
         const metadata: FileValidationMetadata = {
@@ -303,7 +309,7 @@ describe('FileValidationService', () => {
         expect(result.valid).toBe(true);
       });
 
-      it('should apply Facebook platform rules', async () => {
+      test('should apply Facebook platform rules', async () => {
         const rules = validationService.getRulesForPlatform('facebook');
 
         const metadata: FileValidationMetadata = {
@@ -325,7 +331,7 @@ describe('FileValidationService', () => {
     });
 
     describe('Content validation', () => {
-      it('should detect size mismatch', async () => {
+      test('should detect size mismatch', async () => {
         const metadata: FileValidationMetadata = {
           filename: 'test.jpg',
           size: 100000,
@@ -351,7 +357,7 @@ describe('FileValidationService', () => {
   });
 
   describe('getRulesForPlatform', () => {
-    it('should return rules for LINE platform', () => {
+    test('should return rules for LINE platform', () => {
       const rules = validationService.getRulesForPlatform('line');
 
       expect(rules).toHaveProperty('maxSize');
@@ -359,14 +365,14 @@ describe('FileValidationService', () => {
       expect(Array.isArray(rules.allowedMimeTypes)).toBe(true);
     });
 
-    it('should return rules for Facebook platform', () => {
+    test('should return rules for Facebook platform', () => {
       const rules = validationService.getRulesForPlatform('facebook');
 
       expect(rules).toHaveProperty('maxSize');
       expect(rules).toHaveProperty('allowedMimeTypes');
     });
 
-    it('should return default rules for unknown platform', () => {
+    test('should return default rules for unknown platform', () => {
       const rules = validationService.getRulesForPlatform('unknown' as any);
 
       expect(rules).toHaveProperty('maxSize');
@@ -375,7 +381,7 @@ describe('FileValidationService', () => {
   });
 
   describe('getRulesForRuleSet', () => {
-    it('should return strict image rules', () => {
+    test('should return strict image rules', () => {
       const rules = validationService.getRulesForRuleSet('strict_image');
 
       expect(rules.maxSize).toBeLessThan(FILE_SIZE_LIMITS.MAX_FILE_SIZE);
@@ -383,14 +389,14 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toContain('image/png');
     });
 
-    it('should return basic document rules', () => {
+    test('should return basic document rules', () => {
       const rules = validationService.getRulesForRuleSet('basic_document');
 
       expect(rules.allowedMimeTypes).toContain('application/pdf');
       expect(rules.allowedMimeTypes).toContain('text/plain');
     });
 
-    it('should return media content rules', () => {
+    test('should return media content rules', () => {
       const rules = validationService.getRulesForRuleSet('media_content');
 
       expect(rules.allowedMimeTypes).toContain('image/jpeg');
@@ -398,7 +404,7 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toContain('audio/mpeg');
     });
 
-    it('should return system admin rules', () => {
+    test('should return system admin rules', () => {
       const rules = validationService.getRulesForRuleSet('system_admin');
 
       expect(rules.maxSize).toBeGreaterThan(FILE_SIZE_LIMITS.MAX_FILE_SIZE);
@@ -407,7 +413,7 @@ describe('FileValidationService', () => {
   });
 
   describe('validateQuick', () => {
-    it('should perform quick validation without content check', () => {
+    test('should perform quick validation without content check', () => {
       const metadata: FileValidationMetadata = {
         filename: 'test.jpg',
         size: 100000,
@@ -421,7 +427,7 @@ describe('FileValidationService', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should detect basic errors in quick validation', () => {
+    test('should detect basic errors in quick validation', () => {
       const metadata: FileValidationMetadata = {
         filename: 'test.jpg',
         size: FILE_SIZE_LIMITS.MAX_FILE_SIZE + 1,
@@ -441,7 +447,7 @@ describe('FileValidationService', () => {
   });
 
   describe('validateFiles', () => {
-    it('should validate multiple files', async () => {
+    test('should validate multiple files', async () => {
       const files = [
         {
           file: new ArrayBuffer(100000),
@@ -470,7 +476,7 @@ describe('FileValidationService', () => {
       expect(results[1].valid).toBe(true);
     });
 
-    it('should handle mixed valid and invalid files', async () => {
+    test('should handle mixed valid and invalid files', async () => {
       const files = [
         {
           file: new ArrayBuffer(100000),

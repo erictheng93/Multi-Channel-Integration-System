@@ -6,12 +6,13 @@ import type {
   ReportType,
   ReportFormat,
   ReportStatus,
-  ReportTimeRange
+  ReportTimport { MockFactory } from '@helpers/mockFactory';
+imeRange
 } from '@reports/types/report-types';
 
 describe('Reports Service Tests', () => {
   describe('Report Type Validation', () => {
-    it('should recognize valid report types', () => {
+    test('should recognize valid report types', () => {
       const validTypes: ReportType[] = [
         'conversation_summary',
         'agent_performance',
@@ -29,9 +30,13 @@ describe('Reports Service Tests', () => {
           'custom'
         ]).toContain(type);
       });
-    });
 
-    it('should validate report format options', () => {
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });    });
+
+    test('should validate report format options', () => {
       const validFormats: ReportFormat[] = ['json', 'csv', 'pdf'];
 
       validFormats.forEach(format => {
@@ -39,7 +44,7 @@ describe('Reports Service Tests', () => {
       });
     });
 
-    it('should validate report status values', () => {
+    test('should validate report status values', () => {
       const validStatuses: ReportStatus[] = [
         'pending',
         'generating',
@@ -61,7 +66,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Generation Parameters', () => {
-    it('should validate time range options', () => {
+    test('should validate time range options', () => {
       const validTimeRanges: ReportTimeRange[] = [
         '24h', '7d', '30d', '90d', 'custom'
       ];
@@ -71,7 +76,7 @@ describe('Reports Service Tests', () => {
       });
     });
 
-    it('should require start and end dates for custom range', () => {
+    test('should require start and end dates for custom range', () => {
       const customRangeParams = {
         timeRange: 'custom' as const,
         startDate: '2025-09-01',
@@ -83,7 +88,7 @@ describe('Reports Service Tests', () => {
       expect(customRangeParams.endDate).toBeTruthy();
     });
 
-    it('should validate date format (ISO 8601)', () => {
+    test('should validate date format (ISO 8601)', () => {
       const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
       const validDate = '2025-09-30';
       const invalidDate = '30/09/2025';
@@ -92,7 +97,7 @@ describe('Reports Service Tests', () => {
       expect(invalidDate).not.toMatch(isoDatePattern);
     });
 
-    it('should validate end date is after start date', () => {
+    test('should validate end date is after start date', () => {
       const startDate = new Date('2025-09-01');
       const endDate = new Date('2025-09-30');
 
@@ -101,7 +106,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Configuration', () => {
-    it('should validate title length constraints', () => {
+    test('should validate title length constraints', () => {
       const maxTitleLength = 200;
       const validTitle = 'Monthly Agent Performance Report - September 2025';
       const tooLongTitle = 'A'.repeat(250);
@@ -110,14 +115,14 @@ describe('Reports Service Tests', () => {
       expect(tooLongTitle.length).toBeGreaterThan(maxTitleLength);
     });
 
-    it('should validate description length constraints', () => {
+    test('should validate description length constraints', () => {
       const maxDescriptionLength = 1000;
       const validDescription = 'Comprehensive report analyzing agent performance metrics';
 
       expect(validDescription.length).toBeLessThanOrEqual(maxDescriptionLength);
     });
 
-    it('should validate recipients count limit', () => {
+    test('should validate recipients count limit', () => {
       const maxRecipients = 20;
       const recipients = ['user1@example.com', 'user2@example.com'];
 
@@ -126,7 +131,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Data Structures', () => {
-    it('should have correct conversation summary structure', () => {
+    test('should have correct conversation summary structure', () => {
       const conversationSummary = {
         totalConversations: 100,
         activeConversations: 25,
@@ -141,7 +146,7 @@ describe('Reports Service Tests', () => {
       expect(conversationSummary.totalConversations).toBeGreaterThan(0);
     });
 
-    it('should have correct agent performance structure', () => {
+    test('should have correct agent performance structure', () => {
       const agentPerformance = {
         agentId: 'agent-1',
         agentName: 'John Doe',
@@ -157,7 +162,7 @@ describe('Reports Service Tests', () => {
       expect(agentPerformance.customerSatisfactionScore).toBeLessThanOrEqual(5);
     });
 
-    it('should have correct customer satisfaction structure', () => {
+    test('should have correct customer satisfaction structure', () => {
       const satisfaction = {
         averageRating: 4.2,
         totalResponses: 150,
@@ -179,14 +184,14 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Scheduling', () => {
-    it('should validate schedule frequency', () => {
+    test('should validate schedule frequency', () => {
       const validFrequencies = ['daily', 'weekly', 'monthly'];
       const testFrequency = 'weekly';
 
       expect(validFrequencies).toContain(testFrequency);
     });
 
-    it('should validate schedule time format', () => {
+    test('should validate schedule time format', () => {
       const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
       const validTime = '09:00';
       const invalidTime = '25:70';
@@ -195,13 +200,13 @@ describe('Reports Service Tests', () => {
       expect(invalidTime).not.toMatch(timePattern);
     });
 
-    it('should validate day of week (1-7)', () => {
+    test('should validate day of week (1-7)', () => {
       const dayOfWeek = 1; // Monday
       expect(dayOfWeek).toBeGreaterThanOrEqual(1);
       expect(dayOfWeek).toBeLessThanOrEqual(7);
     });
 
-    it('should validate day of month (1-31)', () => {
+    test('should validate day of month (1-31)', () => {
       const dayOfMonth = 15;
       expect(dayOfMonth).toBeGreaterThanOrEqual(1);
       expect(dayOfMonth).toBeLessThanOrEqual(31);
@@ -209,7 +214,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Filters', () => {
-    it('should support team ID filtering', () => {
+    test('should support team ID filtering', () => {
       const filters = {
         teamId: 1,
         includeSubTeams: true
@@ -219,7 +224,7 @@ describe('Reports Service Tests', () => {
       expect(typeof filters.includeSubTeams).toBe('boolean');
     });
 
-    it('should support agent ID filtering', () => {
+    test('should support agent ID filtering', () => {
       const filters = {
         agentIds: ['agent-1', 'agent-2', 'agent-3']
       };
@@ -228,7 +233,7 @@ describe('Reports Service Tests', () => {
       expect(filters.agentIds.length).toBeGreaterThan(0);
     });
 
-    it('should support platform filtering', () => {
+    test('should support platform filtering', () => {
       const validPlatforms = ['line', 'facebook', 'web'];
       const filters = {
         platforms: ['line', 'facebook']
@@ -239,7 +244,7 @@ describe('Reports Service Tests', () => {
       });
     });
 
-    it('should support status filtering', () => {
+    test('should support status filtering', () => {
       const filters = {
         conversationStatuses: ['active', 'completed', 'pending']
       };
@@ -249,7 +254,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Export', () => {
-    it('should generate correct file name for JSON export', () => {
+    test('should generate correct file name for JSON export', () => {
       const reportType = 'agent_performance';
       const timestamp = '2025-09-30';
       const expectedFileName = `${reportType}_${timestamp}.json`;
@@ -258,7 +263,7 @@ describe('Reports Service Tests', () => {
       expect(expectedFileName).toContain(reportType);
     });
 
-    it('should generate correct file name for CSV export', () => {
+    test('should generate correct file name for CSV export', () => {
       const reportType = 'conversation_summary';
       const timestamp = '2025-09-30';
       const expectedFileName = `${reportType}_${timestamp}.csv`;
@@ -266,7 +271,7 @@ describe('Reports Service Tests', () => {
       expect(expectedFileName).toContain('.csv');
     });
 
-    it('should generate correct file name for PDF export', () => {
+    test('should generate correct file name for PDF export', () => {
       const reportType = 'customer_satisfaction';
       const timestamp = '2025-09-30';
       const expectedFileName = `${reportType}_${timestamp}.pdf`;
@@ -274,7 +279,7 @@ describe('Reports Service Tests', () => {
       expect(expectedFileName).toContain('.pdf');
     });
 
-    it('should validate file size limits', () => {
+    test('should validate file size limits', () => {
       const maxReportSize = 50 * 1024 * 1024; // 50MB
       const testSize = 10 * 1024 * 1024; // 10MB
 
@@ -283,7 +288,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Permissions', () => {
-    it('should validate admin permissions', () => {
+    test('should validate admin permissions', () => {
       const adminPermissions = [
         'generate_all_reports',
         'manage_scheduled_reports',
@@ -296,7 +301,7 @@ describe('Reports Service Tests', () => {
       expect(adminPermissions).toContain('system_health_reports');
     });
 
-    it('should validate team leader permissions', () => {
+    test('should validate team leader permissions', () => {
       const teamPermissions = [
         'generate_team_reports',
         'manage_team_scheduled_reports',
@@ -308,7 +313,7 @@ describe('Reports Service Tests', () => {
       expect(teamPermissions.length).toBeLessThan(6); // Less than admin
     });
 
-    it('should validate agent permissions', () => {
+    test('should validate agent permissions', () => {
       const agentPermissions = [
         'generate_basic_reports',
         'view_own_reports',
@@ -321,7 +326,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Statistics', () => {
-    it('should track report generation count', () => {
+    test('should track report generation count', () => {
       const stats = {
         totalReports: 100,
         pendingReports: 5,
@@ -334,7 +339,7 @@ describe('Reports Service Tests', () => {
       );
     });
 
-    it('should calculate generation success rate', () => {
+    test('should calculate generation success rate', () => {
       const completed = 90;
       const total = 100;
       const successRate = (completed / total) * 100;
@@ -344,7 +349,7 @@ describe('Reports Service Tests', () => {
       expect(successRate).toBe(90);
     });
 
-    it('should track average generation time', () => {
+    test('should track average generation time', () => {
       const generationTimes = [2000, 3000, 2500, 4000, 3500]; // milliseconds
       const average = generationTimes.reduce((a, b) => a + b) / generationTimes.length;
 
@@ -354,7 +359,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Batch Operations', () => {
-    it('should validate batch generation request', () => {
+    test('should validate batch generation request', () => {
       const batchRequest = {
         reports: [
           { type: 'agent_performance' as const, teamId: 1 },
@@ -367,7 +372,7 @@ describe('Reports Service Tests', () => {
       expect(batchRequest.reports.length).toBeGreaterThan(0);
     });
 
-    it('should validate concurrent generation limits', () => {
+    test('should validate concurrent generation limits', () => {
       const maxConcurrent = 5;
       const currentGenerating = 3;
 
@@ -376,7 +381,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Error Handling', () => {
-    it('should handle missing required parameters', () => {
+    test('should handle missing required parameters', () => {
       const incompleteRequest = {
         type: 'agent_performance' as const
         // Missing timeRange
@@ -385,14 +390,14 @@ describe('Reports Service Tests', () => {
       expect(incompleteRequest).not.toHaveProperty('timeRange');
     });
 
-    it('should handle invalid date ranges', () => {
+    test('should handle invalid date ranges', () => {
       const startDate = new Date('2025-09-30');
       const endDate = new Date('2025-09-01'); // Earlier than start
 
       expect(endDate.getTime()).toBeLessThan(startDate.getTime());
     });
 
-    it('should handle generation timeout', () => {
+    test('should handle generation timeout', () => {
       const maxGenerationTime = 30000; // 30 seconds
       const actualTime = 35000; // 35 seconds (timeout)
 
@@ -401,7 +406,7 @@ describe('Reports Service Tests', () => {
   });
 
   describe('Report Module Info', () => {
-    it('should have correct module metadata', () => {
+    test('should have correct module metadata', () => {
       const moduleInfo = {
         name: 'reports',
         version: '1.0.0',

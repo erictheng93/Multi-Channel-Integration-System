@@ -13,7 +13,8 @@ import {
 import type {
   ConversationSession,
   SessionBoundaryDetection
-} from '../../../../../src/modules/session/types/session-types';
+} from '@modules/session/types/session-types';
+import { MockFactory } from '@helpers/mockFactory';
 
 // ======================== Mock Setup ========================
 
@@ -59,7 +60,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 邊界檢測核心邏輯測試 ========================
 
   describe('Core Boundary Detection Logic', () => {
-    it('should prioritize boundary conditions by confidence level', async () => {
+    test('should prioritize boundary conditions by confidence level', async () => {
       // 創建同時滿足多個邊界條件的會話
       const multiConditionSession = createMockSession({
         lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago (time gap)
@@ -80,7 +81,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.confidence).toBe(0.9); // Highest confidence
     });
 
-    it('should handle edge case time calculations', async () => {
+    test('should handle edge case time calculations', async () => {
       // 測試邊界時間計算
       const exactBoundarySession = createMockSession({
         lastActivity: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // Exactly 30 minutes
@@ -97,7 +98,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.shouldCreateNew).toBe(false);
     });
 
-    it('should handle different sender types appropriately', async () => {
+    test('should handle different sender types appropriately', async () => {
       const session = createMockSession({
         lastActivity: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
         isActive: true
@@ -133,7 +134,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 時間間隔檢測詳細測試 ========================
 
   describe('Time Gap Detection Details', () => {
-    it('should calculate time differences accurately', async () => {
+    test('should calculate time differences accurately', async () => {
       const testCases = [
         { minutesAgo: 29, shouldCreate: false, description: '29分鐘前' },
         { minutesAgo: 30, shouldCreate: false, description: '剛好30分鐘' },
@@ -164,7 +165,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should handle timezone differences', async () => {
+    test('should handle timezone differences', async () => {
       const utcTime = new Date().toISOString();
       const session = createMockSession({
         lastActivity: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
@@ -181,7 +182,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.reason).toBe('time_gap');
     });
 
-    it('should handle daylight saving time transitions', async () => {
+    test('should handle daylight saving time transitions', async () => {
       // 模擬夏令時間變化的情況
       const dstTransitionTime = new Date('2024-03-10T07:00:00.000Z'); // DST transition example
       const session = createMockSession({
@@ -203,7 +204,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 訊息數量限制檢測詳細測試 ========================
 
   describe('Message Limit Detection Details', () => {
-    it('should respect custom message limits', async () => {
+    test('should respect custom message limits', async () => {
       const customConfig = { maxMessagesPerSession: 30 };
       const customService = new SessionService(mockDatabase, customConfig);
 
@@ -224,7 +225,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.metadata?.currentMessageCount).toBe(30);
     });
 
-    it('should handle very high message counts', async () => {
+    test('should handle very high message counts', async () => {
       const highCountSession = createMockSession({
         messageCount: 500, // Very high count
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -241,7 +242,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.reason).toBe('message_limit');
     });
 
-    it('should handle zero and negative message counts gracefully', async () => {
+    test('should handle zero and negative message counts gracefully', async () => {
       const zeroCountSession = createMockSession({
         messageCount: 0,
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -262,7 +263,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 會話持續時間檢測詳細測試 ========================
 
   describe('Session Duration Detection Details', () => {
-    it('should calculate session duration correctly', async () => {
+    test('should calculate session duration correctly', async () => {
       const testCases = [
         { hoursAgo: 23, shouldCreate: false, description: '23小時前' },
         { hoursAgo: 24, shouldCreate: false, description: '剛好24小時' },
@@ -294,7 +295,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should handle custom duration limits', async () => {
+    test('should handle custom duration limits', async () => {
       const customConfig = { maxSessionDuration: 12 }; // 12 hours
       const customService = new SessionService(mockDatabase, customConfig);
 
@@ -318,7 +319,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 主題變化檢測詳細測試 ========================
 
   describe('Topic Change Detection Details', () => {
-    it('should detect Chinese topic change keywords', async () => {
+    test('should detect Chinese topic change keywords', async () => {
       const chineseKeywords = [
         '另外',
         '還有',
@@ -347,7 +348,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should detect English topic change keywords', async () => {
+    test('should detect English topic change keywords', async () => {
       const englishKeywords = [
         'by the way',
         'btw',
@@ -375,7 +376,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should handle mixed language content', async () => {
+    test('should handle mixed language content', async () => {
       const session = createMockSession({
         topic: 'Product Inquiry',
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -394,7 +395,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.metadata?.detectedKeywords?.length).toBeGreaterThan(1);
     });
 
-    it('should not trigger on false positives', async () => {
+    test('should not trigger on false positives', async () => {
       const session = createMockSession({
         topic: 'General Discussion',
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -421,7 +422,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should be disabled when configuration disables it', async () => {
+    test('should be disabled when configuration disables it', async () => {
       const configWithoutTopicDetection = { enableTopicDetection: false };
       const customService = new SessionService(mockDatabase, configWithoutTopicDetection);
 
@@ -444,7 +445,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 主題提取詳細測試 ========================
 
   describe('Topic Extraction Details', () => {
-    it('should extract topics from Chinese content accurately', async () => {
+    test('should extract topics from Chinese content accurately', async () => {
       const testCases = [
         { message: '我想了解你們的產品有什麼功能', expectedTopic: '產品諮詢' },
         { message: '系統登入出現錯誤，無法進入', expectedTopic: '技術支援' },
@@ -460,7 +461,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should extract topics from English content', async () => {
+    test('should extract topics from English content', async () => {
       const testCases = [
         { message: 'What features does your product have', expectedTopic: '產品諮詢' },
         { message: 'I have an error when trying to login', expectedTopic: '技術支援' },
@@ -476,7 +477,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should handle ambiguous content', async () => {
+    test('should handle ambiguous content', async () => {
       const ambiguousMessages = [
         '我有個問題', // Too general
         'Hello', // Too simple
@@ -492,7 +493,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should prioritize more specific keywords', async () => {
+    test('should prioritize more specific keywords', async () => {
       const specificMessage = '我的產品出現故障錯誤，需要技術支援';
       const extractedTopic = await sessionService.extractTopic(specificMessage);
 
@@ -500,7 +501,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(extractedTopic).toBe('技術支援');
     });
 
-    it('should handle very long messages', async () => {
+    test('should handle very long messages', async () => {
       const longMessage = '你好，我想了解' + '產品功能'.repeat(100) + '的詳細資訊';
       const extractedTopic = await sessionService.extractTopic(longMessage);
 
@@ -511,7 +512,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 配置和自訂測試 ========================
 
   describe('Configuration and Customization', () => {
-    it('should allow custom keyword configuration', async () => {
+    test('should allow custom keyword configuration', async () => {
       // 假設未來支援自訂關鍵字
       const customConfig = {
         topicChangeKeywords: ['我想換個主題', 'lets change topic', '話題轉換']
@@ -533,7 +534,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.reason).toBe('topic_change');
     });
 
-    it('should handle all boundary conditions disabled', async () => {
+    test('should handle all boundary conditions disabled', async () => {
       const minimalConfig = {
         timeGapThreshold: Number.MAX_SAFE_INTEGER,
         maxMessagesPerSession: Number.MAX_SAFE_INTEGER,
@@ -560,7 +561,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.reason).toBe('manual');
     });
 
-    it('should handle aggressive boundary detection', async () => {
+    test('should handle aggressive boundary detection', async () => {
       const aggressiveConfig = {
         timeGapThreshold: 1, // 1 minute
         maxMessagesPerSession: 5,
@@ -592,7 +593,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 效能和穩定性測試 ========================
 
   describe('Performance and Stability', () => {
-    it('should handle rapid consecutive boundary detection calls', async () => {
+    test('should handle rapid consecutive boundary detection calls', async () => {
       const session = createMockSession({
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
         isActive: true
@@ -615,7 +616,7 @@ describe('Session Boundary Detection Logic', () => {
       });
     });
 
-    it('should handle malformed session data gracefully', async () => {
+    test('should handle malformed session data gracefully', async () => {
       const malformedSessions = [
         { ...createMockSession(), lastActivity: 'invalid-date' },
         { ...createMockSession(), startTime: 'not-a-date' },
@@ -638,7 +639,7 @@ describe('Session Boundary Detection Logic', () => {
       }
     });
 
-    it('should maintain performance with large message content', async () => {
+    test('should maintain performance with large message content', async () => {
       const session = createMockSession({
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
         isActive: true
@@ -662,7 +663,7 @@ describe('Session Boundary Detection Logic', () => {
   // ======================== 邊界情況和錯誤處理 ========================
 
   describe('Edge Cases and Error Handling', () => {
-    it('should handle null session gracefully', async () => {
+    test('should handle null session gracefully', async () => {
       const detection = await sessionService.detectSessionBoundary(
         null,
         'Message to null session',
@@ -674,7 +675,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.confidence).toBe(1.0);
     });
 
-    it('should handle empty message content', async () => {
+    test('should handle empty message content', async () => {
       const session = createMockSession({
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
         isActive: true
@@ -690,7 +691,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(typeof detection.shouldCreateNew).toBe('boolean');
     });
 
-    it('should handle special characters and emojis', async () => {
+    test('should handle special characters and emojis', async () => {
       const session = createMockSession({
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
         isActive: true
@@ -707,7 +708,7 @@ describe('Session Boundary Detection Logic', () => {
       expect(detection.reason).toBe('topic_change');
     });
 
-    it('should handle different date formats gracefully', async () => {
+    test('should handle different date formats gracefully', async () => {
       const session = createMockSession({
         lastActivity: new Date().toISOString(),
         startTime: new Date().toISOString(),

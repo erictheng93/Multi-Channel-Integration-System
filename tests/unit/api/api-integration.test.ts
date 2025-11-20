@@ -4,7 +4,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiClient } from '@/api/base';
-import { authApi } from '@/api/auth';
+import { import { MockFactory } from '@helpers/mockFactory';
+authApi } from '@/api/auth';
 import { conversationApi } from '@/api/conversations';
 import { messageApi } from '@/api/message';
 
@@ -30,6 +31,10 @@ Object.defineProperty(global, 'localStorage', {
   writable: true
 });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 Object.defineProperty(global, 'window', {
   value: {
     localStorage: mockLocalStorage,
@@ -46,7 +51,7 @@ describe('API Integration Tests', () => {
   });
 
   describe('Authentication Flow Integration', () => {
-    it('should complete full authentication flow', async () => {
+    test('should complete full authentication flow', async () => {
       // Step 1: Login
       const loginResponse = {
         success: true,
@@ -115,7 +120,7 @@ describe('API Integration Tests', () => {
       );
     });
 
-    it('should handle authentication failure and redirect', async () => {
+    test('should handle authentication failure and redirect', async () => {
       // Mock 401 response
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -137,7 +142,7 @@ describe('API Integration Tests', () => {
       authApi.setAuthHeader('valid-token');
     });
 
-    it('should complete conversation management workflow', async () => {
+    test('should complete conversation management workflow', async () => {
       // Step 1: Get conversation list
       const conversationsResponse = {
         success: true,
@@ -251,7 +256,7 @@ describe('API Integration Tests', () => {
       authApi.setAuthHeader('valid-token');
     });
 
-    it('should handle message operations with platform support', async () => {
+    test('should handle message operations with platform support', async () => {
       const conversationId = 'conv-123';
 
       // Step 1: Get messages
@@ -321,7 +326,7 @@ describe('API Integration Tests', () => {
   });
 
   describe('Error Handling Integration', () => {
-    it('should handle cascading authentication errors', async () => {
+    test('should handle cascading authentication errors', async () => {
       // Set invalid token
       authApi.setAuthHeader('invalid-token');
 
@@ -346,7 +351,7 @@ describe('API Integration Tests', () => {
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token');
     });
 
-    it('should handle network errors across all APIs', async () => {
+    test('should handle network errors across all APIs', async () => {
       authApi.setAuthHeader('valid-token');
 
       // Mock network error
@@ -369,7 +374,7 @@ describe('API Integration Tests', () => {
   });
 
   describe('API Response Format Consistency', () => {
-    it('should maintain consistent response format across all APIs', async () => {
+    test('should maintain consistent response format across all APIs', async () => {
       authApi.setAuthHeader('valid-token');
 
       // Test successful responses

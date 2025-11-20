@@ -20,7 +20,8 @@ import {
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
 import { UserConnection } from '@backend/durable-objects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessageProcessor';
+import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessagimport { MockFactory } from '@helpers/mockFactory';
+eProcessor';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 import type { DurableObjectEvent } from '@backend/types/websocket-types';
 
@@ -82,7 +83,7 @@ describe('WebSocket High-Load Stress Tests', () => {
   });
 
   describe('Connection Storm Scenarios', () => {
-    it('should handle rapid connection bursts without failure', async () => {
+    test('should handle rapid connection bursts without failure', async () => {
       const burstSize = 200;
       const burstCount = 5;
       const burstInterval = 1000; // 1 second between bursts
@@ -172,7 +173,7 @@ describe('WebSocket High-Load Stress Tests', () => {
       expect(totalTime).toBeLessThan(120000); // Complete within 2 minutes
     });
 
-    it('should handle connection churn under memory pressure', async () => {
+    test('should handle connection churn under memory pressure', async () => {
       const churnCycles = 10;
       const connectionsPerCycle = 100;
       const cycleInterval = 500; // 500ms between cycles
@@ -271,7 +272,7 @@ describe('WebSocket High-Load Stress Tests', () => {
       expect(memoryGrowth).toBeLessThan(200); // Memory shouldn't grow more than 200%
     });
 
-    it('should handle concurrent multi-room connection storms', async () => {
+    test('should handle concurrent multi-room connection storms', async () => {
       const roomCount = 10;
       const connectionsPerRoom = 50;
       const totalConnections = roomCount * connectionsPerRoom;
@@ -362,7 +363,7 @@ describe('WebSocket High-Load Stress Tests', () => {
   });
 
   describe('Message Flood Scenarios', () => {
-    it('should handle sustained message flooding', async () => {
+    test('should handle sustained message flooding', async () => {
       const floodDuration = 30000; // 30 seconds
       const messagesPerSecond = 20;
       const roomCount = 5;
@@ -467,7 +468,7 @@ describe('WebSocket High-Load Stress Tests', () => {
       await Promise.all(rooms.map(room => room.controller.disconnectAllClients()));
     });
 
-    it('should handle broadcast message storms', async () => {
+    test('should handle broadcast message storms', async () => {
       const broadcastCount = 500;
       const roomCount = 8;
       const clientsPerRoom = 15;
@@ -571,7 +572,7 @@ describe('WebSocket High-Load Stress Tests', () => {
       await Promise.all(rooms.map(room => room.controller.disconnectAllClients()));
     });
 
-    it('should handle mixed event type storms', async () => {
+    test('should handle mixed event type storms', async () => {
       const eventCount = 300;
       const conversationId = 'mixed_storm_conversation';
       const participantCount = 25;
@@ -739,7 +740,7 @@ describe('WebSocket High-Load Stress Tests', () => {
   });
 
   describe('Resource Exhaustion Scenarios', () => {
-    it('should handle memory pressure gracefully', async () => {
+    test('should handle memory pressure gracefully', async () => {
       const memoryPressurePhases = [
         { connections: 50, messagesPerClient: 10, description: 'Light load' },
         { connections: 100, messagesPerClient: 20, description: 'Medium load' },
@@ -827,7 +828,7 @@ describe('WebSocket High-Load Stress Tests', () => {
       expect(peakMemoryUsage).toBeGreaterThan(0);
     });
 
-    it('should handle CPU intensive operations under load', async () => {
+    test('should handle CPU intensive operations under load', async () => {
       const operationCount = 200;
       const concurrentOperations = 20;
       const conversationId = 'cpu_stress_test';
@@ -914,7 +915,7 @@ describe('WebSocket High-Load Stress Tests', () => {
       await controller.disconnectAllClients();
     });
 
-    it('should recover from system overload conditions', async () => {
+    test('should recover from system overload conditions', async () => {
       const overloadPhases = [
         { name: 'Baseline', load: 1, duration: 2000 },
         { name: 'Moderate Load', load: 3, duration: 3000 },

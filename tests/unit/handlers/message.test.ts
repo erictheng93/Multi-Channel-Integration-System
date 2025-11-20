@@ -56,7 +56,7 @@ vi.mock('../../../src/workers/latest-message-worker', () => ({
 
 describe('messageHandler', () => {
   describe('list', () => {
-    it('should return messages list with default pagination', async () => {
+    test('should return messages list with default pagination', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -115,7 +115,7 @@ describe('messageHandler', () => {
       expect(extractResponseData(result).data.pageSize).toBe(50)
     })
 
-    it('should handle custom pagination parameters', async () => {
+    test('should handle custom pagination parameters', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -140,7 +140,7 @@ describe('messageHandler', () => {
       expect(extractResponseData(result).data.total).toBe(25)
     })
 
-    it('should transform message data correctly', async () => {
+    test('should transform message data correctly', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -227,7 +227,7 @@ describe('messageHandler', () => {
       })
     })
 
-    it('should handle empty message list', async () => {
+    test('should handle empty message list', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -243,7 +243,7 @@ describe('messageHandler', () => {
       expect(extractResponseData(result).data.total).toBe(0)
     })
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -281,7 +281,7 @@ describe('messageHandler', () => {
       updatedAt: '2024-01-15T10:10:00Z'
     }
 
-    it('should send text message successfully', async () => {
+    test('should send text message successfully', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -328,7 +328,7 @@ describe('messageHandler', () => {
       })
     })
 
-    it('should send media message successfully', async () => {
+    test('should send media message successfully', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -371,7 +371,7 @@ describe('messageHandler', () => {
       })
     })
 
-    it('should return 422 when no content or media provided', async () => {
+    test('should return 422 when no content or media provided', async () => {
       const mockContext = createMockContext()
 
       mockContext.req.param = vi.fn().mockReturnValue('1')
@@ -393,7 +393,7 @@ describe('messageHandler', () => {
       expect(result.status).toBe(422)
     })
 
-    it('should return 404 when conversation not found', async () => {
+    test('should return 404 when conversation not found', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -417,7 +417,7 @@ describe('messageHandler', () => {
       expect(result.status).toBe(404)
     })
 
-    it('should handle Facebook platform messages', async () => {
+    test('should handle Facebook platform messages', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -457,7 +457,7 @@ describe('messageHandler', () => {
       expect(extractResponseData(result).data.platform).toBe('facebook')
     })
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -481,7 +481,7 @@ describe('messageHandler', () => {
       expect(result.status).toBe(500)
     })
 
-    it('should handle malformed JSON request', async () => {
+    test('should handle malformed JSON request', async () => {
       const mockContext = createMockContext()
 
       mockContext.req.param = vi.fn().mockReturnValue('1')

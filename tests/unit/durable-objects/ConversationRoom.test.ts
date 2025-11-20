@@ -15,7 +15,8 @@ import {
   WebSocketRoomTestController,
   WebSocketTestClientFactory
 } from '../../helpers/websocket/websocket-test-client';
-import { TestDataFactory, TestAssertions, TestScenarios } from '../../helpers/websocket/websocket-test-utils';
+import { TestDataFactory, TestAssertions, TestSceimport { MockFactory } from '@helpers/mockFactory';
+narios } from '../../helpers/websocket/websocket-test-utils';
 import type { WebSocketMessage, DurableObjectEvent, WebSocketConnection, DistributedLock } from '@backend/types/websocket-types';
 // ⚠️ Import unified helper for global WebSocketPair setup
 import { setupGlobalWebSocketPair } from '../../helpers/durable-objects-test-helper';
@@ -84,7 +85,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(verifyAuthSpy).toHaveBeenCalledWith('valid_token', 'user1');
     });
 
-    it('should reject WebSocket upgrade with missing parameters', async () => {
+    test('should reject WebSocket upgrade with missing parameters', async () => {
       const url = 'ws://test/connect?userId=user1'; // Missing token and role
       const request = new Request(url, {
         headers: { 'Upgrade': 'websocket' }
@@ -96,7 +97,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(await response.text()).toBe('Missing authentication parameters. Provide either token or challengeId+signature.');
     });
 
-    it('should reject unauthorized WebSocket connections', async () => {
+    test('should reject unauthorized WebSocket connections', async () => {
       const url = 'ws://test/connect?userId=user1&token=invalid_token&role=agent';
       const request = new Request(url, {
         headers: { 'Upgrade': 'websocket' }
@@ -111,7 +112,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(await response.text()).toBe('Unauthorized - Invalid token');
     });
 
-    it('should enforce connection limits', async () => {
+    test('should enforce connection limits', async () => {
       // Fill up connection slots
       const maxConnections = (conversationRoom as any).MAX_CONNECTIONS;
       const connections = new Map();
@@ -164,7 +165,7 @@ describe('ConversationRoom Durable Object', () => {
       (conversationRoom as any).participants.add(connection.userId);
     });
 
-    it('should broadcast messages to all connections', async () => {
+    test('should broadcast messages to all connections', async () => {
       const event = TestDataFactory.createEvent({
         type: 'message_sent',
         conversationId: 'test_conversation_123',
@@ -182,7 +183,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(typeof sentData.timestamp).toBe('number');
     });
 
-    it('should handle WebSocket send errors gracefully', async () => {
+    test('should handle WebSocket send errors gracefully', async () => {
       // Mock WebSocket send to throw error
       mockWebSocket.send.mockImplementation(() => {
         throw new Error('Connection closed');
@@ -198,7 +199,7 @@ describe('ConversationRoom Durable Object', () => {
         .resolves.not.toThrow();
     });
 
-    it('should only send to open WebSocket connections', async () => {
+    test('should only send to open WebSocket connections', async () => {
       // Set WebSocket as closed
       mockWebSocket.readyState = 3; // WebSocket.CLOSED
 
@@ -213,7 +214,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(mockWebSocket.send).not.toHaveBeenCalled();
     });
 
-    it('should store message history with size limit', async () => {
+    test('should store message history with size limit', async () => {
       const maxHistory = (conversationRoom as any).MAX_MESSAGE_HISTORY;
 
       // ✅ Fill message history to the limit (not beyond)
@@ -249,7 +250,7 @@ describe('ConversationRoom Durable Object', () => {
   });
 
   describe('Connection Management', () => {
-    it('should add connections successfully', async () => {
+    test('should add connections successfully', async () => {
       const connection = TestDataFactory.createConnection({
         userId: 'user_1',
         conversationId: 'test_conversation_123'
@@ -279,7 +280,7 @@ describe('ConversationRoom Durable Object', () => {
       );
     });
 
-    it('should remove connections successfully', async () => {
+    test('should remove connections successfully', async () => {
       const connection = TestDataFactory.createConnection({
         userId: 'user_1',
         conversationId: 'test_conversation_123'
@@ -304,7 +305,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(participants.has(connection.userId)).toBe(false);
     });
 
-    it('should keep participant when user has multiple connections', async () => {
+    test('should keep participant when user has multiple connections', async () => {
       const userId = 'user_1';
       const connection1 = TestDataFactory.createConnection({
         userId,
@@ -360,7 +361,7 @@ describe('ConversationRoom Durable Object', () => {
       (conversationRoom as any).connections.set(connection.connectionId, connection);
     });
 
-    it('should handle ping messages', async () => {
+    test('should handle ping messages', async () => {
       const pingMessage = TestDataFactory.createMessage({
         type: 'ping'
       });
@@ -374,7 +375,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(typeof sentMessage.timestamp).toBe('number');
     });
 
-    it('should handle typing indicators', async () => {
+    test('should handle typing indicators', async () => {
       const typingMessage = TestDataFactory.createMessage({
         type: 'event',
         data: TestDataFactory.createTypingEvent(
@@ -414,7 +415,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(connection.websocket.send).not.toHaveBeenCalled();
     });
 
-    it('should handle chat messages with permission checks', async () => {
+    test('should handle chat messages with permission checks', async () => {
       const chatMessage = TestDataFactory.createMessage({
         type: 'message',
         data: {
@@ -447,7 +448,7 @@ describe('ConversationRoom Durable Object', () => {
         .toHaveBeenCalled();
     });
 
-    it('should reject messages without permission', async () => {
+    test('should reject messages without permission', async () => {
       const chatMessage = TestDataFactory.createMessage({
         type: 'message',
         data: { content: 'Unauthorized message' }
@@ -467,7 +468,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(typeof sentMessage.timestamp).toBe('number');
     });
 
-    it('should update last activity on message handling', async () => {
+    test('should update last activity on message handling', async () => {
       const initialActivity = connection.lastActivity;
       const pingMessage = TestDataFactory.createMessage({ type: 'ping' });
 
@@ -481,113 +482,8 @@ describe('ConversationRoom Durable Object', () => {
     });
   });
 
-  // ⚠️ SKIPPED: Distributed Locking feature was removed from ConversationRoom
-  // Now uses simple message counter instead of distributed locks (Line 321-322)
-  describe.skip('Distributed Locking', () => {
-    it('should acquire locks successfully', async () => {
-      const lockId = await (conversationRoom as any).acquireLock('test_resource', {
-        ttl: 5000,
-        timeout: 1000
-      });
-
-      expect(lockId).toBeDefined();
-      expect(typeof lockId).toBe('string');
-
-      // Lock should be stored
-      const locks = (conversationRoom as any).locks;
-      expect(locks.has(lockId)).toBe(true);
-
-      // Storage should contain lock
-      expect(mockState.storage.put).toHaveBeenCalledWith(
-        'lock:test_resource',
-        expect.objectContaining({
-          lockId,
-          resource: 'test_resource',
-          isActive: true
-        })
-      );
-    });
-
-    it('should release locks successfully', async () => {
-      const lockId = await (conversationRoom as any).acquireLock('test_resource');
-      await (conversationRoom as any).releaseLock(lockId);
-
-      // Lock should be removed from memory
-      const locks = (conversationRoom as any).locks;
-      expect(locks.has(lockId)).toBe(false);
-
-      // Storage should be cleared
-      expect(mockState.storage.delete).toHaveBeenCalledWith('lock:test_resource');
-    });
-
-    it('should handle lock contention', async () => {
-      // Mock storage to simulate existing lock
-      const existingLock: DistributedLock = {
-        lockId: 'existing_lock',
-        resource: 'test_resource',
-        ownerId: 'other_owner',
-        acquiredAt: Date.now(),
-        expiresAt: Date.now() + 10000,
-        isActive: true
-      };
-
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValueOnce(existingLock) // First attempt returns existing lock
-        .mockResolvedValueOnce(null); // Second attempt returns null (lock released)
-
-      const lockPromise = (conversationRoom as any).acquireLock('test_resource', {
-        retryInterval: 50,
-        maxRetries: 2
-      });
-
-      const lockId = await lockPromise;
-      expect(lockId).toBeDefined();
-    });
-
-    it('should timeout on lock acquisition failure', async () => {
-      // Mock storage to always return existing lock
-      const existingLock: DistributedLock = {
-        lockId: 'existing_lock',
-        resource: 'test_resource',
-        ownerId: 'other_owner',
-        acquiredAt: Date.now(),
-        expiresAt: Date.now() + 10000,
-        isActive: true
-      };
-
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValue(existingLock);
-
-      await expect(
-        (conversationRoom as any).acquireLock('test_resource', {
-          retryInterval: 10,
-          maxRetries: 2
-        })
-      ).rejects.toThrow('Failed to acquire lock for test_resource after 2 attempts');
-    });
-
-    it('should handle expired locks', async () => {
-      // Mock storage with expired lock
-      const expiredLock: DistributedLock = {
-        lockId: 'expired_lock',
-        resource: 'test_resource',
-        ownerId: 'other_owner',
-        acquiredAt: Date.now() - 10000,
-        expiresAt: Date.now() - 1000, // Expired
-        isActive: true
-      };
-
-      vi.spyOn(mockState.storage, 'get')
-        .mockResolvedValueOnce(expiredLock);
-
-      // Should be able to acquire lock even though one exists (it's expired)
-      const lockId = await (conversationRoom as any).acquireLock('test_resource');
-      expect(lockId).toBeDefined();
-    });
-  });
-
   describe('HTTP API Endpoints', () => {
-    it('should handle /participants request', async () => {
+    test('should handle /participants request', async () => {
       // Add some participants
       (conversationRoom as any).participants.add('user1');
       (conversationRoom as any).participants.add('user2');
@@ -605,7 +501,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(data.lastActivity).toBeDefined();
     });
 
-    it('should handle /metrics request', async () => {
+    test('should handle /metrics request', async () => {
       const request = new Request('http://test/metrics');
       const response = await conversationRoom.fetch(request);
 
@@ -622,7 +518,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(metrics).toHaveProperty('uptime');
     });
 
-    it('should handle /broadcast request', async () => {
+    test('should handle /broadcast request', async () => {
       const event = TestDataFactory.createEvent({
         type: 'system_notification',
         data: { message: 'Test broadcast' }
@@ -645,46 +541,7 @@ describe('ConversationRoom Durable Object', () => {
         .toHaveBeenCalledWith(event);
     });
 
-    // ⚠️ SKIPPED: /lock endpoint was removed (see ConversationRoom.ts line 76)
-    it.skip('should handle /lock operations', async () => {
-      // Test lock acquisition
-      const acquireRequest = new Request('http://test/lock', {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'acquire',
-          resource: 'test_resource',
-          options: { ttl: 5000 }
-        }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      vi.spyOn(conversationRoom as any, 'acquireLock')
-        .mockResolvedValue('test_lock_id');
-
-      const acquireResponse = await conversationRoom.fetch(acquireRequest);
-      expect(acquireResponse.ok).toBe(true);
-
-      const acquireData = await acquireResponse.json();
-      expect(acquireData.lockId).toBe('test_lock_id');
-
-      // Test lock release
-      const releaseRequest = new Request('http://test/lock', {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'release',
-          options: { lockId: 'test_lock_id' }
-        }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      vi.spyOn(conversationRoom as any, 'releaseLock')
-        .mockResolvedValue(undefined);
-
-      const releaseResponse = await conversationRoom.fetch(releaseRequest);
-      expect(releaseResponse.ok).toBe(true);
-    });
-
-    it('should return 404 for unknown endpoints', async () => {
+    test('should return 404 for unknown endpoints', async () => {
       const request = new Request('http://test/unknown');
       const response = await conversationRoom.fetch(request);
 
@@ -694,7 +551,7 @@ describe('ConversationRoom Durable Object', () => {
   });
 
   describe('State Persistence and Recovery', () => {
-    it('should restore state from storage on initialization', async () => {
+    test('should restore state from storage on initialization', async () => {
       const participants = ['user1', 'user2', 'user3'];
       const messageHistory = [
         TestDataFactory.createEvent({ type: 'message_sent' }),
@@ -721,7 +578,7 @@ describe('ConversationRoom Durable Object', () => {
       expect((newRoom as any).messageHistory.length).toBe(2);
     });
 
-    it('should handle storage errors gracefully', async () => {
+    test('should handle storage errors gracefully', async () => {
       // Mock storage to throw error
       vi.spyOn(mockState.storage, 'get')
         .mockRejectedValue(new Error('Storage error'));
@@ -733,43 +590,7 @@ describe('ConversationRoom Durable Object', () => {
   });
 
   describe('Cleanup Operations', () => {
-    // ⚠️ SKIPPED: cleanupExpiredLocks removed with distributed locking feature
-    it.skip('should clean up expired locks', async () => {
-      const now = Date.now();
-
-      // Add expired and active locks
-      const expiredLock: DistributedLock = {
-        lockId: 'expired_lock',
-        resource: 'expired_resource',
-        ownerId: 'test',
-        acquiredAt: now - 10000,
-        expiresAt: now - 1000, // Expired
-        isActive: true
-      };
-
-      const activeLock: DistributedLock = {
-        lockId: 'active_lock',
-        resource: 'active_resource',
-        ownerId: 'test',
-        acquiredAt: now,
-        expiresAt: now + 10000, // Active
-        isActive: true
-      };
-
-      (conversationRoom as any).locks.set('expired_lock', expiredLock);
-      (conversationRoom as any).locks.set('active_lock', activeLock);
-
-      await (conversationRoom as any).cleanupExpiredLocks();
-
-      // Expired lock should be removed
-      expect((conversationRoom as any).locks.has('expired_lock')).toBe(false);
-      expect(mockState.storage.delete).toHaveBeenCalledWith('lock:expired_resource');
-
-      // Active lock should remain
-      expect((conversationRoom as any).locks.has('active_lock')).toBe(true);
-    });
-
-    it('should clean up inactive connections', async () => {
+    test('should clean up inactive connections', async () => {
       const now = Date.now();
       const inactivityTimeout = (conversationRoom as any).INACTIVITY_TIMEOUT;
 
@@ -800,7 +621,7 @@ describe('ConversationRoom Durable Object', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle malformed WebSocket messages', async () => {
+    test('should handle malformed WebSocket messages', async () => {
       const connection = TestDataFactory.createConnection({
         websocket: {
           readyState: 1,
@@ -837,7 +658,7 @@ describe('ConversationRoom Durable Object', () => {
       expect(typeof sentMessage.timestamp).toBe('number');
     });
 
-    it('should handle WebSocket errors during setup', async () => {
+    test('should handle WebSocket errors during setup', async () => {
       const connection = TestDataFactory.createConnection({
         websocket: {
           readyState: 1,
@@ -862,7 +683,7 @@ describe('ConversationRoom Durable Object', () => {
       }
     });
 
-    it('should handle request processing errors', async () => {
+    test('should handle request processing errors', async () => {
       // ✅ Mock error in request handling BEFORE making request
       const mockError = vi.spyOn(conversationRoom as any, 'handleGetParticipants')
         .mockImplementation(() => {

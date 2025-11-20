@@ -19,6 +19,7 @@ import {
 
 import messagingMainHandler from '../handlers/messaging-main';
 import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
+import fileMainHandler from '@modules/file-management/handlers/file-main';
 
 // 導入額�??��???
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
@@ -129,6 +130,15 @@ const businessLogicGroup = createRouteGroup({
       path: '/tags',
       handler: tagMainHandler,
       description: 'Tag Management System',
+      version: '1.0.0',
+      dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'files',
+      path: '/files',
+      handler: fileMainHandler,
+      description: 'File Management and Storage (R2)',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'

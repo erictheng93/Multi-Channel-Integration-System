@@ -28,7 +28,8 @@ import type {
   SessionListQuery,
   SessionSearchQuery,
   BatchSessionOperation,
-  SessionStats
+  Seimport { MockFactory } from '@helpers/mockFactory';
+ssionStats
 } from '@modules/session/types/session-types';
 
 // ======================== Mock Setup ========================
@@ -91,6 +92,7 @@ describe('SessionService', () => {
   let sessionService: SessionService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     sessionService = new SessionService(mockDatabase);
 
     // 清空調用記錄
@@ -150,7 +152,7 @@ describe('SessionService', () => {
 
   describe('CRUD Operations', () => {
     describe('create', () => {
-      it('should create a new session successfully', async () => {
+      test('should create a new session successfully', async () => {
         const createData = createMockCreateSessionData();
         mockSelectChain.get.mockResolvedValue(null); // No existing session
 
@@ -167,7 +169,7 @@ describe('SessionService', () => {
         expect(mockInsertChain.values).toHaveBeenCalledTimes(1);
       });
 
-      it('should generate topic automatically from message content', async () => {
+      test('should generate topic automatically from message content', async () => {
         const createData = createMockCreateSessionData({
           messageContent: '我的訂單什麼時候可以配送',
           topic: undefined
@@ -179,7 +181,7 @@ describe('SessionService', () => {
         expect(result.topic).toBe('訂單查詢');
       });
 
-      it('should use provided topic over extracted topic', async () => {
+      test('should use provided topic over extracted topic', async () => {
         const createData = createMockCreateSessionData({
           messageContent: '我的訂單什麼時候可以配送',
           topic: 'Custom Topic'
@@ -191,7 +193,7 @@ describe('SessionService', () => {
         expect(result.topic).toBe('Custom Topic');
       });
 
-      it('should handle JSON metadata properly', async () => {
+      test('should handle JSON metadata properly', async () => {
         const createData = createMockCreateSessionData({
           metadata: { source: 'test', priority: 'high' },
           tags: ['urgent', 'vip']
@@ -204,7 +206,7 @@ describe('SessionService', () => {
         expect(result.tags).toEqual(['urgent', 'vip']);
       });
 
-      it('should handle database insertion error', async () => {
+      test('should handle database insertion error', async () => {
         const createData = createMockCreateSessionData();
         mockSelectChain.get.mockResolvedValue(null);
         mockInsertChain.values.mockRejectedValue(new Error('Database insertion failed'));
@@ -216,7 +218,7 @@ describe('SessionService', () => {
     });
 
     describe('get', () => {
-      it('should retrieve session by id', async () => {
+      test('should retrieve session by id', async () => {
         const mockSessionData = {
           id: 'session_test_001',
           conversationId: 'conv_001',
@@ -246,7 +248,7 @@ describe('SessionService', () => {
         expect(mockSelectChain.get).toHaveBeenCalledTimes(1);
       });
 
-      it('should return null for non-existent session', async () => {
+      test('should return null for non-existent session', async () => {
         mockSelectChain.get.mockResolvedValue(null);
 
         const result = await sessionService.get('nonexistent_session');
@@ -254,7 +256,7 @@ describe('SessionService', () => {
         expect(result).toBeNull();
       });
 
-      it('should handle database query error', async () => {
+      test('should handle database query error', async () => {
         mockSelectChain.get.mockRejectedValue(new Error('Database query failed'));
 
         await expect(sessionService.get('session_test_001')).rejects.toThrow(
@@ -264,7 +266,7 @@ describe('SessionService', () => {
     });
 
     describe('update', () => {
-      it('should update session successfully', async () => {
+      test('should update session successfully', async () => {
         const existingSession = createMockSession({ id: 'session_test_001' });
         const updateData = createMockUpdateSessionData({
           topic: 'Updated Topic',
@@ -296,7 +298,7 @@ describe('SessionService', () => {
         expect(mockSelectChain.where).toHaveBeenCalledTimes(2);
       });
 
-      it('should throw error when session not found', async () => {
+      test('should throw error when session not found', async () => {
         mockSelectChain.get.mockResolvedValue(null);
 
         await expect(
@@ -304,7 +306,7 @@ describe('SessionService', () => {
         ).rejects.toThrow('Session not found: nonexistent_session');
       });
 
-      it('should handle partial update data', async () => {
+      test('should handle partial update data', async () => {
         const existingSession = createMockSession({ id: 'session_test_001' });
         const updateData = { isActive: false };
 
@@ -329,7 +331,7 @@ describe('SessionService', () => {
     });
 
     describe('delete', () => {
-      it('should delete session successfully', async () => {
+      test('should delete session successfully', async () => {
         const existingSession = createMockSession({ id: 'session_test_001' });
 
         mockSelectChain.get.mockResolvedValue({
@@ -346,7 +348,7 @@ describe('SessionService', () => {
         expect(mockDeleteChain.where).toHaveBeenCalledTimes(1); // One for delete operation
       });
 
-      it('should throw error when session not found for deletion', async () => {
+      test('should throw error when session not found for deletion', async () => {
         mockSelectChain.get.mockResolvedValue(null);
 
         await expect(sessionService.delete('nonexistent_session')).rejects.toThrow(
@@ -360,7 +362,7 @@ describe('SessionService', () => {
 
   describe('List and Search Operations', () => {
     describe('list', () => {
-      it('should return paginated session list', async () => {
+      test('should return paginated session list', async () => {
         const mockSessions = [
           {
             id: 'session_001',
@@ -414,7 +416,7 @@ describe('SessionService', () => {
         expect(result.summary.activeSessions).toBe(2);
       });
 
-      it('should handle empty results', async () => {
+      test('should handle empty results', async () => {
         // Mock count query
         mockSelectChain.get.mockResolvedValueOnce({ count: 0 });
 
@@ -433,7 +435,7 @@ describe('SessionService', () => {
         expect(result.summary.totalSessions).toBe(0);
       });
 
-      it('should apply filters correctly', async () => {
+      test('should apply filters correctly', async () => {
         const query = createMockListQuery({
           isActive: true,
           sessionType: 'support',
@@ -456,7 +458,7 @@ describe('SessionService', () => {
         expect(result).toBeDefined();
       });
 
-      it('should handle pagination correctly', async () => {
+      test('should handle pagination correctly', async () => {
         const query = createMockListQuery({ page: 2, pageSize: 10 });
 
         // Mock count query
@@ -483,7 +485,7 @@ describe('SessionService', () => {
     });
 
     describe('search', () => {
-      it('should search sessions by query string', async () => {
+      test('should search sessions by query string', async () => {
         const searchResults = [
           {
             id: 'session_001',
@@ -513,7 +515,7 @@ describe('SessionService', () => {
         expect(mockSelectChain.limit).toHaveBeenCalled();
       });
 
-      it('should handle empty search results', async () => {
+      test('should handle empty search results', async () => {
         mockSelectChain.all.mockResolvedValue([]);
 
         const query = createMockSearchQuery({ query: 'nonexistent' });
@@ -522,7 +524,7 @@ describe('SessionService', () => {
         expect(result).toHaveLength(0);
       });
 
-      it('should apply search filters', async () => {
+      test('should apply search filters', async () => {
         const query = createMockSearchQuery({
           query: 'support',
           conversationId: 'conv_001',
@@ -543,7 +545,7 @@ describe('SessionService', () => {
 
   describe('Session Management', () => {
     describe('getOrCreate', () => {
-      it('should create new session when no active session exists', async () => {
+      test('should create new session when no active session exists', async () => {
         // Mock no existing active session
         mockSelectChain.get.mockResolvedValueOnce(null);
 
@@ -560,7 +562,7 @@ describe('SessionService', () => {
         expect(mockDb.insert).toHaveBeenCalledTimes(1);
       });
 
-      it('should return existing active session when appropriate', async () => {
+      test('should return existing active session when appropriate', async () => {
         const now = Date.now();
         const existingSession = {
           id: 'session_001',
@@ -592,7 +594,7 @@ describe('SessionService', () => {
         expect(mockDb.insert).not.toHaveBeenCalled(); // No new session created
       });
 
-      it('should close old session and create new when boundary detected', async () => {
+      test('should close old session and create new when boundary detected', async () => {
         const existingSession = {
           id: 'session_001',
           conversationId: 'conv_001',
@@ -625,7 +627,7 @@ describe('SessionService', () => {
     });
 
     describe('closeSession', () => {
-      it('should close session successfully', async () => {
+      test('should close session successfully', async () => {
         const result = await sessionService.closeSession('session_001');
 
         expect(result).toBe(true);
@@ -638,7 +640,7 @@ describe('SessionService', () => {
         );
       });
 
-      it('should handle close session error', async () => {
+      test('should handle close session error', async () => {
         mockUpdateChain.set.mockImplementation(() => {
           throw new Error('Database update failed');
         });
@@ -650,7 +652,7 @@ describe('SessionService', () => {
     });
 
     describe('reopenSession', () => {
-      it('should reopen session successfully', async () => {
+      test('should reopen session successfully', async () => {
         const result = await sessionService.reopenSession('session_001');
 
         expect(result).toBe(true);
@@ -670,7 +672,7 @@ describe('SessionService', () => {
 
   describe('Message Operations', () => {
     describe('getMessages', () => {
-      it('should return session messages with pagination', async () => {
+      test('should return session messages with pagination', async () => {
         const existingSession = createMockSession({ id: 'session_001' });
         const mockMessages = [
           {
@@ -731,7 +733,7 @@ describe('SessionService', () => {
         expect(agentMessage?.senderId).toBe('agent_001');
       });
 
-      it('should throw error when session not found', async () => {
+      test('should throw error when session not found', async () => {
         mockSelectChain.get.mockResolvedValue(null);
 
         await expect(
@@ -741,7 +743,7 @@ describe('SessionService', () => {
     });
 
     describe('addMessage', () => {
-      it('should add message to session successfully', async () => {
+      test('should add message to session successfully', async () => {
         const existingSession = createMockSession({ id: 'session_001' });
         const messageData = {
           conversationId: '1',
@@ -788,7 +790,7 @@ describe('SessionService', () => {
         expect(mockDb.update).toHaveBeenCalledTimes(1); // Update session activity
       });
 
-      it('should handle agent message correctly', async () => {
+      test('should handle agent message correctly', async () => {
         const existingSession = createMockSession({ id: 'session_001' });
         const messageData = {
           conversationId: '1',
@@ -836,7 +838,7 @@ describe('SessionService', () => {
 
   describe('Statistics and Analytics', () => {
     describe('getStats', () => {
-      it('should return session statistics', async () => {
+      test('should return session statistics', async () => {
         // Mock basic stats query
         mockSelectChain.get.mockResolvedValueOnce({
           totalSessions: 100,
@@ -862,7 +864,7 @@ describe('SessionService', () => {
         expect(result.sessionsByType).toBeDefined();
       });
 
-      it('should return conversation-specific statistics', async () => {
+      test('should return conversation-specific statistics', async () => {
         // Mock basic stats query
         mockSelectChain.get.mockResolvedValueOnce({
           totalSessions: 10,
@@ -882,7 +884,7 @@ describe('SessionService', () => {
         expect(result.activeSessions).toBe(3);
       });
 
-      it('should handle empty statistics', async () => {
+      test('should handle empty statistics', async () => {
         // Mock empty stats
         mockSelectChain.get.mockResolvedValueOnce({
           totalSessions: 0,
@@ -901,7 +903,7 @@ describe('SessionService', () => {
     });
 
     describe('getActivityStats', () => {
-      it('should return activity statistics', async () => {
+      test('should return activity statistics', async () => {
         const query = {
           conversationId: 'conv_001',
           timeRange: 'week' as const
@@ -922,7 +924,7 @@ describe('SessionService', () => {
 
   describe('Batch Operations', () => {
     describe('batchOperation', () => {
-      it('should perform successful batch close operation', async () => {
+      test('should perform successful batch close operation', async () => {
         const operation = createMockBatchOperation({
           action: 'close',
           sessionIds: ['session_001', 'session_002']
@@ -940,7 +942,7 @@ describe('SessionService', () => {
         expect(mockDb.update).toHaveBeenCalledTimes(2); // Two sessions closed
       });
 
-      it('should perform successful batch reopen operation', async () => {
+      test('should perform successful batch reopen operation', async () => {
         const operation = createMockBatchOperation({
           action: 'reopen',
           sessionIds: ['session_001', 'session_002']
@@ -952,7 +954,7 @@ describe('SessionService', () => {
         expect(mockDb.update).toHaveBeenCalledTimes(2);
       });
 
-      it('should handle batch delete operation', async () => {
+      test('should handle batch delete operation', async () => {
         const operation = createMockBatchOperation({
           action: 'delete',
           sessionIds: ['session_001', 'session_002']
@@ -968,7 +970,7 @@ describe('SessionService', () => {
         expect(mockDb.delete).toHaveBeenCalledTimes(2);
       });
 
-      it('should handle partial batch operation failure', async () => {
+      test('should handle partial batch operation failure', async () => {
         const operation = createMockBatchOperation({
           action: 'close',
           sessionIds: ['session_001', 'session_002', 'nonexistent_session']
@@ -999,7 +1001,7 @@ describe('SessionService', () => {
 
   describe('Utility Methods', () => {
     describe('analyzeSessionHealth', () => {
-      it('should return healthy session report', async () => {
+      test('should return healthy session report', async () => {
         const healthySession = createMockSession({
           id: 'session_001',
           isActive: true,
@@ -1023,7 +1025,7 @@ describe('SessionService', () => {
         expect(result.suggestions).toHaveLength(0);
       });
 
-      it('should return unhealthy session report', async () => {
+      test('should return unhealthy session report', async () => {
         const unhealthySession = createMockSession({
           id: 'session_001',
           isActive: true,
@@ -1049,7 +1051,7 @@ describe('SessionService', () => {
         expect(result.issues).toContain('會話長時間無活動');
       });
 
-      it('should throw error when session not found', async () => {
+      test('should throw error when session not found', async () => {
         mockSelectChain.get.mockResolvedValue(null);
 
         await expect(
@@ -1062,7 +1064,7 @@ describe('SessionService', () => {
   // ======================== 錯誤處理測試 ========================
 
   describe('Error Handling', () => {
-    it('should handle database connection errors', async () => {
+    test('should handle database connection errors', async () => {
       mockSelectChain.get.mockRejectedValue(new Error('Database connection failed'));
 
       await expect(sessionService.get('session_001')).rejects.toThrow(
@@ -1070,7 +1072,7 @@ describe('SessionService', () => {
       );
     });
 
-    it('should handle invalid data gracefully', async () => {
+    test('should handle invalid data gracefully', async () => {
       const invalidData = {
         conversationId: '', // Invalid
         senderType: 'invalid_type' // Invalid
@@ -1082,7 +1084,7 @@ describe('SessionService', () => {
       await expect(sessionService.create(invalidData)).rejects.toThrow('Failed to create session');
     });
 
-    it('should handle concurrent operations', async () => {
+    test('should handle concurrent operations', async () => {
       const createData = createMockCreateSessionData();
 
       // Simulate concurrent creation requests
@@ -1108,7 +1110,7 @@ describe('SessionService', () => {
   // ======================== 配置測試 ========================
 
   describe('Configuration', () => {
-    it('should use custom configuration', async () => {
+    test('should use custom configuration', async () => {
       const customConfig = {
         timeGapThreshold: 60,
         maxMessagesPerSession: 25
@@ -1131,7 +1133,7 @@ describe('SessionService', () => {
       expect(detection.shouldCreateNew).toBe(false);
     });
 
-    it('should use default configuration when none provided', async () => {
+    test('should use default configuration when none provided', async () => {
       const defaultService = new SessionService(mockDatabase);
 
       const session = createMockSession({

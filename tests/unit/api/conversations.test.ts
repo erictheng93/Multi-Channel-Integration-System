@@ -2,7 +2,8 @@
 // 檔案路徑：/tests/unit/api/conversations.test.ts
 // Created by: API Test Developer
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEacimport { MockFactory } from '@helpers/mockFactory';
+h } from 'vitest';
 import { conversationApi } from '@/api/conversations';
 import { apiClient } from '@/api/base';
 
@@ -22,8 +23,12 @@ describe('Conversations API Tests', () => {
     vi.clearAllMocks();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('Conversation List Retrieval', () => {
-    it('should get conversations without filters', async () => {
+    test('should get conversations without filters', async () => {
       const mockConversations = [
         {
           id: 'conv-1',
@@ -54,7 +59,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should get conversations with filters', async () => {
+    test('should get conversations with filters', async () => {
       const filters = {
         status: 'open' as const,
         platform: 'line' as const,
@@ -76,7 +81,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should get paginated conversations', async () => {
+    test('should get paginated conversations', async () => {
       const params = {
         page: 1,
         pageSize: 10,
@@ -102,7 +107,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle empty pagination parameters', async () => {
+    test('should handle empty pagination parameters', async () => {
       const mockResponse = {
         success: true,
         data: { items: [], total: 0 }
@@ -118,7 +123,7 @@ describe('Conversations API Tests', () => {
   });
 
   describe('Single Conversation Retrieval', () => {
-    it('should get single conversation by ID', async () => {
+    test('should get single conversation by ID', async () => {
       const conversationId = 'conv-123';
       const mockConversation = {
         id: conversationId,
@@ -149,7 +154,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should use alias method for getting conversation', async () => {
+    test('should use alias method for getting conversation', async () => {
       const conversationId = 'conv-456';
       const mockResponse = {
         success: true,
@@ -164,7 +169,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle conversation not found', async () => {
+    test('should handle conversation not found', async () => {
       const conversationId = 'non-existent';
       const mockResponse = {
         success: false,
@@ -180,7 +185,7 @@ describe('Conversations API Tests', () => {
   });
 
   describe('Message Management', () => {
-    it('should get messages for conversation', async () => {
+    test('should get messages for conversation', async () => {
       const conversationId = 'conv-123';
       const mockMessages = [
         {
@@ -209,7 +214,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should send message to conversation', async () => {
+    test('should send message to conversation', async () => {
       const conversationId = 'conv-123';
       const content = 'Hello, how can I help you?';
 
@@ -241,7 +246,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle message sending failure', async () => {
+    test('should handle message sending failure', async () => {
       const conversationId = 'conv-123';
       const content = 'Test message';
 
@@ -259,7 +264,7 @@ describe('Conversations API Tests', () => {
   });
 
   describe('Conversation Assignment', () => {
-    it('should assign conversation to agent', async () => {
+    test('should assign conversation to agent', async () => {
       const conversationId = 'conv-123';
       const agentId = 'agent-1';
 
@@ -279,7 +284,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should use alias method for assignment', async () => {
+    test('should use alias method for assignment', async () => {
       const conversationId = 'conv-456';
       const agentId = 'agent-2';
 
@@ -299,7 +304,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle assignment failure', async () => {
+    test('should handle assignment failure', async () => {
       const conversationId = 'conv-123';
       const agentId = 'invalid-agent';
 
@@ -317,7 +322,7 @@ describe('Conversations API Tests', () => {
   });
 
   describe('Conversation Closing', () => {
-    it('should close conversation', async () => {
+    test('should close conversation', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -333,7 +338,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should use alias method for closing', async () => {
+    test('should use alias method for closing', async () => {
       const conversationId = 'conv-456';
 
       const mockResponse = {
@@ -349,7 +354,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle closing failure', async () => {
+    test('should handle closing failure', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -366,7 +371,7 @@ describe('Conversations API Tests', () => {
   });
 
   describe('Mark as Read Functionality', () => {
-    it('should mark conversation as read', async () => {
+    test('should mark conversation as read', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -382,7 +387,7 @@ describe('Conversations API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle mark as read failure', async () => {
+    test('should handle mark as read failure', async () => {
       const conversationId = 'conv-123';
 
       const mockResponse = {
@@ -399,7 +404,7 @@ describe('Conversations API Tests', () => {
   });
 
   describe('Query Parameter Handling', () => {
-    it('should properly encode query parameters', async () => {
+    test('should properly encode query parameters', async () => {
       const filters = {
         status: 'open',
         platform: 'line',
@@ -420,7 +425,7 @@ describe('Conversations API Tests', () => {
       expect(callUrl).toContain('assignedTo=agent+with+spaces');
     });
 
-    it('should handle undefined filter values', async () => {
+    test('should handle undefined filter values', async () => {
       const filters = {
         status: 'open' as const,
         platform: undefined,

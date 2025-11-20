@@ -1,5 +1,6 @@
 // 客戶管理主要處理器測試 - REFACTORED with ServiceMockHelper
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, eximport { MockFactory } from '@helpers/mockFactory';
+pect, beforeEach, afterEach, vi } from 'vitest';
 
 // ✅ CRITICAL: Mock auth middleware BEFORE importing the handler
 vi.mock('../../../src/middleware/auth', () => ({
@@ -42,6 +43,7 @@ describe('Customer Main Handler - Refactored', () => {
   let mocks: ReturnType<typeof ServiceMockHelper.prototype.setupDatabaseMocks>;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     const testSetup = setupHandlerTest();
     app = testSetup.app;
 
@@ -59,7 +61,7 @@ describe('Customer Main Handler - Refactored', () => {
   });
 
   describe('GET /', () => {
-    it('should return all customers', async () => {
+    test('should return all customers', async () => {
       // ✅ Use pre-built mock objects with sensible defaults
       const mockCustomers = [
         mockHelper.mockCustomer({ id: 1, displayName: 'Customer 1', platform: 'line', platformUserId: 'line-user-1' }),
@@ -83,7 +85,7 @@ describe('Customer Main Handler - Refactored', () => {
       mockHelper.assertCalled(mocks, 'getAllCustomers', 1);
     });
 
-    it('should handle database errors', async () => {
+    test('should handle database errors', async () => {
       // ✅ Simple error scenario setup
       mocks.getAllCustomers.mockRejectedValue(new Error('Database connection failed'));
 
@@ -98,7 +100,7 @@ describe('Customer Main Handler - Refactored', () => {
       mockHelper.assertCalled(mocks, 'getAllCustomers', 1);
     });
 
-    it('should return empty list when no customers', async () => {
+    test('should return empty list when no customers', async () => {
       mocks.getAllCustomers.mockResolvedValue([]);
 
       const response = await app.request('/api/customers');
@@ -115,7 +117,7 @@ describe('Customer Main Handler - Refactored', () => {
   describe('GET /:customerId', () => {
     const customerId = 123;
 
-    it('should return customer details with conversations', async () => {
+    test('should return customer details with conversations', async () => {
       // ✅ Pre-built mock objects
       const mockCustomer = mockHelper.mockCustomer({
         id: customerId,
@@ -147,7 +149,7 @@ describe('Customer Main Handler - Refactored', () => {
       mockHelper.assertCalled(mocks, 'getCustomerConversations', 1);
     });
 
-    it('should return 404 for non-existent customer', async () => {
+    test('should return 404 for non-existent customer', async () => {
       mocks.getCustomerById.mockResolvedValue(null);
 
       const response = await app.request(`/api/customers/${customerId}`);
@@ -163,7 +165,7 @@ describe('Customer Main Handler - Refactored', () => {
       mockHelper.assertNotCalled(mocks, 'getCustomerConversations');
     });
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mocks.getCustomerById.mockRejectedValue(new Error('Database timeout'));
 
       const response = await app.request(`/api/customers/${customerId}`);
@@ -177,7 +179,7 @@ describe('Customer Main Handler - Refactored', () => {
   });
 
   describe('Common Scenarios', () => {
-    it('should use semantic scenario helper for existing customer', async () => {
+    test('should use semantic scenario helper for existing customer', async () => {
       // ✅ SEMANTIC API: One line sets up complete scenario
       const { customer, conversation } = mockHelper.setupExistingCustomerScenario(123);
 

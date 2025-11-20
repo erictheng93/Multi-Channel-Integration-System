@@ -70,7 +70,7 @@ describe('Composables Edge Cases', () => {
   })
 
   describe('useAuthStore edge cases', () => {
-    it('should handle localStorage being unavailable', async () => {
+    test('should handle localStorage being unavailable', async () => {
       // Simulate localStorage being unavailable
       Object.defineProperty(global, 'localStorage', {
         value: undefined,
@@ -84,7 +84,7 @@ describe('Composables Edge Cases', () => {
       expect(() => useAuthStore()).not.toThrow()
     })
 
-    it('should handle malformed JSON in localStorage', async () => {
+    test('should handle malformed JSON in localStorage', async () => {
       mockLocalStorage.getItem.mockReturnValue('invalid-json-{')
       
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
@@ -94,7 +94,7 @@ describe('Composables Edge Cases', () => {
       expect(store.token).toBe('invalid-json-{')
     })
 
-    it('should handle extremely long tokens', async () => {
+    test('should handle extremely long tokens', async () => {
       const longToken = 'a'.repeat(10000)
       mockLocalStorage.getItem.mockReturnValue(longToken)
       
@@ -105,7 +105,7 @@ describe('Composables Edge Cases', () => {
       expect(store.isAuthenticated).toBe(true)
     })
 
-    it('should handle concurrent login attempts', async () => {
+    test('should handle concurrent login attempts', async () => {
       vi.mocked(mockAuthApi.login)
         .mockResolvedValueOnce({
           success: true,
@@ -130,7 +130,7 @@ describe('Composables Edge Cases', () => {
       expect(store.token).toBe('token2')
     })
 
-    it('should handle API timeout scenarios', async () => {
+    test('should handle API timeout scenarios', async () => {
       vi.mocked(mockAuthApi.login).mockImplementation(() => 
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Request timeout')), 100)
@@ -148,7 +148,7 @@ describe('Composables Edge Cases', () => {
   })
 
   describe('useConversationsStore edge cases', () => {
-    it('should handle extremely large conversation lists', async () => {
+    test('should handle extremely large conversation lists', async () => {
       const largeConversationList = Array.from({ length: 10000 }, (_, i) => ({
         id: `conv-${i}`,
         customer_name: `Customer ${i}`,
@@ -170,7 +170,7 @@ describe('Composables Edge Cases', () => {
       expect(store.loading).toBe(false)
     })
 
-    it('should handle network interruption during message sending', async () => {
+    test('should handle network interruption during message sending', async () => {
       vi.mocked(mockConversationApi.sendMessage).mockImplementation(() =>
         Promise.reject(new Error('Network connection lost'))
       )
@@ -183,7 +183,7 @@ describe('Composables Edge Cases', () => {
       expect(result).toBe(false)
     })
 
-    it('should handle concurrent message operations on same conversation', async () => {
+    test('should handle concurrent message operations on same conversation', async () => {
       vi.mocked(mockConversationApi.sendMessage)
         .mockResolvedValueOnce({
           success: true,
@@ -207,7 +207,7 @@ describe('Composables Edge Cases', () => {
       expect(store.messages).toHaveLength(2)
     })
 
-    it('should handle mock data generation failure', async () => {
+    test('should handle mock data generation failure', async () => {
       // Simulate API failure and mock data generation failure
       vi.mocked(mockConversationApi.getConversations).mockRejectedValue(new Error('API Error'))
       
@@ -226,7 +226,7 @@ describe('Composables Edge Cases', () => {
       console.error = originalConsoleError
     })
 
-    it('should handle assignment of non-existent conversation', async () => {
+    test('should handle assignment of non-existent conversation', async () => {
       vi.mocked(mockConversationApi.assignConversation).mockResolvedValue({
         success: false,
         error: 'Conversation not found'
@@ -242,7 +242,7 @@ describe('Composables Edge Cases', () => {
   })
 
   describe('Cross-composable interactions', () => {
-    it('should handle auth store logout affecting conversations store', async () => {
+    test('should handle auth store logout affecting conversations store', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       
@@ -262,7 +262,7 @@ describe('Composables Edge Cases', () => {
       expect(conversationsStore.conversations).toHaveLength(1)
     })
 
-    it('should handle error composable with store operations', async () => {
+    test('should handle error composable with store operations', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const { useError } = await import('../../../frontend/src/composables/useError')
       
@@ -281,7 +281,7 @@ describe('Composables Edge Cases', () => {
       expect(errorComposable.error.value).toBe('網路錯誤，請稍後再試')
     })
 
-    it('should handle multiple stores with shared loading states', async () => {
+    test('should handle multiple stores with shared loading states', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       
@@ -300,7 +300,7 @@ describe('Composables Edge Cases', () => {
   })
 
   describe('Memory and performance edge cases', () => {
-    it('should handle memory pressure scenarios', async () => {
+    test('should handle memory pressure scenarios', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const store = useConversationsStore()
       
@@ -326,7 +326,7 @@ describe('Composables Edge Cases', () => {
       expect(store.messages).toHaveLength(0)
     })
 
-    it('should handle rapid successive API calls', async () => {
+    test('should handle rapid successive API calls', async () => {
       vi.mocked(mockConversationApi.getConversations).mockResolvedValue({
         success: true,
         data: [{ id: '1', customer_name: 'Customer 1', status: 'pending', platform: 'line' }]
@@ -344,7 +344,7 @@ describe('Composables Edge Cases', () => {
       expect(mockConversationApi.getConversations).toHaveBeenCalledTimes(100)
     })
 
-    it('should handle store cleanup and recreation', async () => {
+    test('should handle store cleanup and recreation', async () => {
       let { useAuthStore } = await import('../../../frontend/src/stores/auth')
       let store = useAuthStore()
       
@@ -365,7 +365,7 @@ describe('Composables Edge Cases', () => {
   })
 
   describe('Error boundary scenarios', () => {
-    it('should handle corrupted store state', async () => {
+    test('should handle corrupted store state', async () => {
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
       const store = useAuthStore()
       
@@ -376,7 +376,7 @@ describe('Composables Edge Cases', () => {
       expect(store.isAdmin).toBe(false)
     })
 
-    it('should handle API returning unexpected data types', async () => {
+    test('should handle API returning unexpected data types', async () => {
       vi.mocked(mockAuthApi.login).mockResolvedValue('invalid-response-type' as any)
 
       const { useAuthStore } = await import('../../../frontend/src/stores/auth')
@@ -388,7 +388,7 @@ describe('Composables Edge Cases', () => {
       expect(store.error).toBe('登入失敗')
     })
 
-    it('should handle circular reference in API responses', async () => {
+    test('should handle circular reference in API responses', async () => {
       const circularObject: any = { id: '1', name: 'Test' }
       circularObject.self = circularObject
 

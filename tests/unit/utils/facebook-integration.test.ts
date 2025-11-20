@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FacebookAdapter } from '@backend/integrations/platform-adapter';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock global fetch and crypto
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -28,7 +29,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
   });
 
   describe('Facebook Graph API Integration', () => {
-    it('should handle API rate limiting gracefully', async () => {
+    test('should handle API rate limiting gracefully', async () => {
       // Mock rate limit response
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -53,7 +54,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle Facebook API error responses', async () => {
+    test('should handle Facebook API error responses', async () => {
       const errorResponse = {
         error: {
           code: 100,
@@ -74,7 +75,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(result).toBe(false);
     });
 
-    it('should handle different message types in Send API', async () => {
+    test('should handle different message types in Send API', async () => {
       const messageTypes = [
         { type: 'text', content: 'Hello World' },
         { type: 'image', content: 'https://example.com/image.jpg' },
@@ -100,7 +101,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
   });
 
   describe('Facebook Webhook Validation', () => {
-    it('should handle webhook verification challenge correctly', () => {
+    test('should handle webhook verification challenge correctly', () => {
       const webhookChallenge = {
         'hub.mode': 'subscribe',
         'hub.verify_token': 'expected-verify-token',
@@ -115,7 +116,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       }
     });
 
-    it('should validate webhook payload structure', () => {
+    test('should validate webhook payload structure', () => {
       const validPayload = {
         object: 'page',
         entry: [{
@@ -145,7 +146,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(isInvalid).toBe(false);
     });
 
-    it('should handle webhook with postback events', () => {
+    test('should handle webhook with postback events', () => {
       const postbackWebhook = {
         object: 'page',
         entry: [{
@@ -165,7 +166,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(postbackWebhook.entry[0].messaging[0].postback.payload).toBe('GET_STARTED_PAYLOAD');
     });
 
-    it('should handle webhook with delivery confirmations', () => {
+    test('should handle webhook with delivery confirmations', () => {
       const deliveryWebhook = {
         object: 'page',
         entry: [{
@@ -186,7 +187,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(deliveryWebhook.entry[0].messaging[0].delivery.mids).toHaveLength(2);
     });
 
-    it('should handle webhook with read confirmations', () => {
+    test('should handle webhook with read confirmations', () => {
       const readWebhook = {
         object: 'page',
         entry: [{
@@ -208,7 +209,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
   });
 
   describe('Message Format Conversion', () => {
-    it('should handle rich media messages', () => {
+    test('should handle rich media messages', () => {
       const richMediaMessage = {
         sender: { id: 'user123' },
         message: {
@@ -231,7 +232,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(result.metadata.originalMessage).toEqual(richMediaMessage);
     });
 
-    it('should handle location sharing', () => {
+    test('should handle location sharing', () => {
       const locationMessage = {
         sender: { id: 'user123' },
         message: {
@@ -255,7 +256,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(result.platform).toBe('facebook');
     });
 
-    it('should handle quick replies', () => {
+    test('should handle quick replies', () => {
       const quickReplyMessage = {
         sender: { id: 'user123' },
         message: {
@@ -276,7 +277,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
   });
 
   describe('User Profile Management', () => {
-    it('should handle incomplete user profiles', () => {
+    test('should handle incomplete user profiles', () => {
       const incompleteProfile = {
         id: 'user123',
         first_name: 'John'
@@ -291,7 +292,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(result.metadata.locale).toBeUndefined();
     });
 
-    it('should handle user profile with all fields', () => {
+    test('should handle user profile with all fields', () => {
       const completeProfile = {
         id: 'user123',
         first_name: 'John',
@@ -318,7 +319,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
   });
 
   describe('Error Scenarios', () => {
-    it('should handle network timeouts', async () => {
+    test('should handle network timeouts', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Request timeout'));
 
       await expect(
@@ -326,7 +327,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       ).rejects.toThrow('Request timeout');
     });
 
-    it('should handle malformed webhook signatures', async () => {
+    test('should handle malformed webhook signatures', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       mockCrypto.subtle.importKey.mockRejectedValueOnce(new Error('Invalid key format'));
@@ -339,7 +340,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle oversized webhook payloads', () => {
+    test('should handle oversized webhook payloads', () => {
       const oversizedPayload = {
         object: 'page',
         entry: [{
@@ -360,7 +361,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
   });
 
   describe('Security Features', () => {
-    it('should properly sanitize user input in messages', () => {
+    test('should properly sanitize user input in messages', () => {
       const maliciousMessage = {
         sender: { id: 'user123' },
         message: {
@@ -377,7 +378,7 @@ describe('Facebook Integration - Advanced Scenarios', () => {
       expect(result.content).toBe('<script>alert("xss")</script>Hello');
     });
 
-    it('should validate webhook signature with correct algorithm', async () => {
+    test('should validate webhook signature with correct algorithm', async () => {
       const testBody = 'test-webhook-body';
       const testSignature = 'sha1=da39a3ee5e6b4b0d3255bfef95601890afd80709';
 

@@ -3,6 +3,8 @@
 import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { Bindings } from '@/types';
+import { PermissionService } from '@shared/services/permission-service';
+import type { PermissionContext } from '@/types/services';
 
 // Analytics User interface
 interface AnalyticsUser {
@@ -59,8 +61,10 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
       });
     }
 
-    // 檢查分析數據訪問權限
-    if (!hasAnalyticsPermission(userRole, c.req.path, c.req.method)) {
+    // 使用 PermissionService 檢查分析數據訪問權限
+    const hasPermission = await checkAnalyticsPermission(userId, userRole, c.req.path, c.req.method, decoded.teamId, c.env.DB);
+
+    if (!hasPermission) {
       throw new HTTPException(403, {
         message: 'Insufficient permissions for analytics access',
         cause: 'INSUFFICIENT_PERMISSIONS'
@@ -140,49 +144,45 @@ async function verifyJWT(token: string, secret: string): Promise<{
 }
 
 /**
- * 檢查用戶是否有分析數據訪問權限
+ * 使用 PermissionService 檢查用戶是否有分析數據訪問權限
  */
-function hasAnalyticsPermission(userRole: string, path: string, method: string): boolean {
-  const permissions = getAnalyticsPermissions(userRole);
-
-  // 根據路徑和方法檢查權限
-  if (path.includes('/conversations')) {
-    return permissions.includes('view_conversation_analytics');
-  }
-
-  if (path.includes('/messages')) {
-    return permissions.includes('view_message_analytics');
-  }
-
-  if (path.includes('/users')) {
-    return permissions.includes('view_user_analytics');
-  }
-
-  if (path.includes('/performance')) {
-    return permissions.includes('view_performance_analytics');
-  }
-
-  if (path.includes('/custom')) {
-    return permissions.includes('custom_analytics');
-  }
-
-  if (path.includes('/export')) {
-    return permissions.includes('export_analytics');
-  }
-
-  if (path.includes('/metrics')) {
-    if (method === 'POST') {
-      return permissions.includes('collect_metrics');
-    }
-    return permissions.includes('view_metrics');
-  }
-
+async function checkAnalyticsPermission(
+  userId: string,
+  userRole: string,
+  path: string,
+  method: string,
+  teamId: number | undefined,
+  db: D1Database
+): Promise<boolean> {
   // 健康檢查端點對所有認證用戶開放
   if (path.includes('/health')) {
     return true;
   }
 
-  return false;
+  const context: PermissionContext = {
+    userId,
+    role: userRole,
+    teamId
+  };
+
+  // 根據路徑確定需要檢查的 resource 和 action
+  let resource = 'analytics';
+  let action = 'view';
+
+  if (path.includes('/export')) {
+    action = 'export';
+  } else if (path.includes('/custom') || (path.includes('/metrics') && method === 'POST')) {
+    action = 'query';
+  }
+
+  // 使用 PermissionService 進行權限檢查
+  return await PermissionService.checkPermission(
+    userId,
+    resource,
+    action,
+    context,
+    db
+  );
 }
 
 /**
@@ -221,17 +221,40 @@ function getAnalyticsPermissions(userRole: string): string[] {
 
 /**
  * 檢查特定分析權限
+ * 使用 PermissionService 進行細緻權限檢查
  */
-export function requireAnalyticsPermission(permission: string) {
+export function requireAnalyticsPermission(resource: string, action: string) {
   return async (c: Context<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>, next: Next) => {
     const user = c.get('user');
-    const userPermissions = getAnalyticsPermissions(user?.role || 'agent');
-    if (!user || !userPermissions.includes(permission)) {
+
+    if (!user) {
+      throw new HTTPException(401, {
+        message: 'Authentication required',
+        cause: 'NO_USER'
+      });
+    }
+
+    const context: PermissionContext = {
+      userId: user.id,
+      role: user.role,
+      teamId: user.teamId ? parseInt(user.teamId) : undefined
+    };
+
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      resource,
+      action,
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
       throw new HTTPException(403, {
-        message: `Missing required permission: ${permission}`,
+        message: `Missing required permission: ${resource}:${action}`,
         cause: 'INSUFFICIENT_PERMISSIONS'
       });
     }
+
     await next();
   };
 }

@@ -4,7 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConversationShardingService } from '@/services/conversation-sharding-service';
-import { ConversationRoom } from '@/durable-objects/ConversationRoom';
+import { ConversationRoom } from '@/durable-objects/ConversationRimport { MockFactory } from '@helpers/mockFactory';
+oom';
 import { SHARD_CONFIG } from '@/types/sharding-types';
 import type { ShardCapacityResponse } from '@/types/sharding-types';
 
@@ -75,6 +76,10 @@ class IntegrationTestEnv {
           return new Response(JSON.stringify(response), {
             headers: { 'Content-Type': 'application/json' }
           });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
         }
 
         // Metadata endpoint
@@ -191,6 +196,7 @@ describe('Multi-Shard Integration Tests', () => {
   let service: ConversationShardingService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     env = new IntegrationTestEnv();
     service = new ConversationShardingService(env as any);
     service.clearCache();
@@ -198,7 +204,7 @@ describe('Multi-Shard Integration Tests', () => {
   });
 
   describe('End-to-End Shard Selection', () => {
-    it('should select shard-0 for new conversation', async () => {
+    test('should select shard-0 for new conversation', async () => {
       const conversationId = 'conv-e2e-001';
 
       const stub = await service.getAvailableShardForConversation(conversationId);
@@ -207,7 +213,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(stub.shardId).toBe(`${conversationId}_shard-0`);
     });
 
-    it('should distribute connections across multiple shards when capacity is reached', async () => {
+    test('should distribute connections across multiple shards when capacity is reached', async () => {
       const conversationId = 'conv-e2e-002';
 
       // Fill shard-0 to capacity
@@ -222,7 +228,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(stub.shardId).toBe(`${conversationId}_shard-1`);
     });
 
-    it('should handle concurrent shard selection requests', async () => {
+    test('should handle concurrent shard selection requests', async () => {
       const conversationId = 'conv-e2e-003';
 
       // Simulate 50 concurrent connection attempts
@@ -241,7 +247,7 @@ describe('Multi-Shard Integration Tests', () => {
   });
 
   describe('Cross-Shard Message Broadcasting', () => {
-    it('should broadcast message from shard-0 to all other shards', async () => {
+    test('should broadcast message from shard-0 to all other shards', async () => {
       const conversationId = 'conv-broadcast-001';
 
       // Add connections to shards 0-4
@@ -285,7 +291,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(connections[1].messages[0].data.content).toBe('Hello from shard-0');
     });
 
-    it('should handle broadcasting with multiple messages in sequence', async () => {
+    test('should handle broadcasting with multiple messages in sequence', async () => {
       const conversationId = 'conv-broadcast-002';
 
       // Setup connections
@@ -316,7 +322,7 @@ describe('Multi-Shard Integration Tests', () => {
       }
     });
 
-    it('should broadcast from different source shards correctly', async () => {
+    test('should broadcast from different source shards correctly', async () => {
       const conversationId = 'conv-broadcast-003';
 
       // Setup connections on all shards
@@ -350,7 +356,7 @@ describe('Multi-Shard Integration Tests', () => {
   });
 
   describe('Load Distribution', () => {
-    it('should evenly distribute 25,000 connections across 3 shards', async () => {
+    test('should evenly distribute 25,000 connections across 3 shards', async () => {
       const conversationId = 'conv-load-001';
 
       // Simulate 25,000 connections
@@ -387,7 +393,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(totalConnections.length).toBe(25000);
     });
 
-    it('should handle maximum capacity (50,000 connections across 5 shards)', async () => {
+    test('should handle maximum capacity (50,000 connections across 5 shards)', async () => {
       const conversationId = 'conv-load-002';
 
       // Fill all 5 shards to capacity
@@ -414,7 +420,7 @@ describe('Multi-Shard Integration Tests', () => {
   });
 
   describe('Failover and Resilience', () => {
-    it('should continue operating when one shard fails', async () => {
+    test('should continue operating when one shard fails', async () => {
       const conversationId = 'conv-failover-001';
 
       // Setup connections on multiple shards
@@ -456,7 +462,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(result.shardsNotified).toBeGreaterThanOrEqual(2);
     });
 
-    it('should handle graceful degradation on shard failures', async () => {
+    test('should handle graceful degradation on shard failures', async () => {
       const conversationId = 'conv-failover-002';
 
       // Setup connections
@@ -495,7 +501,7 @@ describe('Multi-Shard Integration Tests', () => {
   });
 
   describe('Complete Conversation Flow', () => {
-    it('should handle complete multi-user conversation across shards', async () => {
+    test('should handle complete multi-user conversation across shards', async () => {
       const conversationId = 'conv-flow-001';
 
       // Setup: 10 users distributed across 3 shards
@@ -548,7 +554,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(frankMessages.length).toBeGreaterThan(0);
     });
 
-    it('should handle typing indicators across shards', async () => {
+    test('should handle typing indicators across shards', async () => {
       const conversationId = 'conv-flow-002';
 
       // Setup connections
@@ -578,7 +584,7 @@ describe('Multi-Shard Integration Tests', () => {
   });
 
   describe('Performance and Scalability', () => {
-    it('should complete broadcast to 5 shards within 100ms', async () => {
+    test('should complete broadcast to 5 shards within 100ms', async () => {
       const conversationId = 'conv-perf-001';
 
       // Add connections to all shards
@@ -600,7 +606,7 @@ describe('Multi-Shard Integration Tests', () => {
       expect(latency).toBeLessThan(100);
     });
 
-    it('should handle 100 concurrent broadcasts efficiently', async () => {
+    test('should handle 100 concurrent broadcasts efficiently', async () => {
       const conversationId = 'conv-perf-002';
 
       // Setup connections

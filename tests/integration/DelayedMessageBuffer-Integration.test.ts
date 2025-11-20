@@ -2,7 +2,8 @@
  * DelayedMessageBuffer 整合測試
  * 測試修復後的 Critical & High Issues
  *
- * 測試覆蓋:
+ * 測試覆import { MockFactory } from '@helpers/mockFactory';
+蓋:
  * - Race Condition 防護
  * - DLQ 重試機制
  * - API Timeout 保護
@@ -93,6 +94,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   let fetchMock: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockState = new MockDurableObjectState();
     fetchMock = vi.fn();
     global.fetch = fetchMock;
@@ -108,7 +110,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('✅ Critical Fix #1: Race Condition Prevention', () => {
-    it('should handle concurrent modifications safely with immutable snapshot', async () => {
+    test('should handle concurrent modifications safely with immutable snapshot', async () => {
       // 這個測試驗證 alarm() 使用不可變快照,避免並發修改導致的迭代器損壞
 
       const pendingMessages = new Map();
@@ -141,7 +143,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect(readyMessages.map(m => m.id)).toEqual(['msg-1', 'msg-2', 'msg-3']);
     });
 
-    it('should process all ready messages even if some are deleted during iteration', async () => {
+    test('should process all ready messages even if some are deleted during iteration', async () => {
       const messages = [
         { id: 'msg-1', status: 'pending', scheduledAt: Date.now() - 1000 },
         { id: 'msg-2', status: 'pending', scheduledAt: Date.now() - 1000 },
@@ -161,7 +163,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('✅ Critical Fix #2: DLQ Retry Mechanism', () => {
-    it('should retry DLQ write 3 times on failure', async () => {
+    test('should retry DLQ write 3 times on failure', async () => {
       const storage = new MockDurableObjectStorage();
       let attemptCount = 0;
 
@@ -203,7 +205,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect(mockPut).toHaveBeenCalledTimes(3);
     });
 
-    it('should log CRITICAL error after all retries fail', async () => {
+    test('should log CRITICAL error after all retries fail', async () => {
       const storage = new MockDurableObjectStorage();
       const consoleErrorSpy = vi.spyOn(console, 'error');
 
@@ -232,7 +234,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('✅ Critical Fix #3: Awaited DLQ Operations', () => {
-    it('should await all DLQ operations before returning from alarm()', async () => {
+    test('should await all DLQ operations before returning from alarm()', async () => {
       const storage = new MockDurableObjectStorage();
       const dlqPromises: Promise<void>[] = [];
 
@@ -253,7 +255,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect(storage.size()).toBe(3); // 所有都已寫入
     });
 
-    it('should not return from alarm() until all async operations complete', async () => {
+    test('should not return from alarm() until all async operations complete', async () => {
       const operations: Promise<void>[] = [];
       let completedCount = 0;
 
@@ -278,7 +280,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('✅ Critical Fix #4: API Timeout Protection', () => {
-    it('should abort LINE API call after 10 seconds', async () => {
+    test('should abort LINE API call after 10 seconds', async () => {
       vi.useFakeTimers();
 
       const controller = new AbortController();
@@ -305,7 +307,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       vi.useRealTimers();
     });
 
-    it('should throw timeout error when API hangs', async () => {
+    test('should throw timeout error when API hangs', async () => {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 100); // 100ms 逾時
 
@@ -320,7 +322,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       }
     });
 
-    it('should clear timeout when API responds quickly', async () => {
+    test('should clear timeout when API responds quickly', async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -341,7 +343,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('✅ High Fix #5: Retry State Persistence', () => {
-    it('should persist retry count after each attempt', async () => {
+    test('should persist retry count after each attempt', async () => {
       const storage = new MockDurableObjectStorage();
       const message = {
         id: 'msg-persist',
@@ -367,7 +369,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect((finalState as any).retryCount).toBe(3);
     });
 
-    it('should restore retry count after DO restart', async () => {
+    test('should restore retry count after DO restart', async () => {
       const storage = new MockDurableObjectStorage();
 
       // 儲存重試狀態
@@ -387,7 +389,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('✅ High Fix #6: Error Re-throw Consistency', () => {
-    it('should NOT re-throw errors after complete handling', async () => {
+    test('should NOT re-throw errors after complete handling', async () => {
       const message = {
         id: 'msg-handled',
         status: 'pending' as const,
@@ -417,7 +419,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect(message.failureReason).toBe('Send failed');
     });
 
-    it('should handle errors gracefully without propagation', async () => {
+    test('should handle errors gracefully without propagation', async () => {
       const results = await Promise.allSettled([
         Promise.resolve('success'),
         Promise.reject(new Error('failure')),
@@ -433,7 +435,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('🔒 Edge Cases & Concurrent Scenarios', () => {
-    it('should handle empty message queue gracefully', async () => {
+    test('should handle empty message queue gracefully', async () => {
       const allMessages = Array.from([].values());
       const readyMessages = allMessages.filter(
         msg => (msg as any).status === 'pending'
@@ -442,7 +444,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect(readyMessages).toHaveLength(0);
     });
 
-    it('should handle simultaneous schedule and cancel', async () => {
+    test('should handle simultaneous schedule and cancel', async () => {
       const storage = new MockDurableObjectStorage();
 
       // 同時執行 schedule 和 cancel
@@ -460,7 +462,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       // 可能存在或不存在,但不應拋出錯誤
     });
 
-    it('should handle rapid successive retries', async () => {
+    test('should handle rapid successive retries', async () => {
       const storage = new MockDurableObjectStorage();
       const promises: Promise<void>[] = [];
 
@@ -482,7 +484,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
   });
 
   describe('📊 Performance & Reliability', () => {
-    it('should complete DLQ write within reasonable time', async () => {
+    test('should complete DLQ write within reasonable time', async () => {
       const storage = new MockDurableObjectStorage();
       const startTime = Date.now();
 
@@ -498,7 +500,7 @@ describe('DelayedMessageBuffer - Integration Tests (Critical Issues Fixed)', () 
       expect(duration).toBeLessThan(100);
     });
 
-    it('should handle batch DLQ writes efficiently', async () => {
+    test('should handle batch DLQ writes efficiently', async () => {
       const storage = new MockDurableObjectStorage();
       const promises: Promise<void>[] = [];
 

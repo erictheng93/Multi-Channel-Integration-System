@@ -4,7 +4,8 @@ import { Hono } from 'hono';
 import delayedMessageMainHandler from '@backend/handlers/delayed-message-main';
 import { MessageRecallService } from '@backend/services/message-recall-service';
 import { PermissionService } from '@backend/services/permission-service';
-import type { Bindings } from '@backend/types';
+import type { Bimport { MockFactory } from '@helpers/mockFactory';
+indings } from '@backend/types';
 
 // Mock services
 vi.mock('../../../src/services/message-recall-service');
@@ -144,7 +145,7 @@ describe('DelayedMessage Main Handler', () => {
       messageType: 'text'
     };
 
-    it('should successfully send delayed message', async () => {
+    test('should successfully send delayed message', async () => {
       // Setup mocks
       mockPermissionService.checkPermission.mockResolvedValue(true);
 
@@ -178,7 +179,7 @@ describe('DelayedMessage Main Handler', () => {
       // Note: sendDelayedMessage is no longer called - using Durable Objects instead
     });
 
-    it('should reject empty content', async () => {
+    test('should reject empty content', async () => {
       const invalidRequest = { ...validRequest, content: '' };
 
       const response = await app.request('/api/delayed-messages/send', {
@@ -192,7 +193,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.error).toBe('Missing required fields: conversationId, content, platform, recipientPlatformId');
     });
 
-    it('should reject invalid delay seconds', async () => {
+    test('should reject invalid delay seconds', async () => {
       const invalidRequest = { ...validRequest, delaySeconds: 150 };
 
       const response = await app.request('/api/delayed-messages/send', {
@@ -206,7 +207,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.error).toBe('Delay seconds must be between 1 and 120');
     });
 
-    it('should reject when permission denied', async () => {
+    test('should reject when permission denied', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(false);
 
       const response = await app.request('/api/delayed-messages/send', {
@@ -220,7 +221,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.error).toBe('Permission denied');
     });
 
-    it('should handle service errors', async () => {
+    test('should handle service errors', async () => {
       mockPermissionService.checkPermission.mockResolvedValue(true);
 
       // Mock DO stub to return error
@@ -253,7 +254,7 @@ describe('DelayedMessage Main Handler', () => {
     const messageId = 'msg-123';
     const conversationId = '123';
 
-    it('should successfully recall message', async () => {
+    test('should successfully recall message', async () => {
       const response = await app.request(`/api/delayed-messages/recall/${messageId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -270,7 +271,7 @@ describe('DelayedMessage Main Handler', () => {
       // Note: recallMessage is no longer called - using Durable Objects instead
     });
 
-    it('should handle recall failure', async () => {
+    test('should handle recall failure', async () => {
       // Note: The mock DO stub always returns success for cancel operations.
       // In a real scenario, the DO would return failure if the message doesn't exist
       // or if the recall window has passed. However, with the current test setup,
@@ -290,7 +291,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.data.messageId).toBe(messageId);
     });
 
-    it('should require messageId parameter', async () => {
+    test('should require messageId parameter', async () => {
       const response = await app.request('/api/delayed-messages/recall/', {
         method: 'POST'
       });
@@ -300,7 +301,7 @@ describe('DelayedMessage Main Handler', () => {
   });
 
   describe('GET /pending', () => {
-    it('should return pending messages', async () => {
+    test('should return pending messages', async () => {
       const mockDOResponse = {
         success: true,
         count: 1,
@@ -325,7 +326,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.data.conversationId).toBe('123');
     });
 
-    it('should handle pagination parameters', async () => {
+    test('should handle pagination parameters', async () => {
       const response = await app.request('/api/delayed-messages/pending?conversationId=123&page=2&pageSize=10');
 
       expect(response.status).toBe(200);
@@ -337,7 +338,7 @@ describe('DelayedMessage Main Handler', () => {
   });
 
   describe('POST /process', () => {
-    it('should return deprecated message', async () => {
+    test('should return deprecated message', async () => {
       const messageId = 'msg-123';
 
       const response = await app.request('/api/delayed-messages/process', {
@@ -354,7 +355,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.message).toContain('deprecated');
     });
 
-    it('should return deprecated message regardless of payload', async () => {
+    test('should return deprecated message regardless of payload', async () => {
       const response = await app.request('/api/delayed-messages/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -368,7 +369,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(result.deprecated).toBe(true);
     });
 
-    it('should not call processQueueMessage service', async () => {
+    test('should not call processQueueMessage service', async () => {
       const messageId = 'msg-123';
 
       const response = await app.request('/api/delayed-messages/process', {
@@ -381,7 +382,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(mockMessageRecallService.processQueueMessage).not.toHaveBeenCalled();
     });
 
-    it('should indicate Durable Objects Alarm API usage', async () => {
+    test('should indicate Durable Objects Alarm API usage', async () => {
       const response = await app.request('/api/delayed-messages/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,7 +397,7 @@ describe('DelayedMessage Main Handler', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle JSON parsing errors', async () => {
+    test('should handle JSON parsing errors', async () => {
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -406,7 +407,7 @@ describe('DelayedMessage Main Handler', () => {
       expect(response.status).toBe(500);
     });
 
-    it('should handle service initialization errors', async () => {
+    test('should handle service initialization errors', async () => {
       // Mock permission service to return true first
       mockPermissionService.checkPermission.mockResolvedValue(true);
 

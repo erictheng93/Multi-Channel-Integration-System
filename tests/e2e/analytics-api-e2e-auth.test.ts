@@ -2,7 +2,8 @@
 // 真實 E2E 測試 - 完整的 HTTP + JWT 認證流程
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { unstable_dev, UnstableDevWorker } from 'wrangler';
+import { unstable_dev, UnstableDevWorker } from 'import { MockFactory } from '@helpers/mockFactory';
+wrangler';
 import { TestJWTHelper, getAuthHeaders } from '../helpers/test-jwt-helper';
 
 /**
@@ -64,7 +65,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== 認證測試 ========================
 
   describe('Authentication Tests', () => {
-    it('should reject requests without authentication', async () => {
+    test('should reject requests without authentication', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/conversations?timeRange=7d`, {
         method: 'GET',
         headers: {
@@ -78,7 +79,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       expect(data).toHaveProperty('error');
     });
 
-    it('should reject requests with invalid token', async () => {
+    test('should reject requests with invalid token', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/conversations?timeRange=7d`, {
         method: 'GET',
         headers: {
@@ -91,7 +92,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Invalid token correctly rejected');
     });
 
-    it('should reject requests with expired token', async () => {
+    test('should reject requests with expired token', async () => {
       const expiredToken = await TestJWTHelper.generateExpiredToken();
 
       const response = await fetch(`${baseUrl}/api/analytics/conversations?timeRange=7d`, {
@@ -106,7 +107,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Expired token correctly rejected');
     });
 
-    it('should accept requests with valid admin token', async () => {
+    test('should accept requests with valid admin token', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/health`, {
         method: 'GET',
         headers: {
@@ -121,7 +122,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Admin token accepted');
     });
 
-    it('should accept requests with valid team token', async () => {
+    test('should accept requests with valid team token', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/health`, {
         method: 'GET',
         headers: {
@@ -134,7 +135,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Team leader token accepted');
     });
 
-    it('should accept requests with valid agent token', async () => {
+    test('should accept requests with valid agent token', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/health`, {
         method: 'GET',
         headers: {
@@ -151,7 +152,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Health Check E2E ========================
 
   describe('Health Check E2E', () => {
-    it('should access health endpoint with authentication', async () => {
+    test('should access health endpoint with authentication', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/health`, {
         method: 'GET',
         headers: {
@@ -177,7 +178,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Conversation Analytics E2E ========================
 
   describe('Conversation Analytics E2E', () => {
-    it('should fetch conversation analytics with admin authentication', async () => {
+    test('should fetch conversation analytics with admin authentication', async () => {
       const response = await fetch(
         `${baseUrl}/api/analytics/conversations?timeRange=7d&metrics=total_conversations,active_conversations`,
         {
@@ -204,7 +205,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Conversation analytics E2E test passed');
     });
 
-    it('should support platform filtering with authentication', async () => {
+    test('should support platform filtering with authentication', async () => {
       const response = await fetch(
         `${baseUrl}/api/analytics/conversations?timeRange=7d&metrics=total_conversations&platform=line`,
         {
@@ -224,7 +225,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Platform filtering E2E test passed');
     });
 
-    it('should respect team-level permissions', async () => {
+    test('should respect team-level permissions', async () => {
       // Team leader should only see their team's data
       const response = await fetch(
         `${baseUrl}/api/analytics/conversations?timeRange=7d&metrics=total_conversations`,
@@ -245,7 +246,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Team permissions E2E test passed');
     });
 
-    it('should restrict agent access appropriately', async () => {
+    test('should restrict agent access appropriately', async () => {
       // Agent should have limited access
       const response = await fetch(
         `${baseUrl}/api/analytics/conversations?timeRange=7d&metrics=total_conversations`,
@@ -270,7 +271,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Message Analytics E2E ========================
 
   describe('Message Analytics E2E', () => {
-    it('should fetch message analytics with authentication', async () => {
+    test('should fetch message analytics with authentication', async () => {
       const response = await fetch(
         `${baseUrl}/api/analytics/messages?timeRange=7d&metrics=total_messages,messages_per_hour`,
         {
@@ -296,7 +297,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== User Analytics E2E ========================
 
   describe('User Analytics E2E', () => {
-    it('should fetch user analytics with authentication', async () => {
+    test('should fetch user analytics with authentication', async () => {
       const response = await fetch(
         `${baseUrl}/api/analytics/users?timeRange=7d&metrics=active_users&userType=agent`,
         {
@@ -321,7 +322,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Performance Analytics E2E ========================
 
   describe('Performance Analytics E2E', () => {
-    it('should fetch performance analytics with authentication', async () => {
+    test('should fetch performance analytics with authentication', async () => {
       const response = await fetch(
         `${baseUrl}/api/analytics/performance?timeRange=24h&metrics=response_times,throughput,error_rates`,
         {
@@ -346,7 +347,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Export E2E ========================
 
   describe('Export E2E', () => {
-    it('should export analytics data with authentication', async () => {
+    test('should export analytics data with authentication', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/export`, {
         method: 'POST',
         headers: {
@@ -377,7 +378,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Export E2E test passed');
     });
 
-    it('should restrict export access based on role', async () => {
+    test('should restrict export access based on role', async () => {
       // Agent might not have export permission
       const response = await fetch(`${baseUrl}/api/analytics/export`, {
         method: 'POST',
@@ -414,7 +415,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Error Handling E2E ========================
 
   describe('Error Handling E2E', () => {
-    it('should handle invalid query parameters gracefully', async () => {
+    test('should handle invalid query parameters gracefully', async () => {
       const response = await fetch(
         `${baseUrl}/api/analytics/conversations?timeRange=invalid&metrics=total_conversations`,
         {
@@ -432,7 +433,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Invalid parameter handling E2E test passed');
     });
 
-    it('should handle malformed request body', async () => {
+    test('should handle malformed request body', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/custom`, {
         method: 'POST',
         headers: {
@@ -451,7 +452,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== CORS and Headers E2E ========================
 
   describe('CORS and Headers E2E', () => {
-    it('should include proper response headers', async () => {
+    test('should include proper response headers', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/health`, {
         method: 'GET',
         headers: {
@@ -466,7 +467,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
       console.log('✅ Response headers E2E test passed');
     });
 
-    it('should handle OPTIONS preflight requests', async () => {
+    test('should handle OPTIONS preflight requests', async () => {
       const response = await fetch(`${baseUrl}/api/analytics/health`, {
         method: 'OPTIONS',
         headers: {
@@ -484,7 +485,7 @@ describe('Analytics API E2E Tests with Authentication', () => {
   // ======================== Concurrent Requests E2E ========================
 
   describe('Concurrent Requests E2E', () => {
-    it('should handle multiple concurrent authenticated requests', async () => {
+    test('should handle multiple concurrent authenticated requests', async () => {
       const requests = Array.from({ length: 10 }, () =>
         fetch(
           `${baseUrl}/api/analytics/conversations?timeRange=7d&metrics=total_conversations`,

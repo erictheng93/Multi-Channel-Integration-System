@@ -8,6 +8,7 @@ import {
 } from '@backend/utils/line';
 import { createTextMessage, createStickerMessage } from '@backend/utils/line';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock global fetch and crypto
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -44,7 +45,7 @@ describe('LINE API Error Handling Tests', () => {
 
   describe('HTTP Error Status Codes', () => {
     describe('sendLineReply error handling', () => {
-      it('should handle 400 Bad Request', async () => {
+      test('should handle 400 Bad Request', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 400,
@@ -66,7 +67,7 @@ describe('LINE API Error Handling Tests', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should handle 401 Unauthorized', async () => {
+      test('should handle 401 Unauthorized', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 401,
@@ -88,7 +89,7 @@ describe('LINE API Error Handling Tests', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should handle 403 Forbidden', async () => {
+      test('should handle 403 Forbidden', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 403,
@@ -110,7 +111,7 @@ describe('LINE API Error Handling Tests', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should handle 429 Rate Limit Exceeded', async () => {
+      test('should handle 429 Rate Limit Exceeded', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 429,
@@ -132,7 +133,7 @@ describe('LINE API Error Handling Tests', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should handle 500 Internal Server Error', async () => {
+      test('should handle 500 Internal Server Error', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 500,
@@ -156,7 +157,7 @@ describe('LINE API Error Handling Tests', () => {
     });
 
     describe('pushLineMessage error handling', () => {
-      it('should handle 404 User Not Found', async () => {
+      test('should handle 404 User Not Found', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 404,
@@ -178,7 +179,7 @@ describe('LINE API Error Handling Tests', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should handle 400 Invalid Message Format', async () => {
+      test('should handle 400 Invalid Message Format', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 400,
@@ -202,7 +203,7 @@ describe('LINE API Error Handling Tests', () => {
     });
 
     describe('Profile API error handling', () => {
-      it('should handle user profile 404 error', async () => {
+      test('should handle user profile 404 error', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 404,
@@ -223,7 +224,7 @@ describe('LINE API Error Handling Tests', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should handle group member profile 403 error', async () => {
+      test('should handle group member profile 403 error', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 403,
@@ -247,7 +248,7 @@ describe('LINE API Error Handling Tests', () => {
   });
 
   describe('Network and Connection Errors', () => {
-    it('should handle network timeout', async () => {
+    test('should handle network timeout', async () => {
       const timeoutError = new Error('Network timeout');
       timeoutError.name = 'TimeoutError';
       mockFetch.mockRejectedValueOnce(timeoutError);
@@ -263,7 +264,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle DNS resolution failure', async () => {
+    test('should handle DNS resolution failure', async () => {
       const dnsError = new Error('getaddrinfo ENOTFOUND api.line.me');
       dnsError.name = 'DNSError';
       mockFetch.mockRejectedValueOnce(dnsError);
@@ -279,7 +280,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle connection refused', async () => {
+    test('should handle connection refused', async () => {
       const connectionError = new Error('connect ECONNREFUSED 127.0.0.1:443');
       connectionError.name = 'ConnectionError';
       mockFetch.mockRejectedValueOnce(connectionError);
@@ -294,7 +295,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle SSL/TLS errors', async () => {
+    test('should handle SSL/TLS errors', async () => {
       const sslError = new Error('unable to verify the first certificate');
       sslError.name = 'SSLError';
       mockFetch.mockRejectedValueOnce(sslError);
@@ -311,7 +312,7 @@ describe('LINE API Error Handling Tests', () => {
   });
 
   describe('Malformed Response Handling', () => {
-    it('should handle invalid JSON response', async () => {
+    test('should handle invalid JSON response', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -328,7 +329,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle empty response body', async () => {
+    test('should handle empty response body', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
@@ -346,7 +347,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle response text parsing error', async () => {
+    test('should handle response text parsing error', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -366,7 +367,7 @@ describe('LINE API Error Handling Tests', () => {
   });
 
   describe('Signature Verification Error Scenarios', () => {
-    it('should handle crypto API unavailable', async () => {
+    test('should handle crypto API unavailable', async () => {
       // Temporarily remove crypto API
       const originalCrypto = global.crypto;
       delete (global as any).crypto;
@@ -383,7 +384,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle key import failure', async () => {
+    test('should handle key import failure', async () => {
       mockCrypto.subtle.importKey.mockRejectedValueOnce(new Error('Key import failed'));
       
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -396,7 +397,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle HMAC signing failure', async () => {
+    test('should handle HMAC signing failure', async () => {
       mockCrypto.subtle.importKey.mockResolvedValueOnce('mock-key');
       mockCrypto.subtle.sign.mockRejectedValueOnce(new Error('HMAC signing failed'));
       
@@ -410,7 +411,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle base64 encoding failure', async () => {
+    test('should handle base64 encoding failure', async () => {
       mockCrypto.subtle.importKey.mockResolvedValueOnce('mock-key');
       mockCrypto.subtle.sign.mockResolvedValueOnce(new ArrayBuffer(16));
       (global.btoa as any).mockImplementation(() => {
@@ -429,7 +430,7 @@ describe('LINE API Error Handling Tests', () => {
   });
 
   describe('Edge Case Error Scenarios', () => {
-    it('should handle extremely large message payload', async () => {
+    test('should handle extremely large message payload', async () => {
       const hugeMessage = createTextMessage('x'.repeat(100000)); // Way beyond LINE limits
       
       mockFetch.mockResolvedValueOnce({
@@ -448,7 +449,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle invalid sticker IDs', async () => {
+    test('should handle invalid sticker IDs', async () => {
       const invalidSticker = createStickerMessage('invalid-package', 'invalid-sticker');
       
       mockFetch.mockResolvedValueOnce({
@@ -467,7 +468,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle expired reply token', async () => {
+    test('should handle expired reply token', async () => {
       const expiredReplyToken = 'expired-reply-token-123';
       const message = createTextMessage('Test message');
       
@@ -487,7 +488,7 @@ describe('LINE API Error Handling Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle service maintenance mode', async () => {
+    test('should handle service maintenance mode', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 503,

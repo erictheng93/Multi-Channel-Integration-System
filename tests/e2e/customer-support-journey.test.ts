@@ -47,7 +47,7 @@ vi.stubGlobal('crypto', {
 
 describe('E2E: Complete Customer Support Journey', () => {
   describe('Scenario 1: New customer inquiry on LINE', () => {
-    it('should handle complete journey from inquiry to resolution', async () => {
+    test('should handle complete journey from inquiry to resolution', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -256,7 +256,7 @@ describe('E2E: Complete Customer Support Journey', () => {
   })
 
   describe('Scenario 2: Multi-agent collaboration', () => {
-    it('should handle conversation handoff between agents', async () => {
+    test('should handle conversation handoff between agents', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -391,7 +391,7 @@ describe('E2E: Complete Customer Support Journey', () => {
   })
 
   describe('Scenario 3: Error recovery and retry', () => {
-    it('should handle transient errors and recover gracefully', async () => {
+    test('should handle transient errors and recover gracefully', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 
@@ -433,7 +433,7 @@ describe('E2E: Complete Customer Support Journey', () => {
   })
 
   describe('Scenario 4: High-volume conversation', () => {
-    it('should handle conversations with many messages efficiently', async () => {
+    test('should handle conversations with many messages efficiently', async () => {
       const mockContext = createMockContext()
       const mockDB = mockContext._mockDB
 

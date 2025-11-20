@@ -10,7 +10,7 @@ import type {
 
 describe('API Documentation Consistency', () => {
   describe('Response Format Standards', () => {
-    it('should have consistent StandardApiResponse interface', () => {
+    test('should have consistent StandardApiResponse interface', () => {
       const mockResponse: StandardApiResponse<{ id: string }> = {
         success: true,
         data: { id: 'test' },
@@ -26,7 +26,7 @@ describe('API Documentation Consistency', () => {
       expect(mockResponse.requestId).toBe('req_1234567890_abcdef')
     })
 
-    it('should have consistent PaginatedApiResponse interface', () => {
+    test('should have consistent PaginatedApiResponse interface', () => {
       const mockResponse: PaginatedApiResponse<{ id: string }> = {
         success: true,
         data: [{ id: 'test1' }, { id: 'test2' }],
@@ -50,7 +50,7 @@ describe('API Documentation Consistency', () => {
       expect(mockResponse.pagination?.hasPrev).toBe(false)
     })
 
-    it('should have consistent error response format', () => {
+    test('should have consistent error response format', () => {
       const mockErrorResponse: StandardApiResponse = {
         success: false,
         error: 'Validation failed',
@@ -76,7 +76,7 @@ describe('API Documentation Consistency', () => {
   })
 
   describe('Error Codes Consistency', () => {
-    it('should have all documented error codes', async () => {
+    test('should have all documented error codes', async () => {
       const { API_ERROR_CODES } = await import('../src/types/api-standard')
       
       // 認證相關
@@ -101,7 +101,7 @@ describe('API Documentation Consistency', () => {
       expect(API_ERROR_CODES.RATE_LIMIT_EXCEEDED).toBe('RATE_LIMIT_EXCEEDED')
     })
 
-    it('should have all documented HTTP status codes', async () => {
+    test('should have all documented HTTP status codes', async () => {
       const { HTTP_STATUS } = await import('../src/types/api-standard')
       
       expect(HTTP_STATUS.OK).toBe(200)
@@ -119,7 +119,7 @@ describe('API Documentation Consistency', () => {
   })
 
   describe('API Response Utilities', () => {
-    it('should generate consistent request IDs', () => {
+    test('should generate consistent request IDs', () => {
       // Mock the generateRequestId function behavior
       const requestId1 = `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
       const requestId2 = `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
@@ -129,7 +129,7 @@ describe('API Documentation Consistency', () => {
       expect(requestId1).not.toBe(requestId2)
     })
 
-    it('should format timestamps consistently', () => {
+    test('should format timestamps consistently', () => {
       const timestamp = new Date().toISOString()
       expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
     })
@@ -187,7 +187,7 @@ describe('API Documentation Consistency', () => {
       'GET /system/health'
     ]
 
-    it('should have comprehensive endpoint documentation', () => {
+    test('should have comprehensive endpoint documentation', () => {
       expect(documentedEndpoints.length).toBeGreaterThan(25)
       
       // 檢查是否涵蓋主要功能區域
@@ -204,7 +204,7 @@ describe('API Documentation Consistency', () => {
       expect(webhookEndpoints.length).toBeGreaterThanOrEqual(2)
     })
 
-    it('should document all CRUD operations for main resources', () => {
+    test('should document all CRUD operations for main resources', () => {
       // 對話 CRUD
       expect(documentedEndpoints).toContain('GET /conversations')
       expect(documentedEndpoints).toContain('GET /conversations/:id')
@@ -262,12 +262,12 @@ describe('API Documentation Consistency', () => {
       'POST /system/restart'
     ]
 
-    it('should properly document authentication requirements', () => {
+    test('should properly document authentication requirements', () => {
       expect(authRequiredEndpoints.length).toBeGreaterThan(10)
       expect(adminRequiredEndpoints.length).toBeGreaterThan(10)
     })
 
-    it('should have clear distinction between user and admin endpoints', () => {
+    test('should have clear distinction between user and admin endpoints', () => {
       // 確保管理員端點不與一般用戶端點重疊
       const overlap = authRequiredEndpoints.filter(endpoint => 
         adminRequiredEndpoints.includes(endpoint)

@@ -2,7 +2,8 @@
 // Tests all conversation handler endpoints with real database operations
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
+import { DatabaseTestEnvironment } from '../../himport { MockFactory } from '@helpers/mockFactory';
+elpers/DatabaseTestEnvironment';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 
@@ -116,7 +117,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== GET / - List Conversations ====================
   describe('GET / - List Conversations', () => {
-    it('should return all conversations visible to admin', async () => {
+    test('should return all conversations visible to admin', async () => {
       // Admin should see all conversations
       const conversations = await env.db.query.conversations.findMany({
         orderBy: (conversations, { desc }) => [desc(conversations.updatedAt)]
@@ -126,7 +127,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(conversations[0].id).toBeTruthy();
     });
 
-    it('should return only team-scoped conversations for agent', async () => {
+    test('should return only team-scoped conversations for agent', async () => {
       // testAgent1 is in testTeam1, should see testConversation1 only
       const conversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.assignedTeamId, testTeam1.id)
@@ -136,7 +137,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(conversations[0].id).toBe(testConversation1.id);
     });
 
-    it('should include customer information with conversations', async () => {
+    test('should include customer information with conversations', async () => {
       const result = await env.db
         .select()
         .from(schema.conversations)
@@ -149,7 +150,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(result[0].customers?.platform).toBe('line');
     });
 
-    it('should include team information for assigned conversations', async () => {
+    test('should include team information for assigned conversations', async () => {
       const result = await env.db
         .select()
         .from(schema.conversations)
@@ -161,7 +162,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(result[0].teams?.name).toBe('Support Team 1');
     });
 
-    it('should handle empty conversation list', async () => {
+    test('should handle empty conversation list', async () => {
       // Delete all conversations
       await env.db.delete(schema.conversations);
 
@@ -169,7 +170,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(conversations).toHaveLength(0);
     });
 
-    it('should order conversations by updatedAt descending', async () => {
+    test('should order conversations by updatedAt descending', async () => {
       // Update conversation2 to be more recent
       await env.db
         .update(schema.conversations)
@@ -187,14 +188,14 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== GET /:id - Get Conversation Details ====================
   describe('GET /:id - Get Conversation Details', () => {
-    it('should return complete conversation with customer and team data', async () => {
+    test('should return complete conversation with customer and team data', async () => {
       const result = await env.db
         .select()
         .from(schema.conversations)
         .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
         .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
         .where(eq(schema.conversations.id, testConversation1.id))
-        .limit(1);
+        .limtest(1);
 
       expect(result).toHaveLength(1);
       expect(result[0].conversations).toBeDefined();
@@ -205,7 +206,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(result[0].teams?.name).toBe('Support Team 1');
     });
 
-    it('should return 404 for non-existent conversation', async () => {
+    test('should return 404 for non-existent conversation', async () => {
       const result = await env.db.query.conversations.findFirst({
         where: (conversations, { eq }) => eq(conversations.id, 'non-existent-id')
       });
@@ -213,14 +214,14 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should return conversation without team for unassigned conversation', async () => {
+    test('should return conversation without team for unassigned conversation', async () => {
       const result = await env.db
         .select()
         .from(schema.conversations)
         .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
         .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
         .where(eq(schema.conversations.id, testConversation2.id))
-        .limit(1);
+        .limtest(1);
 
       expect(result).toHaveLength(1);
       expect(result[0].conversations.assignedTeamId).toBeNull();
@@ -230,7 +231,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== POST /:id/assign - Assign Conversation ====================
   describe('POST /:id/assign - Assign Conversation', () => {
-    it('should successfully assign conversation to team', async () => {
+    test('should successfully assign conversation to team', async () => {
       const timestamp = new Date().toISOString();
 
       await env.db
@@ -250,7 +251,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(updated?.status).toBe('assigned');
     });
 
-    it('should successfully assign conversation to agent', async () => {
+    test('should successfully assign conversation to agent', async () => {
       const timestamp = new Date().toISOString();
 
       await env.db
@@ -272,7 +273,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(updated?.status).toBe('assigned');
     });
 
-    it('should record assignment in conversation_transfers table', async () => {
+    test('should record assignment in conversation_transfers table', async () => {
       const timestamp = new Date().toISOString();
 
       const transferRecord = {
@@ -295,7 +296,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(transfers[0].transferReason).toBe('Test assignment');
     });
 
-    it('should reassign already assigned conversation', async () => {
+    test('should reassign already assigned conversation', async () => {
       // First assignment
       await env.db
         .update(schema.conversations)
@@ -327,7 +328,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== POST /:id/unassign - Unassign Conversation ====================
   describe('POST /:id/unassign - Unassign Conversation', () => {
-    it('should successfully unassign conversation', async () => {
+    test('should successfully unassign conversation', async () => {
       const timestamp = new Date().toISOString();
 
       // Unassign using raw SQL (matching handler implementation)
@@ -350,7 +351,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(updated?.status).toBe('active');
     });
 
-    it('should record unassignment in conversation_transfers table', async () => {
+    test('should record unassignment in conversation_transfers table', async () => {
       const timestamp = new Date().toISOString();
 
       const transferRecord = {
@@ -376,7 +377,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(transfers[0].transferReason).toBe('Unassignment');
     });
 
-    it('should not allow unassigning already unassigned conversation', async () => {
+    test('should not allow unassigning already unassigned conversation', async () => {
       const conversation = await env.db.query.conversations.findFirst({
         where: (conversations, { eq }) => eq(conversations.id, testConversation2.id)
       });
@@ -389,7 +390,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== POST /:id/transfer - Transfer Conversation ====================
   describe('POST /:id/transfer - Transfer Conversation', () => {
-    it('should successfully transfer conversation between teams', async () => {
+    test('should successfully transfer conversation between teams', async () => {
       const timestamp = new Date().toISOString();
 
       // Transfer from team1 to team2
@@ -411,7 +412,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(updated?.assignedUserId).toBe(testAgent2.id);
     });
 
-    it('should record complete transfer history', async () => {
+    test('should record complete transfer history', async () => {
       const timestamp = new Date().toISOString();
 
       const transferRecord = {
@@ -438,7 +439,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(transfers[0].toUserId).toBe(testAgent2.id);
     });
 
-    it('should allow multiple transfers and maintain complete history', async () => {
+    test('should allow multiple transfers and maintain complete history', async () => {
       const timestamp1 = new Date().toISOString();
       const timestamp2 = new Date(Date.now() + 1000).toISOString();
 
@@ -479,7 +480,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== POST /:id/messages - Send Message ====================
   describe('POST /:id/messages - Send Message', () => {
-    it('should successfully send message to conversation', async () => {
+    test('should successfully send message to conversation', async () => {
       const message = await env.createTestMessage(testConversation1.id, {
         id: 'msg-test-1',
         content: 'Test message',
@@ -493,7 +494,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(message.agentSenderId).toBe(testAgent1.id);
     });
 
-    it('should update conversation lastMessageAt timestamp', async () => {
+    test('should update conversation lastMessageAt timestamp', async () => {
       const timestamp = new Date().toISOString();
 
       await env.createTestMessage(testConversation1.id, {
@@ -515,7 +516,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(conversation?.lastMessageAt).toBe(timestamp);
     });
 
-    it('should handle messages from different sender types', async () => {
+    test('should handle messages from different sender types', async () => {
       // Agent message
       const agentMessage = await env.createTestMessage(testConversation1.id, {
         id: 'msg-agent',
@@ -552,7 +553,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       }
     });
 
-    it('should return paginated messages (first page)', async () => {
+    test('should return paginated messages (first page)', async () => {
       const pageSize = 10;
       const messages = await env.db.query.messages.findMany({
         where: (messages, { eq }) => eq(messages.conversationId, testConversation1.id),
@@ -563,7 +564,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(messages).toHaveLength(10);
     });
 
-    it('should return paginated messages (second page)', async () => {
+    test('should return paginated messages (second page)', async () => {
       const page = 2;
       const pageSize = 10;
       const offset = (page - 1) * pageSize;
@@ -578,7 +579,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(messages).toHaveLength(10);
     });
 
-    it('should include sender information in messages', async () => {
+    test('should include sender information in messages', async () => {
       const messages = await env.db
         .select({
           id: schema.messages.id,
@@ -601,7 +602,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
           )
         )
         .where(eq(schema.messages.conversationId, testConversation1.id))
-        .limit(5);
+        .limtest(5);
 
       expect(messages.length).toBeGreaterThan(0);
       messages.forEach(msg => {
@@ -613,7 +614,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       });
     });
 
-    it('should handle empty message list', async () => {
+    test('should handle empty message list', async () => {
       const messages = await env.db.query.messages.findMany({
         where: (messages, { eq }) => eq(messages.conversationId, 'non-existent-conversation')
       });
@@ -621,7 +622,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(messages).toHaveLength(0);
     });
 
-    it('should calculate correct total pages', async () => {
+    test('should calculate correct total pages', async () => {
       const total = 50;
       const pageSize = 10;
       const totalPages = Math.ceil(total / pageSize);
@@ -632,7 +633,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== Complex Scenarios ====================
   describe('Complex Multi-Agent Scenarios', () => {
-    it('should handle conversation reassignment during active messaging', async () => {
+    test('should handle conversation reassignment during active messaging', async () => {
       // Send message as agent1
       await env.createTestMessage(testConversation1.id, {
         id: 'msg-before-reassign',
@@ -668,7 +669,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       expect(messages[1].agentSenderId).toBe(testAgent2.id);
     });
 
-    it('should maintain data integrity across conversation lifecycle', async () => {
+    test('should maintain data integrity across conversation lifecycle', async () => {
       // Create conversation
       const newConversation = await env.createTestConversation(testCustomer1.id, {
         status: 'active'
@@ -726,7 +727,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
 
   // ==================== Error Handling ====================
   describe('Error Scenarios', () => {
-    it('should handle foreign key constraint violations', async () => {
+    test('should handle foreign key constraint violations', async () => {
       await expect(
         env.createTestMessage('non-existent-conversation', {
           id: 'msg-invalid',
@@ -737,7 +738,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       ).rejects.toThrow();
     });
 
-    it('should handle duplicate message IDs', async () => {
+    test('should handle duplicate message IDs', async () => {
       await env.createTestMessage(testConversation1.id, {
         id: 'msg-duplicate',
         content: 'First message',
@@ -755,7 +756,7 @@ describe('Conversation Handler - Comprehensive Integration Tests', () => {
       ).rejects.toThrow();
     });
 
-    it('should handle null content in messages', async () => {
+    test('should handle null content in messages', async () => {
       await expect(
         env.db.insert(schema.messages).values({
           id: 'msg-null-content',

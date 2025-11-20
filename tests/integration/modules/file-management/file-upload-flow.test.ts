@@ -8,7 +8,8 @@ import { FileService } from '@modules/file-management/services/file-service';
 import { FileManagementError } from '@modules/file-management/utils/error-handler';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
 import type { Bindings } from '@/types';
-import type { FileUploadRequest } from '@modules/file-management/types/file-types';
+import type { FileUploimport { MockFactory } from '@helpers/mockFactory';
+adRequest } from '@modules/file-management/types/file-types';
 
 // Mock環境
 const createMockEnv = (): Bindings => {
@@ -47,7 +48,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('Complete Upload Flow', () => {
-    it('should successfully upload a valid image file', async () => {
+    test('should successfully upload a valid image file', async () => {
       // 準備測試數據
       const fileData = new ArrayBuffer(100000); // 100KB
       const uploadRequest: FileUploadRequest = {
@@ -72,7 +73,7 @@ describe('File Upload Flow Integration Tests', () => {
       }
     });
 
-    it('should reject file that exceeds size limit', async () => {
+    test('should reject file that exceeds size limit', async () => {
       const largeFileData = new ArrayBuffer(11 * 1024 * 1024); // 11MB
       const uploadRequest: FileUploadRequest = {
         file: largeFileData,
@@ -92,7 +93,7 @@ describe('File Upload Flow Integration Tests', () => {
       );
     });
 
-    it('should reject file with invalid MIME type', async () => {
+    test('should reject file with invalid MIME type', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadRequest: FileUploadRequest = {
         file: fileData,
@@ -107,7 +108,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(result.errors || result.error).toBeDefined();
     });
 
-    it('should handle platform-specific validation', async () => {
+    test('should handle platform-specific validation', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadRequest: FileUploadRequest = {
         file: fileData,
@@ -123,7 +124,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(result).toHaveProperty('success');
     });
 
-    it('should associate file with conversation', async () => {
+    test('should associate file with conversation', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadRequest: FileUploadRequest = {
         file: fileData,
@@ -140,7 +141,7 @@ describe('File Upload Flow Integration Tests', () => {
       }
     });
 
-    it('should associate file with message', async () => {
+    test('should associate file with message', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadRequest: FileUploadRequest = {
         file: fileData,
@@ -159,7 +160,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('Error Scenarios', () => {
-    it('should handle storage service errors gracefully', async () => {
+    test('should handle storage service errors gracefully', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadRequest: FileUploadRequest = {
         file: fileData,
@@ -175,7 +176,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(result).toHaveProperty('success');
     });
 
-    it('should handle database errors during record creation', async () => {
+    test('should handle database errors during record creation', async () => {
       // Mock database error
       mockEnv.DB = {
         prepare: vi.fn().mockReturnValue({
@@ -200,7 +201,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(result.error).toBeDefined();
     });
 
-    it('should handle corrupted file data', async () => {
+    test('should handle corrupted file data', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadRequest: FileUploadRequest = {
         file: fileData,
@@ -223,7 +224,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('Download Flow', () => {
-    it('should download existing file', async () => {
+    test('should download existing file', async () => {
       // 先上傳檔案
       const fileData = new ArrayBuffer(100000);
       const uploadResult = await fileService.uploadFile({
@@ -244,14 +245,14 @@ describe('File Upload Flow Integration Tests', () => {
       expect(downloadResult).toHaveProperty('success');
     });
 
-    it('should handle non-existent file download', async () => {
+    test('should handle non-existent file download', async () => {
       const downloadResult = await fileService.downloadFile('non-existent-id');
 
       expect(downloadResult.success).toBe(false);
       expect(downloadResult.error).toBeDefined();
     });
 
-    it('should generate download URL', async () => {
+    test('should generate download URL', async () => {
       const fileData = new ArrayBuffer(100000);
       const uploadResult = await fileService.uploadFile({
         file: fileData,
@@ -276,7 +277,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('Delete Flow', () => {
-    it('should delete existing file', async () => {
+    test('should delete existing file', async () => {
       // 先上傳檔案
       const fileData = new ArrayBuffer(100000);
       const uploadResult = await fileService.uploadFile({
@@ -297,7 +298,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(deleteResult).toHaveProperty('success');
     });
 
-    it('should handle deletion of non-existent file', async () => {
+    test('should handle deletion of non-existent file', async () => {
       const deleteResult = await fileService.deleteFile('non-existent-id');
 
       expect(deleteResult.success).toBe(false);
@@ -306,7 +307,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('List and Query Flow', () => {
-    it('should list files with pagination', async () => {
+    test('should list files with pagination', async () => {
       const listResult = await fileService.listFiles({
         page: 1,
         pageSize: 10
@@ -319,7 +320,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(Array.isArray(listResult.items)).toBe(true);
     });
 
-    it('should filter files by conversation', async () => {
+    test('should filter files by conversation', async () => {
       const listResult = await fileService.listFiles({
         conversationId: 'conv123'
       });
@@ -328,7 +329,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(Array.isArray(listResult.items)).toBe(true);
     });
 
-    it('should filter files by type', async () => {
+    test('should filter files by type', async () => {
       const listResult = await fileService.listFiles({
         type: 'image'
       });
@@ -336,7 +337,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(listResult).toHaveProperty('items');
     });
 
-    it('should filter files by date range', async () => {
+    test('should filter files by date range', async () => {
       const now = new Date();
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -350,7 +351,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('Batch Operations', () => {
-    it('should handle batch deletion', async () => {
+    test('should handle batch deletion', async () => {
       const operation = {
         operation: 'delete' as const,
         fileIds: ['file1', 'file2', 'file3']
@@ -364,7 +365,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(result.summary.total).toBe(3);
     });
 
-    it('should provide detailed batch results', async () => {
+    test('should provide detailed batch results', async () => {
       const operation = {
         operation: 'delete' as const,
         fileIds: ['file1', 'file2']
@@ -380,7 +381,7 @@ describe('File Upload Flow Integration Tests', () => {
   });
 
   describe('Statistics', () => {
-    it('should get file statistics', async () => {
+    test('should get file statistics', async () => {
       const stats = await fileService.getFileStatistics('30d');
 
       expect(stats).toHaveProperty('totalFiles');
@@ -392,7 +393,7 @@ describe('File Upload Flow Integration Tests', () => {
       expect(stats).toHaveProperty('recentActivity');
     });
 
-    it('should calculate average file size correctly', async () => {
+    test('should calculate average file size correctly', async () => {
       const stats = await fileService.getFileStatistics('30d');
 
       if (stats.totalFiles > 0) {

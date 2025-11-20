@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FacebookAdapter } from '@backend/integrations/platform-adapter';
 import type { UnifiedMessage, UnifiedUser } from '@backend/integrations/platform-adapter';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock global fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -30,12 +31,12 @@ describe('Facebook Integration Tests', () => {
   });
 
   describe('FacebookAdapter', () => {
-    it('should initialize with correct platform name', () => {
+    test('should initialize with correct platform name', () => {
       expect(facebookAdapter.platform).toBe('facebook');
     });
 
     describe('normalizeMessage', () => {
-      it('should normalize text message correctly', () => {
+      test('should normalize text message correctly', () => {
         const mockFbMessage = {
           sender: { id: 'sender123' },
           message: {
@@ -60,7 +61,7 @@ describe('Facebook Integration Tests', () => {
         });
       });
 
-      it('should handle message with attachments', () => {
+      test('should handle message with attachments', () => {
         const mockFbMessage = {
           sender: { id: 'sender123' },
           message: {
@@ -79,7 +80,7 @@ describe('Facebook Integration Tests', () => {
         expect(result.content).toBe('');
       });
 
-      it('should handle message without text or attachments', () => {
+      test('should handle message without text or attachments', () => {
         const mockFbMessage = {
           sender: { id: 'sender123' },
           message: {
@@ -94,7 +95,7 @@ describe('Facebook Integration Tests', () => {
         expect(result.content).toBe('');
       });
 
-      it('should handle unsupported attachment types as file', () => {
+      test('should handle unsupported attachment types as file', () => {
         const mockFbMessage = {
           sender: { id: 'sender123' },
           message: {
@@ -114,7 +115,7 @@ describe('Facebook Integration Tests', () => {
     });
 
     describe('normalizeUser', () => {
-      it('should normalize Facebook user correctly', () => {
+      test('should normalize Facebook user correctly', () => {
         const mockFbUser = {
           id: 'user123',
           first_name: 'John',
@@ -138,7 +139,7 @@ describe('Facebook Integration Tests', () => {
         });
       });
 
-      it('should handle user with missing optional fields', () => {
+      test('should handle user with missing optional fields', () => {
         const mockFbUser = {
           id: 'user123',
           first_name: 'John',
@@ -155,7 +156,7 @@ describe('Facebook Integration Tests', () => {
     });
 
     describe('sendMessage', () => {
-      it('should send message successfully', async () => {
+      test('should send message successfully', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200
@@ -179,7 +180,7 @@ describe('Facebook Integration Tests', () => {
         );
       });
 
-      it('should handle send message failure', async () => {
+      test('should handle send message failure', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status: 400
@@ -190,7 +191,7 @@ describe('Facebook Integration Tests', () => {
         expect(result).toBe(false);
       });
 
-      it('should handle network error', async () => {
+      test('should handle network error', async () => {
         mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
         await expect(
@@ -208,7 +209,7 @@ describe('Facebook Integration Tests', () => {
         );
       });
 
-      it('should verify valid webhook signature', async () => {
+      test('should verify valid webhook signature', async () => {
         const testBody = 'test body content';
         const testSignature = 'sha1=0000000000000000000000000000000000000000';
 
@@ -233,7 +234,7 @@ describe('Facebook Integration Tests', () => {
         );
       });
 
-      it('should reject invalid webhook signature', async () => {
+      test('should reject invalid webhook signature', async () => {
         const testBody = 'test body content';
         const testSignature = 'sha1=invalid_signature';
 
@@ -246,7 +247,7 @@ describe('Facebook Integration Tests', () => {
         expect(result).toBe(false);
       });
 
-      it('should handle crypto error gracefully', async () => {
+      test('should handle crypto error gracefully', async () => {
         const testBody = 'test body content';
         const testSignature = 'sha1=valid_signature';
 
@@ -267,7 +268,7 @@ describe('Facebook Integration Tests', () => {
     });
 
     describe('mapFacebookMessageType', () => {
-      it('should map various Facebook message types correctly', () => {
+      test('should map various Facebook message types correctly', () => {
         // Test through normalizeMessage since mapFacebookMessageType is private
         const testCases = [
           {
@@ -311,7 +312,7 @@ describe('Facebook Integration Tests', () => {
   });
 
   describe('Facebook Webhook Message Processing', () => {
-    it('should handle webhook with multiple entries', () => {
+    test('should handle webhook with multiple entries', () => {
       const mockWebhookData = {
         object: 'page',
         entry: [
@@ -348,7 +349,7 @@ describe('Facebook Integration Tests', () => {
       });
     });
 
-    it('should handle empty messaging array', () => {
+    test('should handle empty messaging array', () => {
       const mockWebhookData = {
         object: 'page',
         entry: [{
@@ -362,7 +363,7 @@ describe('Facebook Integration Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle malformed Facebook message gracefully', () => {
+    test('should handle malformed Facebook message gracefully', () => {
       const malformedMessage = {
         sender: null,
         message: null,
@@ -374,7 +375,7 @@ describe('Facebook Integration Tests', () => {
       }).toThrow();
     });
 
-    it('should handle missing required fields', () => {
+    test('should handle missing required fields', () => {
       const incompleteMessage = {
         message: { text: 'hello' },
         timestamp: 1640995200000

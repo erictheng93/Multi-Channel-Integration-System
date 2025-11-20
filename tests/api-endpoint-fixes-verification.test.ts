@@ -1,7 +1,8 @@
 /**
  * API Endpoint Fixes Verification Test Suite
  *
- * This test suite verifies the three critical endpoint fixes:
+ * This test suimport { MockFactory } from '@helpers/mockFactory';
+ite verifies the three critical endpoint fixes:
  * 1. QR Code Deactivation Endpoint (PUT /api/teams/:id/qr-codes/:qrCodeId/deactivate)
  * 2. Team Member Details Endpoint (GET /api/team/members/:id)
  * 3. Frontend Invitation Feature Toggle (Client-side validation)
@@ -53,7 +54,7 @@ describe('API Endpoint Fixes Verification', () => {
   });
 
   describe('1. QR Code Deactivation Endpoint', () => {
-    it('should return 401 without authentication', async () => {
+    test('should return 401 without authentication', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/${TEST_TEAM_ID}/qr-codes/${TEST_QR_CODE_ID}/deactivate`,
         {
@@ -65,7 +66,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 400 for invalid team ID', async () => {
+    test('should return 400 for invalid team ID', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/invalid/qr-codes/${TEST_QR_CODE_ID}/deactivate`,
         {
@@ -80,7 +81,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(data.error).toContain('Invalid');
     });
 
-    it('should return 400 for empty QR code ID', async () => {
+    test('should return 400 for empty QR code ID', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/${TEST_TEAM_ID}/qr-codes/ /deactivate`,
         {
@@ -92,7 +93,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(response.status).toBe(400);
     });
 
-    it('should create and then deactivate a QR code successfully', async () => {
+    test('should create and then deactivate a QR code successfully', async () => {
       // Step 1: Create a QR code
       const createResponse = await fetch(
         `${API_BASE_URL}/teams/${TEST_TEAM_ID}/qr-code`,
@@ -148,7 +149,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(deactivatedQR.isActive).toBe(false);
     });
 
-    it('should return error for non-existent QR code', async () => {
+    test('should return error for non-existent QR code', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/${TEST_TEAM_ID}/qr-codes/non-existent-qr-id/deactivate`,
         {
@@ -166,7 +167,7 @@ describe('API Endpoint Fixes Verification', () => {
   });
 
   describe('2. Team Member Details Endpoint', () => {
-    it('should return 401 without authentication', async () => {
+    test('should return 401 without authentication', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/members/${TEST_MEMBER_ID}`,
         {
@@ -178,7 +179,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should retrieve team member details successfully', async () => {
+    test('should retrieve team member details successfully', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/members/${TEST_MEMBER_ID}`,
         {
@@ -202,7 +203,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(data.data.id).toBe(TEST_MEMBER_ID);
     });
 
-    it('should return 404 for non-existent member', async () => {
+    test('should return 404 for non-existent member', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/members/non-existent-member-id`,
         {
@@ -217,7 +218,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(data.error).toContain('not found');
     });
 
-    it('should return correct member status mapping', async () => {
+    test('should return correct member status mapping', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/members/${TEST_MEMBER_ID}`,
         {
@@ -240,7 +241,7 @@ describe('API Endpoint Fixes Verification', () => {
       }
     });
 
-    it('should return member with all required role information', async () => {
+    test('should return member with all required role information', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/members/${TEST_MEMBER_ID}`,
         {
@@ -258,7 +259,7 @@ describe('API Endpoint Fixes Verification', () => {
   });
 
   describe('3. Frontend Invitation Feature Toggle', () => {
-    it('should verify invitation endpoints are disabled by default', async () => {
+    test('should verify invitation endpoints are disabled by default', async () => {
       // Test inviteMember endpoint (should return feature disabled error)
       const inviteResponse = await fetch(
         `${API_BASE_URL}/teams/invite`,
@@ -276,7 +277,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect([404, 500]).toContain(inviteResponse.status);
     });
 
-    it('should verify resend invitation endpoint is disabled', async () => {
+    test('should verify resend invitation endpoint is disabled', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/invitations/test-invitation-id/resend`,
         {
@@ -289,7 +290,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect([404, 500]).toContain(response.status);
     });
 
-    it('should verify cancel invitation endpoint is disabled', async () => {
+    test('should verify cancel invitation endpoint is disabled', async () => {
       const response = await fetch(
         `${API_BASE_URL}/team/invitations/test-invitation-id`,
         {
@@ -302,7 +303,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect([404, 500]).toContain(response.status);
     });
 
-    it('should verify QR invite generation endpoint is disabled', async () => {
+    test('should verify QR invite generation endpoint is disabled', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/qr-invite`,
         {
@@ -319,7 +320,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect([404, 500]).toContain(response.status);
     });
 
-    it('should verify accept invitation endpoint is disabled', async () => {
+    test('should verify accept invitation endpoint is disabled', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/invitations/accept`,
         {
@@ -339,7 +340,7 @@ describe('API Endpoint Fixes Verification', () => {
   });
 
   describe('4. Integration Tests - All Endpoints Working Together', () => {
-    it('should successfully complete full workflow: create team member, get details, create QR, deactivate QR', async () => {
+    test('should successfully complete full workflow: create team member, get details, create QR, deactivate QR', async () => {
       // Step 1: Get current team member details
       const memberResponse = await fetch(
         `${API_BASE_URL}/team/members/${TEST_MEMBER_ID}`,
@@ -401,7 +402,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect(deactivatedQR.isActive).toBe(false);
     });
 
-    it('should verify all endpoints have correct CORS headers', async () => {
+    test('should verify all endpoints have correct CORS headers', async () => {
       const endpoints = [
         { method: 'GET', path: `/team/members/${TEST_MEMBER_ID}` },
         { method: 'GET', path: `/teams/${TEST_TEAM_ID}/qr-codes` }
@@ -425,7 +426,7 @@ describe('API Endpoint Fixes Verification', () => {
       }
     });
 
-    it('should verify all endpoints return consistent timestamp format', async () => {
+    test('should verify all endpoints return consistent timestamp format', async () => {
       const endpoints = [
         { method: 'GET', path: `/team/members/${TEST_MEMBER_ID}` },
         { method: 'GET', path: `/teams/${TEST_TEAM_ID}/qr-codes` }
@@ -451,7 +452,7 @@ describe('API Endpoint Fixes Verification', () => {
   });
 
   describe('5. Error Handling and Edge Cases', () => {
-    it('should handle concurrent QR code deactivation requests gracefully', async () => {
+    test('should handle concurrent QR code deactivation requests gracefully', async () => {
       // Create a QR code
       const createResponse = await fetch(
         `${API_BASE_URL}/teams/${TEST_TEAM_ID}/qr-code`,
@@ -492,7 +493,7 @@ describe('API Endpoint Fixes Verification', () => {
       }
     });
 
-    it('should return proper error for malformed request body', async () => {
+    test('should return proper error for malformed request body', async () => {
       const response = await fetch(
         `${API_BASE_URL}/teams/${TEST_TEAM_ID}/qr-code`,
         {
@@ -505,7 +506,7 @@ describe('API Endpoint Fixes Verification', () => {
       expect([400, 500]).toContain(response.status);
     });
 
-    it('should handle special characters in member IDs correctly', async () => {
+    test('should handle special characters in member IDs correctly', async () => {
       const specialMemberId = 'test%20member-001';
       const response = await fetch(
         `${API_BASE_URL}/team/members/${encodeURIComponent(specialMemberId)}`,

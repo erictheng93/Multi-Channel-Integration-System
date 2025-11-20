@@ -74,7 +74,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
   })
 
   describe('Complete conversation workflow', () => {
-    it('should create conversation, send messages, and list messages', async () => {
+    test('should create conversation, send messages, and list messages', async () => {
       // Step 1: Send first message
       const message1 = await env.createTestMessage(testConversation.id, {
         id: 'msg-1',
@@ -116,7 +116,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
       })
     })
 
-    it('should handle conversation assignment changes during active messaging', async () => {
+    test('should handle conversation assignment changes during active messaging', async () => {
       // Create second agent
       const agent2 = await env.createTestAgent({
         id: 'agent-test-2',
@@ -166,7 +166,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
   })
 
   describe('Multi-platform message handling', () => {
-    it('should handle messages across LINE and Facebook platforms', async () => {
+    test('should handle messages across LINE and Facebook platforms', async () => {
       // Create Facebook customer and conversation
       const fbCustomer = await env.createTestCustomer({
         platform: 'facebook',
@@ -231,7 +231,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
   })
 
   describe('Error recovery and resilience', () => {
-    it('should handle database constraints gracefully', async () => {
+    test('should handle database constraints gracefully', async () => {
       // Try to create message with non-existent conversation
       await expect(
         env.createTestMessage('nonexistent-conv', {
@@ -243,7 +243,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
       ).rejects.toThrow() // Foreign key constraint violation
     })
 
-    it('should validate message content requirements', async () => {
+    test('should validate message content requirements', async () => {
       // Try to create message with NULL content (NOT NULL constraint)
       await expect(
         env.db.insert(schema.messages).values({
@@ -260,7 +260,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
       ).rejects.toThrow() // Should fail NOT NULL constraint
     })
 
-    it('should enforce foreign key constraints on agent assignment', async () => {
+    test('should enforce foreign key constraints on agent assignment', async () => {
       // Try to create message with non-existent agent
       await expect(
         env.db.insert(schema.messages).values({
@@ -279,7 +279,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
   })
 
   describe('Pagination and data consistency', () => {
-    it('should maintain data consistency across paginated message lists', async () => {
+    test('should maintain data consistency across paginated message lists', async () => {
       // Create 25 messages
       for (let i = 1; i <= 25; i++) {
         await env.createTestMessage(testConversation.id, {
@@ -325,7 +325,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
       expect(totalMessages).toHaveLength(25)
     })
 
-    it('should handle concurrent message creation', async () => {
+    test('should handle concurrent message creation', async () => {
       // Create messages concurrently
       const messagePromises = Array.from({ length: 10 }, (_, i) =>
         env.createTestMessage(testConversation.id, {
@@ -352,7 +352,7 @@ describe('Message & Conversation Integration Tests - Refactored', () => {
   })
 
   describe('Message relationships and data integrity', () => {
-    it('should maintain referential integrity across messages, conversations, and customers', async () => {
+    test('should maintain referential integrity across messages, conversations, and customers', async () => {
       // Create messages
       await env.createTestMessage(testConversation.id, {
         id: 'join-test-msg',

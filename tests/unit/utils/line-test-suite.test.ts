@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
+import { MockFactory } from '@helpers/mockFactory';
 /**
  * LINE API Integration Test Suite Overview
  * 
@@ -9,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 
 describe('LINE API Test Suite - Coverage Overview', () => {
   describe('Test Coverage Areas', () => {
-    it('should cover all LINE API functions', () => {
+    test('should cover all LINE API functions', () => {
       const coveredFunctions = [
         'sendLineReply',
         'pushLineMessage', 
@@ -26,7 +27,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
       expect(coveredFunctions).toContain('verifyLineSignature');
     });
 
-    it('should cover all critical error scenarios', () => {
+    test('should cover all critical error scenarios', () => {
       const errorScenarios = [
         'HTTP 400 Bad Request',
         'HTTP 401 Unauthorized', 
@@ -48,7 +49,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
       expect(errorScenarios).toContain('Signature verification failure');
     });
 
-    it('should cover message formatting edge cases', () => {
+    test('should cover message formatting edge cases', () => {
       const messageFormats = [
         'Empty text',
         'Unicode characters',
@@ -67,7 +68,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
       expect(messageFormats).toContain('Unicode characters');
     });
 
-    it('should cover integration scenarios', () => {
+    test('should cover integration scenarios', () => {
       const integrationScenarios = [
         'Complete webhook processing flow',
         'User profile fetching with personalized response',
@@ -86,7 +87,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
   });
 
   describe('Test File Organization', () => {
-    it('should have organized test files by functionality', () => {
+    test('should have organized test files by functionality', () => {
       const testFiles = [
         'line.test.ts - Core LINE API functions',
         'line-signature.test.ts - Advanced signature verification',
@@ -100,7 +101,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
       expect(testFiles[4]).toContain('Comprehensive error handling');
     });
 
-    it('should follow testing best practices', () => {
+    test('should follow testing best practices', () => {
       const bestPractices = [
         'Isolated test cases with proper mocking',
         'Comprehensive error scenario coverage',
@@ -118,7 +119,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
   });
 
   describe('Business Logic Priority Coverage', () => {
-    it('should prioritize core business logic tests', () => {
+    test('should prioritize core business logic tests', () => {
       const highPriorityTests = [
         'Signature verification (security critical)',
         'Message sending reliability',
@@ -133,7 +134,7 @@ describe('LINE API Test Suite - Coverage Overview', () => {
       expect(highPriorityTests).toContain('Message sending reliability');
     });
 
-    it('should ensure production readiness', () => {
+    test('should ensure production readiness', () => {
       const productionReadiness = [
         'Real webhook payload handling',
         'Production-like error scenarios',

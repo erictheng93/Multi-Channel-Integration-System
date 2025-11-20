@@ -16,17 +16,17 @@ describe('useError', () => {
   })
 
   describe('initial state', () => {
-    it('should initialize with null error', () => {
+    test('should initialize with null error', () => {
       expect(errorComposable.error.value).toBeNull()
     })
 
-    it('should initialize with loading false', () => {
+    test('should initialize with loading false', () => {
       expect(errorComposable.loading.value).toBe(false)
     })
   })
 
   describe('handleError', () => {
-    it('should set error from response data', () => {
+    test('should set error from response data', () => {
       const mockError = {
         response: {
           data: {
@@ -41,7 +41,7 @@ describe('useError', () => {
       expect(console.error).toHaveBeenCalledWith(mockError)
     })
 
-    it('should set error from error message', () => {
+    test('should set error from error message', () => {
       const mockError = {
         message: '網路連接失敗'
       }
@@ -51,7 +51,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe('網路連接失敗')
     })
 
-    it('should use default message when no specific error', () => {
+    test('should use default message when no specific error', () => {
       const mockError = {}
 
       errorComposable.handleError(mockError)
@@ -59,7 +59,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe('操作失敗')
     })
 
-    it('should use custom default message', () => {
+    test('should use custom default message', () => {
       const mockError = {}
       const customMessage = '自定義錯誤訊息'
 
@@ -68,7 +68,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe(customMessage)
     })
 
-    it('should prioritize response.data.error over message', () => {
+    test('should prioritize response.data.error over message', () => {
       const mockError = {
         response: {
           data: {
@@ -83,25 +83,25 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe('API 錯誤')
     })
 
-    it('should handle null error object', () => {
+    test('should handle null error object', () => {
       errorComposable.handleError(null)
       
       expect(errorComposable.error.value).toBe('操作失敗')
     })
 
-    it('should handle undefined error object', () => {
+    test('should handle undefined error object', () => {
       errorComposable.handleError(undefined)
       
       expect(errorComposable.error.value).toBe('操作失敗')
     })
 
-    it('should handle string error', () => {
+    test('should handle string error', () => {
       errorComposable.handleError('字串錯誤')
       
       expect(errorComposable.error.value).toBe('操作失敗')
     })
 
-    it('should handle Error instance', () => {
+    test('should handle Error instance', () => {
       const error = new Error('標準錯誤')
       
       errorComposable.handleError(error)
@@ -111,7 +111,7 @@ describe('useError', () => {
   })
 
   describe('clearError', () => {
-    it('should clear existing error', () => {
+    test('should clear existing error', () => {
       // Set an error first
       errorComposable.handleError({ message: '測試錯誤' })
       expect(errorComposable.error.value).toBe('測試錯誤')
@@ -121,7 +121,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBeNull()
     })
 
-    it('should work when no error exists', () => {
+    test('should work when no error exists', () => {
       expect(errorComposable.error.value).toBeNull()
       
       errorComposable.clearError()
@@ -130,7 +130,7 @@ describe('useError', () => {
   })
 
   describe('withLoading', () => {
-    it('should handle successful async operation', async () => {
+    test('should handle successful async operation', async () => {
       const mockFn = vi.fn().mockResolvedValue('成功結果')
       
       const result = await errorComposable.withLoading(mockFn)
@@ -141,7 +141,7 @@ describe('useError', () => {
       expect(mockFn).toHaveBeenCalledOnce()
     })
 
-    it('should set loading to true during execution', async () => {
+    test('should set loading to true during execution', async () => {
       let loadingDuringExecution = false
       
       const mockFn = vi.fn().mockImplementation(async () => {
@@ -155,7 +155,7 @@ describe('useError', () => {
       expect(errorComposable.loading.value).toBe(false)
     })
 
-    it('should handle async operation failure', async () => {
+    test('should handle async operation failure', async () => {
       const mockError = new Error('異步操作失敗')
       const mockFn = vi.fn().mockRejectedValue(mockError)
       
@@ -167,7 +167,7 @@ describe('useError', () => {
       expect(console.error).toHaveBeenCalledWith(mockError)
     })
 
-    it('should clear previous error before execution', async () => {
+    test('should clear previous error before execution', async () => {
       // Set an initial error
       errorComposable.handleError({ message: '舊錯誤' })
       expect(errorComposable.error.value).toBe('舊錯誤')
@@ -179,7 +179,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBeNull()
     })
 
-    it('should set loading to false even if operation fails', async () => {
+    test('should set loading to false even if operation fails', async () => {
       const mockFn = vi.fn().mockRejectedValue(new Error('失敗'))
       
       await errorComposable.withLoading(mockFn)
@@ -187,7 +187,7 @@ describe('useError', () => {
       expect(errorComposable.loading.value).toBe(false)
     })
 
-    it('should handle operation that throws non-Error object', async () => {
+    test('should handle operation that throws non-Error object', async () => {
       const mockFn = vi.fn().mockRejectedValue('字串錯誤')
       
       const result = await errorComposable.withLoading(mockFn)
@@ -197,7 +197,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe('操作失敗')
     })
 
-    it('should handle operation that returns null', async () => {
+    test('should handle operation that returns null', async () => {
       const mockFn = vi.fn().mockResolvedValue(null)
       
       const result = await errorComposable.withLoading(mockFn)
@@ -207,7 +207,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBeNull()
     })
 
-    it('should handle operation that returns undefined', async () => {
+    test('should handle operation that returns undefined', async () => {
       const mockFn = vi.fn().mockResolvedValue(undefined)
       
       const result = await errorComposable.withLoading(mockFn)
@@ -217,7 +217,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBeNull()
     })
 
-    it('should handle multiple concurrent operations', async () => {
+    test('should handle multiple concurrent operations', async () => {
       const mockFn1 = vi.fn().mockImplementation(() => 
         new Promise(resolve => setTimeout(() => resolve('結果1'), 100))
       )
@@ -237,7 +237,7 @@ describe('useError', () => {
   })
 
   describe('reactive behavior', () => {
-    it('should maintain reactivity for error', () => {
+    test('should maintain reactivity for error', () => {
       const initialError = errorComposable.error.value
       expect(initialError).toBeNull()
       
@@ -246,7 +246,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).not.toBe(initialError)
     })
 
-    it('should maintain reactivity for loading', async () => {
+    test('should maintain reactivity for loading', async () => {
       expect(errorComposable.loading.value).toBe(false)
       
       const mockFn = vi.fn().mockImplementation(() => 
@@ -266,7 +266,7 @@ describe('useError', () => {
   })
 
   describe('edge cases', () => {
-    it('should handle deeply nested error response', () => {
+    test('should handle deeply nested error response', () => {
       const mockError = {
         response: {
           data: {
@@ -284,7 +284,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe('操作失敗')
     })
 
-    it('should handle circular reference in error object', () => {
+    test('should handle circular reference in error object', () => {
       const mockError: any = { message: '循環引用錯誤' }
       mockError.self = mockError
       
@@ -294,7 +294,7 @@ describe('useError', () => {
       expect(console.error).toHaveBeenCalledWith(mockError)
     })
 
-    it('should handle very long error messages', () => {
+    test('should handle very long error messages', () => {
       const longMessage = 'A'.repeat(10000)
       const mockError = { message: longMessage }
       
@@ -303,7 +303,7 @@ describe('useError', () => {
       expect(errorComposable.error.value).toBe(longMessage)
     })
 
-    it('should handle special characters in error messages', () => {
+    test('should handle special characters in error messages', () => {
       const specialMessage = '錯誤：<script>alert("xss")</script> & 特殊字符 "quotes" \'apostrophes\''
       const mockError = { message: specialMessage }
       
@@ -313,3 +313,7 @@ describe('useError', () => {
     })
   })
 });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });

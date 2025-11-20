@@ -57,7 +57,7 @@ describe('File Upload Integration Status Check', () => {
   })
 
   describe('Frontend Component Analysis', () => {
-    it('should check MessageInput component file upload features', () => {
+    test('should check MessageInput component file upload features', () => {
       // Based on the component analysis
       status.component.implemented = true
       status.component.features = [
@@ -86,7 +86,7 @@ describe('File Upload Integration Status Check', () => {
   })
 
   describe('API Client Analysis', () => {
-    it('should check message API file upload support', () => {
+    test('should check message API file upload support', () => {
       status.api.implemented = true
       status.api.endpoints = [
         '✅ uploadAttachment method defined',
@@ -108,7 +108,7 @@ describe('File Upload Integration Status Check', () => {
   })
 
   describe('Backend Handler Analysis', () => {
-    it('should check backend file upload handlers', () => {
+    test('should check backend file upload handlers', () => {
       status.backend.implemented = false
       status.backend.handlers = []
 
@@ -128,7 +128,7 @@ describe('File Upload Integration Status Check', () => {
   })
 
   describe('Integration Completeness', () => {
-    it('should assess overall integration status', () => {
+    test('should assess overall integration status', () => {
       status.integration.complete = false
       
       status.integration.issues = [

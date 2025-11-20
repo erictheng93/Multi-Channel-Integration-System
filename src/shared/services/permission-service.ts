@@ -73,7 +73,21 @@ export class PermissionService {
         
         // Analytics and reporting for team
         { resource: 'analytics', action: 'view', conditions: { teamScope: true } },
-        { resource: 'report', action: 'generate', conditions: { teamScope: true } }
+        { resource: 'analytics', action: 'export', conditions: { teamScope: true } },
+        { resource: 'analytics', action: 'query' }, // Custom queries allowed
+
+        // Reports management for team
+        { resource: 'report', action: 'create', conditions: { teamScope: true } },
+        { resource: 'report', action: 'read', conditions: { teamScope: true } },
+        { resource: 'report', action: 'delete', conditions: { own: true } }, // Only own reports
+        { resource: 'report', action: 'export', conditions: { teamScope: true } },
+        { resource: 'report', action: 'schedule', conditions: { teamScope: true } },
+
+        // File management for team
+        { resource: 'file', action: 'upload' }, // Can upload files
+        { resource: 'file', action: 'download', conditions: { teamScope: true } },
+        { resource: 'file', action: 'delete', conditions: { own: true } }, // Only own files
+        { resource: 'file', action: 'view', conditions: { teamScope: true } }
       ]
     },
     agent: {
@@ -87,7 +101,19 @@ export class PermissionService {
         // 只能在指派給自己的對話中發送訊息
         { resource: 'message', action: 'send', conditions: { assigned: true } },
         { resource: 'message', action: 'recall', conditions: { own: true } },
-        { resource: 'tag', action: 'add', conditions: { teamScope: true } }
+        { resource: 'tag', action: 'add', conditions: { teamScope: true } },
+
+        // Analytics - read only for own data
+        { resource: 'analytics', action: 'view', conditions: { own: true } },
+
+        // Reports - can view own reports only
+        { resource: 'report', action: 'read', conditions: { own: true } },
+
+        // File management - limited to own files
+        { resource: 'file', action: 'upload' }, // Can upload files in conversations
+        { resource: 'file', action: 'download', conditions: { own: true } },
+        { resource: 'file', action: 'view', conditions: { own: true } },
+        { resource: 'file', action: 'delete', conditions: { own: true } }
       ]
     }
   };
@@ -191,8 +217,18 @@ export class PermissionService {
     }
 
     // 只能操作自己的資源
-    if (conditions.own && (context as any).ownerId !== user.id) {
-      return false;
+    if (conditions.own) {
+      // 如果沒有提供 ownerId，說明這是 middleware 層的基本權限檢查
+      // 實際的所有權驗證應該在 handler 層進行（當有 resourceId 時）
+      if ((context as any).ownerId === undefined) {
+        // Middleware 層：允許通過，讓 handler 層驗證
+        return true;
+      }
+
+      // Handler 層：有 ownerId，進行實際的所有權檢查
+      if ((context as any).ownerId !== user.id) {
+        return false;
+      }
     }
 
     // 只能管理自己的團隊

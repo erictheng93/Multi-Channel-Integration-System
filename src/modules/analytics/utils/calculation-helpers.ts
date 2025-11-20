@@ -418,21 +418,12 @@ export class CalculationHelpers {
     }
 
     // Pearson 相關係數
-    const n = x.length;
-    const sumX = x.reduce((sum, val) => sum + val, 0);
-    const sumY = y.reduce((sum, val) => sum + val, 0);
-    const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
-    const sumXX = x.reduce((sum, val) => sum + val * val, 0);
-    const sumYY = y.reduce((sum, val) => sum + val * val, 0);
+    const pearson = this.calculatePearsonCorrelation(x, y);
 
-    const numerator = n * sumXY - sumX * sumY;
-    const denominator = Math.sqrt((n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY));
-    const pearson = denominator === 0 ? 0 : numerator / denominator;
-
-    // Spearman 秩相關係數
+    // Spearman 秩相關係數 (對秩應用 Pearson 公式)
     const xRanks = this.getRanks(x);
     const yRanks = this.getRanks(y);
-    const spearman = this.calculateCorrelation(xRanks, yRanks).pearson;
+    const spearman = this.calculatePearsonCorrelation(xRanks, yRanks);
 
     // 解釋相關強度
     const absValue = Math.abs(pearson);
@@ -495,6 +486,27 @@ export class CalculationHelpers {
   }
 
   // 私有輔助方法
+
+  /**
+   * 計算 Pearson 相關係數 (私有輔助方法)
+   */
+  private static calculatePearsonCorrelation(x: number[], y: number[]): number {
+    if (x.length !== y.length || x.length < 2) {
+      return 0;
+    }
+
+    const n = x.length;
+    const sumX = x.reduce((sum, val) => sum + val, 0);
+    const sumY = y.reduce((sum, val) => sum + val, 0);
+    const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
+    const sumXX = x.reduce((sum, val) => sum + val * val, 0);
+    const sumYY = y.reduce((sum, val) => sum + val * val, 0);
+
+    const numerator = n * sumXY - sumX * sumY;
+    const denominator = Math.sqrt((n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY));
+
+    return denominator === 0 ? 0 : numerator / denominator;
+  }
 
   private static getRanks(values: number[]): number[] {
     const indexed = values.map((value, index) => ({ value, index }));

@@ -24,7 +24,8 @@ import {
   mockSessionStats,
   mockActivityStats,
   mockBatchOperationResults,
-  mockApiResponses,
+  moimport { MockFactory } from '@helpers/mockFactory';
+ckApiResponses,
   mockJwtPayloads
 } from '../../helpers/mock-data';
 
@@ -80,6 +81,19 @@ vi.mock('../../../../../src/modules/session/middleware/index', () => ({
 
 // ======================== Test Setup ========================
 
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
+}));
+
 describe('Session Main Handler', () => {
   let app: Hono;
   let mockSessionService: any;
@@ -128,7 +142,7 @@ describe('Session Main Handler', () => {
   // ======================== 健康檢查和資訊端點測試 ========================
 
   describe('Health Check and Info Endpoints', () => {
-    it('should return health status', async () => {
+    test('should return health status', async () => {
       const response = await app.request('/sessions/health', {
         method: 'GET'
       });
@@ -144,7 +158,7 @@ describe('Session Main Handler', () => {
       expect(data.data.version).toBe('2.0.0');
     });
 
-    it('should return module information', async () => {
+    test('should return module information', async () => {
       const response = await app.request('/sessions/info', {
         method: 'GET'
       });
@@ -167,12 +181,14 @@ describe('Session Main Handler', () => {
 
   describe('CRUD Operations', () => {
     describe('POST /sessions - Create Session', () => {
-      it('should create a new session successfully', async () => {
+      test('should create a new session successfully', async () => {
         const mockSession = createMockSession();
         mockSessionService.create.mockResolvedValue(mockSession);
 
         const response = await app.request('/sessions', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token'
@@ -195,7 +211,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.create).toHaveBeenCalledTimes(1);
       });
 
-      it('should handle service creation error', async () => {
+      test('should handle service creation error', async () => {
         mockSessionService.create.mockRejectedValue(new Error('Database connection failed'));
 
         const response = await app.request('/sessions', {
@@ -217,7 +233,7 @@ describe('Session Main Handler', () => {
     });
 
     describe('GET /sessions - List Sessions', () => {
-      it('should return session list with pagination', async () => {
+      test('should return session list with pagination', async () => {
         const mockListResponse = {
           sessions: [mockSessions.activeCustomerSupport, mockSessions.continuousChat],
           pagination: {
@@ -260,7 +276,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.list).toHaveBeenCalledTimes(1);
       });
 
-      it('should handle empty session list', async () => {
+      test('should handle empty session list', async () => {
         const emptyListResponse = {
           sessions: [],
           pagination: {
@@ -298,7 +314,7 @@ describe('Session Main Handler', () => {
     });
 
     describe('GET /sessions/search - Search Sessions', () => {
-      it('should return search results', async () => {
+      test('should return search results', async () => {
         const searchResults = [mockSessions.activeCustomerSupport];
         mockSessionService.search.mockResolvedValue(searchResults);
 
@@ -321,7 +337,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.search).toHaveBeenCalledTimes(1);
       });
 
-      it('should handle no search results', async () => {
+      test('should handle no search results', async () => {
         mockSessionService.search.mockResolvedValue([]);
 
         const response = await app.request('/sessions/search?query=nonexistent', {
@@ -340,7 +356,7 @@ describe('Session Main Handler', () => {
     });
 
     describe('GET /sessions/:sessionId - Get Session Details', () => {
-      it('should return session details', async () => {
+      test('should return session details', async () => {
         const mockSession = mockSessions.activeCustomerSupport;
         mockSessionService.get.mockResolvedValue(mockSession);
 
@@ -364,7 +380,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.get).toHaveBeenCalledWith('session_test_001');
       });
 
-      it('should return 404 for non-existent session', async () => {
+      test('should return 404 for non-existent session', async () => {
         mockSessionService.get.mockResolvedValue(null);
 
         const response = await app.request('/sessions/nonexistent_session', {
@@ -384,12 +400,14 @@ describe('Session Main Handler', () => {
     });
 
     describe('PUT /sessions/:sessionId - Update Session', () => {
-      it('should update session successfully', async () => {
+      test('should update session successfully', async () => {
         const updatedSession = { ...mockSessions.activeCustomerSupport, topic: 'Updated Topic' };
         mockSessionService.update.mockResolvedValue(updatedSession);
 
         const response = await app.request('/sessions/session_test_001', {
           method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token'
@@ -409,7 +427,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.update).toHaveBeenCalledTimes(1);
       });
 
-      it('should handle update service error', async () => {
+      test('should handle update service error', async () => {
         mockSessionService.update.mockRejectedValue(new Error('Session not found'));
 
         const response = await app.request('/sessions/session_test_001', {
@@ -431,11 +449,12 @@ describe('Session Main Handler', () => {
     });
 
     describe('DELETE /sessions/:sessionId - Delete Session', () => {
-      it('should delete session successfully', async () => {
+      test('should delete session successfully', async () => {
         mockSessionService.delete.mockResolvedValue(true);
 
         const response = await app.request('/sessions/session_test_001', {
           method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -452,11 +471,12 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.delete).toHaveBeenCalledWith('session_test_001');
       });
 
-      it('should return 404 when session not found for deletion', async () => {
+      test('should return 404 when session not found for deletion', async () => {
         mockSessionService.delete.mockResolvedValue(false);
 
         const response = await app.request('/sessions/nonexistent_session', {
           method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -476,11 +496,13 @@ describe('Session Main Handler', () => {
 
   describe('Session Management Operations', () => {
     describe('POST /sessions/:sessionId/close - Close Session', () => {
-      it('should close session successfully', async () => {
+      test('should close session successfully', async () => {
         mockSessionService.closeSession.mockResolvedValue(true);
 
         const response = await app.request('/sessions/session_test_001/close', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -497,7 +519,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.closeSession).toHaveBeenCalledWith('session_test_001');
       });
 
-      it('should handle close session failure', async () => {
+      test('should handle close session failure', async () => {
         mockSessionService.closeSession.mockResolvedValue(false);
 
         const response = await app.request('/sessions/session_test_001/close', {
@@ -517,11 +539,12 @@ describe('Session Main Handler', () => {
     });
 
     describe('POST /sessions/:sessionId/reopen - Reopen Session', () => {
-      it('should reopen session successfully', async () => {
+      test('should reopen session successfully', async () => {
         mockSessionService.reopenSession.mockResolvedValue(true);
 
         const response = await app.request('/sessions/session_test_001/reopen', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -544,7 +567,7 @@ describe('Session Main Handler', () => {
 
   describe('Message Operations', () => {
     describe('GET /sessions/:sessionId/messages - Get Session Messages', () => {
-      it('should return session messages with pagination', async () => {
+      test('should return session messages with pagination', async () => {
         const mockMessages = [
           createMockSessionMessage({ sessionId: 'session_test_001', sessionSequence: 1 }),
           createMockSessionMessage({ sessionId: 'session_test_001', sessionSequence: 2 })
@@ -592,7 +615,7 @@ describe('Session Main Handler', () => {
 
   describe('Statistics and Analytics', () => {
     describe('GET /sessions/stats - Get Session Statistics', () => {
-      it('should return session statistics', async () => {
+      test('should return session statistics', async () => {
         mockSessionService.getStats.mockResolvedValue(mockSessionStats);
 
         const response = await app.request('/sessions/stats', {
@@ -614,7 +637,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.getStats).toHaveBeenCalledWith(undefined);
       });
 
-      it('should return conversation-specific statistics', async () => {
+      test('should return conversation-specific statistics', async () => {
         const conversationId = 'conv_001';
         mockSessionService.getStats.mockResolvedValue(mockSessionStats);
 
@@ -631,7 +654,7 @@ describe('Session Main Handler', () => {
     });
 
     describe('GET /sessions/stats/:conversationId - Get Conversation Session Stats', () => {
-      it('should return conversation session statistics', async () => {
+      test('should return conversation session statistics', async () => {
         const conversationId = 'conv_001';
         mockSessionService.getStats.mockResolvedValue(mockSessionStats);
 
@@ -655,7 +678,7 @@ describe('Session Main Handler', () => {
     });
 
     describe('GET /sessions/activity - Get Activity Statistics', () => {
-      it('should return activity statistics', async () => {
+      test('should return activity statistics', async () => {
         mockSessionService.getActivityStats.mockResolvedValue(mockActivityStats);
 
         const response = await app.request('/sessions/activity?timeRange=week', {
@@ -679,7 +702,7 @@ describe('Session Main Handler', () => {
         });
       });
 
-      it('should validate timeRange parameter', async () => {
+      test('should validate timeRange parameter', async () => {
         const response = await app.request('/sessions/activity?timeRange=invalid', {
           method: 'GET',
           headers: {
@@ -701,13 +724,15 @@ describe('Session Main Handler', () => {
 
   describe('Batch Operations', () => {
     describe('POST /sessions/batch - Batch Operations', () => {
-      it('should perform successful batch operation', async () => {
+      test('should perform successful batch operation', async () => {
         mockSessionService.batchOperation.mockResolvedValue(mockBatchOperationResults.successfulClose);
 
         const batchOperation = createMockBatchOperation();
 
         const response = await app.request('/sessions/batch', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token'
@@ -727,7 +752,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.batchOperation).toHaveBeenCalledTimes(1);
       });
 
-      it('should handle partial batch operation failure', async () => {
+      test('should handle partial batch operation failure', async () => {
         mockSessionService.batchOperation.mockResolvedValue(mockBatchOperationResults.partialFailure);
 
         const batchOperation = createMockBatchOperation();
@@ -755,7 +780,7 @@ describe('Session Main Handler', () => {
 
   describe('Session Health Check', () => {
     describe('GET /sessions/:sessionId/health - Analyze Session Health', () => {
-      it('should return session health report', async () => {
+      test('should return session health report', async () => {
         const mockHealthReport = {
           healthy: true,
           issues: [],
@@ -782,7 +807,7 @@ describe('Session Main Handler', () => {
         expect(mockSessionService.analyzeSessionHealth).toHaveBeenCalledWith('session_test_001');
       });
 
-      it('should return unhealthy session report', async () => {
+      test('should return unhealthy session report', async () => {
         const mockHealthReport = {
           healthy: false,
           issues: ['會話持續時間過長', '會話長時間無活動'],
@@ -811,7 +836,7 @@ describe('Session Main Handler', () => {
   // ======================== 錯誤處理測試 ========================
 
   describe('Error Handling', () => {
-    it('should handle 404 for unknown endpoints', async () => {
+    test('should handle 404 for unknown endpoints', async () => {
       const response = await app.request('/sessions/unknown-endpoint', {
         method: 'GET',
         headers: {
@@ -827,7 +852,7 @@ describe('Session Main Handler', () => {
       expect(validation.isValid).toBe(true);
     });
 
-    it('should handle global error middleware', async () => {
+    test('should handle global error middleware', async () => {
       // Mock service to throw error
       mockSessionService.get.mockRejectedValue(new Error('Unexpected database error'));
 
@@ -850,7 +875,7 @@ describe('Session Main Handler', () => {
   // ======================== 整合度測試 ========================
 
   describe('Integration Tests', () => {
-    it('should handle complete session lifecycle', async () => {
+    test('should handle complete session lifecycle', async () => {
       const createData = createMockCreateSessionData();
       const mockSession = createMockSession();
       const updatedSession = { ...mockSession, topic: 'Updated' };
@@ -865,6 +890,7 @@ describe('Session Main Handler', () => {
       // 1. Create session
       let response = await app.request('/sessions', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer valid_token'
@@ -883,6 +909,7 @@ describe('Session Main Handler', () => {
       // 3. Update session
       response = await app.request(`/sessions/${mockSession.id}`, {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer valid_token'
@@ -894,6 +921,7 @@ describe('Session Main Handler', () => {
       // 4. Close session
       response = await app.request(`/sessions/${mockSession.id}/close`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Authorization': 'Bearer valid_token' }
       });
       expect(response.status).toBe(200);
@@ -901,6 +929,7 @@ describe('Session Main Handler', () => {
       // 5. Delete session
       response = await app.request(`/sessions/${mockSession.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Authorization': 'Bearer valid_token' }
       });
       expect(response.status).toBe(200);

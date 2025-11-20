@@ -4,7 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConversationShardingService } from '@/services/conversation-sharding-service';
-import { SHARD_CONFIG } from '@/types/sharding-types';
+imimport { MockFactory } from '@helpers/mockFactory';
+port { SHARD_CONFIG } from '@/types/sharding-types';
 import type { ShardCapacityResponse } from '@/types/sharding-types';
 
 /**
@@ -128,6 +129,10 @@ function mockStubWithCapacity(
     }
     return Promise.resolve(new Response('Not found', { status: 404 }));
   });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 }
 
 describe('ConversationShardingService', () => {
@@ -135,6 +140,7 @@ describe('ConversationShardingService', () => {
   let mockEnv: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockEnv = createMockEnv();
     service = new ConversationShardingService(mockEnv);
     // Clear cache before each test
@@ -142,7 +148,7 @@ describe('ConversationShardingService', () => {
   });
 
   describe('getAvailableShardForConversation', () => {
-    it('should select first available shard when under capacity', async () => {
+    test('should select first available shard when under capacity', async () => {
       const conversationId = 'conv-test-001';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -165,7 +171,7 @@ describe('ConversationShardingService', () => {
       expect(stub.fetch).toHaveBeenCalled();
     });
 
-    it('should create new shard when shard-0 is full', async () => {
+    test('should create new shard when shard-0 is full', async () => {
       const conversationId = 'conv-test-002';
       const stub0 = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
       const stub1 = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-1`);
@@ -183,7 +189,7 @@ describe('ConversationShardingService', () => {
       expect(stub1.fetch).toHaveBeenCalled();
     });
 
-    it('should throw error when all 5 shards are full', async () => {
+    test('should throw error when all 5 shards are full', async () => {
       const conversationId = 'conv-test-003';
 
       // Mock all 5 shards as full
@@ -197,7 +203,7 @@ describe('ConversationShardingService', () => {
       ).rejects.toThrow(/All shards full/);
     });
 
-    it('should retry on transient failures', async () => {
+    test('should retry on transient failures', async () => {
       const conversationId = 'conv-test-004';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -227,7 +233,7 @@ describe('ConversationShardingService', () => {
       expect(stub.fetch.mock.calls.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('should use cached shard information for subsequent requests', async () => {
+    test('should use cached shard information for subsequent requests', async () => {
       const conversationId = 'conv-test-005';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -246,7 +252,7 @@ describe('ConversationShardingService', () => {
       expect(stub.fetch.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('should handle capacity check timeout gracefully', async () => {
+    test('should handle capacity check timeout gracefully', async () => {
       const conversationId = 'conv-test-006';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -262,7 +268,7 @@ describe('ConversationShardingService', () => {
       ).rejects.toThrow();
     });
 
-    it('should distribute connections across multiple shards', async () => {
+    test('should distribute connections across multiple shards', async () => {
       const conversationId = 'conv-test-007';
 
       const stub0 = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
@@ -290,7 +296,7 @@ describe('ConversationShardingService', () => {
   });
 
   describe('Cache Management', () => {
-    it('should cache shard metadata correctly', async () => {
+    test('should cache shard metadata correctly', async () => {
       const conversationId = 'conv-cache-001';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -303,7 +309,7 @@ describe('ConversationShardingService', () => {
       expect(stats.totalShards).toBe(1);
     });
 
-    it('should clear cache for specific conversation', async () => {
+    test('should clear cache for specific conversation', async () => {
       const conv1 = 'conv-cache-002';
       const conv2 = 'conv-cache-003';
 
@@ -322,7 +328,7 @@ describe('ConversationShardingService', () => {
       expect(service.getCacheStats().totalConversations).toBe(1);
     });
 
-    it('should expire cache after TTL', async () => {
+    test('should expire cache after TTL', async () => {
       const conversationId = 'conv-cache-004';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -343,7 +349,7 @@ describe('ConversationShardingService', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle shard initialization failure', async () => {
+    test('should handle shard initialization failure', async () => {
       const conversationId = 'conv-error-001';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -367,7 +373,7 @@ describe('ConversationShardingService', () => {
       ).rejects.toThrow();
     });
 
-    it('should handle network errors gracefully', async () => {
+    test('should handle network errors gracefully', async () => {
       const conversationId = 'conv-error-002';
 
       // All shards throw network errors
@@ -381,7 +387,7 @@ describe('ConversationShardingService', () => {
       ).rejects.toThrow();
     });
 
-    it('should handle malformed capacity response', async () => {
+    test('should handle malformed capacity response', async () => {
       const conversationId = 'conv-error-003';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -396,7 +402,7 @@ describe('ConversationShardingService', () => {
   });
 
   describe('Performance', () => {
-    it('should select shard within acceptable latency', async () => {
+    test('should select shard within acceptable latency', async () => {
       const conversationId = 'conv-perf-001';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -410,7 +416,7 @@ describe('ConversationShardingService', () => {
       expect(latency).toBeLessThan(100);
     });
 
-    it('should handle concurrent shard selections', async () => {
+    test('should handle concurrent shard selections', async () => {
       const conversationIds = Array.from({ length: 10 }, (_, i) => `conv-concurrent-${i}`);
 
       const promises = conversationIds.map(async (convId) => {
@@ -429,7 +435,7 @@ describe('ConversationShardingService', () => {
   });
 
   describe('Shard Naming', () => {
-    it('should follow naming pattern: {conversationId}_shard-{index}', async () => {
+    test('should follow naming pattern: {conversationId}_shard-{index}', async () => {
       const conversationId = 'conv-naming-001';
       const stub = mockEnv.CONVERSATION_ROOM.get(`${conversationId}_shard-0`);
 
@@ -440,7 +446,7 @@ describe('ConversationShardingService', () => {
       expect(stub.shardId).toBe(`${conversationId}_shard-0`);
     });
 
-    it('should create correct shard IDs for all indices', () => {
+    test('should create correct shard IDs for all indices', () => {
       const conversationId = 'conv-naming-002';
 
       for (let i = 0; i < SHARD_CONFIG.MAX_SHARDS_PER_CONVERSATION; i++) {

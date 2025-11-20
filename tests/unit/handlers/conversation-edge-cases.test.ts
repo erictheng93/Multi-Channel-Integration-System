@@ -49,6 +49,19 @@ vi.mock('../../../src/middleware/database', () => ({
   })
 }))
 
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
+}));
+
 describe('conversationHandler - Edge Cases', () => {
   let app: Hono
   let mockDB: any
@@ -56,6 +69,7 @@ describe('conversationHandler - Edge Cases', () => {
   let mockDbService: any
 
   beforeEach(() => {
+    vi.clearAllMocks();
     // Create fresh Hono app
     app = new Hono()
 
@@ -116,7 +130,7 @@ describe('conversationHandler - Edge Cases', () => {
   })
 
   describe('list - Edge Cases', () => {
-    it('should handle invalid page numbers gracefully', async () => {
+    test('should handle invalid page numbers gracefully', async () => {
       mockDrizzle.mockQueryResponses([], 0)
 
       const response = await app.request('/api/conversations?page=invalid&pageSize=also-invalid')
@@ -126,7 +140,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle negative page numbers', async () => {
+    test('should handle negative page numbers', async () => {
       mockDrizzle.mockQueryResponses([], 0)
 
       const response = await app.request('/api/conversations?page=-1&pageSize=0')
@@ -136,7 +150,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle very large page sizes', async () => {
+    test('should handle very large page sizes', async () => {
       mockDrizzle.mockQueryResponses([], 0)
 
       const response = await app.request('/api/conversations?page=1&pageSize=999999')
@@ -146,7 +160,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle conversations without customer data', async () => {
+    test('should handle conversations without customer data', async () => {
       const conversationWithoutCustomer = {
         id: 1,
         customerId: 1,
@@ -175,7 +189,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.data.conversations).toHaveLength(1)
     })
 
-    it('should handle empty unread counts result', async () => {
+    test('should handle empty unread counts result', async () => {
       const mockConversation = {
         id: 1,
         customerId: 1,
@@ -204,7 +218,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.data.conversations).toHaveLength(1)
     })
 
-    it('should handle null JWT payload', async () => {
+    test('should handle null JWT payload', async () => {
       // Create app without agent in context
       const noAuthApp = new Hono()
 
@@ -240,7 +254,7 @@ describe('conversationHandler - Edge Cases', () => {
   })
 
   describe('get - Edge Cases', () => {
-    it('should handle conversation with null timestamps', async () => {
+    test('should handle conversation with null timestamps', async () => {
       const conversationWithNullTimestamps = {
         id: '1',
         customerId: 1,
@@ -269,7 +283,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle invalid conversation ID parameter', async () => {
+    test('should handle invalid conversation ID parameter', async () => {
       mockDrizzle.mockSelectResponse([])
 
       const response = await app.request('/api/conversations/invalid-id')
@@ -280,7 +294,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.error).toBe('Conversation not found')
     })
 
-    it('should handle null unread count result', async () => {
+    test('should handle null unread count result', async () => {
       const mockConversation = {
         id: '1',
         customerId: 1,
@@ -311,9 +325,13 @@ describe('conversationHandler - Edge Cases', () => {
   })
 
   describe('assign - Edge Cases', () => {
-    it('should handle malformed JSON request body', async () => {
+    test('should handle malformed JSON request body', async () => {
       const response = await app.request('/api/conversations/1/assign', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: 'invalid-json'
       })
@@ -321,7 +339,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(response.status).toBe(500)
     })
 
-    it('should handle empty agentId string', async () => {
+    test('should handle empty agentId string', async () => {
       // Mock dbService for permission check
       mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
       mockDrizzle.mockUpdateResponse('conversations', 1)
@@ -337,7 +355,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle null agentId', async () => {
+    test('should handle null agentId', async () => {
       // Mock dbService for permission check
       mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
       mockDrizzle.mockUpdateResponse('conversations', 1)
@@ -353,7 +371,7 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle database update failure', async () => {
+    test('should handle database update failure', async () => {
       // Mock dbService for permission check
       mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
       mockDrizzle.mockUpdateResponse('conversations', 0) // No rows affected
@@ -372,13 +390,14 @@ describe('conversationHandler - Edge Cases', () => {
   })
 
   describe('close - Edge Cases', () => {
-    it('should handle invalid conversation ID', async () => {
+    test('should handle invalid conversation ID', async () => {
       // Mock dbService for permission check
       mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
       mockDrizzle.mockUpdateResponse('conversations', 1)
 
       const response = await app.request('/api/conversations/invalid-id/close', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' }
       })
       const result = await response.json()
 
@@ -386,13 +405,14 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle database update with no affected rows', async () => {
+    test('should handle database update with no affected rows', async () => {
       // Mock dbService for permission check
       mockDbService.canAgentAccessConversation.mockResolvedValueOnce(true)
       mockDrizzle.mockUpdateResponse('conversations', 0)
 
       const response = await app.request('/api/conversations/999/close', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' }
       })
       const result = await response.json()
 
@@ -401,11 +421,12 @@ describe('conversationHandler - Edge Cases', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should handle missing conversation ID parameter', async () => {
+    test('should handle missing conversation ID parameter', async () => {
       mockDrizzle.mockUpdateResponse('conversations', 1)
 
       const response = await app.request('/api/conversations//close', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' }
       })
 
       // Route might not match or return error

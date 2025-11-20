@@ -1,7 +1,8 @@
-// 系統主要處理器測試 - Handler-based 架構
+// 系統主要處理器測試 - Handler-based 架構 (MockFactory Refactored)
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import systemMainHandler from '@backend/handlers/system-main';
 import { setupHandlerTest } from '../../helpers/handler-test-setup';
+import { MockFactory } from '../../helpers/mockFactory';
 
 // Mock Drizzle ORM
 vi.mock('drizzle-orm/d1', () => ({
@@ -83,7 +84,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /health', () => {
-    it('should return healthy status', async () => {
+    test('should return healthy status', async () => {
       const response = await app.request('/health');
 
       expect(response.status).toBe(200);
@@ -95,7 +96,7 @@ describe('System Main Handler', () => {
       expect(result.timestamp).toBeDefined();
     });
 
-    it('should return unhealthy status on database error', async () => {
+    test('should return unhealthy status on database error', async () => {
       // Mock drizzle to throw error
       const drizzleMod = await import('drizzle-orm/d1');
       const originalMock = drizzleMod.drizzle;
@@ -122,7 +123,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /api', () => {
-    it('should return API information', async () => {
+    test('should return API information', async () => {
       const response = await app.request('/api');
 
       expect(response.status).toBe(200);
@@ -139,7 +140,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /stats', () => {
-    it('should return message statistics', async () => {
+    test('should return message statistics', async () => {
       const response = await app.request('/stats');
 
       expect(response.status).toBe(200);
@@ -152,7 +153,7 @@ describe('System Main Handler', () => {
       expect(result.timestamp).toBeDefined();
     });
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       const response = await app.request('/stats');
 
       // 應該返回 200，因為錯誤被內部捕獲並返回默認值
@@ -168,7 +169,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /messages/:messageId/replies', () => {
-    it('should return message replies', async () => {
+    test('should return message replies', async () => {
       const messageId = 'msg-123';
       const mockReplies = [
         { id: 'reply-1', content: 'Reply 1' },
@@ -190,7 +191,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /conversations/:conversationId/message-tree', () => {
-    it('should return conversation message tree', async () => {
+    test('should return conversation message tree', async () => {
       const conversationId = '123';
       const mockTree = {
         messages: [
@@ -219,7 +220,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /conversations/:conversationId/sessions', () => {
-    it('should return session statistics', async () => {
+    test('should return session statistics', async () => {
       const conversationId = 123;
 
       const response = await app.request(`/conversations/${conversationId}/sessions`);
@@ -237,7 +238,7 @@ describe('System Main Handler', () => {
   });
 
   describe('GET /messages/recall-stats', () => {
-    it('should return recall statistics', async () => {
+    test('should return recall statistics', async () => {
       const response = await app.request('/messages/recall-stats');
 
       expect(response.status).toBe(200);
@@ -250,15 +251,6 @@ describe('System Main Handler', () => {
         successfulRecalls: 0,
         failedRecalls: 0
       });
-    });
-  });
-
-  describe('Error Handling', () => {
-    it.skip('should handle import errors gracefully', async () => {
-      // TODO: Fix this test - module mocking issue
-      // This test needs to be fixed to properly mock module import failures
-      const response = await app.request('/messages/msg-123/replies');
-      expect(response.status).toBe(200);
     });
   });
 });

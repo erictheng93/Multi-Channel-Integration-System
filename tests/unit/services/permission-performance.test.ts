@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterAll, vi } from 'vitest';
 import { PermissionService } from '@backend/services/permission-service';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('PermissionService - Performance Tests', () => {
   const originalGetUserWithTeam = (PermissionService as any).getUserWithTeam;
   
@@ -8,6 +9,10 @@ describe('PermissionService - Performance Tests', () => {
     vi.clearAllMocks();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   afterAll(() => {
     (PermissionService as any).getUserWithTeam = originalGetUserWithTeam;
   });

@@ -1,9 +1,10 @@
-// Integration Test: Messaging Main Handler - Complete Coverage
+// Integration Test: Messaging Main Handler - Complete Coverage (MockFactory Refactored)
 // Tests all 17 endpoints from messaging-main.ts with real database operations
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { DatabaseTestEnvironment } from '../helpers/DatabaseTestEnvironment';
+import { MockFactory } from '../helpers/mockFactory';
 import type { Bindings, JWTPayload } from '@backend/types';
 
 // Module-level variable for test environment
@@ -74,58 +75,20 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
     env = new DatabaseTestEnvironment();
     currentTestEnv = env;
 
-    // Setup mock KV storage
-    const kvStorage = new Map<string, { value: string; options?: any; timestamp: number }>();
-    const mockKV = {
-      put: vi.fn().mockImplementation(async (key: string, value: string, options?: any) => {
-        kvStorage.set(key, { value, options, timestamp: Date.now() });
-      }),
-      get: vi.fn().mockImplementation(async (key: string) => {
-        const item = kvStorage.get(key);
-        if (!item) return null;
-        if (item.options?.expirationTtl) {
-          const expireTime = item.timestamp + (item.options.expirationTtl * 1000);
-          if (Date.now() > expireTime) {
-            kvStorage.delete(key);
-            return null;
-          }
-        }
-        return item.value;
-      }),
-      delete: vi.fn().mockImplementation(async (key: string) => {
-        kvStorage.delete(key);
-      })
-    };
+    // Use MockFactory to create standardized KV and R2 mocks
+    // This replaces 40+ lines of manual mock implementation with 2 lines
+    const mockKV = MockFactory.createKV();
+    const mockR2 = MockFactory.createR2();
 
-    // Setup mock R2 storage for file attachments
-    const r2Storage = new Map<string, { body: ArrayBuffer; metadata?: any }>();
-    const mockR2 = {
-      put: vi.fn().mockImplementation(async (key: string, body: ArrayBuffer, options?: any) => {
-        r2Storage.set(key, { body, metadata: options });
-        return { key };
-      }),
-      get: vi.fn().mockImplementation(async (key: string) => {
-        const item = r2Storage.get(key);
-        if (!item) return null;
-        return {
-          body: item.body,
-          httpMetadata: item.metadata?.httpMetadata
-        };
-      }),
-      delete: vi.fn().mockImplementation(async (key: string) => {
-        r2Storage.delete(key);
-      })
-    };
-
-    // Setup bindings
-    mockBindings = {
+    // Setup bindings using MockFactory with custom database from test environment
+    mockBindings = MockFactory.createEnv({
       DB: env.getMockD1Database() as any,
       SESSIONS: mockKV as any,
       FILE_STORAGE: mockR2 as any,
       LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
       FB_PAGE_ACCESS_TOKEN: 'test-fb-token',
       JWT_SECRET: 'test-jwt-secret'
-    } as any;
+    });
 
     // Create test data
     testTeam = await env.createTestTeam({ name: 'Messaging Test Team' });
@@ -172,7 +135,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 1. HEALTH & INFO ENDPOINTS ====================
 
   describe('Health & Info Endpoints', () => {
-    it('GET /health - should return healthy status', async () => {
+    test('GET /health - should return healthy status', async () => {
       const res = await app.request('/api/messages/health');
 
       expect(res.status).toBe(200);
@@ -182,7 +145,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.version).toBe('2.0.0');
     });
 
-    it('GET /info - should return module information and all endpoints', async () => {
+    test('GET /info - should return module information and all endpoints', async () => {
       const res = await app.request('/api/messages/info');
 
       expect(res.status).toBe(200);
@@ -199,9 +162,13 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 2. BASIC CRUD OPERATIONS ====================
 
   describe('Basic CRUD Operations', () => {
-    it('POST / - should create a new message', async () => {
+    test('POST / - should create a new message', async () => {
       const res = await app.request('/api/messages/', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
@@ -221,7 +188,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.senderType).toBe('agent');
     });
 
-    it('POST / - should fail with invalid conversation ID', async () => {
+    test('POST / - should fail with invalid conversation ID', async () => {
       const res = await app.request('/api/messages/', {
         method: 'POST',
         headers: {
@@ -241,7 +208,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.error).toContain('not found');
     });
 
-    it('GET /:id - should retrieve a message by ID', async () => {
+    test('GET /:id - should retrieve a message by ID', async () => {
       // Create a message first
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-get-test-1',
@@ -261,7 +228,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.content).toBe('Test message for retrieval');
     });
 
-    it('PUT /:id - should update a message', async () => {
+    test('PUT /:id - should update a message', async () => {
       // Create a message first
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-update-test-1',
@@ -272,6 +239,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
 
       const res = await app.request(`/api/messages/${message.id}`, {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
@@ -289,7 +257,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.metadata.edited).toBe(true);
     });
 
-    it('DELETE /:id - should recall/delete a message', async () => {
+    test('DELETE /:id - should recall/delete a message', async () => {
       // Create a message first
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-delete-test-1',
@@ -300,6 +268,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
 
       const res = await app.request(`/api/messages/${message.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Authorization': authToken }
       });
 
@@ -314,7 +283,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 3. CONVERSATION MESSAGES ====================
 
   describe('Conversation Message Listing', () => {
-    it('GET /conversation/:conversationId - should list all messages in a conversation', async () => {
+    test('GET /conversation/:conversationId - should list all messages in a conversation', async () => {
       // Create multiple messages
       await env.createTestMessage(testConversation.id, {
         id: 'msg-conv-1',
@@ -341,7 +310,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.pagination).toBeDefined();
     });
 
-    it('GET /conversation/:conversationId - should support pagination', async () => {
+    test('GET /conversation/:conversationId - should support pagination', async () => {
       const res = await app.request(
         `/api/messages/conversation/${testConversation.id}?page=1&pageSize=5`,
         { headers: { 'Authorization': authToken } }
@@ -374,7 +343,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       });
     });
 
-    it('GET /search - should search messages by content', async () => {
+    test('GET /search - should search messages by content', async () => {
       const res = await app.request('/api/messages/search?q=test', {
         headers: { 'Authorization': authToken }
       });
@@ -386,7 +355,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(Array.isArray(data.data) || Array.isArray(data.data.items)).toBe(true);
     });
 
-    it('GET /search - should filter by conversation ID', async () => {
+    test('GET /search - should filter by conversation ID', async () => {
       const res = await app.request(
         `/api/messages/search?q=test&conversationId=${testConversation.id}`,
         { headers: { 'Authorization': authToken } }
@@ -397,7 +366,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.success).toBe(true);
     });
 
-    it('GET /search - should filter by message type', async () => {
+    test('GET /search - should filter by message type', async () => {
       const res = await app.request('/api/messages/search?q=test&messageType=text', {
         headers: { 'Authorization': authToken }
       });
@@ -411,7 +380,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 5. STATISTICS & ANALYTICS ====================
 
   describe('Message Statistics', () => {
-    it('GET /stats - should return message statistics', async () => {
+    test('GET /stats - should return message statistics', async () => {
       const res = await app.request('/api/messages/stats', {
         headers: { 'Authorization': authToken }
       });
@@ -427,9 +396,11 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 6. BULK OPERATIONS ====================
 
   describe('Bulk Operations', () => {
-    it('POST /bulk-create - should create multiple messages at once', async () => {
+    test('POST /bulk-create - should create multiple messages at once', async () => {
       const res = await app.request('/api/messages/bulk-create', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
@@ -462,7 +433,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.results.length).toBe(3);
     });
 
-    it('POST /bulk-create - should enforce 100 message limit', async () => {
+    test('POST /bulk-create - should enforce 100 message limit', async () => {
       const messages = Array.from({ length: 101 }, (_, i) => ({
         conversationId: testConversation.id,
         content: `Bulk message ${i + 1}`,
@@ -484,7 +455,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.error).toContain('limited to 100');
     });
 
-    it('POST /bulk-delete - should delete multiple messages at once', async () => {
+    test('POST /bulk-delete - should delete multiple messages at once', async () => {
       // Create messages to delete
       const msg1 = await env.createTestMessage(testConversation.id, {
         id: 'bulk-del-1',
@@ -501,6 +472,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
 
       const res = await app.request('/api/messages/bulk-delete', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
@@ -520,7 +492,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 7. ATTACHMENT MANAGEMENT ====================
 
   describe('Attachment Management', () => {
-    it('GET /:id/attachments - should get message attachments', async () => {
+    test('GET /:id/attachments - should get message attachments', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-att-test-1',
         content: 'Message with attachments',
@@ -539,7 +511,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.attachments).toBeInstanceOf(Array);
     });
 
-    it('POST /:id/attachments - should upload an attachment', async () => {
+    test('POST /:id/attachments - should upload an attachment', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-upload-test-1',
         content: 'Message for upload',
@@ -555,6 +527,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
 
       const res = await app.request(`/api/messages/${message.id}/attachments`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': authToken
         },
@@ -571,7 +544,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 8. MESSAGE FORWARDING ====================
 
   describe('Message Forwarding', () => {
-    it('POST /:id/forward - should forward message to other conversations', async () => {
+    test('POST /:id/forward - should forward message to other conversations', async () => {
       // Create another conversation
       const customer2 = await env.createTestCustomer({
         platform: 'line',
@@ -593,6 +566,8 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
 
       const res = await app.request(`/api/messages/${message.id}/forward`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
@@ -610,7 +585,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.results[0].conversationId).toBe(conversation2.id);
     });
 
-    it('POST /:id/forward - should enforce 20 conversation limit', async () => {
+    test('POST /:id/forward - should enforce 20 conversation limit', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-forward-limit',
         content: 'Test forward limit',
@@ -640,7 +615,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 9. TAGGING SYSTEM ====================
 
   describe('Message Tagging', () => {
-    it('PUT /:id/tags - should add tags to a message', async () => {
+    test('PUT /:id/tags - should add tags to a message', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-tag-test-1',
         content: 'Message to tag',
@@ -650,6 +625,8 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
 
       const res = await app.request(`/api/messages/${message.id}/tags`, {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
@@ -665,7 +642,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.tags).toEqual(['urgent', 'follow-up', 'important']);
     });
 
-    it('PUT /:id/tags - should enforce 10 tag limit', async () => {
+    test('PUT /:id/tags - should enforce 10 tag limit', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-tag-limit',
         content: 'Test tag limit',
@@ -690,7 +667,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.error).toContain('Maximum 10 tags');
     });
 
-    it('GET /tags - should retrieve all available tags', async () => {
+    test('GET /tags - should retrieve all available tags', async () => {
       // Create messages with tags first
       await env.createTestMessage(testConversation.id, {
         id: 'msg-with-tag-1',
@@ -730,7 +707,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       });
     });
 
-    it('GET /export - should export messages as JSON', async () => {
+    test('GET /export - should export messages as JSON', async () => {
       const res = await app.request('/api/messages/export?format=json', {
         headers: { 'Authorization': authToken }
       });
@@ -742,7 +719,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.exportInfo.format).toBe('json');
     });
 
-    it('GET /export - should export messages as CSV', async () => {
+    test('GET /export - should export messages as CSV', async () => {
       const res = await app.request('/api/messages/export?format=csv', {
         headers: { 'Authorization': authToken }
       });
@@ -754,7 +731,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(csvText).toContain('Content');
     });
 
-    it('GET /export - should filter by conversation ID', async () => {
+    test('GET /export - should filter by conversation ID', async () => {
       const res = await app.request(
         `/api/messages/export?format=json&conversationId=${testConversation.id}`,
         { headers: { 'Authorization': authToken } }
@@ -766,7 +743,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.data.exportInfo.filters.conversationId).toBe(testConversation.id);
     });
 
-    it('GET /export - should enforce 1000 record limit', async () => {
+    test('GET /export - should enforce 1000 record limit', async () => {
       const res = await app.request('/api/messages/export?format=json&limit=2000', {
         headers: { 'Authorization': authToken }
       });
@@ -782,7 +759,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
   // ==================== 11. ERROR HANDLING ====================
 
   describe('Error Handling', () => {
-    it('should handle malformed JSON gracefully', async () => {
+    test('should handle malformed JSON gracefully', async () => {
       const res = await app.request('/api/messages/', {
         method: 'POST',
         headers: {
@@ -797,7 +774,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.success).toBe(false);
     });
 
-    it('should handle non-existent message IDs', async () => {
+    test('should handle non-existent message IDs', async () => {
       const res = await app.request('/api/messages/non-existent-message-id', {
         headers: { 'Authorization': authToken }
       });
@@ -807,7 +784,7 @@ describe('Messaging Main Handler - Complete Integration Tests', () => {
       expect(data.success).toBe(false);
     });
 
-    it('should validate required fields', async () => {
+    test('should validate required fields', async () => {
       const res = await app.request('/api/messages/', {
         method: 'POST',
         headers: {

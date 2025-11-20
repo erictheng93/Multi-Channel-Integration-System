@@ -41,6 +41,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   let env: DatabaseTestEnvironment
 
   beforeEach(() => {
+    vi.clearAllMocks();
     env = new DatabaseTestEnvironment()
     currentTestEnv = env  // Set module-level variable for drizzle() mock
   })
@@ -51,7 +52,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('findOrCreateCustomer', () => {
-    it('should return existing customer when found', async () => {
+    test('should return existing customer when found', async () => {
       // Insert test customer
       await env.db.insert(customers).values({
         platform: 'line',
@@ -74,7 +75,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result.avatarUrl).toBe('https://example.com/avatar.jpg')
     })
 
-    it('should create new customer when not found', async () => {
+    test('should create new customer when not found', async () => {
       // No existing customer
 
       // Test create
@@ -99,7 +100,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(allCustomers[0].platformUserId).toBe('U123456789')
     })
 
-    it('should update existing customer with new information', async () => {
+    test('should update existing customer with new information', async () => {
       // Insert customer with old data
       await env.db.insert(customers).values({
         platform: 'line',
@@ -122,7 +123,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(allCustomers).toHaveLength(1)
     })
 
-    it('should handle customer without optional fields', async () => {
+    test('should handle customer without optional fields', async () => {
       const result = await findOrCreateCustomer(
         env.getMockD1Database(),
         'line',
@@ -138,7 +139,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('findOrCreateConversation', () => {
-    it('should return existing active conversation', async () => {
+    test('should return existing active conversation', async () => {
       // Create customer first
       const customer = await env.createTestCustomer({
         platform: 'line',
@@ -169,7 +170,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(allConversations).toHaveLength(1)
     })
 
-    it('should create new conversation when no active conversation exists', async () => {
+    test('should create new conversation when no active conversation exists', async () => {
       // Create customer
       const customer = await env.createTestCustomer()
 
@@ -189,7 +190,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(allConversations).toHaveLength(1)
     })
 
-    it('should create new conversation when existing conversation is closed', async () => {
+    test('should create new conversation when existing conversation is closed', async () => {
       // Create customer
       const customer = await env.createTestCustomer()
 
@@ -218,7 +219,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('saveMessage', () => {
-    it('should save inbound message correctly', async () => {
+    test('should save inbound message correctly', async () => {
       // Setup: create customer and conversation
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
@@ -247,7 +248,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(savedMessages).toHaveLength(1)
     })
 
-    it('should save outbound message correctly', async () => {
+    test('should save outbound message correctly', async () => {
       // Setup
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
@@ -269,7 +270,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result.customerSenderId).toBeUndefined()
     })
 
-    it('should save message with metadata', async () => {
+    test('should save message with metadata', async () => {
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
 
@@ -292,7 +293,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('getConversationMessages', () => {
-    it('should return all messages for a conversation', async () => {
+    test('should return all messages for a conversation', async () => {
       // Setup
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
@@ -324,7 +325,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result[2].content).toBe('Message 1')
     })
 
-    it('should return empty array for conversation with no messages', async () => {
+    test('should return empty array for conversation with no messages', async () => {
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
 
@@ -335,7 +336,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('getAllCustomers', () => {
-    it('should return all customers', async () => {
+    test('should return all customers', async () => {
       // Create multiple customers
       await env.createTestCustomer({ platformUserId: 'U1', displayName: 'User 1' })
       await env.createTestCustomer({ platformUserId: 'U2', displayName: 'User 2' })
@@ -347,12 +348,12 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result.map(c => c.displayName)).toEqual(['User 1', 'User 2', 'User 3'])
     })
 
-    it('should return empty array when no customers exist', async () => {
+    test('should return empty array when no customers exist', async () => {
       const result = await getAllCustomers(env.getMockD1Database())
       expect(result).toEqual([])
     })
 
-    it('should respect limit parameter', async () => {
+    test('should respect limit parameter', async () => {
       // Create 5 customers
       for (let i = 1; i <= 5; i++) {
         await env.createTestCustomer({
@@ -368,7 +369,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('getCustomerById', () => {
-    it('should return customer when found', async () => {
+    test('should return customer when found', async () => {
       const customer = await env.createTestCustomer({
         platformUserId: 'U123',
         displayName: 'Test User'
@@ -381,7 +382,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result!.displayName).toBe('Test User')
     })
 
-    it('should return null when customer not found', async () => {
+    test('should return null when customer not found', async () => {
       const result = await getCustomerById(env.getMockD1Database(), 999)
 
       expect(result).toBeNull()
@@ -389,7 +390,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('updateCustomer', () => {
-    it('should update customer fields', async () => {
+    test('should update customer fields', async () => {
       const customer = await env.createTestCustomer({
         displayName: 'Old Name',
         email: 'old@example.com'
@@ -410,7 +411,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(updated!.phone).toBe('1234567890')
     })
 
-    it('should return false when no fields to update', async () => {
+    test('should return false when no fields to update', async () => {
       const customer = await env.createTestCustomer()
 
       const result = await updateCustomer(env.getMockD1Database(), customer.id, {})
@@ -418,7 +419,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result).toBe(false)
     })
 
-    it('should return true even when customer does not exist', async () => {
+    test('should return true even when customer does not exist', async () => {
       // Note: Current implementation doesn't check if customer exists
       // It will run UPDATE query but affect 0 rows
       const result = await updateCustomer(env.getMockD1Database(), 999, {
@@ -430,7 +431,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   })
 
   describe('getSystemSetting', () => {
-    it('should return setting value when found', async () => {
+    test('should return setting value when found', async () => {
       // Insert system setting
       await env.db.insert(systemSettings).values({
         key: 'test_key',
@@ -442,7 +443,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(result).toBe('test_value')
     })
 
-    it('should return null when setting not found', async () => {
+    test('should return null when setting not found', async () => {
       const result = await getSystemSetting(env.getMockD1Database(), 'nonexistent_key')
 
       expect(result).toBeNull()
@@ -454,7 +455,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   // ============================================================================
 
   describe('Security & Data Integrity', () => {
-    it('should prevent SQL injection in platform user ID', async () => {
+    test('should prevent SQL injection in platform user ID', async () => {
       // Attempt SQL injection attack
       const maliciousId = "'; DROP TABLE customers; --"
 
@@ -473,7 +474,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(Array.isArray(customers)).toBe(true)
     })
 
-    it('should handle unique constraint violation on customer', async () => {
+    test('should handle unique constraint violation on customer', async () => {
       // Create initial customer
       await env.createTestCustomer({
         platform: 'line',
@@ -497,7 +498,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(matches).toHaveLength(1)
     })
 
-    it('should handle foreign key violation on message save', async () => {
+    test('should handle foreign key violation on message save', async () => {
       // Try to save message without conversation
       await expect(
         saveMessage(env.getMockD1Database(), {
@@ -518,7 +519,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   // ============================================================================
 
   describe('Robustness & Edge Cases', () => {
-    it('should handle Unicode characters in customer names', async () => {
+    test('should handle Unicode characters in customer names', async () => {
       const unicodeNames = [
         '張三',           // Chinese
         'مستخدم',        // Arabic
@@ -538,7 +539,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       }
     })
 
-    it('should handle malformed JSON in metadata gracefully', async () => {
+    test('should handle malformed JSON in metadata gracefully', async () => {
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
 
@@ -556,7 +557,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       ).resolves.toBeDefined() // SQLite accepts it, app should handle parsing
     })
 
-    it('should handle concurrent customer creation safely', async () => {
+    test('should handle concurrent customer creation safely', async () => {
       // Simulate race condition: 5 concurrent requests to create same customer
       // Note: In SQLite, concurrent inserts may cause UNIQUE constraint errors
       // This is expected behavior - the function should handle retries
@@ -601,7 +602,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
   // ============================================================================
 
   describe('Boundary Conditions', () => {
-    it('should handle empty strings appropriately', async () => {
+    test('should handle empty strings appropriately', async () => {
       const customer = await findOrCreateCustomer(
         env.getMockD1Database(),
         'line',
@@ -613,7 +614,7 @@ describe('Database Utils - Integration Tests (In-memory DB)', () => {
       expect(customer.displayName).toBe('')
     })
 
-    it('should handle very long message content', async () => {
+    test('should handle very long message content', async () => {
       const customer = await env.createTestCustomer()
       const conversation = await env.createTestConversation(customer.id)
 

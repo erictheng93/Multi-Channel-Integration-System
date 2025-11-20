@@ -54,7 +54,7 @@ describe('Composables Performance Tests', () => {
   })
 
   describe('useError Performance', () => {
-    it('should handle rapid error updates efficiently', async () => {
+    test('should handle rapid error updates efficiently', async () => {
       const errorComposable = useError()
       const startTime = performance.now()
 
@@ -72,7 +72,7 @@ describe('Composables Performance Tests', () => {
       expect(errorComposable.error.value).toBeNull()
     })
 
-    it('should handle large error objects without memory leaks', () => {
+    test('should handle large error objects without memory leaks', () => {
       const errorComposable = useError()
       const largeError = {
         message: 'Large error',
@@ -97,7 +97,7 @@ describe('Composables Performance Tests', () => {
   })
 
   describe('Auth Store Performance', () => {
-    it('should handle concurrent login attempts efficiently', async () => {
+    test('should handle concurrent login attempts efficiently', async () => {
       const { authApi } = await import('../../../frontend/src/api/auth')
       const authStore = useAuthStore()
 
@@ -133,7 +133,7 @@ describe('Composables Performance Tests', () => {
       expect(authStore.isAuthenticated).toBe(true)
     })
 
-    it('should efficiently manage token refresh cycles', async () => {
+    test('should efficiently manage token refresh cycles', async () => {
       const { authApi } = await import('../../../frontend/src/api/auth')
       const authStore = useAuthStore()
 
@@ -169,7 +169,7 @@ describe('Composables Performance Tests', () => {
   })
 
   describe('Conversations Store Performance', () => {
-    it('should handle large conversation datasets efficiently', async () => {
+    test('should handle large conversation datasets efficiently', async () => {
       const { conversationApi } = await import('../../../frontend/src/api/conversations')
       const conversationsStore = useConversationsStore()
 
@@ -200,7 +200,7 @@ describe('Composables Performance Tests', () => {
       expect(conversationsStore.conversations).toHaveLength(10000)
     })
 
-    it('should efficiently filter large conversation lists', () => {
+    test('should efficiently filter large conversation lists', () => {
       const conversationsStore = useConversationsStore()
 
       // Set up large dataset
@@ -241,7 +241,7 @@ describe('Composables Performance Tests', () => {
       expect(allCount).toBe(10000)
     })
 
-    it('should handle rapid message updates without performance degradation', async () => {
+    test('should handle rapid message updates without performance degradation', async () => {
       const { conversationApi } = await import('../../../frontend/src/api/conversations')
       const conversationsStore = useConversationsStore()
 
@@ -275,7 +275,7 @@ describe('Composables Performance Tests', () => {
   })
 
   describe('Memory Management', () => {
-    it('should not create memory leaks with repeated store operations', async () => {
+    test('should not create memory leaks with repeated store operations', async () => {
       const authStore = useAuthStore()
       const conversationsStore = useConversationsStore()
       const errorComposable = useError()
@@ -330,7 +330,7 @@ describe('Composables Performance Tests', () => {
   })
 
   describe('Concurrent Operations', () => {
-    it('should handle concurrent store operations safely', async () => {
+    test('should handle concurrent store operations safely', async () => {
       const { authApi } = await import('../../../frontend/src/api/auth')
       const { conversationApi } = await import('../../../frontend/src/api/conversations')
 

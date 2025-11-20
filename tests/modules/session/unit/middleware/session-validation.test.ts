@@ -22,8 +22,22 @@ import {
   createMockCreateSessionData,
   createMockUpdateSessionData,
   createMockBatchOperation
-} from '../../helpers/session-test-helpers';
+} from '../../helpers/sessiimport { MockFactory } from '@helpers/mockFactory';
+on-test-helpers';
 import type { Bindings } from '@shared/types';
+
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
+}));
 
 describe('Session Validation Middleware', () => {
   let app: Hono<{ Bindings: Bindings }>;
@@ -41,7 +55,7 @@ describe('Session Validation Middleware', () => {
 
   describe('Basic Validation Functions', () => {
     describe('sanitizeString', () => {
-      it('should remove dangerous characters', () => {
+      test('should remove dangerous characters', () => {
         const input = '<script>alert("xss")</script>Hello World';
         const result = sanitizeString(input);
 
@@ -50,7 +64,7 @@ describe('Session Validation Middleware', () => {
         expect(result).not.toContain('>');
       });
 
-      it('should remove javascript: protocol', () => {
+      test('should remove javascript: protocol', () => {
         const input = 'javascript:alert("hack")';
         const result = sanitizeString(input);
 
@@ -58,7 +72,7 @@ describe('Session Validation Middleware', () => {
         expect(result).not.toContain('javascript:');
       });
 
-      it('should remove event handlers', () => {
+      test('should remove event handlers', () => {
         const input = 'onclick=alert(1) Hello World';
         const result = sanitizeString(input);
 
@@ -66,7 +80,7 @@ describe('Session Validation Middleware', () => {
         expect(result).not.toContain('onclick=');
       });
 
-      it('should trim whitespace and limit length', () => {
+      test('should trim whitespace and limit length', () => {
         const longInput = '  ' + 'A'.repeat(1500) + '  ';
         const result = sanitizeString(longInput);
 
@@ -75,7 +89,7 @@ describe('Session Validation Middleware', () => {
         expect(result.endsWith('A')).toBe(true);
       });
 
-      it('should handle empty and invalid input', () => {
+      test('should handle empty and invalid input', () => {
         expect(sanitizeString('')).toBe('');
         expect(sanitizeString(null as any)).toBe('');
         expect(sanitizeString(undefined as any)).toBe('');
@@ -84,19 +98,19 @@ describe('Session Validation Middleware', () => {
     });
 
     describe('validateNumberRange', () => {
-      it('should validate numbers within range', () => {
+      test('should validate numbers within range', () => {
         expect(validateNumberRange('5', 1, 10)).toBe(5);
         expect(validateNumberRange('1', 1, 10)).toBe(1);
         expect(validateNumberRange('10', 1, 10)).toBe(10);
       });
 
-      it('should reject numbers outside range', () => {
+      test('should reject numbers outside range', () => {
         expect(validateNumberRange('0', 1, 10)).toBe(null);
         expect(validateNumberRange('11', 1, 10)).toBe(null);
         expect(validateNumberRange('-5', 1, 10)).toBe(null);
       });
 
-      it('should handle non-numeric input', () => {
+      test('should handle non-numeric input', () => {
         expect(validateNumberRange('abc', 1, 10)).toBe(null);
         expect(validateNumberRange('', 1, 10)).toBe(null);
         expect(validateNumberRange(null, 1, 10)).toBe(null);
@@ -104,7 +118,7 @@ describe('Session Validation Middleware', () => {
     });
 
     describe('validateUUID', () => {
-      it('should validate correct UUID format', () => {
+      test('should validate correct UUID format', () => {
         const validUUIDs = [
           '123e4567-e89b-12d3-a456-426614174000',
           'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -116,7 +130,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should reject invalid UUID format', () => {
+      test('should reject invalid UUID format', () => {
         const invalidUUIDs = [
           'not-a-uuid',
           '123e4567-e89b-12d3-a456', // Too short
@@ -132,7 +146,7 @@ describe('Session Validation Middleware', () => {
     });
 
     describe('validateISODate', () => {
-      it('should validate correct ISO date format', () => {
+      test('should validate correct ISO date format', () => {
         const validDates = [
           '2024-01-15T10:30:00.000Z',
           '2024-01-15T10:30:00Z',
@@ -144,7 +158,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should reject invalid date format', () => {
+      test('should reject invalid date format', () => {
         const invalidDates = [
           '2024-01-15',
           '2024-01-15 10:30:00',
@@ -171,9 +185,20 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should allow requests within size limit', async () => {
+      test('should allow requests within size limit', async () => {
         const response = await app.request('/test', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Length': '1000' // 1KB
           },
@@ -186,7 +211,7 @@ describe('Session Validation Middleware', () => {
         expect(data.success).toBe(true);
       });
 
-      it('should reject requests exceeding size limit', async () => {
+      test('should reject requests exceeding size limit', async () => {
         const response = await app.request('/test', {
           method: 'POST',
           headers: {
@@ -203,7 +228,7 @@ describe('Session Validation Middleware', () => {
         expect(data.timestamp).toBeDefined();
       });
 
-      it('should allow requests without Content-Length header', async () => {
+      test('should allow requests without Content-Length header', async () => {
         const response = await app.request('/test', {
           method: 'POST',
           body: 'Small request'
@@ -220,7 +245,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should pass through (rate limiting not implemented yet)', async () => {
+      test('should pass through (rate limiting not implemented yet)', async () => {
         const response = await app.request('/test');
 
         expect(response.status).toBe(200);
@@ -244,7 +269,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate and set correct session ID', async () => {
+      test('should validate and set correct session ID', async () => {
         const sessionId = '123e4567-e89b-12d3-a456-426614174000';
         const response = await app.request(`/test/${sessionId}`);
 
@@ -255,7 +280,7 @@ describe('Session Validation Middleware', () => {
         expect(data.sessionId).toBe(sessionId);
       });
 
-      it('should reject invalid session ID format', async () => {
+      test('should reject invalid session ID format', async () => {
         const response = await app.request('/test/invalid-session-id');
 
         expect(response.status).toBe(400);
@@ -265,7 +290,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('Invalid session ID format');
       });
 
-      it('should reject missing session ID', async () => {
+      test('should reject missing session ID', async () => {
         // 測試空字串作為 sessionId
         const response = await app.request('/test/ ');
 
@@ -282,7 +307,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate correct conversation ID', async () => {
+      test('should validate correct conversation ID', async () => {
         const conversationId = '123e4567-e89b-12d3-a456-426614174000';
         const response = await app.request(`/test/${conversationId}`);
 
@@ -292,7 +317,7 @@ describe('Session Validation Middleware', () => {
         expect(data.success).toBe(true);
       });
 
-      it('should reject invalid conversation ID', async () => {
+      test('should reject invalid conversation ID', async () => {
         const response = await app.request('/test/invalid-conversation-id');
 
         expect(response.status).toBe(400);
@@ -315,7 +340,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate correct create session data', async () => {
+      test('should validate correct create session data', async () => {
         const validData = createMockCreateSessionData();
 
         const response = await app.request('/test', {
@@ -333,7 +358,7 @@ describe('Session Validation Middleware', () => {
         expect(data.data.conversationId).toBe(validData.conversationId);
       });
 
-      it('should reject missing required fields', async () => {
+      test('should reject missing required fields', async () => {
         const invalidData = {
           // Missing conversationId and senderType
           topic: 'Test Topic'
@@ -354,7 +379,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('conversationId is required');
       });
 
-      it('should reject invalid conversation ID format', async () => {
+      test('should reject invalid conversation ID format', async () => {
         const invalidData = createMockCreateSessionData({
           conversationId: 'invalid-uuid'
         });
@@ -374,7 +399,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('Invalid conversationId format');
       });
 
-      it('should reject invalid sender type', async () => {
+      test('should reject invalid sender type', async () => {
         const invalidData = createMockCreateSessionData({
           senderType: 'invalid_sender' as any
         });
@@ -394,7 +419,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('senderType must be one of: customer, agent, system');
       });
 
-      it('should reject invalid session type', async () => {
+      test('should reject invalid session type', async () => {
         const invalidData = createMockCreateSessionData({
           sessionType: 'invalid_type' as any
         });
@@ -414,7 +439,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('sessionType must be one of: continuous, scheduled, support, marketing');
       });
 
-      it('should sanitize and validate topic length', async () => {
+      test('should sanitize and validate topic length', async () => {
         const invalidData = createMockCreateSessionData({
           topic: 'A'.repeat(300) // Too long
         });
@@ -434,7 +459,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('topic cannot exceed 200 characters');
       });
 
-      it('should validate tags array', async () => {
+      test('should validate tags array', async () => {
         const invalidData = createMockCreateSessionData({
           tags: Array(15).fill('tag') // Too many tags
         });
@@ -454,7 +479,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('tags must be an array with maximum 10 items');
       });
 
-      it('should handle malformed JSON', async () => {
+      test('should handle malformed JSON', async () => {
         const response = await app.request('/test', {
           method: 'POST',
           headers: {
@@ -479,11 +504,17 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate correct update session data', async () => {
+      test('should validate correct update session data', async () => {
         const validData = createMockUpdateSessionData();
 
         const response = await app.request('/test', {
           method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json'
           },
@@ -497,7 +528,7 @@ describe('Session Validation Middleware', () => {
         expect(data.data.topic).toBe(validData.topic);
       });
 
-      it('should reject empty update data', async () => {
+      test('should reject empty update data', async () => {
         const response = await app.request('/test', {
           method: 'PUT',
           headers: {
@@ -513,7 +544,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('At least one field is required for update');
       });
 
-      it('should validate optional fields correctly', async () => {
+      test('should validate optional fields correctly', async () => {
         const validData = {
           topic: 'Updated Topic',
           isActive: false,
@@ -534,7 +565,7 @@ describe('Session Validation Middleware', () => {
         expect(data.success).toBe(true);
       });
 
-      it('should reject invalid boolean values', async () => {
+      test('should reject invalid boolean values', async () => {
         const invalidData = {
           isActive: 'not-a-boolean'
         };
@@ -554,7 +585,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('isActive must be a boolean');
       });
 
-      it('should validate ISO date format for endTime', async () => {
+      test('should validate ISO date format for endTime', async () => {
         const invalidData = {
           endTime: '2024-01-15 15:00:00' // Invalid format
         };
@@ -574,7 +605,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('endTime must be a valid ISO date string');
       });
 
-      it('should allow null values for optional fields', async () => {
+      test('should allow null values for optional fields', async () => {
         const validData = {
           topic: null,
           endTime: null
@@ -607,7 +638,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate correct query parameters', async () => {
+      test('should validate correct query parameters', async () => {
         const queryString = 'page=2&pageSize=50&isActive=true&sessionType=support';
         const response = await app.request(`/test?${queryString}`);
 
@@ -621,7 +652,7 @@ describe('Session Validation Middleware', () => {
         expect(data.query.sessionType).toBe('support');
       });
 
-      it('should use default values for missing parameters', async () => {
+      test('should use default values for missing parameters', async () => {
         const response = await app.request('/test');
 
         expect(response.status).toBe(200);
@@ -632,7 +663,7 @@ describe('Session Validation Middleware', () => {
         expect(data.query.pageSize).toBe(20);
       });
 
-      it('should reject invalid page values', async () => {
+      test('should reject invalid page values', async () => {
         const response = await app.request('/test?page=0');
 
         expect(response.status).toBe(400);
@@ -642,7 +673,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('page must be between 1 and 1000');
       });
 
-      it('should reject invalid pageSize values', async () => {
+      test('should reject invalid pageSize values', async () => {
         const response = await app.request('/test?pageSize=200');
 
         expect(response.status).toBe(400);
@@ -652,7 +683,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('pageSize must be between 1 and 100');
       });
 
-      it('should validate conversation ID format', async () => {
+      test('should validate conversation ID format', async () => {
         const response = await app.request('/test?conversationId=invalid-uuid');
 
         expect(response.status).toBe(400);
@@ -662,7 +693,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('Invalid conversationId format');
       });
 
-      it('should validate boolean parameters', async () => {
+      test('should validate boolean parameters', async () => {
         const response = await app.request('/test?isActive=maybe');
 
         expect(response.status).toBe(400);
@@ -672,7 +703,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('isActive must be true or false');
       });
 
-      it('should validate date parameters', async () => {
+      test('should validate date parameters', async () => {
         const response = await app.request('/test?startDate=invalid-date');
 
         expect(response.status).toBe(400);
@@ -682,7 +713,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('startDate must be a valid ISO date string');
       });
 
-      it('should sanitize string parameters', async () => {
+      test('should sanitize string parameters', async () => {
         const response = await app.request('/test?topic=<script>alert("xss")</script>');
 
         expect(response.status).toBe(200);
@@ -701,7 +732,7 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate correct search query', async () => {
+      test('should validate correct search query', async () => {
         const response = await app.request('/search?query=support&limit=10');
 
         expect(response.status).toBe(200);
@@ -712,7 +743,7 @@ describe('Session Validation Middleware', () => {
         expect(data.query.limit).toBe(10);
       });
 
-      it('should reject missing query parameter', async () => {
+      test('should reject missing query parameter', async () => {
         const response = await app.request('/search');
 
         expect(response.status).toBe(400);
@@ -722,7 +753,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('query parameter is required');
       });
 
-      it('should reject too short query', async () => {
+      test('should reject too short query', async () => {
         const response = await app.request('/search?query=a');
 
         expect(response.status).toBe(400);
@@ -732,7 +763,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('query must be at least 2 characters');
       });
 
-      it('should validate limit parameter', async () => {
+      test('should validate limit parameter', async () => {
         const response = await app.request('/search?query=test&limit=200');
 
         expect(response.status).toBe(400);
@@ -742,7 +773,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('limit must be between 1 and 100');
       });
 
-      it('should sanitize search query', async () => {
+      test('should sanitize search query', async () => {
         const response = await app.request('/search?query=<script>malicious</script>');
 
         expect(response.status).toBe(200);
@@ -765,11 +796,20 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      it('should validate correct batch operation', async () => {
+      test('should validate correct batch operation', async () => {
         const validOperation = createMockBatchOperation();
 
         const response = await app.request('/batch', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json'
           },
@@ -783,7 +823,7 @@ describe('Session Validation Middleware', () => {
         expect(data.operation.action).toBe(validOperation.action);
       });
 
-      it('should reject missing sessionIds', async () => {
+      test('should reject missing sessionIds', async () => {
         const invalidOperation = {
           action: 'close'
         };
@@ -803,7 +843,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('sessionIds must be a non-empty array');
       });
 
-      it('should reject empty sessionIds array', async () => {
+      test('should reject empty sessionIds array', async () => {
         const invalidOperation = {
           action: 'close',
           sessionIds: []
@@ -824,7 +864,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('sessionIds must be a non-empty array');
       });
 
-      it('should reject too many session IDs', async () => {
+      test('should reject too many session IDs', async () => {
         const invalidOperation = {
           action: 'close',
           sessionIds: Array(150).fill('123e4567-e89b-12d3-a456-426614174000')
@@ -845,7 +885,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('Cannot process more than 100 sessions at once');
       });
 
-      it('should validate session ID formats in batch', async () => {
+      test('should validate session ID formats in batch', async () => {
         const invalidOperation = {
           action: 'close',
           sessionIds: ['123e4567-e89b-12d3-a456-426614174000', 'invalid-id']
@@ -866,7 +906,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toContain('Invalid session ID format: invalid-id');
       });
 
-      it('should validate action types', async () => {
+      test('should validate action types', async () => {
         const invalidOperation = {
           action: 'invalid_action',
           sessionIds: ['123e4567-e89b-12d3-a456-426614174000']
@@ -887,7 +927,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('action must be one of: close, reopen, update_priority, add_tags, remove_tags, delete');
       });
 
-      it('should require data for operations that need it', async () => {
+      test('should require data for operations that need it', async () => {
         const invalidOperation = {
           action: 'update_priority',
           sessionIds: ['123e4567-e89b-12d3-a456-426614174000']
@@ -909,7 +949,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('data is required for action: update_priority');
       });
 
-      it('should validate priority data for update_priority action', async () => {
+      test('should validate priority data for update_priority action', async () => {
         const invalidOperation = {
           action: 'update_priority',
           sessionIds: ['123e4567-e89b-12d3-a456-426614174000'],
@@ -933,7 +973,7 @@ describe('Session Validation Middleware', () => {
         expect(data.error).toBe('priority is required in data for update_priority action');
       });
 
-      it('should validate tags data for tag operations', async () => {
+      test('should validate tags data for tag operations', async () => {
         const invalidOperation = {
           action: 'add_tags',
           sessionIds: ['123e4567-e89b-12d3-a456-426614174000'],
@@ -962,7 +1002,7 @@ describe('Session Validation Middleware', () => {
   // ======================== 錯誤處理和邊界情況測試 ========================
 
   describe('Error Handling and Edge Cases', () => {
-    it('should handle validation errors gracefully', async () => {
+    test('should handle validation errors gracefully', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       app.post('/error-test', validateCreateSessionData, (c) => {
@@ -972,6 +1012,7 @@ describe('Session Validation Middleware', () => {
       // Simulate validation error
       const response = await app.request('/error-test', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json'
         },
@@ -984,7 +1025,7 @@ describe('Session Validation Middleware', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should provide consistent error response format', async () => {
+    test('should provide consistent error response format', async () => {
       const validationEndpoints = [
         { path: '/size-error', middleware: validateRequestSize, method: 'POST', headers: { 'Content-Length': '2000000' } },
         { path: '/session-id-error/:sessionId', middleware: validateSessionId, method: 'GET', sessionId: 'invalid' },
@@ -1019,7 +1060,7 @@ describe('Session Validation Middleware', () => {
       }
     });
 
-    it('should handle special characters in validation', async () => {
+    test('should handle special characters in validation', async () => {
       app.post('/special-chars', validateCreateSessionData, (c) => {
         const data = c.get('createSessionData');
         return c.json({ success: true, data });
@@ -1032,6 +1073,7 @@ describe('Session Validation Middleware', () => {
 
       const response = await app.request('/special-chars', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json'
         },
@@ -1045,7 +1087,7 @@ describe('Session Validation Middleware', () => {
       expect(data.data.topic).toBeDefined();
     });
 
-    it('should handle null and undefined values correctly', async () => {
+    test('should handle null and undefined values correctly', async () => {
       app.put('/null-test', validateUpdateSessionData, (c) => {
         const data = c.get('updateSessionData');
         return c.json({ success: true, data });
@@ -1060,6 +1102,7 @@ describe('Session Validation Middleware', () => {
 
       const response = await app.request('/null-test', {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json'
         },

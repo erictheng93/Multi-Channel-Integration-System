@@ -2,7 +2,8 @@
  * DelayedMessageBuffer 邊緣案例測試 (Edge Cases)
  *
  * 測試覆蓋範圍:
- * 1. 並發撤銷 (Concurrent Cancellation)
+ * 1. 並發撤銷 (Cimport { MockFactory } from '@helpers/mockFactory';
+oncurrent Cancellation)
  * 2. DO 驅逐與狀態恢復 (Durable Object Eviction & State Recovery)
  * 3. 存儲額度超限 (Storage Quota Exceeded)
  * 4. 網路分區與重試 (Network Partition & Retry)
@@ -78,7 +79,7 @@ class MockDurableObjectStorage {
     return this.data.size;
   }
 
-  setQuotaLimit(limit: number): void {
+  setQuotaLimtest(limit: number): void {
     this.quotaLimit = limit;
   }
 
@@ -123,6 +124,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
   let fetchMock: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockState = new MockDurableObjectState();
     fetchMock = vi.fn();
     global.fetch = fetchMock;
@@ -138,7 +140,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 1. 並發撤銷測試 ====================
   describe('🔒 Edge Case #1: Concurrent Cancellation', () => {
-    it('should handle simultaneous schedule and cancel operations', async () => {
+    test('should handle simultaneous schedule and cancel operations', async () => {
       const storage = mockState.storage;
       const messageId = 'msg-concurrent-1';
 
@@ -165,7 +167,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(finalState === undefined || typeof finalState === 'object').toBe(true);
     });
 
-    it('should handle multiple concurrent cancellations of the same message', async () => {
+    test('should handle multiple concurrent cancellations of the same message', async () => {
       const storage = mockState.storage;
       const messageId = 'msg-multi-cancel';
 
@@ -196,7 +198,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(finalState).toBeUndefined();
     });
 
-    it('should handle cancel during active sending', async () => {
+    test('should handle cancel during active sending', async () => {
       const storage = mockState.storage;
       const messageId = 'msg-cancel-during-send';
 
@@ -222,7 +224,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 2. DO 驅逐與狀態恢復 ====================
   describe('🔄 Edge Case #2: Durable Object Eviction & State Recovery', () => {
-    it('should restore pending messages after DO restart', async () => {
+    test('should restore pending messages after DO restart', async () => {
       const storage = mockState.storage;
 
       // 模擬 DO 運行中的狀態 - 3 個待發送訊息
@@ -257,7 +259,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(storage.size()).toBe(3);
     });
 
-    it('should restore retry counts accurately after DO restart', async () => {
+    test('should restore retry counts accurately after DO restart', async () => {
       const storage = mockState.storage;
 
       // 儲存有重試歷史的訊息
@@ -287,7 +289,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect((restored as any).lastRetryAt).toBe(messageWithRetries.lastRetryAt);
     });
 
-    it('should restore alarm time after DO restart', async () => {
+    test('should restore alarm time after DO restart', async () => {
       const storage = mockState.storage;
       const scheduledAlarmTime = Date.now() + 10000;
 
@@ -315,11 +317,11 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 3. 存儲額度超限 ====================
   describe('💾 Edge Case #3: Storage Quota Exceeded', () => {
-    it('should handle storage quota exceeded gracefully', async () => {
+    test('should handle storage quota exceeded gracefully', async () => {
       const storage = mockState.storage;
 
       // 設置 1KB 的存儲限制
-      storage.setQuotaLimit(1024);
+      storage.setQuotaLimtest(1024);
 
       let quotaExceededCount = 0;
 
@@ -348,9 +350,9 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(storedCount).toBeGreaterThan(0);
     });
 
-    it('should prioritize critical DLQ writes when quota is near limit', async () => {
+    test('should prioritize critical DLQ writes when quota is near limit', async () => {
       const storage = mockState.storage;
-      storage.setQuotaLimit(2048);
+      storage.setQuotaLimtest(2048);
 
       // 填充存儲到接近限制
       for (let i = 0; i < 5; i++) {
@@ -390,9 +392,9 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(dlqEntry).toBeDefined();
     });
 
-    it('should track quota usage accurately', async () => {
+    test('should track quota usage accurately', async () => {
       const storage = mockState.storage;
-      storage.setQuotaLimit(5000);
+      storage.setQuotaLimtest(5000);
 
       const initialQuota = storage.getQuotaUsed();
       expect(initialQuota).toBe(0);
@@ -414,7 +416,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 4. 網路分區與重試 ====================
   describe('🌐 Edge Case #4: Network Partition & Retry Scenarios', () => {
-    it('should handle network partition during retry sequence', async () => {
+    test('should handle network partition during retry sequence', async () => {
       const storage = mockState.storage;
       let attemptCount = 0;
 
@@ -467,7 +469,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect((retryState as any).retryCount).toBeGreaterThan(0);
     });
 
-    it('should handle intermittent network failures', async () => {
+    test('should handle intermittent network failures', async () => {
       let callCount = 0;
 
       // 模擬間歇性網路故障: 成功-失敗-失敗-成功
@@ -505,7 +507,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 5. DLQ 溢出場景 ====================
   describe('📬 Edge Case #5: Dead Letter Queue Overflow', () => {
-    it('should handle DLQ reaching capacity limit', async () => {
+    test('should handle DLQ reaching capacity limit', async () => {
       const storage = mockState.storage;
       const DLQ_CAPACITY = 100;
 
@@ -544,7 +546,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       }
     });
 
-    it('should prioritize most recent failures in DLQ', async () => {
+    test('should prioritize most recent failures in DLQ', async () => {
       const storage = mockState.storage;
 
       // 添加多個失敗訊息,有不同的優先級
@@ -574,7 +576,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 6. 極限並發場景 ====================
   describe('⚡ Edge Case #6: Extreme Concurrency', () => {
-    it('should handle 100 concurrent message schedules', async () => {
+    test('should handle 100 concurrent message schedules', async () => {
       const storage = mockState.storage;
       const concurrentCount = 100;
 
@@ -595,7 +597,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(storage.size()).toBe(concurrentCount);
     });
 
-    it('should handle rapid schedule-cancel-reschedule cycles', async () => {
+    test('should handle rapid schedule-cancel-reschedule cycles', async () => {
       const storage = mockState.storage;
       const messageId = 'msg-rapid-cycle';
       const cycleCount = 50;
@@ -624,7 +626,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect((finalState as any).cycle).toBe(cycleCount - 1);
     });
 
-    it('should handle burst traffic with rate limiting simulation', async () => {
+    test('should handle burst traffic with rate limiting simulation', async () => {
       const storage = mockState.storage;
       const burstSize = 200;
       const rateLimitPerSecond = 50;
@@ -657,7 +659,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 7. 災難恢復場景 ====================
   describe('🚨 Edge Case #7: Disaster Recovery', () => {
-    it('should recover from catastrophic storage failure', async () => {
+    test('should recover from catastrophic storage failure', async () => {
       const storage = mockState.storage;
 
       // 創建一些訊息
@@ -692,7 +694,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       }
     });
 
-    it('should maintain message ordering after recovery', async () => {
+    test('should maintain message ordering after recovery', async () => {
       const storage = mockState.storage;
 
       // 創建有序訊息序列
@@ -722,7 +724,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(sortedBySequence[2].sequence).toBe(3);
     });
 
-    it('should handle partial data corruption gracefully', async () => {
+    test('should handle partial data corruption gracefully', async () => {
       const storage = mockState.storage;
 
       // 創建混合狀態的訊息
@@ -745,7 +747,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
 
   // ==================== 8. 時間相關邊緣案例 ====================
   describe('⏰ Edge Case #8: Time-Related Scenarios', () => {
-    it('should handle messages scheduled in the past', async () => {
+    test('should handle messages scheduled in the past', async () => {
       const storage = mockState.storage;
       const now = Date.now();
 
@@ -762,7 +764,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect((message as any).scheduledAt).toBeLessThan(now);
     });
 
-    it('should handle clock skew between DO instances', async () => {
+    test('should handle clock skew between DO instances', async () => {
       const storage = mockState.storage;
 
       // 模擬兩個 DO 實例的時鐘偏移
@@ -789,7 +791,7 @@ describe('DelayedMessageBuffer - Edge Cases & Advanced Scenarios', () => {
       expect(msg2).toBeDefined();
     });
 
-    it('should handle very long delays (weeks)', async () => {
+    test('should handle very long delays (weeks)', async () => {
       const storage = mockState.storage;
       const weeksInMs = 7 * 24 * 60 * 60 * 1000; // 1 週
 

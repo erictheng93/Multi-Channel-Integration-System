@@ -7,6 +7,7 @@ import { FacebookIntegrationService } from '@modules/integration/services/facebo
 import type { Bindings } from '@/types';
 import { createMockDatabase } from '../helpers/mockDatabase';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock globals
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -73,7 +74,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
   });
 
   describe('Facebook Webhook Verification', () => {
-    it('should handle webhook verification challenge correctly', async () => {
+    test('should handle webhook verification challenge correctly', async () => {
       mockContext.req.query = vi.fn((key) => {
         const queries: Record<string, string> = {
           'hub.mode': 'subscribe',
@@ -88,7 +89,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       expect(mockContext.text).toHaveBeenCalledWith('challenge-string-456');
     });
 
-    it('should reject verification with invalid token', async () => {
+    test('should reject verification with invalid token', async () => {
       mockContext.req.query = vi.fn((key) => {
         const queries: Record<string, string> = {
           'hub.mode': 'subscribe',
@@ -107,7 +108,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
   });
 
   describe('Complete Message Flow - Facebook', () => {
-    it('should handle text message from new user with profile sync', async () => {
+    test('should handle text message from new user with profile sync', async () => {
       const webhookPayload = {
         object: 'page',
         entry: [{
@@ -173,7 +174,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should handle image attachment message with R2 storage', async () => {
+    test('should handle image attachment message with R2 storage', async () => {
       const imageWebhookPayload = {
         object: 'page',
         entry: [{
@@ -245,7 +246,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should send messages via Facebook Messenger API', async () => {
+    test('should send messages via Facebook Messenger API', async () => {
       const conversationId = 'fb-conv-123';
       const messageData = {
         content: 'Hello Facebook user!',
@@ -305,7 +306,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       facebookAdapter = new FacebookAdapter('test-secret', 'test-token');
     });
 
-    it('should send various message types correctly', async () => {
+    test('should send various message types correctly', async () => {
       const userId = 'fb-test-user';
 
       // Test text message
@@ -331,7 +332,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       expect(mockFetch).toHaveBeenCalledTimes(4);
     });
 
-    it('should handle webhook signature verification', async () => {
+    test('should handle webhook signature verification', async () => {
       const testBody = 'test-webhook-payload';
       const validSignature = 'sha1=da39a3ee5e6b4b0d3255bfef95601890afd80709';
 
@@ -347,7 +348,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should normalize Facebook messages correctly', () => {
+    test('should normalize Facebook messages correctly', () => {
       const testCases = [
         {
           input: {
@@ -393,7 +394,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
   });
 
   describe('User Profile Sync - Facebook', () => {
-    it('should sync Facebook user profile successfully', async () => {
+    test('should sync Facebook user profile successfully', async () => {
       const userSyncService = createUserSyncService(mockEnv);
       const userId = 'fb-sync-user-123';
 
@@ -437,7 +438,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should handle Facebook API errors gracefully', async () => {
+    test('should handle Facebook API errors gracefully', async () => {
       const userSyncService = createUserSyncService(mockEnv);
       
       // Mock failed API response
@@ -453,7 +454,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
   });
 
   describe('Integration Testing', () => {
-    it('should test Facebook integration configuration', async () => {
+    test('should test Facebook integration configuration', async () => {
       const { testIntegration } = await import('../../src/handlers/system');
 
       const config = {
@@ -494,7 +495,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       });
     });
 
-    it('should detect invalid Facebook configuration', async () => {
+    test('should detect invalid Facebook configuration', async () => {
       const { testIntegration } = await import('../../src/handlers/system');
 
       const invalidConfig = {
@@ -521,7 +522,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle Facebook API rate limiting', async () => {
+    test('should handle Facebook API rate limiting', async () => {
       const webhookPayload = {
         object: 'page',
         entry: [{
@@ -557,7 +558,7 @@ describe('Facebook Integration - Complete Feature Tests', () => {
       expect(result.status).toBe(200);
     });
 
-    it('should handle malformed Facebook webhook payloads', async () => {
+    test('should handle malformed Facebook webhook payloads', async () => {
       const malformedPayload = {
         object: 'page',
         entry: [{

@@ -3,7 +3,8 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Context } from 'hono';
-import { realtimeMainHandler, realtimeManagementHandler } from '@real-time/handlers/realtime-main';
+import { realtimeMainHandler, realtimeManagementHandler } fromimport { MockFactory } from '@helpers/mockFactory';
+ '@real-time/handlers/realtime-main';
 
 // REMOVED: SSE handler mocks (Phase 3 cleanup - SSE removed, WebSocket only)
 // vi.mock('@real-time/handlers/sse-handler', ...)
@@ -78,7 +79,7 @@ describe('Realtime Main Handler', () => {
   // The realtimeMainHandler.sse() method no longer exists
 
   describe('Typing Status', () => {
-    it('should send typing status successfully', async () => {
+    test('should send typing status successfully', async () => {
       const response = await realtimeMainHandler.sendTypingStatus(mockContext);
 
       expect(response).toBeInstanceOf(Response);
@@ -88,7 +89,7 @@ describe('Realtime Main Handler', () => {
       expect(eventHandler.sendTypingStatus).toHaveBeenCalledWith(mockContext);
     });
 
-    it('should handle typing status errors', async () => {
+    test('should handle typing status errors', async () => {
       const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.sendTypingStatus as any).mockRejectedValueOnce(new Error('Typing status failed'));
 
@@ -101,7 +102,7 @@ describe('Realtime Main Handler', () => {
   });
 
   describe('Broadcast Events', () => {
-    it('should broadcast to conversation successfully', async () => {
+    test('should broadcast to conversation successfully', async () => {
       // Reset eventHandler mock to ensure fresh mock state
       const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.broadcastToConversation as any).mockResolvedValueOnce(
@@ -116,7 +117,7 @@ describe('Realtime Main Handler', () => {
       expect(eventHandler.broadcastToConversation).toHaveBeenCalledWith(mockContext);
     });
 
-    it('should handle broadcast errors gracefully', async () => {
+    test('should handle broadcast errors gracefully', async () => {
       const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.broadcastToConversation as any).mockRejectedValueOnce(new Error('Broadcast failed'));
 
@@ -129,7 +130,7 @@ describe('Realtime Main Handler', () => {
   });
 
   describe('Conversation Status', () => {
-    it('should return deprecation message for SSE removal', async () => {
+    test('should return deprecation message for SSE removal', async () => {
       // Phase 3: getConversationStatus now returns deprecation message instead of SSE stats
       const response = await realtimeMainHandler.getConversationStatus(mockContext);
 
@@ -141,7 +142,7 @@ describe('Realtime Main Handler', () => {
   });
 
   describe('Online Status', () => {
-    it('should update online status successfully', async () => {
+    test('should update online status successfully', async () => {
       // Mock eventHandler.updateOnlineStatus to return proper response
       const { eventHandler } = await import('@real-time/handlers/event-handler');
       (eventHandler.updateOnlineStatus as any).mockResolvedValueOnce(
@@ -182,7 +183,7 @@ describe('Realtime Management Handler', () => {
   });
 
   describe('Configuration Management', () => {
-    it('should get configuration for admin users', async () => {
+    test('should get configuration for admin users', async () => {
       const response = await realtimeManagementHandler.getConfig(mockContext);
 
       expect(response).toBeInstanceOf(Response);
@@ -191,7 +192,7 @@ describe('Realtime Management Handler', () => {
       expect(responseBody.data).toBeDefined();
     });
 
-    it('should deny access to non-admin users', async () => {
+    test('should deny access to non-admin users', async () => {
       mockContext.get.mockReturnValue({ userId: 'test-user', role: 'agent' });
 
       const response = await realtimeManagementHandler.getConfig(mockContext);
@@ -200,7 +201,7 @@ describe('Realtime Management Handler', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should update configuration for admin users', async () => {
+    test('should update configuration for admin users', async () => {
       const response = await realtimeManagementHandler.updateConfig(mockContext);
 
       expect(response).toBeInstanceOf(Response);
@@ -208,7 +209,7 @@ describe('Realtime Management Handler', () => {
       expect(responseBody.success).toBe(true);
     });
 
-    it('should deny configuration updates to non-admin users', async () => {
+    test('should deny configuration updates to non-admin users', async () => {
       mockContext.get.mockReturnValue({ userId: 'test-user', role: 'team' });
 
       const response = await realtimeManagementHandler.updateConfig(mockContext);
@@ -219,7 +220,7 @@ describe('Realtime Management Handler', () => {
   });
 
   describe('Statistics', () => {
-    it('should get statistics for authorized users', async () => {
+    test('should get statistics for authorized users', async () => {
       mockContext.get.mockReturnValue({ userId: 'test-user', role: 'team' });
 
       const response = await realtimeManagementHandler.getStats(mockContext);
@@ -230,7 +231,7 @@ describe('Realtime Management Handler', () => {
       expect(responseBody.data).toBeDefined();
     });
 
-    it('should deny access to unauthorized users', async () => {
+    test('should deny access to unauthorized users', async () => {
       mockContext.get.mockReturnValue({ userId: 'test-user', role: 'agent' });
 
       const response = await realtimeManagementHandler.getStats(mockContext);
@@ -241,7 +242,7 @@ describe('Realtime Management Handler', () => {
   });
 
   describe('Health Check', () => {
-    it('should perform health check successfully', async () => {
+    test('should perform health check successfully', async () => {
       // Phase 3: Health check no longer depends on SSE stats
       const response = await realtimeManagementHandler.healthCheck(mockContext);
 
@@ -273,7 +274,7 @@ describe('Configuration Manager', () => {
     });
   });
 
-  it('should initialize with default configuration', async () => {
+  test('should initialize with default configuration', async () => {
     const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
@@ -284,7 +285,7 @@ describe('Configuration Manager', () => {
     expect(config.enableQueueProcessing).toBe(true);
   });
 
-  it('should update configuration correctly', async () => {
+  test('should update configuration correctly', async () => {
     const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
@@ -295,7 +296,7 @@ describe('Configuration Manager', () => {
     expect(config.heartbeatInterval).toBe(10000);
   });
 
-  it('should select version based on context', async () => {
+  test('should select version based on context', async () => {
     const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 
@@ -315,7 +316,7 @@ describe('Configuration Manager', () => {
     expect(selectedVersion).toBe('v2');
   });
 
-  it('should fallback to v1 when EventSource not supported', async () => {
+  test('should fallback to v1 when EventSource not supported', async () => {
     const { RealtimeConfigManager } = await import('@real-time/handlers/realtime-main');
     const manager = RealtimeConfigManager.getInstance();
 

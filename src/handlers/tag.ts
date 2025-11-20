@@ -16,7 +16,7 @@ import {
 } from '../utils/api-response';
 import { tags } from '../db/schema';
 import { drizzle } from 'drizzle-orm/d1';
-import { sql, eq, and, or, asc, like, count, isNull } from 'drizzle-orm';
+import { sql, eq, and, or, asc, like, count, isNull, inArray } from 'drizzle-orm';
 
 
 export const tagHandler = {
@@ -498,23 +498,39 @@ export const tagHandler = {
         ]);
       }
 
-      const tagIdsList = tagIds.map(id => `'${id}'`).join(',');
+      // ✅ SECURITY FIX: Validate tag IDs are numeric and sanitize
+      const validatedIds = tagIds.filter(id => {
+        return typeof id === 'number' ||
+               (typeof id === 'string' && /^[0-9]+$/.test(id));
+      });
 
+      if (validatedIds.length !== tagIds.length) {
+        return badRequestResponse(c, 'Invalid tag ID format detected');
+      }
+
+      // Convert to integers for parameterized queries
+      const idArray = validatedIds.map(id => parseInt(id.toString(), 10));
+
+      // ✅ SECURITY FIX: Use parameterized queries with Drizzle ORM
       switch (operation) {
         case 'activate':
-          await drizzleDb.run(sql`
-            UPDATE tags 
-            SET is_active = TRUE, updated_at = datetime('now')
-            WHERE id IN (${tagIdsList})
-          `);
+          await drizzleDb
+            .update(tags)
+            .set({
+              isActive: true,
+              updatedAt: new Date().toISOString()
+            })
+            .where(inArray(tags.id, idArray));
           break;
 
         case 'deactivate':
-          await drizzleDb.run(sql`
-            UPDATE tags 
-            SET is_active = FALSE, updated_at = datetime('now')
-            WHERE id IN (${tagIdsList})
-          `);
+          await drizzleDb
+            .update(tags)
+            .set({
+              isActive: false,
+              updatedAt: new Date().toISOString()
+            })
+            .where(inArray(tags.id, idArray));
           break;
 
         case 'update_color':
@@ -523,11 +539,13 @@ export const tagHandler = {
               { field: 'data.color', message: 'Color is required for color update' }
             ]);
           }
-          await drizzleDb.run(sql`
-            UPDATE tags 
-            SET color = ${data.color}, updated_at = datetime('now')
-            WHERE id IN (${tagIdsList})
-          `);
+          await drizzleDb
+            .update(tags)
+            .set({
+              color: data.color,
+              updatedAt: new Date().toISOString()
+            })
+            .where(inArray(tags.id, idArray));
           break;
 
         default:
@@ -539,6 +557,10 @@ export const tagHandler = {
       return successResponse(c, null, `Bulk ${operation} completed successfully`);
 
     } catch (error) {
+      // Handle JSON parsing errors
+      if (error instanceof SyntaxError) {
+        return badRequestResponse(c, 'Invalid JSON');
+      }
       return handleApiError(error, c);
     }
   },

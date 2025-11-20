@@ -1,10 +1,14 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useAuthStore } from '../../../frontend/src/stores/auth';
-import type { Agent } from '../../../frontend/src/types';
+import { MockFactory } from '@helpers/mockFactory';
+
+// Import frontend modules (frontend tests in backend directory for role system testing)
+// These imports are intentionally from frontend as this tests the frontend auth store
+import { useAuthStore } from '@/../frontend/src/stores/auth';
+import type { Agent } from '@/../frontend/src/types';
 
 // Mock auth API
-vi.mock('../../../frontend/src/api/auth', () => ({
+vi.mock('@/../frontend/src/api/auth', () => ({
   authApi: {
     login: vi.fn(),
     me: vi.fn(),
@@ -42,6 +46,10 @@ describe('Auth Store 3-Role System Support', () => {
       configurable: true
     });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
     Object.defineProperty(global, 'window', {
       value: {
         localStorage: mockLocalStorage,
@@ -145,7 +153,7 @@ describe('Auth Store 3-Role System Support', () => {
 
   describe('Authentication with Different Roles', () => {
     test('should authenticate admin user successfully', async () => {
-      const { authApi } = await import('../../../frontend/src/api/auth');
+      const { authApi } = await import('@/../frontend/src/api/auth');
       const authStore = useAuthStore();
 
       const adminLoginResponse = {
@@ -177,7 +185,7 @@ describe('Auth Store 3-Role System Support', () => {
     });
 
     test('should authenticate manager user successfully', async () => {
-      const { authApi } = await import('../../../frontend/src/api/auth');
+      const { authApi } = await import('@/../frontend/src/api/auth');
       const authStore = useAuthStore();
 
       const managerLoginResponse = {
@@ -209,7 +217,7 @@ describe('Auth Store 3-Role System Support', () => {
     });
 
     test('should authenticate agent user successfully', async () => {
-      const { authApi } = await import('../../../frontend/src/api/auth');
+      const { authApi } = await import('@/../frontend/src/api/auth');
       const authStore = useAuthStore();
 
       const agentLoginResponse = {

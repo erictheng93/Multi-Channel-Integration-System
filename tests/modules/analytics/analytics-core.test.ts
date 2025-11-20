@@ -2,7 +2,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
-import type { AnalyticsServiceConfig, ConversationAnalyticsQuery } from '@modules/analytics/types/analytics-types';
+import type { AnalyticsServiceConfig, ConversationAnalyticsQuery } from '@modules/animport { MockFactory } from '@helpers/mockFactory';
+alytics/types/analytics-types';
 
 // Mock dependencies with complete Drizzle ORM query builder chain
 const mockDB = {
@@ -45,9 +46,7 @@ const mockDB = {
   run: vi.fn(() => Promise.resolve({ results: [] }))
 };
 
-const mockKV = {
-  get: vi.fn(),
-  put: vi.fn(),
+const mockKV = MockFactory.createKV()(),
   delete: vi.fn()
 };
 
@@ -79,7 +78,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getConversationAnalytics', () => {
-    it('應該返回對話分析數據', async () => {
+    test('應該返回對話分析數據', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations', 'active_conversations'],
@@ -108,7 +107,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata.queryTime).toBeGreaterThanOrEqual(0);
     });
 
-    it('應該驗證查詢參數', async () => {
+    test('應該驗證查詢參數', async () => {
       const invalidQuery = {
         // 缺少 timeRange 和 startDate
         metrics: ['total_conversations']
@@ -119,7 +118,7 @@ describe('AnalyticsService', () => {
       ).rejects.toThrow();
     });
 
-    it('應該處理時間範圍', async () => {
+    test('應該處理時間範圍', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '24h',
         metrics: ['total_conversations']
@@ -140,7 +139,7 @@ describe('AnalyticsService', () => {
       expect(mockDB.select).toHaveBeenCalled();
     });
 
-    it('應該處理篩選條件', async () => {
+    test('應該處理篩選條件', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -168,7 +167,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getMessageAnalytics', () => {
-    it('應該返回消息分析數據', async () => {
+    test('應該返回消息分析數據', async () => {
       const query = {
         timeRange: '7d' as const,
         metrics: ['total_messages', 'messages_per_hour']
@@ -193,7 +192,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getUserAnalytics', () => {
-    it('應該返回用戶分析數據', async () => {
+    test('應該返回用戶分析數據', async () => {
       const query = {
         timeRange: '7d' as const,
         metrics: ['active_users', 'user_activity'],
@@ -218,7 +217,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getPerformanceAnalytics', () => {
-    it('應該返回性能分析數據', async () => {
+    test('應該返回性能分析數據', async () => {
       const query = {
         timeRange: '24h' as const,
         metrics: ['response_times', 'throughput', 'error_rates']
@@ -234,7 +233,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getCustomAnalytics', () => {
-    it('應該執行自定義查詢', async () => {
+    test('應該執行自定義查詢', async () => {
       const query = {
         timeRange: '7d' as const,
         query: 'SELECT COUNT(*) as total FROM conversations',
@@ -250,7 +249,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('exportAnalytics', () => {
-    it('應該導出分析數據', async () => {
+    test('應該導出分析數據', async () => {
       const query = {
         timeRange: '7d' as const,
         format: 'json' as const,
@@ -275,7 +274,7 @@ describe('AnalyticsService', () => {
       expect(result.generatedAt).toBeDefined();
     });
 
-    it('應該支持不同的導出格式', async () => {
+    test('應該支持不同的導出格式', async () => {
       const formats: Array<'json' | 'csv' | 'xlsx' | 'pdf'> = ['json', 'csv', 'xlsx', 'pdf'];
 
       for (const format of formats) {
@@ -301,7 +300,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('錯誤處理', () => {
-    it('應該處理數據庫錯誤', async () => {
+    test('應該處理數據庫錯誤', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations']
@@ -317,7 +316,7 @@ describe('AnalyticsService', () => {
       ).rejects.toThrow();
     });
 
-    it('應該處理無效的時間範圍', async () => {
+    test('應該處理無效的時間範圍', async () => {
       const query = {
         startDate: '2024-01-01',
         endDate: '2023-12-31', // endDate < startDate
@@ -331,7 +330,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('緩存功能', () => {
-    it('應該支持 KV 緩存', async () => {
+    test('應該支持 KV 緩存', async () => {
       if (!mockKV) return;
 
       const query: ConversationAnalyticsQuery = {

@@ -42,25 +42,25 @@ describe('FINAL Working Conversations Store Tests', () => {
   })
 
   describe('initial state', () => {
-    it('should initialize with empty conversations array', async () => {
+    test('should initialize with empty conversations array', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const store = useConversationsStore(pinia)
       expect(store.conversations).toEqual([])
     })
 
-    it('should initialize with null currentConversation', async () => {
+    test('should initialize with null currentConversation', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const store = useConversationsStore(pinia)
       expect(store.currentConversation).toBeNull()
     })
 
-    it('should initialize with empty messages array', async () => {
+    test('should initialize with empty messages array', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const store = useConversationsStore(pinia)
       expect(store.messages).toEqual([])
     })
 
-    it('should initialize with loading false', async () => {
+    test('should initialize with loading false', async () => {
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
       const store = useConversationsStore(pinia)
       expect(store.loading).toBe(false)
@@ -68,7 +68,7 @@ describe('FINAL Working Conversations Store Tests', () => {
   })
 
   describe('fetchConversations', () => {
-    it('should fetch conversations successfully', async () => {
+    test('should fetch conversations successfully', async () => {
       const mockConversations = [
         { id: '1', customer_name: 'Customer 1', status: 'pending', platform: 'line' },
         { id: '2', customer_name: 'Customer 2', status: 'in_progress', platform: 'facebook' }
@@ -89,7 +89,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(mockConversationApi.getConversations).toHaveBeenCalled()
     })
 
-    it('should fetch conversations with filters', async () => {
+    test('should fetch conversations with filters', async () => {
       const mockConversations = [
         { id: '1', customer_name: 'Customer 1', status: 'pending', platform: 'line' }
       ]
@@ -108,7 +108,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(mockConversationApi.getConversations).toHaveBeenCalledWith({ status: 'pending', platform: 'line' })
     })
 
-    it('should use mock data in development when API fails', async () => {
+    test('should use mock data in development when API fails', async () => {
       vi.mocked(mockConversationApi.getConversations).mockResolvedValue({
         success: false,
         error: 'API Error'
@@ -124,7 +124,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(store.loading).toBe(false)
     })
 
-    it('should handle API error and use mock data in development', async () => {
+    test('should handle API error and use mock data in development', async () => {
       vi.mocked(mockConversationApi.getConversations).mockRejectedValue(new Error('Network error'))
 
       const { useConversationsStore } = await import('../../../frontend/src/stores/conversations')
@@ -139,7 +139,7 @@ describe('FINAL Working Conversations Store Tests', () => {
   })
 
   describe('fetchConversation', () => {
-    it('should fetch single conversation successfully', async () => {
+    test('should fetch single conversation successfully', async () => {
       const mockConversation = {
         id: '1',
         customer_name: 'Customer 1',
@@ -161,7 +161,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(mockConversationApi.getConversation).toHaveBeenCalledWith('1')
     })
 
-    it('should handle fetch conversation failure', async () => {
+    test('should handle fetch conversation failure', async () => {
       vi.mocked(mockConversationApi.getConversation).mockResolvedValue({
         success: false,
         error: 'Conversation not found'
@@ -177,7 +177,7 @@ describe('FINAL Working Conversations Store Tests', () => {
   })
 
   describe('fetchMessages', () => {
-    it('should fetch messages successfully', async () => {
+    test('should fetch messages successfully', async () => {
       const mockMessages = [
         { id: '1', content: 'Hello', sender: 'customer', timestamp: '2024-01-01T00:00:00Z' },
         { id: '2', content: 'Hi there', sender: 'agent', timestamp: '2024-01-01T00:01:00Z' }
@@ -197,7 +197,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(mockConversationApi.getMessages).toHaveBeenCalledWith('1')
     })
 
-    it('should use mock data in development when API fails', async () => {
+    test('should use mock data in development when API fails', async () => {
       vi.mocked(mockConversationApi.getMessages).mockResolvedValue({
         success: false,
         error: 'API Error'
@@ -214,7 +214,7 @@ describe('FINAL Working Conversations Store Tests', () => {
   })
 
   describe('sendMessage', () => {
-    it('should send message successfully', async () => {
+    test('should send message successfully', async () => {
       const newMessage = {
         id: '3',
         content: 'New message',
@@ -238,7 +238,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(mockConversationApi.sendMessage).toHaveBeenCalledWith('1', 'New message')
     })
 
-    it('should handle send message failure', async () => {
+    test('should handle send message failure', async () => {
       vi.mocked(mockConversationApi.sendMessage).mockResolvedValue({
         success: false,
         error: 'Failed to send message'
@@ -252,7 +252,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(result).toBe(false)
     })
 
-    it('should handle empty message content', async () => {
+    test('should handle empty message content', async () => {
       vi.mocked(mockConversationApi.sendMessage).mockResolvedValue({
         success: false,
         error: 'Empty message'
@@ -269,7 +269,7 @@ describe('FINAL Working Conversations Store Tests', () => {
   })
 
   describe('assignConversation', () => {
-    it('should assign conversation successfully', async () => {
+    test('should assign conversation successfully', async () => {
       vi.mocked(mockConversationApi.assignConversation).mockResolvedValue({
         success: true,
         data: { message: 'Conversation assigned successfully' }
@@ -290,7 +290,7 @@ describe('FINAL Working Conversations Store Tests', () => {
       expect(mockConversationApi.getConversations).toHaveBeenCalled()
     })
 
-    it('should handle assign conversation failure', async () => {
+    test('should handle assign conversation failure', async () => {
       vi.mocked(mockConversationApi.assignConversation).mockResolvedValue({
         success: false,
         error: 'Failed to assign conversation'

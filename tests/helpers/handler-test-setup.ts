@@ -1,47 +1,27 @@
-// Handler 測試共用設置工具
+// Handler 測試共用設置工具 (MockFactory Refactored)
 import { vi } from 'vitest';
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
+import { MockFactory } from './mockFactory';
 
 /**
- * 創建標準的測試環境設置
+ * 創建標準的測試環境設置 - 使用 MockFactory 提供一致的 mock 环境
  */
-export function createTestApp(): Hono<{ Bindings: Bindings }> {
+export function createTestApp(envOverrides?: Partial<Bindings>): Hono<{ Bindings: Bindings }> {
   const app = new Hono<{ Bindings: Bindings }>();
+
+  // 使用 MockFactory 創建標準環境，支持自定義覆蓋
+  const mockEnv = MockFactory.createEnv({
+    LINE_CHANNEL_SECRET: 'test-line-secret',
+    LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
+    FACEBOOK_APP_SECRET: 'test-facebook-secret',
+    FACEBOOK_PAGE_ACCESS_TOKEN: 'test-facebook-token',
+    ...envOverrides
+  });
 
   // 設置完整的環境 mock
   app.use('*', (c, next) => {
-    c.env = {
-      DB: {
-        prepare: vi.fn().mockReturnValue({
-          bind: vi.fn().mockReturnValue({
-            first: vi.fn().mockResolvedValue({ test: 1 }),
-            all: vi.fn().mockResolvedValue({ results: [], meta: {} }),
-            run: vi.fn().mockResolvedValue({ success: true, changes: 1 })
-          }),
-          first: vi.fn().mockResolvedValue({ test: 1 }),
-          all: vi.fn().mockResolvedValue({ results: [], meta: {} }),
-          run: vi.fn().mockResolvedValue({ success: true, changes: 1 })
-        })
-      } as any,
-      JWT_SECRET: 'test-secret-key-for-testing',
-      SESSIONS: {
-        get: vi.fn().mockResolvedValue(null),
-        put: vi.fn().mockResolvedValue(undefined),
-        delete: vi.fn().mockResolvedValue(undefined),
-        list: vi.fn().mockResolvedValue({ keys: [] })
-      } as any,
-      DELAYED_MESSAGES: {
-        get: vi.fn().mockResolvedValue(null),
-        put: vi.fn().mockResolvedValue(undefined),
-        delete: vi.fn().mockResolvedValue(undefined),
-        list: vi.fn().mockResolvedValue({ keys: [] })
-      } as any,
-      LINE_CHANNEL_SECRET: 'test-line-secret',
-      LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
-      FACEBOOK_APP_SECRET: 'test-facebook-secret',
-      FACEBOOK_PAGE_ACCESS_TOKEN: 'test-facebook-token'
-    } as any;
+    c.env = mockEnv as any;
     return next();
   });
 

@@ -4,6 +4,7 @@ import { webhookHandler } from '@/handlers/webhook';
 import type { Bindings } from '@/types';
 import { createMockDatabase } from '../helpers/mockDatabase';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock crypto API
 const mockCrypto = {
   subtle: {
@@ -58,7 +59,7 @@ describe('Webhook Processing Integration Tests', () => {
   });
 
   describe('End-to-End Webhook Processing', () => {
-    it('should process complete LINE message flow from webhook to database', async () => {
+    test('should process complete LINE message flow from webhook to database', async () => {
       const lineWebhookPayload = {
         events: [{
           type: 'message',
@@ -137,7 +138,7 @@ describe('Webhook Processing Integration Tests', () => {
       expect(mockDB.prepare).toHaveBeenCalledTimes(5);
     });
 
-    it('should process complete Facebook message flow from webhook to database', async () => {
+    test('should process complete Facebook message flow from webhook to database', async () => {
       const facebookWebhookPayload = {
         object: 'page',
         entry: [{
@@ -209,7 +210,7 @@ describe('Webhook Processing Integration Tests', () => {
       ]);
     });
 
-    it('should handle existing user and conversation updates correctly', async () => {
+    test('should handle existing user and conversation updates correctly', async () => {
       const lineWebhookPayload = {
         events: [{
           type: 'message',
@@ -284,7 +285,7 @@ describe('Webhook Processing Integration Tests', () => {
       ]);
     });
 
-    it('should handle multiple messages in single Facebook webhook', async () => {
+    test('should handle multiple messages in single Facebook webhook', async () => {
       const multiMessagePayload = {
         object: 'page',
         entry: [{
@@ -342,7 +343,7 @@ describe('Webhook Processing Integration Tests', () => {
       expect(mockDB.prepare).toHaveBeenCalledTimes(9); // 3 queries per message
     });
 
-    it('should handle webhook processing with database transaction rollback on error', async () => {
+    test('should handle webhook processing with database transaction rollback on error', async () => {
       const lineWebhookPayload = {
         events: [{
           type: 'message',
@@ -413,7 +414,7 @@ describe('Webhook Processing Integration Tests', () => {
       ]);
     });
 
-    it('should maintain data consistency across concurrent webhook requests', async () => {
+    test('should maintain data consistency across concurrent webhook requests', async () => {
       // Simulate concurrent webhooks for the same user
       const webhookPayloads = [
         {
@@ -481,7 +482,7 @@ describe('Webhook Processing Integration Tests', () => {
   });
 
   describe('Cross-Platform Message Processing', () => {
-    it('should handle alternating LINE and Facebook messages from different users', async () => {
+    test('should handle alternating LINE and Facebook messages from different users', async () => {
       const messageSequence = [
         { platform: 'line', userId: 'line-user-cross-1', text: 'LINE message 1' },
         { platform: 'facebook', userId: 'fb-user-cross-1', text: 'Facebook message 1' },
@@ -555,7 +556,7 @@ describe('Webhook Processing Integration Tests', () => {
       expect(processedUsers).toContain('facebook-fb-user-cross-2');
     });
 
-    it('should maintain separate conversation threads per platform', async () => {
+    test('should maintain separate conversation threads per platform', async () => {
       const sameUserDifferentPlatforms = {
         line: {
           events: [{
@@ -632,7 +633,7 @@ describe('Webhook Processing Integration Tests', () => {
   });
 
   describe('Performance and Scalability', () => {
-    it('should handle high-frequency webhook requests efficiently', async () => {
+    test('should handle high-frequency webhook requests efficiently', async () => {
       const startTime = Date.now();
       const numRequests = 50;
       const results: any[] = [];
@@ -677,7 +678,7 @@ describe('Webhook Processing Integration Tests', () => {
       console.log(`Processed ${numRequests} webhook requests in ${totalTime}ms`);
     });
 
-    it('should handle large webhook payloads efficiently', async () => {
+    test('should handle large webhook payloads efficiently', async () => {
       const largeMessage = 'x'.repeat(1000); // 1KB message
       
       const payload = {
@@ -710,7 +711,7 @@ describe('Webhook Processing Integration Tests', () => {
   });
 
   describe('Idempotency and Duplicate Prevention', () => {
-    it('should prevent duplicate message processing using platformMessageId', async () => {
+    test('should prevent duplicate message processing using platformMessageId', async () => {
       const lineWebhookPayload = {
         events: [{
           type: 'message',
@@ -781,7 +782,7 @@ describe('Webhook Processing Integration Tests', () => {
       expect(messageInsertAttempts).toBe(1); // Should not increase - duplicate prevented
     });
 
-    it('should handle missing platformMessageId gracefully', async () => {
+    test('should handle missing platformMessageId gracefully', async () => {
       const facebookWebhookWithoutMid = {
         object: 'page',
         entry: [{
@@ -820,7 +821,7 @@ describe('Webhook Processing Integration Tests', () => {
   });
 
   describe('Error Recovery and Resilience', () => {
-    it('should recover from temporary database connection issues', async () => {
+    test('should recover from temporary database connection issues', async () => {
       const lineWebhookPayload = {
         events: [{
           type: 'message',
@@ -872,7 +873,7 @@ describe('Webhook Processing Integration Tests', () => {
       expect(attemptCount).toBeGreaterThanOrEqual(1);
     });
 
-    it('should handle malformed webhook payloads gracefully', async () => {
+    test('should handle malformed webhook payloads gracefully', async () => {
       const malformedPayloads = [
         { events: null }, // null events
         { events: [] }, // empty events
@@ -895,7 +896,7 @@ describe('Webhook Processing Integration Tests', () => {
       }
     });
 
-    it('should handle SSE broadcast failures without affecting webhook processing', async () => {
+    test('should handle SSE broadcast failures without affecting webhook processing', async () => {
       const lineWebhookPayload = {
         events: [{
           type: 'message',

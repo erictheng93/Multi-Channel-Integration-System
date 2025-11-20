@@ -2,7 +2,8 @@
  * DelayedMessageScheduler Durable Object Unit Tests
  *
  * Comprehensive test suite for the unified delayed message scheduler
- * Tests all functionality including:
+ * Tests all functionality inimport { MockFactory } from '@helpers/mockFactory';
+cluding:
  * - Message scheduling with 1-120 second delays
  * - Instant cancellation capability
  * - Alarm API integration
@@ -158,7 +159,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Message Scheduling', () => {
-    it('should schedule a message successfully', async () => {
+    test('should schedule a message successfully', async () => {
       const scheduleData = {
         messageId: 'msg_001',
         conversationId: 'conv_123',
@@ -202,7 +203,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(mockState.storage.setAlarm).toHaveBeenCalled();
     });
 
-    it('should reject messages with invalid delay (< 1 second)', async () => {
+    test('should reject messages with invalid delay (< 1 second)', async () => {
       const scheduleData = {
         messageId: 'msg_002',
         conversationId: 'conv_123',
@@ -226,7 +227,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.error).toContain('Delay must be between 1-120 seconds');
     });
 
-    it('should reject messages with invalid delay (> 120 seconds)', async () => {
+    test('should reject messages with invalid delay (> 120 seconds)', async () => {
       const scheduleData = {
         messageId: 'msg_003',
         conversationId: 'conv_123',
@@ -250,7 +251,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.error).toContain('Delay must be between 1-120 seconds');
     });
 
-    it('should reject messages with missing required fields', async () => {
+    test('should reject messages with missing required fields', async () => {
       const scheduleData = {
         messageId: 'msg_004',
         // Missing conversationId, agentId, content
@@ -272,7 +273,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.error).toContain('Missing required fields');
     });
 
-    it('should use default delay of 5 seconds if not specified', async () => {
+    test('should use default delay of 5 seconds if not specified', async () => {
       const scheduleData = {
         messageId: 'msg_005',
         conversationId: 'conv_123',
@@ -295,7 +296,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.delaySeconds).toBe(5);
     });
 
-    it('should increment metrics counter on successful scheduling', async () => {
+    test('should increment metrics counter on successful scheduling', async () => {
       const scheduleData = {
         messageId: 'msg_006',
         conversationId: 'conv_123',
@@ -343,7 +344,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       await scheduler.fetch(request);
     });
 
-    it('should cancel a pending message successfully', async () => {
+    test('should cancel a pending message successfully', async () => {
       const cancelData = {
         messageId: 'msg_cancel_001',
         reason: 'User requested cancellation'
@@ -366,7 +367,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(mockState.storage.delete).toHaveBeenCalledWith('msg:msg_cancel_001');
     });
 
-    it('should fail to cancel non-existent message', async () => {
+    test('should fail to cancel non-existent message', async () => {
       const cancelData = {
         messageId: 'msg_nonexistent'
       };
@@ -384,7 +385,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.reason).toContain('Message not found');
     });
 
-    it('should reject cancellation without message ID', async () => {
+    test('should reject cancellation without message ID', async () => {
       const cancelData = {};
 
       const request = new Request('http://test/cancel', {
@@ -400,7 +401,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.error).toContain('Message ID required');
     });
 
-    it('should increment cancellation metrics counter', async () => {
+    test('should increment cancellation metrics counter', async () => {
       const cancelData = {
         messageId: 'msg_cancel_001',
         reason: 'Test cancellation'
@@ -443,7 +444,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       await scheduler.fetch(request);
     });
 
-    it('should return status for pending message', async () => {
+    test('should return status for pending message', async () => {
       const request = new Request('http://test/status?messageId=msg_status_001');
       const response = await scheduler.fetch(request);
 
@@ -457,7 +458,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.scheduledAt).toBeDefined();
     });
 
-    it('should return not found for non-existent message', async () => {
+    test('should return not found for non-existent message', async () => {
       const request = new Request('http://test/status?messageId=msg_nonexistent');
       const response = await scheduler.fetch(request);
 
@@ -468,7 +469,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.status).toBe('not_found');
     });
 
-    it('should reject status query without message ID', async () => {
+    test('should reject status query without message ID', async () => {
       const request = new Request('http://test/status');
       const response = await scheduler.fetch(request);
 
@@ -503,7 +504,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       }
     });
 
-    it('should list all pending messages', async () => {
+    test('should list all pending messages', async () => {
       const request = new Request('http://test/list');
       const response = await scheduler.fetch(request);
 
@@ -519,7 +520,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.messages[0]).toHaveProperty('timeRemaining');
     });
 
-    it('should truncate long message content in list', async () => {
+    test('should truncate long message content in list', async () => {
       const longContent = 'A'.repeat(200);
       const scheduleData = {
         messageId: 'msg_long_content',
@@ -548,7 +549,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Dead Letter Queue (DLQ)', () => {
-    it('should return empty DLQ when no failed messages', async () => {
+    test('should return empty DLQ when no failed messages', async () => {
       const request = new Request('http://test/dlq');
       const response = await scheduler.fetch(request);
 
@@ -560,7 +561,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.messages).toEqual([]);
     });
 
-    it('should list DLQ entries when present', async () => {
+    test('should list DLQ entries when present', async () => {
       // Mock storage to return DLQ entries
       const mockDLQEntries = new Map([
         ['dlq:msg_failed_001', {
@@ -589,7 +590,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.messages[0].failureReason).toBe('API timeout');
     });
 
-    it('should sort DLQ entries by failure time (descending)', async () => {
+    test('should sort DLQ entries by failure time (descending)', async () => {
       const now = Date.now();
       const mockDLQEntries = new Map([
         ['dlq:msg_001', { id: 'msg_001', failedAt: now - 3000 }],
@@ -611,7 +612,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Metrics Collection', () => {
-    it('should return comprehensive metrics', async () => {
+    test('should return comprehensive metrics', async () => {
       const request = new Request('http://test/metrics');
       const response = await scheduler.fetch(request);
 
@@ -658,7 +659,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(metrics.metadata).toHaveProperty('timestamp');
     });
 
-    it('should calculate success rate correctly', async () => {
+    test('should calculate success rate correctly', async () => {
       // Schedule and "send" a message by triggering metrics update
       const scheduleData = {
         messageId: 'msg_metrics_001',
@@ -685,7 +686,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Alarm Handler', () => {
-    it('should process ready messages when alarm triggers', async () => {
+    test('should process ready messages when alarm triggers', async () => {
       // Schedule a message with short delay
       const scheduleData = {
         messageId: 'msg_alarm_001',
@@ -718,7 +719,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(metrics.counters.alarmTriggersTotal).toBeGreaterThan(0);
     });
 
-    it('should handle no ready messages gracefully', async () => {
+    test('should handle no ready messages gracefully', async () => {
       // Trigger alarm with no messages
       await expect(scheduler.alarm()).resolves.not.toThrow();
 
@@ -728,7 +729,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(metrics.counters.alarmTriggersTotal).toBeGreaterThan(0);
     });
 
-    it('should update alarm after processing', async () => {
+    test('should update alarm after processing', async () => {
       const setAlarmSpy = vi.spyOn(mockState.storage, 'setAlarm');
 
       await scheduler.alarm();
@@ -740,7 +741,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Platform Integration - LINE', () => {
-    it('should send LINE message successfully', async () => {
+    test('should send LINE message successfully', async () => {
       const scheduleData = {
         messageId: 'msg_line_001',
         conversationId: 'conv_123',
@@ -778,7 +779,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       );
     });
 
-    it('should handle LINE API timeout', async () => {
+    test('should handle LINE API timeout', async () => {
       const scheduleData = {
         messageId: 'msg_line_timeout',
         conversationId: 'conv_123',
@@ -809,7 +810,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(dlqResult.messages.length).toBeGreaterThanOrEqual(0);
     });
 
-    it('should handle LINE API errors', async () => {
+    test('should handle LINE API errors', async () => {
       const scheduleData = {
         messageId: 'msg_line_error',
         conversationId: 'conv_123',
@@ -837,7 +838,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Platform Integration - Facebook', () => {
-    it('should send Facebook message successfully', async () => {
+    test('should send Facebook message successfully', async () => {
       const scheduleData = {
         messageId: 'msg_fb_001',
         conversationId: 'conv_123',
@@ -871,7 +872,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       );
     });
 
-    it('should handle Facebook API timeout', async () => {
+    test('should handle Facebook API timeout', async () => {
       const scheduleData = {
         messageId: 'msg_fb_timeout',
         conversationId: 'conv_123',
@@ -898,7 +899,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Retry Mechanism', () => {
-    it('should retry failed messages with exponential backoff', async () => {
+    test('should retry failed messages with exponential backoff', async () => {
       const scheduleData = {
         messageId: 'msg_retry_001',
         conversationId: 'conv_123',
@@ -932,7 +933,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(metrics.counters.retryAttemptsTotal).toBeGreaterThan(0);
     });
 
-    it('should add message to DLQ after max retries', async () => {
+    test('should add message to DLQ after max retries', async () => {
       const scheduleData = {
         messageId: 'msg_max_retry',
         conversationId: 'conv_123',
@@ -961,7 +962,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(dlqResult).toHaveProperty('messages');
     });
 
-    it('should update retry count in metrics', async () => {
+    test('should update retry count in metrics', async () => {
       const scheduleData = {
         messageId: 'msg_retry_metrics',
         conversationId: 'conv_123',
@@ -992,7 +993,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Idempotency Checks', () => {
-    it('should prevent duplicate message sends', async () => {
+    test('should prevent duplicate message sends', async () => {
       // Mock database to return existing message
       const mockDb = {
         select: vi.fn().mockReturnThis(),
@@ -1037,7 +1038,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('State Persistence and Recovery', () => {
-    it('should restore pending messages from storage on initialization', async () => {
+    test('should restore pending messages from storage on initialization', async () => {
       const mockMessages = new Map([
         ['msg:msg_001', {
           id: 'msg_001',
@@ -1072,7 +1073,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(listResult.count).toBeGreaterThanOrEqual(0);
     });
 
-    it('should restore alarm time from storage', async () => {
+    test('should restore alarm time from storage', async () => {
       const futureTime = Date.now() + 60000;
 
       // Mock getAlarm to return a scheduled alarm
@@ -1096,7 +1097,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(metrics.gauges.nextAlarmScheduled).toBeDefined();
     });
 
-    it('should handle storage errors gracefully during restoration', async () => {
+    test('should handle storage errors gracefully during restoration', async () => {
       // Mock storage to throw error
       vi.spyOn(mockState.storage, 'list').mockRejectedValueOnce(new Error('Storage error'));
 
@@ -1112,7 +1113,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return 404 for unknown endpoints', async () => {
+    test('should return 404 for unknown endpoints', async () => {
       const request = new Request('http://test/unknown-endpoint');
       const response = await scheduler.fetch(request);
 
@@ -1120,7 +1121,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(await response.text()).toBe('Not Found');
     });
 
-    it('should handle malformed JSON in requests', async () => {
+    test('should handle malformed JSON in requests', async () => {
       const request = new Request('http://test/schedule', {
         method: 'POST',
         body: 'invalid json{',
@@ -1136,7 +1137,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(result.error).toBeDefined();
     });
 
-    it('should handle unsupported platforms', async () => {
+    test('should handle unsupported platforms', async () => {
       const scheduleData = {
         messageId: 'msg_unsupported',
         conversationId: 'conv_123',
@@ -1165,7 +1166,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       );
     });
 
-    it('should handle database storage failures', async () => {
+    test('should handle database storage failures', async () => {
       const scheduleData = {
         messageId: 'msg_db_fail',
         conversationId: 'conv_123',
@@ -1200,7 +1201,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
   });
 
   describe('Cleanup and Maintenance', () => {
-    it('should clean up sent messages from storage', async () => {
+    test('should clean up sent messages from storage', async () => {
       const scheduleData = {
         messageId: 'msg_cleanup_001',
         conversationId: 'conv_123',
@@ -1225,7 +1226,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(mockState.storage.delete).toHaveBeenCalledWith('msg:msg_cleanup_001');
     });
 
-    it('should update alarm when no pending messages remain', async () => {
+    test('should update alarm when no pending messages remain', async () => {
       const scheduleData = {
         messageId: 'msg_last_one',
         conversationId: 'conv_123',
@@ -1267,7 +1268,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should log structured JSON for info messages', async () => {
+    test('should log structured JSON for info messages', async () => {
       const scheduleData = {
         messageId: 'msg_log_001',
         conversationId: 'conv_123',
@@ -1300,7 +1301,7 @@ describe('DelayedMessageScheduler Durable Object', () => {
       expect(log).toHaveProperty('action');
     });
 
-    it('should log critical errors with alert flag', async () => {
+    test('should log critical errors with alert flag', async () => {
       // Trigger a critical error scenario
       const mockDLQEntries = new Map();
       vi.spyOn(mockState.storage, 'list').mockRejectedValueOnce(new Error('Critical storage failure'));

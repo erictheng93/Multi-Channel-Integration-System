@@ -2,7 +2,8 @@
 // Tests Server-Sent Events functionality for real-time conversation updates
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
+import { DatabaseTestEnvironment } from '../../helpimport { MockFactory } from '@helpers/mockFactory';
+ers/DatabaseTestEnvironment';
 import { eq, desc, and, gt } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 
@@ -84,7 +85,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
   });
 
   describe('GET /stream - Global Conversation Stream', () => {
-    it('should prepare conversation data for SSE streaming', async () => {
+    test('should prepare conversation data for SSE streaming', async () => {
       // Simulate what the SSE endpoint does: fetch conversations with joins
       const conversationData = await env.db
         .select({
@@ -108,7 +109,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(Array.isArray(conversationData)).toBe(true);
     });
 
-    it('should fetch latest messages for conversations', async () => {
+    test('should fetch latest messages for conversations', async () => {
       // Create messages with explicit timestamps to ensure ordering
       const timestamp1 = new Date(Date.now() - 2000).toISOString();
       const timestamp2 = new Date(Date.now() - 1000).toISOString();
@@ -145,7 +146,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(latestMessage?.content).toBe('Second SSE message');
     });
 
-    it('should format conversation data for SSE response', async () => {
+    test('should format conversation data for SSE response', async () => {
       // Create a message to test lastMessage formatting
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-format-test',
@@ -171,7 +172,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(sseData.data[0].lastMessage.content).toBe('Test message content');
     });
 
-    it('should handle conversations with no messages', async () => {
+    test('should handle conversations with no messages', async () => {
       // Create new conversation without messages
       const newConversation = await env.createTestConversation(testCustomer.id, {
         assignedUserId: testAgent.id,
@@ -199,7 +200,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
   });
 
   describe('GET /:conversationId/messages/stream - Message Stream', () => {
-    it('should fetch recent messages for initial SSE payload', async () => {
+    test('should fetch recent messages for initial SSE payload', async () => {
       // Create 15 messages with explicit timestamps to ensure deterministic ordering
       const baseTime = Date.now() - 15000;
       for (let i = 1; i <= 15; i++) {
@@ -233,7 +234,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(ascending[9].content).toBe('Initial message 15');
     });
 
-    it('should detect new messages after specific timestamp', async () => {
+    test('should detect new messages after specific timestamp', async () => {
       // Create initial message with explicit timestamp
       const timestamp1 = new Date(Date.now() - 5000).toISOString();
       const timestamp2 = new Date(Date.now() - 2000).toISOString();
@@ -277,7 +278,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(newMessages[0].id).toBe('msg-after-check');
     });
 
-    it('should exclude recalled messages from SSE stream', async () => {
+    test('should exclude recalled messages from SSE stream', async () => {
       // Create normal message
       await env.createTestMessage(testConversation.id, {
         id: 'msg-normal',
@@ -315,7 +316,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(activeMessages[0].id).toBe('msg-normal');
     });
 
-    it('should format message data for SSE events', async () => {
+    test('should format message data for SSE events', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-sse-format',
         content: 'SSE formatted message',
@@ -348,7 +349,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(sseEvent.messages[0].content).toBe('SSE formatted message');
     });
 
-    it('should handle rapid message creation for SSE streaming', async () => {
+    test('should handle rapid message creation for SSE streaming', async () => {
       // Create multiple messages rapidly
       const messagePromises = Array.from({ length: 5 }, (_, i) =>
         env.createTestMessage(testConversation.id, {
@@ -373,7 +374,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
   });
 
   describe('SSE Heartbeat and Connection Management', () => {
-    it('should track last message ID for incremental updates', async () => {
+    test('should track last message ID for incremental updates', async () => {
       const message1 = await env.createTestMessage(testConversation.id, {
         id: 'msg-track-1',
         content: 'First tracked message',
@@ -402,7 +403,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(lastMessage?.content).toBe('Second tracked message');
     });
 
-    it('should format heartbeat event data', () => {
+    test('should format heartbeat event data', () => {
       const heartbeat = {
         type: 'heartbeat',
         conversationId: testConversation.id,
@@ -415,7 +416,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(heartbeat.lastMessageId).toBe('msg-track-2');
     });
 
-    it('should format connection established event', () => {
+    test('should format connection established event', () => {
       const connectionEvent = {
         type: 'connection_established',
         conversationId: testConversation.id,
@@ -429,7 +430,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
   });
 
   describe('SSE Permission Checks', () => {
-    it('should verify user has access to conversation before streaming', async () => {
+    test('should verify user has access to conversation before streaming', async () => {
       // In real SSE endpoint, this would use PermissionService
       const { PermissionService } = await import('@shared/services/permission-service');
 
@@ -441,7 +442,7 @@ describe('Conversation Handler - SSE Streaming Integration Tests', () => {
       expect(visibleConversations).toContain(testConversation.id);
     });
 
-    it('should deny access to conversation not in visible list', async () => {
+    test('should deny access to conversation not in visible list', async () => {
       const { PermissionService } = await import('@shared/services/permission-service');
 
       // Mock to return empty list

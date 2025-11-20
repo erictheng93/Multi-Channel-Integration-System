@@ -4,6 +4,8 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
+import { PermissionService } from '@shared/services/permission-service';
+import type { PermissionContext } from '@/types/services';
 
 // ======================== 基礎權限檢查 ========================
 
@@ -63,8 +65,22 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
       }, 401);
     }
 
-    // Admin 和 Team 角色可以檢視所有報告，Agent 只能檢視基本報告
-    if (!['admin', 'team', 'agent'].includes(payload.role)) {
+    // 使用 PermissionService 進行細緻權限檢查
+    const context: PermissionContext = {
+      userId: payload.userId,
+      role: payload.role,
+      teamId: payload.teamId
+    };
+
+    const hasPermission = await PermissionService.checkPermission(
+      payload.userId,
+      'report',
+      'read',
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to view reports',
@@ -98,8 +114,22 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
       }, 401);
     }
 
-    // 所有角色都可以生成報告，但會有不同的數據範圍
-    if (!['admin', 'team', 'agent'].includes(payload.role)) {
+    // 使用 PermissionService 檢查創建權限
+    const context: PermissionContext = {
+      userId: payload.userId,
+      role: payload.role,
+      teamId: payload.teamId
+    };
+
+    const hasPermission = await PermissionService.checkPermission(
+      payload.userId,
+      'report',
+      'create',
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to generate reports',
@@ -133,9 +163,23 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
       }, 401);
     }
 
-    // 檢查用戶是否有權限下載特定報告
-    // TODO: 實現更細緻的權限檢查，確保用戶只能下載自己生成的報告或有權限的報告
-    if (!['admin', 'team', 'agent'].includes(payload.role)) {
+    // 使用 PermissionService 檢查導出權限
+    // 根據角色自動應用範圍限制：team 角色有 teamScope，agent 角色有 own 限制
+    const context: PermissionContext = {
+      userId: payload.userId,
+      role: payload.role,
+      teamId: payload.teamId
+    };
+
+    const hasPermission = await PermissionService.checkPermission(
+      payload.userId,
+      'report',
+      'export',
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to download reports',
@@ -156,6 +200,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
 
 /**
  * 檢查報告刪除權限
+ * Admin 可以刪除所有報告，Team 和 Agent 只能刪除自己的報告
  */
 export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
@@ -169,13 +214,37 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
       }, 401);
     }
 
-    // Admin 可以刪除所有報告，Team 和 Agent 只能刪除自己的報告
-    if (!['admin', 'team', 'agent'].includes(payload.role)) {
+    // 獲取報告 ID 用於所有權檢查
+    const reportId = c.req.param('reportId') || c.req.param('id');
+
+    // 構建權限上下文
+    // Note: ownerId 應該在 handler 層從資料庫查詢後設置
+    // 這裡先使用基本檢查，實際所有權驗證應在 handler 中進行
+    const context: PermissionContext = {
+      userId: payload.userId,
+      role: payload.role,
+      teamId: payload.teamId
+    };
+
+    const hasPermission = await PermissionService.checkPermission(
+      payload.userId,
+      'report',
+      'delete',
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to delete reports',
         timestamp: new Date().toISOString()
       }, 403);
+    }
+
+    // 存儲報告 ID 供 handler 使用進行進一步驗證
+    if (reportId) {
+      c.set('reportId', reportId);
     }
 
     await next();
@@ -274,8 +343,22 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
       }, 401);
     }
 
-    // 只有 Admin 和 Team 角色可以管理排程報告
-    if (!['admin', 'team'].includes(payload.role)) {
+    // 使用 PermissionService 檢查排程權限
+    const context: PermissionContext = {
+      userId: payload.userId,
+      role: payload.role,
+      teamId: payload.teamId
+    };
+
+    const hasPermission = await PermissionService.checkPermission(
+      payload.userId,
+      'report',
+      'schedule',
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to manage scheduled reports',

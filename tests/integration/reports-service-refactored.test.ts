@@ -14,6 +14,7 @@ import { ReportsService } from '@modules/reports/services/reports-service';
 import type { ReportGenerationParams, ReportListQuery } from '@modules/reports/types/report-types';
 import type { Bindings } from '@/types/bindings';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Module-level variable for test environment
 let currentTestEnv: DatabaseTestEnvironment | null = null
 
@@ -63,6 +64,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
   let testConversation2: any
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     // Initialize test database
     env = new DatabaseTestEnvironment()
     currentTestEnv = env
@@ -159,7 +161,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('generateReport()', () => {
-    it('should generate a conversation summary report', async () => {
+    test('should generate a conversation summary report', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Test Conversation Report',
@@ -180,7 +182,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.fileSize).toBeGreaterThan(0)
     })
 
-    it('should generate an agent performance report', async () => {
+    test('should generate an agent performance report', async () => {
       const params: ReportGenerationParams = {
         type: 'agent_performance',
         title: 'Test Agent Performance Report',
@@ -197,7 +199,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.downloadUrl).toContain('/api/reports/')
     })
 
-    it('should generate a message statistics report', async () => {
+    test('should generate a message statistics report', async () => {
       const params: ReportGenerationParams = {
         type: 'message_statistics',
         title: 'Test Message Statistics Report',
@@ -213,7 +215,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.fileSize).toBeGreaterThan(0)
     })
 
-    it('should handle custom date range', async () => {
+    test('should handle custom date range', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Custom Date Range Report',
@@ -231,7 +233,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.id).toBeDefined()
     })
 
-    it('should include execution time in metadata', async () => {
+    test('should include execution time in metadata', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Test Report',
@@ -246,7 +248,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       // Execution time tracking is optional and may not be available in test environment
     })
 
-    it('should generate download URL', async () => {
+    test('should generate download URL', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Test Report',
@@ -262,7 +264,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.downloadUrl).toContain(result.id)
     })
 
-    it('should calculate file size', async () => {
+    test('should calculate file size', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Test Report',
@@ -278,13 +280,13 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('getReportStatus()', () => {
-    it('should return null for non-existent report', async () => {
+    test('should return null for non-existent report', async () => {
       const result = await service.getReportStatus('non-existent-id')
 
       expect(result).toBeNull()
     })
 
-    it('should return report status for valid report ID', async () => {
+    test('should return report status for valid report ID', async () => {
       // First generate a report
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
@@ -329,7 +331,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       }
     })
 
-    it('should return paginated reports with default parameters', async () => {
+    test('should return paginated reports with default parameters', async () => {
       const query: ReportListQuery = {}
 
       const result = await service.listReports(query)
@@ -345,7 +347,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.summary.totalReports).toBeGreaterThanOrEqual(8)
     })
 
-    it('should filter reports by type', async () => {
+    test('should filter reports by type', async () => {
       const query: ReportListQuery = {
         type: 'conversation_summary'
       }
@@ -357,7 +359,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.reports.every(r => r.type === 'conversation_summary')).toBe(true)
     })
 
-    it('should filter reports by status', async () => {
+    test('should filter reports by status', async () => {
       const query: ReportListQuery = {
         status: 'completed'
       }
@@ -368,7 +370,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.reports.every(r => r.status === 'completed')).toBe(true)
     })
 
-    it('should support pagination', async () => {
+    test('should support pagination', async () => {
       const query: ReportListQuery = {
         page: 1,
         pageSize: 3
@@ -382,7 +384,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.pagination.total).toBeGreaterThanOrEqual(8)
     })
 
-    it('should limit maximum page size', async () => {
+    test('should limit maximum page size', async () => {
       const query: ReportListQuery = {
         pageSize: 200  // Exceeds maximum
       }
@@ -392,7 +394,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.pagination.pageSize).toBeLessThanOrEqual(100)
     })
 
-    it('should include summary statistics', async () => {
+    test('should include summary statistics', async () => {
       const query: ReportListQuery = {}
 
       const result = await service.listReports(query)
@@ -404,7 +406,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.summary.failedReports).toBeGreaterThanOrEqual(0)
     })
 
-    it('should support search by title', async () => {
+    test('should support search by title', async () => {
       const query: ReportListQuery = {
         search: 'Report 1'
       }
@@ -416,7 +418,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result.reports.length).toBeGreaterThanOrEqual(1)
     })
 
-    it('should filter by team ID', async () => {
+    test('should filter by team ID', async () => {
       const query: ReportListQuery = {
         teamId: testTeam.id
       }
@@ -427,7 +429,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       // All test reports belong to the test team
     })
 
-    it('should filter by date range', async () => {
+    test('should filter by date range', async () => {
       const query: ReportListQuery = {
         startDate: '2025-01-01',
         endDate: '2025-12-31'
@@ -441,13 +443,13 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('downloadReport()', () => {
-    it('should throw error for non-existent report', async () => {
+    test('should throw error for non-existent report', async () => {
       await expect(
         service.downloadReport('non-existent-id', testAgent1.id)
       ).rejects.toThrow()
     })
 
-    it('should return null for incomplete report', async () => {
+    test('should return null for incomplete report', async () => {
       // This test may not be applicable since our test reports are generated synchronously
       // and immediately complete. In the actual service, non-existent reports throw an error.
       await expect(
@@ -455,7 +457,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       ).rejects.toThrow()
     })
 
-    it('should return download info for completed report', async () => {
+    test('should return download info for completed report', async () => {
       // First generate a completed report
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
@@ -475,7 +477,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(result?.filename).toContain('.json')
     })
 
-    it('should generate correct filename', async () => {
+    test('should generate correct filename', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Test Report With Spaces',
@@ -492,7 +494,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('calculateDateRange()', () => {
-    it('should calculate 7 days range', () => {
+    test('should calculate 7 days range', () => {
       const range = (service as any).calculateDateRange('7d')
 
       expect(range.startDate).toBeDefined()
@@ -505,7 +507,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(diffDays).toBe(7)
     })
 
-    it('should calculate 30 days range', () => {
+    test('should calculate 30 days range', () => {
       const range = (service as any).calculateDateRange('30d')
 
       const start = new Date(range.startDate)
@@ -515,7 +517,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(diffDays).toBe(30)
     })
 
-    it('should use custom date range', () => {
+    test('should use custom date range', () => {
       const range = (service as any).calculateDateRange('custom', '2025-09-01', '2025-09-30')
 
       // Verify dates are set correctly (accounting for timezone)
@@ -545,7 +547,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('serializeReport()', () => {
-    it('should serialize report to JSON', () => {
+    test('should serialize report to JSON', () => {
       const data = {
         reportInfo: { title: 'Test' },
         data: { test: 'value' }
@@ -558,7 +560,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
       expect(() => JSON.parse(result)).not.toThrow()
     })
 
-    it('should serialize report to CSV', () => {
+    test('should serialize report to CSV', () => {
       const data = {
         reportInfo: { title: 'Test Report', generatedAt: '2025-09-30' },
         data: {
@@ -576,14 +578,14 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('Error Handling', () => {
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       // Test with non-existent ID - should return null
       const result = await service.getReportStatus('non-existent-id')
 
       expect(result).toBeNull()
     })
 
-    it('should handle invalid date range', async () => {
+    test('should handle invalid date range', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Test Report',
@@ -602,7 +604,7 @@ describe('Reports Service Integration Tests - Refactored', () => {
   })
 
   describe('Performance', () => {
-    it('should complete report generation in reasonable time', async () => {
+    test('should complete report generation in reasonable time', async () => {
       const params: ReportGenerationParams = {
         type: 'conversation_summary',
         title: 'Performance Test Report',

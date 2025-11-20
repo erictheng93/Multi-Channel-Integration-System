@@ -18,7 +18,8 @@ import {
   LoadTestHelper
 } from '../../helpers/websocket/websocket-test-utils';
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
-import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
+import { MessageBroadcaster } from '@backend/durable-objimport { MockFactory } from '@helpers/mockFactory';
+ects/MessageBroadcaster';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 import type { DurableObjectEvent } from '@backend/types/websocket-types';
 
@@ -76,7 +77,7 @@ describe('Message Broadcasting Performance', () => {
   });
 
   describe('Single Message Broadcasting Performance', () => {
-    it('should broadcast messages with low latency', async () => {
+    test('should broadcast messages with low latency', async () => {
       const roomSizes = [10, 25, 50, 100];
       const latencyResults: Array<{ roomSize: number; avgLatency: number; p95Latency: number }> = [];
 
@@ -147,7 +148,7 @@ describe('Message Broadcasting Performance', () => {
       });
     });
 
-    it('should maintain throughput under increasing load', async () => {
+    test('should maintain throughput under increasing load', async () => {
       const throughputTests = [
         { messageCount: 50, intervalMs: 100 },
         { messageCount: 100, intervalMs: 50 },
@@ -222,7 +223,7 @@ describe('Message Broadcasting Performance', () => {
       }
     });
 
-    it('should handle burst traffic efficiently', async () => {
+    test('should handle burst traffic efficiently', async () => {
       const burstSize = 100;
       const burstCount = 5;
       const burstInterval = 2000; // 2 seconds between bursts
@@ -298,7 +299,7 @@ describe('Message Broadcasting Performance', () => {
   });
 
   describe('Multi-Room Broadcasting Performance', () => {
-    it('should scale broadcast distribution across multiple rooms', async () => {
+    test('should scale broadcast distribution across multiple rooms', async () => {
       const roomCounts = [5, 10, 20];
       const clientsPerRoom = 15;
       const messagesPerRoom = 10;
@@ -404,7 +405,7 @@ describe('Message Broadcasting Performance', () => {
       });
     });
 
-    it('should efficiently handle cross-room event distribution', async () => {
+    test('should efficiently handle cross-room event distribution', async () => {
       const roomCount = 8;
       const clientsPerRoom = 10;
       const crossRoomEvents = 25;
@@ -501,7 +502,7 @@ describe('Message Broadcasting Performance', () => {
   });
 
   describe('Batch Broadcasting Performance', () => {
-    it('should optimize batch message delivery', async () => {
+    test('should optimize batch message delivery', async () => {
       const batchSizes = [10, 25, 50, 100];
       const conversationId = 'batch_optimization_test';
 
@@ -586,7 +587,7 @@ describe('Message Broadcasting Performance', () => {
       });
     });
 
-    it('should handle mixed event type batches efficiently', async () => {
+    test('should handle mixed event type batches efficiently', async () => {
       const batchSize = 50;
       const conversationId = 'mixed_batch_test';
 
@@ -667,7 +668,7 @@ describe('Message Broadcasting Performance', () => {
   });
 
   describe('Performance Under Stress', () => {
-    it('should maintain performance during sustained high load', async () => {
+    test('should maintain performance during sustained high load', async () => {
       const duration = 30000; // 30 seconds
       const messageRate = 5; // messages per second
       const roomCount = 3;
@@ -768,7 +769,7 @@ describe('Message Broadcasting Performance', () => {
       await Promise.all(controllers.map(controller => controller.disconnectAllClients()));
     });
 
-    it('should recover from performance degradation', async () => {
+    test('should recover from performance degradation', async () => {
       const conversationId = 'recovery_test_conversation';
       const { controller } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 

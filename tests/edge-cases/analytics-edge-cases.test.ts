@@ -8,7 +8,8 @@ import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
-  PerformanceAnalyticsQuery
+  PerformanceAnalytiimport { MockFactory } from '@helpers/mockFactory';
+csQuery
 } from '../../src/modules/analytics/types/analytics-types';
 
 /**
@@ -48,7 +49,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== 時間範圍邊界測試 ========================
 
   describe('Time Range Boundary Tests', () => {
-    it('should handle minimum time range (1 hour)', async () => {
+    test('should handle minimum time range (1 hour)', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '1h',
         metrics: ['total_conversations'],
@@ -62,7 +63,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Minimum time range (1h) handled correctly');
     });
 
-    it('should handle maximum time range (1 year)', async () => {
+    test('should handle maximum time range (1 year)', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '365d',
         metrics: ['total_conversations'],
@@ -76,14 +77,14 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Maximum time range (365d) handled correctly');
     });
 
-    it('should handle custom date range spanning 2 days', async () => {
+    test('should handle custom date range spanning 2 days', async () => {
       const today = new Date();
-      const startDate = today.toISOString().split('T')[0];
+      const startDate = today.toISOString().spltest('T')[0];
 
       // Add 1 day to ensure endDate is after startDate
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const endDate = tomorrow.toISOString().split('T')[0];
+      const endDate = tomorrow.toISOString().spltest('T')[0];
 
       const query = {
         startDate,
@@ -97,9 +98,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Two-day date range handled correctly');
     });
 
-    it('should allow same-day queries (startDate = endDate)', async () => {
+    test('should allow same-day queries (startDate = endDate)', async () => {
       const today = new Date();
-      const sameDate = today.toISOString().split('T')[0];
+      const sameDate = today.toISOString().spltest('T')[0];
 
       const query = {
         startDate: sameDate,
@@ -114,7 +115,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Same-day queries (startDate = endDate) allowed correctly');
     });
 
-    it('should reject invalid time range (end before start)', async () => {
+    test('should reject invalid time range (end before start)', async () => {
       const query = {
         startDate: '2024-12-31',
         endDate: '2024-01-01',
@@ -131,13 +132,13 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Invalid time range rejected correctly');
     });
 
-    it('should handle future dates', async () => {
+    test('should handle future dates', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 30);
 
       const query = {
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: futureDate.toISOString().split('T')[0],
+        startDate: new Date().toISOString().spltest('T')[0],
+        endDate: futureDate.toISOString().spltest('T')[0],
         metrics: ['total_conversations']
       };
 
@@ -148,13 +149,13 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Future dates handled gracefully');
     });
 
-    it('should handle very old dates (10 years ago)', async () => {
+    test('should handle very old dates (10 years ago)', async () => {
       const oldDate = new Date();
       oldDate.setFullYear(oldDate.getFullYear() - 10);
 
       const query = {
-        startDate: oldDate.toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
+        startDate: oldDate.toISOString().spltest('T')[0],
+        endDate: new Date().toISOString().spltest('T')[0],
         metrics: ['total_conversations']
       };
 
@@ -168,7 +169,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== 數據量邊界測試 ========================
 
   describe('Data Volume Boundary Tests', () => {
-    it('should handle empty result set', async () => {
+    test('should handle empty result set', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '1h',
         metrics: ['total_conversations'],
@@ -184,7 +185,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Empty result set handled correctly');
     });
 
-    it('should handle single record result', async () => {
+    test('should handle single record result', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -199,7 +200,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Single record result handled correctly');
     });
 
-    it('should handle maximum limit (1000)', async () => {
+    test('should handle maximum limit (1000)', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -214,7 +215,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Maximum limit (1000) handled correctly');
     });
 
-    it('should handle zero limit', async () => {
+    test('should handle zero limit', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -228,7 +229,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Zero limit handled correctly');
     });
 
-    it('should handle negative limit', async () => {
+    test('should handle negative limit', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -250,7 +251,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== 過濾器邊界測試 ========================
 
   describe('Filter Boundary Tests', () => {
-    it('should handle no filters', async () => {
+    test('should handle no filters', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -263,7 +264,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ No filters handled correctly');
     });
 
-    it('should handle multiple filters simultaneously', async () => {
+    test('should handle multiple filters simultaneously', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -280,7 +281,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Multiple filters handled correctly');
     });
 
-    it('should handle invalid filter values', async () => {
+    test('should handle invalid filter values', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -296,7 +297,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Invalid filter values handled gracefully');
     });
 
-    it('should handle null/undefined filter values', async () => {
+    test('should handle null/undefined filter values', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -312,7 +313,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Null/undefined filters handled correctly');
     });
 
-    it('should handle extreme teamId values', async () => {
+    test('should handle extreme teamId values', async () => {
       const extremeValues = [0, -1, 999999999, Number.MAX_SAFE_INTEGER];
 
       for (const teamId of extremeValues) {
@@ -333,7 +334,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== GroupBy 邊界測試 ========================
 
   describe('GroupBy Boundary Tests', () => {
-    it('should handle empty groupBy array', async () => {
+    test('should handle empty groupBy array', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -347,7 +348,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Empty groupBy array handled correctly');
     });
 
-    it('should handle single groupBy field', async () => {
+    test('should handle single groupBy field', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -361,7 +362,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Single groupBy field handled correctly');
     });
 
-    it('should handle multiple groupBy fields', async () => {
+    test('should handle multiple groupBy fields', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -375,7 +376,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Multiple groupBy fields handled correctly');
     });
 
-    it('should handle invalid groupBy field names', async () => {
+    test('should handle invalid groupBy field names', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -392,7 +393,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle duplicate groupBy fields', async () => {
+    test('should handle duplicate groupBy fields', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -410,7 +411,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== Metrics 邊界測試 ========================
 
   describe('Metrics Boundary Tests', () => {
-    it('should handle single metric', async () => {
+    test('should handle single metric', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -423,7 +424,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Single metric handled correctly');
     });
 
-    it('should handle all available metrics', async () => {
+    test('should handle all available metrics', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: [
@@ -442,7 +443,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ All metrics handled correctly');
     });
 
-    it('should handle invalid metric names', async () => {
+    test('should handle invalid metric names', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['invalid_metric', 'another_invalid'] as any,
@@ -458,7 +459,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle empty metrics array', async () => {
+    test('should handle empty metrics array', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: [],
@@ -474,7 +475,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle duplicate metrics', async () => {
+    test('should handle duplicate metrics', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: [
@@ -495,7 +496,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== OrderBy 邊界測試 ========================
 
   describe('OrderBy Boundary Tests', () => {
-    it('should handle empty orderBy array', async () => {
+    test('should handle empty orderBy array', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -509,7 +510,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Empty orderBy array handled correctly');
     });
 
-    it('should handle ascending order', async () => {
+    test('should handle ascending order', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -523,7 +524,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Ascending order handled correctly');
     });
 
-    it('should handle descending order', async () => {
+    test('should handle descending order', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -537,7 +538,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Descending order handled correctly');
     });
 
-    it('should handle multiple orderBy fields', async () => {
+    test('should handle multiple orderBy fields', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -554,7 +555,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Multiple orderBy fields handled correctly');
     });
 
-    it('should handle invalid orderBy field names', async () => {
+    test('should handle invalid orderBy field names', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -571,7 +572,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle invalid orderBy direction', async () => {
+    test('should handle invalid orderBy direction', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -592,7 +593,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== 特殊字符和輸入測試 ========================
 
   describe('Special Characters and Input Tests', () => {
-    it('should handle SQL injection attempts in filters', async () => {
+    test('should handle SQL injection attempts in filters', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -607,7 +608,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ SQL injection attempt safely handled');
     });
 
-    it('should handle extremely long filter strings', async () => {
+    test('should handle extremely long filter strings', async () => {
       const longString = 'a'.repeat(10000);
 
       const query: ConversationAnalyticsQuery = {
@@ -627,7 +628,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle unicode characters in filters', async () => {
+    test('should handle unicode characters in filters', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -642,7 +643,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Unicode characters handled correctly');
     });
 
-    it('should handle null bytes in input', async () => {
+    test('should handle null bytes in input', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -657,7 +658,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Null bytes handled correctly');
     });
 
-    it('should handle special regex characters', async () => {
+    test('should handle special regex characters', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -676,7 +677,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== 數據類型邊界測試 ========================
 
   describe('Data Type Boundary Tests', () => {
-    it('should handle numeric string in teamId filter', async () => {
+    test('should handle numeric string in teamId filter', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -691,7 +692,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Numeric string handled correctly');
     });
 
-    it('should handle boolean values in unexpected places', async () => {
+    test('should handle boolean values in unexpected places', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -709,7 +710,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle object instead of primitive value', async () => {
+    test('should handle object instead of primitive value', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -727,7 +728,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle array instead of single value', async () => {
+    test('should handle array instead of single value', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -749,7 +750,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   // ======================== 導出邊界測試 ========================
 
   describe('Export Boundary Tests', () => {
-    it('should handle export with empty results', async () => {
+    test('should handle export with empty results', async () => {
       const query = {
         timeRange: '7d' as const,
         format: 'json' as const,
@@ -769,7 +770,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Export with empty results handled correctly');
     });
 
-    it('should handle export with large dataset', async () => {
+    test('should handle export with large dataset', async () => {
       const query = {
         timeRange: '365d' as const,
         format: 'csv' as const,
@@ -788,7 +789,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       console.log('✅ Export with large dataset handled correctly');
     });
 
-    it('should handle invalid export format', async () => {
+    test('should handle invalid export format', async () => {
       const query = {
         timeRange: '7d' as const,
         format: 'invalid-format' as any,
@@ -811,7 +812,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       }
     });
 
-    it('should handle export with no metrics specified', async () => {
+    test('should handle export with no metrics specified', async () => {
       const query = {
         timeRange: '7d' as const,
         format: 'json' as const,
