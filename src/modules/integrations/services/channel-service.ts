@@ -205,19 +205,9 @@ export class ChannelService implements IChannelIntegrationService {
       if (channel.platform === 'line') {
         return await this.verifyLineChannel(channel, request.testMessage);
       } else if (channel.platform === 'facebook') {
-        // TODO: Implement Facebook verification
-        return {
-          success: false,
-          verified: false,
-          message: 'Facebook verification not yet implemented'
-        };
+        return await this.verifyFacebookChannel(channel, request.testMessage);
       } else if (channel.platform === 'whatsapp') {
-        // TODO: Implement WhatsApp verification
-        return {
-          success: false,
-          verified: false,
-          message: 'WhatsApp verification not yet implemented'
-        };
+        return await this.verifyWhatsAppChannel(channel, request.testMessage);
       }
 
       return {
@@ -327,6 +317,247 @@ export class ChannelService implements IChannelIntegrationService {
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         retryAttempt: (channel.errorCount || 0) + 1,
         context: { stack: error instanceof Error ? error.stack : undefined }
+      });
+
+      return {
+        success: false,
+        verified: false,
+        message: error instanceof Error ? error.message : 'Verification failed',
+        error: error instanceof Error ? error.stack : undefined
+      };
+    }
+  }
+
+  /**
+   * Verify Facebook channel by testing API connectivity
+   */
+  private async verifyFacebookChannel(
+    channel: ChannelIntegration,
+    testMessage?: string
+  ): Promise<ChannelVerificationResponse> {
+    try {
+      if (!channel.facebookAccessToken) {
+        return {
+          success: false,
+          verified: false,
+          message: 'Facebook Access Token is missing'
+        };
+      }
+
+      // Decrypt the access token
+      const accessToken = await this.decryptField(channel.facebookAccessToken);
+      if (!accessToken) {
+        return {
+          success: false,
+          verified: false,
+          message: 'Failed to decrypt Facebook Access Token'
+        };
+      }
+
+      if (!channel.facebookPageId) {
+        return {
+          success: false,
+          verified: false,
+          message: 'Facebook Page ID is missing'
+        };
+      }
+
+      // Test Facebook API by fetching page info
+      // Using Graph API v18.0 to verify page access
+      const response = await fetch(
+        `https://graph.facebook.com/v18.0/${channel.facebookPageId}?fields=id,name,access_token&access_token=${accessToken}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ChannelService] Facebook API verification failed:', errorText);
+
+        // Update error tracking
+        await this.updateChannelError(channel.id, {
+          timestamp: new Date().toISOString(),
+          errorType: 'verification_failed',
+          errorMessage: `Facebook API returned ${response.status}: ${errorText}`,
+          retryAttempt: (channel.errorCount || 0) + 1
+        });
+
+        return {
+          success: false,
+          verified: false,
+          message: `Facebook API verification failed: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const verificationData = await response.json() as { id: string; name: string };
+
+      // Update channel as verified
+      const timestamp = new Date().toISOString();
+      await this.db
+        .update(channelIntegrations)
+        .set({
+          isVerified: true,
+          lastVerifiedAt: timestamp,
+          errorCount: 0,
+          lastError: null,
+          updatedAt: timestamp
+        })
+        .where(eq(channelIntegrations.id, channel.id));
+
+      console.log(`[ChannelService] ✅ Facebook channel verified successfully: ${channel.id}`);
+
+      return {
+        success: true,
+        verified: true,
+        message: 'Facebook channel verified successfully',
+        details: {
+          pageId: verificationData.id,
+          pageName: verificationData.name,
+          lastVerifiedAt: timestamp
+        }
+      };
+
+    } catch (error) {
+      console.error('[ChannelService] Error verifying Facebook channel:', error);
+
+      // Update error tracking
+      await this.updateChannelError(channel.id, {
+        timestamp: new Date().toISOString(),
+        errorType: 'verification_error',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        retryAttempt: (channel.errorCount || 0) + 1,
+        context: { platform: 'facebook' }
+      });
+
+      return {
+        success: false,
+        verified: false,
+        message: error instanceof Error ? error.message : 'Verification failed',
+        error: error instanceof Error ? error.stack : undefined
+      };
+    }
+  }
+
+  /**
+   * Verify WhatsApp channel by testing API connectivity
+   */
+  private async verifyWhatsAppChannel(
+    channel: ChannelIntegration,
+    testMessage?: string
+  ): Promise<ChannelVerificationResponse> {
+    try {
+      if (!channel.whatsappAccessToken) {
+        return {
+          success: false,
+          verified: false,
+          message: 'WhatsApp Access Token is missing'
+        };
+      }
+
+      // Decrypt the access token
+      const accessToken = await this.decryptField(channel.whatsappAccessToken);
+      if (!accessToken) {
+        return {
+          success: false,
+          verified: false,
+          message: 'Failed to decrypt WhatsApp Access Token'
+        };
+      }
+
+      if (!channel.whatsappPhoneNumber) {
+        return {
+          success: false,
+          verified: false,
+          message: 'WhatsApp Phone Number is missing'
+        };
+      }
+
+      if (!channel.whatsappBusinessAccountId) {
+        return {
+          success: false,
+          verified: false,
+          message: 'WhatsApp Business Account ID is missing'
+        };
+      }
+
+      // Test WhatsApp Business API by fetching phone number info
+      // Using Graph API v18.0 to verify phone number access
+      const response = await fetch(
+        `https://graph.facebook.com/v18.0/${channel.whatsappPhoneNumber}?access_token=${accessToken}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ChannelService] WhatsApp API verification failed:', errorText);
+
+        // Update error tracking
+        await this.updateChannelError(channel.id, {
+          timestamp: new Date().toISOString(),
+          errorType: 'verification_failed',
+          errorMessage: `WhatsApp API returned ${response.status}: ${errorText}`,
+          retryAttempt: (channel.errorCount || 0) + 1
+        });
+
+        return {
+          success: false,
+          verified: false,
+          message: `WhatsApp API verification failed: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const verificationData = await response.json() as {
+        id: string;
+        display_phone_number: string;
+        verified_name: string;
+      };
+
+      // Update channel as verified
+      const timestamp = new Date().toISOString();
+      await this.db
+        .update(channelIntegrations)
+        .set({
+          isVerified: true,
+          lastVerifiedAt: timestamp,
+          errorCount: 0,
+          lastError: null,
+          updatedAt: timestamp
+        })
+        .where(eq(channelIntegrations.id, channel.id));
+
+      console.log(`[ChannelService] ✅ WhatsApp channel verified successfully: ${channel.id}`);
+
+      return {
+        success: true,
+        verified: true,
+        message: 'WhatsApp channel verified successfully',
+        details: {
+          phoneNumberId: verificationData.id,
+          displayPhoneNumber: verificationData.display_phone_number,
+          verifiedName: verificationData.verified_name,
+          lastVerifiedAt: timestamp
+        }
+      };
+
+    } catch (error) {
+      console.error('[ChannelService] Error verifying WhatsApp channel:', error);
+
+      // Update error tracking
+      await this.updateChannelError(channel.id, {
+        timestamp: new Date().toISOString(),
+        errorType: 'verification_error',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        retryAttempt: (channel.errorCount || 0) + 1,
+        context: { platform: 'whatsapp' }
       });
 
       return {
