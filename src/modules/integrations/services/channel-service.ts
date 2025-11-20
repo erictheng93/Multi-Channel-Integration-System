@@ -5,6 +5,7 @@ import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc } from 'drizzle-orm';
 import { channelIntegrations } from '@/db/schema';
 import type { Bindings } from '@/types';
+import { getEncryptionService, type EncryptedData } from '@/services/encryption-service';
 import type {
   ChannelPlatform,
   ChannelIntegration,
@@ -28,6 +29,33 @@ export class ChannelService implements IChannelIntegrationService {
   constructor(bindings: Bindings) {
     this.db = drizzle(bindings.DB);
     this.bindings = bindings;
+  }
+
+  /**
+   * Decrypt an encrypted field value
+   * Supports both encrypted JSON objects and legacy plaintext
+   */
+  private async decryptField(encryptedValue: string | null | undefined): Promise<string | null> {
+    if (!encryptedValue) {
+      return null;
+    }
+
+    try {
+      // Try to parse as encrypted JSON
+      const encryptedData: EncryptedData = JSON.parse(encryptedValue);
+
+      // Check if it has the encrypted structure
+      if (encryptedData.encrypted && encryptedData.iv && encryptedData.tag) {
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+        return await encryptionService.decrypt(encryptedData);
+      }
+
+      // If not encrypted structure, return as-is (backward compatibility)
+      return encryptedValue;
+    } catch {
+      // If JSON parse fails, it's likely plaintext (backward compatibility)
+      return encryptedValue;
+    }
   }
 
   /**
@@ -74,19 +102,39 @@ export class ChannelService implements IChannelIntegrationService {
 
       // Add platform-specific configuration
       if (request.platform === 'line' && request.lineConfig) {
+        // Get encryption service
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+        // Encrypt sensitive LINE credentials
+        const encryptedAccessToken = await encryptionService.encrypt(request.lineConfig.channelAccessToken);
+        const encryptedSecret = await encryptionService.encrypt(request.lineConfig.channelSecret);
+
         channelData.lineChannelId = request.lineConfig.channelId;
-        channelData.lineChannelAccessToken = request.lineConfig.channelAccessToken; // TODO: Encrypt in Phase 4
-        channelData.lineChannelSecret = request.lineConfig.channelSecret; // TODO: Encrypt in Phase 4
+        channelData.lineChannelAccessToken = JSON.stringify(encryptedAccessToken); // ✅ Encrypted
+        channelData.lineChannelSecret = JSON.stringify(encryptedSecret); // ✅ Encrypted
         channelData.lineWebhookUrl = webhookUrl;
         channelData.lineWebhookToken = webhookToken;
       } else if (request.platform === 'facebook' && request.facebookConfig) {
+        // Get encryption service
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+        // Encrypt sensitive Facebook credentials
+        const encryptedAccessToken = await encryptionService.encrypt(request.facebookConfig.accessToken);
+        const encryptedAppSecret = await encryptionService.encrypt(request.facebookConfig.appSecret);
+
         channelData.facebookPageId = request.facebookConfig.pageId;
-        channelData.facebookAccessToken = request.facebookConfig.accessToken;
-        channelData.facebookAppSecret = request.facebookConfig.appSecret;
+        channelData.facebookAccessToken = JSON.stringify(encryptedAccessToken); // ✅ Encrypted
+        channelData.facebookAppSecret = JSON.stringify(encryptedAppSecret); // ✅ Encrypted
       } else if (request.platform === 'whatsapp' && request.whatsappConfig) {
+        // Get encryption service
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+        // Encrypt sensitive WhatsApp credentials
+        const encryptedAccessToken = await encryptionService.encrypt(request.whatsappConfig.accessToken);
+
         channelData.whatsappPhoneNumber = request.whatsappConfig.phoneNumber;
         channelData.whatsappBusinessAccountId = request.whatsappConfig.businessAccountId;
-        channelData.whatsappAccessToken = request.whatsappConfig.accessToken;
+        channelData.whatsappAccessToken = JSON.stringify(encryptedAccessToken); // ✅ Encrypted
       }
 
       // Add metadata
@@ -204,11 +252,21 @@ export class ChannelService implements IChannelIntegrationService {
         };
       }
 
+      // Decrypt the access token
+      const accessToken = await this.decryptField(channel.lineChannelAccessToken);
+      if (!accessToken) {
+        return {
+          success: false,
+          verified: false,
+          message: 'Failed to decrypt LINE Channel Access Token'
+        };
+      }
+
       // Test LINE API by verifying the token
       const response = await fetch('https://api.line.me/v2/oauth/verify', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${channel.lineChannelAccessToken}`
+          'Authorization': `Bearer ${accessToken}` // Use decrypted token
         }
       });
 

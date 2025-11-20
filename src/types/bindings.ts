@@ -6,8 +6,9 @@ import type { Agent } from '../db/schema';
 export function validateBindings(bindings: Partial<Bindings>): asserts bindings is Bindings {
   const required = [
     'LINE_CHANNEL_ACCESS_TOKEN',
-    'LINE_CHANNEL_SECRET', 
-    'JWT_SECRET'
+    'LINE_CHANNEL_SECRET',
+    'JWT_SECRET',
+    'ENCRYPTION_KEY'
   ] as const;
   
   for (const key of required) {
