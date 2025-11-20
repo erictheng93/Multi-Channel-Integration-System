@@ -7,7 +7,8 @@ import type { Bindings } from '@/types';
 import type {
   ChannelPlatform,
   ChannelConfigRequest,
-  ChannelVerificationRequest,
+  ChannelVerificatimport { MockFactory } from '@helpers/mockFactory';
+ionRequest,
   ChannelUpdateRequest
 } from '@modules/integrations/types/channel-types';
 
@@ -73,7 +74,7 @@ describe('ChannelService', () => {
   });
 
   describe('createChannel', () => {
-    it('should successfully create a LINE channel', async () => {
+    test('should successfully create a LINE channel', async () => {
       const request: ChannelConfigRequest = {
         teamId: 1,
         platform: 'line',
@@ -133,7 +134,7 @@ describe('ChannelService', () => {
       expect(result.webhookUrl).toContain('/webhooks/line');
     });
 
-    it('should reject duplicate active channel for same platform', async () => {
+    test('should reject duplicate active channel for same platform', async () => {
       const request: ChannelConfigRequest = {
         teamId: 1,
         platform: 'line',
@@ -166,7 +167,7 @@ describe('ChannelService', () => {
       expect(result.error).toContain('already has an active');
     });
 
-    it('should handle missing platform configuration', async () => {
+    test('should handle missing platform configuration', async () => {
       const request: ChannelConfigRequest = {
         teamId: 1,
         platform: 'line'
@@ -216,7 +217,7 @@ describe('ChannelService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should generate unique webhook tokens', async () => {
+    test('should generate unique webhook tokens', async () => {
       const request: ChannelConfigRequest = {
         teamId: 1,
         platform: 'line',
@@ -252,7 +253,7 @@ describe('ChannelService', () => {
   });
 
   describe('getChannelsByTeam', () => {
-    it('should return all channels for a team', async () => {
+    test('should return all channels for a team', async () => {
       const mockChannels = [
         { id: 1, teamId: 1, platform: 'line', isActive: true },
         { id: 2, teamId: 1, platform: 'facebook', isActive: true }
@@ -273,7 +274,7 @@ describe('ChannelService', () => {
       expect(result[1].platform).toBe('facebook');
     });
 
-    it('should filter channels by platform', async () => {
+    test('should filter channels by platform', async () => {
       const mockChannels = [
         { id: 1, teamId: 1, platform: 'line', isActive: true }
       ];
@@ -292,7 +293,7 @@ describe('ChannelService', () => {
       expect(result[0].platform).toBe('line');
     });
 
-    it('should return empty array for team with no channels', async () => {
+    test('should return empty array for team with no channels', async () => {
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -308,7 +309,7 @@ describe('ChannelService', () => {
   });
 
   describe('getChannel', () => {
-    it('should return a channel by ID', async () => {
+    test('should return a channel by ID', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -331,7 +332,7 @@ describe('ChannelService', () => {
       expect(result?.platform).toBe('line');
     });
 
-    it('should return null for non-existent channel', async () => {
+    test('should return null for non-existent channel', async () => {
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -347,7 +348,7 @@ describe('ChannelService', () => {
   });
 
   describe('updateChannel', () => {
-    it('should successfully update a channel', async () => {
+    test('should successfully update a channel', async () => {
       const updateRequest: ChannelUpdateRequest = {
         channelId: 1,
         lineConfig: {
@@ -399,7 +400,7 @@ describe('ChannelService', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should reject update for non-existent channel', async () => {
+    test('should reject update for non-existent channel', async () => {
       const updateRequest: ChannelUpdateRequest = {
         channelId: 999,
         lineConfig: {
@@ -423,7 +424,7 @@ describe('ChannelService', () => {
   });
 
   describe('deactivateChannel', () => {
-    it('should successfully deactivate a channel', async () => {
+    test('should successfully deactivate a channel', async () => {
       mockDb.update.mockReturnValue({
         set: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue(undefined)
@@ -435,7 +436,7 @@ describe('ChannelService', () => {
       expect(result).toBe(true);
     });
 
-    it('should handle deactivation errors', async () => {
+    test('should handle deactivation errors', async () => {
       mockDb.update.mockReturnValue({
         set: vi.fn().mockReturnValue({
           where: vi.fn().mockRejectedValue(new Error('Database error'))
@@ -449,7 +450,7 @@ describe('ChannelService', () => {
   });
 
   describe('verifyChannel', () => {
-    it('should successfully verify a LINE channel', async () => {
+    test('should successfully verify a LINE channel', async () => {
       const request: ChannelVerificationRequest = {
         channelId: 1
       };
@@ -488,7 +489,7 @@ describe('ChannelService', () => {
       expect(result.verified).toBe(true);
     });
 
-    it('should handle verification for non-existent channel', async () => {
+    test('should handle verification for non-existent channel', async () => {
       const request: ChannelVerificationRequest = {
         channelId: 999
       };
@@ -508,7 +509,7 @@ describe('ChannelService', () => {
       expect(result.message).toContain('not found');
     });
 
-    it('should handle LINE API verification failure', async () => {
+    test('should handle LINE API verification failure', async () => {
       const request: ChannelVerificationRequest = {
         channelId: 1
       };
@@ -544,7 +545,7 @@ describe('ChannelService', () => {
   });
 
   describe('getChannelStatistics', () => {
-    it('should return channel statistics', async () => {
+    test('should return channel statistics', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -580,7 +581,7 @@ describe('ChannelService', () => {
       expect(result.uptime.days).toBeGreaterThanOrEqual(0);
     });
 
-    it('should handle channel with no messages', async () => {
+    test('should handle channel with no messages', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -611,7 +612,7 @@ describe('ChannelService', () => {
   });
 
   describe('incrementMessageCounter', () => {
-    it('should increment sent message counter', async () => {
+    test('should increment sent message counter', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -648,7 +649,7 @@ describe('ChannelService', () => {
       }));
     });
 
-    it('should increment received message counter', async () => {
+    test('should increment received message counter', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -687,7 +688,7 @@ describe('ChannelService', () => {
   });
 
   describe('generateWebhookUrl', () => {
-    it('should generate webhook URL with correct format', async () => {
+    test('should generate webhook URL with correct format', async () => {
       const options = {
         platform: 'line' as ChannelPlatform,
         teamId: 1,
@@ -699,7 +700,7 @@ describe('ChannelService', () => {
       expect(url).toMatch(/https?:\/\/.+\/api\/webhooks\/line\/1\/.+/);
     });
 
-    it('should generate unique URLs for different teams', async () => {
+    test('should generate unique URLs for different teams', async () => {
       const url1 = await channelService.generateWebhookUrl({
         platform: 'line',
         teamId: 1
@@ -715,7 +716,7 @@ describe('ChannelService', () => {
   });
 
   describe('getChannelByWebhookToken', () => {
-    it('should find channel by webhook token', async () => {
+    test('should find channel by webhook token', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -740,7 +741,7 @@ describe('ChannelService', () => {
       expect(result).toEqual(mockChannel);
     });
 
-    it('should return null for invalid webhook token', async () => {
+    test('should return null for invalid webhook token', async () => {
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -760,7 +761,7 @@ describe('ChannelService', () => {
   });
 
   describe('checkChannelHealth', () => {
-    it('should return healthy status for active channel', async () => {
+    test('should return healthy status for active channel', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -790,7 +791,7 @@ describe('ChannelService', () => {
       expect(result.lastCheckAt).toBeDefined();
     });
 
-    it('should return degraded status for channel with errors', async () => {
+    test('should return degraded status for channel with errors', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,
@@ -817,7 +818,7 @@ describe('ChannelService', () => {
       expect(result.lastError.message).toBe('Connection timeout');
     });
 
-    it('should return down status for channel with many errors', async () => {
+    test('should return down status for channel with many errors', async () => {
       const mockChannel = {
         id: 1,
         teamId: 1,

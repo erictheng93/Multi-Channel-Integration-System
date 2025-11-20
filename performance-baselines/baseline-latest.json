@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-11-18T14:30:17.639Z",
+  "totalDuration": 48.333,
+  "totalTests": 0,
+  "totalFiles": 0,
+  "files": [],
+  "slowFiles": [],
+  "recommendations": [
+    "Tests failed to run - check test configuration"
+  ]
+}

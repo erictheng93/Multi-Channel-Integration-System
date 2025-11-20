@@ -15,13 +15,18 @@ import {
   createErrorHandlingMiddleware,
   withErrorHandling
 } from '@backend/shared/error-handling/error-handlers';
-import { ErrorLogger } from '@shared/error-handling/error-logger';
+import { ErrorLogimport { MockFactory } from '@helpers/mockFactory';
+ger } from '@shared/error-handling/error-logger';
 
 describe('Module Errors', () => {
   describe('BaseModuleError', () => {
-    it('should create error with all required properties', () => {
+    test('should create error with all required properties', () => {
       const error = new ValidationError('Test validation error', 'test-module', { field: 'email' });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
       expect(error).toBeInstanceOf(BaseModuleError);
       expect(error).toBeInstanceOf(ValidationError);
       expect(error.message).toBe('Test validation error');
@@ -31,7 +36,7 @@ describe('Module Errors', () => {
       expect(error.timestamp).toBeDefined();
     });
 
-    it('should be serializable to JSON', () => {
+    test('should be serializable to JSON', () => {
       const error = new AuthenticationError('Auth failed', 'auth-module');
       const json = error.toJSON();
 
@@ -48,21 +53,21 @@ describe('Module Errors', () => {
   });
 
   describe('Specific Error Types', () => {
-    it('should create ValidationError correctly', () => {
+    test('should create ValidationError correctly', () => {
       const error = new ValidationError('Invalid input', 'form-module');
 
       expect(error.code).toBe('VALIDATION_ERROR');
       expect(error.module).toBe('form-module');
     });
 
-    it('should create AuthenticationError correctly', () => {
+    test('should create AuthenticationError correctly', () => {
       const error = new AuthenticationError('Login failed', 'auth-module');
 
       expect(error.code).toBe('AUTHENTICATION_ERROR');
       expect(error.module).toBe('auth-module');
     });
 
-    it('should create NotFoundError correctly', () => {
+    test('should create NotFoundError correctly', () => {
       const error = new NotFoundError('User', 'user-module');
 
       expect(error.message).toBe('User not found');
@@ -72,7 +77,7 @@ describe('Module Errors', () => {
   });
 
   describe('ErrorMapper', () => {
-    it('should map standard Error to ValidationError', () => {
+    test('should map standard Error to ValidationError', () => {
       const standardError = new Error('Invalid email format');
       const mappedError = ErrorMapper.mapToModuleError(standardError, 'user-module');
 
@@ -81,7 +86,7 @@ describe('Module Errors', () => {
       expect(mappedError.module).toBe('user-module');
     });
 
-    it('should map not found error correctly', () => {
+    test('should map not found error correctly', () => {
       const standardError = new Error('User not found in database');
       const mappedError = ErrorMapper.mapToModuleError(standardError, 'user-module');
 
@@ -89,7 +94,7 @@ describe('Module Errors', () => {
       expect(mappedError.code).toBe('NOT_FOUND_ERROR');
     });
 
-    it('should return existing BaseModuleError unchanged', () => {
+    test('should return existing BaseModuleError unchanged', () => {
       const originalError = new ValidationError('Test error', 'test-module');
       const mappedError = ErrorMapper.mapToModuleError(originalError, 'other-module');
 
@@ -97,7 +102,7 @@ describe('Module Errors', () => {
       expect(mappedError.module).toBe('test-module'); // Should preserve original module
     });
 
-    it('should handle non-Error objects', () => {
+    test('should handle non-Error objects', () => {
       const unknownError = { someProperty: 'value' };
       const mappedError = ErrorMapper.mapToModuleError(unknownError, 'test-module');
 
@@ -105,7 +110,7 @@ describe('Module Errors', () => {
       expect(mappedError.message).toContain('Unknown error');
     });
 
-    it('should determine correct severity levels', () => {
+    test('should determine correct severity levels', () => {
       const validationError = new ValidationError('Invalid input', 'test');
       const authError = new AuthenticationError('Unauthorized', 'test');
       const systemError = new BaseModuleError('System failure', 'SYSTEM_ERROR', 'test');
@@ -147,7 +152,7 @@ describe('ModuleErrorHandler', () => {
   });
 
   describe('handleError', () => {
-    it('should handle ValidationError correctly', async () => {
+    test('should handle ValidationError correctly', async () => {
       const error = new ValidationError('Invalid email', 'auth-module');
 
       mockContext.json.mockImplementation((data: any, status: number) => {
@@ -170,7 +175,7 @@ describe('ModuleErrorHandler', () => {
       );
     });
 
-    it('should handle AuthenticationError with correct status code', async () => {
+    test('should handle AuthenticationError with correct status code', async () => {
       const error = new AuthenticationError('Invalid credentials', 'auth-module');
 
       mockContext.json.mockImplementation((data: any, status: number) => {
@@ -182,7 +187,7 @@ describe('ModuleErrorHandler', () => {
       await handler.handleError(error, mockContext, 'auth-module', 'login');
     });
 
-    it('should include request context in error response', async () => {
+    test('should include request context in error response', async () => {
       const error = new ValidationError('Test error', 'test-module');
       const requestId = 'req-12345';
       const userId = 'user-67890';
@@ -213,7 +218,7 @@ describe('ModuleErrorHandler', () => {
       );
     });
 
-    it('should handle standard JavaScript errors', async () => {
+    test('should handle standard JavaScript errors', async () => {
       const error = new Error('Standard JavaScript error');
 
       mockContext.json.mockImplementation((data: any, status: number) => {
@@ -226,7 +231,7 @@ describe('ModuleErrorHandler', () => {
       await handler.handleError(error, mockContext, 'test-module', 'test-operation');
     });
 
-    it('should handle unknown error types', async () => {
+    test('should handle unknown error types', async () => {
       const error = 'String error';
 
       mockContext.json.mockImplementation((data: any, status: number) => {
@@ -241,7 +246,7 @@ describe('ModuleErrorHandler', () => {
   });
 
   describe('Configuration Options', () => {
-    it('should exclude stack trace when includeStack is false', async () => {
+    test('should exclude stack trace when includeStack is false', async () => {
       const handlerNoStack = new ModuleErrorHandler({
         includeStack: false,
         includeDetails: true
@@ -257,7 +262,7 @@ describe('ModuleErrorHandler', () => {
       await handlerNoStack.handleError(error, mockContext, 'test-module', 'test-operation');
     });
 
-    it('should exclude details when includeDetails is false', async () => {
+    test('should exclude details when includeDetails is false', async () => {
       const handlerNoDetails = new ModuleErrorHandler({
         includeStack: false,
         includeDetails: false
@@ -273,7 +278,7 @@ describe('ModuleErrorHandler', () => {
       await handlerNoDetails.handleError(error, mockContext, 'test-module', 'test-operation');
     });
 
-    it('should skip logging when enableLogging is false', async () => {
+    test('should skip logging when enableLogging is false', async () => {
       const handlerNoLogging = new ModuleErrorHandler({
         enableLogging: false
       });
@@ -288,7 +293,7 @@ describe('ModuleErrorHandler', () => {
 });
 
 describe('Error Handling Middleware', () => {
-  it('should create middleware that catches errors', async () => {
+  test('should create middleware that catches errors', async () => {
     const middleware = createErrorHandlingMiddleware('test-module');
 
     const mockNext = vi.fn().mockRejectedValueOnce(new Error('Test error'));
@@ -313,7 +318,7 @@ describe('Error Handling Middleware', () => {
     );
   });
 
-  it('should pass through when no errors occur', async () => {
+  test('should pass through when no errors occur', async () => {
     const middleware = createErrorHandlingMiddleware('test-module');
 
     const mockNext = vi.fn().mockResolvedValueOnce(undefined);
@@ -329,7 +334,7 @@ describe('Error Handling Middleware', () => {
 });
 
 describe('withErrorHandling Wrapper', () => {
-  it('should wrap function with error handling', async () => {
+  test('should wrap function with error handling', async () => {
     const testFunction = vi.fn().mockRejectedValueOnce(new Error('Function error'));
     const wrappedFunction = withErrorHandling(
       'test-module',
@@ -341,7 +346,7 @@ describe('withErrorHandling Wrapper', () => {
     expect(testFunction).toHaveBeenCalled();
   });
 
-  it('should pass through successful function calls', async () => {
+  test('should pass through successful function calls', async () => {
     const testFunction = vi.fn().mockResolvedValueOnce('success');
     const wrappedFunction = withErrorHandling(
       'test-module',
@@ -355,7 +360,7 @@ describe('withErrorHandling Wrapper', () => {
     expect(testFunction).toHaveBeenCalled();
   });
 
-  it('should preserve function arguments', async () => {
+  test('should preserve function arguments', async () => {
     const testFunction = vi.fn().mockImplementation(
       (arg1: string, arg2: number) => `${arg1}-${arg2}`
     );
@@ -385,7 +390,7 @@ describe('Error Logger', () => {
   });
 
   describe('logError', () => {
-    it('should log error with correct format', async () => {
+    test('should log error with correct format', async () => {
       const error = new ValidationError('Test error', 'test-module');
       const context = {
         module: 'test-module',
@@ -409,7 +414,7 @@ describe('Error Logger', () => {
       expect(logEntry.context.userId).toBe('user-456');
     });
 
-    it('should use correct log level based on severity', async () => {
+    test('should use correct log level based on severity', async () => {
       const criticalError = new BaseModuleError('Critical error', 'SYSTEM_ERROR', 'test');
       const context = {
         module: 'test',
@@ -425,7 +430,7 @@ describe('Error Logger', () => {
   });
 
   describe('getLogs', () => {
-    it('should filter logs by module', async () => {
+    test('should filter logs by module', async () => {
       const error1 = new ValidationError('Error 1', 'module-a');
       const error2 = new ValidationError('Error 2', 'module-b');
 
@@ -438,7 +443,7 @@ describe('Error Logger', () => {
       expect(filteredLogs[0].module).toBe('module-a');
     });
 
-    it('should filter logs by severity', async () => {
+    test('should filter logs by severity', async () => {
       const lowError = new ValidationError('Low error', 'test');
       const criticalError = new BaseModuleError('Critical error', 'SYSTEM_ERROR', 'test');
 
@@ -451,7 +456,7 @@ describe('Error Logger', () => {
       expect(criticalLogs[0].context.severity).toBe(ErrorSeverity.CRITICAL);
     });
 
-    it('should limit number of returned logs', async () => {
+    test('should limit number of returned logs', async () => {
       // Add 5 errors
       for (let i = 0; i < 5; i++) {
         const error = new ValidationError(`Error ${i}`, 'test');
@@ -465,7 +470,7 @@ describe('Error Logger', () => {
   });
 
   describe('getStats', () => {
-    it('should return correct statistics', async () => {
+    test('should return correct statistics', async () => {
       const error1 = new ValidationError('Error 1', 'module-a');
       const error2 = new BaseModuleError('Error 2', 'SYSTEM_ERROR', 'module-b');
       const error3 = new ValidationError('Error 3', 'module-a');
@@ -485,7 +490,7 @@ describe('Error Logger', () => {
   });
 
   describe('clearLogs', () => {
-    it('should clear all logs', async () => {
+    test('should clear all logs', async () => {
       const error = new ValidationError('Test error', 'test');
       await logger.logError(error, { module: 'test', operation: 'op', severity: ErrorSeverity.LOW });
 

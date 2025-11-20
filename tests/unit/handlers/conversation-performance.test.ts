@@ -66,7 +66,7 @@ const generateUnreadCounts = (conversationIds: number[]) => {
 
 describe('conversationHandler - Performance Tests', () => {
   describe('list - Performance', () => {
-    it('should handle large conversation lists efficiently', async () => {
+    test('should handle large conversation lists efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayload)
       mockContext.req.query = vi.fn().mockReturnValue({
@@ -106,7 +106,7 @@ describe('conversationHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(100) // Should complete within 100ms
     })
 
-    it('should handle pagination with large offsets', async () => {
+    test('should handle pagination with large offsets', async () => {
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayload)
       mockContext.req.query = vi.fn().mockReturnValue({
@@ -140,7 +140,7 @@ describe('conversationHandler - Performance Tests', () => {
       expect(capturedParams[capturedParams.length - 1]).toBe(49950)
     })
 
-    it('should optimize unread count queries for conversations without messages', async () => {
+    test('should optimize unread count queries for conversations without messages', async () => {
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayload)
       mockContext.req.query = vi.fn().mockReturnValue({})
@@ -180,7 +180,7 @@ describe('conversationHandler - Performance Tests', () => {
       })
     })
 
-    it('should handle concurrent database queries efficiently', async () => {
+    test('should handle concurrent database queries efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayload)
       mockContext.req.query = vi.fn().mockReturnValue({})
@@ -219,7 +219,7 @@ describe('conversationHandler - Performance Tests', () => {
   })
 
   describe('get - Performance', () => {
-    it('should retrieve single conversation efficiently', async () => {
+    test('should retrieve single conversation efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
 
@@ -251,7 +251,7 @@ describe('conversationHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(50) // Should complete within 50ms
     })
 
-    it('should handle complex unread count calculation efficiently', async () => {
+    test('should handle complex unread count calculation efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
 
@@ -288,7 +288,7 @@ describe('conversationHandler - Performance Tests', () => {
   })
 
   describe('assign - Performance', () => {
-    it('should handle batch assignment operations efficiently', async () => {
+    test('should handle batch assignment operations efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({ agentId: '3' })
@@ -317,7 +317,7 @@ describe('conversationHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(50) // Should complete within 50ms
     })
 
-    it('should handle assignment with timestamp updates efficiently', async () => {
+    test('should handle assignment with timestamp updates efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({ agentId: '3' })
@@ -346,7 +346,7 @@ describe('conversationHandler - Performance Tests', () => {
   })
 
   describe('close - Performance', () => {
-    it('should handle conversation closure efficiently', async () => {
+    test('should handle conversation closure efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
 
@@ -373,7 +373,7 @@ describe('conversationHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(50) // Should complete within 50ms
     })
 
-    it('should handle bulk closure operations efficiently', async () => {
+    test('should handle bulk closure operations efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
 
@@ -404,7 +404,7 @@ describe('conversationHandler - Performance Tests', () => {
   })
 
   describe('Memory and Resource Usage', () => {
-    it('should not leak memory with large datasets', async () => {
+    test('should not leak memory with large datasets', async () => {
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayload)
       mockContext.req.query = vi.fn().mockReturnValue({
@@ -446,7 +446,7 @@ describe('conversationHandler - Performance Tests', () => {
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024) // Less than 50MB increase
     })
 
-    it('should handle concurrent requests efficiently', async () => {
+    test('should handle concurrent requests efficiently', async () => {
       const createRequest = () => {
         const mockContext = createMockContext()
         mockContext.get = vi.fn().mockReturnValue(mockJWTPayload)

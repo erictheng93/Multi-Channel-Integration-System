@@ -2,7 +2,8 @@
 // Tests role-based access control and team-scoped permissions
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
+import { DatabaseTestEnvironment } fimport { MockFactory } from '@helpers/mockFactory';
+rom '../../helpers/DatabaseTestEnvironment';
 import { eq, and, inArray } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 
@@ -113,7 +114,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Admin Access ====================
   describe('Admin Role - Full Access', () => {
-    it('should allow admin to view all conversations', async () => {
+    test('should allow admin to view all conversations', async () => {
       // Admin should see all conversations regardless of assignment
       const allConversations = await env.db.query.conversations.findMany();
 
@@ -123,7 +124,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(allConversations.map(c => c.id)).toContain(conversationUnassigned.id);
     });
 
-    it('should allow admin to assign conversations to any team', async () => {
+    test('should allow admin to assign conversations to any team', async () => {
       // Admin can assign unassigned conversation to team2
       await env.db
         .update(schema.conversations)
@@ -142,7 +143,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(updated?.assignedUserId).toBe(agentTeam2.id);
     });
 
-    it('should allow admin to reassign conversations between teams', async () => {
+    test('should allow admin to reassign conversations between teams', async () => {
       // Admin can move conversation from team1 to team2
       await env.db
         .update(schema.conversations)
@@ -160,7 +161,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(updated?.assignedUserId).toBe(agentTeam2.id);
     });
 
-    it('should allow admin to unassign any conversation', async () => {
+    test('should allow admin to unassign any conversation', async () => {
       await env.db
         .update(schema.conversations)
         .set({
@@ -181,7 +182,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Agent Access - Team-Scoped ====================
   describe('Agent Role - Team-Scoped Access', () => {
-    it('should only show conversations assigned to agent team', async () => {
+    test('should only show conversations assigned to agent team', async () => {
       // Agent from team1 should only see team1 conversations
       const team1Conversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.assignedTeamId, team1.id)
@@ -191,7 +192,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(team1Conversations[0].id).toBe(conversationTeam1.id);
     });
 
-    it('should not show conversations from other teams', async () => {
+    test('should not show conversations from other teams', async () => {
       // Agent from team1 should NOT see team2 conversations
       const team1Conversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.assignedTeamId, team1.id)
@@ -200,7 +201,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(team1Conversations.map(c => c.id)).not.toContain(conversationTeam2.id);
     });
 
-    it('should allow agent to view their assigned conversations', async () => {
+    test('should allow agent to view their assigned conversations', async () => {
       // Agent should see conversation assigned to them
       const agentConversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.assignedUserId, agentTeam1.id)
@@ -210,7 +211,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(agentConversations[0].id).toBe(conversationTeam1.id);
     });
 
-    it('should allow agent to send messages to their assigned conversations', async () => {
+    test('should allow agent to send messages to their assigned conversations', async () => {
       // Agent can send message to their conversation
       const message = await env.createTestMessage(conversationTeam1.id, {
         id: 'msg-agent-send',
@@ -223,7 +224,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(message.agentSenderId).toBe(agentTeam1.id);
     });
 
-    it('should not allow agent to directly access other team conversations', async () => {
+    test('should not allow agent to directly access other team conversations', async () => {
       // Agent from team1 trying to access team2 conversation
       const team2Conv = await env.db.query.conversations.findFirst({
         where: (conversations, { and, eq }) => and(
@@ -238,7 +239,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Unassigned Conversations ====================
   describe('Unassigned Conversation Access', () => {
-    it('should allow admin to view unassigned conversations', async () => {
+    test('should allow admin to view unassigned conversations', async () => {
       const unassigned = await env.db.query.conversations.findFirst({
         where: (conversations, { eq, and, isNull }) => and(
           eq(conversations.id, conversationUnassigned.id),
@@ -250,7 +251,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(unassigned?.assignedTeamId).toBeNull();
     });
 
-    it('should allow admin to assign unassigned conversations', async () => {
+    test('should allow admin to assign unassigned conversations', async () => {
       await env.db
         .update(schema.conversations)
         .set({
@@ -267,7 +268,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(updated?.assignedTeamId).toBe(team1.id);
     });
 
-    it('should restrict agent access to unassigned conversations', async () => {
+    test('should restrict agent access to unassigned conversations', async () => {
       // Agent should NOT see unassigned conversations by default
       const agentVisibleConversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.assignedTeamId, team1.id)
@@ -279,7 +280,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Permission Checks for Operations ====================
   describe('Operation-Level Permission Checks', () => {
-    it('should verify assign permission before assigning conversation', async () => {
+    test('should verify assign permission before assigning conversation', async () => {
       const { PermissionService } = await import('@shared/services/permission-service');
 
       // Mock admin permission check
@@ -294,7 +295,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(hasPermission).toBe(true);
     });
 
-    it('should verify view permission before fetching conversations', async () => {
+    test('should verify view permission before fetching conversations', async () => {
       const { PermissionService } = await import('@shared/services/permission-service');
 
       (PermissionService.checkPermission as any).mockResolvedValue(true);
@@ -313,7 +314,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(hasPermission).toBe(true);
     });
 
-    it('should verify send permission before sending messages', async () => {
+    test('should verify send permission before sending messages', async () => {
       const { PermissionService } = await import('@shared/services/permission-service');
 
       (PermissionService.checkPermission as any).mockResolvedValue(true);
@@ -332,7 +333,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(hasPermission).toBe(true);
     });
 
-    it('should deny operation when permission check fails', async () => {
+    test('should deny operation when permission check fails', async () => {
       const { PermissionService } = await import('@shared/services/permission-service');
 
       // Mock permission denied
@@ -351,7 +352,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Cross-Team Scenarios ====================
   describe('Cross-Team Access Scenarios', () => {
-    it('should prevent agent from viewing cross-team conversation details', async () => {
+    test('should prevent agent from viewing cross-team conversation details', async () => {
       // Agent from team1 trying to get team2 conversation
       const conversation = await env.db.query.conversations.findFirst({
         where: (conversations, { eq }) => eq(conversations.id, conversationTeam2.id)
@@ -365,7 +366,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(isTeam1Conversation).toBe(false);
     });
 
-    it('should prevent agent from sending messages to other team conversations', async () => {
+    test('should prevent agent from sending messages to other team conversations', async () => {
       // Agent from team1 should not be able to send to team2 conversation
       // This would be enforced by permission check in handler
 
@@ -378,7 +379,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(conversation?.assignedTeamId).not.toBe(team1.id);
     });
 
-    it('should allow conversation transfer with proper permissions', async () => {
+    test('should allow conversation transfer with proper permissions', async () => {
       // Record transfer from team1 to team2
       await env.db.insert(schema.conversationTransfers).values({
         conversationId: conversationTeam1.id,
@@ -419,7 +420,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Visible Conversations Query ====================
   describe('getVisibleConversations Implementation', () => {
-    it('should return all conversation IDs for admin', async () => {
+    test('should return all conversation IDs for admin', async () => {
       // Simulate PermissionService.getVisibleConversations for admin
       const allConversations = await env.db.query.conversations.findMany({
         columns: { id: true }
@@ -433,7 +434,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(visibleIds).toContain(conversationUnassigned.id);
     });
 
-    it('should return only team conversations for agent', async () => {
+    test('should return only team conversations for agent', async () => {
       // Simulate PermissionService.getVisibleConversations for agent
       const teamConversations = await env.db.query.conversations.findMany({
         where: (conversations, { eq }) => eq(conversations.assignedTeamId, team1.id),
@@ -447,7 +448,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(visibleIds).not.toContain(conversationTeam2.id);
     });
 
-    it('should return empty array for agent with no team', async () => {
+    test('should return empty array for agent with no team', async () => {
       // Create agent without team
       const noTeamAgent = await env.createTestAgent({
         id: 'agent-no-team',
@@ -469,7 +470,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
 
   // ==================== Message Access Control ====================
   describe('Message-Level Access Control', () => {
-    it('should allow viewing messages from assigned conversation', async () => {
+    test('should allow viewing messages from assigned conversation', async () => {
       await env.createTestMessage(conversationTeam1.id, {
         id: 'msg-access-test',
         content: 'Test message',
@@ -485,7 +486,7 @@ describe('Conversation Handler - Permission and Access Control Tests', () => {
       expect(messages[0].content).toBe('Test message');
     });
 
-    it('should restrict message access based on conversation permissions', async () => {
+    test('should restrict message access based on conversation permissions', async () => {
       // Messages from team2 conversation
       await env.createTestMessage(conversationTeam2.id, {
         id: 'msg-team2',

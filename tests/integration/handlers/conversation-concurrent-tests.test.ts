@@ -2,7 +2,8 @@
 // Tests parallel operations, data consistency, and race condition handling
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
+import { DatabaseTestimport { MockFactory } from '@helpers/mockFactory';
+Environment } from '../../helpers/DatabaseTestEnvironment';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 
@@ -81,7 +82,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
   });
 
   describe('Concurrent Message Creation', () => {
-    it('should handle 100 concurrent message creations without conflicts', async () => {
+    test('should handle 100 concurrent message creations without conflicts', async () => {
       console.log('🔄 Creating 100 messages concurrently...');
       const startTime = Date.now();
 
@@ -117,7 +118,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       expect(uniqueIds.size).toBe(100);
     });
 
-    it('should maintain message order consistency with concurrent inserts', async () => {
+    test('should maintain message order consistency with concurrent inserts', async () => {
       // Create 50 messages concurrently with explicit timestamps
       const baseTime = Date.now();
       const messagePromises = Array.from({ length: 50 }, (_, i) =>
@@ -146,7 +147,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       expect(messages[49].content).toBe('Ordered message 49');
     });
 
-    it('should handle duplicate message ID conflicts gracefully', async () => {
+    test('should handle duplicate message ID conflicts gracefully', async () => {
       // Try to create messages with duplicate IDs concurrently
       const promises = [
         env.db.insert(schema.messages).values({
@@ -183,7 +184,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
   });
 
   describe('Concurrent Conversation Assignment', () => {
-    it('should handle concurrent assignment attempts without conflicts', async () => {
+    test('should handle concurrent assignment attempts without conflicts', async () => {
       // Multiple agents try to assign the same conversation concurrently
       const assignmentPromises = [
         env.db
@@ -212,7 +213,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       expect([testAgent1.id, testAgent2.id, testAgent3.id]).toContain(conversation?.assignedUserId);
     });
 
-    it('should handle concurrent transfer operations', async () => {
+    test('should handle concurrent transfer operations', async () => {
       // Create transfer records concurrently
       const transferPromises = Array.from({ length: 10 }, (_, i) =>
         env.db.insert(schema.conversationTransfers).values({
@@ -239,7 +240,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
   });
 
   describe('Concurrent Read-Write Operations', () => {
-    it('should handle concurrent reads while writing messages', async () => {
+    test('should handle concurrent reads while writing messages', async () => {
       // Start with some messages
       for (let i = 0; i < 10; i++) {
         await env.createTestMessage(testConversation.id, {
@@ -295,7 +296,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       expect(finalMessages).toHaveLength(20);
     });
 
-    it('should handle concurrent updates to the same conversation', async () => {
+    test('should handle concurrent updates to the same conversation', async () => {
       // Multiple concurrent updates to conversation status
       const updatePromises = [
         env.db
@@ -325,7 +326,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
   });
 
   describe('Concurrent Multi-Conversation Operations', () => {
-    it('should handle concurrent operations across multiple conversations', async () => {
+    test('should handle concurrent operations across multiple conversations', async () => {
       // Create 20 conversations
       const conversations = [];
       for (let i = 0; i < 20; i++) {
@@ -371,7 +372,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       }
     });
 
-    it('should handle concurrent reassignments across multiple conversations', async () => {
+    test('should handle concurrent reassignments across multiple conversations', async () => {
       // Create 10 conversations
       const conversations = [];
       for (let i = 0; i < 10; i++) {
@@ -409,7 +410,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
   });
 
   describe('Race Condition Scenarios', () => {
-    it('should handle race between message creation and conversation deletion', async () => {
+    test('should handle race between message creation and conversation deletion', async () => {
       // Create a new conversation for this test
       const tempConversation = await env.createTestConversation(testCustomer.id, {
         assignedUserId: testAgent1.id,
@@ -442,7 +443,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       expect(successCount).toBeLessThanOrEqual(2);
     });
 
-    it('should handle race between concurrent assignment and message creation', async () => {
+    test('should handle race between concurrent assignment and message creation', async () => {
       // Concurrent assignment changes and message creation
       const operations = [
         env.db
@@ -476,7 +477,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
       expect(message).toBeDefined();
     });
 
-    it('should maintain data consistency under high concurrent load', async () => {
+    test('should maintain data consistency under high concurrent load', async () => {
       // 50 concurrent operations of various types
       const operations = [];
 
@@ -548,7 +549,7 @@ describe('Conversation Handler - Concurrent Operations Tests', () => {
   });
 
   describe('Deadlock Prevention', () => {
-    it('should avoid deadlocks with cross-conversation operations', async () => {
+    test('should avoid deadlocks with cross-conversation operations', async () => {
       // Create two conversations
       const conv1 = testConversation;
       const conv2 = await env.createTestConversation(testCustomer.id, {

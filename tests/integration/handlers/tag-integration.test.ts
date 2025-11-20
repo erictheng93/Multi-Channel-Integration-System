@@ -17,6 +17,7 @@ import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
 import * as schema from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Module-level variable for test environment
 let currentTestEnv: DatabaseTestEnvironment | null = null;
 
@@ -44,7 +45,7 @@ vi.mock('../../../src/middleware/auth', async () => {
       const token = authHeader.substring(7);
       try {
         // Decode test JWT
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const payload = JSON.parse(Buffer.from(token.spltest('.')[1], 'base64').toString());
         c.set('jwtPayload', payload);
         c.set('user', payload);
         await next();
@@ -76,16 +77,12 @@ describe('Tag Handler - Integration Tests', () => {
 
   // Helper: Create mock bindings
   const createMockBindings = (db: D1Database): Bindings => {
-    const mockKV = {
-      get: vi.fn(),
-      put: vi.fn(),
+    const mockKV = MockFactory.createKV()(),
       delete: vi.fn(),
       list: vi.fn()
     } as any;
 
-    const mockR2 = {
-      get: vi.fn(),
-      put: vi.fn(),
+    const mockR2 = MockFactory.createR2()(),
       delete: vi.fn(),
       list: vi.fn()
     } as any;
@@ -157,6 +154,7 @@ describe('Tag Handler - Integration Tests', () => {
   };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     // Initialize test database
     env = new DatabaseTestEnvironment();
     currentTestEnv = env;
@@ -431,6 +429,12 @@ describe('Tag Handler - Integration Tests', () => {
 
       const res = await app.request('/api/tags', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -566,6 +570,7 @@ describe('Tag Handler - Integration Tests', () => {
 
       const res = await app.request(`/api/tags/${globalTag.id}`, {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -587,6 +592,7 @@ describe('Tag Handler - Integration Tests', () => {
 
       const res = await app.request('/api/tags/99999', {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -609,6 +615,7 @@ describe('Tag Handler - Integration Tests', () => {
 
       const res = await app.request(`/api/tags/${globalTag.id}`, {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -635,6 +642,7 @@ describe('Tag Handler - Integration Tests', () => {
 
       const res = await app.request('/api/tags/99999', {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -681,6 +689,7 @@ describe('Tag Handler - Integration Tests', () => {
 
       const res = await app.request('/api/tags/bulk', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

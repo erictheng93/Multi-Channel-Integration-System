@@ -8,6 +8,7 @@ import type { Bindings } from '@/types';
 import type { DelayedSendRequest } from '@modules/messaging/types/message-types';
 import * as schema from '@backend/db/schema';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Module-level variable for test environment
 let currentTestEnv: DatabaseTestEnvironment | null = null
 
@@ -95,7 +96,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
   })
 
   describe('Agent ID to Sender ID Mapping', () => {
-    it('should correctly map agentId to senderId when creating delayed message', async () => {
+    test('should correctly map agentId to senderId when creating delayed message', async () => {
       const delayedMessageRequest: DelayedSendRequest = {
         conversationId: testConversation.id, // String UUID, not parseInt
         content: 'Test mapping message',
@@ -120,7 +121,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
       expect(delayedMessages[0].content).toBe('Test mapping message')
     })
 
-    it('should correctly map agentId to senderId when retrieving delayed message', async () => {
+    test('should correctly map agentId to senderId when retrieving delayed message', async () => {
       // Create a delayed message using the service
       const delayedMessageRequest: DelayedSendRequest = {
         conversationId: testConversation.id,
@@ -145,7 +146,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
   })
 
   describe('Failure Reason Metadata Mapping', () => {
-    it('should store failure reason in metadata when cancelling message', async () => {
+    test('should store failure reason in metadata when cancelling message', async () => {
       const cancelReason = 'User requested cancellation'
 
       // Create a pending delayed message using the service
@@ -177,7 +178,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
       expect(mockEnv.SESSIONS.delete).toHaveBeenCalledWith(`recallable:${createResult.delayedMessageId}`)
     })
 
-    it('should retrieve failure reason from metadata correctly', async () => {
+    test('should retrieve failure reason from metadata correctly', async () => {
       const failureReason = 'Platform API error'
 
       // Create a delayed message, then cancel it with failure reason
@@ -207,7 +208,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
   })
 
   describe('Complete Lifecycle Mapping Test', () => {
-    it('should maintain correct field mappings throughout message lifecycle', async () => {
+    test('should maintain correct field mappings throughout message lifecycle', async () => {
       // Step 1: Create delayed message
       const createRequest: DelayedSendRequest = {
         conversationId: testConversation.id, // String UUID, not parseInt
@@ -254,7 +255,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
   })
 
   describe('Edge Cases and Error Scenarios', () => {
-    it('should handle missing metadata gracefully', async () => {
+    test('should handle missing metadata gracefully', async () => {
       // Create delayed message without metadata using the service
       const delayedMessageRequest: DelayedSendRequest = {
         conversationId: testConversation.id,
@@ -275,7 +276,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
       expect(result!.content).toBe('Message without metadata')
     })
 
-    it('should handle invalid JSON metadata gracefully', async () => {
+    test('should handle invalid JSON metadata gracefully', async () => {
       // Directly insert a delayed message with invalid JSON metadata into database
       const messageId = 'invalid-metadata-msg-123'
       const now = new Date()
@@ -297,7 +298,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
       await expect(service.findDelayedMessageById(messageId)).rejects.toThrow()
     })
 
-    it('should validate foreign key constraints', async () => {
+    test('should validate foreign key constraints', async () => {
       // Try to create message with non-existent conversation
       const invalidRequest: DelayedSendRequest = {
         conversationId: 'nonexistent-conversation-uuid', // Non-existent UUID
@@ -313,7 +314,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
       ).rejects.toThrow() // Should fail due to foreign key constraint
     })
 
-    it('should validate agent exists when creating message', async () => {
+    test('should validate agent exists when creating message', async () => {
       const request: DelayedSendRequest = {
         conversationId: testConversation.id, // String UUID, not parseInt
         content: 'Test with invalid agent',
@@ -330,7 +331,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
       expect(result.error).toBeDefined()
     })
 
-    it('should handle concurrent updates to same message', async () => {
+    test('should handle concurrent updates to same message', async () => {
       // Create a delayed message using the service
       const delayedMessageRequest: DelayedSendRequest = {
         conversationId: testConversation.id,
@@ -364,7 +365,7 @@ describe('Database Field Mapping Integration Tests - Refactored', () => {
   })
 
   describe('Metadata JSON Serialization', () => {
-    it('should correctly serialize and deserialize complex metadata', async () => {
+    test('should correctly serialize and deserialize complex metadata', async () => {
       // Create delayed message using the service
       const delayedMessageRequest: DelayedSendRequest = {
         conversationId: testConversation.id,

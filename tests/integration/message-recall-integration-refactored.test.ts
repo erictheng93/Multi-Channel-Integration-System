@@ -7,6 +7,7 @@ import { MessageRecallService } from '@/services/message-recall-service';
 import type { Bindings } from '@/types';
 import { webcrypto } from 'node:crypto';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Module-level variable for test environment
 let currentTestEnv: DatabaseTestEnvironment | null = null
 
@@ -121,7 +122,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
   })
 
   describe('End-to-End Recall Flow', () => {
-    it('should complete full recall workflow', async () => {
+    test('should complete full recall workflow', async () => {
       const request = {
         conversationId: testConversation.id, // String UUID
         content: 'Integration test message',
@@ -171,7 +172,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
       expect(delayedMsgs.length).toBeGreaterThan(0)
     })
 
-    it('should handle queue processing after recall', async () => {
+    test('should handle queue processing after recall', async () => {
       const request = {
         conversationId: testConversation.id, // String UUID
         content: 'Queue test message',
@@ -196,7 +197,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
       expect(processResult.skipped).toBe(true)
     })
 
-    it('should handle concurrent recall attempts', async () => {
+    test('should handle concurrent recall attempts', async () => {
       const request = {
         conversationId: testConversation.id, // String UUID
         content: 'Concurrent test message',
@@ -230,7 +231,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
   })
 
   describe('Database Integration', () => {
-    it('should handle database foreign key constraints', async () => {
+    test('should handle database foreign key constraints', async () => {
       // Try to create message with invalid conversation ID
       const invalidRequest = {
         conversationId: 'nonexistent-conversation-uuid', // Non-existent UUID
@@ -248,7 +249,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
   })
 
   describe('KV Storage Integration', () => {
-    it('should handle KV TTL expiration correctly', async () => {
+    test('should handle KV TTL expiration correctly', async () => {
       const messageId = 'ttl-test-message'
       const userId = testAgent.id // String agent ID
 
@@ -276,7 +277,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
       expect(canRecall).toBe(false)
     })
 
-    it('should cleanup KV markers after processing', async () => {
+    test('should cleanup KV markers after processing', async () => {
       const request = {
         conversationId: testConversation.id, // String UUID
         content: 'Cleanup test message',
@@ -316,7 +317,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
   })
 
   describe('Platform Integration', () => {
-    it('should handle platform API rate limiting', async () => {
+    test('should handle platform API rate limiting', async () => {
       // Mock 429 Too Many Requests
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
@@ -349,7 +350,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
   })
 
   describe('Error Recovery and Resilience', () => {
-    it('should recover from partial failures', async () => {
+    test('should recover from partial failures', async () => {
       const request = {
         conversationId: testConversation.id, // String UUID
         content: 'Recovery test message',
@@ -378,7 +379,7 @@ describe('Message Recall Integration Tests - Refactored', () => {
       expect(secondResult.success).toBe(true)
     })
 
-    it('should handle network interruptions gracefully', async () => {
+    test('should handle network interruptions gracefully', async () => {
       // Mock network error
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 

@@ -2,11 +2,12 @@
 // 測試 QRCode 生成服務的核心功能
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { QRCodeType, QRCodeOutputFormat, CreateQRCodeRequest } from '@qrcode/types/qrcode-types';
+import type { QRCodeType, QRCodeOutputFormat, Creatimport { MockFactory } from '@helpers/mockFactory';
+eQRCodeRequest } from '@qrcode/types/qrcode-types';
 
 describe('QRCode Service Tests', () => {
   describe('QRCode Type Validation', () => {
-    it('should recognize valid QR code types', () => {
+    test('should recognize valid QR code types', () => {
       const validTypes: QRCodeType[] = [
         'url', 'text', 'contact', 'wifi', 'sms',
         'email', 'phone', 'event', 'location', 'app', 'social'
@@ -15,9 +16,13 @@ describe('QRCode Service Tests', () => {
       validTypes.forEach(type => {
         expect(['url', 'text', 'contact', 'wifi', 'sms', 'email', 'phone', 'event', 'location', 'app', 'social']).toContain(type);
       });
-    });
 
-    it('should have correct default values', () => {
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });    });
+
+    test('should have correct default values', () => {
       const defaults = {
         size: 300,
         errorCorrectionLevel: 'M' as const,
@@ -33,7 +38,7 @@ describe('QRCode Service Tests', () => {
   });
 
   describe('QRCode Generation Options', () => {
-    it('should validate size constraints', () => {
+    test('should validate size constraints', () => {
       const minSize = 100;
       const maxSize = 2000;
       const testSize = 500;
@@ -42,14 +47,14 @@ describe('QRCode Service Tests', () => {
       expect(testSize).toBeLessThanOrEqual(maxSize);
     });
 
-    it('should validate error correction levels', () => {
+    test('should validate error correction levels', () => {
       const validLevels = ['L', 'M', 'Q', 'H'];
       const testLevel = 'M';
 
       expect(validLevels).toContain(testLevel);
     });
 
-    it('should validate output formats', () => {
+    test('should validate output formats', () => {
       const validFormats: QRCodeOutputFormat[] = ['png', 'jpg', 'svg', 'pdf', 'base64'];
 
       validFormats.forEach(format => {
@@ -59,7 +64,7 @@ describe('QRCode Service Tests', () => {
   });
 
   describe('QRCode Content Generation', () => {
-    it('should generate URL QR code content', () => {
+    test('should generate URL QR code content', () => {
       const request: CreateQRCodeRequest = {
         type: 'url',
         name: 'Company Website',
@@ -71,7 +76,7 @@ describe('QRCode Service Tests', () => {
       expect(request.content).toMatch(/^https?:\/\//);
     });
 
-    it('should generate WiFi QR code content', () => {
+    test('should generate WiFi QR code content', () => {
       const wifiContent = {
         ssid: 'TestNetwork',
         password: 'password123',
@@ -84,7 +89,7 @@ describe('QRCode Service Tests', () => {
       expect(content).toContain(wifiContent.ssid);
     });
 
-    it('should generate Contact (vCard) QR code content', () => {
+    test('should generate Contact (vCard) QR code content', () => {
       const vCard = `BEGIN:VCARD
 VERSION:3.0
 FN:John Doe
@@ -97,7 +102,7 @@ END:VCARD`;
       expect(vCard).toContain('FN:');
     });
 
-    it('should validate content length limits', () => {
+    test('should validate content length limits', () => {
       const maxContentLength = 4296;
       const testContent = 'Short content';
 
@@ -106,7 +111,7 @@ END:VCARD`;
   });
 
   describe('QRCode Request Validation', () => {
-    it('should require name field', () => {
+    test('should require name field', () => {
       const request = {
         type: 'url' as const,
         name: 'Test QR Code',
@@ -117,21 +122,21 @@ END:VCARD`;
       expect(request.name.length).toBeGreaterThan(0);
     });
 
-    it('should validate name length constraints', () => {
+    test('should validate name length constraints', () => {
       const maxNameLength = 100;
       const testName = 'Valid QR Code Name';
 
       expect(testName.length).toBeLessThanOrEqual(maxNameLength);
     });
 
-    it('should validate description length constraints', () => {
+    test('should validate description length constraints', () => {
       const maxDescriptionLength = 500;
       const testDescription = 'This is a test QR code for unit testing';
 
       expect(testDescription.length).toBeLessThanOrEqual(maxDescriptionLength);
     });
 
-    it('should validate tags array constraints', () => {
+    test('should validate tags array constraints', () => {
       const maxTags = 10;
       const testTags = ['marketing', 'website', 'public'];
 
@@ -140,14 +145,14 @@ END:VCARD`;
   });
 
   describe('QRCode Status Management', () => {
-    it('should have valid status values', () => {
+    test('should have valid status values', () => {
       const validStatuses = ['active', 'inactive', 'expired'];
       const testStatus = 'active';
 
       expect(validStatuses).toContain(testStatus);
     });
 
-    it('should handle expiry dates', () => {
+    test('should handle expiry dates', () => {
       const now = new Date();
       const expiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
 
@@ -156,7 +161,7 @@ END:VCARD`;
   });
 
   describe('QRCode Permissions', () => {
-    it('should validate permission levels', () => {
+    test('should validate permission levels', () => {
       const permissions = {
         admin: ['create', 'read', 'update', 'delete', 'manage'],
         team: ['create', 'read', 'update', 'delete'],
@@ -170,7 +175,7 @@ END:VCARD`;
   });
 
   describe('QRCode Statistics', () => {
-    it('should track scan count', () => {
+    test('should track scan count', () => {
       const qrCode = {
         id: '1',
         scanCount: 0
@@ -180,7 +185,7 @@ END:VCARD`;
       expect(qrCode.scanCount).toBe(1);
     });
 
-    it('should record last scanned timestamp', () => {
+    test('should record last scanned timestamp', () => {
       const lastScanned = new Date().toISOString();
 
       expect(lastScanned).toMatch(/^\d{4}-\d{2}-\d{2}T/);
@@ -188,7 +193,7 @@ END:VCARD`;
   });
 
   describe('QRCode Batch Operations', () => {
-    it('should validate batch size limits', () => {
+    test('should validate batch size limits', () => {
       const maxBatchSize = 50;
       const batchRequest = {
         items: Array(10).fill(null).map((_, i) => ({
@@ -203,7 +208,7 @@ END:VCARD`;
   });
 
   describe('QRCode Search and Filtering', () => {
-    it('should support filtering by type', () => {
+    test('should support filtering by type', () => {
       const qrCodes = [
         { id: '1', type: 'url', name: 'Website' },
         { id: '2', type: 'text', name: 'Note' },
@@ -214,7 +219,7 @@ END:VCARD`;
       expect(urlQRCodes.length).toBe(2);
     });
 
-    it('should support filtering by tags', () => {
+    test('should support filtering by tags', () => {
       const qrCodes = [
         { id: '1', tags: ['marketing', 'public'] },
         { id: '2', tags: ['internal'] },
@@ -227,7 +232,7 @@ END:VCARD`;
       expect(marketingQRCodes.length).toBe(2);
     });
 
-    it('should support search by name', () => {
+    test('should support search by name', () => {
       const qrCodes = [
         { id: '1', name: 'Website Landing Page' },
         { id: '2', name: 'Product Catalog' },
@@ -243,7 +248,7 @@ END:VCARD`;
   });
 
   describe('QRCode Error Handling', () => {
-    it('should handle invalid content format', () => {
+    test('should handle invalid content format', () => {
       const invalidRequest = {
         type: 'url' as const,
         name: 'Invalid URL',
@@ -254,7 +259,7 @@ END:VCARD`;
       expect(invalidRequest.content).not.toMatch(/^https?:\/\//);
     });
 
-    it('should handle missing required fields', () => {
+    test('should handle missing required fields', () => {
       const incompleteRequest = {
         type: 'url' as const
         // Missing name and content
@@ -264,7 +269,7 @@ END:VCARD`;
       expect(incompleteRequest).not.toHaveProperty('content');
     });
 
-    it('should handle excessive content length', () => {
+    test('should handle excessive content length', () => {
       const maxLength = 4296;
       const longContent = 'A'.repeat(5000);
 
@@ -273,7 +278,7 @@ END:VCARD`;
   });
 
   describe('QRCode Module Info', () => {
-    it('should have correct module metadata', () => {
+    test('should have correct module metadata', () => {
       const moduleInfo = {
         name: 'qrcode',
         version: '1.0.0',

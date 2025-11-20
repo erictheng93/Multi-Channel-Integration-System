@@ -2,7 +2,8 @@
 // End-to-end testing of channel management REST API endpoints
 
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import type { ChannelIntegration, CreateChannelRequest, UpdateChannelRequest } from '@modules/integrations/types/channel-types';
+import type { ChannelIntegrationimport { MockFactory } from '@helpers/mockFactory';
+, CreateChannelRequest, UpdateChannelRequest } from '@modules/integrations/types/channel-types';
 
 // Test configuration
 const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
@@ -26,6 +27,10 @@ describe('Channel Management API Integration Tests', () => {
       })
     });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
     expect(loginResponse.ok).toBe(true);
     const loginData = await loginResponse.json();
 
@@ -40,7 +45,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('GET /api/channels', () => {
-    it('should list all channels for the authenticated team', async () => {
+    test('should list all channels for the authenticated team', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels`, {
         method: 'GET',
         headers: {
@@ -57,7 +62,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(typeof data.count).toBe('number');
     });
 
-    it('should filter channels by platform', async () => {
+    test('should filter channels by platform', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels?platform=line`, {
         method: 'GET',
         headers: {
@@ -78,7 +83,7 @@ describe('Channel Management API Integration Tests', () => {
       }
     });
 
-    it('should reject unauthenticated requests', async () => {
+    test('should reject unauthenticated requests', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels`, {
         method: 'GET',
         headers: {
@@ -89,7 +94,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should reject requests with invalid token', async () => {
+    test('should reject requests with invalid token', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels`, {
         method: 'GET',
         headers: {
@@ -103,7 +108,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('POST /api/channels', () => {
-    it('should create a new LINE channel', async () => {
+    test('should create a new LINE channel', async () => {
       const createRequest: CreateChannelRequest = {
         platform: 'line',
         teamId: testTeamId, // Include teamId for admin users without database teamId
@@ -159,7 +164,7 @@ describe('Channel Management API Integration Tests', () => {
       }
     });
 
-    it('should reject creation without authentication', async () => {
+    test('should reject creation without authentication', async () => {
       const createRequest: CreateChannelRequest = {
         platform: 'line',
         lineConfig: {
@@ -180,7 +185,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should reject creation with invalid platform', async () => {
+    test('should reject creation with invalid platform', async () => {
       const createRequest = {
         platform: 'invalid-platform',
         lineConfig: {
@@ -204,7 +209,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('GET /api/channels/:id', () => {
-    it('should get channel details by ID', async () => {
+    test('should get channel details by ID', async () => {
       if (!createdChannelId) {
         console.log('⚠️  No channel ID available, skipping test');
         return;
@@ -226,7 +231,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(data.data.platform).toBeDefined();
     });
 
-    it('should return 404 for non-existent channel', async () => {
+    test('should return 404 for non-existent channel', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels/99999`, {
         method: 'GET',
         headers: {
@@ -238,7 +243,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should reject unauthenticated requests', async () => {
+    test('should reject unauthenticated requests', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels/1`, {
         method: 'GET',
         headers: {
@@ -251,7 +256,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('PUT /api/channels/:id', () => {
-    it('should update channel configuration', async () => {
+    test('should update channel configuration', async () => {
       if (!createdChannelId) {
         console.log('⚠️  No channel ID available, skipping test');
         return;
@@ -286,7 +291,7 @@ describe('Channel Management API Integration Tests', () => {
       }
     });
 
-    it('should reject update for non-existent channel', async () => {
+    test('should reject update for non-existent channel', async () => {
       const updateRequest: UpdateChannelRequest = {
         lineConfig: {
           channelAccessToken: 'new-token'
@@ -305,7 +310,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(response.status).toBeGreaterThanOrEqual(400);
     });
 
-    it('should reject unauthenticated update requests', async () => {
+    test('should reject unauthenticated update requests', async () => {
       const updateRequest: UpdateChannelRequest = {
         lineConfig: {
           channelAccessToken: 'new-token'
@@ -325,7 +330,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('POST /api/channels/:id/verify', () => {
-    it('should verify channel configuration', async () => {
+    test('should verify channel configuration', async () => {
       if (!createdChannelId) {
         console.log('⚠️  No channel ID available, skipping test');
         return;
@@ -350,7 +355,7 @@ describe('Channel Management API Integration Tests', () => {
       console.log('Verification result:', data.message);
     });
 
-    it('should reject verification without authentication', async () => {
+    test('should reject verification without authentication', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels/1/verify`, {
         method: 'POST',
         headers: {
@@ -364,7 +369,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('GET /api/channels/:id/stats', () => {
-    it('should get channel statistics', async () => {
+    test('should get channel statistics', async () => {
       if (!createdChannelId) {
         console.log('⚠️  No channel ID available, skipping test');
         return;
@@ -388,7 +393,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(typeof data.data.successRate).toBe('number');
     });
 
-    it('should reject stats request without authentication', async () => {
+    test('should reject stats request without authentication', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels/1/stats`, {
         method: 'GET',
         headers: {
@@ -401,7 +406,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('GET /api/channels/:id/health', () => {
-    it('should check channel health', async () => {
+    test('should check channel health', async () => {
       if (!createdChannelId) {
         console.log('⚠️  No channel ID available, skipping test');
         return;
@@ -425,7 +430,7 @@ describe('Channel Management API Integration Tests', () => {
       expect(Array.isArray(data.data.issues)).toBe(true);
     });
 
-    it('should reject health check without authentication', async () => {
+    test('should reject health check without authentication', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels/1/health`, {
         method: 'GET',
         headers: {
@@ -438,7 +443,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('DELETE /api/channels/:id', () => {
-    it('should deactivate channel', async () => {
+    test('should deactivate channel', async () => {
       if (!createdChannelId) {
         console.log('⚠️  No channel ID available, skipping test');
         return;
@@ -461,7 +466,7 @@ describe('Channel Management API Integration Tests', () => {
       }
     });
 
-    it('should reject deletion without authentication', async () => {
+    test('should reject deletion without authentication', async () => {
       const response = await fetch(`${API_BASE_URL}/api/channels/1`, {
         method: 'DELETE',
         headers: {
@@ -474,7 +479,7 @@ describe('Channel Management API Integration Tests', () => {
   });
 
   describe('Rate Limiting & Security', () => {
-    it('should handle multiple rapid requests', async () => {
+    test('should handle multiple rapid requests', async () => {
       const requests = Array(5).fill(null).map(() =>
         fetch(`${API_BASE_URL}/api/channels`, {
           method: 'GET',

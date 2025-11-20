@@ -2,7 +2,8 @@
 // Tests WebSocket event broadcasting for conversation operations
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
+import { DatabaseTestEnvironment } froimport { MockFactory } from '@helpers/mockFactory';
+m '../../helpers/DatabaseTestEnvironment';
 import { eq } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 
@@ -84,7 +85,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Conversation Assignment Broadcasting', () => {
-    it('should broadcast conversation_assigned event when assigning conversation', async () => {
+    test('should broadcast conversation_assigned event when assigning conversation', async () => {
       // Simulate conversation assignment
       await env.db
         .update(schema.conversations)
@@ -130,7 +131,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       });
     });
 
-    it('should broadcast conversation_unassigned event when unassigning', async () => {
+    test('should broadcast conversation_unassigned event when unassigning', async () => {
       // Unassign conversation
       await env.db
         .update(schema.conversations)
@@ -171,7 +172,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should broadcast conversation_transferred event when transferring', async () => {
+    test('should broadcast conversation_transferred event when transferring', async () => {
       // Transfer conversation
       await env.db
         .update(schema.conversations)
@@ -222,7 +223,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Message Broadcasting', () => {
-    it('should broadcast message_sent event when sending message', async () => {
+    test('should broadcast message_sent event when sending message', async () => {
       // Create message
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-ws-broadcast',
@@ -264,7 +265,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should broadcast message_delivered event', async () => {
+    test('should broadcast message_delivered event', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-delivered',
         content: 'Delivered message',
@@ -303,7 +304,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should broadcast message_read event', async () => {
+    test('should broadcast message_read event', async () => {
       const message = await env.createTestMessage(testConversation.id, {
         id: 'msg-read',
         content: 'Read message',
@@ -337,7 +338,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Real-Time Typing Indicators', () => {
-    it('should broadcast typing_start event', async () => {
+    test('should broadcast typing_start event', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -362,7 +363,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should broadcast typing_stop event', async () => {
+    test('should broadcast typing_stop event', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -387,7 +388,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Presence Broadcasting', () => {
-    it('should broadcast agent_online event', async () => {
+    test('should broadcast agent_online event', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -411,7 +412,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should broadcast agent_offline event', async () => {
+    test('should broadcast agent_offline event', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -436,7 +437,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Broadcast Priority Levels', () => {
-    it('should handle realtime priority broadcasts', async () => {
+    test('should handle realtime priority broadcasts', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -456,7 +457,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should handle high priority broadcasts', async () => {
+    test('should handle high priority broadcasts', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -475,7 +476,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should handle normal priority broadcasts', async () => {
+    test('should handle normal priority broadcasts', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -495,7 +496,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       );
     });
 
-    it('should handle low priority broadcasts', async () => {
+    test('should handle low priority broadcasts', async () => {
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
       const broadcastService = new WebSocketBroadcastService({} as any);
 
@@ -516,7 +517,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Multi-Agent Broadcast Scenarios', () => {
-    it('should broadcast to multiple agents when conversation is reassigned', async () => {
+    test('should broadcast to multiple agents when conversation is reassigned', async () => {
       vi.clearAllMocks();
 
       // Reassign from agent1 to agent2
@@ -546,7 +547,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       expect(mockBroadcastConversationEvent).toHaveBeenCalled();
     });
 
-    it('should handle rapid successive broadcasts', async () => {
+    test('should handle rapid successive broadcasts', async () => {
       vi.clearAllMocks();
 
       const { WebSocketBroadcastService } = await import('@shared/services/websocket-broadcast-service');
@@ -569,7 +570,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
   });
 
   describe('Error Handling in Broadcasts', () => {
-    it('should gracefully handle broadcast failures', async () => {
+    test('should gracefully handle broadcast failures', async () => {
       // Simulate broadcast failure
       mockBroadcastMessageEvent.mockRejectedValueOnce(new Error('Broadcast failed'));
 
@@ -591,7 +592,7 @@ describe('Conversation Handler - WebSocket Integration Tests', () => {
       expect(mockBroadcastMessageEvent).toHaveBeenCalled();
     });
 
-    it('should continue operations even if broadcast fails', async () => {
+    test('should continue operations even if broadcast fails', async () => {
       // Mock failure
       mockBroadcastMessageEvent.mockRejectedValueOnce(new Error('Network error'));
 

@@ -18,7 +18,8 @@ import {
   TestAssertions
 } from '../../helpers/websocket/websocket-test-utils';
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
-import { UserConnection } from '@backend/durable-objects/UserConnection';
+import { UserConnection } from '@backend/durable-obimport { MockFactory } from '@helpers/mockFactory';
+jects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 
@@ -69,7 +70,7 @@ describe('WebSocket Connection Scalability Performance', () => {
   });
 
   describe('Connection Throughput', () => {
-    it('should handle 100 concurrent connections efficiently', async () => {
+    test('should handle 100 concurrent connections efficiently', async () => {
       const connectionCount = 100;
       const conversationId = 'perf_test_conversation_100';
 
@@ -107,7 +108,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`💾 Memory usage: Peak ${(memoryUsage.peak / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should handle 500 concurrent connections with acceptable performance', async () => {
+    test('should handle 500 concurrent connections with acceptable performance', async () => {
       const connectionCount = 500;
       const conversationId = 'perf_test_conversation_500';
 
@@ -143,7 +144,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`💾 Memory usage: Peak ${(memoryUsage.peak / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should maintain connection performance across multiple rooms', async () => {
+    test('should maintain connection performance across multiple rooms', async () => {
       const roomCount = 10;
       const clientsPerRoom = 20;
       const totalClients = roomCount * clientsPerRoom;
@@ -195,7 +196,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`💾 Memory usage: Peak ${(memoryUsage.peak / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should handle connection churn efficiently', async () => {
+    test('should handle connection churn efficiently', async () => {
       const conversationId = 'churn_test_conversation';
       const batchSize = 50;
       const churnCycles = 5;
@@ -250,7 +251,7 @@ describe('WebSocket Connection Scalability Performance', () => {
   });
 
   describe('Message Throughput Performance', () => {
-    it('should handle high-frequency message broadcasting', async () => {
+    test('should handle high-frequency message broadcasting', async () => {
       const clientCount = 25;
       const messagesPerClient = 20;
       const totalMessages = clientCount * messagesPerClient;
@@ -292,7 +293,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`💾 Memory usage: Peak ${(memoryUsage.peak / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should maintain performance under sustained load', async () => {
+    test('should maintain performance under sustained load', async () => {
       const clientCount = 15;
       const sustainedDuration = 30000; // 30 seconds
       const messageInterval = 1000; // 1 message per second per client
@@ -358,7 +359,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`💾 Memory usage: Peak ${(memoryUsage.peak / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should handle broadcast distribution efficiently', async () => {
+    test('should handle broadcast distribution efficiently', async () => {
       const roomCount = 5;
       const clientsPerRoom = 15;
       const broadcastCount = 50;
@@ -427,7 +428,7 @@ describe('WebSocket Connection Scalability Performance', () => {
   });
 
   describe('Memory Usage and Resource Management', () => {
-    it('should maintain reasonable memory usage with many connections', async () => {
+    test('should maintain reasonable memory usage with many connections', async () => {
       const connectionCount = 200;
       const conversationId = 'memory_test_conversation';
 
@@ -468,7 +469,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`   Final: ${(memoryUsage.final / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should properly cleanup disconnected clients', async () => {
+    test('should properly cleanup disconnected clients', async () => {
       const connectionCount = 100;
       const conversationId = 'cleanup_test_conversation';
 
@@ -517,7 +518,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`   Freed: ${(memoryReduction / 1024 / 1024).toFixed(2)}MB`);
     });
 
-    it('should handle memory pressure gracefully', async () => {
+    test('should handle memory pressure gracefully', async () => {
       const connectionCount = 150;
       const messageCount = 30;
       const conversationId = 'memory_pressure_conversation';
@@ -574,7 +575,7 @@ describe('WebSocket Connection Scalability Performance', () => {
   });
 
   describe('Latency Performance', () => {
-    it('should maintain low latency under load', async () => {
+    test('should maintain low latency under load', async () => {
       const clientCount = 50;
       const messageCount = 10;
       const conversationId = 'latency_test_conversation';
@@ -636,7 +637,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       console.log(`   P99: ${p99Latency.toFixed(2)}ms`);
     });
 
-    it('should maintain consistent performance across time', async () => {
+    test('should maintain consistent performance across time', async () => {
       const clientCount = 30;
       const testDuration = 15000; // 15 seconds
       const measurementInterval = 1000; // Every second
@@ -721,7 +722,7 @@ describe('WebSocket Connection Scalability Performance', () => {
   });
 
   describe('Scalability Limits', () => {
-    it('should identify connection limits gracefully', async () => {
+    test('should identify connection limits gracefully', async () => {
       const conversationId = 'limits_test_conversation';
       const maxAttempts = 1000; // Try to connect up to 1000 clients
       const batchSize = 50;
@@ -780,7 +781,7 @@ describe('WebSocket Connection Scalability Performance', () => {
       expect(successfulConnections).toBeGreaterThan(100);
     });
 
-    it('should handle gradual performance degradation', async () => {
+    test('should handle gradual performance degradation', async () => {
       const conversationId = 'degradation_test_conversation';
       const initialClients = 25;
       const incrementSize = 25;

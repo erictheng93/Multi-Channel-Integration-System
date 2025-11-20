@@ -1,8 +1,9 @@
-// Team Main Handler Unit Tests
+// Team Main Handler Unit Tests (MockFactory Refactored)
 // 團隊主要處理器單元測試
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
+import { MockFactory } from '../../helpers/mockFactory';
 
 // Mock database schema with Drizzle ORM column structure
 vi.mock('../../../src/db/schema', () => {
@@ -252,24 +253,22 @@ vi.mock('../../../src/middleware/auth', () => ({
 
 import type { Bindings } from '@backend/types';
 
-describe('Team Management - Unit Tests', () => {
+describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
   let app: Hono<{ Bindings: Bindings }>;
-  let mockDB: any;
+  let mockEnv: Bindings;
+  let mockDB: any; // Backward compatibility reference
 
   beforeEach(async () => {
     app = new Hono<{ Bindings: Bindings }>();
-
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Create mock database
-    mockDB = {
-      prepare: vi.fn().mockReturnThis(),
-      bind: vi.fn().mockReturnThis(),
-      all: vi.fn(),
-      run: vi.fn(),
-      first: vi.fn()
-    };
+    // Use MockFactory to create standardized environment
+    mockEnv = MockFactory.createEnv({
+      DB: MockFactory.createDatabase([]) // Empty dataset for unit tests
+    });
+
+    // Keep reference for backward compatibility
+    mockDB = mockEnv.DB;
 
     // Mount team handler
     const { default: teamHandler } = await import('@modules/teams/handlers/team');
@@ -281,12 +280,10 @@ describe('Team Management - Unit Tests', () => {
   });
 
   describe('Health & Info Endpoints', () => {
-    it('should return healthy status', async () => {
+    test('should return healthy status', async () => {
       const res = await app.request('/api/teams/health', {
         method: 'GET'
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -294,12 +291,10 @@ describe('Team Management - Unit Tests', () => {
       expect(body.module).toBe('teams');
     });
 
-    it('should return module info', async () => {
+    test('should return module info', async () => {
       const res = await app.request('/api/teams/info', {
         method: 'GET'
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -310,7 +305,7 @@ describe('Team Management - Unit Tests', () => {
   });
 
   describe('GET / - List Teams', () => {
-    it('should list all teams for admin', async () => {
+    test('should list all teams for admin', async () => {
       // Set user as admin
       vi.mocked(vi.fn()).mockImplementation((c: any, next: any) => {
         c.set('user', {
@@ -325,9 +320,7 @@ describe('Team Management - Unit Tests', () => {
         headers: {
           'Authorization': 'Bearer admin-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -335,15 +328,13 @@ describe('Team Management - Unit Tests', () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it('should return only own team for agent', async () => {
+    test('should return only own team for agent', async () => {
       const res = await app.request('/api/teams', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer agent-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -351,15 +342,13 @@ describe('Team Management - Unit Tests', () => {
       // Agent should only see their team
     });
 
-    it('should filter inactive teams when requested', async () => {
+    test('should filter inactive teams when requested', async () => {
       const res = await app.request('/api/teams?includeInactive=false', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer admin-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -368,15 +357,13 @@ describe('Team Management - Unit Tests', () => {
   });
 
   describe('GET /:id - Get Team Details', () => {
-    it('should retrieve team by ID', async () => {
+    test('should retrieve team by ID', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -385,7 +372,7 @@ describe('Team Management - Unit Tests', () => {
       expect(body.data.name).toBe('業務 A 組');
     });
 
-    it('should return 404 for non-existent team', async () => {
+    test('should return 404 for non-existent team', async () => {
       const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
       const mockInstance = new TeamService(mockDB);
       vi.mocked(mockInstance.getTeamById).mockResolvedValueOnce(null);
@@ -395,24 +382,20 @@ describe('Team Management - Unit Tests', () => {
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       // Should handle not found
       expect([200, 404]).toContain(res.status);
     });
 
-    it('should restrict access for agents to other teams', async () => {
+    test('should restrict access for agents to other teams', async () => {
       // Agent from team 1 trying to access team 2
       const res = await app.request('/api/teams/2', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer agent-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       // Should either succeed or be forbidden
       expect([200, 403]).toContain(res.status);
@@ -420,7 +403,7 @@ describe('Team Management - Unit Tests', () => {
   });
 
   describe('POST / - Create Team', () => {
-    it('should create team as admin', async () => {
+    test('should create team as admin', async () => {
       // Mock admin user
       vi.mocked(vi.fn()).mockImplementation((c: any, next: any) => {
         c.set('user', {
@@ -441,9 +424,7 @@ describe('Team Management - Unit Tests', () => {
           description: '新團隊描述',
           qrCode: 'NEW_TEAM_2024'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
       if (res.status === 200) {
@@ -452,7 +433,7 @@ describe('Team Management - Unit Tests', () => {
       }
     });
 
-    it('should reject create team as agent', async () => {
+    test('should reject create team as agent', async () => {
       const res = await app.request('/api/teams', {
         method: 'POST',
         headers: {
@@ -463,15 +444,13 @@ describe('Team Management - Unit Tests', () => {
           name: '新團隊',
           description: '新團隊描述'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       // Agent should not be able to create teams
       expect([403, 400]).toContain(res.status);
     });
 
-    it('should validate required fields', async () => {
+    test('should validate required fields', async () => {
       const res = await app.request('/api/teams', {
         method: 'POST',
         headers: {
@@ -482,14 +461,12 @@ describe('Team Management - Unit Tests', () => {
           // Missing name
           description: '新團隊描述'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([400, 403]).toContain(res.status);
     });
 
-    it('should reject duplicate team names', async () => {
+    test('should reject duplicate team names', async () => {
       const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
       const mockInstance = new TeamService(mockDB);
       vi.mocked(mockInstance.createTeam).mockRejectedValueOnce(
@@ -506,16 +483,14 @@ describe('Team Management - Unit Tests', () => {
           name: '業務 A 組',  // Existing name
           description: '重複的團隊名稱'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([400, 403, 500]).toContain(res.status);
     });
   });
 
   describe('PUT /:id - Update Team', () => {
-    it('should update team as admin', async () => {
+    test('should update team as admin', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'PUT',
         headers: {
@@ -527,9 +502,7 @@ describe('Team Management - Unit Tests', () => {
           description: '更新後的描述',
           isActive: true
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
       if (res.status === 200) {
@@ -538,7 +511,7 @@ describe('Team Management - Unit Tests', () => {
       }
     });
 
-    it('should reject update as agent', async () => {
+    test('should reject update as agent', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'PUT',
         headers: {
@@ -548,14 +521,12 @@ describe('Team Management - Unit Tests', () => {
         body: JSON.stringify({
           name: '業務 A 組（更新）'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([403, 400]).toContain(res.status);
     });
 
-    it('should allow partial updates', async () => {
+    test('should allow partial updates', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'PUT',
         headers: {
@@ -565,24 +536,20 @@ describe('Team Management - Unit Tests', () => {
         body: JSON.stringify({
           description: '只更新描述'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
     });
   });
 
   describe('DELETE /:id - Delete Team (Soft Delete)', () => {
-    it('should soft delete team as admin', async () => {
+    test('should soft delete team as admin', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'DELETE',
         headers: {
           'Authorization': 'Bearer admin-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
       if (res.status === 200) {
@@ -591,20 +558,18 @@ describe('Team Management - Unit Tests', () => {
       }
     });
 
-    it('should reject delete as agent', async () => {
+    test('should reject delete as agent', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'DELETE',
         headers: {
           'Authorization': 'Bearer agent-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(403);
     });
 
-    it('should return 404 for non-existent team', async () => {
+    test('should return 404 for non-existent team', async () => {
       const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
       const mockInstance = new TeamService(mockDB);
       vi.mocked(mockInstance.deleteTeam).mockRejectedValueOnce(
@@ -616,24 +581,20 @@ describe('Team Management - Unit Tests', () => {
         headers: {
           'Authorization': 'Bearer admin-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([404, 403, 500]).toContain(res.status);
     });
   });
 
   describe('GET /:id/members - Get Team Members', () => {
-    it('should list team members', async () => {
+    test('should list team members', async () => {
       const res = await app.request('/api/teams/1/members', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -641,15 +602,13 @@ describe('Team Management - Unit Tests', () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it('should filter active/inactive members', async () => {
+    test('should filter active/inactive members', async () => {
       const res = await app.request('/api/teams/1/members?includeInactive=false', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -658,7 +617,7 @@ describe('Team Management - Unit Tests', () => {
   });
 
   describe('POST /:id/members - Add Team Member', () => {
-    it('should add member as admin', async () => {
+    test('should add member as admin', async () => {
       const res = await app.request('/api/teams/1/members', {
         method: 'POST',
         headers: {
@@ -672,14 +631,12 @@ describe('Team Management - Unit Tests', () => {
           role: 'agent',
           passwordPolicy: 'must_change'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
     });
 
-    it('should validate required fields', async () => {
+    test('should validate required fields', async () => {
       const res = await app.request('/api/teams/1/members', {
         method: 'POST',
         headers: {
@@ -690,14 +647,12 @@ describe('Team Management - Unit Tests', () => {
           email: 'newagent@company.com'
           // Missing password and displayName
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([400, 403]).toContain(res.status);
     });
 
-    it('should set correct password policy', async () => {
+    test('should set correct password policy', async () => {
       const res = await app.request('/api/teams/1/members', {
         method: 'POST',
         headers: {
@@ -710,16 +665,14 @@ describe('Team Management - Unit Tests', () => {
           password: 'temp123456',
           passwordPolicy: 'unchangeable'  // Specific policy
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
     });
   });
 
   describe('GET /:id/stats - Get Team Statistics', () => {
-    it('should retrieve team statistics', async () => {
+    test('should retrieve team statistics', async () => {
       const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
       const mockInstance = new TeamService(mockDB);
       vi.mocked(mockInstance.getAllTeamsStats).mockResolvedValueOnce({
@@ -743,39 +696,33 @@ describe('Team Management - Unit Tests', () => {
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
     });
 
-    it('should support date range filtering', async () => {
+    test('should support date range filtering', async () => {
       const res = await app.request('/api/teams/1/stats?dateFrom=2025-11-01&dateTo=2025-11-13', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('GET /stats/all - Get All Teams Statistics', () => {
-    it('should retrieve all teams statistics', async () => {
+    test('should retrieve all teams statistics', async () => {
       const res = await app.request('/api/teams/stats/all', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -783,22 +730,20 @@ describe('Team Management - Unit Tests', () => {
       expect(body.data.totalTeams).toBeDefined();
     });
 
-    it('should include member details when requested', async () => {
+    test('should include member details when requested', async () => {
       const res = await app.request('/api/teams/stats/all?includeMembers=true', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('Password Policy Management', () => {
-    it('should reset member password with policy', async () => {
+    test('should reset member password with policy', async () => {
       const res = await app.request('/api/teams/members/agent-001/reset', {
         method: 'POST',
         headers: {
@@ -809,26 +754,24 @@ describe('Team Management - Unit Tests', () => {
           newPassword: 'newtemp123456',
           passwordPolicy: 'must_change'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403, 404]).toContain(res.status);
     });
 
-    it('should enforce must_change policy on login', async () => {
+    test('should enforce must_change policy on login', async () => {
       // This would be tested in integration/auth tests
       expect(true).toBe(true);
     });
 
-    it('should prevent password change for unchangeable policy', async () => {
+    test('should prevent password change for unchangeable policy', async () => {
       // This would be tested in integration/auth tests
       expect(true).toBe(true);
     });
   });
 
   describe('Team Access Control', () => {
-    it('should allow admin to access all teams', async () => {
+    test('should allow admin to access all teams', async () => {
       vi.mocked(vi.fn()).mockImplementation((c: any, next: any) => {
         c.set('user', {
           userId: 'admin-001',
@@ -842,43 +785,37 @@ describe('Team Management - Unit Tests', () => {
         headers: {
           'Authorization': 'Bearer admin-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 404]).toContain(res.status);
     });
 
-    it('should restrict agent to own team', async () => {
+    test('should restrict agent to own team', async () => {
       const res = await app.request('/api/teams/2', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer agent-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       // Should either succeed (if same team) or be forbidden
       expect([200, 403]).toContain(res.status);
     });
 
-    it('should allow agent to view own team members', async () => {
+    test('should allow agent to view own team members', async () => {
       const res = await app.request('/api/teams/1/members', {
         method: 'GET',
         headers: {
           'Authorization': 'Bearer agent-token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect(res.status).toBe(200);
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
       const mockInstance = new TeamService(mockDB);
       vi.mocked(mockInstance.listTeams).mockRejectedValueOnce(
@@ -890,14 +827,12 @@ describe('Team Management - Unit Tests', () => {
         headers: {
           'Authorization': 'Bearer token'
         }
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([500, 200]).toContain(res.status);
     });
 
-    it('should validate JSON parsing', async () => {
+    test('should validate JSON parsing', async () => {
       const res = await app.request('/api/teams', {
         method: 'POST',
         headers: {
@@ -905,26 +840,22 @@ describe('Team Management - Unit Tests', () => {
           'Content-Type': 'application/json'
         },
         body: 'invalid-json'
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([400, 403, 500]).toContain(res.status);
     });
 
-    it('should handle missing authorization', async () => {
+    test('should handle missing authorization', async () => {
       const res = await app.request('/api/teams', {
         method: 'GET'
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([401, 403, 200]).toContain(res.status);
     });
   });
 
   describe('QR Code Integration', () => {
-    it('should create team with QR code', async () => {
+    test('should create team with QR code', async () => {
       const res = await app.request('/api/teams', {
         method: 'POST',
         headers: {
@@ -936,14 +867,12 @@ describe('Team Management - Unit Tests', () => {
           description: '新團隊描述',
           qrCode: 'NEW_TEAM_QR_2024'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
     });
 
-    it('should update team QR code', async () => {
+    test('should update team QR code', async () => {
       const res = await app.request('/api/teams/1', {
         method: 'PUT',
         headers: {
@@ -953,14 +882,12 @@ describe('Team Management - Unit Tests', () => {
         body: JSON.stringify({
           qrCode: 'UPDATED_QR_2025'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([200, 403]).toContain(res.status);
     });
 
-    it('should reject duplicate QR codes', async () => {
+    test('should reject duplicate QR codes', async () => {
       const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
       const mockInstance = new TeamService(mockDB);
       vi.mocked(mockInstance.createTeam).mockRejectedValueOnce(
@@ -977,9 +904,7 @@ describe('Team Management - Unit Tests', () => {
           name: '新團隊',
           qrCode: 'EXISTING_QR'
         })
-      }, {
-        DB: mockDB
-      } as any);
+      }, mockEnv as any);
 
       expect([400, 403, 500]).toContain(res.status);
     });

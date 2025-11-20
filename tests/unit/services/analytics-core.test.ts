@@ -9,7 +9,8 @@ import type {
   UserAnalyticsQuery,
   PerformanceAnalyticsQuery,
   CustomAnalyticsQuery,
-  ExportQuery
+  Exporimport { MockFactory } from '@helpers/mockFactory';
+tQuery
 } from '@backend/modules/analytics/types/analytics-types';
 
 // Mock D1 Database
@@ -23,6 +24,10 @@ const createMockDB = () => ({
   exec: vi.fn().mockResolvedValue({ results: [] })
 });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 // Mock KV
 const createMockKV = () => ({
   get: vi.fn().mockResolvedValue(null),
@@ -37,6 +42,7 @@ describe('AnalyticsService', () => {
   let mockKV: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockDB = createMockDB();
     mockKV = createMockKV();
     service = new AnalyticsService({
@@ -47,7 +53,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getConversationAnalytics()', () => {
-    it('should return conversation analytics for valid query', async () => {
+    test('should return conversation analytics for valid query', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations', 'active_conversations'],
@@ -72,7 +78,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata).toBeDefined();
     });
 
-    it('should use cache when available', async () => {
+    test('should use cache when available', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -104,7 +110,7 @@ describe('AnalyticsService', () => {
       expect(mockDB.all).not.toHaveBeenCalled();
     });
 
-    it('should handle query validation errors', async () => {
+    test('should handle query validation errors', async () => {
       const invalidQuery: ConversationAnalyticsQuery = {
         timeRange: 'invalid' as any,
         metrics: [],
@@ -120,7 +126,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
     });
 
-    it('should support platform filtering', async () => {
+    test('should support platform filtering', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -139,7 +145,7 @@ describe('AnalyticsService', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should support team filtering', async () => {
+    test('should support team filtering', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '30d',
         metrics: ['total_conversations'],
@@ -157,7 +163,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should support custom date ranges', async () => {
+    test('should support custom date ranges', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: 'custom',
         startDate: '2025-09-01',
@@ -177,7 +183,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle groupBy parameters', async () => {
+    test('should handle groupBy parameters', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -199,7 +205,7 @@ describe('AnalyticsService', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should handle orderBy parameters', async () => {
+    test('should handle orderBy parameters', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -219,7 +225,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getMessageAnalytics()', () => {
-    it('should return message analytics for valid query', async () => {
+    test('should return message analytics for valid query', async () => {
       const query: MessageAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_messages', 'messages_per_hour'],
@@ -241,7 +247,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata).toBeDefined();
     });
 
-    it('should filter by conversation ID', async () => {
+    test('should filter by conversation ID', async () => {
       const query: MessageAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_messages'],
@@ -258,7 +264,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should filter by platform', async () => {
+    test('should filter by platform', async () => {
       const query: MessageAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_messages'],
@@ -275,7 +281,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should calculate message statistics', async () => {
+    test('should calculate message statistics', async () => {
       const query: MessageAnalyticsQuery = {
         timeRange: '24h',
         metrics: ['total_messages', 'messages_per_hour', 'avg_message_length'],
@@ -299,7 +305,7 @@ describe('AnalyticsService', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should use cache for repeated queries', async () => {
+    test('should use cache for repeated queries', async () => {
       const query: MessageAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_messages'],
@@ -324,7 +330,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getUserAnalytics()', () => {
-    it('should return user analytics for valid query', async () => {
+    test('should return user analytics for valid query', async () => {
       const query: UserAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['active_users', 'user_activity'],
@@ -346,7 +352,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata).toBeDefined();
     });
 
-    it('should filter by user type', async () => {
+    test('should filter by user type', async () => {
       const query: UserAnalyticsQuery = {
         timeRange: '30d',
         metrics: ['active_users'],
@@ -364,7 +370,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should filter by team ID', async () => {
+    test('should filter by team ID', async () => {
       const query: UserAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['active_users'],
@@ -382,7 +388,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle admin user type', async () => {
+    test('should handle admin user type', async () => {
       const query: UserAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['active_users'],
@@ -402,7 +408,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getPerformanceAnalytics()', () => {
-    it('should return performance analytics for valid query', async () => {
+    test('should return performance analytics for valid query', async () => {
       const query: PerformanceAnalyticsQuery = {
         timeRange: '24h',
         metrics: ['response_times', 'throughput', 'error_rates'],
@@ -426,7 +432,7 @@ describe('AnalyticsService', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should calculate response time percentiles', async () => {
+    test('should calculate response time percentiles', async () => {
       const query: PerformanceAnalyticsQuery = {
         timeRange: '24h',
         metrics: ['response_times'],
@@ -449,7 +455,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should track error rates by type', async () => {
+    test('should track error rates by type', async () => {
       const query: PerformanceAnalyticsQuery = {
         timeRange: '24h',
         metrics: ['error_rates'],
@@ -471,7 +477,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('getCustomAnalytics()', () => {
-    it('should execute custom analytics query', async () => {
+    test('should execute custom analytics query', async () => {
       const query: CustomAnalyticsQuery = {
         timeRange: '7d',
         query: 'SELECT COUNT(*) as total FROM conversations',
@@ -491,7 +497,7 @@ describe('AnalyticsService', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should support parameterized queries', async () => {
+    test('should support parameterized queries', async () => {
       const query: CustomAnalyticsQuery = {
         timeRange: '7d',
         query: 'SELECT * FROM conversations WHERE team_id = ?',
@@ -509,7 +515,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should apply aggregation functions', async () => {
+    test('should apply aggregation functions', async () => {
       const query: CustomAnalyticsQuery = {
         timeRange: '30d',
         query: 'SELECT value FROM metrics',
@@ -530,7 +536,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('exportAnalytics()', () => {
-    it('should export analytics data in JSON format', async () => {
+    test('should export analytics data in JSON format', async () => {
       const query: ExportQuery = {
         timeRange: '7d',
         format: 'json',
@@ -553,7 +559,7 @@ describe('AnalyticsService', () => {
       expect(result.data?.format).toBe('json');
     });
 
-    it('should export analytics data in CSV format', async () => {
+    test('should export analytics data in CSV format', async () => {
       const query: ExportQuery = {
         timeRange: '7d',
         format: 'csv',
@@ -573,7 +579,7 @@ describe('AnalyticsService', () => {
       expect(result.data?.format).toBe('csv');
     });
 
-    it('should include charts when requested', async () => {
+    test('should include charts when requested', async () => {
       const query: ExportQuery = {
         timeRange: '7d',
         format: 'json',
@@ -592,7 +598,7 @@ describe('AnalyticsService', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should apply custom filename', async () => {
+    test('should apply custom filename', async () => {
       const query: ExportQuery = {
         timeRange: '7d',
         format: 'json',
@@ -615,7 +621,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mockDB.all.mockRejectedValueOnce(new Error('Database connection failed'));
 
       const query: ConversationAnalyticsQuery = {
@@ -633,7 +639,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata?.errorCode).toBeDefined();
     });
 
-    it('should handle validation errors', async () => {
+    test('should handle validation errors', async () => {
       const invalidQuery: ConversationAnalyticsQuery = {
         timeRange: 'invalid' as any,
         metrics: [],
@@ -648,7 +654,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
     });
 
-    it('should handle processing errors', async () => {
+    test('should handle processing errors', async () => {
       mockDB.all.mockResolvedValueOnce({
         results: null // Invalid data format
       });
@@ -667,7 +673,7 @@ describe('AnalyticsService', () => {
       expect(result.metadata?.errorCode).toBeDefined();
     });
 
-    it('should include error metadata', async () => {
+    test('should include error metadata', async () => {
       mockDB.all.mockRejectedValueOnce(new Error('Test error'));
 
       const query: MessageAnalyticsQuery = {
@@ -687,7 +693,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('Cache Integration', () => {
-    it('should cache successful results', async () => {
+    test('should cache successful results', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -706,7 +712,7 @@ describe('AnalyticsService', () => {
       expect(mockKV.put).toHaveBeenCalled();
     });
 
-    it('should return cached results when available', async () => {
+    test('should return cached results when available', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -737,7 +743,7 @@ describe('AnalyticsService', () => {
       expect(mockDB.all).not.toHaveBeenCalled();
     });
 
-    it('should invalidate cache on data changes', async () => {
+    test('should invalidate cache on data changes', async () => {
       // This test would verify cache invalidation logic
       // Implementation depends on your cache invalidation strategy
       expect(true).toBe(true);
@@ -745,7 +751,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('Performance', () => {
-    it('should complete analytics query in reasonable time', async () => {
+    test('should complete analytics query in reasonable time', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -768,7 +774,7 @@ describe('AnalyticsService', () => {
       expect(executionTime).toBeLessThan(1000);
     });
 
-    it('should include query execution time in metadata', async () => {
+    test('should include query execution time in metadata', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -789,7 +795,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('Type Conversion', () => {
-    it('should correctly convert between AnalyticsResult and ServiceResponse', async () => {
+    test('should correctly convert between AnalyticsResult and ServiceResponse', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],
@@ -816,7 +822,7 @@ describe('AnalyticsService', () => {
       }
     });
 
-    it('should maintain type safety in cache operations', async () => {
+    test('should maintain type safety in cache operations', async () => {
       const query: ConversationAnalyticsQuery = {
         timeRange: '7d',
         metrics: ['total_conversations'],

@@ -8,7 +8,8 @@ import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
-  PerformanceAnalyticsQuery
+  Perimport { MockFactory } from '@helpers/mockFactory';
+formanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
 
 /**
@@ -52,12 +53,12 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Drizzle ORM Verification ========================
 
   describe('Drizzle ORM Production Verification', () => {
-    it('should verify Drizzle ORM is correctly configured', () => {
+    test('should verify Drizzle ORM is correctly configured', () => {
       expect(analyticsService).toBeDefined();
       console.log('✅ Drizzle ORM configured correctly');
     });
 
-    it('should support complex queries with groupBy', async () => {
+    test('should support complex queries with groupBy', async () => {
       try {
         const query: ConversationAnalyticsQuery = {
           timeRange: '7d',
@@ -82,7 +83,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Conversation Analytics Tests ========================
 
   describe('Conversation Analytics', () => {
-    it('should fetch conversation analytics', async () => {
+    test('should fetch conversation analytics', async () => {
       try {
         const query: ConversationAnalyticsQuery = {
           timeRange: '7d',
@@ -106,7 +107,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should support platform filtering', async () => {
+    test('should support platform filtering', async () => {
       try {
         const query: ConversationAnalyticsQuery = {
           timeRange: '7d',
@@ -128,7 +129,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should support team filtering', async () => {
+    test('should support team filtering', async () => {
       try {
         const query: ConversationAnalyticsQuery = {
           timeRange: '7d',
@@ -154,7 +155,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Message Analytics Tests ========================
 
   describe('Message Analytics', () => {
-    it('should fetch message analytics', async () => {
+    test('should fetch message analytics', async () => {
       try {
         const query: MessageAnalyticsQuery = {
           timeRange: '7d',
@@ -176,7 +177,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should calculate message volume trends', async () => {
+    test('should calculate message volume trends', async () => {
       try {
         const query: MessageAnalyticsQuery = {
           timeRange: '7d',
@@ -199,7 +200,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== User Analytics Tests ========================
 
   describe('User Analytics', () => {
-    it('should fetch agent analytics', async () => {
+    test('should fetch agent analytics', async () => {
       try {
         const query: UserAnalyticsQuery = {
           timeRange: '7d',
@@ -220,7 +221,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should fetch customer analytics', async () => {
+    test('should fetch customer analytics', async () => {
       try {
         const query: UserAnalyticsQuery = {
           timeRange: '7d',
@@ -245,7 +246,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Performance Analytics Tests ========================
 
   describe('Performance Analytics', () => {
-    it('should fetch performance analytics', async () => {
+    test('should fetch performance analytics', async () => {
       try {
         const query: PerformanceAnalyticsQuery = {
           timeRange: '24h',
@@ -264,7 +265,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should provide optimization recommendations', async () => {
+    test('should provide optimization recommendations', async () => {
       try {
         const query: PerformanceAnalyticsQuery = {
           timeRange: '7d',
@@ -287,7 +288,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Export Tests ========================
 
   describe('Data Export', () => {
-    it('should export data in JSON format', async () => {
+    test('should export data in JSON format', async () => {
       try {
         const query = {
           timeRange: '7d' as const,
@@ -311,7 +312,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should export data in CSV format', async () => {
+    test('should export data in CSV format', async () => {
       try {
         const query = {
           timeRange: '7d' as const,
@@ -338,7 +339,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Error Handling Tests ========================
 
   describe('Error Handling', () => {
-    it('should handle invalid time range', async () => {
+    test('should handle invalid time range', async () => {
       try {
         const query = {
           startDate: '2024-01-31',
@@ -358,7 +359,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       }
     });
 
-    it('should handle empty results gracefully', async () => {
+    test('should handle empty results gracefully', async () => {
       try {
         const query: ConversationAnalyticsQuery = {
           timeRange: '24h',
@@ -385,7 +386,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
   // ======================== Performance Benchmarking ========================
 
   describe('Performance Benchmarks', () => {
-    it('should complete queries within acceptable time', async () => {
+    test('should complete queries within acceptable time', async () => {
       const startTime = Date.now();
 
       const query: ConversationAnalyticsQuery = {
@@ -402,7 +403,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
       console.log(`✅ Query completed in ${duration}ms`);
     });
 
-    it('should handle concurrent queries', async () => {
+    test('should handle concurrent queries', async () => {
       const startTime = Date.now();
 
       const queries = Array.from({ length: 10 }, (_, i) => ({

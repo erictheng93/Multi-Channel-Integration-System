@@ -1,7 +1,8 @@
 // Role Hierarchy Enforcement Integration Tests - REFACTORED with DatabaseTestEnvironment
 // Tests real role-based access control with actual database data and constraints
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'import { MockFactory } from '@helpers/mockFactory';
+;
 import { DatabaseTestEnvironment } from '../helpers/DatabaseTestEnvironment';
 import { eq, and, count } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';

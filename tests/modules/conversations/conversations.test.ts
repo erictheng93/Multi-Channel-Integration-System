@@ -8,7 +8,8 @@ import type {
   ConversationListRequest,
   ConversationAssignRequest,
   NewMessage
-} from '@backend/modules/conversations/types/conversation-types';
+} from '@backend/moimport { MockFactory } from '@helpers/mockFactory';
+dules/conversations/types/conversation-types';
 
 // Mock Drizzle ORM
 vi.mock('drizzle-orm/d1', () => ({
@@ -50,6 +51,7 @@ describe('ConversationService', () => {
   let mockDb: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockDb = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnThis()
@@ -94,8 +96,12 @@ describe('ConversationService', () => {
     service = new ConversationService({} as D1Database);
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('createConversation', () => {
-    it('should create a new conversation', async () => {
+    test('should create a new conversation', async () => {
       const newConversation: NewConversation = {
         customerId: 'customer-123',
         status: 'open',
@@ -119,7 +125,7 @@ describe('ConversationService', () => {
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
-    it('should generate UUID for conversation ID if not provided', async () => {
+    test('should generate UUID for conversation ID if not provided', async () => {
       const newConversation: NewConversation = {
         customerId: 'customer-123',
         status: 'open'
@@ -142,7 +148,7 @@ describe('ConversationService', () => {
   });
 
   describe('getConversation', () => {
-    it('should return conversation with details', async () => {
+    test('should return conversation with details', async () => {
       const conversationId = 'conversation-123';
       const mockConversationData = {
         conversation: {
@@ -190,7 +196,7 @@ describe('ConversationService', () => {
       expect(result?.assignedAgent).toBeDefined();
     });
 
-    it('should return null if conversation not found', async () => {
+    test('should return null if conversation not found', async () => {
       mockDb.select().from().leftJoin().leftJoin().where().limit
         .mockResolvedValueOnce([]);
 
@@ -201,7 +207,7 @@ describe('ConversationService', () => {
   });
 
   describe('updateConversation', () => {
-    it('should update conversation and return updated data', async () => {
+    test('should update conversation and return updated data', async () => {
       const conversationId = 'conversation-123';
       const updateData = { status: 'closed' as const };
 
@@ -223,7 +229,7 @@ describe('ConversationService', () => {
   });
 
   describe('deleteConversation', () => {
-    it('should delete conversation and related data', async () => {
+    test('should delete conversation and related data', async () => {
       const conversationId = 'conversation-123';
 
       const result = await service.deleteConversation(conversationId);
@@ -232,7 +238,7 @@ describe('ConversationService', () => {
       expect(mockDb.delete).toHaveBeenCalledTimes(3); // messages, transfers, conversation
     });
 
-    it('should handle delete errors gracefully', async () => {
+    test('should handle delete errors gracefully', async () => {
       const conversationId = 'conversation-123';
 
       mockDb.delete().where.mockRejectedValueOnce(new Error('Delete failed'));
@@ -244,7 +250,7 @@ describe('ConversationService', () => {
   });
 
   describe('listConversations', () => {
-    it('should return paginated conversations list', async () => {
+    test('should return paginated conversations list', async () => {
       const query: ConversationListRequest = {
         page: 1,
         limit: 20,
@@ -269,7 +275,7 @@ describe('ConversationService', () => {
       const mockTotal = { total: 25 };
 
       mockDb.select().from().leftJoin().leftJoin().leftJoin().where()
-        .groupBy().orderBy().limit().offset.mockResolvedValueOnce(mockConversations);
+        .groupBy().orderBy().limtest().offset.mockResolvedValueOnce(mockConversations);
 
       mockDb.select().from().where.mockResolvedValueOnce([mockTotal]);
 
@@ -282,7 +288,7 @@ describe('ConversationService', () => {
       expect(result.pagination.total).toBe(25);
     });
 
-    it('should apply filters correctly', async () => {
+    test('should apply filters correctly', async () => {
       const query: ConversationListRequest = {
         page: 1,
         limit: 10,
@@ -297,7 +303,7 @@ describe('ConversationService', () => {
       // Verify that filters are applied (mocks would capture the where conditions)
     });
 
-    it('should limit page size to maximum allowed', async () => {
+    test('should limit page size to maximum allowed', async () => {
       const query: ConversationListRequest = {
         page: 1,
         limit: 500 // Exceeds max limit
@@ -307,7 +313,7 @@ describe('ConversationService', () => {
       const mockTotal = { total: 0 };
 
       mockDb.select().from().leftJoin().leftJoin().leftJoin().where()
-        .groupBy().orderBy().limit().offset.mockResolvedValueOnce(mockConversations);
+        .groupBy().orderBy().limtest().offset.mockResolvedValueOnce(mockConversations);
 
       mockDb.select().from().where.mockResolvedValueOnce([mockTotal]);
 
@@ -318,7 +324,7 @@ describe('ConversationService', () => {
   });
 
   describe('assignConversation', () => {
-    it('should assign conversation to user', async () => {
+    test('should assign conversation to user', async () => {
       const conversationId = 'conversation-123';
       const assignRequest: ConversationAssignRequest = {
         userId: 'agent-456',
@@ -335,7 +341,7 @@ describe('ConversationService', () => {
       expect(mockDb.update).toHaveBeenCalled();
     });
 
-    it('should assign conversation to team', async () => {
+    test('should assign conversation to team', async () => {
       const conversationId = 'conversation-123';
       const assignRequest: ConversationAssignRequest = {
         teamId: 789,
@@ -350,7 +356,7 @@ describe('ConversationService', () => {
       expect(result.assignedTo.id).toBe(789);
     });
 
-    it('should create transfer record when reason provided', async () => {
+    test('should create transfer record when reason provided', async () => {
       const conversationId = 'conversation-123';
       const assignRequest: ConversationAssignRequest = {
         userId: 'agent-456',
@@ -375,7 +381,7 @@ describe('ConversationService', () => {
   });
 
   describe('transferConversation', () => {
-    it('should transfer conversation between agents', async () => {
+    test('should transfer conversation between agents', async () => {
       const conversationId = 'conversation-123';
       const fromAgentId = 'agent-111';
       const toAgentId = 'agent-222';
@@ -409,7 +415,7 @@ describe('ConversationService', () => {
   });
 
   describe('addMessage', () => {
-    it('should add message to conversation', async () => {
+    test('should add message to conversation', async () => {
       const conversationId = 'conversation-123';
       const messageData: NewMessage = {
         content: 'Test message',
@@ -437,7 +443,7 @@ describe('ConversationService', () => {
       expect(mockDb.update).toHaveBeenCalled(); // Update conversation timestamp
     });
 
-    it('should generate UUID for message ID if not provided', async () => {
+    test('should generate UUID for message ID if not provided', async () => {
       const conversationId = 'conversation-123';
       const messageData: NewMessage = {
         content: 'Test message',
@@ -453,7 +459,7 @@ describe('ConversationService', () => {
   });
 
   describe('getMessages', () => {
-    it('should return messages for conversation', async () => {
+    test('should return messages for conversation', async () => {
       const conversationId = 'conversation-123';
       const mockMessages = [
         {
@@ -468,7 +474,7 @@ describe('ConversationService', () => {
         }
       ];
 
-      mockDb.select().from().where().orderBy().limit().offset
+      mockDb.select().from().where().orderBy().limtest().offset
         .mockResolvedValueOnce(mockMessages);
 
       const result = await service.getMessages(conversationId, 50, 0);
@@ -478,7 +484,7 @@ describe('ConversationService', () => {
       expect(result[1].content).toBe('Message 2');
     });
 
-    it('should limit message count to maximum allowed', async () => {
+    test('should limit message count to maximum allowed', async () => {
       const conversationId = 'conversation-123';
 
       await service.getMessages(conversationId, 500, 0); // Exceeds max
@@ -489,7 +495,7 @@ describe('ConversationService', () => {
   });
 
   describe('updateStatus', () => {
-    it('should update conversation status', async () => {
+    test('should update conversation status', async () => {
       const conversationId = 'conversation-123';
       const status = 'closed';
 
@@ -510,7 +516,7 @@ describe('ConversationService', () => {
   });
 
   describe('closeConversation', () => {
-    it('should close conversation with closedAt timestamp', async () => {
+    test('should close conversation with closedAt timestamp', async () => {
       const conversationId = 'conversation-123';
 
       const mockClosedConversation = {
@@ -531,7 +537,7 @@ describe('ConversationService', () => {
   });
 
   describe('reopenConversation', () => {
-    it('should reopen closed conversation', async () => {
+    test('should reopen closed conversation', async () => {
       const conversationId = 'conversation-123';
 
       const mockReopenedConversation = {
@@ -552,7 +558,7 @@ describe('ConversationService', () => {
   });
 
   describe('getConversationMetrics', () => {
-    it('should return conversation metrics', async () => {
+    test('should return conversation metrics', async () => {
       const mockTotalCount = { count: 150 };
       const mockOpenCount = { count: 45 };
       const mockClosedCount = { count: 105 };

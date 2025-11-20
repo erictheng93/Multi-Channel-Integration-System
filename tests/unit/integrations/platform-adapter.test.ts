@@ -8,7 +8,8 @@ import {
   LineAdapter,
   FacebookAdapter,
   createPlatformAdapter,
-  type PlatformAdapter
+  type Platfoimport { MockFactory } from '@helpers/mockFactory';
+rmAdapter
 } from '@/integrations/platform-adapter';
 
 describe('Platform Adapter', () => {
@@ -18,17 +19,22 @@ describe('Platform Adapter', () => {
     const mockChannelSecret = 'test_channel_secret';
 
     beforeEach(() => {
+      vi.clearAllMocks();
       lineAdapter = new LineAdapter(mockChannelAccessToken, mockChannelSecret);
       // Mock console.log to avoid cluttering test output
       vi.spyOn(console, 'log').mockImplementation(() => {});
-    });
 
-    it('應該能夠創建 LineAdapter 實例', () => {
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });    });
+
+    test('應該能夠創建 LineAdapter 實例', () => {
       expect(lineAdapter).toBeDefined();
       expect(lineAdapter).toBeInstanceOf(LineAdapter);
     });
 
-    it('應該能夠發送文字訊息', async () => {
+    test('應該能夠發送文字訊息', async () => {
       const userId = 'test_user_123';
       const text = 'Hello from LINE!';
 
@@ -40,7 +46,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送圖片訊息', async () => {
+    test('應該能夠發送圖片訊息', async () => {
       const userId = 'test_user_123';
       const imageUrl = 'https://example.com/image.jpg';
 
@@ -52,7 +58,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送影片訊息', async () => {
+    test('應該能夠發送影片訊息', async () => {
       const userId = 'test_user_123';
       const videoUrl = 'https://example.com/video.mp4';
 
@@ -64,7 +70,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送音訊訊息', async () => {
+    test('應該能夠發送音訊訊息', async () => {
       const userId = 'test_user_123';
       const audioUrl = 'https://example.com/audio.mp3';
 
@@ -76,7 +82,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送檔案訊息', async () => {
+    test('應該能夠發送檔案訊息', async () => {
       const userId = 'test_user_123';
       const fileUrl = 'https://example.com/document.pdf';
       const filename = 'document.pdf';
@@ -89,7 +95,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送多條訊息', async () => {
+    test('應該能夠發送多條訊息', async () => {
       const userId = 'test_user_123';
       const messages = [
         { type: 'text', content: 'Message 1' },
@@ -105,7 +111,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該在 log 中包含 token 資訊（遮罩）', async () => {
+    test('應該在 log 中包含 token 資訊（遮罩）', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log');
 
       await lineAdapter.sendTextMessage('user_123', 'Test message');
@@ -126,12 +132,12 @@ describe('Platform Adapter', () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
     });
 
-    it('應該能夠創建 FacebookAdapter 實例', () => {
+    test('應該能夠創建 FacebookAdapter 實例', () => {
       expect(facebookAdapter).toBeDefined();
       expect(facebookAdapter).toBeInstanceOf(FacebookAdapter);
     });
 
-    it('應該能夠發送文字訊息', async () => {
+    test('應該能夠發送文字訊息', async () => {
       const userId = 'test_facebook_user_123';
       const text = 'Hello from Facebook!';
 
@@ -143,7 +149,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送圖片訊息', async () => {
+    test('應該能夠發送圖片訊息', async () => {
       const userId = 'test_facebook_user_123';
       const imageUrl = 'https://example.com/facebook-image.jpg';
 
@@ -155,7 +161,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送影片訊息', async () => {
+    test('應該能夠發送影片訊息', async () => {
       const userId = 'test_facebook_user_123';
       const videoUrl = 'https://example.com/facebook-video.mp4';
 
@@ -167,7 +173,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送音訊訊息', async () => {
+    test('應該能夠發送音訊訊息', async () => {
       const userId = 'test_facebook_user_123';
       const audioUrl = 'https://example.com/facebook-audio.mp3';
 
@@ -179,7 +185,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該能夠發送檔案訊息', async () => {
+    test('應該能夠發送檔案訊息', async () => {
       const userId = 'test_facebook_user_123';
       const fileUrl = 'https://example.com/facebook-document.pdf';
       const filename = 'facebook-document.pdf';
@@ -192,7 +198,7 @@ describe('Platform Adapter', () => {
       );
     });
 
-    it('應該在 log 中包含 app secret 和 token 資訊（遮罩）', async () => {
+    test('應該在 log 中包含 app secret 和 token 資訊（遮罩）', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log');
 
       await facebookAdapter.sendTextMessage('user_123', 'Test message');
@@ -207,7 +213,7 @@ describe('Platform Adapter', () => {
   });
 
   describe('createPlatformAdapter 工廠函數', () => {
-    it('應該能夠創建 LINE 平台適配器', () => {
+    test('應該能夠創建 LINE 平台適配器', () => {
       const config = {
         channelAccessToken: 'line_token',
         channelSecret: 'line_secret'
@@ -219,7 +225,7 @@ describe('Platform Adapter', () => {
       expect(adapter).toBeInstanceOf(LineAdapter);
     });
 
-    it('應該能夠創建 Facebook 平台適配器', () => {
+    test('應該能夠創建 Facebook 平台適配器', () => {
       const config = {
         appSecret: 'facebook_secret',
         pageAccessToken: 'facebook_token'
@@ -231,7 +237,7 @@ describe('Platform Adapter', () => {
       expect(adapter).toBeInstanceOf(FacebookAdapter);
     });
 
-    it('應該拒絕不支援的平台', () => {
+    test('應該拒絕不支援的平台', () => {
       const config = { someConfig: 'value' };
 
       expect(() => {
@@ -239,7 +245,7 @@ describe('Platform Adapter', () => {
       }).toThrow('Unsupported platform: unsupported');
     });
 
-    it('返回的適配器應該實現 PlatformAdapter 接口', async () => {
+    test('返回的適配器應該實現 PlatformAdapter 接口', async () => {
       const config = {
         channelAccessToken: 'token',
         channelSecret: 'secret'
@@ -262,7 +268,7 @@ describe('Platform Adapter', () => {
   });
 
   describe('適配器通用行為', () => {
-    it('所有適配器都應該返回 Promise<boolean>', async () => {
+    test('所有適配器都應該返回 Promise<boolean>', async () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const lineAdapter = new LineAdapter('token', 'secret');
@@ -277,7 +283,7 @@ describe('Platform Adapter', () => {
       expect(typeof fbTextResult).toBe('boolean');
     });
 
-    it('適配器應該處理空字串參數', async () => {
+    test('適配器應該處理空字串參數', async () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const adapter = new LineAdapter('token', 'secret');
@@ -287,7 +293,7 @@ describe('Platform Adapter', () => {
       expect(result).toBe(true);
     });
 
-    it('適配器應該處理特殊字符', async () => {
+    test('適配器應該處理特殊字符', async () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const adapter = new LineAdapter('token', 'secret');
@@ -299,19 +305,19 @@ describe('Platform Adapter', () => {
   });
 
   describe('錯誤處理和邊界條件', () => {
-    it('應該處理 undefined config 參數', () => {
+    test('應該處理 undefined config 參數', () => {
       expect(() => {
         const adapter = new LineAdapter(undefined as any, undefined as any);
       }).not.toThrow();
     });
 
-    it('應該處理 null config 參數', () => {
+    test('應該處理 null config 參數', () => {
       expect(() => {
         const adapter = new FacebookAdapter(null as any, null as any);
       }).not.toThrow();
     });
 
-    it('應該處理極長的訊息內容', async () => {
+    test('應該處理極長的訊息內容', async () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const adapter = new LineAdapter('token', 'secret');
@@ -321,7 +327,7 @@ describe('Platform Adapter', () => {
       expect(result).toBe(true);
     });
 
-    it('應該處理特殊 URL 格式', async () => {
+    test('應該處理特殊 URL 格式', async () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const adapter = new LineAdapter('token', 'secret');
@@ -339,7 +345,7 @@ describe('Platform Adapter', () => {
   });
 
   describe('多平台統一接口測試', () => {
-    it('LINE 和 Facebook 適配器應該有相同的方法簽名', () => {
+    test('LINE 和 Facebook 適配器應該有相同的方法簽名', () => {
       const lineAdapter = new LineAdapter('token', 'secret');
       const facebookAdapter = new FacebookAdapter('secret', 'token');
 
@@ -361,7 +367,7 @@ describe('Platform Adapter', () => {
       });
     });
 
-    it('工廠函數應該根據平台返回正確的實例', () => {
+    test('工廠函數應該根據平台返回正確的實例', () => {
       const lineConfig = { channelAccessToken: 'line_token', channelSecret: 'line_secret' };
       const fbConfig = { appSecret: 'fb_secret', pageAccessToken: 'fb_token' };
 
@@ -374,7 +380,7 @@ describe('Platform Adapter', () => {
   });
 
   describe('Logger 輸出驗證', () => {
-    it('LINE adapter 應該記錄所有操作', async () => {
+    test('LINE adapter 應該記錄所有操作', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const adapter = new LineAdapter('token', 'secret');
 
@@ -386,7 +392,7 @@ describe('Platform Adapter', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('[LineAdapter]'));
     });
 
-    it('Facebook adapter 應該記錄所有操作', async () => {
+    test('Facebook adapter 應該記錄所有操作', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const adapter = new FacebookAdapter('secret', 'token');
 

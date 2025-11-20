@@ -85,7 +85,7 @@ const generateMockMessages = (count: number, conversationId: number = 1) => {
 
 describe('messageHandler - Performance Tests', () => {
   describe('list - Performance', () => {
-    it('should handle large message lists efficiently', async () => {
+    test('should handle large message lists efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -128,7 +128,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(100) // Should complete within 100ms
     })
 
-    it('should handle pagination with large offsets efficiently', async () => {
+    test('should handle pagination with large offsets efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -166,7 +166,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(50) // Should be fast even with large offset
     })
 
-    it('should optimize database queries for message retrieval', async () => {
+    test('should optimize database queries for message retrieval', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -203,7 +203,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(queryCount).toBe(2) // Should make exactly 2 queries: messages and count
     })
 
-    it('should handle message transformation efficiently', async () => {
+    test('should handle message transformation efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -249,7 +249,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(200) // Should handle 1000 transformations within 200ms
     })
 
-    it('should handle concurrent message list requests efficiently', async () => {
+    test('should handle concurrent message list requests efficiently', async () => {
       const createRequest = (conversationId: string) => {
         const mockContext = createMockContext()
         mockContext.req.param = vi.fn().mockReturnValue(conversationId)
@@ -289,7 +289,7 @@ describe('messageHandler - Performance Tests', () => {
   })
 
   describe('send - Performance', () => {
-    it('should handle message sending efficiently', async () => {
+    test('should handle message sending efficiently', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -327,7 +327,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(50) // Should complete within 50ms
     })
 
-    it('should handle batch message sending efficiently', async () => {
+    test('should handle batch message sending efficiently', async () => {
       const sendMessage = async (content: string) => {
         const mockContext = createMockContext()
         mockContext.req.param = vi.fn().mockReturnValue('1')
@@ -371,7 +371,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(250) // 5 messages within 250ms
     })
 
-    it('should handle large message content efficiently', async () => {
+    test('should handle large message content efficiently', async () => {
       const largeContent = 'A'.repeat(5000) // 5KB message
 
       const mockContext = createMockContext()
@@ -408,7 +408,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(100) // Should handle large content within 100ms
     })
 
-    it('should optimize database operations for message sending', async () => {
+    test('should optimize database operations for message sending', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -456,7 +456,7 @@ describe('messageHandler - Performance Tests', () => {
       })
     })
 
-    it('should handle UUID generation efficiently', async () => {
+    test('should handle UUID generation efficiently', async () => {
       const uuidGenerationTimes: number[] = []
 
       // Mock UUID generation with timing
@@ -514,7 +514,7 @@ describe('messageHandler - Performance Tests', () => {
   })
 
   describe('Memory and Resource Usage', () => {
-    it('should not leak memory with large message datasets', async () => {
+    test('should not leak memory with large message datasets', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockReturnValue({
@@ -553,7 +553,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024) // Less than 100MB increase
     })
 
-    it('should handle rapid successive requests efficiently', async () => {
+    test('should handle rapid successive requests efficiently', async () => {
       const createRapidRequest = (index: number) => {
         const mockContext = createMockContext()
         mockContext.req.param = vi.fn().mockReturnValue('1')
@@ -597,7 +597,7 @@ describe('messageHandler - Performance Tests', () => {
       expect(endTime - startTime).toBeLessThan(1000) // Less than 1 second
     })
 
-    it('should efficiently handle mixed read/write operations', async () => {
+    test('should efficiently handle mixed read/write operations', async () => {
       const operations: any[] = []
 
       // Mix of list and send operations

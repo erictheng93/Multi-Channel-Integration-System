@@ -178,7 +178,7 @@ const mockJWTPayloads = {
 
 describe('messageHandler - Integration Tests', () => {
   describe('Real-world Conversation Scenarios', () => {
-    it('should handle a complete customer service conversation flow', async () => {
+    test('should handle a complete customer service conversation flow', async () => {
       // Scenario: Customer asks question, agent responds, customer provides info, sends image
 
       // Step 1: List initial messages in conversation
@@ -297,7 +297,7 @@ describe('messageHandler - Integration Tests', () => {
       expect(extractResponseData(listResult2).data.items[4].content).toBe('Thank you for providing your order number. Let me check the status for you.')
     })
 
-    it('should handle multi-platform message management', async () => {
+    test('should handle multi-platform message management', async () => {
       // Scenario: Agent manages messages from both LINE and Facebook conversations
 
       // LINE conversation messages
@@ -401,7 +401,7 @@ describe('messageHandler - Integration Tests', () => {
       expect(extractResponseData(sendFacebookResult).data.platform).toBe('facebook')
     })
 
-    it('should handle media message workflows', async () => {
+    test('should handle media message workflows', async () => {
       // Scenario: Customer sends image, agent responds with text
 
       // Step 1: List messages including image message
@@ -499,7 +499,7 @@ describe('messageHandler - Integration Tests', () => {
       expect(extractResponseData(sendMediaResult).data.mediaType).toBe('file')
     })
 
-    it('should handle pagination in long conversations', async () => {
+    test('should handle pagination in long conversations', async () => {
       // Scenario: Long conversation with multiple pages of messages
 
       // Generate a long conversation history
@@ -586,7 +586,7 @@ describe('messageHandler - Integration Tests', () => {
       expect(extractResponseData(page3Result).data.items[0].content).toBe('Message 101 in long conversation')
     })
 
-    it('should maintain message ordering and consistency', async () => {
+    test('should maintain message ordering and consistency', async () => {
       // Scenario: Verify messages are returned in correct chronological order
 
       const chronologicalMessages = [
@@ -669,7 +669,7 @@ describe('messageHandler - Integration Tests', () => {
       expect(messages[1].createdAt).toBeLessThan(messages[2].createdAt)
     })
 
-    it('should handle concurrent message operations safely', async () => {
+    test('should handle concurrent message operations safely', async () => {
       // Scenario: Multiple agents sending messages to same conversation simultaneously
 
       const sendConcurrentMessage = async (agentId: number, content: string) => {

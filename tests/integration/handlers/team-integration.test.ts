@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 import type { Bindings } from '@backend/types';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Module-level variable for test environment
 let currentTestEnv: DatabaseTestEnvironment | null = null;
 
@@ -35,7 +36,7 @@ vi.mock('../../../src/middleware/auth', async () => {
       const token = authHeader.substring(7);
       try {
         // Decode test JWT (we'll create these in tests)
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const payload = JSON.parse(Buffer.from(token.spltest('.')[1], 'base64').toString());
         c.set('user', payload);
         await next();
       } catch (error) {
@@ -109,16 +110,12 @@ describe('Team Handler - Integration Tests', () => {
 
   // Helper: Create complete mock Bindings object
   const createMockBindings = (db: D1Database): Bindings => {
-    const mockKV = {
-      get: vi.fn(),
-      put: vi.fn(),
+    const mockKV = MockFactory.createKV()(),
       delete: vi.fn(),
       list: vi.fn()
     } as any;
 
-    const mockR2 = {
-      get: vi.fn(),
-      put: vi.fn(),
+    const mockR2 = MockFactory.createR2()(),
       delete: vi.fn(),
       list: vi.fn()
     } as any;
@@ -218,6 +215,7 @@ describe('Team Handler - Integration Tests', () => {
   };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     // Initialize test database
     env = new DatabaseTestEnvironment();
     currentTestEnv = env;

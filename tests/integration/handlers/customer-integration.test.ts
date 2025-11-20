@@ -7,6 +7,7 @@ import type { Bindings } from '@/types';
 import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
 import * as schema from '@/db/schema';
 
+import { MockFactory } from '@helpers/mockFactory';
 // ========================================
 // Module-level test environment
 // ========================================
@@ -37,7 +38,7 @@ vi.mock('../../../src/middleware/auth', async () => {
 
       const token = authHeader.substring(7);
       try {
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const payload = JSON.parse(Buffer.from(token.spltest('.')[1], 'base64').toString());
         c.set('jwtPayload', payload);
         c.set('user', payload);
         await next();
@@ -109,16 +110,12 @@ describe('Customer Handler - Integration Tests', () => {
   // Helper: Create mock bindings
   // ========================================
   const createMockBindings = (db: D1Database): Bindings => {
-    const mockKV = {
-      get: vi.fn(),
-      put: vi.fn(),
+    const mockKV = MockFactory.createKV()(),
       delete: vi.fn(),
       list: vi.fn()
     } as any;
 
-    const mockR2 = {
-      get: vi.fn(),
-      put: vi.fn(),
+    const mockR2 = MockFactory.createR2()(),
       delete: vi.fn(),
       list: vi.fn()
     } as any;
@@ -196,6 +193,7 @@ describe('Customer Handler - Integration Tests', () => {
   // Setup and Teardown
   // ========================================
   beforeEach(async () => {
+    vi.clearAllMocks();
     env = new DatabaseTestEnvironment();
     currentTestEnv = env;
     mockBindings = createMockBindings(env.getMockD1Database());
@@ -560,6 +558,8 @@ describe('Customer Handler - Integration Tests', () => {
 
       const res = await app.request(`/api/customers/${customer1.id}/tags`, {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -611,6 +611,7 @@ describe('Customer Handler - Integration Tests', () => {
 
       const res = await app.request('/api/customers/99999/tags', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -649,6 +650,7 @@ describe('Customer Handler - Integration Tests', () => {
 
       const res = await app.request(`/api/customers/${customer1.id}/tags`, {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -683,6 +685,7 @@ describe('Customer Handler - Integration Tests', () => {
 
       const res = await app.request('/api/customers/99999/tags', {
         method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -714,6 +717,8 @@ describe('Customer Handler - Integration Tests', () => {
 
       const res = await app.request(`/api/customers/${customer1.id}/tags`, {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -786,6 +791,7 @@ describe('Customer Handler - Integration Tests', () => {
 
       const res = await app.request('/api/customers/99999/tags', {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

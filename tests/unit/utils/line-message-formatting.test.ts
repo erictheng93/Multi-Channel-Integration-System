@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { createTextMessage, createStickerMessage } from '@backend/utils/line';
 import type { LineReplyMessage } from '@backend/types';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('LINE Message Formatting Tests', () => {
   describe('createTextMessage', () => {
     describe('Basic text formatting', () => {
-      it('should create simple text message', () => {
+      test('should create simple text message', () => {
         const text = 'Hello, World!';
         const message = createTextMessage(text);
 
@@ -17,7 +18,7 @@ describe('LINE Message Formatting Tests', () => {
         expect(message.text).toBe(text);
       });
 
-      it('should handle empty string', () => {
+      test('should handle empty string', () => {
         const message = createTextMessage('');
         
         expect(message).toEqual({
@@ -26,7 +27,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle whitespace-only text', () => {
+      test('should handle whitespace-only text', () => {
         const text = '   \n\t  ';
         const message = createTextMessage(text);
         
@@ -38,7 +39,7 @@ describe('LINE Message Formatting Tests', () => {
     });
 
     describe('Special characters and encoding', () => {
-      it('should handle Unicode characters', () => {
+      test('should handle Unicode characters', () => {
         const text = '你好世界！こんにちは 🌍';
         const message = createTextMessage(text);
         
@@ -48,7 +49,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle emojis', () => {
+      test('should handle emojis', () => {
         const text = '😀😃😄😁😆😅😂🤣😊😇🙂🙃😉😌😍🥰😘😗😙😚😋😛😝😜🤪🤨🧐🤓😎🤩🥳';
         const message = createTextMessage(text);
         
@@ -58,7 +59,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle line breaks and formatting', () => {
+      test('should handle line breaks and formatting', () => {
         const text = 'Line 1\nLine 2\r\nLine 3\tTabbed\n\nDouble break';
         const message = createTextMessage(text);
         
@@ -68,7 +69,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle HTML-like content', () => {
+      test('should handle HTML-like content', () => {
         const text = '<div>HTML content</div>\n<script>alert("test")</script>';
         const message = createTextMessage(text);
         
@@ -78,7 +79,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle JSON-like content', () => {
+      test('should handle JSON-like content', () => {
         const text = '{"key": "value", "number": 123, "array": [1, 2, 3]}';
         const message = createTextMessage(text);
         
@@ -90,7 +91,7 @@ describe('LINE Message Formatting Tests', () => {
     });
 
     describe('Length and size constraints', () => {
-      it('should handle maximum length text (5000 characters)', () => {
+      test('should handle maximum length text (5000 characters)', () => {
         const text = 'a'.repeat(5000);
         const message = createTextMessage(text);
         
@@ -101,7 +102,7 @@ describe('LINE Message Formatting Tests', () => {
         expect(message.text?.length).toBe(5000);
       });
 
-      it('should handle text exceeding LINE limit (for validation)', () => {
+      test('should handle text exceeding LINE limit (for validation)', () => {
         const text = 'a'.repeat(5001);
         const message = createTextMessage(text);
         
@@ -112,7 +113,7 @@ describe('LINE Message Formatting Tests', () => {
         expect(message.text?.length).toBe(5001);
       });
 
-      it('should handle single character', () => {
+      test('should handle single character', () => {
         const text = 'a';
         const message = createTextMessage(text);
         
@@ -124,7 +125,7 @@ describe('LINE Message Formatting Tests', () => {
     });
 
     describe('Real-world message scenarios', () => {
-      it('should handle customer service response', () => {
+      test('should handle customer service response', () => {
         const text = '感謝您的來信！\n\n我們已經收到您的問題，客服人員將在24小時內回覆您。\n\n如有緊急問題，請撥打客服專線：0800-123-456\n\n謝謝！';
         const message = createTextMessage(text);
         
@@ -134,7 +135,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle order confirmation message', () => {
+      test('should handle order confirmation message', () => {
         const text = '訂單確認\n━━━━━━━━━━━━━━━━\n訂單編號：#12345\n商品：iPhone 15 Pro\n數量：1\n金額：NT$ 35,900\n配送地址：台北市信義區...\n預計到貨：2024-02-15\n\n感謝您的購買！';
         const message = createTextMessage(text);
         
@@ -144,7 +145,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle URL and contact information', () => {
+      test('should handle URL and contact information', () => {
         const text = '更多資訊請參考：\nhttps://example.com/info\n\n聯絡方式：\n📧 support@example.com\n📞 02-1234-5678\n📱 LINE ID: @example';
         const message = createTextMessage(text);
         
@@ -158,7 +159,7 @@ describe('LINE Message Formatting Tests', () => {
 
   describe('createStickerMessage', () => {
     describe('Basic sticker creation', () => {
-      it('should create sticker message with string IDs', () => {
+      test('should create sticker message with string IDs', () => {
         const packageId = '1';
         const stickerId = '1';
         const message = createStickerMessage(packageId, stickerId);
@@ -170,7 +171,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should create sticker message with numeric string IDs', () => {
+      test('should create sticker message with numeric string IDs', () => {
         const packageId = '11537';
         const stickerId = '52002734';
         const message = createStickerMessage(packageId, stickerId);
@@ -184,7 +185,7 @@ describe('LINE Message Formatting Tests', () => {
     });
 
     describe('LINE sticker package scenarios', () => {
-      it('should handle Brown & Cony stickers', () => {
+      test('should handle Brown & Cony stickers', () => {
         const packageId = '11537';
         const stickerId = '52002734';
         const message = createStickerMessage(packageId, stickerId);
@@ -194,7 +195,7 @@ describe('LINE Message Formatting Tests', () => {
         expect(message.stickerId).toBe(stickerId);
       });
 
-      it('should handle Moon stickers', () => {
+      test('should handle Moon stickers', () => {
         const packageId = '11538';
         const stickerId = '51626494';
         const message = createStickerMessage(packageId, stickerId);
@@ -204,7 +205,7 @@ describe('LINE Message Formatting Tests', () => {
         expect(message.stickerId).toBe(stickerId);
       });
 
-      it('should handle basic sticker set', () => {
+      test('should handle basic sticker set', () => {
         const packageId = '1';
         const stickerId = '2';
         const message = createStickerMessage(packageId, stickerId);
@@ -216,7 +217,7 @@ describe('LINE Message Formatting Tests', () => {
     });
 
     describe('Edge cases for sticker IDs', () => {
-      it('should handle zero IDs', () => {
+      test('should handle zero IDs', () => {
         const packageId = '0';
         const stickerId = '0';
         const message = createStickerMessage(packageId, stickerId);
@@ -228,7 +229,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle very long numeric IDs', () => {
+      test('should handle very long numeric IDs', () => {
         const packageId = '999999999999999';
         const stickerId = '888888888888888';
         const message = createStickerMessage(packageId, stickerId);
@@ -240,7 +241,7 @@ describe('LINE Message Formatting Tests', () => {
         });
       });
 
-      it('should handle empty string IDs', () => {
+      test('should handle empty string IDs', () => {
         const packageId = '';
         const stickerId = '';
         const message = createStickerMessage(packageId, stickerId);
@@ -255,7 +256,7 @@ describe('LINE Message Formatting Tests', () => {
   });
 
   describe('Message type validation', () => {
-    it('should ensure text message has correct type', () => {
+    test('should ensure text message has correct type', () => {
       const message = createTextMessage('test');
       expect(message.type).toBe('text');
       expect(message).toHaveProperty('text');
@@ -263,7 +264,7 @@ describe('LINE Message Formatting Tests', () => {
       expect(message).not.toHaveProperty('stickerId');
     });
 
-    it('should ensure sticker message has correct type', () => {
+    test('should ensure sticker message has correct type', () => {
       const message = createStickerMessage('1', '1');
       expect(message.type).toBe('sticker');
       expect(message).toHaveProperty('packageId');
@@ -271,7 +272,7 @@ describe('LINE Message Formatting Tests', () => {
       expect(message).not.toHaveProperty('text');
     });
 
-    it('should create messages compatible with LINE API format', () => {
+    test('should create messages compatible with LINE API format', () => {
       const textMessage = createTextMessage('Hello');
       const stickerMessage = createStickerMessage('1', '1');
 
@@ -290,7 +291,7 @@ describe('LINE Message Formatting Tests', () => {
   });
 
   describe('Message array scenarios', () => {
-    it('should create multiple messages for batch sending', () => {
+    test('should create multiple messages for batch sending', () => {
       const messages: LineReplyMessage[] = [
         createTextMessage('Hello!'),
         createStickerMessage('1', '1'),
@@ -303,7 +304,7 @@ describe('LINE Message Formatting Tests', () => {
       expect(messages[2].type).toBe('text');
     });
 
-    it('should handle maximum message limit (5 messages)', () => {
+    test('should handle maximum message limit (5 messages)', () => {
       const messages: LineReplyMessage[] = [
         createTextMessage('Message 1'),
         createTextMessage('Message 2'),
@@ -319,7 +320,7 @@ describe('LINE Message Formatting Tests', () => {
       });
     });
 
-    it('should create mixed content messages', () => {
+    test('should create mixed content messages', () => {
       const messages: LineReplyMessage[] = [
         createTextMessage('Thank you for your order! 😊'),
         createStickerMessage('11537', '52002734'),

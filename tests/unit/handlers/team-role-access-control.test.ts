@@ -2,11 +2,13 @@ import { describe, test, expect, beforeEach, vi, Mock } from 'vitest';
 import { Hono } from 'hono';
 import type { Bindings } from '@backend/types';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('Team Management Role-Based Access Control', () => {
   let app: Hono<{ Bindings: Bindings }>;
   let mockEnv: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockEnv = {
       DB: {
         prepare: vi.fn().mockReturnValue({
@@ -22,6 +24,10 @@ describe('Team Management Role-Based Access Control', () => {
     app = new Hono<{ Bindings: Bindings }>();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('Team Creation Access Control', () => {
     test('admin should be able to create teams', async () => {
       const adminUser = {

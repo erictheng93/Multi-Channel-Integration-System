@@ -2,6 +2,12 @@
 // 檔案路徑：/tests/vitest.setup.ts
 // Created by: Test Setup Developer
 
+// ======================== TIMEZONE STANDARDIZATION ========================
+// Force UTC timezone for all tests to ensure consistent date/time handling
+// across different environments and CI/CD systems
+process.env.TZ = 'UTC';
+console.log('🌍 Timezone standardized to UTC for consistent test results');
+
 import { beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, type Pinia } from 'pinia'
 import { globalPinia } from './global-pinia-setup'
@@ -336,6 +342,9 @@ vi.mock('vue-router', async () => {
 // Global setup for all tests
 beforeEach(() => {
   console.log('🍍 Refreshing test environment (Pinia already active)')
+
+  // Standardize timezone to UTC for consistent test results
+  process.env.TZ = 'UTC';
 
   // Clear all mocks first
   vi.clearAllMocks()

@@ -4,7 +4,8 @@
 // Phase 4 Update: Replaced SSE mocks with WebSocket endpoint mocks
 // All connection statistics now come from /api/websocket/metrics
 
-import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
+import { deimport { MockFactory } from '@helpers/mockFactory';
+scribe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
 
 // Mock global fetch for WebSocket metrics endpoint
@@ -107,6 +108,7 @@ describe('RealtimePerformanceMonitor', () => {
   let mockEnv: any;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     // Setup mock environment with WORKER_URL for WebSocket metrics
     mockEnv = {
       WORKER_URL: 'http://localhost:8787',
@@ -196,13 +198,13 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Initialization', () => {
-    it('should initialize with default configuration', () => {
+    test('should initialize with default configuration', () => {
       const newMonitor = RealtimePerformanceMonitor.getInstance();
       expect(newMonitor).toBeDefined();
       expect(newMonitor).toBe(monitor); // Singleton pattern
     });
 
-    it('should apply custom thresholds on initialization', () => {
+    test('should apply custom thresholds on initialization', () => {
       monitor.initialize(mockEnv, {
         thresholds: {
           connectionFailureRate: 0.1,
@@ -216,7 +218,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Metrics Collection', () => {
-    it('should collect performance metrics successfully', async () => {
+    test('should collect performance metrics successfully', async () => {
       await monitor['collectMetrics']();
 
       const latestMetrics = monitor.getLatestMetrics();
@@ -226,7 +228,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(latestMetrics?.queue.queueDepth).toBe(15);
     });
 
-    it('should handle missing queue stats gracefully', async () => {
+    test('should handle missing queue stats gracefully', async () => {
       // Mock RealtimeManager to throw error
       const { RealtimeManager } = await import('@real-time/services/realtime-manager');
       const mockManager = RealtimeManager.getInstance();
@@ -239,7 +241,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(latestMetrics?.queue.queueDepth).toBe(0); // Default value
     });
 
-    it('should store metrics with timestamp', async () => {
+    test('should store metrics with timestamp', async () => {
       const beforeTime = Date.now();
       await monitor['collectMetrics']();
       const afterTime = Date.now();
@@ -254,7 +256,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Threshold Monitoring', () => {
-    it('should generate alerts when thresholds are exceeded', async () => {
+    test('should generate alerts when thresholds are exceeded', async () => {
       // Mock high error rate
       const { eventStats } = await import('@real-time/handlers/event-handler');
       vi.mocked(eventStats.getStats).mockReturnValueOnce({
@@ -276,7 +278,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(errorRateAlert?.level).toBe('error');
     });
 
-    it('should generate queue depth alerts', async () => {
+    test('should generate queue depth alerts', async () => {
       // Mock high queue depth
       const { RealtimeManager } = await import('@real-time/services/realtime-manager');
       const mockManager = RealtimeManager.getInstance();
@@ -299,7 +301,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(queueAlert?.level).toBe('warning');
     });
 
-    it('should not generate alerts when metrics are within thresholds', async () => {
+    test('should not generate alerts when metrics are within thresholds', async () => {
       await monitor['collectMetrics']();
 
       const alerts = monitor.getActiveAlerts();
@@ -309,7 +311,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Alert Management', () => {
-    it('should resolve alerts by ID', async () => {
+    test('should resolve alerts by ID', async () => {
       // 首先生成一個警報 - 降低閾值使預設值觸發警報
       (monitor as any).thresholds.eventProcessingTime = 100; // Lower than default 250ms
 
@@ -328,12 +330,12 @@ describe('RealtimePerformanceMonitor', () => {
       expect(remainingActiveAlerts.find(a => a.id === alertId)).toBeUndefined();
     });
 
-    it('should handle non-existent alert resolution', () => {
+    test('should handle non-existent alert resolution', () => {
       const resolved = monitor.resolveAlert('non-existent-id');
       expect(resolved).toBe(false);
     });
 
-    it('should not resolve already resolved alerts', async () => {
+    test('should not resolve already resolved alerts', async () => {
       // Generate alert - 降低閾值使預設值觸發警報
       (monitor as any).thresholds.eventProcessingTime = 100; // Lower than default 250ms
 
@@ -353,7 +355,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Monitoring Control', () => {
-    it('should start and stop monitoring', () => {
+    test('should start and stop monitoring', () => {
       expect(monitor['isMonitoring']).toBe(false);
 
       monitor.startMonitoring(1); // 1 second interval for testing
@@ -363,7 +365,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(monitor['isMonitoring']).toBe(false);
     });
 
-    it('should not start monitoring if already running', () => {
+    test('should not start monitoring if already running', () => {
       monitor.startMonitoring(1);
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -373,7 +375,7 @@ describe('RealtimePerformanceMonitor', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle monitoring errors gracefully', async () => {
+    test('should handle monitoring errors gracefully', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Save original collectMetrics
@@ -396,7 +398,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Performance Summary', () => {
-    it('should generate comprehensive performance summary', async () => {
+    test('should generate comprehensive performance summary', async () => {
       await monitor['collectMetrics']();
 
       const summary = monitor.getPerformanceSummary();
@@ -414,7 +416,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(Array.isArray(summary.recommendations)).toBe(true);
     });
 
-    it('should mark system as unhealthy when critical alerts exist', async () => {
+    test('should mark system as unhealthy when critical alerts exist', async () => {
       // Generate critical alert - 降低閾值使預設值觸發錯誤級別警報
       (monitor as any).thresholds.eventFailureRate = 0.005; // Lower than default 0.01 (1%)
 
@@ -428,7 +430,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Data Management', () => {
-    it('should limit metrics history size', async () => {
+    test('should limit metrics history size', async () => {
       const maxHistory = monitor['maxMetricsHistory'];
 
       // Collect more metrics than the limit
@@ -443,7 +445,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(history.length).toBeLessThanOrEqual(maxHistory);
     });
 
-    it('should clean up old data', () => {
+    test('should clean up old data', () => {
       // Add some old metrics manually
       const oldMetrics = Array.from({ length: 10 }, (_, i) => ({
         connection: { totalConnections: i },
@@ -463,7 +465,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(remainingMetrics.length).toBeLessThanOrEqual(monitor['maxMetricsHistory']);
     });
 
-    it('should return limited history when requested', async () => {
+    test('should return limited history when requested', async () => {
       // Add some metrics
       for (let i = 0; i < 20; i++) {
         await monitor['collectMetrics']();
@@ -475,31 +477,31 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Trend Calculation', () => {
-    it('should calculate upward trend correctly', () => {
+    test('should calculate upward trend correctly', () => {
       const values = [10, 15, 20, 25, 30]; // Clear upward trend
       const trend = monitor['calculateTrend'](values);
       expect(trend).toBe('up');
     });
 
-    it('should calculate downward trend correctly', () => {
+    test('should calculate downward trend correctly', () => {
       const values = [30, 25, 20, 15, 10]; // Clear downward trend
       const trend = monitor['calculateTrend'](values);
       expect(trend).toBe('down');
     });
 
-    it('should calculate stable trend for minimal changes', () => {
+    test('should calculate stable trend for minimal changes', () => {
       const values = [100, 101, 99, 102, 98]; // Stable with minor fluctuations
       const trend = monitor['calculateTrend'](values);
       expect(trend).toBe('stable');
     });
 
-    it('should handle insufficient data points', () => {
+    test('should handle insufficient data points', () => {
       const values = [10]; // Only one data point
       const trend = monitor['calculateTrend'](values);
       expect(trend).toBe('stable');
     });
 
-    it('should handle reverse trend calculation', () => {
+    test('should handle reverse trend calculation', () => {
       const values = [30, 25, 20, 15, 10]; // Decreasing values
       const trend = monitor['calculateTrend'](values, true); // Reverse = true
       expect(trend).toBe('up'); // Should be 'up' because decreasing is good (reverse)
@@ -507,7 +509,7 @@ describe('RealtimePerformanceMonitor', () => {
   });
 
   describe('Recommendations', () => {
-    it('should generate performance recommendations', async () => {
+    test('should generate performance recommendations', async () => {
       // Create high connection scenario by temporarily overriding WebSocket metrics
       const highConnectionMetrics = {
         connections: {
@@ -543,7 +545,7 @@ describe('RealtimePerformanceMonitor', () => {
       expect(hasConnectionRecommendation).toBe(true);
     });
 
-    it('should generate alert-based recommendations', async () => {
+    test('should generate alert-based recommendations', async () => {
       // Create high processing time scenario - 降低閾值使預設值觸發警報
       (monitor as any).thresholds.eventProcessingTime = 100; // Lower than default 250ms
 

@@ -21,7 +21,8 @@ import {
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
 import { UserConnection } from '@backend/durable-objects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessageProcessor';
+import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessagimport { MockFactory } from '@helpers/mockFactory';
+eProcessor';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 import type {
   DelayedMessage,
@@ -99,7 +100,7 @@ describe('Real-time Conversation Flow E2E Tests', () => {
   });
 
   describe('Complete Conversation Workflow', () => {
-    it('should handle full customer conversation lifecycle', async () => {
+    test('should handle full customer conversation lifecycle', async () => {
       const conversationId = 'customer_conversation_e2e';
 
       // Create participants
@@ -377,7 +378,7 @@ describe('Real-time Conversation Flow E2E Tests', () => {
       await controller.disconnectAllClients();
     });
 
-    it('should handle multi-agent collaboration workflow', async () => {
+    test('should handle multi-agent collaboration workflow', async () => {
       const conversationId = 'collaboration_workflow_e2e';
 
       // Create team of agents
@@ -579,7 +580,7 @@ describe('Real-time Conversation Flow E2E Tests', () => {
       await controller.disconnectAllClients();
     });
 
-    it('should handle message recall in active conversation', async () => {
+    test('should handle message recall in active conversation', async () => {
       const conversationId = 'message_recall_e2e';
 
       const agent = WebSocketTestClientFactory.createClient({
@@ -750,7 +751,7 @@ describe('Real-time Conversation Flow E2E Tests', () => {
   });
 
   describe('Cross-Conversation User Experience', () => {
-    it('should handle agent working across multiple conversations', async () => {
+    test('should handle agent working across multiple conversations', async () => {
       const sharedAgentId = 'multi_conversation_agent';
 
       // Create multiple conversations
@@ -899,7 +900,7 @@ describe('Real-time Conversation Flow E2E Tests', () => {
       console.log('✅ Cross-conversation agent experience test completed');
     });
 
-    it('should handle team coordination during complex scenarios', async () => {
+    test('should handle team coordination during complex scenarios', async () => {
       const conversationId = 'team_coordination_e2e';
 
       // Create team members

@@ -3,7 +3,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { signJWT, verifyJWT, hashPassword, verifyPassword, authenticateUser } from '@modules/auth/services/auth';
-import type { JWTPayload } from '@shared/types';
+iimport { MockFactory } from '@helpers/mockFactory';
+mport type { JWTPayload } from '@shared/types';
 
 describe('Auth Module - JWT Functions', () => {
   const testSecret = 'test-secret-key';
@@ -17,15 +18,19 @@ describe('Auth Module - JWT Functions', () => {
   };
 
   describe('signJWT', () => {
-    it('should create a valid JWT token', async () => {
+    test('should create a valid JWT token', async () => {
       const token = await signJWT(testPayload, testSecret);
 
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
-      expect(token.split('.')).toHaveLength(3);
+      expect(token.spltest('.')).toHaveLength(3);
     });
 
-    it('should include correct payload data', async () => {
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+    test('should include correct payload data', async () => {
       const token = await signJWT(testPayload, testSecret);
       const verified = await verifyJWT(token, testSecret);
 
@@ -35,7 +40,7 @@ describe('Auth Module - JWT Functions', () => {
       expect(verified.teamId).toBe(testPayload.teamId);
     });
 
-    it('should set expiration time', async () => {
+    test('should set expiration time', async () => {
       const expiresIn = 3600; // 1 hour
       const token = await signJWT(testPayload, testSecret, expiresIn);
       const verified = await verifyJWT(token, testSecret);
@@ -46,7 +51,7 @@ describe('Auth Module - JWT Functions', () => {
   });
 
   describe('verifyJWT', () => {
-    it('should verify valid token', async () => {
+    test('should verify valid token', async () => {
       const token = await signJWT(testPayload, testSecret);
       const verified = await verifyJWT(token, testSecret);
 
@@ -54,19 +59,19 @@ describe('Auth Module - JWT Functions', () => {
       expect(verified.userId).toBe(testPayload.userId);
     });
 
-    it('should throw error for invalid token format', async () => {
+    test('should throw error for invalid token format', async () => {
       await expect(verifyJWT('invalid.token', testSecret))
         .rejects.toThrow('Invalid JWT format');
     });
 
-    it('should throw error for wrong secret', async () => {
+    test('should throw error for wrong secret', async () => {
       const token = await signJWT(testPayload, testSecret);
 
       await expect(verifyJWT(token, 'wrong-secret'))
         .rejects.toThrow('Invalid JWT signature');
     });
 
-    it('should throw error for expired token', async () => {
+    test('should throw error for expired token', async () => {
       const expiredToken = await signJWT(testPayload, testSecret, -3600); // expired 1 hour ago
 
       await expect(verifyJWT(expiredToken, testSecret))
@@ -79,7 +84,7 @@ describe('Auth Module - Password Functions', () => {
   const testPassword = 'test-password-123';
 
   describe('hashPassword', () => {
-    it('should hash password with bcrypt', async () => {
+    test('should hash password with bcrypt', async () => {
       const hash = await hashPassword(testPassword);
 
       expect(hash).toBeDefined();
@@ -88,7 +93,7 @@ describe('Auth Module - Password Functions', () => {
       expect(hash.startsWith('$2')).toBe(true); // bcrypt format
     });
 
-    it('should generate different hashes for same password', async () => {
+    test('should generate different hashes for same password', async () => {
       const hash1 = await hashPassword(testPassword);
       const hash2 = await hashPassword(testPassword);
 
@@ -97,21 +102,21 @@ describe('Auth Module - Password Functions', () => {
   });
 
   describe('verifyPassword', () => {
-    it('should verify correct password with bcrypt hash', async () => {
+    test('should verify correct password with bcrypt hash', async () => {
       const hash = await hashPassword(testPassword);
       const isValid = await verifyPassword(testPassword, hash);
 
       expect(isValid).toBe(true);
     });
 
-    it('should reject incorrect password', async () => {
+    test('should reject incorrect password', async () => {
       const hash = await hashPassword(testPassword);
       const isValid = await verifyPassword('wrong-password', hash);
 
       expect(isValid).toBe(false);
     });
 
-    it('should verify legacy SHA256 hash', async () => {
+    test('should verify legacy SHA256 hash', async () => {
       // Simulate legacy hash
       const encoder = new TextEncoder();
       const data = encoder.encode(testPassword);
@@ -124,7 +129,7 @@ describe('Auth Module - Password Functions', () => {
       expect(isValid).toBe(true);
     });
 
-    it('should verify prefixed SHA256 hash', async () => {
+    test('should verify prefixed SHA256 hash', async () => {
       const encoder = new TextEncoder();
       const data = encoder.encode(testPassword);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -141,8 +146,7 @@ describe('Auth Module - Password Functions', () => {
 
 describe('Auth Module - Database Functions', () => {
   // Mock D1 database
-  const mockDb = {
-    prepare: vi.fn().mockReturnValue({
+  const mockDB = MockFactory.createD1()().mockReturnValue({
       bind: vi.fn().mockReturnValue({
         first: vi.fn()
       })
@@ -154,7 +158,7 @@ describe('Auth Module - Database Functions', () => {
   });
 
   describe('authenticateUser', () => {
-    it('should authenticate user with correct credentials', async () => {
+    test('should authenticate user with correct credentials', async () => {
       const hashedPassword = await hashPassword('correct-password');
       const mockUser = {
         id: 'user-123',
@@ -178,7 +182,7 @@ describe('Auth Module - Database Functions', () => {
       expect(result.accountStatus).toBe('success');
     });
 
-    it('should return null for non-existent user', async () => {
+    test('should return null for non-existent user', async () => {
       mockDb.prepare().bind().first.mockResolvedValueOnce(null);
 
       const result = await authenticateUser(mockDb as any, 'nonexistent@example.com', 'password');
@@ -187,7 +191,7 @@ describe('Auth Module - Database Functions', () => {
       expect(result.accountStatus).toBe('not_found');
     });
 
-    it('should return null for inactive user', async () => {
+    test('should return null for inactive user', async () => {
       const mockUser = {
         id: 'user-123',
         email: 'test@example.com',
@@ -207,7 +211,7 @@ describe('Auth Module - Database Functions', () => {
       expect(result.accountStatus).toBe('disabled');
     });
 
-    it('should return null for wrong password', async () => {
+    test('should return null for wrong password', async () => {
       const hashedPassword = await hashPassword('correct-password');
       const mockUser = {
         id: 'user-123',
@@ -231,12 +235,12 @@ describe('Auth Module - Database Functions', () => {
 });
 
 describe('Auth Module - Error Handling', () => {
-  it('should handle JWT verification errors gracefully', async () => {
+  test('should handle JWT verification errors gracefully', async () => {
     await expect(verifyJWT('malformed-token', 'secret'))
       .rejects.toThrow();
   });
 
-  it('should handle password hashing errors gracefully', async () => {
+  test('should handle password hashing errors gracefully', async () => {
     // This test might vary based on bcrypt implementation
     // Just ensure it doesn't crash
     try {
@@ -246,9 +250,8 @@ describe('Auth Module - Error Handling', () => {
     }
   });
 
-  it('should handle database errors in authentication', async () => {
-    const mockDb = {
-      prepare: vi.fn().mockReturnValue({
+  test('should handle database errors in authentication', async () => {
+    const mockDB = MockFactory.createD1()().mockReturnValue({
         bind: vi.fn().mockReturnValue({
           first: vi.fn().mockRejectedValueOnce(new Error('Database error'))
         })
@@ -261,14 +264,14 @@ describe('Auth Module - Error Handling', () => {
 });
 
 describe('Auth Module - Edge Cases', () => {
-  it('should handle empty password', async () => {
+  test('should handle empty password', async () => {
     const hash = await hashPassword('');
     const isValid = await verifyPassword('', hash);
 
     expect(isValid).toBe(true);
   });
 
-  it('should handle very long passwords', async () => {
+  test('should handle very long passwords', async () => {
     const longPassword = 'a'.repeat(1000);
     const hash = await hashPassword(longPassword);
     const isValid = await verifyPassword(longPassword, hash);
@@ -276,7 +279,7 @@ describe('Auth Module - Edge Cases', () => {
     expect(isValid).toBe(true);
   });
 
-  it('should handle special characters in password', async () => {
+  test('should handle special characters in password', async () => {
     const specialPassword = '!@#$%^&*()_+-=[]{}|;:,.<>?';
     const hash = await hashPassword(specialPassword);
     const isValid = await verifyPassword(specialPassword, hash);
@@ -284,7 +287,7 @@ describe('Auth Module - Edge Cases', () => {
     expect(isValid).toBe(true);
   });
 
-  it('should handle unicode characters in JWT payload', async () => {
+  test('should handle unicode characters in JWT payload', async () => {
     const unicodePayload = {
       ...testPayload,
       displayName: '測試用戶',

@@ -71,15 +71,21 @@ export class LatestMessageCacheCoordinator {
    * Load state from Durable Object storage
    */
   private async loadState(): Promise<void> {
-    const storedStats = await this.state.storage.get<ProcessingStats>('stats');
-    if (storedStats) {
-      this.stats = storedStats;
-    }
+    try {
+      const storedStats = await this.state.storage.get<ProcessingStats>('stats');
+      if (storedStats) {
+        this.stats = storedStats;
+      }
 
-    const storedQueue = await this.state.storage.get<Array<[string, UpdateRequest]>>('updateQueue');
-    if (storedQueue) {
-      this.updateQueue = new Map(storedQueue);
-      console.log(`📦 [LatestMessageCacheCoordinator] Restored ${this.updateQueue.size} pending updates from storage`);
+      const storedQueue = await this.state.storage.get<Array<[string, UpdateRequest]>>('updateQueue');
+      if (storedQueue) {
+        this.updateQueue = new Map(storedQueue);
+        console.log(`📦 [LatestMessageCacheCoordinator] Restored ${this.updateQueue.size} pending updates from storage`);
+      }
+    } catch (error) {
+      console.error('⚠️ [LatestMessageCacheCoordinator] Failed to load state from storage:', error);
+      // Initialize with default values if storage load fails
+      // This ensures the coordinator can still function
     }
   }
 
@@ -87,8 +93,13 @@ export class LatestMessageCacheCoordinator {
    * Save state to Durable Object storage
    */
   private async saveState(): Promise<void> {
-    await this.state.storage.put('stats', this.stats);
-    await this.state.storage.put('updateQueue', Array.from(this.updateQueue.entries()));
+    try {
+      await this.state.storage.put('stats', this.stats);
+      await this.state.storage.put('updateQueue', Array.from(this.updateQueue.entries()));
+    } catch (error) {
+      console.error('⚠️ [LatestMessageCacheCoordinator] Failed to save state to storage:', error);
+      // Non-fatal error - state will be reconstructed from operations
+    }
   }
 
   /**

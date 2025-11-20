@@ -5,6 +5,7 @@ import type { Bindings } from '@backend/types';
 import { createMockContext } from '../../helpers/testUtils';
 import { createMockDatabase } from '../../helpers/mockDatabase';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock crypto API
 const mockCrypto = {
   subtle: {
@@ -54,7 +55,7 @@ describe('Webhook Handler Tests', () => {
       global.btoa = vi.fn((str) => 'valid-signature');
     });
 
-    it('should process valid LINE webhook successfully', async () => {
+    test('should process valid LINE webhook successfully', async () => {
       const validLinePayload = {
         events: [{
           type: 'message',
@@ -89,7 +90,7 @@ describe('Webhook Handler Tests', () => {
       );
     });
 
-    it('should reject LINE webhook without signature', async () => {
+    test('should reject LINE webhook without signature', async () => {
       mockContext.req.header = vi.fn(() => null);
       mockContext.req.text = vi.fn().mockResolvedValue('{}');
 
@@ -98,7 +99,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(400);
     });
 
-    it('should reject LINE webhook with invalid signature', async () => {
+    test('should reject LINE webhook with invalid signature', async () => {
       mockContext.req.header = vi.fn((header) => {
         if (header === 'X-Line-Signature') return 'invalid-signature';
         return null;
@@ -113,7 +114,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(401);
     });
 
-    it('should reject LINE webhook with invalid JSON', async () => {
+    test('should reject LINE webhook with invalid JSON', async () => {
       mockContext.req.header = vi.fn((header) => {
         if (header === 'X-Line-Signature') return 'valid-signature';
         return null;
@@ -125,7 +126,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(400);
     });
 
-    it('should reject LINE webhook with payload too large', async () => {
+    test('should reject LINE webhook with payload too large', async () => {
       const largePayload = 'x'.repeat(1024 * 1024 + 1); // Over 1MB
       
       mockContext.req.header = vi.fn((header) => {
@@ -139,7 +140,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(413);
     });
 
-    it('should reject LINE webhook with invalid payload structure', async () => {
+    test('should reject LINE webhook with invalid payload structure', async () => {
       const invalidPayload = {
         events: [{
           type: 'message',
@@ -159,7 +160,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(400);
     });
 
-    it('should handle LINE webhook with existing user', async () => {
+    test('should handle LINE webhook with existing user', async () => {
       const validLinePayload = {
         events: [{
           type: 'message',
@@ -199,7 +200,7 @@ describe('Webhook Handler Tests', () => {
       );
     });
 
-    it('should handle non-text message types gracefully', async () => {
+    test('should handle non-text message types gracefully', async () => {
       const stickerPayload = {
         events: [{
           type: 'message',
@@ -224,7 +225,7 @@ describe('Webhook Handler Tests', () => {
   });
 
   describe('Facebook Webhook Handler', () => {
-    it('should handle Facebook webhook verification', async () => {
+    test('should handle Facebook webhook verification', async () => {
       mockContext.req.query = vi.fn((key) => {
         const queries: { [key: string]: string } = {
           'hub.mode': 'subscribe',
@@ -239,7 +240,7 @@ describe('Webhook Handler Tests', () => {
       expect(mockContext.text).toHaveBeenCalledWith('challenge-123');
     });
 
-    it('should reject Facebook webhook verification with invalid token', async () => {
+    test('should reject Facebook webhook verification with invalid token', async () => {
       mockContext.req.query = vi.fn((key) => {
         const queries: { [key: string]: string } = {
           'hub.mode': 'subscribe',
@@ -256,7 +257,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).not.toBe(200);
     });
 
-    it('should process valid Facebook webhook message', async () => {
+    test('should process valid Facebook webhook message', async () => {
       const validFacebookPayload = {
         object: 'page',
         entry: [{
@@ -290,7 +291,7 @@ describe('Webhook Handler Tests', () => {
       );
     });
 
-    it('should reject Facebook webhook with payload too large', async () => {
+    test('should reject Facebook webhook with payload too large', async () => {
       mockContext.req.query = vi.fn(() => null);
       mockContext.req.header = vi.fn((header) => {
         if (header === 'content-length') return '1048577'; // Over 1MB
@@ -302,7 +303,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(413);
     });
 
-    it('should reject Facebook webhook with invalid JSON', async () => {
+    test('should reject Facebook webhook with invalid JSON', async () => {
       mockContext.req.query = vi.fn(() => null);
       mockContext.req.header = vi.fn(() => null);
       mockContext.req.json = vi.fn().mockRejectedValue(new Error('Invalid JSON'));
@@ -312,7 +313,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(400);
     });
 
-    it('should reject Facebook webhook with invalid payload structure', async () => {
+    test('should reject Facebook webhook with invalid payload structure', async () => {
       const invalidPayload = {
         object: 'user', // Invalid object type
         entry: []
@@ -327,7 +328,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(400);
     });
 
-    it('should handle Facebook webhook with existing user', async () => {
+    test('should handle Facebook webhook with existing user', async () => {
       const validFacebookPayload = {
         object: 'page',
         entry: [{
@@ -364,7 +365,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(200);
     });
 
-    it('should handle Facebook webhook with multiple messaging entries', async () => {
+    test('should handle Facebook webhook with multiple messaging entries', async () => {
       const multiMessagePayload = {
         object: 'page',
         entry: [{
@@ -403,7 +404,7 @@ describe('Webhook Handler Tests', () => {
       expect(mockDB.prepare).toHaveBeenCalled();
     });
 
-    it('should handle Facebook webhook without messaging array', async () => {
+    test('should handle Facebook webhook without messaging array', async () => {
       const noMessagingPayload = {
         object: 'page',
         entry: [{
@@ -423,7 +424,7 @@ describe('Webhook Handler Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle database errors gracefully in LINE webhook', async () => {
+    test('should handle database errors gracefully in LINE webhook', async () => {
       const validLinePayload = {
         events: [{
           type: 'message',
@@ -453,7 +454,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(500);
     });
 
-    it('should handle database errors gracefully in Facebook webhook', async () => {
+    test('should handle database errors gracefully in Facebook webhook', async () => {
       const validFacebookPayload = {
         object: 'page',
         entry: [{
@@ -480,7 +481,7 @@ describe('Webhook Handler Tests', () => {
       expect(result.status).toBe(500);
     });
 
-    it('should handle crypto errors in LINE signature verification', async () => {
+    test('should handle crypto errors in LINE signature verification', async () => {
       // Clear the mocks from beforeEach to set up error condition
       vi.clearAllMocks();
       
@@ -501,7 +502,7 @@ describe('Webhook Handler Tests', () => {
   });
 
   describe('Webhook Payload Validation', () => {
-    it('should validate LINE webhook structure correctly', async () => {
+    test('should validate LINE webhook structure correctly', async () => {
       const testCases = [
         {
           payload: { events: [] },
@@ -545,7 +546,7 @@ describe('Webhook Handler Tests', () => {
       }
     });
 
-    it('should validate Facebook webhook structure correctly', async () => {
+    test('should validate Facebook webhook structure correctly', async () => {
       const testCases = [
         {
           payload: { object: 'page', entry: [{ messaging: [] }] },

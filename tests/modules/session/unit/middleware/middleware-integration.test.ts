@@ -8,15 +8,16 @@ import {
   checkSessionViewPermission,
   checkSessionCreatePermission,
   logSessionOperation
-} from '../../../../../src/modules/session/middleware/session-auth';
+} from '@modules/session/middleware/session-auth';
 import {
   validateRequestSize,
   validateSessionId,
   validateCreateSessionData,
   validateSessionListQuery
-} from '../../../../../src/modules/session/middleware/session-validation';
+} from '@modules/session/middleware/session-validation';
 import { createMockCreateSessionData } from '../../helpers/session-test-helpers';
 import { mockJwtPayloads } from '../../helpers/mock-data';
+import { MockFactory } from '@helpers/mockFactory';
 import type { Bindings } from '@shared/types';
 
 // ======================== Mock Setup ========================
@@ -24,6 +25,19 @@ import type { Bindings } from '@shared/types';
 const mockVerifyJWT = vi.fn();
 vi.mock('../../../../../src/utils/auth', () => ({
   verifyJWT: mockVerifyJWT
+}));
+
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
+    });
+    return next();
+  })
 }));
 
 describe('Session Middleware Integration', () => {
@@ -61,12 +75,17 @@ describe('Session Middleware Integration', () => {
         );
       });
 
-      it('should pass through all middleware with valid request', async () => {
+      test('should pass through all middleware with valid request', async () => {
         mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
         const validData = createMockCreateSessionData();
 
         const response = await app.request('/sessions', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token',
@@ -83,7 +102,7 @@ describe('Session Middleware Integration', () => {
         expect(data.data.conversationId).toBe(validData.conversationId);
       });
 
-      it('should fail at request size validation', async () => {
+      test('should fail at request size validation', async () => {
         const validData = createMockCreateSessionData();
 
         const response = await app.request('/sessions', {
@@ -102,7 +121,7 @@ describe('Session Middleware Integration', () => {
         expect(data.error).toBe('Request size too large (max 1MB)');
       });
 
-      it('should fail at data validation', async () => {
+      test('should fail at data validation', async () => {
         mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
 
         const invalidData = {
@@ -126,7 +145,7 @@ describe('Session Middleware Integration', () => {
         expect(data.error).toBe('conversationId is required');
       });
 
-      it('should fail at authentication', async () => {
+      test('should fail at authentication', async () => {
         mockVerifyJWT.mockResolvedValue(null);
         const validData = createMockCreateSessionData();
 
@@ -146,7 +165,7 @@ describe('Session Middleware Integration', () => {
         expect(data.error).toBe('Invalid or expired token');
       });
 
-      it('should fail at permission check', async () => {
+      test('should fail at permission check', async () => {
         const guestUser = { ...mockJwtPayloads.admin, role: 'guest' };
         mockVerifyJWT.mockResolvedValue(guestUser);
         const validData = createMockCreateSessionData();
@@ -187,7 +206,7 @@ describe('Session Middleware Integration', () => {
         );
       });
 
-      it('should handle successful session list request', async () => {
+      test('should handle successful session list request', async () => {
         mockVerifyJWT.mockResolvedValue(mockJwtPayloads.teamLead);
 
         const response = await app.request('/sessions?page=2&pageSize=50&isActive=true', {
@@ -206,7 +225,7 @@ describe('Session Middleware Integration', () => {
         expect(data.query.isActive).toBe(true);
       });
 
-      it('should handle query parameter validation errors', async () => {
+      test('should handle query parameter validation errors', async () => {
         const response = await app.request('/sessions?page=0&pageSize=200', {
           headers: {
             'Authorization': 'Bearer team_token'
@@ -240,7 +259,7 @@ describe('Session Middleware Integration', () => {
         );
       });
 
-      it('should handle valid session ID request', async () => {
+      test('should handle valid session ID request', async () => {
         mockVerifyJWT.mockResolvedValue(mockJwtPayloads.agent);
         const validSessionId = '123e4567-e89b-12d3-a456-426614174000';
 
@@ -258,7 +277,7 @@ describe('Session Middleware Integration', () => {
         expect(data.user).toBe('agent');
       });
 
-      it('should handle invalid session ID format', async () => {
+      test('should handle invalid session ID format', async () => {
         const response = await app.request('/sessions/invalid-session-id', {
           headers: {
             'Authorization': 'Bearer agent_token'
@@ -319,7 +338,7 @@ describe('Session Middleware Integration', () => {
           mockVerifyJWT.mockResolvedValue(role.payload);
         });
 
-        it('should allow view permissions', async () => {
+        test('should allow view permissions', async () => {
           const response = await app.request('/view-sessions', {
             headers: {
               'Authorization': `Bearer ${role.token}`
@@ -333,9 +352,10 @@ describe('Session Middleware Integration', () => {
           expect(data.role).toBe(role.payload.role);
         });
 
-        it('should allow create permissions', async () => {
+        test('should allow create permissions', async () => {
           const response = await app.request('/create-session', {
             method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
             headers: {
               'Authorization': `Bearer ${role.token}`
             }
@@ -348,9 +368,10 @@ describe('Session Middleware Integration', () => {
           expect(data.role).toBe(role.payload.role);
         });
 
-        it(`should ${role.name === 'admin' ? 'allow' : 'deny'} delete permissions`, async () => {
+        test(`should ${role.name === 'admin' ? 'allow' : 'deny'} delete permissions`, async () => {
           const response = await app.request('/delete-session', {
             method: 'DELETE',
+        headers: { 'Authorization': 'Bearer test-token' },
             headers: {
               'Authorization': `Bearer ${role.token}`
             }
@@ -374,7 +395,7 @@ describe('Session Middleware Integration', () => {
   // ======================== 錯誤傳播測試 ========================
 
   describe('Error Propagation', () => {
-    it('should properly propagate validation errors through middleware chain', async () => {
+    test('should properly propagate validation errors through middleware chain', async () => {
       app.post('/test-chain',
         validateRequestSize,
         validateCreateSessionData,
@@ -420,6 +441,7 @@ describe('Session Middleware Integration', () => {
 
         const response = await app.request('/test-chain', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: test.headers,
           body: test.body
         });
@@ -432,7 +454,7 @@ describe('Session Middleware Integration', () => {
       }
     });
 
-    it('should handle middleware exceptions without breaking the chain', async () => {
+    test('should handle middleware exceptions without breaking the chain', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Create a middleware that throws an error
@@ -462,7 +484,7 @@ describe('Session Middleware Integration', () => {
   // ======================== 中間件順序測試 ========================
 
   describe('Middleware Execution Order', () => {
-    it('should execute middleware in correct order', async () => {
+    test('should execute middleware in correct order', async () => {
       const executionOrder: string[] = [];
 
       const trackingMiddleware = (name: string) => {
@@ -501,7 +523,7 @@ describe('Session Middleware Integration', () => {
       ]);
     });
 
-    it('should stop execution when middleware returns early', async () => {
+    test('should stop execution when middleware returns early', async () => {
       const executionOrder: string[] = [];
 
       const middleware1 = vi.fn().mockImplementation(async (c, next) => {
@@ -542,7 +564,7 @@ describe('Session Middleware Integration', () => {
   // ======================== 效能和穩定性測試 ========================
 
   describe('Performance and Stability', () => {
-    it('should handle concurrent requests through middleware', async () => {
+    test('should handle concurrent requests through middleware', async () => {
       mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
 
       app.get('/concurrent-test',
@@ -580,7 +602,7 @@ describe('Session Middleware Integration', () => {
       });
     });
 
-    it('should handle large payloads within limits', async () => {
+    test('should handle large payloads within limits', async () => {
       mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
 
       const largeData = createMockCreateSessionData({
@@ -603,6 +625,7 @@ describe('Session Middleware Integration', () => {
 
       const response = await app.request('/large-payload-test', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer valid_token'
@@ -621,7 +644,7 @@ describe('Session Middleware Integration', () => {
   // ======================== 實際場景模擬測試 ========================
 
   describe('Real-World Scenario Simulation', () => {
-    it('should handle complete session management workflow', async () => {
+    test('should handle complete session management workflow', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       // Setup multiple endpoints simulating real session management
@@ -661,6 +684,7 @@ describe('Session Middleware Integration', () => {
       // 1. Create session
       let response = await app.request('/sessions', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer team_token'
@@ -686,6 +710,7 @@ describe('Session Middleware Integration', () => {
       // 3. Update session
       response = await app.request(`/sessions/${sessionId}`, {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer team_token'
@@ -703,7 +728,7 @@ describe('Session Middleware Integration', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle mixed success and failure scenarios', async () => {
+    test('should handle mixed success and failure scenarios', async () => {
       app.post('/mixed-test/:scenario',
         validateRequestSize,
         checkSessionAccess,
@@ -723,6 +748,7 @@ describe('Session Middleware Integration', () => {
       mockVerifyJWT.mockResolvedValue(mockJwtPayloads.admin);
       let response = await app.request('/mixed-test/success', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': 'Bearer valid_token'
         }
@@ -736,6 +762,7 @@ describe('Session Middleware Integration', () => {
       mockVerifyJWT.mockResolvedValue(null);
       response = await app.request('/mixed-test/auth-fail', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Authorization': 'Bearer invalid_token'
         }
@@ -749,6 +776,7 @@ describe('Session Middleware Integration', () => {
       // Test size validation failure
       response = await app.request('/mixed-test/size-fail', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Length': '2000000'
         }

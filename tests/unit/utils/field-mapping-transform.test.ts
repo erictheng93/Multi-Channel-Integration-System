@@ -1,5 +1,6 @@
 // 資料庫欄位映射簡化測試
-// Simplified Database Field Mapping Tests - 直接測試映射邏輯
+// Simplified Database Field Mappimport { MockFactory } from '@helpers/mockFactory';
+ing Tests - 直接測試映射邏輯
 
 import { describe, it, expect } from 'vitest';
 
@@ -31,7 +32,7 @@ describe('Database Field Mapping Direct Tests', () => {
       };
     }
 
-    it('should correctly map agentId to senderId', () => {
+    test('should correctly map agentId to senderId', () => {
       const mockDbRecord = {
         id: 'test-msg-123',
         conversationId: 12345,
@@ -62,7 +63,7 @@ describe('Database Field Mapping Direct Tests', () => {
       expect(result.delaySeconds).toBe(30);
     });
 
-    it('should correctly extract failureReason from metadata', () => {
+    test('should correctly extract failureReason from metadata', () => {
       const failureReason = 'Platform API timeout';
       const mockDbRecord = {
         id: 'failed-msg-456',
@@ -90,7 +91,7 @@ describe('Database Field Mapping Direct Tests', () => {
       expect(result.platform).toBe('facebook');
     });
 
-    it('should handle missing metadata gracefully', () => {
+    test('should handle missing metadata gracefully', () => {
       const mockDbRecord = {
         id: 'no-meta-msg',
         conversationId: 11111,
@@ -115,7 +116,7 @@ describe('Database Field Mapping Direct Tests', () => {
       expect(result.mediaUrl).toBeUndefined();
     });
 
-    it('should handle invalid JSON metadata gracefully', () => {
+    test('should handle invalid JSON metadata gracefully', () => {
       const mockDbRecord = {
         id: 'invalid-meta-msg',
         conversationId: 22222,
@@ -133,7 +134,7 @@ describe('Database Field Mapping Direct Tests', () => {
       expect(() => transformDbDelayedMessage(mockDbRecord)).toThrow();
     });
 
-    it('should handle empty string metadata', () => {
+    test('should handle empty string metadata', () => {
       const mockDbRecord = {
         id: 'empty-meta-msg',
         conversationId: 33333,
@@ -156,7 +157,7 @@ describe('Database Field Mapping Direct Tests', () => {
       expect(result.delaySeconds).toBe(0);
     });
 
-    it('should preserve all metadata fields correctly', () => {
+    test('should preserve all metadata fields correctly', () => {
       const complexMetadata = {
         recipientPlatformId: 'complex-recipient',
         platform: 'line',
@@ -199,7 +200,7 @@ describe('Database Field Mapping Direct Tests', () => {
 
   describe('Metadata Storage and Retrieval Logic', () => {
     // 測試 metadata 儲存邏輯（模擬 cancelDelayedMessage 中的邏輯）
-    it('should correctly merge existing metadata with new failureReason', () => {
+    test('should correctly merge existing metadata with new failureReason', () => {
       const existingMetadata = {
         platform: 'line',
         recipientPlatformId: 'existing-recipient',
@@ -221,7 +222,7 @@ describe('Database Field Mapping Direct Tests', () => {
       expect(updatedMetadata.delaySeconds).toBe(60);
     });
 
-    it('should handle metadata update when original metadata is null', () => {
+    test('should handle metadata update when original metadata is null', () => {
       const existingMetadata = {}; // 沒有現有 metadata
       const cancelReason = 'API error';
 

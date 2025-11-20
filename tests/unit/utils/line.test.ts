@@ -10,6 +10,7 @@ import {
 } from '@backend/utils/line';
 import type { LineReplyMessage } from '@backend/types';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock global fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -43,7 +44,7 @@ describe('LINE API Integration Tests', () => {
       { type: 'text', text: 'Hello, World!' }
     ];
 
-    it('should send reply message successfully', async () => {
+    test('should send reply message successfully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200
@@ -69,7 +70,7 @@ describe('LINE API Integration Tests', () => {
       );
     });
 
-    it('should handle API error response', async () => {
+    test('should handle API error response', async () => {
       const mockErrorText = 'Invalid reply token';
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -87,7 +88,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle network error', async () => {
+    test('should handle network error', async () => {
       const mockError = new Error('Network error');
       mockFetch.mockRejectedValueOnce(mockError);
 
@@ -101,7 +102,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should send multiple messages', async () => {
+    test('should send multiple messages', async () => {
       const multipleMessages: LineReplyMessage[] = [
         { type: 'text', text: 'First message' },
         { type: 'text', text: 'Second message' },
@@ -134,7 +135,7 @@ describe('LINE API Integration Tests', () => {
       { type: 'text', text: 'Push message' }
     ];
 
-    it('should push message successfully', async () => {
+    test('should push message successfully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200
@@ -160,7 +161,7 @@ describe('LINE API Integration Tests', () => {
       );
     });
 
-    it('should handle push API error', async () => {
+    test('should handle push API error', async () => {
       const mockErrorText = 'Invalid user ID';
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -195,7 +196,7 @@ describe('LINE API Integration Tests', () => {
       global.btoa = vi.fn().mockReturnValue(mockComputedSignature);
     });
 
-    it('should verify valid signature', async () => {
+    test('should verify valid signature', async () => {
       const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
 
       expect(result).toBe(true);
@@ -213,7 +214,7 @@ describe('LINE API Integration Tests', () => {
       );
     });
 
-    it('should reject invalid signature', async () => {
+    test('should reject invalid signature', async () => {
       global.btoa = vi.fn().mockReturnValue('different-signature');
 
       const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
@@ -221,13 +222,13 @@ describe('LINE API Integration Tests', () => {
       expect(result).toBe(false);
     });
 
-    it('should reject missing signature', async () => {
+    test('should reject missing signature', async () => {
       const result = await verifyLineSignature(mockBody, undefined, mockChannelSecret);
 
       expect(result).toBe(false);
     });
 
-    it('should handle signature without sha256 prefix', async () => {
+    test('should handle signature without sha256 prefix', async () => {
       const signatureWithoutPrefix = 'test-signature';
       
       const result = await verifyLineSignature(mockBody, signatureWithoutPrefix, mockChannelSecret);
@@ -235,7 +236,7 @@ describe('LINE API Integration Tests', () => {
       expect(result).toBe(true);
     });
 
-    it('should handle crypto error', async () => {
+    test('should handle crypto error', async () => {
       mockCrypto.subtle.importKey.mockRejectedValueOnce(new Error('Crypto error'));
       
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -250,7 +251,7 @@ describe('LINE API Integration Tests', () => {
   });
 
   describe('createTextMessage', () => {
-    it('should create text message with correct format', () => {
+    test('should create text message with correct format', () => {
       const text = 'Hello, World!';
       const message = createTextMessage(text);
 
@@ -260,7 +261,7 @@ describe('LINE API Integration Tests', () => {
       });
     });
 
-    it('should handle empty text', () => {
+    test('should handle empty text', () => {
       const text = '';
       const message = createTextMessage(text);
 
@@ -270,7 +271,7 @@ describe('LINE API Integration Tests', () => {
       });
     });
 
-    it('should handle special characters', () => {
+    test('should handle special characters', () => {
       const text = '你好！🎉\n換行測試';
       const message = createTextMessage(text);
 
@@ -282,7 +283,7 @@ describe('LINE API Integration Tests', () => {
   });
 
   describe('createStickerMessage', () => {
-    it('should create sticker message with correct format', () => {
+    test('should create sticker message with correct format', () => {
       const packageId = '1';
       const stickerId = '1';
       const message = createStickerMessage(packageId, stickerId);
@@ -294,7 +295,7 @@ describe('LINE API Integration Tests', () => {
       });
     });
 
-    it('should handle different package and sticker IDs', () => {
+    test('should handle different package and sticker IDs', () => {
       const packageId = '11537';
       const stickerId = '52002734';
       const message = createStickerMessage(packageId, stickerId);
@@ -315,7 +316,7 @@ describe('LINE API Integration Tests', () => {
       statusMessage: 'Hello!'
     };
 
-    it('should get user profile successfully', async () => {
+    test('should get user profile successfully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -343,7 +344,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle profile API error', async () => {
+    test('should handle profile API error', async () => {
       const mockErrorText = 'User not found';
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -361,7 +362,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle network error', async () => {
+    test('should handle network error', async () => {
       const mockError = new Error('Network error');
       mockFetch.mockRejectedValueOnce(mockError);
 
@@ -383,7 +384,7 @@ describe('LINE API Integration Tests', () => {
       pictureUrl: 'https://example.com/member-avatar.jpg'
     };
 
-    it('should get group member profile successfully', async () => {
+    test('should get group member profile successfully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -411,7 +412,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle group member API error', async () => {
+    test('should handle group member API error', async () => {
       const mockErrorText = 'Member not found';
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -431,7 +432,7 @@ describe('LINE API Integration Tests', () => {
   });
 
   describe('Integration scenarios', () => {
-    it('should handle rate limiting gracefully', async () => {
+    test('should handle rate limiting gracefully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
@@ -448,7 +449,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle invalid access token', async () => {
+    test('should handle invalid access token', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
@@ -465,7 +466,7 @@ describe('LINE API Integration Tests', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle message size limits', async () => {
+    test('should handle message size limits', async () => {
       const longText = 'a'.repeat(5001); // Exceeds LINE's 5000 character limit
       const message = createTextMessage(longText);
 

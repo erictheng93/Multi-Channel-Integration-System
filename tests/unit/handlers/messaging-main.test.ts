@@ -68,6 +68,7 @@ vi.mock('@modules/messaging/services/message-crud', () => ({
 
 import messagingMainHandler from '@backend/handlers/messaging-main';
 import type { Bindings } from '@backend/types';
+import { MockFactory } from '../../helpers/mockFactory';
 
 // Mock drizzle-orm/d1
 const mockDrizzleInstance: any = {};
@@ -88,62 +89,38 @@ vi.mock('../../../src/middleware/auth', () => ({
   })
 }));
 
-describe('Messaging Module - Unit Tests', () => {
+describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
   let app: Hono<{ Bindings: Bindings }>;
-  let mockDB: any;
-  let mockR2: any;
+  let mockEnv: Bindings;
+  let mockDB: any; // Keep for backward compatibility with existing test cases
+  let mockR2: any; // Keep for backward compatibility with existing test cases
 
   beforeEach(() => {
     app = new Hono<{ Bindings: Bindings }>();
+    vi.clearAllMocks();
 
-    // Create comprehensive DB mock with proper Drizzle ORM chain
-    const chain: any = {
-      get: vi.fn().mockResolvedValue(null),
-      all: vi.fn().mockResolvedValue([]),
-      run: vi.fn().mockResolvedValue({ success: true })
-    };
+    // Use MockFactory to create standardized environment with all required bindings
+    mockEnv = MockFactory.createEnv({
+      DB: MockFactory.createDatabase([]), // Use Drizzle ORM mock (not raw D1)
+      FILE_STORAGE: MockFactory.createR2(),
+      JWT_SECRET: 'test-secret'
+    });
 
-    chain.select = vi.fn().mockReturnValue(chain);
-    chain.from = vi.fn().mockReturnValue(chain);
-    chain.where = vi.fn().mockReturnValue(chain);
-    chain.orderBy = vi.fn().mockReturnValue(chain);
-    chain.limit = vi.fn().mockReturnValue(chain);
-    chain.offset = vi.fn().mockReturnValue(chain);
-    chain.insert = vi.fn().mockReturnValue(chain);
-    chain.values = vi.fn().mockReturnValue(chain);
-    chain.update = vi.fn().mockReturnValue(chain);
-    chain.set = vi.fn().mockReturnValue(chain);
-    chain.returning = vi.fn().mockReturnValue(chain);
+    // Keep references for backward compatibility with existing test cases
+    mockDB = mockEnv.DB;
+    mockR2 = mockEnv.FILE_STORAGE;
 
-    mockDB = chain;
+    // Assign to mockDrizzleInstance for vi.mock compatibility
+    Object.assign(mockDrizzleInstance, mockEnv.DB);
 
-    // Assign to mockDrizzleInstance
-    Object.assign(mockDrizzleInstance, chain);
-
-    // Create R2 mock
-    mockR2 = {
-      put: vi.fn().mockResolvedValue(undefined),
-      get: vi.fn().mockResolvedValue(null),
-      delete: vi.fn().mockResolvedValue(undefined),
-      list: vi.fn().mockResolvedValue({ objects: [] })
-    };
-
-    // Setup context with environment BEFORE mounting routes
+    // Setup context with MockFactory environment BEFORE mounting routes
     app.use('*', (c, next) => {
-      c.env = {
-        DB: mockDB as any,
-        FILE_STORAGE: mockR2 as any,
-        JWT_SECRET: 'test-secret',
-        SESSIONS: {} as any,
-        CACHE: {} as any
-      } as any;
+      c.env = mockEnv as any;
       return next();
     });
 
     // Mount routes AFTER environment setup
     app.route('/api/messages', messagingMainHandler);
-
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -151,7 +128,7 @@ describe('Messaging Module - Unit Tests', () => {
   });
 
   describe('Health Check Endpoints', () => {
-    it('should return healthy status from /health endpoint', async () => {
+    test('should return healthy status from /health endpoint', async () => {
       const response = await app.request('/api/messages/health', {
         method: 'GET'
       });
@@ -163,7 +140,7 @@ describe('Messaging Module - Unit Tests', () => {
       expect(result.version).toBe('2.0.0');
     });
 
-    it('should return module info from /info endpoint', async () => {
+    test('should return module info from /info endpoint', async () => {
       const response = await app.request('/api/messages/info', {
         method: 'GET'
       });
@@ -195,13 +172,18 @@ describe('Messaging Module - Unit Tests', () => {
         ]
       };
 
-      it('should create multiple messages successfully', async () => {
+      test('should create multiple messages successfully', async () => {
         // Mock conversation exists
         mockDB.get.mockResolvedValue({ id: 'conv_1' });
         mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/bulk-create', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(validBulkRequest)
         });
@@ -216,7 +198,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.results).toHaveLength(2);
       });
 
-      it('should validate messages array is required', async () => {
+      test('should validate messages array is required', async () => {
         const response = await app.request('/api/messages/bulk-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -229,7 +211,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('Messages array is required');
       });
 
-      it('should enforce limit of 100 messages per batch', async () => {
+      test('should enforce limit of 100 messages per batch', async () => {
         const tooManyMessages = {
           messages: Array(101).fill({
             conversationId: 'conv_1',
@@ -250,7 +232,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('limited to 100 messages');
       });
 
-      it('should handle partial failures gracefully', async () => {
+      test('should handle partial failures gracefully', async () => {
         // First conversation exists, second doesn't
         let callCount = 0;
         mockDB.get.mockImplementation(() => {
@@ -274,7 +256,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.errors).toHaveLength(1);
       });
 
-      it('should verify conversation exists before creating messages', async () => {
+      test('should verify conversation exists before creating messages', async () => {
         // Mock conversation not found
         mockDB.get.mockResolvedValue(null);
 
@@ -298,7 +280,7 @@ describe('Messaging Module - Unit Tests', () => {
         messageIds: ['msg_1', 'msg_2']
       };
 
-      it('should delete multiple messages successfully', async () => {
+      test('should delete multiple messages successfully', async () => {
         // Mock messages found with correct sender
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
@@ -313,6 +295,10 @@ describe('Messaging Module - Unit Tests', () => {
 
         const response = await app.request('/api/messages/bulk-delete', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(validBulkDeleteRequest)
         });
@@ -327,7 +313,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.results).toBeInstanceOf(Array);
       });
 
-      it('should enforce permission checks for each message', async () => {
+      test('should enforce permission checks for each message', async () => {
         // Mock message with different sender
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
@@ -353,7 +339,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.errors).toBeDefined();
       });
 
-      it('should check recall deadlines', async () => {
+      test('should check recall deadlines', async () => {
         // Mock message with past recall deadline
         const pastDeadline = new Date(Date.now() - 1000).toISOString();
         mockDB.get.mockResolvedValue({
@@ -379,7 +365,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.failureCount).toBeGreaterThan(0);
       });
 
-      it('should skip already recalled messages', async () => {
+      test('should skip already recalled messages', async () => {
         // Mock already recalled message
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
@@ -408,18 +394,44 @@ describe('Messaging Module - Unit Tests', () => {
 
   describe('Attachment Management', () => {
     describe('GET /:id/attachments', () => {
-      it.skip('should return all attachments for a message', async () => {
-        // Simplified test: verify endpoint is accessible and returns correct structure
-        mockDB.get.mockResolvedValueOnce({
-          id: 'msg_1',
-          conversationId: 'conv_1'
-        });
+      test('should return all attachments for a message', async () => {
+        // Mock attachment data
+        const mockAttachments = [
+          {
+            id: 'att_1',
+            messageId: 'msg_1',
+            filename: 'test.pdf',
+            mimeType: 'application/pdf',
+            fileSize: 1024,
+            fileUrl: 'https://example.com/test.pdf',
+            r2Key: 'uploads/test.pdf',
+            url: 'https://example.com/test.pdf',
+            createdAt: new Date().toISOString()
+          }
+        ];
 
-        mockDB.select.mockReturnValueOnce({
+        // First query: check if message exists (uses .get())
+        const messageSelectChain = {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([])
+            where: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue({
+                id: 'msg_1',
+                conversationId: 'conv_1'
+              })
+            })
           })
-        });
+        };
+
+        // Second query: get attachments list (uses array return)
+        const attachmentsSelectChain = {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(mockAttachments)
+          })
+        };
+
+        mockDB.select
+          .mockReturnValueOnce(messageSelectChain)
+          .mockReturnValueOnce(attachmentsSelectChain);
 
         const response = await app.request('/api/messages/msg_1/attachments', {
           method: 'GET'
@@ -427,14 +439,15 @@ describe('Messaging Module - Unit Tests', () => {
 
         const result = await response.json();
 
-        // Simplified expectations: just verify response structure
         expect(response.status).toBe(200);
         expect(result.success).toBe(true);
         expect(result.data).toHaveProperty('attachments');
         expect(result.data).toHaveProperty('messageId', 'msg_1');
+        expect(result.data.attachments).toHaveLength(1);
+        expect(result.data.attachments[0].filename).toBe('test.pdf');
       });
 
-      it('should return 404 for non-existent message', async () => {
+      test('should return 404 for non-existent message', async () => {
         mockDB.get.mockResolvedValue(null);
 
         const response = await app.request('/api/messages/nonexistent/attachments', {
@@ -447,21 +460,29 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('not found');
       });
 
-      it.skip('should return empty array when no attachments', async () => {
-        // First query: check if message exists
-        mockDB.get.mockResolvedValueOnce({
-          id: 'msg_1',
-          conversationId: 'conv_1'
-        });
-
-        // Second query: get attachments list (returns array directly, no .get())
-        // Create a complete chain for the attachments query
-        const attachmentsChain = {
+      test('should return empty array when no attachments', async () => {
+        // First query: check if message exists (uses .get())
+        const messageSelectChain = {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([]) // Returns empty array directly
+            where: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue({
+                id: 'msg_1',
+                conversationId: 'conv_1'
+              })
+            })
           })
         };
-        mockDB.select.mockReturnValueOnce(attachmentsChain);
+
+        // Second query: get attachments list - returns empty array
+        const attachmentsSelectChain = {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([]) // Empty attachments
+          })
+        };
+
+        mockDB.select
+          .mockReturnValueOnce(messageSelectChain)
+          .mockReturnValueOnce(attachmentsSelectChain);
 
         const response = await app.request('/api/messages/msg_1/attachments', {
           method: 'GET'
@@ -469,17 +490,17 @@ describe('Messaging Module - Unit Tests', () => {
 
         const result = await response.json();
 
-        // Verify it returns successfully with attachments property
         expect(response.status).toBe(200);
         expect(result.success).toBe(true);
         expect(result.data).toHaveProperty('attachments');
         expect(result.data.attachments).toEqual([]);
         expect(result.data.count).toBe(0);
+        expect(result.data.messageId).toBe('msg_1');
       });
     });
 
     describe('POST /:id/attachments', () => {
-      it('should upload attachment successfully', async () => {
+      test('should upload attachment successfully', async () => {
         // Mock message exists with correct sender
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
@@ -496,6 +517,10 @@ describe('Messaging Module - Unit Tests', () => {
 
         const response = await app.request('/api/messages/msg_1/attachments', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           body: formData
         });
 
@@ -507,7 +532,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.filename).toBe('test.jpg');
       });
 
-      it('should validate file size (10MB limit)', async () => {
+      test('should validate file size (10MB limit)', async () => {
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
           agentSenderId: 'user-123'
@@ -529,7 +554,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('10MB');
       });
 
-      it('should validate MIME types', async () => {
+      test('should validate MIME types', async () => {
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
           agentSenderId: 'user-123'
@@ -550,7 +575,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('type');
       });
 
-      it('should check sender permissions', async () => {
+      test('should check sender permissions', async () => {
         // Mock message with different sender
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
@@ -583,7 +608,7 @@ describe('Messaging Module - Unit Tests', () => {
         comment: 'FYI'
       };
 
-      it('should forward message to target conversations', async () => {
+      test('should forward message to target conversations', async () => {
         // Mock original message
         mockDB.get
           .mockResolvedValueOnce({
@@ -603,6 +628,10 @@ describe('Messaging Module - Unit Tests', () => {
 
         const response = await app.request('/api/messages/msg_1/forward', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(validForwardRequest)
         });
@@ -615,7 +644,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.totalTargets).toBe(2);
       });
 
-      it('should validate target conversation IDs', async () => {
+      test('should validate target conversation IDs', async () => {
         const response = await app.request('/api/messages/msg_1/forward', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -628,7 +657,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toBeDefined();
       });
 
-      it('should enforce limit of 20 conversations', async () => {
+      test('should enforce limit of 20 conversations', async () => {
         const tooManyTargets = {
           targetConversationIds: Array(21).fill('conv_').map((p, i) => p + i)
         };
@@ -645,7 +674,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('20');
       });
 
-      it('should include original message metadata', async () => {
+      test('should include original message metadata', async () => {
         mockDB.get
           .mockResolvedValueOnce({
             id: 'msg_original',
@@ -663,6 +692,7 @@ describe('Messaging Module - Unit Tests', () => {
 
         const response = await app.request('/api/messages/msg_original/forward', {
           method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(validForwardRequest)
         });
@@ -673,7 +703,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.results).toHaveLength(2);
       });
 
-      it('should add optional comment to forwarded message', async () => {
+      test('should add optional comment to forwarded message', async () => {
         mockDB.get
           .mockResolvedValueOnce({
             id: 'msg_1',
@@ -709,7 +739,7 @@ describe('Messaging Module - Unit Tests', () => {
         tags: ['urgent', 'customer-service']
       };
 
-      it('should add tags to message', async () => {
+      test('should add tags to message', async () => {
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
           metadata: null
@@ -718,6 +748,10 @@ describe('Messaging Module - Unit Tests', () => {
 
         const response = await app.request('/api/messages/msg_1/tags', {
           method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(validTagRequest)
         });
@@ -729,7 +763,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data.tags).toEqual(validTagRequest.tags);
       });
 
-      it('should update existing tags', async () => {
+      test('should update existing tags', async () => {
         mockDB.get.mockResolvedValue({
           id: 'msg_1',
           metadata: JSON.stringify({ tags: ['old-tag'] })
@@ -747,7 +781,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should enforce limit of 10 tags per message', async () => {
+      test('should enforce limit of 10 tags per message', async () => {
         const tooManyTags = {
           tags: Array(11).fill('tag').map((t, i) => t + i)
         };
@@ -764,7 +798,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('10');
       });
 
-      it('should store tags in message metadata', async () => {
+      test('should store tags in message metadata', async () => {
         mockDB.get.mockResolvedValue({ id: 'msg_1', metadata: null });
         mockDB.run.mockResolvedValue({ success: true });
 
@@ -781,7 +815,7 @@ describe('Messaging Module - Unit Tests', () => {
     });
 
     describe('GET /tags', () => {
-      it('should return all available tags with counts', async () => {
+      test('should return all available tags with counts', async () => {
         // Simplified: just verify endpoint returns correct structure
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -801,7 +835,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data).toHaveProperty('total');
       });
 
-      it('should sort tags by usage count', async () => {
+      test('should sort tags by usage count', async () => {
         // Simplified: just verify endpoint is accessible
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -818,7 +852,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should exclude recalled messages', async () => {
+      test('should exclude recalled messages', async () => {
         // Simplified: verify endpoint works
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -839,7 +873,7 @@ describe('Messaging Module - Unit Tests', () => {
 
   describe('Message Export', () => {
     describe('GET /export', () => {
-      it('should export messages in JSON format', async () => {
+      test('should export messages in JSON format', async () => {
         // Simplified: just verify endpoint is accessible and returns JSON
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -866,7 +900,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data).toHaveProperty('messages');
       });
 
-      it('should export messages in CSV format', async () => {
+      test('should export messages in CSV format', async () => {
         // Simplified: verify CSV endpoint works
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -890,7 +924,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(response.headers.get('Content-Type')).toContain('csv');
       });
 
-      it('should validate format parameter', async () => {
+      test('should validate format parameter', async () => {
         const response = await app.request('/api/messages/export?format=invalid', {
           method: 'GET'
         });
@@ -901,7 +935,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.error).toContain('format');
       });
 
-      it('should filter by conversation ID', async () => {
+      test('should filter by conversation ID', async () => {
         // Simplified
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -926,7 +960,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should enforce limit of 1000 messages', async () => {
+      test('should enforce limit of 1000 messages', async () => {
         // Simplified
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -951,7 +985,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should include export metadata in JSON format', async () => {
+      test('should include export metadata in JSON format', async () => {
         // Simplified
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -976,7 +1010,7 @@ describe('Messaging Module - Unit Tests', () => {
         expect(result.data).toHaveProperty('exportInfo');
       });
 
-      it('should properly escape CSV content', async () => {
+      test('should properly escape CSV content', async () => {
         // Simplified
         mockDB.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -1004,13 +1038,15 @@ describe('Messaging Module - Unit Tests', () => {
   });
 
   describe('Integration Tests', () => {
-    it('should handle complete workflow: create → forward → tag → export', async () => {
+    test('should handle complete workflow: create → forward → tag → export', async () => {
       // 1. Create message
       mockDB.get.mockResolvedValue({ id: 'conv_1' });
       mockDB.run.mockResolvedValue({ success: true });
 
       const createResponse = await app.request('/api/messages/bulk-create', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [{
@@ -1038,6 +1074,7 @@ describe('Messaging Module - Unit Tests', () => {
 
       const forwardResponse = await app.request('/api/messages/msg_1/forward', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetConversationIds: ['conv_2']
@@ -1049,6 +1086,7 @@ describe('Messaging Module - Unit Tests', () => {
       // 3. Tag message
       const tagResponse = await app.request('/api/messages/msg_1/tags', {
         method: 'PUT',
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tags: ['workflow-test']
@@ -1079,7 +1117,7 @@ describe('Messaging Module - Unit Tests', () => {
       expect(exportResponse.status).toBe(200);
     });
 
-    it('should maintain data consistency across operations', async () => {
+    test('should maintain data consistency across operations', async () => {
       // Create message
       mockDB.get.mockResolvedValue({ id: 'conv_1' });
       mockDB.run.mockResolvedValue({ success: true });
@@ -1124,9 +1162,11 @@ describe('Messaging Module - Error Handling', () => {
     app.route('/api/messages', messagingMainHandler);
   });
 
-  it('should handle invalid JSON gracefully', async () => {
+  test('should handle invalid JSON gracefully', async () => {
     const response = await app.request('/api/messages/bulk-create', {
       method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
       headers: { 'Content-Type': 'application/json' },
       body: 'invalid json{'
     });
@@ -1136,7 +1176,7 @@ describe('Messaging Module - Error Handling', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should handle database errors', async () => {
+  test('should handle database errors', async () => {
     const mockDB = {
       select: vi.fn().mockImplementation(() => {
         throw new Error('Database connection failed');
@@ -1155,7 +1195,7 @@ describe('Messaging Module - Error Handling', () => {
     expect(response.status).toBe(500);
   });
 
-  it('should handle R2 storage failures', async () => {
+  test('should handle R2 storage failures', async () => {
     const mockDB = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
@@ -1179,6 +1219,7 @@ describe('Messaging Module - Error Handling', () => {
 
     const response = await app.request('/api/messages/msg_1/attachments', {
       method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
       body: formData
     });
 
@@ -1226,7 +1267,7 @@ describe('Messaging Module - Performance', () => {
     app.route('/api/messages', messagingMainHandler);
   });
 
-  it('should handle bulk operations efficiently', async () => {
+  test('should handle bulk operations efficiently', async () => {
     const startTime = Date.now();
 
     const response = await app.request('/api/messages/bulk-create', {
@@ -1248,7 +1289,7 @@ describe('Messaging Module - Performance', () => {
     expect(duration).toBeLessThan(5000);
   });
 
-  it('should optimize large export requests', async () => {
+  test('should optimize large export requests', async () => {
     // Create complete mock data for 1000 messages
     const mockMessages = Array(1000).fill(null).map((_, i) => ({
       id: `msg_${i}`,

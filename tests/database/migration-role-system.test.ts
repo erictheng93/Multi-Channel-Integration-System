@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('Database Migration: Enterprise Role System', () => {
   let mockDB: any;
 

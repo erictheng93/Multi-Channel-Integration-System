@@ -22,7 +22,8 @@ import {
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
 import { UserConnection } from '@backend/durable-objects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessageProcessor';
+import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMesimport { MockFactory } from '@helpers/mockFactory';
+sageProcessor';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 import type {
   DurableObjectEvent,
@@ -101,7 +102,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Message Event Broadcasting', () => {
-    it('should broadcast message sent events to all conversation participants', async () => {
+    test('should broadcast message sent events to all conversation participants', async () => {
       const { controller, admin, team, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -145,7 +146,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should broadcast message delivery confirmations', async () => {
+    test('should broadcast message delivery confirmations', async () => {
       const agent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -181,7 +182,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(deliveryEvent.data.platform).toBe('LINE');
     });
 
-    it('should broadcast message read receipts', async () => {
+    test('should broadcast message read receipts', async () => {
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -211,7 +212,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should handle message recall events', async () => {
+    test('should handle message recall events', async () => {
       const agent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -253,7 +254,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(teamEvent.data.reason).toBe('User requested recall');
     });
 
-    it('should handle broadcast failures with proper error handling', async () => {
+    test('should handle broadcast failures with proper error handling', async () => {
       // Mock Durable Object failure
       const originalGet = mockEnv.CONVERSATION_ROOM.get;
       mockEnv.CONVERSATION_ROOM.get = vi.fn().mockReturnValue(null);
@@ -275,7 +276,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Typing Indicator Broadcasting', () => {
-    it('should broadcast typing start and stop events', async () => {
+    test('should broadcast typing start and stop events', async () => {
       const typingUser = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent',
@@ -340,7 +341,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(stopEvent.userId).toBe(typingUser.userId);
     });
 
-    it('should filter typing events to only notify agents', async () => {
+    test('should filter typing events to only notify agents', async () => {
       const customer = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent', // In test, customer would be simulated differently
@@ -380,7 +381,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(typingEvent.userId).toBe(agent.userId);
     });
 
-    it('should handle multiple concurrent typing indicators', async () => {
+    test('should handle multiple concurrent typing indicators', async () => {
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -412,7 +413,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Conversation Event Broadcasting', () => {
-    it('should broadcast conversation assignment events', async () => {
+    test('should broadcast conversation assignment events', async () => {
       const admin = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'admin'
@@ -464,7 +465,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should broadcast conversation transfer events', async () => {
+    test('should broadcast conversation transfer events', async () => {
       const fromAgent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent',
@@ -517,7 +518,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should broadcast conversation status changes', async () => {
+    test('should broadcast conversation status changes', async () => {
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -548,7 +549,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should handle participant join and leave events', async () => {
+    test('should handle participant join and leave events', async () => {
       const existingAgent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -609,7 +610,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Delayed Message Broadcasting', () => {
-    it('should broadcast delayed message countdown events', async () => {
+    test('should broadcast delayed message countdown events', async () => {
       const agent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -652,7 +653,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(teamEvent.data.messageId).toBe('delayed_123');
     });
 
-    it('should broadcast delayed message sent confirmation', async () => {
+    test('should broadcast delayed message sent confirmation', async () => {
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -685,7 +686,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should broadcast delayed message recall events', async () => {
+    test('should broadcast delayed message recall events', async () => {
       const recallingAgent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -729,7 +730,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(supervisorEvent.data.recallReason).toBe('Agent requested recall');
     });
 
-    it('should broadcast delayed message failure events', async () => {
+    test('should broadcast delayed message failure events', async () => {
       const agent = WebSocketTestClientFactory.createClient({
         conversationId,
         role: 'agent'
@@ -778,7 +779,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Cross-Conversation Broadcasting', () => {
-    it('should broadcast user presence across conversations', async () => {
+    test('should broadcast user presence across conversations', async () => {
       const conv1Id = 'conversation_1';
       const conv2Id = 'conversation_2';
 
@@ -835,7 +836,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(conv2Event.data.status).toBe('available');
     });
 
-    it('should handle team-wide announcements', async () => {
+    test('should handle team-wide announcements', async () => {
       // Create agents in different conversations but same team
       const agents = [
         WebSocketTestClientFactory.createClient({
@@ -899,7 +900,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Performance and Scalability', () => {
-    it('should handle high-frequency message broadcasting', async () => {
+    test('should handle high-frequency message broadcasting', async () => {
       const messageCount = 50;
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
@@ -939,7 +940,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should handle concurrent broadcasting from multiple sources', async () => {
+    test('should handle concurrent broadcasting from multiple sources', async () => {
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -976,7 +977,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       });
     });
 
-    it('should maintain performance with large room sizes', async () => {
+    test('should maintain performance with large room sizes', async () => {
       const largeRoomSize = 25;
       const clients = LoadTestHelper.createLoadTestClients(largeRoomSize, conversationId);
 
@@ -1014,7 +1015,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(roomStats.connectedClients).toBe(largeRoomSize);
     });
 
-    it('should optimize batch broadcasting efficiency', async () => {
+    test('should optimize batch broadcasting efficiency', async () => {
       const { controller, agents } = WebSocketTestClientFactory.createMixedRoleRoom(conversationId);
 
       await controller.connectAllClients();
@@ -1046,7 +1047,7 @@ describe('Real-time Message Broadcasting Integration', () => {
   });
 
   describe('Error Handling and Resilience', () => {
-    it('should handle Durable Object failures gracefully', async () => {
+    test('should handle Durable Object failures gracefully', async () => {
       // Mock conversation room to fail
       mockEnv.CONVERSATION_ROOM.get = vi.fn().mockReturnValue({
         fetch: vi.fn().mockRejectedValue(new Error('Durable Object unavailable'))
@@ -1067,7 +1068,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(true).toBe(true); // Test passed without throwing
     });
 
-    it('should continue broadcasting to available targets when some fail', async () => {
+    test('should continue broadcasting to available targets when some fail', async () => {
       let callCount = 0;
 
       // Mock to fail every other call
@@ -1103,7 +1104,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(successCount + failCount).toBe(4);
     });
 
-    it('should recover from temporary network issues', async () => {
+    test('should recover from temporary network issues', async () => {
       let attemptCount = 0;
 
       // Mock to fail first few attempts, then succeed
@@ -1137,7 +1138,7 @@ describe('Real-time Message Broadcasting Integration', () => {
       expect(results[3]).toBe(true);  // Fourth succeeds
     });
 
-    it('should handle malformed event data', async () => {
+    test('should handle malformed event data', async () => {
       // Test with invalid event data
       const invalidData = {
         type: 'invalid_type',

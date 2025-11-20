@@ -2,7 +2,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import delayedMessages from '@backend/handlers/delayed-message-drizzle';
-import type { HonoContext } from '@backend/types/bindings';
+import type { HonoContext } from 'import { MockFactory } from '@helpers/mockFactory';
+@backend/types/bindings';
 
 // Mock DatabaseService at module level
 vi.mock('../../../src/services/database', () => ({
@@ -47,6 +48,19 @@ vi.mock('../../../src/middleware/database', () => ({
       sessionId: 'session-123',
       lastActivity: new Date(),
       teamId: 'team-123'
+    });
+    return next();
+  })
+}));
+
+// Mock JWT authentication
+vi.mock('@/middleware/auth', () => ({
+  jwtAuth: vi.fn((c, next) => {
+    c.set('jwtPayload', {
+      userId: 1,
+      username: 'test-user',
+      role: 'admin',
+      teamId: 1
     });
     return next();
   })
@@ -111,7 +125,7 @@ describe('DelayedMessage API Handler', () => {
       metadata: { priority: 'normal' }
     };
 
-    it('should successfully send delayed message', async () => {
+    test('should successfully send delayed message', async () => {
       mockDbService.getConversationById.mockResolvedValue({
         id: 'conv-123',
         status: 'active'
@@ -125,6 +139,13 @@ describe('DelayedMessage API Handler', () => {
 
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
+        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validRequest)
       });
@@ -137,7 +158,7 @@ describe('DelayedMessage API Handler', () => {
       expect(result.data.canRecall).toBe(true);
     });
 
-    it('should reject empty content', async () => {
+    test('should reject empty content', async () => {
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +172,7 @@ describe('DelayedMessage API Handler', () => {
       expect(result.error).toBe('Content is required');
     });
 
-    it('should reject invalid delay seconds', async () => {
+    test('should reject invalid delay seconds', async () => {
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,7 +186,7 @@ describe('DelayedMessage API Handler', () => {
       expect(result.error).toBe('Delay must be between 1 and 120 seconds');
     });
 
-    it('should reject non-existent conversation', async () => {
+    test('should reject non-existent conversation', async () => {
       // Mock returns null for non-existent conversation
       mockDbService.getConversationById.mockResolvedValue(null);
 
@@ -184,7 +205,7 @@ describe('DelayedMessage API Handler', () => {
   });
 
   describe('Input Validation', () => {
-    it('should validate JSON format', async () => {
+    test('should validate JSON format', async () => {
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,7 +216,7 @@ describe('DelayedMessage API Handler', () => {
       expect(response.status).toBe(500);
     });
 
-    it('should handle missing required fields', async () => {
+    test('should handle missing required fields', async () => {
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,7 +227,7 @@ describe('DelayedMessage API Handler', () => {
       expect(response.status).toBe(500);
     });
 
-    it('should validate delay seconds boundaries', async () => {
+    test('should validate delay seconds boundaries', async () => {
       const response = await app.request('/api/delayed-messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

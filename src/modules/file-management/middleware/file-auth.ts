@@ -3,9 +3,12 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { unauthorizedResponse, forbiddenResponse } from '@/utils/api-response';
+import { PermissionService } from '@shared/services/permission-service';
+import type { PermissionContext } from '@/types/services';
 
 /**
  * 檔案訪問權限驗證中間件
+ * 使用 PermissionService 進行細緻權限檢查
  */
 export async function fileAuthMiddleware(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
@@ -15,11 +18,27 @@ export async function fileAuthMiddleware(c: Context<{ Bindings: Bindings }>, nex
       return unauthorizedResponse(c, 'Authentication required for file operations');
     }
 
-    // 基本權限檢查
-    const hasFileAccess = checkFilePermissions(user.role, c.req.method, c.req.path);
+    // 確定需要檢查的操作類型
+    const action = determineFileAction(c.req.method, c.req.path);
 
-    if (!hasFileAccess) {
-      return forbiddenResponse(c, 'Insufficient permissions for file operation');
+    // 構建權限上下文
+    const context: PermissionContext = {
+      userId: user.id,
+      role: user.role,
+      teamId: user.teamId
+    };
+
+    // 使用 PermissionService 檢查權限
+    const hasPermission = await PermissionService.checkPermission(
+      user.id,
+      'file',
+      action,
+      context,
+      c.env.DB
+    );
+
+    if (!hasPermission) {
+      return forbiddenResponse(c, `Insufficient permissions for file ${action} operation`);
     }
 
     await next();
@@ -31,54 +50,24 @@ export async function fileAuthMiddleware(c: Context<{ Bindings: Bindings }>, nex
 }
 
 /**
- * 檢查檔案權限
+ * 根據 HTTP 方法和路徑確定檔案操作類型
  */
-function checkFilePermissions(userRole: string, method: string, path: string): boolean {
-  const permissions = getFilePermissions(userRole);
-
-  // 基本的 CRUD 權限檢查
-  if (method === 'GET' && path.includes('/download')) {
-    return permissions.includes('file:read');
+function determineFileAction(method: string, path: string): string {
+  // 上傳操作
+  if (method === 'POST' && !path.includes('/stats')) {
+    return 'upload';
   }
 
-  if (method === 'POST' && path.includes('/upload')) {
-    return permissions.includes('file:create');
-  }
-
+  // 刪除操作
   if (method === 'DELETE') {
-    return permissions.includes('file:delete');
+    return 'delete';
   }
 
-  if (method === 'GET' && (path.includes('/stats') || path.includes('/list'))) {
-    return permissions.includes('file:read');
+  // 下載操作
+  if (method === 'GET' && (path.includes('/download') || path.match(/\/files\/[^\/]+$/))) {
+    return 'download';
   }
 
-  return permissions.includes('file:read');
-}
-
-/**
- * 獲取用戶角色的檔案權限
- */
-function getFilePermissions(userRole: string): string[] {
-  const rolePermissions: Record<string, string[]> = {
-    admin: [
-      'file:create',
-      'file:read',
-      'file:update',
-      'file:delete',
-      'file:manage'
-    ],
-    team: [
-      'file:create',
-      'file:read',
-      'file:update',
-      'file:delete'
-    ],
-    agent: [
-      'file:create',
-      'file:read'
-    ]
-  };
-
-  return rolePermissions[userRole] || [];
+  // 查看操作（列表、統計等）
+  return 'view';
 }

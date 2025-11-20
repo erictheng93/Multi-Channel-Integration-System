@@ -2,12 +2,14 @@ import { describe, test, expect, beforeEach, vi, Mock } from 'vitest';
 import { Hono } from 'hono';
 import type { Bindings } from '@backend/types';
 
+import { MockFactory } from '@helpers/mockFactory';
 describe('Auth Handler 3-Role System Support', () => {
   let app: Hono<{ Bindings: Bindings }>;
   let mockDB: any;
   let mockEnv: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockDB = {
       prepare: vi.fn().mockReturnValue({
         bind: vi.fn().mockReturnValue({
@@ -28,6 +30,10 @@ describe('Auth Handler 3-Role System Support', () => {
     app = new Hono<{ Bindings: Bindings }>();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('Registration with Role Validation', () => {
     test('should accept admin role in registration', async () => {
       const registrationData = {

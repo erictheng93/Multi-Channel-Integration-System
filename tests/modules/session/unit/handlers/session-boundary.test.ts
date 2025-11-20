@@ -15,7 +15,8 @@ import {
 import type {
   ConversationSession,
   SessionBoundaryDetection
-} from '../../../../../src/modules/session/types/session-types';
+} from '../import { MockFactory } from '@helpers/mockFactory';
+../../../../src/modules/session/types/session-types';
 
 // ======================== Mock Setup ========================
 
@@ -64,7 +65,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 基礎邊界檢測測試 ========================
 
   describe('Basic Boundary Detection', () => {
-    it('should create new session when no current session exists', async () => {
+    test('should create new session when no current session exists', async () => {
       const detection = await sessionService.detectSessionBoundary(
         null,
         'Hello, I need help',
@@ -76,7 +77,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.confidence).toBe(1.0);
     });
 
-    it('should continue session for normal message flow', async () => {
+    test('should continue session for normal message flow', async () => {
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 minutes ago
         messageCount: 10,
@@ -98,7 +99,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 時間間隔檢測測試 ========================
 
   describe('Time Gap Detection', () => {
-    it('should detect time gap and create new session', async () => {
+    test('should detect time gap and create new session', async () => {
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
         isActive: true
@@ -116,7 +117,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.metadata?.timeDiffMinutes).toBeGreaterThan(30);
     });
 
-    it('should not create new session for short time gap', async () => {
+    test('should not create new session for short time gap', async () => {
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 minutes ago
         isActive: true
@@ -132,7 +133,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.reason).toBe('manual');
     });
 
-    it('should handle edge case time boundaries', async () => {
+    test('should handle edge case time boundaries', async () => {
       // Exactly at threshold (30 minutes)
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
@@ -148,7 +149,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.shouldCreateNew).toBe(false); // Should be <= threshold
     });
 
-    it('should handle different time zones', async () => {
+    test('should handle different time zones', async () => {
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
         isActive: true
@@ -168,7 +169,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 訊息數量限制檢測測試 ========================
 
   describe('Message Limit Detection', () => {
-    it('should create new session when message limit reached', async () => {
+    test('should create new session when message limit reached', async () => {
       const currentSession = createMockSession({
         messageCount: 50, // At default limit
         isActive: true,
@@ -187,7 +188,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.metadata?.currentMessageCount).toBe(50);
     });
 
-    it('should not create new session when below message limit', async () => {
+    test('should not create new session when below message limit', async () => {
       const currentSession = createMockSession({
         messageCount: 25,
         isActive: true,
@@ -203,7 +204,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.shouldCreateNew).toBe(false);
     });
 
-    it('should handle message limit edge cases', async () => {
+    test('should handle message limit edge cases', async () => {
       const currentSession = createMockSession({
         messageCount: 49, // Just below limit
         isActive: true,
@@ -223,7 +224,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 會話持續時間檢測測試 ========================
 
   describe('Session Duration Detection', () => {
-    it('should create new session when duration limit exceeded', async () => {
+    test('should create new session when duration limit exceeded', async () => {
       const currentSession = createMockSession({
         startTime: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), // 25 hours ago
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -242,7 +243,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.metadata?.sessionDurationHours).toBeGreaterThan(24);
     });
 
-    it('should not create new session within duration limit', async () => {
+    test('should not create new session within duration limit', async () => {
       const currentSession = createMockSession({
         startTime: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -258,7 +259,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.shouldCreateNew).toBe(false);
     });
 
-    it('should handle exactly at duration limit', async () => {
+    test('should handle exactly at duration limit', async () => {
       const currentSession = createMockSession({
         startTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Exactly 24 hours
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -278,7 +279,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 主題變化檢測測試 ========================
 
   describe('Topic Change Detection', () => {
-    it('should detect topic change with keywords', async () => {
+    test('should detect topic change with keywords', async () => {
       const currentSession = createMockSession({
         topic: 'Product Inquiry',
         isActive: true,
@@ -299,7 +300,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.metadata?.detectedKeywords).toBeInstanceOf(Array);
     });
 
-    it('should detect English topic change keywords', async () => {
+    test('should detect English topic change keywords', async () => {
       const currentSession = createMockSession({
         topic: 'Technical Support',
         isActive: true,
@@ -318,7 +319,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.metadata?.detectedKeywords).toContain('by the way');
     });
 
-    it('should not trigger topic change for agent messages', async () => {
+    test('should not trigger topic change for agent messages', async () => {
       const currentSession = createMockSession({
         topic: 'General Inquiry',
         isActive: true,
@@ -336,7 +337,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.reason).toBe('manual');
     });
 
-    it('should handle multiple topic change indicators', async () => {
+    test('should handle multiple topic change indicators', async () => {
       const currentSession = createMockSession({
         topic: 'Account Setup',
         isActive: true,
@@ -359,47 +360,47 @@ describe('Session Boundary Detection', () => {
   // ======================== 主題提取測試 ========================
 
   describe('Topic Extraction', () => {
-    it('should extract product inquiry topic', async () => {
+    test('should extract product inquiry topic', async () => {
       const topic = await sessionService.extractTopic('我想了解你們的產品功能');
       expect(topic).toBe('產品諮詢');
     });
 
-    it('should extract technical support topic', async () => {
+    test('should extract technical support topic', async () => {
       const topic = await sessionService.extractTopic('系統出現錯誤無法登入');
       expect(topic).toBe('技術支援');
     });
 
-    it('should extract order inquiry topic', async () => {
+    test('should extract order inquiry topic', async () => {
       const topic = await sessionService.extractTopic('我的訂單什麼時候配送');
       expect(topic).toBe('訂單查詢');
     });
 
-    it('should extract account management topic', async () => {
+    test('should extract account management topic', async () => {
       const topic = await sessionService.extractTopic('我忘記密碼了');
       expect(topic).toBe('帳戶問題');
     });
 
-    it('should extract complaint topic', async () => {
+    test('should extract complaint topic', async () => {
       const topic = await sessionService.extractTopic('我要投訴你們的服務');
       expect(topic).toBe('投訴建議');
     });
 
-    it('should extract general inquiry topic', async () => {
+    test('should extract general inquiry topic', async () => {
       const topic = await sessionService.extractTopic('你好，請問營業時間');
       expect(topic).toBe('一般諮詢');
     });
 
-    it('should handle English content', async () => {
+    test('should handle English content', async () => {
       const topic = await sessionService.extractTopic('I have an issue with login');
       expect(topic).toBe('技術支援');
     });
 
-    it('should return null for unrecognized content', async () => {
+    test('should return null for unrecognized content', async () => {
       const topic = await sessionService.extractTopic('xyz random content 123');
       expect(topic).toBe(null);
     });
 
-    it('should handle empty or whitespace content', async () => {
+    test('should handle empty or whitespace content', async () => {
       expect(await sessionService.extractTopic('')).toBe(null);
       expect(await sessionService.extractTopic('   ')).toBe(null);
     });
@@ -408,7 +409,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 複雜場景測試 ========================
 
   describe('Complex Boundary Scenarios', () => {
-    it('should handle multiple boundary conditions simultaneously', async () => {
+    test('should handle multiple boundary conditions simultaneously', async () => {
       // Session that meets both time gap and message limit
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
@@ -428,7 +429,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.confidence).toBe(0.9);
     });
 
-    it('should prioritize different boundary conditions correctly', async () => {
+    test('should prioritize different boundary conditions correctly', async () => {
       // Session with multiple issues, but topic change should have lower priority
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // 45 minutes ago
@@ -447,7 +448,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.reason).toBe('time_gap'); // Time gap should take priority
     });
 
-    it('should handle inactive session edge case', async () => {
+    test('should handle inactive session edge case', async () => {
       const currentSession = createMockSession({
         isActive: false,
         lastActivity: new Date(Date.now() - 10 * 60 * 1000).toISOString()
@@ -463,7 +464,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.shouldCreateNew).toBe(false); // Within time and message limits
     });
 
-    it('should handle system messages differently', async () => {
+    test('should handle system messages differently', async () => {
       const currentSession = createMockSession({
         lastActivity: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
         isActive: true
@@ -484,7 +485,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 邊界檢測配置測試 ========================
 
   describe('Boundary Detection Configuration', () => {
-    it('should use custom configuration', async () => {
+    test('should use custom configuration', async () => {
       // Create service with custom config
       const customConfig = {
         timeGapThreshold: 60, // 60 minutes instead of default 30
@@ -510,7 +511,7 @@ describe('Session Boundary Detection', () => {
       expect(detection.shouldCreateNew).toBe(false);
     });
 
-    it('should respect disabled topic detection', async () => {
+    test('should respect disabled topic detection', async () => {
       const customConfig = {
         enableTopicDetection: false
       };
@@ -538,7 +539,7 @@ describe('Session Boundary Detection', () => {
   // ======================== 效能和邊界測試 ========================
 
   describe('Performance and Edge Cases', () => {
-    it('should handle very long message content', async () => {
+    test('should handle very long message content', async () => {
       const longMessage = 'A'.repeat(10000); // Very long message
 
       const currentSession = createMockSession({
@@ -556,7 +557,7 @@ describe('Session Boundary Detection', () => {
       expect(typeof detection.shouldCreateNew).toBe('boolean');
     });
 
-    it('should handle special characters and unicode', async () => {
+    test('should handle special characters and unicode', async () => {
       const unicodeMessage = '你好 🌟 ñáéíóú 中文测试 emoji 😊';
 
       const currentSession = createMockSession({
@@ -573,7 +574,7 @@ describe('Session Boundary Detection', () => {
       expect(detection).toBeDefined();
     });
 
-    it('should handle concurrent boundary detection calls', async () => {
+    test('should handle concurrent boundary detection calls', async () => {
       const currentSession = createMockSession({
         isActive: true,
         lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString()
@@ -597,7 +598,7 @@ describe('Session Boundary Detection', () => {
       });
     });
 
-    it('should handle malformed session data gracefully', async () => {
+    test('should handle malformed session data gracefully', async () => {
       const malformedSession = {
         ...createMockSession(),
         lastActivity: 'invalid-date',

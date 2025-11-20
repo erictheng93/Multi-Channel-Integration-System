@@ -2,7 +2,8 @@
 // Unit Tests for Webhook Security Service
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { WebhookSecurityService } from '@modules/integrations/services/webhook-security-service';
+import { WebhookSecurityService }import { MockFactory } from '@helpers/mockFactory';
+ from '@modules/integrations/services/webhook-security-service';
 
 // Mock 環境
 const createMockEnv = (): any => ({
@@ -11,6 +12,10 @@ const createMockEnv = (): any => ({
   FB_VERIFY_TOKEN: 'test-verify-token'
 });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 // Mock D1 Database
 const createMockDb = (): any => ({
   prepare: vi.fn((query: string) => ({
@@ -55,6 +60,7 @@ describe('WebhookSecurityService', () => {
   let mockKV: any;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockEnv = createMockEnv();
     mockDb = createMockDb();
     mockKV = createMockKV();
@@ -62,7 +68,7 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('LINE Webhook 簽章驗證', () => {
-    it('應該驗證有效的 LINE 簽章', async () => {
+    test('應該驗證有效的 LINE 簽章', async () => {
       // 準備測試數據
       const secret = 'test-secret';
       const body = JSON.stringify({ events: [] });
@@ -99,7 +105,7 @@ describe('WebhookSecurityService', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('應該拒絕無效的 LINE 簽章', async () => {
+    test('應該拒絕無效的 LINE 簽章', async () => {
       const body = JSON.stringify({ events: [] });
 
       const result = await service.validateWebhookSecurity(
@@ -116,7 +122,7 @@ describe('WebhookSecurityService', () => {
       expect(result.errors[0]).toContain('Signature verification failed');
     });
 
-    it('應該拒絕缺少簽章標頭的請求', async () => {
+    test('應該拒絕缺少簽章標頭的請求', async () => {
       const body = JSON.stringify({ events: [] });
 
       const result = await service.validateWebhookSecurity(
@@ -133,7 +139,7 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('Facebook Webhook 簽章驗證', () => {
-    it('應該驗證有效的 Facebook 簽章', async () => {
+    test('應該驗證有效的 Facebook 簽章', async () => {
       const secret = 'test-secret';
       const body = JSON.stringify({ object: 'page', entry: [] });
 
@@ -173,7 +179,7 @@ describe('WebhookSecurityService', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('應該拒絕無效的 Facebook 簽章', async () => {
+    test('應該拒絕無效的 Facebook 簽章', async () => {
       const body = JSON.stringify({ object: 'page', entry: [] });
 
       const result = await service.validateWebhookSecurity(
@@ -189,7 +195,7 @@ describe('WebhookSecurityService', () => {
       expect(result.errors.length).toBeGreaterThan(0);
     });
 
-    it('應該拒絕格式錯誤的簽章標頭', async () => {
+    test('應該拒絕格式錯誤的簽章標頭', async () => {
       const body = JSON.stringify({ object: 'page', entry: [] });
 
       const result = await service.validateWebhookSecurity(
@@ -206,7 +212,7 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('時間戳驗證 (防重放攻擊)', () => {
-    it('應該接受時間戳在容忍範圍內的請求', async () => {
+    test('應該接受時間戳在容忍範圍內的請求', async () => {
       const now = Date.now();
       const body = {
         events: [{
@@ -246,7 +252,7 @@ describe('WebhookSecurityService', () => {
       expect(result.details.timestampValid).toBe(true);
     });
 
-    it('應該拒絕時間戳超出容忍範圍的請求', async () => {
+    test('應該拒絕時間戳超出容忍範圍的請求', async () => {
       const oldTimestamp = Date.now() - (10 * 60 * 1000); // 10分鐘前
       const body = {
         events: [{
@@ -289,7 +295,7 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('重放攻擊防護', () => {
-    it('應該允許首次接收的請求', async () => {
+    test('應該允許首次接收的請求', async () => {
       const requestId = 'unique-request-id-001';
       const body = {
         events: [{
@@ -331,7 +337,7 @@ describe('WebhookSecurityService', () => {
       expect(result.details.replayCheckPassed).toBe(true);
     });
 
-    it('應該拒絕重複的請求', async () => {
+    test('應該拒絕重複的請求', async () => {
       const requestId = 'duplicate-request-id-002';
       const body = {
         events: [{
@@ -391,7 +397,7 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('速率限制', () => {
-    it('應該允許在速率限制內的請求', async () => {
+    test('應該允許在速率限制內的請求', async () => {
       const body = {
         events: [{
           type: 'message',
@@ -435,7 +441,7 @@ describe('WebhookSecurityService', () => {
       }
     });
 
-    it('應該阻擋超出速率限制的請求', async () => {
+    test('應該阻擋超出速率限制的請求', async () => {
       const integrationId = 'test-rate-limit-integration';
       const body = {
         events: [{
@@ -497,7 +503,7 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('完整安全驗證流程', () => {
-    it('應該通過所有安全檢查', async () => {
+    test('應該通過所有安全檢查', async () => {
       const body = {
         events: [{
           type: 'message',
@@ -550,7 +556,7 @@ describe('WebhookSecurityService', () => {
       });
     });
 
-    it('應該返回詳細的驗證結果元數據', async () => {
+    test('應該返回詳細的驗證結果元數據', async () => {
       const body = {
         events: [{
           type: 'message',
@@ -599,10 +605,10 @@ describe('WebhookSecurityService', () => {
   });
 
   describe('清除速率限制', () => {
-    it('應該成功清除速率限制計數器', async () => {
+    test('應該成功清除速率限制計數器', async () => {
       const integrationId = 'test-clear-rate-limit';
 
-      const success = await service.clearRateLimit(integrationId);
+      const success = await service.clearRateLimtest(integrationId);
 
       expect(success).toBe(true);
       expect(mockKV.delete).toHaveBeenCalledWith(

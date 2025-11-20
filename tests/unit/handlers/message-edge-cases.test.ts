@@ -68,7 +68,7 @@ const mockConversation = {
 
 describe('messageHandler - Edge Cases', () => {
   describe('list - Edge Cases', () => {
-    it('should handle invalid conversation ID parameter', async () => {
+    test('should handle invalid conversation ID parameter', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('invalid-id')
 
@@ -89,7 +89,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.items).toHaveLength(0)
     })
 
-    it('should handle invalid page numbers gracefully', async () => {
+    test('should handle invalid page numbers gracefully', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -120,7 +120,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(isNaN(extractResponseData(result).data.pageSize)).toBe(true)
     })
 
-    it('should handle negative page numbers', async () => {
+    test('should handle negative page numbers', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -159,7 +159,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(capturedParams[2]).toBe(-0)
     })
 
-    it('should handle very large page sizes', async () => {
+    test('should handle very large page sizes', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -196,7 +196,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(capturedParams[1]).toBe(999999) // pageSize parameter
     })
 
-    it('should handle messages with null sender information', async () => {
+    test('should handle messages with null sender information', async () => {
       const messagesWithNullSender = [
         {
           id: 'msg-1',
@@ -245,7 +245,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.items[0].senderId).toBe('') // null -> empty string
     })
 
-    it('should handle messages with invalid timestamps', async () => {
+    test('should handle messages with invalid timestamps', async () => {
       const messagesWithInvalidTimestamp = [
         {
           id: 'msg-1',
@@ -295,7 +295,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(isNaN(extractResponseData(result).data.items[0].createdAt)).toBe(true)
     })
 
-    it('should handle null total count result', async () => {
+    test('should handle null total count result', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.query = vi.fn().mockImplementation((key?: string) => {
@@ -327,7 +327,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.total).toBe(0) // Should default to 0
     })
 
-    it('should handle messages with unknown message types', async () => {
+    test('should handle messages with unknown message types', async () => {
       const messagesWithUnknownType = [
         {
           id: 'msg-1',
@@ -378,7 +378,7 @@ describe('messageHandler - Edge Cases', () => {
   })
 
   describe('send - Edge Cases', () => {
-    it('should handle empty string content with media', async () => {
+    test('should handle empty string content with media', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -411,7 +411,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.mediaUrl).toBe('https://example.com/image.jpg')
     })
 
-    it('should handle whitespace-only content', async () => {
+    test('should handle whitespace-only content', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -444,7 +444,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.content).toBe('   \n\t   ')
     })
 
-    it('should handle null JWT payload', async () => {
+    test('should handle null JWT payload', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -478,7 +478,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(result.status).toBe(500)
     })
 
-    it('should handle conversation with null platform', async () => {
+    test('should handle conversation with null platform', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -515,7 +515,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.platform).toBeNull()
     })
 
-    it('should handle very long message content', async () => {
+    test('should handle very long message content', async () => {
       const longContent = 'a'.repeat(10000) // 10k characters
 
       const mockContext = createMockContext()
@@ -557,7 +557,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.content).toBe(longContent)
     })
 
-    it('should handle special characters in content', async () => {
+    test('should handle special characters in content', async () => {
       const specialContent = '?? Hello! @#$%^&*()_+ 銝剜? 塈?媢堭堥?堜 ??'
 
       const mockContext = createMockContext()
@@ -591,7 +591,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.content).toBe(specialContent)
     })
 
-    it('should handle invalid media URLs', async () => {
+    test('should handle invalid media URLs', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -623,7 +623,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(extractResponseData(result).data.mediaUrl).toBe('not-a-valid-url')
     })
 
-    it('should handle database insert failure', async () => {
+    test('should handle database insert failure', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -660,7 +660,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(result.status).toBe(500)
     })
 
-    it('should handle conversation update failure', async () => {
+    test('should handle conversation update failure', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
       mockContext.req.json = vi.fn().mockResolvedValue({
@@ -697,7 +697,7 @@ describe('messageHandler - Edge Cases', () => {
       expect(result.status).toBe(500)
     })
 
-    it('should handle missing conversation ID parameter', async () => {
+    test('should handle missing conversation ID parameter', async () => {
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue(undefined)
       mockContext.req.json = vi.fn().mockResolvedValue({

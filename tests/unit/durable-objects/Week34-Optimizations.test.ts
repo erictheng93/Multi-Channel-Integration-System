@@ -8,7 +8,8 @@ import {
   DurableObjectsTestEnvironment,
   MockDurableObjectState
 } from '../../helpers/websocket/durable-objects-test-env';
-import { TestDataFactory } from '../../helpers/websocket/websocket-test-utils';
+import { TestDataFactory } from '../../helpimport { MockFactory } from '@helpers/mockFactory';
+ers/websocket/websocket-test-utils';
 import type { DurableObjectEvent } from '@backend/types/websocket-types';
 
 describe('Week 3-4 Performance Optimizations', () => {
@@ -68,7 +69,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('chunkArray() Utility', () => {
-      it('should split array into chunks of specified size', () => {
+      test('should split array into chunks of specified size', () => {
         // Access private method via type assertion
         const broadcaster = messageBroadcaster as any;
 
@@ -83,7 +84,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         ]);
       });
 
-      it('should handle empty arrays', () => {
+      test('should handle empty arrays', () => {
         const broadcaster = messageBroadcaster as any;
 
         const chunks = broadcaster.chunkArray([], 5);
@@ -91,7 +92,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(chunks).toEqual([]);
       });
 
-      it('should handle arrays smaller than chunk size', () => {
+      test('should handle arrays smaller than chunk size', () => {
         const broadcaster = messageBroadcaster as any;
 
         const array = [1, 2, 3];
@@ -100,7 +101,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(chunks).toEqual([[1, 2, 3]]);
       });
 
-      it('should handle chunk size of 1', () => {
+      test('should handle chunk size of 1', () => {
         const broadcaster = messageBroadcaster as any;
 
         const array = [1, 2, 3];
@@ -109,7 +110,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(chunks).toEqual([[1], [2], [3]]);
       });
 
-      it('should split exactly evenly when array is multiple of chunk size', () => {
+      test('should split exactly evenly when array is multiple of chunk size', () => {
         const broadcaster = messageBroadcaster as any;
 
         const array = [1, 2, 3, 4, 5, 6];
@@ -120,7 +121,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('batchDeliverToConversations()', () => {
-      it('should process conversations in parallel batches of 10', async () => {
+      test('should process conversations in parallel batches of 10', async () => {
         const event = TestDataFactory.createEvent({
           type: 'message_sent',
           conversationId: 'conv_123',
@@ -142,7 +143,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(mockEnv.CONVERSATION_ROOM.idFromName).toHaveBeenCalledTimes(25);
       });
 
-      it('should handle batch delivery failures gracefully', async () => {
+      test('should handle batch delivery failures gracefully', async () => {
         const event = TestDataFactory.createEvent({
           type: 'message_sent',
           data: { content: 'Test' }
@@ -170,7 +171,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(result.failed).toBe(2);
       });
 
-      it('should deliver to single conversation efficiently', async () => {
+      test('should deliver to single conversation efficiently', async () => {
         const event = TestDataFactory.createEvent({
           type: 'message_sent',
           data: { content: 'Test' }
@@ -187,7 +188,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('batchDeliverToUsers()', () => {
-      it('should process users in parallel batches of 10', async () => {
+      test('should process users in parallel batches of 10', async () => {
         const event = TestDataFactory.createEvent({
           type: 'user_notification',
           data: { message: 'New message' }
@@ -203,7 +204,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(mockEnv.USER_CONNECTION.idFromName).toHaveBeenCalledTimes(25);
       });
 
-      it('should handle user delivery failures', async () => {
+      test('should handle user delivery failures', async () => {
         const event = TestDataFactory.createEvent({
           type: 'user_notification',
           data: { message: 'Test' }
@@ -232,7 +233,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('batchDeliverToTeams()', () => {
-      it('should process teams in parallel batches of 10', async () => {
+      test('should process teams in parallel batches of 10', async () => {
         const event = TestDataFactory.createEvent({
           type: 'team_notification',
           data: { message: 'Team update' }
@@ -247,7 +248,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(result.failed).toBe(0);
       });
 
-      it('should handle empty team member lists', async () => {
+      test('should handle empty team member lists', async () => {
         // Create a new broadcaster with proper mocks for empty team
         const emptyMockEnv = {
           ...mockEnv,
@@ -281,7 +282,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('Performance Comparison', () => {
-      it('should process 100 targets in parallel batches (vs sequential)', async () => {
+      test('should process 100 targets in parallel batches (vs sequential)', async () => {
         const event = TestDataFactory.createEvent({
           type: 'message_sent',
           data: { content: 'Batch test' }
@@ -350,7 +351,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('Reduced Cache Size (MAX_MESSAGE_HISTORY = 10)', () => {
-      it('should limit message history to 10 messages', async () => {
+      test('should limit message history to 10 messages', async () => {
         const room = conversationRoom as any;
 
         // Verify configuration
@@ -378,7 +379,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(room.messageHistory[9].id).toBe('msg_14'); // Last message
       });
 
-      it('should not exceed cache limit when messages are added rapidly', async () => {
+      test('should not exceed cache limit when messages are added rapidly', async () => {
         const room = conversationRoom as any;
 
         // Simulate 100 rapid messages
@@ -405,7 +406,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('Debounced Storage Write (scheduleStorageWrite)', () => {
-      it('should schedule storage write with 5-second debounce', () => {
+      test('should schedule storage write with 5-second debounce', () => {
         const room = conversationRoom as any;
 
         // Mark message as dirty
@@ -417,7 +418,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(room.writeDebounceTimer).not.toBeNull();
       });
 
-      it('should reset debounce timer on multiple calls', () => {
+      test('should reset debounce timer on multiple calls', () => {
         const room = conversationRoom as any;
 
         // First schedule
@@ -433,7 +434,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(secondTimer).not.toBe(firstTimer);
       });
 
-      it('should demonstrate write reduction concept', () => {
+      test('should demonstrate write reduction concept', () => {
         // Conceptual test: With 5-second debounce
         const messagesPerMinute = 100;
         const debounceWindowSeconds = 5;
@@ -447,7 +448,7 @@ describe('Week 3-4 Performance Optimizations', () => {
     });
 
     describe('Force Storage Write (forceStorageWrite)', () => {
-      it('should write immediately without debounce', async () => {
+      test('should write immediately without debounce', async () => {
         const room = conversationRoom as any;
 
         // Clear any previous calls from initialization
@@ -470,7 +471,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(room.messageDirty).toBe(false);
       });
 
-      it('should cancel pending debounced write', async () => {
+      test('should cancel pending debounced write', async () => {
         const room = conversationRoom as any;
 
         // Clear any previous calls
@@ -503,7 +504,7 @@ describe('Week 3-4 Performance Optimizations', () => {
         expect(storagePutSpy).toHaveBeenCalledTimes(1);
       });
 
-      it('should not write if cache is clean', async () => {
+      test('should not write if cache is clean', async () => {
         const room = conversationRoom as any;
 
         // Clear any previous calls
@@ -521,7 +522,7 @@ describe('Week 3-4 Performance Optimizations', () => {
   });
 
   describe('Performance Impact Verification', () => {
-    it('should demonstrate 90% latency reduction with batch delivery', async () => {
+    test('should demonstrate 90% latency reduction with batch delivery', async () => {
       // This is a conceptual test showing the improvement
       const targetCount = 100;
       const sequentialLatency = targetCount * 50; // 100 targets × 50ms = 5000ms
@@ -531,7 +532,7 @@ describe('Week 3-4 Performance Optimizations', () => {
       expect(improvement).toBe(90); // 90% improvement
     });
 
-    it('should demonstrate 88% storage write reduction with debounce', () => {
+    test('should demonstrate 88% storage write reduction with debounce', () => {
       const messagesPerMinute = 100;
       const writesWithoutDebounce = 100; // 1 write per message
       const writesWithDebounce = 12; // 60s / 5s debounce
@@ -540,7 +541,7 @@ describe('Week 3-4 Performance Optimizations', () => {
       expect(reduction).toBe(88); // 88% reduction
     });
 
-    it('should demonstrate 40% memory reduction with cache size reduction', () => {
+    test('should demonstrate 40% memory reduction with cache size reduction', () => {
       const oldCacheSize = 50; // 50 messages
       const newCacheSize = 10; // 10 messages
       const avgMessageSize = 2000; // bytes

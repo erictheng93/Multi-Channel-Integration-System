@@ -7,6 +7,7 @@ import { FileStorageService } from '@/utils/file-storage';
 import type { Bindings } from '@/types';
 import { createMockDatabase } from '../helpers/mockDatabase';
 
+import { MockFactory } from '@helpers/mockFactory';
 // Mock globals
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -68,7 +69,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
   });
 
   describe('Complete Message Flow - LINE', () => {
-    it('should handle text message from new user with profile sync', async () => {
+    test('should handle text message from new user with profile sync', async () => {
       const webhookPayload = {
         events: [{
           type: 'message',
@@ -138,7 +139,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should handle image message with R2 storage', async () => {
+    test('should handle image message with R2 storage', async () => {
       const imageWebhookPayload = {
         events: [{
           type: 'message',
@@ -202,7 +203,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should send message via LINE Push API with attachments', async () => {
+    test('should send message via LINE Push API with attachments', async () => {
       const conversationId = 'conv-123';
       const messageData = {
         content: 'Hello from agent',
@@ -274,7 +275,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
   });
 
   describe('User Profile Sync Service', () => {
-    it('should sync LINE user profile and update database', async () => {
+    test('should sync LINE user profile and update database', async () => {
       const userSyncService = createUserSyncService(mockEnv);
       const userId = 'line-profile-sync-123';
 
@@ -310,7 +311,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should batch sync multiple users efficiently', async () => {
+    test('should batch sync multiple users efficiently', async () => {
       const userSyncService = createUserSyncService(mockEnv);
       const userList = [
         { userId: 'user1', platform: 'line' },
@@ -343,7 +344,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
   });
 
   describe('File Storage Service', () => {
-    it('should download LINE media and store in R2', async () => {
+    test('should download LINE media and store in R2', async () => {
       const fileStorage = new FileStorageService(mockEnv);
       
       // Mock file download
@@ -382,7 +383,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
       );
     });
 
-    it('should handle file size limits', async () => {
+    test('should handle file size limits', async () => {
       const fileStorage = new FileStorageService(mockEnv);
       
       // Mock oversized file (>10MB)
@@ -405,7 +406,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
   });
 
   describe('Integration Health Checks', () => {
-    it('should verify LINE integration status', async () => {
+    test('should verify LINE integration status', async () => {
       // Mock successful LINE Bot Info API
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -429,7 +430,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
       expect(result.data.details.line).toContain('Test Bot');
     });
 
-    it('should detect LINE integration failures', async () => {
+    test('should detect LINE integration failures', async () => {
       // Mock failed LINE API
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -450,7 +451,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
   });
 
   describe('Error Handling and Recovery', () => {
-    it('should handle LINE API rate limiting gracefully', async () => {
+    test('should handle LINE API rate limiting gracefully', async () => {
       const webhookPayload = {
         events: [{
           type: 'message',
@@ -491,7 +492,7 @@ describe('LINE Integration - Complete Feature Tests', () => {
       expect(result.status).toBe(200);
     });
 
-    it('should recover from temporary storage failures', async () => {
+    test('should recover from temporary storage failures', async () => {
       const imageWebhookPayload = {
         events: [{
           type: 'message',

@@ -2,7 +2,8 @@
  * CustomerMessageDO Durable Object Unit Tests
  *
  * Comprehensive test suite for customer message management
- * Tests all functionality including:
+ * Tests all functionality includimport { MockFactory } from '@helpers/mockFactory';
+ing:
  * - Message fetching with pagination (load more support)
  * - Message creation with complete data validation
  * - File upload to Cloudflare R2
@@ -129,7 +130,7 @@ describe('CustomerMessageDO Durable Object', () => {
   });
 
   describe('GET /messages - Fetch Messages', () => {
-    it('should fetch messages successfully', async () => {
+    test('should fetch messages successfully', async () => {
       const mockMessages = [
         {
           id: 'msg_001',
@@ -168,7 +169,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.hasMore).toBe(false);
     });
 
-    it('should reject request without conversation ID', async () => {
+    test('should reject request without conversation ID', async () => {
       const request = new Request('http://test/messages');
 
       const response = await customerMessageDO.fetch(request);
@@ -179,7 +180,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Conversation ID is required');
     });
 
-    it('should paginate with default limit of 50', async () => {
+    test('should paginate with default limit of 50', async () => {
       const mockMessages = new Array(50).fill(null).map((_, i) => ({
         id: `msg_${i}`,
         conversationId: 'conv_123',
@@ -202,7 +203,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.hasMore).toBe(true); // Indicates more messages available
     });
 
-    it('should support custom limit', async () => {
+    test('should support custom limit', async () => {
       const mockMessages = new Array(20).fill(null).map((_, i) => ({
         id: `msg_${i}`,
         conversationId: 'conv_123',
@@ -222,7 +223,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.messages).toHaveLength(20);
     });
 
-    it('should paginate with before parameter', async () => {
+    test('should paginate with before parameter', async () => {
       // Mock the "before" message lookup
       const beforeMessage = [{
         id: 'msg_before',
@@ -254,7 +255,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.messages[0].id).toBe('msg_003');
     });
 
-    it('should handle before parameter with non-existent message', async () => {
+    test('should handle before parameter with non-existent message', async () => {
       mockDb.limit
         .mockResolvedValueOnce([]) // Before message not found
         .mockResolvedValueOnce([ // Return latest messages
@@ -277,7 +278,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.messages).toHaveLength(1);
     });
 
-    it('should handle database errors gracefully', async () => {
+    test('should handle database errors gracefully', async () => {
       mockDb.limit.mockRejectedValue(new Error('Database error'));
 
       const request = new Request('http://test/messages', {
@@ -292,7 +293,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Failed to fetch messages');
     });
 
-    it('should map agentSenderId to senderId correctly', async () => {
+    test('should map agentSenderId to senderId correctly', async () => {
       mockDb.limit.mockResolvedValue([{
         id: 'msg_001',
         conversationId: 'conv_123',
@@ -313,7 +314,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.messages[0].senderId).toBe('agent_123');
     });
 
-    it('should map customerSenderId to senderId correctly', async () => {
+    test('should map customerSenderId to senderId correctly', async () => {
       mockDb.limit.mockResolvedValue([{
         id: 'msg_002',
         conversationId: 'conv_123',
@@ -336,7 +337,7 @@ describe('CustomerMessageDO Durable Object', () => {
   });
 
   describe('POST /messages - Create Message', () => {
-    it('should create message successfully', async () => {
+    test('should create message successfully', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -372,7 +373,7 @@ describe('CustomerMessageDO Durable Object', () => {
       );
     });
 
-    it('should reject message without conversation ID', async () => {
+    test('should reject message without conversation ID', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -390,7 +391,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Conversation ID is required');
     });
 
-    it('should reject message without session ID', async () => {
+    test('should reject message without session ID', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -408,7 +409,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Session ID is required');
     });
 
-    it('should reject message with empty content', async () => {
+    test('should reject message with empty content', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -427,7 +428,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Message content is required');
     });
 
-    it('should parse JWT token correctly', async () => {
+    test('should parse JWT token correctly', async () => {
       // Create a mock JWT: header.payload.signature
       const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
       const payload = btoa(JSON.stringify({ userId: 'agent_jwt_123', role: 'agent' }));
@@ -451,7 +452,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.message.agentSenderId).toBe('agent_jwt_123');
     });
 
-    it('should fallback to sessionId if JWT parsing fails', async () => {
+    test('should fallback to sessionId if JWT parsing fails', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -469,7 +470,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.message.agentSenderId).toBe('invalid_jwt_format');
     });
 
-    it('should store assets in metadata field', async () => {
+    test('should store assets in metadata field', async () => {
       const assets = [
         'https://r2.example.com/file1.jpg',
         'https://r2.example.com/file2.pdf'
@@ -497,7 +498,7 @@ describe('CustomerMessageDO Durable Object', () => {
       );
     });
 
-    it('should notify CustomerConversationDO after message creation', async () => {
+    test('should notify CustomerConversationDO after message creation', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -519,7 +520,7 @@ describe('CustomerMessageDO Durable Object', () => {
       );
     });
 
-    it('should continue if broadcast fails', async () => {
+    test('should continue if broadcast fails', async () => {
       // Mock CustomerConversationDO to fail
       mockConversationDO.fetch.mockRejectedValue(new Error('Broadcast failed'));
 
@@ -542,7 +543,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle database insertion errors', async () => {
+    test('should handle database insertion errors', async () => {
       mockDb.values.mockRejectedValue(new Error('Database insert failed'));
 
       const request = new Request('http://test/messages', {
@@ -563,7 +564,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Failed to create message');
     });
 
-    it('should generate unique message ID', async () => {
+    test('should generate unique message ID', async () => {
       const request1 = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -593,7 +594,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result1.message.id).not.toBe(result2.message.id);
     });
 
-    it('should set correct message defaults', async () => {
+    test('should set correct message defaults', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -622,7 +623,7 @@ describe('CustomerMessageDO Durable Object', () => {
   });
 
   describe('POST /upload - File Upload', () => {
-    it('should upload file successfully', async () => {
+    test('should upload file successfully', async () => {
       const mockFile = new File(['test content'], 'test.jpg', { type: 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -651,7 +652,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(mockEnv.R2_BUCKET.put).toHaveBeenCalled();
     });
 
-    it('should reject upload without conversation ID', async () => {
+    test('should reject upload without conversation ID', async () => {
       const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -670,7 +671,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Conversation ID is required');
     });
 
-    it('should reject upload without session ID', async () => {
+    test('should reject upload without session ID', async () => {
       const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -689,7 +690,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Session ID is required');
     });
 
-    it('should reject upload without file', async () => {
+    test('should reject upload without file', async () => {
       const formData = new FormData();
 
       const request = new Request('http://test/upload', {
@@ -709,7 +710,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('No file provided');
     });
 
-    it('should generate unique filename for upload', async () => {
+    test('should generate unique filename for upload', async () => {
       const mockFile = new File(['test'], 'document.pdf', { type: 'application/pdf' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -733,7 +734,7 @@ describe('CustomerMessageDO Durable Object', () => {
       );
     });
 
-    it('should preserve file extension in upload', async () => {
+    test('should preserve file extension in upload', async () => {
       const mockFile = new File(['test'], 'image.png', { type: 'image/png' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -756,7 +757,7 @@ describe('CustomerMessageDO Durable Object', () => {
       );
     });
 
-    it('should set correct content type in R2', async () => {
+    test('should set correct content type in R2', async () => {
       const mockFile = new File(['test'], 'video.mp4', { type: 'video/mp4' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -783,7 +784,7 @@ describe('CustomerMessageDO Durable Object', () => {
       );
     });
 
-    it('should handle R2 upload errors', async () => {
+    test('should handle R2 upload errors', async () => {
       mockEnv.R2_BUCKET.put.mockRejectedValue(new Error('R2 upload failed'));
 
       const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
@@ -807,7 +808,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(result.error).toContain('Failed to upload file');
     });
 
-    it('should organize uploads by conversation ID', async () => {
+    test('should organize uploads by conversation ID', async () => {
       const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', mockFile);
@@ -832,7 +833,7 @@ describe('CustomerMessageDO Durable Object', () => {
   });
 
   describe('CORS Middleware', () => {
-    it('should include CORS headers in response', async () => {
+    test('should include CORS headers in response', async () => {
       const request = new Request('http://test/messages', {
         headers: {
           'X-Conversation-Id': 'conv_123',
@@ -846,7 +847,7 @@ describe('CustomerMessageDO Durable Object', () => {
              response.headers.has('access-control-allow-origin')).toBe(true);
     });
 
-    it('should handle OPTIONS preflight requests', async () => {
+    test('should handle OPTIONS preflight requests', async () => {
       const request = new Request('http://test/messages', {
         method: 'OPTIONS',
         headers: {
@@ -863,14 +864,14 @@ describe('CustomerMessageDO Durable Object', () => {
   });
 
   describe('Error Handling', () => {
-    it('should return 404 for unknown endpoints', async () => {
+    test('should return 404 for unknown endpoints', async () => {
       const request = new Request('http://test/unknown-endpoint');
 
       const response = await customerMessageDO.fetch(request);
       expect(response.status).toBe(404);
     });
 
-    it('should handle malformed JSON in message creation', async () => {
+    test('should handle malformed JSON in message creation', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -887,7 +888,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(response.status).toBeGreaterThanOrEqual(400);
     });
 
-    it('should handle concurrent message creation', async () => {
+    test('should handle concurrent message creation', async () => {
       const requests = Array(5).fill(null).map((_, i) =>
         new Request('http://test/messages', {
           method: 'POST',
@@ -912,7 +913,7 @@ describe('CustomerMessageDO Durable Object', () => {
   });
 
   describe('Integration with CustomerConversationDO', () => {
-    it('should send correct notification payload', async () => {
+    test('should send correct notification payload', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {
@@ -944,7 +945,7 @@ describe('CustomerMessageDO Durable Object', () => {
       expect(body.message).toHaveProperty('content');
     });
 
-    it('should get correct CustomerConversationDO instance', async () => {
+    test('should get correct CustomerConversationDO instance', async () => {
       const request = new Request('http://test/messages', {
         method: 'POST',
         headers: {

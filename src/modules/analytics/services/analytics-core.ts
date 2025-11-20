@@ -664,12 +664,17 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       }
     }
 
-    if (filters?.platform) {
-      // TODO: Platform filtering needs to join with customers table
-      // conversations table doesn't have platform field directly
-      // if (context.table === 'conversations') {
-      //   conditions.push(eq(conversations.platform, filters.platform));
-      // }
+    // Platform filtering - requires JOIN with customers table
+    if (filters?.platform && context.table === 'conversations') {
+      // Use EXISTS subquery to filter conversations by customer platform
+      // This is more efficient than JOIN for filtering purposes
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${customers}
+          WHERE ${customers.id} = ${conversations.customerId}
+          AND ${customers.platform} = ${filters.platform}
+        )`
+      );
     }
 
     return conditions;

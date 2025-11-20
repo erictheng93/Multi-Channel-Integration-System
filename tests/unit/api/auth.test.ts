@@ -2,7 +2,8 @@
 // 檔案路徑：/tests/unit/api/auth.test.ts
 // Created by: API Test Developer
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, bimport { MockFactory } from '@helpers/mockFactory';
+eforeEach } from 'vitest';
 import { authApi } from '@/api/auth';
 import { apiClient } from '@/api/base';
 
@@ -23,8 +24,12 @@ describe('Authentication API Tests', () => {
     vi.clearAllMocks();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('Authentication Header Management', () => {
-    it('should set auth header correctly', () => {
+    test('should set auth header correctly', () => {
       const token = 'test-jwt-token-123';
       
       authApi.setAuthHeader(token);
@@ -32,7 +37,7 @@ describe('Authentication API Tests', () => {
       expect(mockApiClient.setAuthHeader).toHaveBeenCalledWith(token);
     });
 
-    it('should remove auth header correctly', () => {
+    test('should remove auth header correctly', () => {
       authApi.removeAuthHeader();
       
       expect(mockApiClient.removeAuthHeader).toHaveBeenCalled();
@@ -40,7 +45,7 @@ describe('Authentication API Tests', () => {
   });
 
   describe('Login Functionality', () => {
-    it('should login with valid credentials', async () => {
+    test('should login with valid credentials', async () => {
       const credentials = {
         email: 'test@example.com',
         password: 'password123'
@@ -69,7 +74,7 @@ describe('Authentication API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle login failure', async () => {
+    test('should handle login failure', async () => {
       const credentials = {
         email: 'invalid@example.com',
         password: 'wrongpassword'
@@ -88,7 +93,7 @@ describe('Authentication API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle network error during login', async () => {
+    test('should handle network error during login', async () => {
       const credentials = {
         email: 'test@example.com',
         password: 'password123'
@@ -108,7 +113,7 @@ describe('Authentication API Tests', () => {
   });
 
   describe('User Profile Retrieval', () => {
-    it('should get current user profile', async () => {
+    test('should get current user profile', async () => {
       const mockAgent = {
         id: 'agent-1',
         name: 'Test Agent',
@@ -131,7 +136,7 @@ describe('Authentication API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle unauthorized access to profile', async () => {
+    test('should handle unauthorized access to profile', async () => {
       const mockResponse = {
         success: false,
         error: '未授權訪問'
@@ -145,7 +150,7 @@ describe('Authentication API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle profile not found', async () => {
+    test('should handle profile not found', async () => {
       const mockResponse = {
         success: false,
         error: '用戶不存在'
@@ -160,7 +165,7 @@ describe('Authentication API Tests', () => {
   });
 
   describe('Logout Functionality', () => {
-    it('should logout successfully', async () => {
+    test('should logout successfully', async () => {
       const mockResponse = {
         success: true,
         data: undefined
@@ -174,7 +179,7 @@ describe('Authentication API Tests', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle logout error', async () => {
+    test('should handle logout error', async () => {
       const mockResponse = {
         success: false,
         error: '登出失敗'
@@ -190,7 +195,7 @@ describe('Authentication API Tests', () => {
   });
 
   describe('Request Format Validation', () => {
-    it('should send login request with correct format', async () => {
+    test('should send login request with correct format', async () => {
       const credentials = {
         email: 'agent@company.com',
         password: 'securePassword123!'
@@ -212,7 +217,7 @@ describe('Authentication API Tests', () => {
       );
     });
 
-    it('should validate email format in login request', async () => {
+    test('should validate email format in login request', async () => {
       const credentials = {
         email: 'valid.email@domain.com',
         password: 'password'
@@ -231,7 +236,7 @@ describe('Authentication API Tests', () => {
   });
 
   describe('Response Data Transformation', () => {
-    it('should return properly typed login response', async () => {
+    test('should return properly typed login response', async () => {
       const mockResponse = {
         success: true,
         data: {
@@ -266,7 +271,7 @@ describe('Authentication API Tests', () => {
       }
     });
 
-    it('should return properly typed profile response', async () => {
+    test('should return properly typed profile response', async () => {
       const mockResponse = {
         success: true,
         data: {

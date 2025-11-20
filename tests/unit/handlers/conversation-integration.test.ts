@@ -149,7 +149,7 @@ const mockJWTPayloads = {
 
 describe('conversationHandler - Integration Tests', () => {
   describe('Real-world Scenarios', () => {
-    it('should handle a complete conversation workflow', async () => {
+    test('should handle a complete conversation workflow', async () => {
       // Scenario: New conversation comes in, gets assigned, and then closed
 
       // Step 1: List conversations (should show pending conversation)
@@ -268,7 +268,7 @@ describe('conversationHandler - Integration Tests', () => {
       expect(extractResponseData(closeResult).message).toBe('Conversation closed successfully')
     })
 
-    it('should handle multi-platform conversation management', async () => {
+    test('should handle multi-platform conversation management', async () => {
       // Scenario: Admin views conversations from both LINE and Facebook
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayloads.admin)
@@ -316,7 +316,7 @@ describe('conversationHandler - Integration Tests', () => {
       expect(facebookConversation.user.platformUserId).toBe('fb_user_123456')
     })
 
-    it('should handle agent permission restrictions correctly', async () => {
+    test('should handle agent permission restrictions correctly', async () => {
       // Scenario: Agent can only see their assigned conversations
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayloads.agent1) // Agent 1 (ID: 2)
@@ -365,7 +365,7 @@ describe('conversationHandler - Integration Tests', () => {
       expect(capturedParams).toContain(2) // Team ID
     })
 
-    it('should handle conversation reassignment between agents', async () => {
+    test('should handle conversation reassignment between agents', async () => {
       // Scenario: Conversation is reassigned from agent1 to agent2
       const mockContext = createMockContext()
       mockContext.req.param = vi.fn().mockReturnValue('1')
@@ -395,7 +395,7 @@ describe('conversationHandler - Integration Tests', () => {
       expect(capturedParams[1]).toBe('1') // Conversation ID
     })
 
-    it('should handle bulk operations efficiently', async () => {
+    test('should handle bulk operations efficiently', async () => {
       // Scenario: Admin views large number of conversations with pagination
       const mockContext = createMockContext()
       mockContext.get = vi.fn().mockReturnValue(mockJWTPayloads.admin)
@@ -452,7 +452,7 @@ describe('conversationHandler - Integration Tests', () => {
       expect(endTime - startTime).toBeLessThan(100) // Should be fast
     })
 
-    it('should maintain data consistency across operations', async () => {
+    test('should maintain data consistency across operations', async () => {
       // Scenario: Verify conversation data remains consistent through multiple operations
       const conversationId = '1'
 

@@ -57,7 +57,7 @@ describe('資料庫查詢優化測試', () => {
   })
 
   describe('單次查詢優化驗證', () => {
-    it('應該只執行一次資料庫查詢獲取所有用戶資訊', async () => {
+    test('應該只執行一次資料庫查詢獲取所有用戶資訊', async () => {
       // 模擬完整的用戶資料（包含密碼策略）
       const mockUserData = {
         id: 'user-123',
@@ -109,7 +109,7 @@ describe('資料庫查詢優化測試', () => {
       expect(result.passwordPolicy).toBe('changeable')
     })
 
-    it('當用戶不存在時應該只查詢一次', async () => {
+    test('當用戶不存在時應該只查詢一次', async () => {
       // 模擬用戶不存在
       mockDrizzleDb.get.mockResolvedValue(null)
 
@@ -124,7 +124,7 @@ describe('資料庫查詢優化測試', () => {
       expect(result.user).toBeNull()
     })
 
-    it('當帳戶被禁用時應該只查詢一次', async () => {
+    test('當帳戶被禁用時應該只查詢一次', async () => {
       const mockUserData = {
         id: 'user-123',
         email: 'test@example.com',
@@ -153,7 +153,7 @@ describe('資料庫查詢優化測試', () => {
       expect(result.passwordPolicy).toBe('changeable')
     })
 
-    it('當密碼錯誤時應該只查詢一次', async () => {
+    test('當密碼錯誤時應該只查詢一次', async () => {
       const mockUserData = {
         id: 'user-123',
         email: 'test@example.com',
@@ -185,7 +185,7 @@ describe('資料庫查詢優化測試', () => {
       expect(result.passwordPolicy).toBe('changeable')
     })
 
-    it('應該正確處理密碼策略 must_change', async () => {
+    test('應該正確處理密碼策略 must_change', async () => {
       const mockUserData = {
         id: 'user-123',
         email: 'test@example.com',
@@ -217,7 +217,7 @@ describe('資料庫查詢優化測試', () => {
   })
 
   describe('性能基準測試', () => {
-    it('查詢優化前後的對比', async () => {
+    test('查詢優化前後的對比', async () => {
       const mockUserData = {
         id: 'user-123',
         email: 'test@example.com',

@@ -9,11 +9,12 @@ import {
   ErrorHandler,
   FileLogger
 } from '@modules/file-management/utils/error-handler';
-import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
+import { ERROR_CODES } from 'import { MockFactory } from '@helpers/mockFactory';
+@modules/file-management/constants/error-codes';
 
 describe('FileManagementError', () => {
   describe('Constructor', () => {
-    it('should create error with basic properties', () => {
+    test('should create error with basic properties', () => {
       const error = new FileManagementError(
         ERROR_CODES.FILE_TOO_LARGE,
         { operation: 'upload', fileId: 'test123' }
@@ -25,7 +26,11 @@ describe('FileManagementError', () => {
       expect(error.name).toBe('FileManagementError');
     });
 
-    it('should determine severity correctly for critical errors', () => {
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+    test('should determine severity correctly for critical errors', () => {
       const error = new FileManagementError(
         ERROR_CODES.VIRUS_DETECTED,
         { operation: 'scan' }
@@ -34,7 +39,7 @@ describe('FileManagementError', () => {
       expect(error.severity).toBe('critical');
     });
 
-    it('should determine severity correctly for warning errors', () => {
+    test('should determine severity correctly for warning errors', () => {
       const error = new FileManagementError(
         ERROR_CODES.FILE_TOO_LARGE,
         { operation: 'upload' }
@@ -43,7 +48,7 @@ describe('FileManagementError', () => {
       expect(error.severity).toBe('warning');
     });
 
-    it('should determine severity correctly for regular errors', () => {
+    test('should determine severity correctly for regular errors', () => {
       const error = new FileManagementError(
         ERROR_CODES.UPLOAD_FAILED,
         { operation: 'upload' }
@@ -52,7 +57,7 @@ describe('FileManagementError', () => {
       expect(error.severity).toBe('error');
     });
 
-    it('should mark unrecoverable errors correctly', () => {
+    test('should mark unrecoverable errors correctly', () => {
       const error = new FileManagementError(
         ERROR_CODES.VIRUS_DETECTED,
         { operation: 'scan' }
@@ -61,7 +66,7 @@ describe('FileManagementError', () => {
       expect(error.recoverable).toBe(false);
     });
 
-    it('should mark recoverable errors correctly', () => {
+    test('should mark recoverable errors correctly', () => {
       const error = new FileManagementError(
         ERROR_CODES.UPLOAD_TIMEOUT,
         { operation: 'upload' }
@@ -70,7 +75,7 @@ describe('FileManagementError', () => {
       expect(error.recoverable).toBe(true);
     });
 
-    it('should mark retryable errors correctly', () => {
+    test('should mark retryable errors correctly', () => {
       const error = new FileManagementError(
         ERROR_CODES.NETWORK_ERROR,
         { operation: 'upload' }
@@ -79,7 +84,7 @@ describe('FileManagementError', () => {
       expect(error.retryable).toBe(true);
     });
 
-    it('should mark non-retryable errors correctly', () => {
+    test('should mark non-retryable errors correctly', () => {
       const error = new FileManagementError(
         ERROR_CODES.FILE_TOO_LARGE,
         { operation: 'upload' }
@@ -88,7 +93,7 @@ describe('FileManagementError', () => {
       expect(error.retryable).toBe(false);
     });
 
-    it('should store original error', () => {
+    test('should store original error', () => {
       const originalError = new Error('Original error message');
       const error = new FileManagementError(
         ERROR_CODES.UPLOAD_FAILED,
@@ -99,7 +104,7 @@ describe('FileManagementError', () => {
       expect(error.originalError).toBe(originalError);
     });
 
-    it('should use custom message when provided', () => {
+    test('should use custom message when provided', () => {
       const customMessage = 'Custom error message';
       const error = new FileManagementError(
         ERROR_CODES.UPLOAD_FAILED,
@@ -112,7 +117,7 @@ describe('FileManagementError', () => {
   });
 
   describe('toDetails', () => {
-    it('should convert to error details', () => {
+    test('should convert to error details', () => {
       const error = new FileManagementError(
         ERROR_CODES.FILE_TOO_LARGE,
         { operation: 'upload', fileId: 'test123' }
@@ -133,7 +138,7 @@ describe('FileManagementError', () => {
   });
 
   describe('toJSON', () => {
-    it('should convert to JSON', () => {
+    test('should convert to JSON', () => {
       const error = new FileManagementError(
         ERROR_CODES.UPLOAD_FAILED,
         { operation: 'upload' }
@@ -152,7 +157,7 @@ describe('FileManagementError', () => {
 
 describe('ErrorHandler', () => {
   describe('wrap', () => {
-    it('should wrap regular Error as FileManagementError', () => {
+    test('should wrap regular Error as FileManagementError', () => {
       const originalError = new Error('Test error');
       const wrapped = ErrorHandler.wrap(
         originalError,
@@ -165,7 +170,7 @@ describe('ErrorHandler', () => {
       expect(wrapped.originalError).toBe(originalError);
     });
 
-    it('should return FileManagementError as-is', () => {
+    test('should return FileManagementError as-is', () => {
       const fileError = new FileManagementError(
         ERROR_CODES.UPLOAD_FAILED,
         { operation: 'upload' }
@@ -180,7 +185,7 @@ describe('ErrorHandler', () => {
       expect(wrapped).toBe(fileError);
     });
 
-    it('should handle non-Error objects', () => {
+    test('should handle non-Error objects', () => {
       const wrapped = ErrorHandler.wrap(
         'String error',
         ERROR_CODES.PROCESSING_FAILED,
@@ -193,7 +198,7 @@ describe('ErrorHandler', () => {
   });
 
   describe('executeWithRetry', () => {
-    it('should succeed on first attempt', async () => {
+    test('should succeed on first attempt', async () => {
       const operation = vi.fn().mockResolvedValue('success');
 
       const result = await ErrorHandler.executeWithRetry(
@@ -206,7 +211,7 @@ describe('ErrorHandler', () => {
       expect(operation).toHaveBeenCalledTimes(1);
     });
 
-    it('should retry on retryable error', async () => {
+    test('should retry on retryable error', async () => {
       const operation = vi.fn()
         .mockRejectedValueOnce(new FileManagementError(
           ERROR_CODES.NETWORK_ERROR,
@@ -224,7 +229,7 @@ describe('ErrorHandler', () => {
       expect(operation).toHaveBeenCalledTimes(2);
     });
 
-    it('should not retry on non-retryable error', async () => {
+    test('should not retry on non-retryable error', async () => {
       const operation = vi.fn()
         .mockRejectedValue(new FileManagementError(
           ERROR_CODES.FILE_TOO_LARGE,
@@ -242,7 +247,7 @@ describe('ErrorHandler', () => {
       expect(operation).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw after max retries', async () => {
+    test('should throw after max retries', async () => {
       const operation = vi.fn()
         .mockRejectedValue(new FileManagementError(
           ERROR_CODES.NETWORK_ERROR,
@@ -260,7 +265,7 @@ describe('ErrorHandler', () => {
       expect(operation).toHaveBeenCalledTimes(3); // initial + 2 retries
     });
 
-    it('should use exponential backoff', async () => {
+    test('should use exponential backoff', async () => {
       const operation = vi.fn()
         .mockRejectedValue(new FileManagementError(
           ERROR_CODES.NETWORK_ERROR,
@@ -285,7 +290,7 @@ describe('ErrorHandler', () => {
   });
 
   describe('executeWithRecovery', () => {
-    it('should succeed without recovery', async () => {
+    test('should succeed without recovery', async () => {
       const operation = vi.fn().mockResolvedValue('success');
       const recovery = vi.fn();
 
@@ -300,7 +305,7 @@ describe('ErrorHandler', () => {
       expect(recovery).not.toHaveBeenCalled();
     });
 
-    it('should attempt recovery on recoverable error', async () => {
+    test('should attempt recovery on recoverable error', async () => {
       const operation = vi.fn().mockRejectedValue(
         new FileManagementError(
           ERROR_CODES.UPLOAD_TIMEOUT,
@@ -319,7 +324,7 @@ describe('ErrorHandler', () => {
       expect(recovery).toHaveBeenCalledTimes(1);
     });
 
-    it('should not attempt recovery on unrecoverable error', async () => {
+    test('should not attempt recovery on unrecoverable error', async () => {
       const operation = vi.fn().mockRejectedValue(
         new FileManagementError(
           ERROR_CODES.VIRUS_DETECTED,
@@ -339,7 +344,7 @@ describe('ErrorHandler', () => {
       expect(recovery).not.toHaveBeenCalled();
     });
 
-    it('should throw original error if recovery fails', async () => {
+    test('should throw original error if recovery fails', async () => {
       const originalError = new FileManagementError(
         ERROR_CODES.UPLOAD_TIMEOUT,
         { operation: 'test' }
@@ -358,7 +363,7 @@ describe('ErrorHandler', () => {
   });
 
   describe('handleBatch', () => {
-    it('should handle all successful operations', async () => {
+    test('should handle all successful operations', async () => {
       const items = [1, 2, 3];
       const operation = vi.fn().mockResolvedValue(undefined);
 
@@ -373,7 +378,7 @@ describe('ErrorHandler', () => {
       expect(operation).toHaveBeenCalledTimes(3);
     });
 
-    it('should handle mixed success and failure', async () => {
+    test('should handle mixed success and failure', async () => {
       const items = [1, 2, 3];
       const operation = vi.fn()
         .mockResolvedValueOnce(undefined)
@@ -392,7 +397,7 @@ describe('ErrorHandler', () => {
       expect(result.failed[0].error).toBeInstanceOf(FileManagementError);
     });
 
-    it('should handle all failed operations', async () => {
+    test('should handle all failed operations', async () => {
       const items = [1, 2, 3];
       const operation = vi.fn().mockRejectedValue(new Error('Failed'));
 
@@ -415,6 +420,7 @@ describe('FileLogger', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -422,21 +428,21 @@ describe('FileLogger', () => {
   });
 
   describe('Basic logging', () => {
-    it('should log info messages', () => {
+    test('should log info messages', () => {
       const logger = new FileLogger({ operation: 'test' });
       logger.info('Test message', { data: 'value' });
 
       expect(consoleInfoSpy).toHaveBeenCalled();
     });
 
-    it('should log warning messages', () => {
+    test('should log warning messages', () => {
       const logger = new FileLogger({ operation: 'test' });
       logger.warn('Test warning', { data: 'value' });
 
       expect(consoleWarnSpy).toHaveBeenCalled();
     });
 
-    it('should log error messages', () => {
+    test('should log error messages', () => {
       const logger = new FileLogger({ operation: 'test' });
       const error = new Error('Test error');
       logger.error('Test error', error);
@@ -444,7 +450,7 @@ describe('FileLogger', () => {
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
 
-    it('should log debug messages', () => {
+    test('should log debug messages', () => {
       const logger = new FileLogger({ operation: 'test' });
       logger.debug('Debug message', { data: 'value' });
 
@@ -453,7 +459,7 @@ describe('FileLogger', () => {
   });
 
   describe('Context inheritance', () => {
-    it('should inherit context in child logger', () => {
+    test('should inherit context in child logger', () => {
       const parentLogger = new FileLogger({ operation: 'parent', userId: 'user123' });
       const childLogger = parentLogger.child({ fileId: 'file456' });
 
@@ -471,7 +477,7 @@ describe('FileLogger', () => {
   });
 
   describe('Error logging', () => {
-    it('should format FileManagementError correctly', () => {
+    test('should format FileManagementError correctly', () => {
       const logger = new FileLogger({ operation: 'test' });
       const error = new FileManagementError(
         ERROR_CODES.UPLOAD_FAILED,
@@ -486,7 +492,7 @@ describe('FileLogger', () => {
       expect(logEntry.error).toHaveProperty('code', ERROR_CODES.UPLOAD_FAILED);
     });
 
-    it('should format regular Error correctly', () => {
+    test('should format regular Error correctly', () => {
       const logger = new FileLogger({ operation: 'test' });
       const error = new Error('Regular error');
 

@@ -6,22 +6,28 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import type { FileValidationMetadata } from '@modules/file-management/types/validation-types';
-import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';
+import { FILE_SIZE_LIMIimport { MockFactory } from '@helpers/mockFactory';
+TS } from '@modules/file-management/constants/file-config';
 
 describe('FileValidationService', () => {
   let validationService: FileValidationService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     validationService = new FileValidationService();
   });
 
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   describe('驗證基本功能', () => {
-    it('應該能夠創建 ValidationService 實例', () => {
+    test('應該能夠創建 ValidationService 實例', () => {
       expect(validationService).toBeDefined();
       expect(validationService).toBeInstanceOf(FileValidationService);
     });
 
-    it('應該有預設的驗證規則', () => {
+    test('應該有預設的驗證規則', () => {
       const rules = (validationService as any).defaultRules;
       expect(rules).toBeDefined();
       expect(rules.maxSize).toBe(FILE_SIZE_LIMITS.MAX_FILE_SIZE);
@@ -32,7 +38,7 @@ describe('FileValidationService', () => {
   });
 
   describe('快速驗證 (validateQuick)', () => {
-    it('應該通過有效的檔案元數據驗證', () => {
+    test('應該通過有效的檔案元數據驗證', () => {
       const metadata: FileValidationMetadata = {
         filename: 'test-image.jpg',
         size: 1024 * 1024, // 1MB
@@ -46,7 +52,7 @@ describe('FileValidationService', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('應該拒絕空檔名', () => {
+    test('應該拒絕空檔名', () => {
       const metadata: FileValidationMetadata = {
         filename: '',
         size: 1024,
@@ -62,7 +68,7 @@ describe('FileValidationService', () => {
       expect(result.errors.some(e => e.field === 'filename')).toBe(true);
     });
 
-    it('應該拒絕無效的 MIME 類型', () => {
+    test('應該拒絕無效的 MIME 類型', () => {
       const metadata: FileValidationMetadata = {
         filename: 'test.jpg',
         size: 1024,
@@ -76,7 +82,7 @@ describe('FileValidationService', () => {
       expect(result.errors.some(e => e.field === 'mimeType')).toBe(true);
     });
 
-    it('應該拒絕超過最大大小限制的檔案', () => {
+    test('應該拒絕超過最大大小限制的檔案', () => {
       const metadata: FileValidationMetadata = {
         filename: 'large-file.jpg',
         size: FILE_SIZE_LIMITS.MAX_FILE_SIZE + 1,
@@ -90,7 +96,7 @@ describe('FileValidationService', () => {
       expect(result.errors.some(e => e.field === 'size')).toBe(true);
     });
 
-    it('應該拒絕小於最小大小限制的檔案', () => {
+    test('應該拒絕小於最小大小限制的檔案', () => {
       const metadata: FileValidationMetadata = {
         filename: 'tiny-file.jpg',
         size: FILE_SIZE_LIMITS.MIN_FILE_SIZE - 1,
@@ -104,7 +110,7 @@ describe('FileValidationService', () => {
       expect(result.errors.some(e => e.field === 'size')).toBe(true);
     });
 
-    it('應該拒絕禁止的副檔名', () => {
+    test('應該拒絕禁止的副檔名', () => {
       const metadata: FileValidationMetadata = {
         filename: 'malicious.exe',
         size: 1024,
@@ -122,7 +128,7 @@ describe('FileValidationService', () => {
   });
 
   describe('完整檔案驗證 (validateFile)', () => {
-    it('應該驗證有效的圖片檔案', async () => {
+    test('應該驗證有效的圖片檔案', async () => {
       // 創建一個假的 JPEG 檔案 (簡化的檔頭)
       const jpegHeader = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
       const buffer = jpegHeader.buffer;
@@ -140,7 +146,7 @@ describe('FileValidationService', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('應該檢測檔案簽章與 MIME 類型不符', async () => {
+    test('應該檢測檔案簽章與 MIME 類型不符', async () => {
       // PNG 檔頭但宣稱是 JPEG
       const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
       const buffer = pngHeader.buffer;
@@ -161,7 +167,7 @@ describe('FileValidationService', () => {
       }
     });
 
-    it('應該驗證檔案大小與 metadata 一致', async () => {
+    test('應該驗證檔案大小與 metadata 一致', async () => {
       const data = new Uint8Array(1000);
       const buffer = data.buffer;
 
@@ -178,7 +184,7 @@ describe('FileValidationService', () => {
       expect(result.errors.some(e => e.field === 'content')).toBe(true);
     });
 
-    it('應該處理驗證過程中的錯誤', async () => {
+    test('應該處理驗證過程中的錯誤', async () => {
       const metadata: FileValidationMetadata = {
         filename: 'test.jpg',
         size: 1024,
@@ -197,7 +203,7 @@ describe('FileValidationService', () => {
   });
 
   describe('平台特定規則 (getRulesForPlatform)', () => {
-    it('應該返回 LINE 平台的驗證規則', () => {
+    test('應該返回 LINE 平台的驗證規則', () => {
       const rules = validationService.getRulesForPlatform('line');
 
       expect(rules).toBeDefined();
@@ -205,7 +211,7 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toBeInstanceOf(Array);
     });
 
-    it('應該返回 Facebook 平台的驗證規則', () => {
+    test('應該返回 Facebook 平台的驗證規則', () => {
       const rules = validationService.getRulesForPlatform('facebook');
 
       expect(rules).toBeDefined();
@@ -213,7 +219,7 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toBeInstanceOf(Array);
     });
 
-    it('應該對未知平台返回預設規則', () => {
+    test('應該對未知平台返回預設規則', () => {
       const rules = validationService.getRulesForPlatform('unknown' as any);
 
       expect(rules).toBeDefined();
@@ -222,7 +228,7 @@ describe('FileValidationService', () => {
   });
 
   describe('規則集 (getRulesForRuleSet)', () => {
-    it('應該返回嚴格圖片規則', () => {
+    test('應該返回嚴格圖片規則', () => {
       const rules = validationService.getRulesForRuleSet('strict_image');
 
       expect(rules).toBeDefined();
@@ -231,7 +237,7 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toContain('image/png');
     });
 
-    it('應該返回基本文件規則', () => {
+    test('應該返回基本文件規則', () => {
       const rules = validationService.getRulesForRuleSet('basic_document');
 
       expect(rules).toBeDefined();
@@ -239,7 +245,7 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toContain('text/plain');
     });
 
-    it('應該返回媒體內容規則', () => {
+    test('應該返回媒體內容規則', () => {
       const rules = validationService.getRulesForRuleSet('media_content');
 
       expect(rules).toBeDefined();
@@ -248,7 +254,7 @@ describe('FileValidationService', () => {
       expect(rules.allowedMimeTypes).toContain('audio/mpeg');
     });
 
-    it('應該返回系統管理員規則（更寬鬆）', () => {
+    test('應該返回系統管理員規則（更寬鬆）', () => {
       const rules = validationService.getRulesForRuleSet('system_admin');
 
       expect(rules).toBeDefined();
@@ -258,7 +264,7 @@ describe('FileValidationService', () => {
   });
 
   describe('平台特定驗證', () => {
-    it('應該驗證 LINE 平台的檔案限制', () => {
+    test('應該驗證 LINE 平台的檔案限制', () => {
       const metadata: FileValidationMetadata = {
         filename: 'line-image.jpg',
         size: 1024 * 1024,
@@ -273,7 +279,7 @@ describe('FileValidationService', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('應該拒絕超過平台限制的檔案', () => {
+    test('應該拒絕超過平台限制的檔案', () => {
       const metadata: FileValidationMetadata = {
         filename: 'huge-file.jpg',
         size: 50 * 1024 * 1024, // 50MB
@@ -291,7 +297,7 @@ describe('FileValidationService', () => {
   });
 
   describe('批量驗證 (validateFiles)', () => {
-    it('應該能夠批量驗證多個檔案', async () => {
+    test('應該能夠批量驗證多個檔案', async () => {
       const files = [
         {
           file: new Uint8Array(1000).buffer,
@@ -320,7 +326,7 @@ describe('FileValidationService', () => {
       expect(results[1].valid).toBe(true);
     });
 
-    it('應該識別批量驗證中的無效檔案', async () => {
+    test('應該識別批量驗證中的無效檔案', async () => {
       const files = [
         {
           file: new Uint8Array(1000).buffer,
@@ -351,7 +357,7 @@ describe('FileValidationService', () => {
   });
 
   describe('邊界條件測試', () => {
-    it('應該正確處理剛好在大小限制邊界的檔案', () => {
+    test('應該正確處理剛好在大小限制邊界的檔案', () => {
       const metadata: FileValidationMetadata = {
         filename: 'boundary.jpg',
         size: FILE_SIZE_LIMITS.MAX_FILE_SIZE,
@@ -364,7 +370,7 @@ describe('FileValidationService', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('應該處理特殊字符的檔名', () => {
+    test('應該處理特殊字符的檔名', () => {
       const metadata: FileValidationMetadata = {
         filename: '特殊-文件_123.jpg',
         size: 1024,
@@ -377,7 +383,7 @@ describe('FileValidationService', () => {
       expect(result).toBeDefined();
     });
 
-    it('應該處理多個副檔名的檔案', () => {
+    test('應該處理多個副檔名的檔案', () => {
       const metadata: FileValidationMetadata = {
         filename: 'archive.tar.gz',
         size: 1024,
@@ -392,7 +398,7 @@ describe('FileValidationService', () => {
   });
 
   describe('錯誤信息驗證', () => {
-    it('應該提供清晰的錯誤代碼和訊息', () => {
+    test('應該提供清晰的錯誤代碼和訊息', () => {
       const metadata: FileValidationMetadata = {
         filename: '',
         size: 0,
@@ -412,7 +418,7 @@ describe('FileValidationService', () => {
       });
     });
 
-    it('應該包含錯誤的欄位信息', () => {
+    test('應該包含錯誤的欄位信息', () => {
       const metadata: FileValidationMetadata = {
         filename: 'test.jpg',
         size: FILE_SIZE_LIMITS.MAX_FILE_SIZE + 1,

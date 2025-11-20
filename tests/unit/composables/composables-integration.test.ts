@@ -33,6 +33,7 @@ describe('Composables Integration Tests', () => {
     let mockLocalStorage: any
 
     beforeEach(async () => {
+    vi.clearAllMocks();
         // Setup test environment using helper
         const testSetup = setupStoreTest()
         mockLocalStorage = testSetup.mockLocalStorage
@@ -46,7 +47,7 @@ describe('Composables Integration Tests', () => {
     })
 
     describe('Auth and Conversations Integration', () => {
-        it('should handle complete user workflow from login to conversation management', async () => {
+        test('should handle complete user workflow from login to conversation management', async () => {
             // Setup mocks for complete workflow
             vi.mocked(mockAuthApi.login).mockResolvedValue({
                 success: true,

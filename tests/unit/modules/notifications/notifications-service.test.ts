@@ -1,11 +1,12 @@
 // Notifications Service Unit Tests
-// 測試通知系統的核心功能
+// 測試通知系統的核心import { MockFactory } from '@helpers/mockFactory';
+功能
 
 import { describe, it, expect } from 'vitest';
 
 describe('Notifications Service Tests', () => {
   describe('Notification Type Validation', () => {
-    it('should recognize valid notification types', () => {
+    test('should recognize valid notification types', () => {
       const validTypes = [
         'message',
         'mention',
@@ -25,14 +26,14 @@ describe('Notifications Service Tests', () => {
       });
     });
 
-    it('should validate notification priority levels', () => {
+    test('should validate notification priority levels', () => {
       const validPriorities = ['low', 'normal', 'high', 'urgent'];
       const testPriority = 'high';
 
       expect(validPriorities).toContain(testPriority);
     });
 
-    it('should validate notification channels', () => {
+    test('should validate notification channels', () => {
       const validChannels = ['web', 'email', 'push', 'sms'];
       const testChannel = 'web';
 
@@ -41,13 +42,13 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Delivery', () => {
-    it('should validate recipient ID format', () => {
+    test('should validate recipient ID format', () => {
       const recipientId = 'user-123';
       expect(recipientId).toBeTruthy();
       expect(typeof recipientId).toBe('string');
     });
 
-    it('should support batch notifications', () => {
+    test('should support batch notifications', () => {
       const batchNotification = {
         recipientIds: ['user-1', 'user-2', 'user-3'],
         message: 'System maintenance scheduled'
@@ -57,7 +58,7 @@ describe('Notifications Service Tests', () => {
       expect(batchNotification.recipientIds.length).toBeGreaterThan(0);
     });
 
-    it('should validate notification content length', () => {
+    test('should validate notification content length', () => {
       const maxTitleLength = 100;
       const maxBodyLength = 500;
 
@@ -72,14 +73,14 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Scheduling', () => {
-    it('should validate scheduled time is in the future', () => {
+    test('should validate scheduled time is in the future', () => {
       const now = new Date();
       const scheduledTime = new Date(now.getTime() + 3600000); // 1 hour later
 
       expect(scheduledTime.getTime()).toBeGreaterThan(now.getTime());
     });
 
-    it('should support recurring notifications', () => {
+    test('should support recurring notifications', () => {
       const recurringNotification = {
         frequency: 'daily',
         time: '09:00',
@@ -92,7 +93,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Preferences', () => {
-    it('should validate user notification preferences', () => {
+    test('should validate user notification preferences', () => {
       const preferences = {
         web: true,
         email: true,
@@ -104,7 +105,7 @@ describe('Notifications Service Tests', () => {
       expect(typeof preferences.email).toBe('boolean');
     });
 
-    it('should support do-not-disturb hours', () => {
+    test('should support do-not-disturb hours', () => {
       const dndSettings = {
         enabled: true,
         startTime: '22:00',
@@ -118,19 +119,19 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Status', () => {
-    it('should track notification delivery status', () => {
+    test('should track notification delivery status', () => {
       const statuses = ['pending', 'sent', 'delivered', 'read', 'failed'];
       const testStatus = 'delivered';
 
       expect(statuses).toContain(testStatus);
     });
 
-    it('should record read timestamp', () => {
+    test('should record read timestamp', () => {
       const readAt = new Date().toISOString();
       expect(readAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
-    it('should track retry attempts for failed notifications', () => {
+    test('should track retry attempts for failed notifications', () => {
       const notification = {
         status: 'failed',
         retryCount: 2,
@@ -142,7 +143,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Templates', () => {
-    it('should support template variables', () => {
+    test('should support template variables', () => {
       const template = 'Hello {{userName}}, you have {{messageCount}} new messages';
       const variables = {
         userName: 'John',
@@ -157,7 +158,7 @@ describe('Notifications Service Tests', () => {
       expect(rendered).toContain('5');
     });
 
-    it('should validate template structure', () => {
+    test('should validate template structure', () => {
       const template = {
         id: 'new-message',
         title: 'New Message',
@@ -171,7 +172,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Grouping', () => {
-    it('should group notifications by type', () => {
+    test('should group notifications by type', () => {
       const notifications = [
         { id: '1', type: 'message', read: false },
         { id: '2', type: 'message', read: false },
@@ -182,7 +183,7 @@ describe('Notifications Service Tests', () => {
       expect(messageNotifications.length).toBe(2);
     });
 
-    it('should support notification batching', () => {
+    test('should support notification batching', () => {
       const batchSize = 5;
       const notifications = Array(12).fill(null).map((_, i) => ({
         id: `notif-${i}`,
@@ -195,7 +196,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Statistics', () => {
-    it('should track total notifications sent', () => {
+    test('should track total notifications sent', () => {
       const stats = {
         totalSent: 1000,
         delivered: 950,
@@ -208,7 +209,7 @@ describe('Notifications Service Tests', () => {
       expect(stats.read).toBeLessThanOrEqual(stats.delivered);
     });
 
-    it('should calculate delivery rate', () => {
+    test('should calculate delivery rate', () => {
       const sent = 1000;
       const delivered = 950;
       const deliveryRate = (delivered / sent) * 100;
@@ -218,7 +219,7 @@ describe('Notifications Service Tests', () => {
       expect(deliveryRate).toBe(95);
     });
 
-    it('should calculate read rate', () => {
+    test('should calculate read rate', () => {
       const delivered = 950;
       const read = 800;
       const readRate = (read / delivered) * 100;
@@ -229,7 +230,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Filtering', () => {
-    it('should filter by read status', () => {
+    test('should filter by read status', () => {
       const notifications = [
         { id: '1', read: false },
         { id: '2', read: true },
@@ -240,7 +241,7 @@ describe('Notifications Service Tests', () => {
       expect(unreadNotifications.length).toBe(2);
     });
 
-    it('should filter by priority', () => {
+    test('should filter by priority', () => {
       const notifications = [
         { id: '1', priority: 'normal' },
         { id: '2', priority: 'urgent' },
@@ -251,7 +252,7 @@ describe('Notifications Service Tests', () => {
       expect(urgentNotifications.length).toBe(1);
     });
 
-    it('should filter by date range', () => {
+    test('should filter by date range', () => {
       const startDate = new Date('2025-09-01');
       const endDate = new Date('2025-09-30');
       const testDate = new Date('2025-09-15');
@@ -262,7 +263,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Permissions', () => {
-    it('should validate user permission to send notifications', () => {
+    test('should validate user permission to send notifications', () => {
       const permissions = {
         admin: ['send_all', 'manage_templates', 'view_stats'],
         team: ['send_team', 'view_team_stats'],
@@ -275,12 +276,12 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Error Handling', () => {
-    it('should handle invalid recipient ID', () => {
+    test('should handle invalid recipient ID', () => {
       const invalidRecipient = '';
       expect(invalidRecipient).toBeFalsy();
     });
 
-    it('should handle missing notification content', () => {
+    test('should handle missing notification content', () => {
       const incompleteNotification = {
         recipientId: 'user-1'
         // Missing title and body
@@ -290,7 +291,7 @@ describe('Notifications Service Tests', () => {
       expect(incompleteNotification).not.toHaveProperty('body');
     });
 
-    it('should handle delivery failures gracefully', () => {
+    test('should handle delivery failures gracefully', () => {
       const notification = {
         status: 'failed',
         error: 'Recipient not found',
@@ -304,7 +305,7 @@ describe('Notifications Service Tests', () => {
   });
 
   describe('Notification Module Info', () => {
-    it('should have correct module metadata', () => {
+    test('should have correct module metadata', () => {
       const moduleInfo = {
         name: 'notifications',
         version: '1.0.0',

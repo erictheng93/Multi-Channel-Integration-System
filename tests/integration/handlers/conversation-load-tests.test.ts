@@ -2,7 +2,8 @@
 // Tests pagination, querying, and performance with 1000+ messages
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DatabaseTestEnvironment } from '../../helpers/DatabaseTestEnvironment';
+import { DatabaseTestEnvironment } froimport { MockFactory } from '@helpers/mockFactory';
+m '../../helpers/DatabaseTestEnvironment';
 import { eq, desc, and } from 'drizzle-orm';
 import * as schema from '@backend/db/schema';
 
@@ -55,7 +56,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
   });
 
   describe('Message Pagination - 1000+ Messages', () => {
-    it('should handle pagination with 1000 messages', async () => {
+    test('should handle pagination with 1000 messages', async () => {
       console.log('🔄 Creating 1000 messages...');
       const startTime = Date.now();
 
@@ -113,7 +114,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
       expect(allMessages).toHaveLength(1000);
     });
 
-    it('should handle large page sizes efficiently', async () => {
+    test('should handle large page sizes efficiently', async () => {
       // Create 500 messages
       const baseTime = Date.now() - 500000;
       for (let i = 1; i <= 500; i++) {
@@ -145,7 +146,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
       console.log(`✅ Fetched 100 messages in ${queryTime}ms`);
     });
 
-    it('should handle deep pagination (offset 900+)', async () => {
+    test('should handle deep pagination (offset 900+)', async () => {
       // Create 1000 messages
       const baseTime = Date.now() - 1000000;
       for (let i = 1; i <= 1000; i++) {
@@ -176,7 +177,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
   });
 
   describe('Multiple Conversations - High Volume', () => {
-    it('should handle 100 conversations with multiple messages each', async () => {
+    test('should handle 100 conversations with multiple messages each', async () => {
       console.log('🔄 Creating 100 conversations...');
 
       const conversations = [];
@@ -228,7 +229,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
       expect(allMessages.length).toBeGreaterThanOrEqual(1000);
     });
 
-    it('should efficiently query latest message for multiple conversations', async () => {
+    test('should efficiently query latest message for multiple conversations', async () => {
       // Create 50 conversations
       const conversationIds = [];
       for (let i = 1; i <= 50; i++) {
@@ -282,7 +283,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
   });
 
   describe('Message Filtering - High Volume', () => {
-    it('should filter messages by sender type with 1000+ messages', async () => {
+    test('should filter messages by sender type with 1000+ messages', async () => {
       // Create 1000 messages (500 agent, 500 customer)
       const baseTime = Date.now() - 1000000;
       for (let i = 1; i <= 1000; i++) {
@@ -320,7 +321,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
       expect(customerMessages).toHaveLength(500);
     });
 
-    it('should search messages by content pattern in large dataset', async () => {
+    test('should search messages by content pattern in large dataset', async () => {
       // Create 500 messages with various keywords
       const baseTime = Date.now() - 500000;
       for (let i = 1; i <= 500; i++) {
@@ -350,7 +351,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
   });
 
   describe('Performance Benchmarks', () => {
-    it('should fetch first page of messages in <100ms', async () => {
+    test('should fetch first page of messages in <100ms', async () => {
       // Create 1000 messages
       const baseTime = Date.now() - 1000000;
       for (let i = 1; i <= 1000; i++) {
@@ -382,7 +383,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
       console.log(`✅ First page query: ${queryTime}ms`);
     });
 
-    it('should count total messages efficiently', async () => {
+    test('should count total messages efficiently', async () => {
       // Create 2000 messages
       const baseTime = Date.now() - 2000000;
       for (let i = 1; i <= 2000; i++) {
@@ -418,7 +419,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
   });
 
   describe('Memory Efficiency', () => {
-    it('should handle iterative message processing without memory issues', async () => {
+    test('should handle iterative message processing without memory issues', async () => {
       // Create 1000 messages
       const baseTime = Date.now() - 1000000;
       for (let i = 1; i <= 1000; i++) {
@@ -454,7 +455,7 @@ describe('Conversation Handler - Load Tests (High Volume)', () => {
   });
 
   describe('Conversation Assignment with High Message Volume', () => {
-    it('should reassign conversation with 1000+ messages efficiently', async () => {
+    test('should reassign conversation with 1000+ messages efficiently', async () => {
       // Create second agent
       const agent2 = await env.createTestAgent({
         id: 'agent-load-2',

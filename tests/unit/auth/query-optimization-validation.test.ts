@@ -35,7 +35,7 @@ describe('資料庫查詢優化驗證', () => {
     mockDb = {} // Mock D1Database
   })
 
-  it('應該只執行一次資料庫查詢 - 用戶不存在的情況', async () => {
+  test('應該只執行一次資料庫查詢 - 用戶不存在的情況', async () => {
     // 模擬用戶不存在的情況
     mockDrizzleDb.get.mockResolvedValue(null)
 
@@ -65,7 +65,7 @@ describe('資料庫查詢優化驗證', () => {
     expect(result.user).toBeNull()
   })
 
-  it('應該只執行一次資料庫查詢 - 帳戶被禁用的情況', async () => {
+  test('應該只執行一次資料庫查詢 - 帳戶被禁用的情況', async () => {
     // 模擬被禁用的用戶
     const mockUserData = {
       id: 'user-123',
@@ -95,7 +95,7 @@ describe('資料庫查詢優化驗證', () => {
     expect(result.passwordPolicy).toBe('changeable')
   })
 
-  it('驗證查詢結構包含所有優化要求的欄位', async () => {
+  test('驗證查詢結構包含所有優化要求的欄位', async () => {
     // 執行任意認證請求
     await authenticateUser(mockDb, 'test@example.com', 'password')
 
@@ -120,7 +120,7 @@ describe('資料庫查詢優化驗證', () => {
     expect(mockQueryCount).toBe(1)
   })
 
-  it('性能驗證：多次調用仍保持單次查詢模式', async () => {
+  test('性能驗證：多次調用仍保持單次查詢模式', async () => {
     // 重置計數器
     mockQueryCount = 0
     

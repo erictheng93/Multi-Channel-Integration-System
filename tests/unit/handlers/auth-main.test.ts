@@ -2,7 +2,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import authMainHandler from '@backend/handlers/auth-main';
-import type { Bindings } from '@backend/types';
+import type { Binimport { MockFactory } from '@helpers/mockFactory';
+dings } from '@backend/types';
 
 // Mock utilities
 vi.mock('../../../src/utils/auth', () => ({
@@ -122,7 +123,7 @@ describe('Auth Main Handler', () => {
       password: 'testpass123'
     };
 
-    it('should successfully login user', async () => {
+    test('should successfully login user', async () => {
       const mockAuthResult = {
         user: {
           id: 'user-123',
@@ -157,7 +158,7 @@ describe('Auth Main Handler', () => {
       expect(result.data.sessionId).toBe('session-123');
     });
 
-    it('should reject invalid credentials', async () => {
+    test('should reject invalid credentials', async () => {
       const mockAuthResult = {
         user: null,
         passwordPolicy: null,
@@ -177,7 +178,7 @@ describe('Auth Main Handler', () => {
       expect(result.error).toBe('Wrong password');
     });
 
-    it('should require username and password', async () => {
+    test('should require username and password', async () => {
       const response = await app.request('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,7 +201,7 @@ describe('Auth Main Handler', () => {
       teamId: 1
     };
 
-    it('should successfully register new user', async () => {
+    test('should successfully register new user', async () => {
       const mockNewUser = {
         id: 'user-456',
         email: 'new@example.com',
@@ -230,7 +231,7 @@ describe('Auth Main Handler', () => {
       expect(result.data.user.email).toBe('new@example.com');
     });
 
-    it('should reject invalid role', async () => {
+    test('should reject invalid role', async () => {
       const invalidRequest = { ...validRegisterRequest, role: 'invalid' };
 
       const response = await app.request('/api/auth/register', {
@@ -245,7 +246,7 @@ describe('Auth Main Handler', () => {
       expect(result.error).toBe('Invalid role');
     });
 
-    it('should require all fields', async () => {
+    test('should require all fields', async () => {
       const incompleteRequest = { email: 'test' };
 
       const response = await app.request('/api/auth/register', {
@@ -262,7 +263,7 @@ describe('Auth Main Handler', () => {
   });
 
   describe('POST /logout', () => {
-    it('should successfully logout user', async () => {
+    test('should successfully logout user', async () => {
       const response = await app.request('/api/auth/logout', {
         method: 'POST',
         headers: { 'X-Session-ID': 'session-123' }
@@ -277,7 +278,7 @@ describe('Auth Main Handler', () => {
   });
 
   describe('GET /profile', () => {
-    it('should return user profile', async () => {
+    test('should return user profile', async () => {
       const response = await app.request('/api/auth/profile');
 
       expect(response.status).toBe(200);

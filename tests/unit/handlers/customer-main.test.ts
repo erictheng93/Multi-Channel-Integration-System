@@ -1,5 +1,6 @@
 // 客戶管理主要處理器測試 - Handler-based 架構
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEachimport { MockFactory } from '@helpers/mockFactory';
+, vi, afterEach } from 'vitest';
 
 // ✅ CRITICAL: Mock auth middleware BEFORE importing the handler
 vi.mock('../../../src/middleware/auth', () => ({
@@ -56,7 +57,7 @@ describe('Customer Main Handler', () => {
   });
 
   describe('GET /', () => {
-    it('should return all customers', async () => {
+    test('should return all customers', async () => {
       const mockCustomers = [
         {
           id: 1,
@@ -89,7 +90,7 @@ describe('Customer Main Handler', () => {
       );
     });
 
-    it('should handle database errors', async () => {
+    test('should handle database errors', async () => {
       mockDatabaseUtils.getAllCustomers.mockRejectedValue(new Error('Database connection failed'));
 
       const response = await app.request('/api/customers');
@@ -101,7 +102,7 @@ describe('Customer Main Handler', () => {
       expect(result.error).toBe('Database connection failed');
     });
 
-    it('should return empty list when no customers', async () => {
+    test('should return empty list when no customers', async () => {
       mockDatabaseUtils.getAllCustomers.mockResolvedValue([]);
 
       const response = await app.request('/api/customers');
@@ -118,7 +119,7 @@ describe('Customer Main Handler', () => {
   describe('GET /:customerId', () => {
     const customerId = 123;
 
-    it('should return customer details with conversations', async () => {
+    test('should return customer details with conversations', async () => {
       const mockCustomer = {
         id: customerId,
         displayName: 'Test Customer',
@@ -162,7 +163,7 @@ describe('Customer Main Handler', () => {
       );
     });
 
-    it('should return 404 for non-existent customer', async () => {
+    test('should return 404 for non-existent customer', async () => {
       mockDatabaseUtils.getCustomerById.mockResolvedValue(null);
 
       const response = await app.request(`/api/customers/${customerId}`);
@@ -174,7 +175,7 @@ describe('Customer Main Handler', () => {
       expect(result.error).toBe('Customer not found');
     });
 
-    it('should handle database errors', async () => {
+    test('should handle database errors', async () => {
       mockDatabaseUtils.getCustomerById.mockRejectedValue(new Error('Database query failed'));
 
       const response = await app.request(`/api/customers/${customerId}`);
@@ -186,7 +187,7 @@ describe('Customer Main Handler', () => {
       expect(result.error).toBe('Database query failed');
     });
 
-    it('should handle invalid customer ID', async () => {
+    test('should handle invalid customer ID', async () => {
       const response = await app.request('/api/customers/invalid-id');
 
       expect(response.status).toBe(404);
@@ -201,7 +202,7 @@ describe('Customer Main Handler', () => {
     const platform = 'line';
     const platformUserId = 'line-user-123';
 
-    it('should return customer by platform ID', async () => {
+    test('should return customer by platform ID', async () => {
       const mockCustomer = {
         id: 456,
         displayName: 'Platform Customer',
@@ -241,7 +242,7 @@ describe('Customer Main Handler', () => {
       );
     });
 
-    it('should return 404 for non-existent platform customer', async () => {
+    test('should return 404 for non-existent platform customer', async () => {
       mockDatabaseUtils.getCustomerByPlatformId.mockResolvedValue(null);
 
       const response = await app.request(`/api/customers/platform/${platform}/${platformUserId}`);
@@ -253,7 +254,7 @@ describe('Customer Main Handler', () => {
       expect(result.error).toBe('Customer not found');
     });
 
-    it('should handle various platform types', async () => {
+    test('should handle various platform types', async () => {
       const platforms = ['line', 'facebook', 'telegram'];
       
       for (const testPlatform of platforms) {
@@ -275,7 +276,7 @@ describe('Customer Main Handler', () => {
       }
     });
 
-    it('should handle database errors for platform lookup', async () => {
+    test('should handle database errors for platform lookup', async () => {
       mockDatabaseUtils.getCustomerByPlatformId.mockRejectedValue(new Error('Platform lookup failed'));
 
       const response = await app.request(`/api/customers/platform/${platform}/${platformUserId}`);
@@ -289,7 +290,7 @@ describe('Customer Main Handler', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle module import errors', async () => {
+    test('should handle module import errors', async () => {
       // Simulate critical database failure that would occur on module import
       mockDatabaseUtils.getAllCustomers.mockRejectedValue(
         new Error('Module import failed')
@@ -307,7 +308,7 @@ describe('Customer Main Handler', () => {
       vi.clearAllMocks();
     });
 
-    it('should handle unexpected errors gracefully', async () => {
+    test('should handle unexpected errors gracefully', async () => {
       // Mock a synchronous error during execution
       mockDatabaseUtils.getAllCustomers.mockImplementation(() => {
         throw new TypeError('Unexpected error');
