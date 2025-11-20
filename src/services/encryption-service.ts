@@ -76,9 +76,9 @@ export class EncryptionService {
       const tag = encryptedArray.slice(-16);
 
       return {
-        encrypted: this.arrayBufferToBase64(ciphertext),
-        iv: this.arrayBufferToBase64(iv),
-        tag: this.arrayBufferToBase64(tag)
+        encrypted: this.arrayBufferToBase64(ciphertext.buffer),
+        iv: this.arrayBufferToBase64(iv.buffer),
+        tag: this.arrayBufferToBase64(tag.buffer)
       };
     } catch (error) {
       console.error('[EncryptionService] Encryption failed:', error);
