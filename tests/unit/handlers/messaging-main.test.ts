@@ -285,12 +285,26 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should handle partial failures gracefully', async () => {
-        // First conversation exists, second doesn't
+        // First conversation check succeeds, second fails
+        // Using sequential mocking for multiple db.select() calls
         let callCount = 0;
-        mockDB.get.mockImplementation(() => {
+        const mockChainGenerator = () => {
           callCount++;
-          return callCount === 1 ? { id: 'conv_1' } : null;
-        });
+          const result = callCount === 1 ? { id: 'conv_1' } : null;
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            offset: vi.fn().mockReturnThis(),
+            get: vi.fn().mockResolvedValue(result),
+            all: vi.fn().mockResolvedValue(result ? [result] : [])
+          };
+        };
+
+        mockDB.select = vi.fn().mockImplementation(mockChainGenerator);
+        mockDrizzleInstance.select = mockDB.select;
+        mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/bulk-create', {
           method: 'POST',
@@ -1138,7 +1152,13 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       expect(forwardResponse.status).toBe(201);
 
-      // 3. Tag message
+      // 3. Tag message (mock message existence check first)
+      mockSelectQuery({
+        id: 'msg_1',
+        conversationId: 'conv_1',
+        metadata: null
+      });
+
       const tagResponse = await app.request('/api/messages/msg_1/tags', {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer test-token' },
