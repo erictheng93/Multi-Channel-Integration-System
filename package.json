@@ -34,7 +34,6 @@
     "db:studio": "drizzle-kit studio",
     "db:studio:local": "drizzle-kit studio --config=drizzle.config.local.ts",
     "db:introspect": "drizzle-kit introspect",
-
     "test:handlers": "npx tsx tests/run-handler-tests.ts",
     "test:handlers:main": "npx vitest tests/unit/handlers/*-main.test.ts",
     "test:handlers:delayed": "npx vitest tests/unit/handlers/delayed-message-main.test.ts",
@@ -113,6 +112,7 @@
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.7",
     "hono": "^4.10.3",
+    "ipaddr.js": "^2.2.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
     "uuid": "^10.0.0",
