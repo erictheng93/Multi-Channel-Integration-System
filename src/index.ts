@@ -261,6 +261,7 @@ console.log('   • /api/analytics/comparison/* (with internal OPTIONS handler)'
 
 import corsMonitoringHandler from './handlers/cors-monitoring';
 import securityMonitoringHandler from './handlers/security-monitoring';
+import securityDashboardHandler from './handlers/security-dashboard';
 
 // Register CORS handler BEFORE unified route system
 app.route('/api/cors', corsMonitoringHandler);
@@ -278,6 +279,15 @@ console.log('   • GET /api/security/events (Admin only - requires JWT)');
 console.log('   • POST /api/cors/cleanup (Admin only - internal auth check)');
 console.log('   • GET /api/cors/health (Public - no auth required)');
 console.log('   • GET /api/cors/config (Public - no auth required)');
+
+// 🆕 Register Security Dashboard handler (P2-7) - Real-time Analytics
+app.route('/api/security/dashboard', securityDashboardHandler);
+console.log('✅ Security dashboard endpoints registered (P2-7):');
+console.log('   • GET /api/security/dashboard/health (Public)');
+console.log('   • GET /api/security/dashboard/metrics (Admin only - requires JWT)');
+console.log('   • GET /api/security/dashboard/events/stream (Admin only - SSE stream)');
+console.log('   • GET /api/security/dashboard/events/recent (Admin only - requires JWT)');
+console.log('   • GET /api/security/dashboard/summary (Admin only - requires JWT)');
 
 // =================================================================================
 // ⚠️  CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
