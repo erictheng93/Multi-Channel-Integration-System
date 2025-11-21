@@ -6,6 +6,7 @@ import type { IntegrationPlatform } from '@modules/integrations/types/integratio
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { webhookSecurityEvents } from '@/db/schema';
 import { eq, gte, desc, and } from 'drizzle-orm';
+import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES, type IPRange } from '@/utils/ip-validator';
 
 /**
  * 安全驗證結果
@@ -102,11 +103,27 @@ export class WebhookSecurityService {
   // 速率限制窗口 (1分鐘)
   private readonly RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
+  // IP 白名單配置
+  private readonly IP_WHITELIST_ENABLED: boolean;
+  private readonly ipValidator: IPValidator;
+
   constructor(
     private env: Bindings,
     private db: D1Database,
-    private cache: KVNamespace
-  ) {}
+    private cache: KVNamespace,
+    options?: {
+      enableIPWhitelist?: boolean;
+    }
+  ) {
+    // IP whitelist configuration (enabled by default for security)
+    this.IP_WHITELIST_ENABLED = options?.enableIPWhitelist ?? true;
+
+    // Initialize IP validator with all platform ranges
+    this.ipValidator = new IPValidator([...LINE_IP_RANGES, ...FACEBOOK_IP_RANGES]);
+
+    console.log(`✅ [WebhookSecurity] Initialized with IP whitelist ${this.IP_WHITELIST_ENABLED ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`   📋 Loaded ${this.ipValidator.getTotalRanges()} IP ranges (LINE: ${LINE_IP_RANGES.length}, Facebook: ${FACEBOOK_IP_RANGES.length})`);
+  }
 
   // ======================== 主要驗證方法 ========================
 
@@ -670,43 +687,75 @@ export class WebhookSecurityService {
 
   /**
    * 驗證請求來源
+   * P2-1: IP 白名單檢查 - IMPLEMENTED
    */
   private async verifySource(
     platform: IntegrationPlatform,
     sourceIP?: string,
     headers?: Record<string, string>
   ): Promise<{ valid: boolean; warning?: string }> {
-    // TODO: 實作 IP 白名單檢查
-    // LINE 官方 IP: https://developers.line.biz/en/reference/messaging-api/#ip-addresses
-    // Facebook 官方 IP: https://developers.facebook.com/docs/graph-api/webhooks/getting-started#ip-ranges
+    try {
+      // 🆕 P2-1: IP 白名單檢查
+      if (this.IP_WHITELIST_ENABLED && sourceIP) {
+        // Normalize platform for IP validation
+        const platformForIP = platform === 'instagram' ? 'facebook' : platform;
 
-    // 目前只檢查 User-Agent
-    if (headers) {
-      const userAgent = headers['user-agent'] || headers['User-Agent'] || '';
+        // Check if IP is in the whitelist for this platform
+        const isAllowed = this.ipValidator.isAllowed(sourceIP, platformForIP);
 
-      switch (platform) {
-        case 'line':
-          if (!userAgent.includes('LineBotWebhook')) {
-            return {
-              valid: true,
-              warning: 'Unexpected User-Agent for LINE webhook'
-            };
-          }
-          break;
+        if (!isAllowed) {
+          console.warn(`🚫 [WebhookSecurity] IP ${sourceIP} not in ${platform} whitelist - REJECTED`);
+          return {
+            valid: false,
+            warning: `IP address ${sourceIP} not in ${platform} official IP ranges`
+          };
+        }
 
-        case 'facebook':
-        case 'instagram':
-          if (!userAgent.includes('facebookplatform') && !userAgent.includes('Instagram')) {
-            return {
-              valid: true,
-              warning: 'Unexpected User-Agent for Facebook/Instagram webhook'
-            };
-          }
-          break;
+        console.log(`✅ [WebhookSecurity] IP ${sourceIP} validated for ${platform}`);
+      } else if (this.IP_WHITELIST_ENABLED && !sourceIP) {
+        // IP whitelist is enabled but no IP provided - warning
+        console.warn(`⚠️ [WebhookSecurity] IP whitelist enabled but no source IP provided for ${platform} webhook`);
+        return {
+          valid: true,
+          warning: 'IP whitelist enabled but source IP not available'
+        };
       }
-    }
 
-    return { valid: true };
+      // User-Agent 檢查 (額外驗證層)
+      if (headers) {
+        const userAgent = headers['user-agent'] || headers['User-Agent'] || '';
+
+        switch (platform) {
+          case 'line':
+            if (!userAgent.includes('LineBotWebhook')) {
+              return {
+                valid: true,
+                warning: 'Unexpected User-Agent for LINE webhook'
+              };
+            }
+            break;
+
+          case 'facebook':
+          case 'instagram':
+            if (!userAgent.includes('facebookplatform') && !userAgent.includes('Instagram')) {
+              return {
+                valid: true,
+                warning: 'Unexpected User-Agent for Facebook/Instagram webhook'
+              };
+            }
+            break;
+        }
+      }
+
+      return { valid: true };
+    } catch (error) {
+      console.error('[WebhookSecurity] Source verification error:', error);
+      // Fail open to avoid blocking legitimate traffic on errors
+      return {
+        valid: true,
+        warning: 'Source verification encountered an error'
+      };
+    }
   }
 
   // ======================== 安全事件記錄 ========================
