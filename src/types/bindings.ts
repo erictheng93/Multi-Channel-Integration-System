@@ -106,6 +106,27 @@ export interface Bindings {
   // Additional optional queues
   NOTIFICATION_QUEUE?: Queue;
   DELAYED_QUEUE?: Queue;
+
+  // 🆕 P2-5: Alert System Configuration
+  // Email alert settings
+  ALERT_EMAIL_ENABLED?: string;
+  ALERT_EMAIL_FROM?: string;
+  ALERT_EMAIL_TO?: string;
+  ALERT_EMAIL_SUBJECT?: string;
+  EMAIL_API_KEY?: string;
+  EMAIL_API_ENDPOINT?: string;
+
+  // Slack alert settings
+  ALERT_SLACK_ENABLED?: string;
+  ALERT_SLACK_WEBHOOK_URL?: string;
+  ALERT_SLACK_CHANNEL?: string;
+  ALERT_SLACK_USERNAME?: string;
+
+  // Webhook alert settings
+  ALERT_WEBHOOK_ENABLED?: string;
+  ALERT_WEBHOOK_URL?: string;
+  ALERT_WEBHOOK_HEADERS?: string;
+  ALERT_WEBHOOK_METHOD?: string;
 }
 
 // Extended context with database and KV services

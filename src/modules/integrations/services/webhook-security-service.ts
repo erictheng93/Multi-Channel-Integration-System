@@ -7,6 +7,7 @@ import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
 import { webhookSecurityEvents } from '@/db/schema';
 import { eq, gte, desc, and } from 'drizzle-orm';
 import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES, type IPRange } from '@/utils/ip-validator';
+import { AlertService, getDefaultAlertChannels } from '@/services/alert-service';
 
 /**
  * 安全驗證結果
@@ -792,10 +793,40 @@ export class WebhookSecurityService {
           createdAt: securityEvent.timestamp
         });
 
-      // 嚴重事件觸發告警
+      // 🆕 P2-5: 嚴重事件觸發告警系統
       if (securityEvent.severity === 'critical' || securityEvent.severity === 'high') {
         console.error('[SECURITY ALERT]', securityEvent);
-        // TODO: 整合告警系統 (Email, Slack, etc.)
+
+        try {
+          // Initialize alert service with configured channels
+          const alertChannels = getDefaultAlertChannels(this.env);
+
+          if (alertChannels.length > 0) {
+            const alertService = new AlertService(alertChannels, this.env);
+
+            // Send alert with event details
+            await alertService.sendAlert(
+              `Security Event: ${this.formatEventType(securityEvent.type)}`,
+              this.formatAlertMessage(securityEvent),
+              securityEvent.severity,
+              {
+                platform: securityEvent.platform,
+                integrationId: securityEvent.integrationId,
+                sourceIP: securityEvent.sourceIP,
+                eventType: securityEvent.type,
+                details: securityEvent.details,
+                timestamp: securityEvent.timestamp
+              }
+            );
+
+            console.log(`📢 [WebhookSecurity] Alert sent for ${securityEvent.severity} severity event`);
+          } else {
+            console.warn('⚠️ [WebhookSecurity] No alert channels configured, skipping alert');
+          }
+        } catch (alertError) {
+          console.error('[WebhookSecurity] Failed to send alert:', alertError);
+          // Don't throw - alert failure shouldn't prevent event logging
+        }
       }
 
     } catch (error) {
@@ -876,6 +907,55 @@ export class WebhookSecurityService {
   }
 
   // ======================== 輔助方法 ========================
+
+  /**
+   * 格式化事件類型為人類可讀文本
+   * Format event type for human-readable alerts
+   */
+  private formatEventType(type: SecurityEventType): string {
+    const typeLabels: Record<SecurityEventType, string> = {
+      signature_verification_failed: 'Signature Verification Failed',
+      timestamp_validation_failed: 'Timestamp Validation Failed',
+      replay_attack_detected: 'Replay Attack Detected',
+      rate_limit_exceeded: 'Rate Limit Exceeded',
+      invalid_source: 'Invalid Source IP',
+      malformed_request: 'Malformed Request',
+      suspicious_activity: 'Suspicious Activity'
+    };
+
+    return typeLabels[type] || type;
+  }
+
+  /**
+   * 格式化告警消息
+   * Format alert message with event details
+   */
+  private formatAlertMessage(event: SecurityEvent): string {
+    const messages: Record<SecurityEventType, string> = {
+      signature_verification_failed: `Webhook signature verification failed for ${event.platform}. This indicates a potential spoofing attempt or misconfigured integration.`,
+      timestamp_validation_failed: `Webhook timestamp validation failed for ${event.platform}. The request may be too old or the server time is out of sync.`,
+      replay_attack_detected: `Potential replay attack detected for ${event.platform}. A duplicate webhook request was received.`,
+      rate_limit_exceeded: `Rate limit exceeded for ${event.platform}. Too many requests received in a short period.`,
+      invalid_source: `Invalid source IP detected for ${event.platform}. The request came from an IP not in the official whitelist.`,
+      malformed_request: `Malformed webhook request received from ${event.platform}. The request structure is invalid.`,
+      suspicious_activity: `Suspicious activity detected for ${event.platform}. Multiple security checks failed.`
+    };
+
+    let message = messages[event.type] || `Security event: ${event.type}`;
+
+    // Add additional context if available
+    if (event.details) {
+      const detailsStr = Object.entries(event.details)
+        .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+        .join(', ');
+
+      if (detailsStr) {
+        message += `\n\nAdditional Details: ${detailsStr}`;
+      }
+    }
+
+    return message;
+  }
 
   /**
    * 獲取整合憑證
