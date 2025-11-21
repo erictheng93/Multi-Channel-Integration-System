@@ -343,6 +343,24 @@ export const webhookSecurityEvents = sqliteTable('webhook_security_events', {
 export type WebhookSecurityEvent = typeof webhookSecurityEvents.$inferSelect;
 export type NewWebhookSecurityEvent = typeof webhookSecurityEvents.$inferInsert;
 
+// CORS Events table - CORS 事件記錄
+export const corsEvents = sqliteTable('cors_events', {
+  id: text('id').primaryKey(),
+  type: text('type', {
+    enum: ['allowed', 'rejected', 'preflight', 'sse_connection', 'credentials_used']
+  }).notNull(),
+  origin: text('origin').notNull(),
+  method: text('method'),
+  path: text('path'),
+  userAgent: text('user_agent'),
+  ipAddress: text('ip_address'),
+  timestamp: text('timestamp').notNull().default(sql`(datetime('now'))`),
+  metadata: text('metadata') // JSON string
+});
+
+export type CORSEvent = typeof corsEvents.$inferSelect;
+export type NewCORSEvent = typeof corsEvents.$inferInsert;
+
 // Type definitions
 export interface SessionData {
   userId: string;
