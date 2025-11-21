@@ -276,7 +276,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // Use clearAllMocks instead of restoreAllMocks to preserve module-level mocks
+    vi.clearAllMocks();
   });
 
   describe('Health & Info Endpoints', () => {
@@ -713,10 +714,21 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
 
   describe('GET /stats/all - Get All Teams Statistics', () => {
     test('should retrieve all teams statistics', async () => {
+      // Mock admin user for this admin-only endpoint
+      const mockAuth = await import('../../../src/middleware/auth');
+      vi.mocked(mockAuth.jwtAuth).mockImplementationOnce((c: any, next: any) => {
+        c.set('user', {
+          userId: 'admin-001',
+          username: 'test-admin',
+          role: 'admin'
+        });
+        return next();
+      });
+
       const res = await app.request('/api/teams/stats/all', {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer token'
+          'Authorization': 'Bearer admin-token'
         }
       }, mockEnv as any);
 
@@ -727,10 +739,21 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
     });
 
     test('should include member details when requested', async () => {
+      // Mock admin user for this admin-only endpoint
+      const mockAuth = await import('../../../src/middleware/auth');
+      vi.mocked(mockAuth.jwtAuth).mockImplementationOnce((c: any, next: any) => {
+        c.set('user', {
+          userId: 'admin-001',
+          username: 'test-admin',
+          role: 'admin'
+        });
+        return next();
+      });
+
       const res = await app.request('/api/teams/stats/all?includeMembers=true', {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer token'
+          'Authorization': 'Bearer admin-token'
         }
       }, mockEnv as any);
 
