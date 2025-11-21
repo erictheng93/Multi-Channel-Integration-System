@@ -3,6 +3,11 @@
 
 import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
+import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { webhookSecurityEvents } from '@/db/schema';
+import { eq, gte, desc, and } from 'drizzle-orm';
+import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES, type IPRange } from '@/utils/ip-validator';
+import { AlertService, getDefaultAlertChannels } from '@/services/alert-service';
 
 /**
  * 安全驗證結果
@@ -99,11 +104,27 @@ export class WebhookSecurityService {
   // 速率限制窗口 (1分鐘)
   private readonly RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
+  // IP 白名單配置
+  private readonly IP_WHITELIST_ENABLED: boolean;
+  private readonly ipValidator: IPValidator;
+
   constructor(
     private env: Bindings,
     private db: D1Database,
-    private cache: KVNamespace
-  ) {}
+    private cache: KVNamespace,
+    options?: {
+      enableIPWhitelist?: boolean;
+    }
+  ) {
+    // IP whitelist configuration (enabled by default for security)
+    this.IP_WHITELIST_ENABLED = options?.enableIPWhitelist ?? true;
+
+    // Initialize IP validator with all platform ranges
+    this.ipValidator = new IPValidator([...LINE_IP_RANGES, ...FACEBOOK_IP_RANGES]);
+
+    console.log(`✅ [WebhookSecurity] Initialized with IP whitelist ${this.IP_WHITELIST_ENABLED ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`   📋 Loaded ${this.ipValidator.getTotalRanges()} IP ranges (LINE: ${LINE_IP_RANGES.length}, Facebook: ${FACEBOOK_IP_RANGES.length})`);
+  }
 
   // ======================== 主要驗證方法 ========================
 
@@ -667,43 +688,75 @@ export class WebhookSecurityService {
 
   /**
    * 驗證請求來源
+   * P2-1: IP 白名單檢查 - IMPLEMENTED
    */
   private async verifySource(
     platform: IntegrationPlatform,
     sourceIP?: string,
     headers?: Record<string, string>
   ): Promise<{ valid: boolean; warning?: string }> {
-    // TODO: 實作 IP 白名單檢查
-    // LINE 官方 IP: https://developers.line.biz/en/reference/messaging-api/#ip-addresses
-    // Facebook 官方 IP: https://developers.facebook.com/docs/graph-api/webhooks/getting-started#ip-ranges
+    try {
+      // 🆕 P2-1: IP 白名單檢查
+      if (this.IP_WHITELIST_ENABLED && sourceIP) {
+        // Normalize platform for IP validation
+        const platformForIP = platform === 'instagram' ? 'facebook' : platform;
 
-    // 目前只檢查 User-Agent
-    if (headers) {
-      const userAgent = headers['user-agent'] || headers['User-Agent'] || '';
+        // Check if IP is in the whitelist for this platform
+        const isAllowed = this.ipValidator.isAllowed(sourceIP, platformForIP);
 
-      switch (platform) {
-        case 'line':
-          if (!userAgent.includes('LineBotWebhook')) {
-            return {
-              valid: true,
-              warning: 'Unexpected User-Agent for LINE webhook'
-            };
-          }
-          break;
+        if (!isAllowed) {
+          console.warn(`🚫 [WebhookSecurity] IP ${sourceIP} not in ${platform} whitelist - REJECTED`);
+          return {
+            valid: false,
+            warning: `IP address ${sourceIP} not in ${platform} official IP ranges`
+          };
+        }
 
-        case 'facebook':
-        case 'instagram':
-          if (!userAgent.includes('facebookplatform') && !userAgent.includes('Instagram')) {
-            return {
-              valid: true,
-              warning: 'Unexpected User-Agent for Facebook/Instagram webhook'
-            };
-          }
-          break;
+        console.log(`✅ [WebhookSecurity] IP ${sourceIP} validated for ${platform}`);
+      } else if (this.IP_WHITELIST_ENABLED && !sourceIP) {
+        // IP whitelist is enabled but no IP provided - warning
+        console.warn(`⚠️ [WebhookSecurity] IP whitelist enabled but no source IP provided for ${platform} webhook`);
+        return {
+          valid: true,
+          warning: 'IP whitelist enabled but source IP not available'
+        };
       }
-    }
 
-    return { valid: true };
+      // User-Agent 檢查 (額外驗證層)
+      if (headers) {
+        const userAgent = headers['user-agent'] || headers['User-Agent'] || '';
+
+        switch (platform) {
+          case 'line':
+            if (!userAgent.includes('LineBotWebhook')) {
+              return {
+                valid: true,
+                warning: 'Unexpected User-Agent for LINE webhook'
+              };
+            }
+            break;
+
+          case 'facebook':
+          case 'instagram':
+            if (!userAgent.includes('facebookplatform') && !userAgent.includes('Instagram')) {
+              return {
+                valid: true,
+                warning: 'Unexpected User-Agent for Facebook/Instagram webhook'
+              };
+            }
+            break;
+        }
+      }
+
+      return { valid: true };
+    } catch (error) {
+      console.error('[WebhookSecurity] Source verification error:', error);
+      // Fail open to avoid blocking legitimate traffic on errors
+      return {
+        valid: true,
+        warning: 'Source verification encountered an error'
+      };
+    }
   }
 
   // ======================== 安全事件記錄 ========================
@@ -725,29 +778,55 @@ export class WebhookSecurityService {
         expirationTtl: 86400 // 保留 24 小時
       });
 
-      // 記錄到 D1 (持久化)
-      // TODO: 建立 webhook_security_events 表
-      /*
-      await this.db.prepare(`
-        INSERT INTO webhook_security_events (
-          id, type, severity, platform, integration_id, source_ip, details, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        securityEvent.id,
-        securityEvent.type,
-        securityEvent.severity,
-        securityEvent.platform,
-        securityEvent.integrationId || null,
-        securityEvent.sourceIP || null,
-        JSON.stringify(securityEvent.details),
-        securityEvent.timestamp
-      ).run();
-      */
+      // 記錄到 D1 (持久化) - P2-4 IMPLEMENTED
+      const dbClient = drizzle(this.db);
+      await dbClient
+        .insert(webhookSecurityEvents)
+        .values({
+          id: securityEvent.id,
+          type: securityEvent.type,
+          severity: securityEvent.severity,
+          platform: securityEvent.platform,
+          integrationId: securityEvent.integrationId ? parseInt(securityEvent.integrationId) : null,
+          sourceIp: securityEvent.sourceIP || null,
+          details: JSON.stringify(securityEvent.details),
+          createdAt: securityEvent.timestamp
+        });
 
-      // 嚴重事件觸發告警
+      // 🆕 P2-5: 嚴重事件觸發告警系統
       if (securityEvent.severity === 'critical' || securityEvent.severity === 'high') {
         console.error('[SECURITY ALERT]', securityEvent);
-        // TODO: 整合告警系統 (Email, Slack, etc.)
+
+        try {
+          // Initialize alert service with configured channels
+          const alertChannels = getDefaultAlertChannels(this.env);
+
+          if (alertChannels.length > 0) {
+            const alertService = new AlertService(alertChannels, this.env);
+
+            // Send alert with event details
+            await alertService.sendAlert(
+              `Security Event: ${this.formatEventType(securityEvent.type)}`,
+              this.formatAlertMessage(securityEvent),
+              securityEvent.severity,
+              {
+                platform: securityEvent.platform,
+                integrationId: securityEvent.integrationId,
+                sourceIP: securityEvent.sourceIP,
+                eventType: securityEvent.type,
+                details: securityEvent.details,
+                timestamp: securityEvent.timestamp
+              }
+            );
+
+            console.log(`📢 [WebhookSecurity] Alert sent for ${securityEvent.severity} severity event`);
+          } else {
+            console.warn('⚠️ [WebhookSecurity] No alert channels configured, skipping alert');
+          }
+        } catch (alertError) {
+          console.error('[WebhookSecurity] Failed to send alert:', alertError);
+          // Don't throw - alert failure shouldn't prevent event logging
+        }
       }
 
     } catch (error) {
@@ -755,7 +834,128 @@ export class WebhookSecurityService {
     }
   }
 
+  /**
+   * 獲取安全統計數據
+   * Get security event statistics from D1
+   * P2-4 IMPLEMENTED
+   */
+  async getSecurityStats(
+    integrationId?: number,
+    hours: number = 24
+  ): Promise<{
+    totalEvents: number;
+    byType: Record<string, number>;
+    bySeverity: Record<string, number>;
+    recentEvents: Array<{
+      id: string;
+      type: string;
+      severity: string;
+      platform: string;
+      integrationId: number | null;
+      sourceIp: string | null;
+      details: any;
+      createdAt: string;
+    }>;
+  }> {
+    try {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+      const dbClient = drizzle(this.db);
+
+      // Build query with optional integration filter
+      let query = dbClient
+        .select()
+        .from(webhookSecurityEvents)
+        .where(gte(webhookSecurityEvents.createdAt, since))
+        .$dynamic();
+
+      if (integrationId) {
+        query = query.where(eq(webhookSecurityEvents.integrationId, integrationId));
+      }
+
+      const events = await query
+        .orderBy(desc(webhookSecurityEvents.createdAt))
+        .limit(100);
+
+      // Calculate statistics
+      const byType: Record<string, number> = {};
+      const bySeverity: Record<string, number> = {};
+
+      events.forEach(event => {
+        byType[event.type] = (byType[event.type] || 0) + 1;
+        bySeverity[event.severity] = (bySeverity[event.severity] || 0) + 1;
+      });
+
+      return {
+        totalEvents: events.length,
+        byType,
+        bySeverity,
+        recentEvents: events.slice(0, 10).map(e => ({
+          id: e.id,
+          type: e.type,
+          severity: e.severity,
+          platform: e.platform,
+          integrationId: e.integrationId,
+          sourceIp: e.sourceIp,
+          details: e.details ? JSON.parse(e.details) : {},
+          createdAt: e.createdAt
+        }))
+      };
+    } catch (error) {
+      console.error('[WebhookSecurity] Failed to get security stats:', error);
+      throw error;
+    }
+  }
+
   // ======================== 輔助方法 ========================
+
+  /**
+   * 格式化事件類型為人類可讀文本
+   * Format event type for human-readable alerts
+   */
+  private formatEventType(type: SecurityEventType): string {
+    const typeLabels: Record<SecurityEventType, string> = {
+      signature_verification_failed: 'Signature Verification Failed',
+      timestamp_validation_failed: 'Timestamp Validation Failed',
+      replay_attack_detected: 'Replay Attack Detected',
+      rate_limit_exceeded: 'Rate Limit Exceeded',
+      invalid_source: 'Invalid Source IP',
+      malformed_request: 'Malformed Request',
+      suspicious_activity: 'Suspicious Activity'
+    };
+
+    return typeLabels[type] || type;
+  }
+
+  /**
+   * 格式化告警消息
+   * Format alert message with event details
+   */
+  private formatAlertMessage(event: SecurityEvent): string {
+    const messages: Record<SecurityEventType, string> = {
+      signature_verification_failed: `Webhook signature verification failed for ${event.platform}. This indicates a potential spoofing attempt or misconfigured integration.`,
+      timestamp_validation_failed: `Webhook timestamp validation failed for ${event.platform}. The request may be too old or the server time is out of sync.`,
+      replay_attack_detected: `Potential replay attack detected for ${event.platform}. A duplicate webhook request was received.`,
+      rate_limit_exceeded: `Rate limit exceeded for ${event.platform}. Too many requests received in a short period.`,
+      invalid_source: `Invalid source IP detected for ${event.platform}. The request came from an IP not in the official whitelist.`,
+      malformed_request: `Malformed webhook request received from ${event.platform}. The request structure is invalid.`,
+      suspicious_activity: `Suspicious activity detected for ${event.platform}. Multiple security checks failed.`
+    };
+
+    let message = messages[event.type] || `Security event: ${event.type}`;
+
+    // Add additional context if available
+    if (event.details) {
+      const detailsStr = Object.entries(event.details)
+        .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+        .join(', ');
+
+      if (detailsStr) {
+        message += `\n\nAdditional Details: ${detailsStr}`;
+      }
+    }
+
+    return message;
+  }
 
   /**
    * 獲取整合憑證
@@ -817,32 +1017,6 @@ export class WebhookSecurityService {
   }
 
   // ======================== 公共查詢方法 ========================
-
-  /**
-   * 獲取安全統計
-   */
-  async getSecurityStats(
-    integrationId?: string,
-    hours: number = 24
-  ): Promise<{
-    totalEvents: number;
-    byType: Record<SecurityEventType, number>;
-    bySeverity: Record<string, number>;
-    recentEvents: SecurityEvent[];
-  }> {
-    try {
-      // TODO: 從 D1 查詢統計數據
-      return {
-        totalEvents: 0,
-        byType: {} as any,
-        bySeverity: {},
-        recentEvents: []
-      };
-    } catch (error) {
-      console.error('[WebhookSecurity] Failed to get security stats:', error);
-      throw error;
-    }
-  }
 
   /**
    * 清除速率限制計數器 (管理員功能)

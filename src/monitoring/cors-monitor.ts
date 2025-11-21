@@ -3,6 +3,9 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
+import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { corsEvents } from '@/db/schema';
+import { eq, desc, and, gte, sql } from 'drizzle-orm';
 
 /**
  * CORS 監控事件類型
@@ -57,6 +60,7 @@ export class CORSMonitor {
 
   /**
    * 記錄 CORS 事件
+   * P2-6 UPDATED: Now persists to D1 instead of KV
    */
   async logEvent(event: Omit<CORSEvent, 'timestamp'>): Promise<void> {
     const fullEvent: CORSEvent = {
@@ -70,16 +74,42 @@ export class CORSMonitor {
       this.events.shift(); // 移除最舊的事件
     }
 
-    // 記錄到 KV（用於持久化和統計）
+    // 🆕 P2-6: 記錄到 D1（用於持久化和統計）
     try {
-      const key = `cors:event:${Date.now()}:${Math.random().toString(36).substring(7)}`;
-      await this.env.SESSIONS.put(
-        key,
-        JSON.stringify(fullEvent),
-        { expirationTtl: 86400 } // 24 小時後過期
-      );
+      const db = drizzle(this.env.DB);
+      const eventId = `cors_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      await db.insert(corsEvents).values({
+        id: eventId,
+        type: event.type,
+        origin: event.origin || 'unknown',
+        method: event.method,
+        path: event.path,
+        userAgent: event.userAgent || null,
+        ipAddress: null, // Can be added if needed
+        timestamp: fullEvent.timestamp,
+        metadata: JSON.stringify({
+          statusCode: event.statusCode,
+          errorMessage: event.errorMessage
+        })
+      });
+
+      console.log(`✅ [CORS Monitor] Event logged to D1: ${event.type} - ${event.origin}`);
     } catch (error) {
-      console.error('Failed to persist CORS event to KV:', error);
+      console.error('Failed to persist CORS event to D1:', error);
+
+      // Fallback to KV for backward compatibility (temporary)
+      try {
+        const key = `cors:event:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+        await this.env.SESSIONS.put(
+          key,
+          JSON.stringify(fullEvent),
+          { expirationTtl: 86400 } // 24 小時後過期
+        );
+        console.log('✅ [CORS Monitor] Event logged to KV (fallback)');
+      } catch (kvError) {
+        console.error('Failed to persist CORS event to KV fallback:', kvError);
+      }
     }
 
     // 如果是被拒絕的請求，記錄警告
@@ -159,35 +189,104 @@ export class CORSMonitor {
 
   /**
    * 獲取統計數據
+   * P2-6 UPDATED: Now queries from D1 instead of KV
    */
-  async getStats(): Promise<CORSStats> {
-    // 從 KV 獲取最近 24 小時的事件
-    const allEvents: CORSEvent[] = [...this.events];
-
+  async getStats(hours: number = 24): Promise<CORSStats> {
     try {
-      const kvEvents = await this.env.SESSIONS.list({ prefix: 'cors:event:' });
-      for (const key of kvEvents.keys) {
-        try {
-          const eventData = await this.env.SESSIONS.get(key.name);
-          if (eventData) {
-            allEvents.push(JSON.parse(eventData));
+      const db = drizzle(this.env.DB);
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+      // 🆕 P2-6: Query events from D1 (last 24 hours by default)
+      const events = await db
+        .select()
+        .from(corsEvents)
+        .where(gte(corsEvents.timestamp, since))
+        .orderBy(desc(corsEvents.timestamp))
+        .limit(1000); // Limit to prevent excessive memory use
+
+      // Convert D1 events to CORSEvent format
+      const allEvents: CORSEvent[] = events.map(e => ({
+        timestamp: e.timestamp,
+        type: e.type as CORSEventType,
+        origin: e.origin,
+        path: e.path || '',
+        method: e.method || '',
+        userAgent: e.userAgent || undefined,
+        ...(e.metadata ? JSON.parse(e.metadata) : {})
+      }));
+
+      // 統計各類事件
+      const allowed = events.filter(e => e.type === 'allowed').length;
+      const rejected = events.filter(e => e.type === 'rejected').length;
+      const preflightRequests = events.filter(e => e.type === 'preflight').length;
+      const sseConnections = events.filter(e => e.type === 'sse_connection').length;
+      const credentialsUsed = events.filter(e => e.type === 'credentials_used').length;
+
+      // 統計最常見的 origin
+      const originCounts = new Map<string, number>();
+      const rejectedOriginCounts = new Map<string, number>();
+
+      for (const event of events) {
+        if (event.origin) {
+          if (event.type === 'allowed' || event.type === 'credentials_used') {
+            originCounts.set(event.origin, (originCounts.get(event.origin) || 0) + 1);
           }
-        } catch (error) {
-          console.error(`Failed to parse CORS event ${key.name}:`, error);
+          if (event.type === 'rejected') {
+            rejectedOriginCounts.set(event.origin, (rejectedOriginCounts.get(event.origin) || 0) + 1);
+          }
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch CORS events from KV:', error);
-    }
 
-    // 統計各類事件
+      // 排序並取前 10
+      const topOrigins = Array.from(originCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([origin, count]) => ({ origin, count }));
+
+      const topRejectedOrigins = Array.from(rejectedOriginCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([origin, count]) => ({ origin, count }));
+
+      // 取最近 50 個事件
+      const recentEvents = allEvents.slice(0, 50);
+
+      console.log(`📊 [CORS Monitor] Retrieved ${events.length} events from D1 (last ${hours} hours)`);
+
+      return {
+        total: allEvents.length,
+        allowed,
+        rejected,
+        preflightRequests,
+        sseConnections,
+        credentialsUsed,
+        topOrigins,
+        topRejectedOrigins,
+        recentEvents
+      };
+    } catch (error) {
+      console.error('[CORS Monitor] Failed to fetch statistics from D1:', error);
+
+      // Fallback to in-memory events
+      return this.getStatsFromMemory();
+    }
+  }
+
+  /**
+   * Fallback method to get statistics from in-memory events
+   * P2-6: Temporary fallback during errors
+   */
+  private getStatsFromMemory(): CORSStats {
+    console.warn('⚠️ [CORS Monitor] Using in-memory statistics (fallback)');
+
+    const allEvents = [...this.events];
+
     const allowed = allEvents.filter(e => e.type === 'allowed').length;
     const rejected = allEvents.filter(e => e.type === 'rejected').length;
     const preflightRequests = allEvents.filter(e => e.type === 'preflight').length;
     const sseConnections = allEvents.filter(e => e.type === 'sse_connection').length;
     const credentialsUsed = allEvents.filter(e => e.type === 'credentials_used').length;
 
-    // 統計最常見的 origin
     const originCounts = new Map<string, number>();
     const rejectedOriginCounts = new Map<string, number>();
 
@@ -202,7 +301,6 @@ export class CORSMonitor {
       }
     }
 
-    // 排序並取前 10
     const topOrigins = Array.from(originCounts.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
@@ -213,7 +311,6 @@ export class CORSMonitor {
       .slice(0, 10)
       .map(([origin, count]) => ({ origin, count }));
 
-    // 取最近 50 個事件
     const recentEvents = allEvents
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 50);
@@ -233,33 +330,54 @@ export class CORSMonitor {
 
   /**
    * 清理過期事件（手動調用）
+   * P2-6 UPDATED: Now cleans D1 events instead of KV
    */
-  async cleanup(): Promise<number> {
+  async cleanup(hours: number = 24): Promise<number> {
     try {
-      const kvEvents = await this.env.SESSIONS.list({ prefix: 'cors:event:' });
-      let cleaned = 0;
+      const db = drizzle(this.env.DB);
+      const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
-      for (const key of kvEvents.keys) {
-        try {
-          const eventData = await this.env.SESSIONS.get(key.name);
-          if (eventData) {
-            const event: CORSEvent = JSON.parse(eventData);
-            const eventTime = new Date(event.timestamp).getTime();
-            const now = Date.now();
+      // 🆕 P2-6: Delete expired events from D1
+      const result = await db
+        .delete(corsEvents)
+        .where(sql`${corsEvents.timestamp} < ${cutoffTime}`);
 
-            // 刪除超過 24 小時的事件
-            if (now - eventTime > 86400000) {
-              await this.env.SESSIONS.delete(key.name);
-              cleaned++;
+      // Note: D1 delete doesn't return the number of affected rows directly
+      // We'll log a message instead
+      console.log(`✅ [CORS Monitor] Cleaned CORS events older than ${hours} hours from D1`);
+
+      // Optional: Also cleanup old KV events for migration period
+      try {
+        const kvEvents = await this.env.SESSIONS.list({ prefix: 'cors:event:' });
+        let kvCleaned = 0;
+
+        for (const key of kvEvents.keys) {
+          try {
+            const eventData = await this.env.SESSIONS.get(key.name);
+            if (eventData) {
+              const event: CORSEvent = JSON.parse(eventData);
+              const eventTime = new Date(event.timestamp).getTime();
+              const now = Date.now();
+
+              if (now - eventTime > hours * 60 * 60 * 1000) {
+                await this.env.SESSIONS.delete(key.name);
+                kvCleaned++;
+              }
             }
+          } catch (error) {
+            console.error(`Failed to process KV event ${key.name}:`, error);
           }
-        } catch (error) {
-          console.error(`Failed to process event ${key.name}:`, error);
         }
-      }
 
-      console.log(`✅ [CORS Monitor] Cleaned ${cleaned} expired events`);
-      return cleaned;
+        if (kvCleaned > 0) {
+          console.log(`✅ [CORS Monitor] Also cleaned ${kvCleaned} expired KV events`);
+        }
+
+        return kvCleaned; // Return KV cleaned count for now
+      } catch (kvError) {
+        console.warn('[CORS Monitor] KV cleanup failed (non-critical):', kvError);
+        return 0;
+      }
     } catch (error) {
       console.error('Failed to cleanup CORS events:', error);
       return 0;

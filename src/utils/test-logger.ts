@@ -18,26 +18,46 @@ const isTestEnvironment = (): boolean => {
 
 /**
  * Emoji prefixes for different log contexts
+ * Merged from both versions for comprehensive coverage
  */
 export const getEmojiPrefix = (context: string): string => {
   const emojiMap: Record<string, string> = {
     'BUILD': '🏗️',
-    'ERROR': '❌',
-    'WARNING': '⚠️',
-    'SUCCESS': '✅',
     'INFO': 'ℹ️',
-    'DEBUG': '🐛',
-    'WEBSOCKET': '🔌',
-    'DATABASE': '🗄️',
+    'CHECK': '✅',
+    'ERROR': '❌',
+    'WARN': '⚠️',
+    'WARNING': '⚠️',
+    'SUCCESS': '🎉',
+    'FAIL': '💥',
+    'START': '🚀',
+    'STOP': '🛑',
+    'SAVE': '💾',
+    'LOAD': '📥',
+    'SEND': '📤',
+    'RECEIVE': '📨',
+    'CONNECT': '🔌',
+    'DISCONNECT': '🔌❌',
     'AUTH': '🔐',
-    'CACHE': '💾',
+    'SECURITY': '🔒',
+    'DATABASE': '💿',
+    'NETWORK': '🌐',
+    'WEBSOCKET': '🔄',
+    'MESSAGE': '💬',
+    'USER': '👤',
+    'TEAM': '👥',
+    'ADMIN': '👑',
+    'CONFIG': '⚙️',
+    'MONITOR': '📊',
+    'DEBUG': '🐛',
+    'TIME': '⏱️',
+    'CACHE': '🗄️',
+    'QUEUE': '📋',
+    'LOCK': '🔐',
+    'UNLOCK': '🔓',
     'API': '🌐',
-    'QUEUE': '📬',
     'INIT': '🚀',
     'CLEANUP': '🧹',
-    'CONNECT': '🔗',
-    'DISCONNECT': '⚡',
-    'MESSAGE': '💬',
     'HEARTBEAT': '💓',
     'ALARM': '⏰',
     'BROADCAST': '📡',
@@ -100,7 +120,36 @@ export const testSafeDebug = (message: string, ...args: any[]): void => {
 };
 
 /**
+ * Log with timestamp
+ * Enhanced version that uses centralized logger
+ */
+export function logWithTimestamp(message: string, ...args: any[]): void {
+  const timestamp = new Date().toISOString();
+  testSafeLog(`[${timestamp}] ${message}`, ...args);
+}
+
+/**
+ * Log error with timestamp
+ * Enhanced version that uses centralized logger
+ */
+export function logErrorWithTimestamp(message: string, ...args: any[]): void {
+  const timestamp = new Date().toISOString();
+  testSafeError(`[${timestamp}] ${message}`, undefined, ...args);
+}
+
+/**
+ * Log with emoji and timestamp
+ * Enhanced version that uses centralized logger
+ */
+export function logWithEmoji(type: string, message: string, ...args: any[]): void {
+  const emoji = getEmojiPrefix(type);
+  const timestamp = new Date().toISOString();
+  testSafeLog(`${emoji} [${timestamp}] ${message}`, ...args);
+}
+
+/**
  * Create a test-safe logger with context
+ * Unified version combining both approaches
  */
 export const createTestSafeLogger = (context: string) => ({
   log: (message: string, ...args: any[]) =>
@@ -111,7 +160,16 @@ export const createTestSafeLogger = (context: string) => ({
     testSafeWarn(`[${context}] ${message}`, ...args),
   debug: (message: string, ...args: any[]) =>
     testSafeDebug(`[${context}] ${message}`, ...args),
+  info: (type: string, message: string, ...args: any[]) => {
+    const emoji = getEmojiPrefix(type);
+    testSafeLog(`${emoji} [${context}] ${message}`, ...args);
+  }
 });
+
+/**
+ * Alias for backward compatibility
+ */
+export const createLogger = createTestSafeLogger;
 
 // Global type extension for test error tracking
 declare global {

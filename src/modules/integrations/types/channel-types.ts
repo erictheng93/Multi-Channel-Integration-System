@@ -86,9 +86,19 @@ export interface ChannelVerificationResponse {
   message: string;
   error?: string;
   details?: {
+    // Common fields
     channelId?: string;
     webhookUrl?: string;
     lastVerifiedAt?: string;
+
+    // Facebook-specific fields
+    pageId?: string;
+    pageName?: string;
+
+    // WhatsApp-specific fields
+    phoneNumberId?: string;
+    displayPhoneNumber?: string;
+    verifiedName?: string;
   };
 }
 

@@ -5,6 +5,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
 import { verifyJWT } from '../utils/auth';
+import { WebSocketAuthService } from '../services/websocket-auth-service';
 
 export interface WebSocketUser {
   id: number | string;
@@ -198,6 +199,38 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // Store user in context for handler access
     c.set('user', user);
+
+    // 🆕 P2-3: Check conversation access permissions for agents
+    if (conversationId && role === 'agent') {
+      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+      const hasAccess = await authService.authorizeConversationAccess(
+        userId,
+        role,
+        conversationId,
+        user.teamId || undefined
+      );
+
+      if (!hasAccess) {
+        console.log(`❌ [WebSocket Auth] Agent ${userId} denied access to conversation ${conversationId}`);
+        return new Response(JSON.stringify({
+          error: 'Access denied',
+          code: 4403,
+          message: 'You do not have permission to access this conversation',
+          conversationId,
+          timestamp: Date.now(),
+          suggestedAction: 'contact_admin'
+        }), {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Error-Code': 'CONVERSATION_ACCESS_DENIED',
+            'X-WebSocket-Close-Code': '4403'
+          }
+        });
+      }
+
+      console.log(`✅ [WebSocket Auth] Agent ${userId} authorized for conversation ${conversationId}`);
+    }
 
     const authDuration = Date.now() - startTime;
     console.log(`✅ [WebSocket Auth] User authenticated successfully: ${user.id} (${user.role}) from ${clientIP}, Duration: ${authDuration}ms, TeamID: ${user.teamId || 'none'}`);
