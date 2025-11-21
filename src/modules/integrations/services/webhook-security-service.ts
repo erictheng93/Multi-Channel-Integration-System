@@ -3,6 +3,9 @@
 
 import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
+import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { webhookSecurityEvents } from '@/db/schema';
+import { eq, gte, desc, and } from 'drizzle-orm';
 
 /**
  * 安全驗證結果
@@ -725,24 +728,20 @@ export class WebhookSecurityService {
         expirationTtl: 86400 // 保留 24 小時
       });
 
-      // 記錄到 D1 (持久化)
-      // TODO: 建立 webhook_security_events 表
-      /*
-      await this.db.prepare(`
-        INSERT INTO webhook_security_events (
-          id, type, severity, platform, integration_id, source_ip, details, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        securityEvent.id,
-        securityEvent.type,
-        securityEvent.severity,
-        securityEvent.platform,
-        securityEvent.integrationId || null,
-        securityEvent.sourceIP || null,
-        JSON.stringify(securityEvent.details),
-        securityEvent.timestamp
-      ).run();
-      */
+      // 記錄到 D1 (持久化) - P2-4 IMPLEMENTED
+      const dbClient = drizzle(this.db);
+      await dbClient
+        .insert(webhookSecurityEvents)
+        .values({
+          id: securityEvent.id,
+          type: securityEvent.type,
+          severity: securityEvent.severity,
+          platform: securityEvent.platform,
+          integrationId: securityEvent.integrationId ? parseInt(securityEvent.integrationId) : null,
+          sourceIp: securityEvent.sourceIP || null,
+          details: JSON.stringify(securityEvent.details),
+          createdAt: securityEvent.timestamp
+        });
 
       // 嚴重事件觸發告警
       if (securityEvent.severity === 'critical' || securityEvent.severity === 'high') {
@@ -752,6 +751,78 @@ export class WebhookSecurityService {
 
     } catch (error) {
       console.error('[WebhookSecurity] Failed to log security event:', error);
+    }
+  }
+
+  /**
+   * 獲取安全統計數據
+   * Get security event statistics from D1
+   * P2-4 IMPLEMENTED
+   */
+  async getSecurityStats(
+    integrationId?: number,
+    hours: number = 24
+  ): Promise<{
+    totalEvents: number;
+    byType: Record<string, number>;
+    bySeverity: Record<string, number>;
+    recentEvents: Array<{
+      id: string;
+      type: string;
+      severity: string;
+      platform: string;
+      integrationId: number | null;
+      sourceIp: string | null;
+      details: any;
+      createdAt: string;
+    }>;
+  }> {
+    try {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+      const dbClient = drizzle(this.db);
+
+      // Build query with optional integration filter
+      let query = dbClient
+        .select()
+        .from(webhookSecurityEvents)
+        .where(gte(webhookSecurityEvents.createdAt, since))
+        .$dynamic();
+
+      if (integrationId) {
+        query = query.where(eq(webhookSecurityEvents.integrationId, integrationId));
+      }
+
+      const events = await query
+        .orderBy(desc(webhookSecurityEvents.createdAt))
+        .limit(100);
+
+      // Calculate statistics
+      const byType: Record<string, number> = {};
+      const bySeverity: Record<string, number> = {};
+
+      events.forEach(event => {
+        byType[event.type] = (byType[event.type] || 0) + 1;
+        bySeverity[event.severity] = (bySeverity[event.severity] || 0) + 1;
+      });
+
+      return {
+        totalEvents: events.length,
+        byType,
+        bySeverity,
+        recentEvents: events.slice(0, 10).map(e => ({
+          id: e.id,
+          type: e.type,
+          severity: e.severity,
+          platform: e.platform,
+          integrationId: e.integrationId,
+          sourceIp: e.sourceIp,
+          details: e.details ? JSON.parse(e.details) : {},
+          createdAt: e.createdAt
+        }))
+      };
+    } catch (error) {
+      console.error('[WebhookSecurity] Failed to get security stats:', error);
+      throw error;
     }
   }
 
@@ -817,32 +888,6 @@ export class WebhookSecurityService {
   }
 
   // ======================== 公共查詢方法 ========================
-
-  /**
-   * 獲取安全統計
-   */
-  async getSecurityStats(
-    integrationId?: string,
-    hours: number = 24
-  ): Promise<{
-    totalEvents: number;
-    byType: Record<SecurityEventType, number>;
-    bySeverity: Record<string, number>;
-    recentEvents: SecurityEvent[];
-  }> {
-    try {
-      // TODO: 從 D1 查詢統計數據
-      return {
-        totalEvents: 0,
-        byType: {} as any,
-        bySeverity: {},
-        recentEvents: []
-      };
-    } catch (error) {
-      console.error('[WebhookSecurity] Failed to get security stats:', error);
-      throw error;
-    }
-  }
 
   /**
    * 清除速率限制計數器 (管理員功能)

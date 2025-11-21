@@ -260,6 +260,7 @@ console.log('   • /api/analytics/comparison/* (with internal OPTIONS handler)'
 // =================================================================================
 
 import corsMonitoringHandler from './handlers/cors-monitoring';
+import securityMonitoringHandler from './handlers/security-monitoring';
 
 // Register CORS handler BEFORE unified route system
 app.route('/api/cors', corsMonitoringHandler);
@@ -267,6 +268,13 @@ console.log('✅ CORS monitoring endpoints PRE-REGISTERED (before unified route 
 console.log('   • GET /api/cors/stats (Admin only - internal auth check)');
 console.log('   • GET /api/cors/events (Admin only - internal auth check)');
 console.log('   • GET /api/cors/rejected-origins (Admin only - internal auth check)');
+
+// Register Security Monitoring handler (P2-4)
+app.route('/api/security', securityMonitoringHandler);
+console.log('✅ Security monitoring endpoints registered (P2-4):');
+console.log('   • GET /api/security/health (Public)');
+console.log('   • GET /api/security/events/stats (Admin only - requires JWT)');
+console.log('   • GET /api/security/events (Admin only - requires JWT)');
 console.log('   • POST /api/cors/cleanup (Admin only - internal auth check)');
 console.log('   • GET /api/cors/health (Public - no auth required)');
 console.log('   • GET /api/cors/config (Public - no auth required)');

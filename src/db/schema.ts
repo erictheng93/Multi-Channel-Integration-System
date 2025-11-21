@@ -324,6 +324,25 @@ export const channelIntegrations = sqliteTable('channel_integrations', {
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Webhook Security Events table - 安全事件記錄
+export const webhookSecurityEvents = sqliteTable('webhook_security_events', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  severity: text('severity', {
+    enum: ['low', 'medium', 'high', 'critical']
+  }).notNull(),
+  platform: text('platform').notNull(),
+  integrationId: integer('integration_id').references(() => channelIntegrations.id, {
+    onDelete: 'cascade'
+  }),
+  sourceIp: text('source_ip'),
+  details: text('details'), // JSON string
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`)
+});
+
+export type WebhookSecurityEvent = typeof webhookSecurityEvents.$inferSelect;
+export type NewWebhookSecurityEvent = typeof webhookSecurityEvents.$inferInsert;
+
 // Type definitions
 export interface SessionData {
   userId: string;
