@@ -127,6 +127,58 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
     vi.restoreAllMocks();
   });
 
+  /**
+   * Helper function to mock database select query results
+   * Properly sets up the Drizzle ORM chain: select().from().where().get()
+   */
+  function mockSelectQuery(result: any) {
+    const mockChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue(result),
+      all: vi.fn().mockResolvedValue(Array.isArray(result) ? result : [result])
+    };
+
+    // Modify both mockDB and mockDrizzleInstance since they're linked
+    const selectFn = vi.fn().mockReturnValue(mockChain);
+    mockDB.select = selectFn;
+    mockDrizzleInstance.select = selectFn;
+    return mockChain;
+  }
+
+  /**
+   * Helper function to mock multiple sequential database queries
+   * For tests that need to mock several queries in sequence (e.g., forward message)
+   */
+  function mockSelectQueries(...results: any[]) {
+    const chains = results.map(result => ({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue(result),
+      all: vi.fn().mockResolvedValue(Array.isArray(result) ? result : [result])
+    }));
+
+    // Set up select to return each chain in sequence
+    const selectFn = vi.fn();
+    chains.forEach((chain, index) => {
+      if (index === 0) {
+        selectFn.mockReturnValueOnce(chain);
+      } else {
+        selectFn.mockReturnValueOnce(chain);
+      }
+    });
+
+    mockDB.select = selectFn;
+    mockDrizzleInstance.select = selectFn;
+    return chains;
+  }
+
   describe('Health Check Endpoints', () => {
     test('should return healthy status from /health endpoint', async () => {
       const response = await app.request('/api/messages/health', {
@@ -174,7 +226,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       test('should create multiple messages successfully', async () => {
         // Mock conversation exists
-        mockDB.get.mockResolvedValue({ id: 'conv_1' });
+        mockSelectQuery({ id: 'conv_1' });
         mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/bulk-create', {
@@ -258,7 +310,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       test('should verify conversation exists before creating messages', async () => {
         // Mock conversation not found
-        mockDB.get.mockResolvedValue(null);
+        mockSelectQuery(null);
 
         const response = await app.request('/api/messages/bulk-create', {
           method: 'POST',
@@ -282,7 +334,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       test('should delete multiple messages successfully', async () => {
         // Mock messages found with correct sender
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           conversationId: 'conv_1',
           agentSenderId: 'user-123',
@@ -315,7 +367,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       test('should enforce permission checks for each message', async () => {
         // Mock message with different sender
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           conversationId: 'conv_1',
           agentSenderId: 'other-user',
@@ -342,7 +394,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       test('should check recall deadlines', async () => {
         // Mock message with past recall deadline
         const pastDeadline = new Date(Date.now() - 1000).toISOString();
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           conversationId: 'conv_1',
           agentSenderId: 'user-123',
@@ -367,7 +419,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       test('should skip already recalled messages', async () => {
         // Mock already recalled message
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           conversationId: 'conv_1',
           agentSenderId: 'user-123',
@@ -448,7 +500,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should return 404 for non-existent message', async () => {
-        mockDB.get.mockResolvedValue(null);
+        mockSelectQuery(null);
 
         const response = await app.request('/api/messages/nonexistent/attachments', {
           method: 'GET'
@@ -502,7 +554,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
     describe('POST /:id/attachments', () => {
       test('should upload attachment successfully', async () => {
         // Mock message exists with correct sender
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           conversationId: 'conv_1',
           agentSenderId: 'user-123',
@@ -533,7 +585,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should validate file size (10MB limit)', async () => {
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           agentSenderId: 'user-123'
         });
@@ -555,7 +607,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should validate MIME types', async () => {
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           agentSenderId: 'user-123'
         });
@@ -577,7 +629,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       test('should check sender permissions', async () => {
         // Mock message with different sender
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           conversationId: 'conv_1',
           senderType: 'agent',
@@ -609,9 +661,9 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       };
 
       test('should forward message to target conversations', async () => {
-        // Mock original message
-        mockDB.get
-          .mockResolvedValueOnce({
+        // Mock original message and target conversation checks
+        mockSelectQueries(
+          {
             id: 'msg_1',
             conversationId: 'conv_source',
             content: 'Original message',
@@ -620,10 +672,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
             senderType: 'agent',
             agentSenderId: 'user-123',
             customerSenderId: null
-          })
-          // Mock target conversation checks
-          .mockResolvedValueOnce({ id: 'conv_1' })
-          .mockResolvedValueOnce({ id: 'conv_2' });
+          },
+          { id: 'conv_1' },
+          { id: 'conv_2' }
+        );
         mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/msg_1/forward', {
@@ -675,8 +727,8 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should include original message metadata', async () => {
-        mockDB.get
-          .mockResolvedValueOnce({
+        mockSelectQueries(
+          {
             id: 'msg_original',
             conversationId: 'conv_source',
             content: 'Original',
@@ -685,9 +737,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
             senderType: 'agent',
             agentSenderId: 'user-123',
             customerSenderId: null
-          })
-          .mockResolvedValueOnce({ id: 'conv_1' })
-          .mockResolvedValueOnce({ id: 'conv_2' });
+          },
+          { id: 'conv_1' },
+          { id: 'conv_2' }
+        );
         mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/msg_original/forward', {
@@ -704,8 +757,8 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should add optional comment to forwarded message', async () => {
-        mockDB.get
-          .mockResolvedValueOnce({
+        mockSelectQueries(
+          {
             id: 'msg_1',
             conversationId: 'conv_source',
             content: 'Original',
@@ -714,9 +767,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
             senderType: 'agent',
             agentSenderId: 'user-123',
             customerSenderId: null
-          })
-          .mockResolvedValueOnce({ id: 'conv_1' })
-          .mockResolvedValueOnce({ id: 'conv_2' });
+          },
+          { id: 'conv_1' },
+          { id: 'conv_2' }
+        );
         mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/msg_1/forward', {
@@ -740,7 +794,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       };
 
       test('should add tags to message', async () => {
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           metadata: null
         });
@@ -764,7 +818,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should update existing tags', async () => {
-        mockDB.get.mockResolvedValue({
+        mockSelectQuery({
           id: 'msg_1',
           metadata: JSON.stringify({ tags: ['old-tag'] })
         });
@@ -799,7 +853,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       });
 
       test('should store tags in message metadata', async () => {
-        mockDB.get.mockResolvedValue({ id: 'msg_1', metadata: null });
+        mockSelectQuery({ id: 'msg_1', metadata: null });
         mockDB.run.mockResolvedValue({ success: true });
 
         const response = await app.request('/api/messages/msg_1/tags', {
@@ -1040,7 +1094,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
   describe('Integration Tests', () => {
     test('should handle complete workflow: create → forward → tag → export', async () => {
       // 1. Create message
-      mockDB.get.mockResolvedValue({ id: 'conv_1' });
+      mockSelectQuery({ id: 'conv_1' });
       mockDB.run.mockResolvedValue({ success: true });
 
       const createResponse = await app.request('/api/messages/bulk-create', {
@@ -1059,8 +1113,8 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
       expect(createResponse.status).toBe(201);
 
       // 2. Forward message (mock)
-      mockDB.get
-        .mockResolvedValueOnce({
+      mockSelectQueries(
+        {
           id: 'msg_1',
           conversationId: 'conv_1',
           content: 'Test workflow message',
@@ -1069,8 +1123,9 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
           senderType: 'agent',
           agentSenderId: 'user-123',
           customerSenderId: null
-        })
-        .mockResolvedValueOnce({ id: 'conv_2' }); // Target conversation exists
+        },
+        { id: 'conv_2' } // Target conversation exists
+      );
 
       const forwardResponse = await app.request('/api/messages/msg_1/forward', {
         method: 'POST',
@@ -1119,7 +1174,7 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
     test('should maintain data consistency across operations', async () => {
       // Create message
-      mockDB.get.mockResolvedValue({ id: 'conv_1' });
+      mockSelectQuery({ id: 'conv_1' });
       mockDB.run.mockResolvedValue({ success: true });
 
       const response = await app.request('/api/messages/bulk-create', {
