@@ -6,6 +6,7 @@ import { MockFactory } from './mockFactory';
 
 /**
  * 創建標準的測試環境設置 - 使用 MockFactory 提供一致的 mock 环境
+ * 包含 DatabaseService 注入以解決 "DatabaseService not available" 錯誤
  */
 export function createTestApp(envOverrides?: Partial<Bindings>): Hono<{ Bindings: Bindings }> {
   const app = new Hono<{ Bindings: Bindings }>();
@@ -19,9 +20,14 @@ export function createTestApp(envOverrides?: Partial<Bindings>): Hono<{ Bindings
     ...envOverrides
   });
 
-  // 設置完整的環境 mock
+  // 創建 DatabaseService mock
+  const mockDbService = createMockDatabaseService();
+
+  // 設置完整的環境 mock，包括 dbService 注入
   app.use('*', (c, next) => {
     c.env = mockEnv as any;
+    // ✅ 注入 dbService 到 context - 解決 "DatabaseService not available" 錯誤
+    c.set('dbService', mockDbService);
     return next();
   });
 
@@ -127,20 +133,85 @@ export function createServiceMocks() {
 }
 
 /**
+ * 創建 DatabaseService mock - 解決 "DatabaseService not available" 錯誤
+ * 提供完整的 DatabaseService 方法 mock，包括 customer, agent, conversation 操作
+ */
+export function createMockDatabaseService() {
+  return {
+    // Customer operations
+    createCustomer: vi.fn().mockResolvedValue({
+      id: 1,
+      platform: 'line',
+      platformUserId: 'U123456789',
+      displayName: 'Test Customer',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }),
+    getCustomerById: vi.fn().mockResolvedValue(null),
+    getCustomerByPlatformId: vi.fn().mockResolvedValue(null),
+    updateCustomer: vi.fn().mockResolvedValue({ id: 1, displayName: 'Updated Customer' }),
+
+    // Agent operations
+    createAgent: vi.fn().mockResolvedValue({
+      id: 'agent-123',
+      email: 'agent@test.com',
+      displayName: 'Test Agent',
+      role: 'agent'
+    }),
+    getAgentById: vi.fn().mockResolvedValue(null),
+    getAgentByEmail: vi.fn().mockResolvedValue(null),
+    updateAgentLastLogin: vi.fn().mockResolvedValue({ id: 'agent-123' }),
+
+    // Conversation operations
+    createConversation: vi.fn().mockResolvedValue({
+      id: 'conv-123',
+      customerId: 1,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    }),
+    getConversationById: vi.fn().mockResolvedValue(null),
+    getConversationsByCustomerId: vi.fn().mockResolvedValue([]),
+    updateConversation: vi.fn().mockResolvedValue({ id: 'conv-123', status: 'closed' }),
+    assignConversation: vi.fn().mockResolvedValue({ success: true }),
+
+    // Message operations
+    createMessage: vi.fn().mockResolvedValue({
+      id: 'msg-123',
+      conversationId: 'conv-123',
+      content: 'Test message',
+      senderType: 'customer'
+    }),
+    getMessageById: vi.fn().mockResolvedValue(null),
+    getConversationMessages: vi.fn().mockResolvedValue([]),
+    updateMessage: vi.fn().mockResolvedValue({ id: 'msg-123' }),
+
+    // Cache helper (for parallel operations)
+    incrementConversationCount: vi.fn().mockResolvedValue(undefined),
+
+    // Statistics operations
+    getConversationStats: vi.fn().mockResolvedValue({ total: 0, active: 0, closed: 0 }),
+    getMessageStats: vi.fn().mockResolvedValue({ total: 0, today: 0 })
+  };
+}
+
+/**
  * 設置完整的測試環境
+ * 包含 dbService mock 以解決 "DatabaseService not available" 錯誤
  */
 export function setupHandlerTest() {
   const app = createTestApp();
   const authMocks = createAuthMiddlewareMocks();
   const databaseMocks = createDatabaseUtilsMocks();
   const serviceMocks = createServiceMocks();
-  
+  const dbServiceMock = createMockDatabaseService();
+
   return {
     app,
     mocks: {
       auth: authMocks,
       database: databaseMocks,
-      services: serviceMocks
+      services: serviceMocks,
+      dbService: dbServiceMock // ✅ 添加 dbService mock 以供測試使用
     },
     mockUser: createMockUser()
   };
