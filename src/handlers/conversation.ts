@@ -17,6 +17,7 @@ import { sql, eq, and, desc, inArray, count, aliasedTable } from 'drizzle-orm';
 import { realtime } from '@modules/realtime';
 import { conversations as conversationTable, agents, conversationTransfers, teams, conversationTags } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
+import { WebSocketAuthService } from '../services/websocket-auth-service';
 
 const conversations = new Hono<HonoContext>();
 
@@ -272,12 +273,31 @@ conversations.post('/:id/assign', requireAdmin(), async (c) => {
 
     // 管理員權限已由 requireAdmin() 中間件確認，移除冗餘檢查
 
+    // 🆕 P2-3: Get old conversation to track previous assignment for cache invalidation
+    const oldConversation = await dbService.getConversationById(conversationId);
+    const oldAssignedUserId = oldConversation?.assignedUserId;
+
     // ✅ 使用 DatabaseService.updateConversation 方法，自動處理緩存清除
     await dbService.updateConversation(conversationId, {
       assignedTeamId: teamId || null,
       assignedUserId: userId || null,
       status: 'assigned'
     });
+
+    // 🆕 P2-3: Invalidate conversation cache for affected agents
+    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+
+    // Invalidate cache for previously assigned agent (if exists)
+    if (oldAssignedUserId && oldAssignedUserId !== userId) {
+      await authService.invalidateAgentConversationCache(oldAssignedUserId);
+      console.log(`🗑️  [Assign API] Invalidated conversation cache for old agent: ${oldAssignedUserId}`);
+    }
+
+    // Invalidate cache for newly assigned agent (if exists)
+    if (userId) {
+      await authService.invalidateAgentConversationCache(userId);
+      console.log(`🗑️  [Assign API] Invalidated conversation cache for new agent: ${userId}`);
+    }
 
     // 🔧 FIX: 获取更新后的完整对话对象,包括 assignedTeam 和 assignedAgent
     const updatedConversation = await dbService.getConversationById(conversationId);
@@ -352,6 +372,13 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
       assignedUserId: null,
       status: 'open'
     });
+
+    // 🆕 P2-3: Invalidate conversation cache for previously assigned agent
+    if (previousAssignment.userId) {
+      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+      await authService.invalidateAgentConversationCache(previousAssignment.userId);
+      console.log(`🗑️  [Unassign API] Invalidated conversation cache for agent: ${previousAssignment.userId}`);
+    }
 
     // 獲取更新後的完整對話對象
     const updatedConversation = await dbService.getConversationById(conversationId);
