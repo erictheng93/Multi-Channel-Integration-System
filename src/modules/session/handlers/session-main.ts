@@ -446,6 +446,7 @@ sessionHandler.get(
 /**
  * 獲取單個會話詳情
  * GET /api/sessions/:sessionId
+ * P2-2 UPDATED: Added service-level permission checking
  */
 sessionHandler.get(
   '/:sessionId',
@@ -455,14 +456,19 @@ sessionHandler.get(
   async (c) => {
     try {
       const sessionId = c.get('sessionId');
+      const jwtPayload = c.get('jwtPayload');
       const sessionService = new SessionService(c.env.DB);
 
-      const session = await sessionService.get(sessionId);
+      // 🆕 P2-2: Pass user context for permission checking at service level
+      const userId = jwtPayload?.userId?.toString() || '';
+      const userRole = (jwtPayload?.role as 'admin' | 'agent') || 'agent';
+
+      const session = await sessionService.get(sessionId, userId, userRole);
 
       if (!session) {
         return c.json({
           success: false,
-          error: 'Session not found',
+          error: 'Session not found or access denied',
           timestamp: new Date().toISOString()
         }, 404);
       }
