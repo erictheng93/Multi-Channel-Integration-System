@@ -4,7 +4,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, like } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { conversationSessions, messages } from '@/db/schema';
+import { conversationSessions, messages, conversations, agents } from '@/db/schema';
 import {
   ConversationSession,
   CreateSessionData,
@@ -81,9 +81,28 @@ export class SessionService implements SessionServiceInterface {
 
   /**
    * 獲取會話詳情
+   * P2-2 UPDATED: Added optional permission checking
+   *
+   * @param sessionId - 會話ID
+   * @param userId - (Optional) 用戶ID for permission check
+   * @param userRole - (Optional) 用戶角色 for permission check
+   * @returns 會話詳情 or null if not found or access denied
    */
-  async get(sessionId: string): Promise<ConversationSession | null> {
+  async get(
+    sessionId: string,
+    userId?: string,
+    userRole?: 'admin' | 'agent'
+  ): Promise<ConversationSession | null> {
     try {
+      // 🆕 P2-2: Permission check if user context provided
+      if (userId && userRole) {
+        const hasAccess = await this.canAccessSession(sessionId, userId, userRole);
+        if (!hasAccess) {
+          console.warn(`❌ [SessionService] Access denied: User ${userId} (${userRole}) cannot access session ${sessionId}`);
+          return null;
+        }
+      }
+
       const session = await this.db
         .select()
         .from(conversationSessions)
@@ -158,6 +177,82 @@ export class SessionService implements SessionServiceInterface {
     } catch (error) {
       console.error('[SessionService] 刪除會話失敗:', error);
       throw new SessionOperationError('Failed to delete session', 'delete');
+    }
+  }
+
+  // ======================== 權限檢查 ========================
+
+  /**
+   * 檢查用戶是否有訪問會話的權限
+   * P2-2: Session Access Permissions - IMPLEMENTED
+   *
+   * @param sessionId - 會話ID
+   * @param userId - 用戶ID
+   * @param userRole - 用戶角色 ('admin' | 'agent')
+   * @returns 是否有訪問權限
+   */
+  async canAccessSession(
+    sessionId: string,
+    userId: string,
+    userRole: 'admin' | 'agent'
+  ): Promise<boolean> {
+    try {
+      // Admins have access to all sessions
+      if (userRole === 'admin') {
+        console.log(`✅ [SessionService] Admin ${userId} granted access to session ${sessionId}`);
+        return true;
+      }
+
+      // Get session details
+      const session = await this.db
+        .select()
+        .from(conversationSessions)
+        .where(eq(conversationSessions.id, sessionId))
+        .get();
+
+      if (!session) {
+        console.warn(`⚠️ [SessionService] Session ${sessionId} not found for access check`);
+        return false;
+      }
+
+      // Get conversation details
+      const conversation = await this.db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.id, session.conversationId))
+        .get();
+
+      if (!conversation) {
+        console.warn(`⚠️ [SessionService] Conversation ${session.conversationId} not found for session ${sessionId}`);
+        return false;
+      }
+
+      // Check if agent is directly assigned to this conversation
+      if (conversation.assignedUserId === userId) {
+        console.log(`✅ [SessionService] Agent ${userId} has direct assignment to conversation ${conversation.id}`);
+        return true;
+      }
+
+      // Check if agent is in the same team as the conversation
+      if (conversation.assignedTeamId) {
+        const agent = await this.db
+          .select()
+          .from(agents)
+          .where(eq(agents.id, userId))
+          .get();
+
+        if (agent && agent.teamId === conversation.assignedTeamId) {
+          console.log(`✅ [SessionService] Agent ${userId} has team access to conversation ${conversation.id} via team ${agent.teamId}`);
+          return true;
+        }
+      }
+
+      console.warn(`❌ [SessionService] Agent ${userId} denied access to session ${sessionId} - no assignment or team match`);
+      return false;
+    } catch (error) {
+      console.error('[SessionService] Permission check error:', error);
+      // Fail closed - deny access on errors
+      return false;
     }
   }
 

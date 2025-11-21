@@ -181,7 +181,9 @@ export class WebhookValidator {
    * 獲取安全統計
    */
   async getSecurityStats(integrationId?: string, hours: number = 24) {
-    return this.securityService.getSecurityStats(integrationId, hours);
+    // Convert string integrationId to number if provided
+    const integrationIdNum = integrationId ? parseInt(integrationId, 10) : undefined;
+    return this.securityService.getSecurityStats(integrationIdNum, hours);
   }
 
   /**

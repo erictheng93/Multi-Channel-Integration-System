@@ -276,7 +276,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // Use clearAllMocks instead of restoreAllMocks to preserve module-level mocks
+    vi.clearAllMocks();
   });
 
   describe('Health & Info Endpoints', () => {
@@ -373,9 +374,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
     });
 
     test('should return 404 for non-existent team', async () => {
-      const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
-      const mockInstance = new TeamService(mockDB);
-      vi.mocked(mockInstance.getTeamById).mockResolvedValueOnce(null);
+      // Use the shared mock instance directly
+      mockTeamServiceInstance.getTeamById.mockResolvedValueOnce(null);
 
       const res = await app.request('/api/teams/999', {
         method: 'GET',
@@ -467,9 +467,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
     });
 
     test('should reject duplicate team names', async () => {
-      const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
-      const mockInstance = new TeamService(mockDB);
-      vi.mocked(mockInstance.createTeam).mockRejectedValueOnce(
+      // Use the shared mock instance directly
+      mockTeamServiceInstance.createTeam.mockRejectedValueOnce(
         new Error('Team name already exists')
       );
 
@@ -570,9 +569,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
     });
 
     test('should return 404 for non-existent team', async () => {
-      const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
-      const mockInstance = new TeamService(mockDB);
-      vi.mocked(mockInstance.deleteTeam).mockRejectedValueOnce(
+      // Use the shared mock instance directly
+      mockTeamServiceInstance.deleteTeam.mockRejectedValueOnce(
         new Error('Team not found')
       );
 
@@ -673,9 +671,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
 
   describe('GET /:id/stats - Get Team Statistics', () => {
     test('should retrieve team statistics', async () => {
-      const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
-      const mockInstance = new TeamService(mockDB);
-      vi.mocked(mockInstance.getAllTeamsStats).mockResolvedValueOnce({
+      // Use the shared mock instance directly
+      mockTeamServiceInstance.getAllTeamsStats.mockResolvedValueOnce({
         totalTeams: 1,
         activeTeams: 1,
         totalMembers: 5,
@@ -717,10 +714,21 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
 
   describe('GET /stats/all - Get All Teams Statistics', () => {
     test('should retrieve all teams statistics', async () => {
+      // Mock admin user for this admin-only endpoint
+      const mockAuth = await import('../../../src/middleware/auth');
+      vi.mocked(mockAuth.jwtAuth).mockImplementationOnce((c: any, next: any) => {
+        c.set('user', {
+          userId: 'admin-001',
+          username: 'test-admin',
+          role: 'admin'
+        });
+        return next();
+      });
+
       const res = await app.request('/api/teams/stats/all', {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer token'
+          'Authorization': 'Bearer admin-token'
         }
       }, mockEnv as any);
 
@@ -731,10 +739,21 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
     });
 
     test('should include member details when requested', async () => {
+      // Mock admin user for this admin-only endpoint
+      const mockAuth = await import('../../../src/middleware/auth');
+      vi.mocked(mockAuth.jwtAuth).mockImplementationOnce((c: any, next: any) => {
+        c.set('user', {
+          userId: 'admin-001',
+          username: 'test-admin',
+          role: 'admin'
+        });
+        return next();
+      });
+
       const res = await app.request('/api/teams/stats/all?includeMembers=true', {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer token'
+          'Authorization': 'Bearer admin-token'
         }
       }, mockEnv as any);
 
@@ -816,9 +835,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
 
   describe('Error Handling', () => {
     test('should handle database errors gracefully', async () => {
-      const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
-      const mockInstance = new TeamService(mockDB);
-      vi.mocked(mockInstance.listTeams).mockRejectedValueOnce(
+      // Use the shared mock instance directly
+      mockTeamServiceInstance.listTeams.mockRejectedValueOnce(
         new Error('Database connection failed')
       );
 
@@ -888,9 +906,8 @@ describe('Team Management - Unit Tests (MockFactory Refactored)', () => {
     });
 
     test('should reject duplicate QR codes', async () => {
-      const TeamService = (await import('@modules/teams/services/team-service')).TeamService;
-      const mockInstance = new TeamService(mockDB);
-      vi.mocked(mockInstance.createTeam).mockRejectedValueOnce(
+      // Use the shared mock instance directly
+      mockTeamServiceInstance.createTeam.mockRejectedValueOnce(
         new Error('QR Code already exists')
       );
 
