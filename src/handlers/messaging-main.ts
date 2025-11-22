@@ -1099,7 +1099,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
     // 上傳到 R2
     try {
       const arrayBuffer = await file.arrayBuffer();
-      await c.env.FILE_STORAGE.put(r2Key, arrayBuffer, {
+      await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
         httpMetadata: {
           contentType: file.type
         }
@@ -1113,8 +1113,8 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
       }, 500);
     }
 
-    // 生成公開URL (如果R2配置了公開訪問)
-    const fileUrl = `https://your-r2-domain.com/${r2Key}`;
+    // 生成公開URL (使用環境變數中配置的R2公開域名)
+    const fileUrl = `${c.env.R2_PUBLIC_URL}/${r2Key}`;
 
     // 保存附件記錄到資料庫
     const { fileAttachments } = await import('../shared/database/schema');
@@ -1128,7 +1128,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
       fileSize: file.size,
       fileUrl,
       r2Key,
-      url: fileUrl,
+      // url 字段已棄用，只使用 fileUrl
       createdAt: new Date().toISOString()
     });
 
