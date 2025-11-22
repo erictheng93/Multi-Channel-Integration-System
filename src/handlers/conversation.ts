@@ -33,12 +33,129 @@ conversations.use('*', authMiddleware);
 
 // ==================== Priority 1: MULTI-SEGMENT routes (/:id/xxx) ====================
 
+// 上傳附件（在消息發送之前）
+conversations.post('/:id/attachments', async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const agent = c.get('agent');
+
+    if (!conversationId) {
+      return c.json({
+        success: false,
+        error: 'Conversation ID is required'
+      }, 400);
+    }
+
+    const db = c.get('db');
+    const kv = c.get('kv');
+    const dbService = new DatabaseService(db, kv);
+
+    // 檢查權限 - 確保代理可以存取此對話
+    const canAccess = await dbService.canAgentAccessConversation(agent!, conversationId);
+    if (!canAccess) {
+      return c.json({
+        success: false,
+        error: 'Access denied'
+      }, 403);
+    }
+
+    // 檢查對話是否存在
+    const conversation = await dbService.getConversationById(conversationId);
+    if (!conversation) {
+      return c.json({
+        success: false,
+        error: 'Conversation not found'
+      }, 404);
+    }
+
+    // 解析 FormData
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    const messageType = formData.get('messageType') as string;
+
+    // 驗證文件
+    if (!file || file.size === 0) {
+      return c.json({
+        success: false,
+        error: 'No file provided'
+      }, 400);
+    }
+
+    // 文件大小限制：10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return c.json({
+        success: false,
+        error: 'File too large (max 10MB)'
+      }, 400);
+    }
+
+    // 生成 R2 key
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substr(2, 9);
+    const fileExtension = file.name.split('.').pop() || 'bin';
+    const r2Key = `attachments/${conversationId}/pending/${timestamp}_${randomStr}.${fileExtension}`;
+
+    // 上傳到 R2
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
+        httpMetadata: {
+          contentType: file.type
+        }
+      });
+    } catch (error) {
+      console.error('R2 upload error:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to upload file to storage'
+      }, 500);
+    }
+
+    // 生成公開 URL
+    const fileUrl = `${c.env.R2_PUBLIC_URL}/${r2Key}`;
+
+    // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
+    const { fileAttachments } = await import('../db/schema');
+    const attachmentId = `att_${timestamp}_${randomStr}`;
+
+    const drizzleDb = drizzle(c.env.DB);
+    await drizzleDb.insert(fileAttachments).values({
+      id: attachmentId,
+      messageId: null, // Will be updated when message is sent
+      filename: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      fileUrl,
+      r2Key,
+      createdAt: new Date().toISOString()
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        attachmentId,
+        url: fileUrl,
+        filename: file.name,
+        mimeType: file.type,
+        size: file.size
+      }
+    });
+  } catch (error) {
+    console.error('Upload attachment error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    }, 500);
+  }
+});
+
 // 發送訊息
 conversations.post('/:id/messages', async (c) => {
   try {
     const conversationId = c.req.param('id');
     const agent = c.get('agent');
-    const { content, messageType = 'text' } = await c.req.json();
+    const { content, messageType = 'text', attachmentIds } = await c.req.json();
 
     if (!content) {
       return c.json({
@@ -84,6 +201,20 @@ conversations.post('/:id/messages', async (c) => {
       content,
       messageType,
     });
+
+    // 如果有附件，更新附件的 messageId
+    if (attachmentIds && Array.isArray(attachmentIds) && attachmentIds.length > 0) {
+      const { fileAttachments } = await import('../db/schema');
+      const drizzleDb = drizzle(c.env.DB);
+
+      // 批量更新所有附件的 messageId
+      await drizzleDb.update(fileAttachments)
+        .set({ messageId: message.id })
+        .where(inArray(fileAttachments.id, attachmentIds))
+        .execute();
+
+      console.log(`✅ [Message] Updated ${attachmentIds.length} attachments for message ${message.id}`);
+    }
 
     // 🚀 事件驅動推送：立即推送新消息事件到隊列
     try {
