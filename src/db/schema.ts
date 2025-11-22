@@ -150,9 +150,9 @@ export const fileAttachments = sqliteTable('file_attachments', {
   filename: text('filename').notNull(),
   mimeType: text('mime_type').notNull(),
   fileSize: integer('file_size').notNull(),
-  fileUrl: text('file_url'),
-  r2Key: text('r2_key').notNull(),
-  url: text('url'),
+  fileUrl: text('file_url'), // 公開訪問URL（主要使用此欄位）
+  r2Key: text('r2_key').notNull(), // R2內部存儲路徑
+  url: text('url'), // @deprecated 與 fileUrl 重複，計劃移除
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
