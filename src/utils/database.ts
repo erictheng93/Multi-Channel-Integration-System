@@ -1,5 +1,5 @@
 import { eq, and, desc, asc, count } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import {
   customers,
   conversations,
@@ -40,7 +40,7 @@ export async function findOrCreateCustomer(
   }
 ): Promise<Customer> {
   const timestamp = new Date().toISOString();
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   // 先嘗試找到現有客戶
   const existingCustomer = await drizzleDb
@@ -170,7 +170,7 @@ export async function findOrCreateConversation(
   customerId: number
 ): Promise<DbConversation> {
   const timestamp = new Date().toISOString();
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   // 先嘗試找到現有的活躍對話
   const existingConversation = await drizzleDb
@@ -247,7 +247,7 @@ export async function saveMessage(
   }
 ): Promise<DbMessage> {
   const timestamp = new Date().toISOString();
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   const messageInsertData = {
     id: messageData.id,
@@ -295,7 +295,7 @@ export async function getSystemSetting(
   db: D1Database, 
   key: string
 ): Promise<string | null> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const result = await drizzleDb
     .select({ value: systemSettings.value })
@@ -314,7 +314,7 @@ export async function getConversationMessages(
   conversationId: string,
   limit: number = 50
 ): Promise<DbMessage[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const messageList = await drizzleDb
     .select()
@@ -333,7 +333,7 @@ export async function getCustomerConversations(
   db: D1Database,
   customerId: number
 ): Promise<DbConversation[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const conversationList = await drizzleDb
     .select()
@@ -355,7 +355,7 @@ export async function getMessageStats(
   totalConversations: number;
   recentMessages: DbMessage[];
 }> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   // 總訊息數
   const totalMessagesResult = await drizzleDb
@@ -432,7 +432,7 @@ export async function getMessageReplies(
   db: D1Database,
   messageId: string
 ): Promise<DbMessage[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const replies = await drizzleDb
     .select()
@@ -450,7 +450,7 @@ export async function getMessageThread(
   db: D1Database,
   threadId: string
 ): Promise<DbMessage[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const threadMessages = await drizzleDb
     .select()
@@ -472,7 +472,7 @@ export async function getConversationMessageTree(
   messageMap: Map<string, DbMessage>;
   replyMap: Map<string, DbMessage[]>;
 }> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   // 獲取對話的所有訊息
   const messageList = await drizzleDb
@@ -513,7 +513,7 @@ export async function getAllCustomers(
   db: D1Database,
   limit: number = 100
 ): Promise<Customer[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const customerList = await drizzleDb
     .select()
@@ -531,7 +531,7 @@ export async function getCustomerById(
   db: D1Database,
   customerId: number
 ): Promise<Customer | null> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const customer = await drizzleDb
     .select()
@@ -550,7 +550,7 @@ export async function getCustomerByPlatformId(
   platform: string,
   platformUserId: string
 ): Promise<Customer | null> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const customer = await drizzleDb
     .select()
@@ -578,7 +578,7 @@ export async function updateCustomer(
     metadata?: Record<string, unknown>;
   }
 ): Promise<boolean> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const updateData: Partial<typeof customers.$inferInsert> = {
     updatedAt: new Date().toISOString()

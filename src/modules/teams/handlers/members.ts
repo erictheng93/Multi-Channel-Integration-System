@@ -10,6 +10,9 @@ import {
   requireManagerOrAdmin
 } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
+import { createDbClient } from '@/db/drizzle-factory';
+import { agents } from '@/db/schema';
+import { desc, sql } from 'drizzle-orm';
 import type {
   AddTeamMemberRequest,
   UpdateMemberStatusRequest,
@@ -37,11 +40,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 使用直接的數據庫查詢來獲取所有成員
-    const drizzle = await import('drizzle-orm/d1').then(m => m.drizzle);
-    const { agents } = await import('@/db/schema');
-    const { desc, sql } = await import('drizzle-orm');
-
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const members = await db
       .select({
         id: agents.id,

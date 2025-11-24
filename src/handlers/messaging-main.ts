@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import { eq, and, desc, count, isNull } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import type { Bindings, JWTPayload } from '../types';
 import { messages, conversations, customers, agents, fileAttachments } from '@shared/database/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
@@ -187,7 +187,7 @@ app.get('/search', jwtAuth, async (c) => {
 app.get('/stats', jwtAuth, async (c) => {
   try {
     // 使用正確的資料庫連接
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 簡化版本：只提供基本統計，不做複雜查詢
     const basicStats = await db
@@ -240,7 +240,7 @@ app.get('/stats', jwtAuth, async (c) => {
 
 app.get('/tags', jwtAuth, async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 從訊息元數據中提取所有唯一的標籤
     const messagesWithTags = await db
@@ -321,7 +321,7 @@ app.get('/export', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 構建查詢條件
     const whereConditions: any[] = [eq(messages.isRecalled, false)];
@@ -494,7 +494,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const results: any[] = [];
     const errors: any[] = [];
 
@@ -642,7 +642,7 @@ app.post('/bulk-delete', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const results: any[] = [];
     const errors: any[] = [];
 
@@ -784,7 +784,7 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
     const conversation = await db
@@ -942,7 +942,7 @@ app.get('/:id/attachments', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查訊息是否存在
     const message = await db
@@ -1016,7 +1016,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查訊息是否存在
     const message = await db
@@ -1213,7 +1213,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 獲取原始訊息
     const originalMessage = await db
@@ -1401,7 +1401,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查訊息是否存在
     const message = await db
@@ -1481,7 +1481,7 @@ app.get('/:id', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 獲取訊息詳細資訊，包含相關的對話和發送者資訊
     const messageQuery = await db
@@ -1618,7 +1618,7 @@ app.put('/:id', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查訊息是否存在以及用戶權限
     const existingMessage = await db
@@ -1744,7 +1744,7 @@ app.delete('/:id', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查訊息是否存在以及用戶權限
     const existingMessage = await db
@@ -1891,7 +1891,7 @@ app.post('/', jwtAuth, async (c) => {
     }
 
     // 創建資料庫連線
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
     const conversation = await db

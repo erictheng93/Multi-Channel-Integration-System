@@ -5,7 +5,7 @@
 
 import { Context } from 'hono';
 import { eq, and, ne } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { customers, conversations, messages, fileAttachments } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
@@ -295,7 +295,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
     }
 
     // 查詢或建立使用者
-    const drizzleDb = drizzle(env.DB);
+    const drizzleDb = createDbClient(env.DB);
     let user = await drizzleDb
       .select()
       .from(customers)
@@ -665,7 +665,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         
         if (mediaFile) {
           // 將檔案資訊存儲到資料庫 - using Drizzle ORM
-          const drizzleDb = drizzle(env.DB);
+          const drizzleDb = createDbClient(env.DB);
           const newFileAttachment: any = {
             id: mediaFile.id,
             messageId: messageId,
@@ -781,7 +781,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
     }
 
     // 查詢或建立使用者
-    const drizzleDb = drizzle(env.DB);
+    const drizzleDb = createDbClient(env.DB);
     let user = await drizzleDb
       .select()
       .from(customers)
@@ -1008,7 +1008,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         
         if (mediaFile) {
           // 將檔案資訊存儲到資料庫 - using Drizzle ORM
-          const drizzleDb = drizzle(env.DB);
+          const drizzleDb = createDbClient(env.DB);
           const newFileAttachment: any = {
             id: mediaFile.id,
             messageId: messageId,

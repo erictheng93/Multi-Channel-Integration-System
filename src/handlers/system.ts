@@ -21,7 +21,7 @@ import {
   handleApiError 
 } from '../utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
-import { drizzle } from 'drizzle-orm/d1'
+import { createDbClient } from '../db/drizzle-factory'
 import { sql, gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '../db/schema'
 
@@ -197,7 +197,7 @@ interface SystemSettingsResponse {
 // 獲取系統資訊
 export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    // const drizzleDb = drizzle(c.env.DB)
+    // const drizzleDb = createDbClient(c.env.DB)
     
     // 獲取基本系統資訊
     const systemInfo = {
@@ -218,7 +218,7 @@ export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
 // 獲取系統設定
 export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const drizzleDb = drizzle(c.env.DB)
+    const drizzleDb = createDbClient(c.env.DB)
     
     // 從資料庫獲取設定
     const settingsResult = await drizzleDb
@@ -286,7 +286,7 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
 // 更新系統設定
 export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const drizzleDb = drizzle(c.env.DB)
+    const drizzleDb = createDbClient(c.env.DB)
     const settings = await c.req.json<SystemSettingsUpdate>()
     
     // 將設定扁平化並儲存到資料庫
@@ -597,7 +597,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
 // 獲取系統指標
 export const getMetrics = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const drizzleDb = drizzle(c.env.DB)
+    const drizzleDb = createDbClient(c.env.DB)
     
     // 獲取統計數據
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -733,7 +733,7 @@ export const restartSystem = async (c: Context<{ Bindings: Bindings }>) => {
 // 健康檢查
 export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const drizzleDb = drizzle(c.env.DB)
+    const drizzleDb = createDbClient(c.env.DB)
     const startTime = Date.now()
     
     // 檢查資料庫連線

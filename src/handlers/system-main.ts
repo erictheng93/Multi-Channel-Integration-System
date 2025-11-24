@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { jwtAuth } from '../middleware/auth';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { customers, conversations, messages } from '../db/schema';
 import { count, sql } from 'drizzle-orm';
 import { handleApiError } from '../utils/api-response';
@@ -17,7 +17,7 @@ const systemHandler = new Hono<{ Bindings: Bindings }>();
 systemHandler.get('/health', async (c) => {
   try {
     // 檢查資料庫連接 - using Drizzle ORM
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const dbCheck = await drizzleDb.get(sql`SELECT 1 as test`);
     
     return c.json({
@@ -84,7 +84,7 @@ systemHandler.get('/api', (c) => {
 systemHandler.get('/system/status', async (c) => {
   try {
     // 檢查資料庫連接 - using Drizzle ORM
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const dbCheck = await drizzleDb.get(sql`SELECT 1 as test`);
     
     // 檢查各個資源
@@ -204,7 +204,7 @@ systemHandler.get('/conversations/:conversationId/sessions', async (c) => {
 // 系統統計端點
 systemHandler.get('/stats', async (c) => {
   try {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
 
     // 獲取各項統計數據
     let totalMessages = 0;

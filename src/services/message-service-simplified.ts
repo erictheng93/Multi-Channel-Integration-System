@@ -1,6 +1,6 @@
 // Simplified Message Service - Extracted from handler complexity
 import type { Bindings, DbMessage } from '../types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { messages, conversations, customers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -26,7 +26,7 @@ export class MessageService {
 
   constructor(env: Bindings) {
     this.env = env;
-    this.db = drizzle(env.DB);
+    this.db = createDbClient(env.DB);
   }
 
   async sendMessage(request: MessageRequest): Promise<MessageResult> {

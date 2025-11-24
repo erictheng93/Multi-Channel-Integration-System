@@ -3,7 +3,8 @@
 
 import type { Bindings } from '../types';
 import { verifyJWT } from '../utils/auth';
-import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { createDbClient, type Database } from '../db/drizzle-factory';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { conversations } from '../db/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
 
@@ -207,7 +208,7 @@ export class WebSocketAuthService {
     }
 
     try {
-      const dbClient = drizzle(this.db);
+      const dbClient = createDbClient(this.db);
 
       // Query conversations where agent is directly assigned
       const directAssigned = await dbClient

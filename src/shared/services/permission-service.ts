@@ -1,6 +1,6 @@
 // 權限管理服務
 import { eq, and, isNull, or, desc } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../db/drizzle-factory';
 import { agents, conversations } from '@shared/database/schema';
 import type {
   // PermissionRule,
@@ -189,7 +189,7 @@ export class PermissionService {
       if (resource === 'conversation' && context && (context as any).resourceId && db) {
         // 查詢對話的assignedUserId
         try {
-          const drizzleDb = drizzle(db);
+          const drizzleDb = createDbClient(db);
           const conversation = await drizzleDb
             .select({ assignedUserId: conversations.assignedUserId })
             .from(conversations)
@@ -275,7 +275,7 @@ export class PermissionService {
     }
 
     try {
-      const drizzleDb = drizzle(db);
+      const drizzleDb = createDbClient(db);
       const userIdStr = typeof userId === 'string' ? userId : userId.toString();
       
       console.log(`📋 Querying agents table for id: "${userIdStr}"`);
@@ -337,7 +337,7 @@ export class PermissionService {
 
       // Admin 可以看到所有對話
       if (user.role === 'admin') {
-        const drizzleDb = drizzle(database);
+        const drizzleDb = createDbClient(database);
         const result = await drizzleDb
           .select({ id: conversations.id })
           .from(conversations)
@@ -347,7 +347,7 @@ export class PermissionService {
 
       // Manager 可以看到團隊內的所有對話
       if (user.role === 'team' && user.teamId) {
-        const drizzleDb = drizzle(database);
+        const drizzleDb = createDbClient(database);
         const result = await drizzleDb
           .select({ id: conversations.id })
           .from(conversations)
@@ -371,7 +371,7 @@ export class PermissionService {
         const userIdStr = typeof userId === 'string' ? userId : userId.toString();
         console.log(`🔍 Agent ${userIdStr} (role: ${user.role}, teamId: ${user.teamId}) searching for conversations`);
 
-        const drizzleDb = drizzle(database);
+        const drizzleDb = createDbClient(database);
 
         // 建立查詢條件
         const conditions = [

@@ -1,6 +1,6 @@
 // 用戶資料同步服務
 import { eq, and, isNull } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { customers } from '../db/schema';
 import type { 
   Bindings
@@ -165,7 +165,7 @@ export class UserSyncService {
       console.log(`Syncing stale users (older than ${new Date(cutoffTime).toISOString()})`);
       
       // 查詢需要更新的用戶
-      const drizzleDb = drizzle(this.env.DB);
+      const drizzleDb = createDbClient(this.env.DB);
       const staleUsers = await drizzleDb
         .select({
           platformUserId: customers.platformUserId,
@@ -203,7 +203,7 @@ export class UserSyncService {
    */
   private async updateUserInDatabase(userProfile: UserProfile): Promise<void> {
     try {
-      const drizzleDb = drizzle(this.env.DB);
+      const drizzleDb = createDbClient(this.env.DB);
       const timestamp = new Date().toISOString();
       
       await drizzleDb
@@ -232,7 +232,7 @@ export class UserSyncService {
     try {
       // 如果不強制同步，先嘗試從資料庫獲取
       if (!forceSync) {
-        const drizzleDb = drizzle(this.env.DB);
+        const drizzleDb = createDbClient(this.env.DB);
         const user = await drizzleDb
           .select()
           .from(customers)
@@ -285,7 +285,7 @@ export class UserSyncService {
    */
   async needsUpdate(userId: string, platform: string, maxAge = 24 * 60 * 60 * 1000): Promise<boolean> {
     try {
-      const drizzleDb = drizzle(this.env.DB);
+      const drizzleDb = createDbClient(this.env.DB);
       const user = await drizzleDb
         .select({
           updatedAt: customers.updatedAt

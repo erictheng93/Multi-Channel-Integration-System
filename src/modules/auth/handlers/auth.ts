@@ -3,7 +3,7 @@ import type { Context } from 'hono';
 import type { Bindings } from '@/types';
 import type { AuthRequest, LoginResponse } from '@modules/auth/types/auth-types';
 import { signJWT } from '@modules/auth/services/auth';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { eq, and } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import {
@@ -28,7 +28,7 @@ export const authHandler = {
       }
 
       // 驗證用戶（從 agents 表查找）
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
       const agentRow = await db.select().from(agents)
         .where(and(eq(agents.email, email), eq(agents.isActive, true)))
         .get();
@@ -142,7 +142,7 @@ export const authHandler = {
       }
 
       // 從資料庫獲取最新的用戶資訊
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
       const agentRow = await db.select().from(agents)
         .where(and(eq(agents.id, payload.userId.toString()), eq(agents.isActive, true)))
         .get();
@@ -201,7 +201,7 @@ export const authHandler = {
       }
 
       // 驗證用戶是否仍然存在且活躍
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
       const agentRow = await db.select().from(agents)
         .where(and(eq(agents.id, payload.userId), eq(agents.isActive, true)))
         .get();

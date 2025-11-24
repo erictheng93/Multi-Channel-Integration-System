@@ -3,7 +3,7 @@ import type {
   AnalyticsFilter,
   TimeSeriesData
 } from '../types/enterprise';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, gte, lte, asc, desc, count, avg, sum } from 'drizzle-orm';
 import { metrics, conversations, messages } from '../db/schema';
 
@@ -108,7 +108,7 @@ export class EnterpriseAnalyticsEngine {
   // 記錄指標
   async recordMetric(metric: AnalyticsMetric): Promise<void> {
     // 使用 Drizzle ORM 插入指標
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     await db.insert(metrics).values({
       metricName: metric.name,
       metricValue: metric.value,
@@ -241,7 +241,7 @@ export class EnterpriseAnalyticsEngine {
   ): Promise<Record<string, unknown>[] | string> {
     const { metrics: metricNames, filters, groupBy, period, format } = reportConfig;
     
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     // Build dynamic select clause using Drizzle ORM
     const selectFields = this.buildDrizzleSelectFields(metricNames, groupBy);
@@ -306,7 +306,7 @@ export class EnterpriseAnalyticsEngine {
     agentId: number,
     period: { start: number; end: number }
   ) {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     const result = await db
       .select({
         totalConversations: count().as('total_conversations'),
@@ -348,7 +348,7 @@ export class EnterpriseAnalyticsEngine {
     agentId: number,
     period: { start: number; end: number }
   ) {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     const result = await db
       .select({
         totalMessages: count().as('total_messages'),
@@ -383,7 +383,7 @@ export class EnterpriseAnalyticsEngine {
   ) {
     // 這裡需要實現工作時間追蹤邏輯
     // 可以基於登入/登出記錄、活動狀態等
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     const result = await db
       .select({
         totalWorkTime: sum(metrics.metricValue).as('total_work_time')
@@ -413,7 +413,7 @@ export class EnterpriseAnalyticsEngine {
     period: { start: number; end: number }
   ) {
     // 這裡需要實現客戶滿意度評分系統
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     const result = await db
       .select({
         avgRating: avg(metrics.metricValue).as('avg_rating'),
@@ -444,7 +444,7 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取 API 指標
   private async getApiMetrics(period: { start: number; end: number }) {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     const result = await db
       .select({
@@ -495,7 +495,7 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取資料庫指標
   private async getDatabaseMetrics(period: { start: number; end: number }) {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     const result = await db
       .select({
@@ -540,7 +540,7 @@ export class EnterpriseAnalyticsEngine {
     const now = Date.now();
     const oneHourAgo = now - 60 * 60 * 1000;
 
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     const activeAgents = await db
       .select({
@@ -568,7 +568,7 @@ export class EnterpriseAnalyticsEngine {
     const oneHourAgo = now - 60 * 60 * 1000;
 
     // 檢查 API 錯誤率
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     const errorRate = await db
       .select({
@@ -597,7 +597,7 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取趨勢數據
   private async getTrendData(startTime: number, endTime: number) {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     const results = await db
       .select({
@@ -632,7 +632,7 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取歷史數據
   private async getHistoricalData(period: { start: number; end: number }): Promise<TimeSeriesData[]> {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     
     const results = await db
       .select({
@@ -830,7 +830,7 @@ export class EnterpriseAnalyticsEngine {
   
   // 私有方法：獲取客服名稱
   private async getAgentName(agentId: number): Promise<string> {
-    const db = drizzle(this.db);
+    const db = createDbClient(this.db);
     const { agents } = await import('../db/schema');
     
     const agent = await db
