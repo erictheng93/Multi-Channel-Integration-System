@@ -441,7 +441,7 @@ export interface ExportResult {
  * 分析服務配置
  */
 export interface AnalyticsServiceConfig {
-  database: DrizzleD1Database;
+  database: DrizzleD1Database<any>;
   kv?: Bindings['KV'];
   env: any;
   cache?: {

@@ -2,6 +2,7 @@
 // 團隊服務層
 
 import { createDbClient } from '../../../db/drizzle-factory';
+import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, or, like, sql } from 'drizzle-orm';
 import { teams, agents, conversations, messages } from '@/db/schema';

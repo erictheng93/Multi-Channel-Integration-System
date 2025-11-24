@@ -21,7 +21,7 @@ export interface MessageResult {
 }
 
 export class MessageService {
-  private db: ReturnType<typeof drizzle>;
+  private db: ReturnType<typeof createDbClient>;
   private env: Bindings;
 
   constructor(env: Bindings) {

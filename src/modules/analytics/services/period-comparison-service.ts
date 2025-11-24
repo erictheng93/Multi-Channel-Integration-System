@@ -73,7 +73,7 @@ export class PeriodComparisonService {
   private cacheService?: AnalyticsCacheService;
 
   constructor(
-    private db: DrizzleD1Database,
+    private db: DrizzleD1Database<any>,
     cacheService?: AnalyticsCacheService
   ) {
     this.cacheService = cacheService;

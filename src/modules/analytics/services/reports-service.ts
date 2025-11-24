@@ -3,6 +3,7 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '@/types';
+import { drizzle } from 'drizzle-orm/d1';
 import { createDbClient } from '../../../db/drizzle-factory';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
