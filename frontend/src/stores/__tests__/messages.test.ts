@@ -289,7 +289,10 @@ describe('Messages Store', () => {
       await store.sendMessage(newMessage)
 
       expect(store.error).toBeTruthy()
-      expect(store.optimisticMessages).toEqual([])
+      // ✅ NEW BEHAVIOR: Failed message is kept and marked as failed, not removed
+      expect(store.optimisticMessages.length).toBe(1)
+      expect(store.optimisticMessages[0]?.metadata?.failed).toBe(true)
+      expect(store.optimisticMessages[0]?.metadata?.error).toBe('發送失敗')
       expect(store.sendingMessage).toBe(false)
     })
 

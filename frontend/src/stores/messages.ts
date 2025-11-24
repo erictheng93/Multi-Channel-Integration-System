@@ -3,18 +3,27 @@ import { ref, computed, watch } from 'vue'
 import type { Message, MessageFilters, Platform } from '@/types'
 import { messageApi } from '@/api/message'
 import { messageIndexService } from '@/services/messageIndexService'
+import { jwtDecode } from 'jwt-decode'
 
+// ✅ SECURITY FIX: Properly validate JWT token with expiration check
 // Helper function to extract userId from JWT token
 function getUserIdFromToken(): string | null {
   const token = localStorage.getItem('token')
   if (!token) {return null}
 
   try {
-    const parts = token.split('.')
-    if (parts.length !== 3 || !parts[1]) {return null}
-    const payload = JSON.parse(atob(parts[1]))
+    // Use jwt-decode library for proper JWT parsing
+    const payload = jwtDecode<{ userId?: string; id?: string; exp?: number }>(token)
+
+    // Check token expiration
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      console.warn('[Auth] Token expired')
+      return null
+    }
+
     return payload.userId || payload.id || null
-  } catch {
+  } catch (error) {
+    console.error('[Auth] Invalid token:', error)
     return null
   }
 }
@@ -137,17 +146,35 @@ export const useMessagesStore = defineStore('messages', () => {
         senderId: senderId || undefined
       })
 
+      // ✅ RACE CONDITION FIX: Keep optimistic message visible on failure
       if (response && response.success && response.data) {
+        // Success: Remove optimistic message, add real message
         optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
         messages.value.push(response.data)
         return response.data
       } else {
-        optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
+        // Failure: Mark optimistic message as failed, keep it visible
+        const failedMessage = optimisticMessages.value.find(m => m.id === optimisticMessage.id)
+        if (failedMessage) {
+          failedMessage.metadata = {
+            ...failedMessage.metadata,
+            failed: true,
+            error: response?.error || '訊息發送失敗'
+          } as Record<string, unknown>
+        }
         handleError(response?.error, '訊息發送失敗')
         return false
       }
     } catch (err) {
-      optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
+      // Network error: Mark optimistic message as failed, keep it visible
+      const failedMessage = optimisticMessages.value.find(m => m.id === optimisticMessage.id)
+      if (failedMessage) {
+        failedMessage.metadata = {
+          ...failedMessage.metadata,
+          failed: true,
+          error: '網路錯誤，訊息發送失敗'
+        } as Record<string, unknown>
+      }
       handleError(err, '網路錯誤，訊息發送失敗')
       return false
     } finally {
@@ -239,7 +266,11 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  const setFilter = (key: keyof MessageFilters, value: any) => {
+  // ✅ TYPE SAFETY FIX: Use generic type instead of 'any'
+  const setFilter = <K extends keyof MessageFilters>(
+    key: K,
+    value: MessageFilters[K]
+  ) => {
     filters.value[key] = value
   }
 
@@ -275,20 +306,27 @@ export const useMessagesStore = defineStore('messages', () => {
     return messageIndexService.search(query)
   }
 
-  // 🔍 自动构建消息索引
-  // 当消息加载或更新时，自动重建搜索索引以支持高性能搜索
-  watch(
+  // ✅ MEMORY LEAK FIX: Store watcher stop function for cleanup
+  // 🔍 Automatically build message index for search
+  // When messages are loaded or updated, rebuild search index for high-performance search
+  const stopIndexWatcher = watch(
     allMessages,
     (newMessages) => {
       if (newMessages && newMessages.length > 0) {
-        // 使用 setTimeout 避免阻塞主线程
+        // Use setTimeout to avoid blocking the main thread
         setTimeout(() => {
           messageIndexService.buildIndex(newMessages)
         }, 0)
       }
     },
-    { immediate: true, deep: false } // immediate: true 确保初始加载时也构建索引
+    { immediate: true, deep: false } // immediate: true ensures index is built on initial load
   )
+
+  // ✅ MEMORY LEAK FIX: Cleanup function to stop watchers and clear resources
+  const $dispose = () => {
+    stopIndexWatcher() // Stop the watcher
+    messageIndexService.clear() // Clear the index
+  }
 
   return {
     // State
@@ -316,6 +354,9 @@ export const useMessagesStore = defineStore('messages', () => {
     setFilter,
     clearFilters,
     searchMessages,
-    clearError
+    clearError,
+
+    // Cleanup
+    $dispose // Expose cleanup function
   }
 })
