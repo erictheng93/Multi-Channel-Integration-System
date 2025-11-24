@@ -17,29 +17,33 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useMessagesStore } from '../messages'
 import type { Message, Platform } from '@/types'
 
-// Mock message API
-const mockMessageApi = {
-  list: vi.fn(),
-  create: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-  markAsRead: vi.fn()
-}
-
+// Mock message API - must be defined inline to avoid hoisting issues
 vi.mock('@/api/message', () => ({
-  messageApi: mockMessageApi
+  messageApi: {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    markAsRead: vi.fn()
+  }
 }))
 
-// Mock message index service
-const mockMessageIndexService = {
-  indexMessages: vi.fn(),
-  search: vi.fn(),
-  clear: vi.fn()
-}
-
+// Mock message index service - must be defined inline
 vi.mock('@/services/messageIndexService', () => ({
-  messageIndexService: mockMessageIndexService
+  messageIndexService: {
+    indexMessages: vi.fn(),
+    search: vi.fn(),
+    clear: vi.fn()
+  }
 }))
+
+// Import mocked modules to access them in tests
+import { messageApi } from '@/api/message'
+import { messageIndexService } from '@/services/messageIndexService'
+
+// Create references for easier access in tests
+const mockMessageApi = messageApi as any
+const mockMessageIndexService = messageIndexService as any
 
 // Mock localStorage
 const localStorageMock = {
