@@ -2,7 +2,7 @@
 // 基礎訊息增刪改查服務
 
 import { eq, and, desc, asc, count, like, sql, or } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import {
   messages,
   conversations,

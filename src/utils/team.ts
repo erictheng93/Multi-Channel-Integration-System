@@ -1,5 +1,5 @@
 import type { Team, DbUser, DatabaseRow } from '../types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { teams, agents, conversations, messages, conversationTransfers, customers } from '../db/schema';
 import { eq, and, count, inArray, sql, desc } from 'drizzle-orm';
 import type { NewTeam, NewConversationTransfer } from '../db/schema';
@@ -18,7 +18,7 @@ export async function createTeam(
     isActive?: boolean;
   }
 ): Promise<Team> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
   
   const newTeam: NewTeam = {
@@ -44,7 +44,7 @@ export async function createTeam(
 
 // 獲取團隊詳情
 export async function getTeamById(db: D1Database, teamId: number): Promise<Team> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const team = await drizzleDb
     .select()
@@ -72,7 +72,7 @@ export async function getAllTeams(
   db: D1Database,
   includeInactive: boolean = false
 ): Promise<Team[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const query = drizzleDb
     .select()
@@ -107,7 +107,7 @@ export async function updateTeam(
     isActive?: boolean;
   }
 ): Promise<Team> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
 
   if (Object.keys(updates).length === 0) {
@@ -146,7 +146,7 @@ export async function updateTeam(
 
 // 刪除團隊（軟刪除）
 export async function deleteTeam(db: D1Database, teamId: number): Promise<void> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
   
   const result = await drizzleDb
@@ -165,7 +165,7 @@ export async function deleteTeam(db: D1Database, teamId: number): Promise<void> 
 
 // 獲取團隊成員
 export async function getTeamMembers(db: D1Database, teamId: number): Promise<DbUser[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const result = await drizzleDb
     .select({
@@ -208,7 +208,7 @@ export async function addUserToTeam(
   userId: number | string,
   teamId: number
 ): Promise<void> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
   
   const result = await drizzleDb
@@ -230,7 +230,7 @@ export async function removeUserFromTeam(
   db: D1Database,
   userId: number | string
 ): Promise<void> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
   
   const result = await drizzleDb
@@ -267,7 +267,7 @@ export async function generateTeamQRCode(
 
 // 通過 QR Code 獲取團隊
 export async function getTeamByQRCode(db: D1Database, qrCode: string): Promise<Team | null> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   const team = await drizzleDb
     .select()
@@ -300,7 +300,7 @@ export async function getTeamStats(db: D1Database, teamId: number): Promise<{
   totalMessages: number;
   avgResponseTime: number | null;
 }> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   // 獲取成員數量
   const memberResult = await drizzleDb
@@ -366,7 +366,7 @@ export async function getTeamConversations(
   limit: number = 50,
   offset: number = 0
 ): Promise<DatabaseRow[]> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   // 使用 Drizzle ORM 構建查詢，但子查詢部分使用 sql 模板
   let baseConditions = [eq(conversations.assignedTeamId, teamId)];
@@ -425,7 +425,7 @@ export async function transferConversationToTeam(
   transferredBy: string,
   reason?: string
 ): Promise<void> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
   
   // 更新對話分配

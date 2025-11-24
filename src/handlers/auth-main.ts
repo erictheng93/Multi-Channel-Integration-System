@@ -14,7 +14,7 @@ import {
   rateLimit
 } from '../middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { agents } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '../utils/logger';
@@ -106,7 +106,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
 
     // 更新用戶的最後活動時間
     try {
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       await drizzleDb
         .update(agents)
         .set({ 
@@ -220,7 +220,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
     }
 
     // 檢查 email 是否已存在
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const existingUser = await drizzleDb
       .select({ id: agents.id })
       .from(agents)
@@ -430,7 +430,7 @@ authHandler.post('/refresh', async (c) => {
     }
 
     // 驗證用戶是否仍然存在且活躍
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     
     // 首先嘗試 agents 表（新的用戶表）
     let userRow = await drizzleDb

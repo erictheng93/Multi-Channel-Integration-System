@@ -14,7 +14,7 @@ import type {
 } from '../types/metrics-types';
 
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
 import { metrics } from '@/db/schema';
 import type { Bindings } from '@/types';

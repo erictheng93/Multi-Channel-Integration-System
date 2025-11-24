@@ -15,7 +15,7 @@ import {
 import { getSSECorsHeaders } from '../config/cors';
 import { notifications } from '../db/schema';
 import { CacheManager, QueryOptimizer } from '../utils/performance';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and } from 'drizzle-orm';
 
 interface OptimizedNotification {
@@ -148,7 +148,7 @@ export const optimizedNotificationHandler = {
       const { type } = await c.req.json().catch(() => ({}));
 
       // 構建更新條件
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const updateConditions = [
         eq(notifications.userId, typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || ''),
         eq(notifications.isRead, false)
@@ -198,7 +198,7 @@ export const optimizedNotificationHandler = {
       }
 
       // 使用單一查詢獲取所有統計
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const stats = await drizzleDb.get(sql`
         SELECT 
           COUNT(*) as total,
@@ -289,7 +289,7 @@ export const optimizedNotificationHandler = {
               const checkTime = new Date(lastNotificationCheck).toISOString();
 
               // 只查詢最近的通知
-              const drizzleDb = drizzle(c.env.DB);
+              const drizzleDb = createDbClient(c.env.DB);
               const notifications = await drizzleDb.all(sql`
                 SELECT * FROM notifications
                 WHERE user_id = ${payload.userId} AND is_read = FALSE
@@ -379,7 +379,7 @@ export const optimizedNotificationHandler = {
       }
 
       // 批量插入
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const insertPromises = notifications.map((notification: any) => {
         const notificationId = crypto.randomUUID();
         return drizzleDb.run(sql`

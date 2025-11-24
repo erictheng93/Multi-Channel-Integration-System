@@ -6,7 +6,7 @@ import { cors } from 'hono/cors';
 import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { eq, lt, desc, and } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { messages, conversations, customers } from '../db/schema';
 import { KVSessionService } from '../services/kv-session-service';
 import {
@@ -123,7 +123,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       });
 
       try {
-        const db = drizzle(this.env.DB);
+        const db = createDbClient(this.env.DB);
 
         let fetchedMessages;
 
@@ -212,7 +212,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         const finalPlatform = platform || auth.platform || 'unknown';
 
         // Store message in D1
-        const db = drizzle(this.env.DB);
+        const db = createDbClient(this.env.DB);
 
         await db.insert(messages).values({
           id: messageId,
@@ -484,7 +484,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
    * Find existing file by hash
    */
   private async findFileByHash(hash: string): Promise<{ url: string; r2Key: string } | null> {
-    const db = drizzle(this.env.DB);
+    const db = createDbClient(this.env.DB);
     const result = await db.$client
       .prepare('SELECT r2_key, url FROM file_attachments WHERE file_hash = ? LIMIT 1')
       .bind(hash)
@@ -509,7 +509,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
     mimeType: string;
     conversationId: string;
   }): Promise<void> {
-    const db = drizzle(this.env.DB);
+    const db = createDbClient(this.env.DB);
     await db.$client
       .prepare(
         `INSERT INTO file_attachments (

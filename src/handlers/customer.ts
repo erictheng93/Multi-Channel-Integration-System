@@ -5,7 +5,7 @@ import { Context } from 'hono';
 import type { 
   Bindings
 } from '../types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { customers, conversations, messages, tags, customerTags, teams } from '../db/schema';
 import { eq, and, count, desc, like, sql, or, inArray } from 'drizzle-orm';
 import {
@@ -61,7 +61,7 @@ export const customerHandler = {
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       
       const conditions = [];
       if (payload?.role !== 'admin' && payload?.teamId) {
@@ -201,7 +201,7 @@ export const customerHandler = {
       const customerId = c.req.param('id');
 
       // 使用 Drizzle ORM 查詢客戶基本資料
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       
       const customer = await drizzleDb
         .select({
@@ -347,7 +347,7 @@ export const customerHandler = {
       const { displayName, phone, email, sourceTeamId, metadata } = await c.req.json();
 
       // 使用 Drizzle ORM 檢查客戶是否存在
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const existingCustomer = await drizzleDb
         .select({ id: customers.id })
         .from(customers)
@@ -392,7 +392,7 @@ export const customerHandler = {
       }
 
       // 使用 Drizzle ORM 檢查客戶是否存在
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const customer = await drizzleDb
         .select({ id: customers.id })
         .from(customers)
@@ -441,7 +441,7 @@ export const customerHandler = {
       }
 
       // 使用 Drizzle ORM 移除標籤
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       await drizzleDb
         .delete(customerTags)
         .where(and(
@@ -461,7 +461,7 @@ export const customerHandler = {
     try {
       const payload = c.get('jwtPayload');
       
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       
       const baseConditions = [];
       if (payload?.role !== 'admin' && payload?.teamId) {
@@ -571,7 +571,7 @@ export const customerHandler = {
       }
 
       // 使用 Drizzle ORM 進行搜索
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const searchTerm = `%${q}%`;
       
       // 構建搜索條件

@@ -7,7 +7,7 @@ import { cors } from 'hono/cors';
 import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { eq, lt, desc, and, inArray } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments } from '../db/schema';
 
 /**
@@ -65,7 +65,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       });
 
       try {
-        const db = drizzle(this.env.DB);
+        const db = createDbClient(this.env.DB);
 
         let fetchedMessages;
 
@@ -233,7 +233,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         };
 
         // Store message in D1 database
-        const db = drizzle(this.env.DB);
+        const db = createDbClient(this.env.DB);
         await db.insert(messages).values(messageData);
 
         console.log(`✅ [CustomerMessageDO] Message created: ${messageId}`);

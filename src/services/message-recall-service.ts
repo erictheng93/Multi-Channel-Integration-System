@@ -17,7 +17,7 @@ import type {
   PendingMessage,
   // MessageDeliveryResult
 } from '../types/services';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { delayedMessages, messageRecallLogs, conversations, messages, customers } from '../db/schema';
 import { eq, and, count, sql } from 'drizzle-orm';
 // 使用表的推斷類型而不是New*類型
@@ -63,7 +63,7 @@ export class MessageRecallService {
 
     try {
       // 1. 儲存到 D1 (持久化) 
-      const drizzleDb = drizzle(this.env.DB);
+      const drizzleDb = createDbClient(this.env.DB);
       
       const newDelayedMessage: any = {
         id: messageId,
@@ -200,7 +200,7 @@ export class MessageRecallService {
       }
 
       // 2. 從 D1 獲取待發送訊息
-      const drizzleDb = drizzle(this.env.DB);
+      const drizzleDb = createDbClient(this.env.DB);
       
       const pendingMessage = await drizzleDb
         .select()
@@ -261,7 +261,7 @@ export class MessageRecallService {
    */
   async getPendingMessages(userId: string, page = 1, pageSize = 20) {
     const offset = (page - 1) * pageSize;
-    const drizzleDb = drizzle(this.env.DB);
+    const drizzleDb = createDbClient(this.env.DB);
 
     // 使用 Drizzle ORM 查詢待發送消息
     const messagesResult = await drizzleDb
@@ -339,7 +339,7 @@ export class MessageRecallService {
     timestamp: Date, 
     createMessageRecord = false
   ) {
-    const drizzleDb = drizzle(this.env.DB);
+    const drizzleDb = createDbClient(this.env.DB);
     const timestampStr = timestamp.toISOString();
     
     // 更新 delayed_messages 狀態

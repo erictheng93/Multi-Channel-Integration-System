@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 import { jwtAuth } from '../middleware/auth';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { conversations, customers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -629,7 +629,7 @@ websocketTestHandler.post('/run-integration-test', jwtAuth, async (c) => {
  */
 websocketTestHandler.get('/test-conversations', jwtAuth, async (c) => {
   try {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
 
     // Get a few conversations for testing
     const testConversations = await drizzleDb

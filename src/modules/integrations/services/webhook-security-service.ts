@@ -3,7 +3,8 @@
 
 import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
-import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { webhookSecurityEvents } from '@/db/schema';
 import { eq, gte, desc, and } from 'drizzle-orm';
 import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES, type IPRange } from '@/utils/ip-validator';
@@ -779,7 +780,7 @@ export class WebhookSecurityService {
       });
 
       // 記錄到 D1 (持久化) - P2-4 IMPLEMENTED
-      const dbClient = drizzle(this.db);
+      const dbClient = createDbClient(this.db);
       await dbClient
         .insert(webhookSecurityEvents)
         .values({
@@ -859,7 +860,7 @@ export class WebhookSecurityService {
   }> {
     try {
       const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-      const dbClient = drizzle(this.db);
+      const dbClient = createDbClient(this.db);
 
       // Build query with optional integration filter
       let query = dbClient

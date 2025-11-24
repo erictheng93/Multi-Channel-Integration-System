@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { eq } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
@@ -32,7 +32,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // Cannot reset your own password through this endpoint
     if (memberId === user.id) {
@@ -108,7 +108,7 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // Verify current password
     const [member] = await db

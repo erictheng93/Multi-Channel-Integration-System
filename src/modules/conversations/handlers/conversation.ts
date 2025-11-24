@@ -2,7 +2,7 @@
 // 對話處理器
 
 import { Context } from 'hono';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { conversations, messages, customers } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -19,7 +19,7 @@ export const conversationHandler = {
   // 獲取對話列表
   list: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
       const user = c.get('user');
 
       // 解析查詢參數
@@ -90,7 +90,7 @@ export const conversationHandler = {
   get: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const conversationId = c.req.param('id');
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
 
       const [conversation] = await db
         .select({
@@ -132,7 +132,7 @@ export const conversationHandler = {
     try {
       const conversationId = c.req.param('id');
       const assignData: ConversationAssignRequest = await c.req.json();
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
 
       if (!assignData.teamId && !assignData.userId) {
         return validationErrorResponse(c, [
@@ -178,7 +178,7 @@ export const conversationHandler = {
       const conversationId = c.req.param('id');
       const messageData: MessageSendRequest = await c.req.json();
       const user = c.get('user');
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
 
       if (!messageData.content) {
         return validationErrorResponse(c, [
@@ -222,7 +222,7 @@ export const conversationHandler = {
     try {
       const conversationId = c.req.param('id');
       const statusData: ConversationStatusUpdateRequest = await c.req.json();
-      const db = drizzle(c.env.DB);
+      const db = createDbClient(c.env.DB);
 
       await db
         .update(conversations)

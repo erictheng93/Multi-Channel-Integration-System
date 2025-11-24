@@ -2,7 +2,7 @@
 // 提供期間比較的 RESTful API endpoints
 
 import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
@@ -28,7 +28,7 @@ const comparisonAPI = new Hono<{ Bindings: Bindings }>();
  */
 comparisonAPI.get('/metric', async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const cacheService = new AnalyticsCacheService(c.env.KV as any);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
@@ -108,7 +108,7 @@ comparisonAPI.get('/metric', async (c) => {
  */
 comparisonAPI.get('/metrics', async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const cacheService = new AnalyticsCacheService(c.env.KV as any);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
@@ -189,7 +189,7 @@ comparisonAPI.get('/metrics', async (c) => {
  */
 comparisonAPI.get('/preset/conversation', async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const cacheService = new AnalyticsCacheService(c.env.KV as any);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
@@ -237,7 +237,7 @@ comparisonAPI.get('/preset/conversation', async (c) => {
  */
 comparisonAPI.get('/preset/message', async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const cacheService = new AnalyticsCacheService(c.env.KV as any);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
@@ -285,7 +285,7 @@ comparisonAPI.get('/preset/message', async (c) => {
  */
 comparisonAPI.get('/preset/user-activity', async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
     const cacheService = new AnalyticsCacheService(c.env.KV as any);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 

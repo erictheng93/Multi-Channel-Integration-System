@@ -1,9 +1,13 @@
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
 
-// Database connection helper
+// Database connection helper with unified casing configuration
+// ✅ ENHANCED: Now includes camelCase casing for consistent query behavior
 export function createDb(d1: D1Database) {
-  return drizzle(d1, { schema });
+  return drizzle(d1, {
+    schema,
+    casing: 'camelCase', // ✅ CRITICAL: Enforce camelCase for all queries
+  });
 }
 
 // KV helpers

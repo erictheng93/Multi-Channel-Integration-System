@@ -2,7 +2,7 @@
 // 活動模組 - 核心活動記錄服務
 
 import { eq, and, gte, lte, desc, count, lt, sql } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
+import { createDbClient } from '../../../db/drizzle-factory'
 import { activities } from '@/db/schema'
 import {
   ActivityLog,
@@ -30,7 +30,7 @@ export class ActivityService {
         return null
       }
 
-      const drizzleDb = drizzle(this.db)
+      const drizzleDb = createDbClient(this.db)
       const timestamp = new Date().toISOString()
 
       const result = await drizzleDb
@@ -92,7 +92,7 @@ export class ActivityService {
       endDate
     } = params
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
     const conditions = []
 
     if (userId) {
@@ -167,7 +167,7 @@ export class ActivityService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
     const conditions = and(
       eq(activities.userId, userId),
       gte(activities.createdAt, startDateStr)
@@ -223,7 +223,7 @@ export class ActivityService {
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
     const cutoffDateStr = cutoffDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     // 先查詢要刪除的記錄數量
     const toDeleteCount = await drizzleDb
@@ -262,7 +262,7 @@ export class ActivityService {
    * 檢查活動是否存在
    */
   async activityExists(id: number): Promise<boolean> {
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
     const result = await drizzleDb
       .select({ id: activities.id })
       .from(activities)
@@ -276,7 +276,7 @@ export class ActivityService {
    * 獲取活動詳情
    */
   async getActivityById(id: number): Promise<ActivityLog | null> {
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
     const result = await drizzleDb
       .select()
       .from(activities)
