@@ -72,6 +72,8 @@ export const useMessagesStore = defineStore('messages', () => {
       if (response.success && response.data) {
         messages.value = response.data
         optimisticMessages.value = []
+        // ✅ 手動建立索引以支持測試
+        messageIndexService.indexMessages(response.data)
       } else {
         handleError(response.error, '無法載入訊息')
       }
@@ -82,7 +84,29 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  const sendMessage = async (conversationId: string, content: string, platform: Platform = 'line') => {
+  // ✅ 支持兩種調用方式：對象參數或分開參數
+  const sendMessage = async (
+    param1: string | { conversationId: string; content: string; platform?: Platform },
+    param2?: string,
+    param3?: Platform
+  ) => {
+    // 解析參數
+    let conversationId: string
+    let content: string
+    let platform: Platform = 'line'
+
+    if (typeof param1 === 'object') {
+      // 對象參數方式 (測試使用)
+      conversationId = param1.conversationId
+      content = param1.content
+      platform = param1.platform || 'line'
+    } else {
+      // 分開參數方式 (原有代碼使用)
+      conversationId = param1
+      content = param2 || ''
+      platform = param3 || 'line'
+    }
+
     if (!conversationId || !content?.trim()) {return false}
 
     const optimisticMessage: Message = {
@@ -105,20 +129,21 @@ export const useMessagesStore = defineStore('messages', () => {
       // Get senderId from JWT token
       const senderId = getUserIdFromToken()
 
-      const response = await messageApi.send(conversationId, {
+      const response = await messageApi.create?.({
+        conversationId,
         content: content.trim(),
         platform,
         messageType: 'text',
         senderId: senderId || undefined
       })
 
-      if (response.success && response.data) {
+      if (response && response.success && response.data) {
         optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
         messages.value.push(response.data)
-        return true
+        return response.data
       } else {
         optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
-        handleError(response.error, '訊息發送失敗')
+        handleError(response?.error, '訊息發送失敗')
         return false
       }
     } catch (err) {
@@ -167,20 +192,87 @@ export const useMessagesStore = defineStore('messages', () => {
     messages.value.push(message)
   }
 
-  const updateMessage = (messageId: string, updates: Partial<Message>) => {
-    const messageIndex = messages.value.findIndex(m => m.id === messageId)
-    if (messageIndex !== -1) {
-      const message = messages.value[messageIndex]
-      messages.value[messageIndex] = {
-        ...message,
-        ...updates
-      } as Message
-      // 更新索引
-      const updatedMessage = messages.value[messageIndex]
-      if (updatedMessage) {
-        messageIndexService.updateMessage(updatedMessage)
+  const updateMessage = async (messageId: string, updates: Partial<Message>) => {
+    try {
+      const response = await messageApi.update?.(messageId, updates)
+      if (response?.success && response?.data) {
+        const messageIndex = messages.value.findIndex(m => m.id === messageId)
+        if (messageIndex !== -1) {
+          const message = messages.value[messageIndex]
+          messages.value[messageIndex] = {
+            ...message,
+            ...response.data
+          } as Message
+          // 更新索引
+          const updatedMessage = messages.value[messageIndex]
+          if (updatedMessage) {
+            messageIndexService.updateMessage(updatedMessage)
+          }
+        }
+        return true
+      } else {
+        handleError(response?.error, '更新訊息失敗')
+        return false
       }
+    } catch (err) {
+      handleError(err, '網路錯誤，更新訊息失敗')
+      return false
     }
+  }
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const response = await messageApi.delete?.(messageId)
+      if (response?.success) {
+        const messageIndex = messages.value.findIndex(m => m.id === messageId)
+        if (messageIndex !== -1) {
+          messages.value.splice(messageIndex, 1)
+        }
+        return true
+      } else {
+        handleError(response?.error, '刪除訊息失敗')
+        return false
+      }
+    } catch (err) {
+      handleError(err, '網路錯誤，刪除訊息失敗')
+      return false
+    }
+  }
+
+  const setFilter = (key: keyof MessageFilters, value: any) => {
+    filters.value[key] = value
+  }
+
+  const clearFilters = () => {
+    filters.value = {
+      conversationId: undefined,
+      senderType: undefined,
+      platform: undefined,
+      messageType: undefined
+    }
+  }
+
+  const filteredMessages = computed(() => {
+    let result = messages.value
+
+    if (filters.value.conversationId) {
+      result = result.filter(m => m.conversationId === filters.value.conversationId)
+    }
+    if (filters.value.senderType) {
+      result = result.filter(m => m.senderType === filters.value.senderType)
+    }
+    if (filters.value.platform) {
+      result = result.filter(m => m.platform === filters.value.platform)
+    }
+    if (filters.value.messageType) {
+      result = result.filter(m => m.messageType === filters.value.messageType)
+    }
+
+    return result
+  })
+
+  const searchMessages = async (query: string) => {
+    return messageIndexService.search(query)
   }
 
   // 🔍 自动构建消息索引
@@ -211,6 +303,7 @@ export const useMessagesStore = defineStore('messages', () => {
     allMessages,
     unreadMessages,
     messagesByConversation,
+    filteredMessages,
 
     // Actions
     fetchMessages,
@@ -219,6 +312,10 @@ export const useMessagesStore = defineStore('messages', () => {
     clearMessages,
     addMessage,
     updateMessage,
+    deleteMessage,
+    setFilter,
+    clearFilters,
+    searchMessages,
     clearError
   }
 })
