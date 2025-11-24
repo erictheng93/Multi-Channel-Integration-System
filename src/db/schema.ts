@@ -144,15 +144,16 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
+// NOTE: Database uses camelCase column names (mimeType, fileSize, etc.)
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),
   filename: text('filename').notNull(),
-  mimeType: text('mime_type').notNull(),
-  fileSize: integer('file_size').notNull(),
-  fileUrl: text('file_url'), // 公開訪問URL（主要使用此欄位）
-  r2Key: text('r2_key').notNull(), // R2內部存儲路徑
-  url: text('url'), // @deprecated 與 fileUrl 重複，計劃移除
+  mimeType: text('mimeType').notNull(), // Fixed: database column is camelCase
+  fileSize: integer('fileSize').notNull(), // Fixed: database column is camelCase
+  fileUrl: text('fileUrl'), // 公開訪問URL（主要使用此欄位）
+  r2Key: text('r2Key').notNull(), // Fixed: database column is camelCase
+  // url: text('url'), // REMOVED: @deprecated 與 fileUrl 重複 - Drizzle was trying to insert null causing 500 errors
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 

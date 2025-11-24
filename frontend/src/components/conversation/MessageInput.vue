@@ -277,6 +277,16 @@ const sendMessage = async () => {
   
   if (!content && currentAttachments.length === 0) {return}
   
+  // 如果有附件但沒有內容，設置默認內容
+  let finalContent = content;
+  if (!finalContent && currentAttachments.length > 0) {
+    if (currentAttachments.length === 1 && currentAttachments[0]) {
+      finalContent = `Sent a file: ${currentAttachments[0].name}`;
+    } else {
+      finalContent = `Sent ${currentAttachments.length} files`;
+    }
+  }
+  
   sending.value = true
   error.value = ''
   successMessage.value = ''
@@ -294,7 +304,7 @@ const sendMessage = async () => {
           })
           
           if (uploadResponse.success && uploadResponse.data) {
-            attachmentIds.push(uploadResponse.data.url) // 使用 URL 作為標識符
+            attachmentIds.push(uploadResponse.data.attachmentId) // 使用 attachmentId 作為標識符
           } else {
             throw new Error(uploadResponse.error || 'File upload failed')
           }
@@ -308,7 +318,7 @@ const sendMessage = async () => {
     
     // Send message with attachment IDs
     const response = await messageApi.send(props.conversationId, {
-      content,
+      content: finalContent,
       messageType: currentAttachments.length > 0 ? 'file' : 'text',
       platform: 'line',
       attachmentIds,
@@ -333,7 +343,7 @@ const sendMessage = async () => {
       
       // Emit success event
       emit('message-sent', {
-        content,
+        content: finalContent,
         attachments: currentAttachments
       })
     } else {

@@ -6,9 +6,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
-import { eq, lt, desc, and } from 'drizzle-orm';
+import { eq, lt, desc, and, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { messages } from '../db/schema';
+import { messages, fileAttachments } from '../db/schema';
 
 /**
  * CustomerMessageDO
@@ -110,12 +110,32 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         console.log(`✅ [CustomerMessageDO] Fetched ${fetchedMessages.length} messages`);
 
-        // 🔧 FIX: Map agentSenderId/customerSenderId to senderId for frontend compatibility
+        // 🔧 FIX: Query attachments for all fetched messages
+        let attachmentsByMessageId: Record<string, any[]> = {};
+        if (fetchedMessages.length > 0) {
+          const messageIds = fetchedMessages.map(m => m.id);
+          const allAttachments = await db
+            .select()
+            .from(fileAttachments)
+            .where(inArray(fileAttachments.messageId, messageIds))
+            .all();
+
+          // Group attachments by messageId
+          for (const attachment of allAttachments) {
+            if (!attachmentsByMessageId[attachment.messageId]) {
+              attachmentsByMessageId[attachment.messageId] = [];
+            }
+            attachmentsByMessageId[attachment.messageId].push(attachment);
+          }
+        }
+
+        // 🔧 FIX: Map agentSenderId/customerSenderId to senderId and include attachments
         return c.json({
           success: true,
           messages: fetchedMessages.map(msg => ({
             ...msg,
-            senderId: msg.agentSenderId || msg.customerSenderId
+            senderId: msg.agentSenderId || msg.customerSenderId,
+            file_attachments: attachmentsByMessageId[msg.id] || []  // 🔧 FIX: Include attachments
           })),
           hasMore: fetchedMessages.length === limit
         });

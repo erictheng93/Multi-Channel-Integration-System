@@ -101,20 +101,20 @@ export const messageApi = {
   },
 
   // 上傳附件
-  uploadAttachment: async (conversationId: string, request: UploadAttachmentRequest): Promise<ApiResponse<{ url: string; filename: string }>> => {
+  uploadAttachment: async (conversationId: string, request: UploadAttachmentRequest): Promise<ApiResponse<{ url: string; filename: string; attachmentId: string }>> => {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    
+
     if (!request.file) {
       return { success: false, error: '請選擇要上傳的檔案' };
     }
-    
+
     const formData = new globalThis.FormData();
     formData.append('file', request.file);
     formData.append('messageType', request.messageType);
-    
-    // 使用 apiClient 的 uploadFile 方法處理 FormData
+
+    // 修復：使用正確的對話附件端點 (POST /conversations/:id/attachments)
     return apiClient.uploadFile(`/conversations/${conversationId}/attachments`, formData);
   },
 

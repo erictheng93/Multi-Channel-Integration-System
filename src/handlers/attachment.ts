@@ -213,8 +213,7 @@ export const attachmentHandler = {
         mimeType: file.type,
         fileSize: file.size,
         fileUrl: storageUrl,
-        r2Key: storagePath,
-        url: storageUrl
+        r2Key: storagePath
       });
 
       // 如果是圖片，生成元數據
