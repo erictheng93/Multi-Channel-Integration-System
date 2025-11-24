@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { conversations, customers, messages, agents, conversationTransfers, teams } from '@/db/schema';
+import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   NewConversationTransfer
@@ -888,6 +888,115 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
       timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 上傳附件（在消息發送之前）
+conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const user = c.get('user');
+
+    if (!conversationId) {
+      return c.json({
+        success: false,
+        error: 'Conversation ID is required'
+      }, 400);
+    }
+
+    const db = drizzle(c.env.DB);
+
+    // 檢查對話是否存在
+    const conversation = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({
+        success: false,
+        error: 'Conversation not found'
+      }, 404);
+    }
+
+    // 解析 FormData
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    const messageType = formData.get('messageType') as string;
+
+    // 驗證文件
+    if (!file || file.size === 0) {
+      return c.json({
+        success: false,
+        error: 'No file provided'
+      }, 400);
+    }
+
+    // 文件大小限制：10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return c.json({
+        success: false,
+        error: 'File too large (max 10MB)'
+      }, 400);
+    }
+
+    // 生成 R2 key
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substr(2, 9);
+    const fileExtension = file.name.split('.').pop() || 'bin';
+    const r2Key = `attachments/${conversationId}/pending/${timestamp}_${randomStr}.${fileExtension}`;
+
+    // 上傳到 R2
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
+        httpMetadata: {
+          contentType: file.type
+        }
+      });
+    } catch (error) {
+      console.error('R2 upload error:', error);
+      return c.json({
+        success: false,
+        error: 'Failed to upload file to storage'
+      }, 500);
+    }
+
+    // 生成公開 URL
+    const fileUrl = `${c.env.R2_PUBLIC_URL}/${r2Key}`;
+
+    // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
+    const attachmentId = `att_${timestamp}_${randomStr}`;
+
+    await db.insert(fileAttachments).values({
+      id: attachmentId,
+      messageId: null, // Will be updated when message is sent
+      filename: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      fileUrl,
+      r2Key,
+      createdAt: new Date().toISOString()
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        attachmentId,
+        url: fileUrl,
+        filename: file.name,
+        mimeType: file.type,
+        size: file.size
+      }
+    });
+  } catch (error) {
+    console.error('Upload attachment error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
     }, 500);
   }
 });

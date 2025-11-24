@@ -2,10 +2,10 @@
 // 訊息主要處理器 - 功能完整版本
 
 import { Hono } from 'hono';
-import { eq, and, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings, JWTPayload } from '../types';
-import { messages, conversations, customers, agents } from '@shared/database/schema';
+import { messages, conversations, customers, agents, fileAttachments } from '@shared/database/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '../middleware/auth';
@@ -1866,6 +1866,7 @@ app.post('/', jwtAuth, async (c) => {
       messageType?: string;
       replyToMessageId?: string;
       metadata?: any;
+      attachmentIds?: string[];  // 🔧 FIX: 添加附件ID数组支持
     };
 
     try {
@@ -1878,7 +1879,7 @@ app.post('/', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const { conversationId, content, messageType, replyToMessageId, metadata } = requestData;
+    const { conversationId, content, messageType, replyToMessageId, metadata, attachmentIds } = requestData;  // 🔧 FIX: 提取 attachmentIds
 
     // 基本驗證
     if (!conversationId || !content || content.trim().length === 0) {
@@ -1938,6 +1939,32 @@ app.post('/', jwtAuth, async (c) => {
       })
       .where(eq(conversations.id, conversationId));
 
+    // 🔧 FIX: 處理附件關聯
+    // 如果有附件ID，更新 file_attachments 表將附件關聯到此消息
+    if (attachmentIds && attachmentIds.length > 0) {
+      for (const attachmentId of attachmentIds) {
+        await db
+          .update(fileAttachments)
+          .set({ messageId: messageId })
+          .where(
+            and(
+              eq(fileAttachments.id, attachmentId),
+              isNull(fileAttachments.messageId)  // 只更新未關聯的附件
+            )
+          );
+      }
+    }
+
+    // 🔧 FIX: 查詢關聯的附件
+    let attachments: any[] = [];
+    if (attachmentIds && attachmentIds.length > 0) {
+      attachments = await db
+        .select()
+        .from(fileAttachments)
+        .where(eq(fileAttachments.messageId, messageId))
+        .all();
+    }
+
     return c.json({
       success: true,
       data: {
@@ -1948,7 +1975,8 @@ app.post('/', jwtAuth, async (c) => {
         senderType: 'agent',
         agentSenderId: userPayload.userId.toString(),
         sentAt: messageData.sentAt,
-        createdAt: messageData.createdAt
+        createdAt: messageData.createdAt,
+        file_attachments: attachments  // 🔧 FIX: 包含附件數據
       },
       message: 'Message created successfully',
       timestamp: new Date().toISOString()

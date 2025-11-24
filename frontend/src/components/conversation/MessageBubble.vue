@@ -65,9 +65,9 @@
         </div>
       </div>
 
-      <!-- File Message -->
+      <!-- File Message (Single Attachment - Legacy) -->
       <div
-        v-else-if="message.messageType === 'file' && attachmentUrl"
+        v-else-if="message.messageType === 'file' && attachmentUrl && !hasMultipleAttachments"
         class="message-file-content"
       >
         <div class="file-container">
@@ -112,6 +112,57 @@
               <DownloadIcon />
               下載
             </button>
+          </div>
+        </div>
+        <div
+          v-if="message.content && !isFileOnlyContent"
+          class="media-caption"
+        >
+          {{ message.content }}
+        </div>
+      </div>
+
+      <!-- 🔧 FIX: Multiple File Attachments -->
+      <div
+        v-else-if="fileAttachments.length > 0"
+        class="message-file-attachments"
+      >
+        <div
+          v-for="attachment in fileAttachments"
+          :key="attachment.id"
+          class="file-attachment-item"
+        >
+          <div class="file-container">
+            <div
+              class="file-icon"
+              :class="getFileTypeClass(attachment.filename)"
+            >
+              <component :is="getFileIcon(attachment.filename)" />
+            </div>
+            <div class="file-info">
+              <div
+                class="file-name"
+                :title="attachment.filename"
+              >
+                {{ attachment.filename }}
+              </div>
+              <div class="file-meta">
+                <span class="file-size">{{ formatFileSize(attachment.fileSize) }}</span>
+                <span class="file-type">{{ getFileExtension(attachment.filename) }}</span>
+              </div>
+            </div>
+            <div class="file-actions">
+              <a
+                :href="attachment.fileUrl"
+                :download="attachment.filename"
+                class="file-action-btn primary"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <DownloadIcon />
+                下載
+              </a>
+            </div>
           </div>
         </div>
         <div
@@ -534,8 +585,18 @@ const attachmentName = computed(() => {
 const attachmentSize = computed(() => {
   // Use prop if provided (for tests)
   if (props.attachmentSize) {return props.attachmentSize}
-  
+
   return props.message.metadata?.attachment?.size
+})
+
+// 🔧 FIX: Handle file_attachments array from API
+const fileAttachments = computed(() => {
+  // @ts-ignore - file_attachments may not be in type definition yet
+  return props.message.file_attachments || []
+})
+
+const hasMultipleAttachments = computed(() => {
+  return fileAttachments.value.length > 1
 })
 
 const isFileOnlyContent = computed(() => {
@@ -1386,6 +1447,37 @@ const handleRetry = () => {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   margin-top: var(--space-1);
+}
+
+/* 🔧 FIX: Multiple File Attachments Styles */
+.message-file-attachments {
+  min-width: 280px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.file-attachment-item {
+  width: 100%;
+}
+
+.file-attachment-item .file-container {
+  width: 100%;
+}
+
+.file-attachment-item:not(:last-child) {
+  margin-bottom: var(--space-2);
+}
+
+/* Make download links look like buttons */
+.file-action-btn[href] {
+  text-decoration: none;
+  display: inline-flex;
+}
+
+.file-action-btn[href]:visited {
+  color: inherit;
 }
 
 /* Enhanced Image Preview Modal */

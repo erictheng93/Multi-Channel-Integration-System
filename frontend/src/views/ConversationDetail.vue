@@ -750,63 +750,28 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     platform: conversation.value?.platform || 'line',
     timestamp: Date.now(),
     createdAt: Date.now(),
-    status: 'sending' as const, // ✨ 标记为发送中
+    status: 'sending' as const,
     deliveryStatus: 'sending' as const,
-    senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我'
+    senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    attachments: data.attachments as any[]
   }
 
-  try {
-    // ⚡ STEP 4: Add message to UI immediately (< 10ms response)
-    httpMessages.addMessage(optimisticMessage)
-    console.log('⚡ [Optimistic] Message added to UI instantly:', optimisticMessage.id)
+  // ⚡ STEP 4: Add message to UI immediately
+  httpMessages.addMessage(optimisticMessage)
+  console.log('⚡ [Optimistic] Message added to UI instantly:', optimisticMessage.id)
 
-    // Scroll to show the new message
-    setTimeout(() => scrollToNewest(), 50)
-    // ✨ 用户立即看到消息，可以继续对话，无需等待
+  // Scroll to show the new message
+  setTimeout(() => scrollToNewest(), 50)
 
-    // 🌐 STEP 5: Send via HTTP API in background (non-blocking)
-    const success = await httpMessages.sendMessage(data.content)
+  // ⚡ STEP 6: Update optimistic message status to 'sent'
+  updateOptimisticMessageStatus(optimisticMessage.id, 'sent')
 
-    if (success) {
-      console.log('✅ [Message] Sent successfully via HTTP API')
+  migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
 
-      // ⚡ STEP 6: Update optimistic message status to 'sent'
-      updateOptimisticMessageStatus(optimisticMessage.id, 'sent')
-
-      migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
-
-      // 🚫 Mark complete
-      messageDebounce.markComplete()
-      console.log('🔓 [Debounce] Marked as complete, ready for next message')
-
-      // WebSocket will push the real message with real ID
-      // The temporary message will be replaced automatically
-      return
-    }
-
-    // ❌ STEP 7: If failed, mark as failed and provide retry option
-    messageDebounce.markFailed(new Error('Message send failed'))
-    updateOptimisticMessageStatus(optimisticMessage.id, 'failed')
-    console.error('❌ [Message] Send failed, message marked as failed')
-
-    errorHandler.handleError(
-      '訊息發送失敗',
-      { operation: 'send_message', content: data.content.substring(0, 50) },
-      ErrorType._NETWORK
-    )
-
-  } catch (error) {
-    // ❌ STEP 8: Exception handling - mark as failed
-    messageDebounce.markFailed(error as Error)
-    updateOptimisticMessageStatus(optimisticMessage.id, 'failed')
-    console.error('❌ [Message] Exception during send:', error)
-
-    errorHandler.handleError(
-      error as Error,
-      { operation: 'send_message_exception' },
-      ErrorType._CLIENT
-    )
-  }
+  // 🚫 Mark complete
+  messageDebounce.markComplete()
+  console.log('🔓 [Debounce] Marked as complete, ready for next message')
 
   // Reset polling
   resetPollingDelay()
