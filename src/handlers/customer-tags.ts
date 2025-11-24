@@ -11,7 +11,7 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { customers, tags, customerTags } from '../db/schema';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 
 export const customerTagsHandler = {
@@ -20,7 +20,7 @@ export const customerTagsHandler = {
    * GET /api/customers/tags/available
    */
   async getAvailableTags(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const {
@@ -118,7 +118,7 @@ export const customerTagsHandler = {
    * GET /api/customers/:customerId/tags
    */
   async getCustomerTags(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const customerId = parseInt(c.req.param('customerId'));
 
@@ -165,7 +165,7 @@ export const customerTagsHandler = {
    * POST /api/customers/:customerId/tags
    */
   async addTagsToCustomer(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const customerId = parseInt(c.req.param('customerId'));
       const { tagIds } = await c.req.json();
@@ -262,7 +262,7 @@ export const customerTagsHandler = {
    * DELETE /api/customers/:customerId/tags
    */
   async removeTagsFromCustomer(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const customerId = parseInt(c.req.param('customerId'));
       const { tagIds } = await c.req.json();
@@ -307,7 +307,7 @@ export const customerTagsHandler = {
    * PUT /api/customers/:customerId/tags
    */
   async setCustomerTags(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const customerId = parseInt(c.req.param('customerId'));
       const { tagIds } = await c.req.json();

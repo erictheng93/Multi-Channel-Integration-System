@@ -3,7 +3,7 @@
 
 import { Context, Next } from 'hono';
 import { eq, or, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import {
   customers
 } from '@/db/schema';
@@ -72,7 +72,7 @@ export const checkSpecificCustomerAccess = async (c: Context<{ Bindings: Binding
     }
 
     // 非 Admin 用戶需要檢查客戶是否屬於其團隊
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const customer = await drizzleDb
       .select({
         id: customers.id,
@@ -285,7 +285,7 @@ export async function validateCustomerOwnership(
   }
 
   // 檢查客戶是否屬於用戶的團隊
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   const customer = await drizzleDb
     .select({ sourceTeamId: customers.sourceTeamId })
     .from(customers)

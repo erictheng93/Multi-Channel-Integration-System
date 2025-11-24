@@ -3,7 +3,7 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { QRCodeCrudService } from '@modules/qrcode/services/qrcode-crud-service';
 import { QRCodeGenerationService } from '@modules/qrcode/services/qrcode-generation-service';
 import {
@@ -88,7 +88,7 @@ export class QRCodeMainHandler {
       };
 
       // 使用 QRCode 服務獲取列表
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.list(query, userId);
 
       return successResponse(c, result, 'QR codes retrieved successfully');
@@ -115,7 +115,7 @@ export class QRCodeMainHandler {
       }
 
       // 使用 QRCode 服務創建
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.create(data, userId, teamId);
 
       return successResponse(c, result, 'QR code created successfully', 201);
@@ -150,7 +150,7 @@ export class QRCodeMainHandler {
       }
 
       // 使用 QRCode 服務獲取詳情
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.findById(id, userId);
 
       if (!result) {
@@ -185,7 +185,7 @@ export class QRCodeMainHandler {
       }
 
       // 使用 QRCode 服務更新
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.update(id, data, userId);
 
       return successResponse(c, result, 'QR code updated successfully');
@@ -215,7 +215,7 @@ export class QRCodeMainHandler {
       }
 
       // 使用 QRCode 服務刪除
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const success = await qrCodeService.delete(id, userId);
 
       if (!success) {
@@ -243,7 +243,7 @@ export class QRCodeMainHandler {
       }
 
       // 檢查 QR Code 是否存在
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.findById(id, userId);
 
       return new Response(null, { status: qrCode ? 200 : 404 });
@@ -269,7 +269,7 @@ export class QRCodeMainHandler {
       }
 
       // 重新生成 QR Code
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.regenerateQRCode(id, userId);
 
       return successResponse(c, result, 'QR code regenerated successfully');
@@ -294,7 +294,7 @@ export class QRCodeMainHandler {
       }
 
       // 獲取 QR Code 詳情並生成圖片
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const userIdRaw = c.get('user')?.id;
       const userId = typeof userIdRaw === 'string' ? parseInt(userIdRaw) : (userIdRaw || 0);
       const qrCodeDetail = await qrCodeService.findById(id, userId);
@@ -343,7 +343,7 @@ export class QRCodeMainHandler {
       };
 
       // 使用 QRCode 服務獲取統計
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.getStats(query, userId);
 
       return successResponse(c, result, 'QR code statistics retrieved successfully');
@@ -371,7 +371,7 @@ export class QRCodeMainHandler {
       };
 
       // 記錄掃描
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       await qrCodeService.recordScan(id, scanData);
 
       return successResponse(c, null, 'Scan recorded successfully');
@@ -398,7 +398,7 @@ export class QRCodeMainHandler {
       }
 
       // 實現搜尋功能
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.search(query, userId, teamId);
 
       return successResponse(c, result, 'Search completed successfully');
@@ -418,7 +418,7 @@ export class QRCodeMainHandler {
       const searchFilters = await c.req.json();
 
       // 實現進階搜尋
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.advancedSearch(searchFilters, userId);
 
       return successResponse(c, result, 'Advanced search completed successfully');
@@ -445,7 +445,7 @@ export class QRCodeMainHandler {
       }
 
       // 實現批次創建
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.batchCreate(batchRequest.qrCodes as CreateQRCodeRequest[], userId, teamId);
 
       return successResponse(c, result, 'Batch creation completed successfully');
@@ -470,7 +470,7 @@ export class QRCodeMainHandler {
       }
 
       // 獲取 QR Code 並記錄掃描
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.getForScan(id);
 
       if (!qrCode || qrCode.status !== 'active') {
@@ -529,7 +529,7 @@ export class QRCodeMainHandler {
       const id = c.req.param('id');
       const format = c.req.param('format') || 'png';
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.findById(id, 0); // 0 = public access
 
       if (!qrCode) {
@@ -557,7 +557,7 @@ export class QRCodeMainHandler {
     try {
       const id = c.req.param('id');
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.findById(id, 0);
 
       if (!qrCode) {
@@ -585,7 +585,7 @@ export class QRCodeMainHandler {
       const id = c.req.param('id');
       const userId = parseInt(String(c.get('userId' as any) || '0'));
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.updateStatus(id, 'active', userId);
 
       return successResponse(c, result, 'QR code enabled successfully');
@@ -604,7 +604,7 @@ export class QRCodeMainHandler {
       const id = c.req.param('id');
       const userId = parseInt(String(c.get('userId' as any) || '0'));
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.updateStatus(id, 'inactive', userId);
 
       return successResponse(c, result, 'QR code disabled successfully');
@@ -628,7 +628,7 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'Expiry date is required', 400);
       }
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.update(id, { expiresAt }, userId);
 
       return successResponse(c, result, 'Expiry date updated successfully');
@@ -707,7 +707,7 @@ export class QRCodeMainHandler {
       const userId = parseInt(String(c.get('userId' as any) || '0'));
       const userRole = String(c.get('userRole' as any) || '');
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.list({ type: type as any, page: 1, limit: 50 }, userId);
 
       return successResponse(c, result, `QR codes of type ${type} retrieved`);
@@ -727,7 +727,7 @@ export class QRCodeMainHandler {
       const userId = parseInt(String(c.get('userId' as any) || '0'));
       const userRole = String(c.get('userRole' as any) || '');
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.list({ tags: [tag], page: 1, limit: 50 }, userId);
 
       return successResponse(c, result, `QR codes with tag ${tag} retrieved`);
@@ -752,7 +752,7 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'QR code IDs array is required', 400);
       }
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
 
       const results = [];
       for (const id of ids) {
@@ -784,7 +784,7 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'QR code IDs array is required', 400);
       }
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
 
       const results = [];
       for (const id of ids) {
@@ -820,7 +820,7 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'Valid status is required', 400);
       }
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
 
       const results = [];
       for (const id of ids) {
@@ -943,7 +943,7 @@ export class QRCodeMainHandler {
       };
 
       // 5. 創建 QR Code
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.create(qrCodeData, userId, teamId);
 
       return successResponse(c, {
@@ -1001,7 +1001,7 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'Tags array is required', 400);
       }
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.findById(id, userId);
 
       if (!qrCode) {
@@ -1034,7 +1034,7 @@ export class QRCodeMainHandler {
         return errorResponse(c, 'Tags array is required', 400);
       }
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.findById(id, userId);
 
       if (!qrCode) {
@@ -1111,7 +1111,7 @@ export class QRCodeMainHandler {
       };
 
       // 使用服務層獲取數據
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.list(query, userId);
 
       if (!result.data || result.data.length === 0) {
@@ -1266,7 +1266,7 @@ export class QRCodeMainHandler {
       };
 
       // 使用服務層獲取數據
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const result = await qrCodeService.list(query, userId);
 
       if (!result.data || result.data.length === 0) {
@@ -1358,7 +1358,7 @@ export class QRCodeMainHandler {
     try {
       const id = c.req.param('id');
 
-      const qrCodeService = new QRCodeCrudService(drizzle(c.env.DB), c.env.KV, c.env.R2_BUCKET);
+      const qrCodeService = new QRCodeCrudService(createDbClient(c.env.DB), c.env.KV, c.env.R2_BUCKET);
       const qrCode = await qrCodeService.getForScan(id);
 
       if (!qrCode || qrCode.status !== 'active') {

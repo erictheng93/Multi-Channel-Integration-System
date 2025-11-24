@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/d1';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { agents } from './src/db/schema';
 import path from 'path';
@@ -8,9 +8,12 @@ import Database from 'better-sqlite3';
 async function createDacitAdmin() {
   // Connect to the local development database
   const dbPath = path.join('.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject', 'dc23354e195c301b4778615a1d18f9e116936b7ddbf1fa5ed62c6ac8bb6640a8.sqlite');
-  
+
   const sqliteDb = new Database(dbPath, { readonly: false });
-  const db = drizzle(sqliteDb as any); // Cast to D1Database type for compatibility
+  // Use better-sqlite3 adapter with casing configuration
+  const db = drizzle(sqliteDb, {
+    casing: 'camelCase' // ✅ Unified casing configuration
+  });
   console.log(`Connected to LOCAL DEV database`);
   console.log('=' .repeat(80));
   

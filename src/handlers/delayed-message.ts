@@ -9,7 +9,7 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { MessageRecallService } from '../services/message-recall-service';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 
 export interface DelayedSendRequest {
@@ -45,7 +45,7 @@ export const delayedMessageHandler = {
       }
 
       // 獲取對話資訊
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const conversation = await drizzleDb.get(sql`
         SELECT * FROM conversations 
         WHERE id = ${conversationId}

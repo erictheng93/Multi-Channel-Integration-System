@@ -1,7 +1,7 @@
 // Activities Module - Activity Statistics Service
 // 活動模組 - 活動統計分析服務
 
-import { drizzle } from 'drizzle-orm/d1'
+import { createDbClient } from '../../../db/drizzle-factory'
 import { sql, gte, count, desc } from 'drizzle-orm'
 import { activities } from '@/db/schema'
 import { ActivityOverview } from '@modules/activities/types/interfaces'
@@ -18,7 +18,7 @@ export class ActivityStatsService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     // 總活動數
     const totalResult = await drizzleDb
@@ -97,7 +97,7 @@ export class ActivityStatsService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     const resourceStats = await drizzleDb
       .select({
@@ -132,7 +132,7 @@ export class ActivityStatsService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     const roleStats = await drizzleDb
       .select({
@@ -166,7 +166,7 @@ export class ActivityStatsService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     // 獲取每日總數
     const dailyStats = await drizzleDb
@@ -231,7 +231,7 @@ export class ActivityStatsService {
     startDate.setDate(startDate.getDate() - days)
     const startDateStr = startDate.toISOString()
 
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     const heatmapData = await drizzleDb.run(sql`
       SELECT
@@ -304,7 +304,7 @@ export class ActivityStatsService {
    * 獲取自定義時間段統計
    */
   async getCustomPeriodStats(startDate: string, endDate: string): Promise<ActivityOverview> {
-    const drizzleDb = drizzle(this.db)
+    const drizzleDb = createDbClient(this.db)
 
     const totalResult = await drizzleDb
       .select({ count: count() })

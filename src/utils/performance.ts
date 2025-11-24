@@ -3,7 +3,7 @@
 
 import type { Context } from 'hono';
 import type { Bindings, QueryParams, DatabaseRow } from '../types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 
 // 快取管理器
@@ -113,7 +113,7 @@ export class QueryOptimizer {
 
     // 執行查詢
     try {
-      const drizzleDb = drizzle(this.db);
+      const drizzleDb = createDbClient(this.db);
       const result = await drizzleDb.get(sql.raw(query));
       
       if (result) {
@@ -131,7 +131,7 @@ export class QueryOptimizer {
   // 批量查詢優化
   async batchQuery<T>(queries: Array<{ query: string; params: QueryParams }>): Promise<T[]> {
     try {
-      const drizzleDb = drizzle(this.db);
+      const drizzleDb = createDbClient(this.db);
       const promises = queries.map(({ query }) => 
         drizzleDb.get(sql.raw(query))
       );
@@ -166,7 +166,7 @@ export class QueryOptimizer {
       }
 
       // 並行執行資料查詢和計數查詢
-      const drizzleDb = drizzle(this.db);
+      const drizzleDb = createDbClient(this.db);
       const [itemsResult, countResult] = await Promise.all([
         drizzleDb.run(sql.raw(`${baseQuery} LIMIT ${pageSize} OFFSET ${offset}`)),
         drizzleDb.get(sql.raw(countQuery))

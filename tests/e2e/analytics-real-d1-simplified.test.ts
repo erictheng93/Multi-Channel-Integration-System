@@ -2,15 +2,15 @@
 // 真實 D1 數據庫端到端測試 - 簡化版本
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '@/db/drizzle-factory';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
-  Perimport { MockFactory } from '@helpers/mockFactory';
-formanceAnalyticsQuery
+  PerformanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
+import { MockFactory } from '@helpers/mockFactory';
 
 /**
  * E2E 測試配置
@@ -37,7 +37,7 @@ describe('Analytics E2E Tests - Real D1 Database (Simplified)', () => {
 
       // 初始化 Analytics Service
       analyticsService = new AnalyticsService({
-        database: drizzle(mockD1),
+        database: createDbClient(mockD1),
         kv: undefined, // Skip KV for E2E tests
         env: testEnv
       });

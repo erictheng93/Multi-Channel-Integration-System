@@ -1,7 +1,7 @@
 // Analytics Main Handler - 統一分析服務 API 處理器
 
 import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
@@ -36,7 +36,7 @@ analyticsHandler.use('/*', analyticsAuth);
  */
 analyticsHandler.get('/conversations', async (c) => {
   const analyticsService = new AnalyticsService({
-    database: drizzle(c.env.DB),
+    database: createDbClient(c.env.DB),
     kv: c.env.KV,
     env: c.env
   });
@@ -78,7 +78,7 @@ analyticsHandler.get('/conversations', async (c) => {
  */
 analyticsHandler.get('/messages', async (c) => {
   const analyticsService = new AnalyticsService({
-    database: drizzle(c.env.DB),
+    database: createDbClient(c.env.DB),
     kv: c.env.KV,
     env: c.env
   });
@@ -110,7 +110,7 @@ analyticsHandler.get('/messages', async (c) => {
 analyticsHandler.get('/users', async (c) => {
   try {
     const analyticsService = new AnalyticsService({
-      database: drizzle(c.env.DB),
+      database: createDbClient(c.env.DB),
       kv: c.env.KV,
       env: c.env
     });
@@ -154,7 +154,7 @@ analyticsHandler.get('/users', async (c) => {
 analyticsHandler.get('/performance', async (c) => {
   try {
     const analyticsService = new AnalyticsService({
-      database: drizzle(c.env.DB),
+      database: createDbClient(c.env.DB),
       kv: c.env.KV,
       env: c.env
     });
@@ -196,7 +196,7 @@ analyticsHandler.get('/performance', async (c) => {
 analyticsHandler.post('/custom', async (c) => {
   try {
     const analyticsService = new AnalyticsService({
-      database: drizzle(c.env.DB),
+      database: createDbClient(c.env.DB),
       kv: c.env.KV,
       env: c.env
     });
@@ -239,7 +239,7 @@ analyticsHandler.post('/custom', async (c) => {
 analyticsHandler.post('/export', async (c) => {
   try {
     const analyticsService = new AnalyticsService({
-      database: drizzle(c.env.DB),
+      database: createDbClient(c.env.DB),
       kv: c.env.KV,
       env: c.env
     });
@@ -282,7 +282,7 @@ analyticsHandler.post('/export', async (c) => {
  */
 analyticsHandler.get('/health', async (c) => {
   try {
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查數據庫連接
     const dbTest = await db.run(sql`SELECT 1 as test`);

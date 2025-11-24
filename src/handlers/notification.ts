@@ -20,7 +20,7 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { getSSECorsHeaders } from '../config/cors';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
 
 interface Notification {
@@ -49,7 +49,7 @@ interface LocalNotificationSettings {
 export const notificationHandler = {
   // 獲取用戶通知列表
   async list(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { 
@@ -130,7 +130,7 @@ export const notificationHandler = {
 
   // 標記通知為已讀
   async markAsRead(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const notificationId = c.req.param('id');
       const payload = c.get('jwtPayload');
@@ -160,7 +160,7 @@ export const notificationHandler = {
 
   // 批量標記通知為已讀
   async markAllAsRead(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { type } = await c.req.json().catch(() => ({}));
@@ -196,7 +196,7 @@ export const notificationHandler = {
 
   // 刪除通知
   async delete(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const notificationId = c.req.param('id');
       const payload = c.get('jwtPayload');
@@ -224,7 +224,7 @@ export const notificationHandler = {
 
   // 清理過期通知
   async cleanup(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
 
@@ -251,7 +251,7 @@ export const notificationHandler = {
 
   // 獲取通知統計
   async getStats(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
 
@@ -313,7 +313,7 @@ export const notificationHandler = {
 
   // 獲取通知設定
   async getSettings(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
 
@@ -360,7 +360,7 @@ export const notificationHandler = {
 
   // 更新通知設定
   async updateSettings(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const {
@@ -436,7 +436,7 @@ export const notificationHandler = {
 
           // 檢查新通知的循環（簡化實現）
           const checkNotifications = async () => {
-      const notifDbConnection = drizzle(c.env.DB);
+      const notifDbConnection = createDbClient(c.env.DB);
             if (connectionClosed) return;
 
             try {

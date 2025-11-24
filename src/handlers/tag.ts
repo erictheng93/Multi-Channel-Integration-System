@@ -15,14 +15,14 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { tags } from '../db/schema';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, or, asc, like, count, isNull, inArray } from 'drizzle-orm';
 
 
 export const tagHandler = {
   // 獲取標籤列表
   async list(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { 
@@ -130,7 +130,7 @@ export const tagHandler = {
 
   // 創建標籤
   async create(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { name, color = '#3B82F6', description, teamId } = await c.req.json();
@@ -205,7 +205,7 @@ export const tagHandler = {
 
   // 獲取單一標籤詳情
   async get(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
 
@@ -258,7 +258,7 @@ export const tagHandler = {
 
   // 更新標籤
   async update(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
       const { name, color, description, isActive } = await c.req.json();
@@ -355,7 +355,7 @@ export const tagHandler = {
 
   // 刪除標籤（軟刪除）
   async delete(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
       const payload = c.get('jwtPayload');
@@ -390,7 +390,7 @@ export const tagHandler = {
 
   // 獲取標籤使用統計
   async getUsageStats(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
 
@@ -487,7 +487,7 @@ export const tagHandler = {
 
   // 批量操作標籤
   async bulkOperation(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const { operation, tagIds, data } = await c.req.json();
       // const payload = c.get('jwtPayload');
@@ -567,7 +567,7 @@ export const tagHandler = {
 
   // 獲取標籤的客戶列表
   async getTagCustomers(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
       const page = parseInt(c.req.query('page') || '1');

@@ -14,7 +14,7 @@ import {
   errorResponse,
   handleApiError 
 } from '../utils/api-response';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, desc } from 'drizzle-orm';
 import { fileAttachments, conversations } from '../db/schema';
 
@@ -131,7 +131,7 @@ export const attachmentHandler = {
       }
 
       // 檢查對話是否存在
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       const conversation = await drizzleDb.select({ id: conversations.id })
         .from(conversations)
         .where(eq(conversations.id, conversationId))
@@ -262,7 +262,7 @@ export const attachmentHandler = {
   get: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const attachmentId = c.req.param('attachmentId');
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
 
       const attachment = await drizzleDb
         .select()
@@ -295,7 +295,7 @@ export const attachmentHandler = {
   download: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const attachmentId = c.req.param('attachmentId');
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
 
       const attachment = await drizzleDb
         .select()
@@ -351,7 +351,7 @@ export const attachmentHandler = {
     try {
       const attachmentId = c.req.param('attachmentId');
       const payload = c.get('jwtPayload');
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
 
       const attachment = await drizzleDb.get(sql`
         SELECT * FROM file_attachments 
@@ -397,7 +397,7 @@ export const attachmentHandler = {
 
       const offset = (page - 1) * pageSize;
 
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
       
       // Build where conditions (simplified since conversationId and uploadStatus don't exist in schema)
       let whereConditions = [];
