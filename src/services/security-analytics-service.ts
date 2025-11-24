@@ -2,7 +2,7 @@
 // Real-time security metrics and dashboard data service
 
 import type { Bindings } from '@/types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { webhookSecurityEvents, corsEvents } from '@/db/schema';
 import { gte, desc, eq, and, count, sql } from 'drizzle-orm';
 
@@ -99,7 +99,7 @@ export class SecurityAnalyticsService {
   async getDashboardMetrics(timeRange: TimeRange = '24h'): Promise<SecurityDashboardMetrics> {
     const hours = this.getHoursFromTimeRange(timeRange);
     const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-    const db = drizzle(this.env.DB);
+    const db = createDbClient(this.env.DB);
 
     // Fetch webhook security events
     const webhookEvents = await db
@@ -167,7 +167,7 @@ export class SecurityAnalyticsService {
     timestamp: string;
     metadata: any;
   }>> {
-    const db = drizzle(this.env.DB);
+    const db = createDbClient(this.env.DB);
 
     // Get recent webhook events
     const webhookEvents = await db

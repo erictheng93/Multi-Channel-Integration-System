@@ -1,7 +1,7 @@
 // 對話管理處理器 - 主要實現
 import { Hono } from 'hono';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
@@ -120,7 +120,7 @@ conversationHandler.get('/stream', async (c) => {
             }
 
             // 使用相同的查詢邏輯獲取對話數據
-            const drizzleDb = drizzle(c.env.DB);
+            const drizzleDb = createDbClient(c.env.DB);
             const conversationData = await drizzleDb
               .select({
                 id: conversations.id,
@@ -505,7 +505,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     }
 
     // 更新對話指派
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
     console.log('🔧 [Assign API] Updating conversation:', {
@@ -658,7 +658,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       return c.json({ error: 'Permission denied' }, 403);
     }
 
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
     const [conversation] = await drizzleDb
@@ -818,7 +818,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     }
 
     // 更新對話指派
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
     await drizzleDb
@@ -905,7 +905,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       }, 400);
     }
 
-    const db = drizzle(c.env.DB);
+    const db = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
     const conversation = await db
@@ -1189,7 +1189,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
     }
 
     // 檢查對話是否存在
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const conversation = await drizzleDb
       .select({ id: conversations.id })
       .from(conversations)
@@ -1338,7 +1338,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
       return c.json({ error: 'Permission denied' }, 403);
     }
 
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
 
     // 🔧 FIX: 使用完整的 JOIN 查詢，返回與 assign/unassign API 相同的數據結構
     const [result] = await drizzleDb
@@ -1422,7 +1422,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
 
     // 🔧 FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
     console.log('🔍 [Conversation Handler] Querying conversation data with IDs:', visibleConversationIds);
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     const conversationResults = await drizzleDb
       .select()
       .from(conversations)
@@ -1513,7 +1513,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
  * @returns 訊息列表（按時間升序）
  */
 async function getRecentMessages(conversationId: string, limit: number, db: D1Database) {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   try {
     const recentMessages = await drizzleDb
@@ -1556,7 +1556,7 @@ async function getRecentMessages(conversationId: string, limit: number, db: D1Da
  * @returns 新訊息列表（按時間升序）
  */
 async function getMessagesAfterTimestamp(conversationId: string, afterTimestamp: string, db: D1Database) {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   try {
     const newMessages = await drizzleDb
@@ -1603,7 +1603,7 @@ async function getMessagesAfter(conversationId: string, lastMessageId: string | 
     return getRecentMessages(conversationId, 50, db);
   }
 
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   try {
     // 首先獲取最後已知訊息的時間戳

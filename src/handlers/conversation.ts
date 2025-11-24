@@ -12,7 +12,7 @@ import {
   notFoundResponse,
   handleApiError
 } from '../utils/api-response';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, desc, inArray, count, aliasedTable } from 'drizzle-orm';
 import { realtime } from '@modules/realtime';
 import { conversations as conversationTable, agents, conversationTransfers, teams, conversationTags } from '../db/schema';
@@ -119,7 +119,7 @@ conversations.post('/:id/attachments', async (c) => {
     const { fileAttachments } = await import('../db/schema');
     const attachmentId = `att_${timestamp}_${randomStr}`;
 
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     await drizzleDb.insert(fileAttachments).values({
       id: attachmentId,
       messageId: null, // Will be updated when message is sent
@@ -205,7 +205,7 @@ conversations.post('/:id/messages', async (c) => {
     // 如果有附件，更新附件的 messageId
     if (attachmentIds && Array.isArray(attachmentIds) && attachmentIds.length > 0) {
       const { fileAttachments } = await import('../db/schema');
-      const drizzleDb = drizzle(c.env.DB);
+      const drizzleDb = createDbClient(c.env.DB);
 
       // 批量更新所有附件的 messageId
       await drizzleDb.update(fileAttachments)
@@ -572,7 +572,7 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
 
 // 轉移對話
 conversations.post('/:id/transfer', async (c) => {
-  const drizzleDb = drizzle(c.env.DB);
+  const drizzleDb = createDbClient(c.env.DB);
   try {
     const conversationId = c.req.param('id');
     const agent = c.get('agent');
@@ -740,7 +740,7 @@ conversations.get('/', async (c) => {
 const handlerMethods = {
   // 設定對話優先級
   async setPriority(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { priority } = await c.req.json();
@@ -768,7 +768,7 @@ const handlerMethods = {
 
   // 轉移對話
   async transfer(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { 
@@ -821,7 +821,7 @@ const handlerMethods = {
 
   // 為對話添加標籤
   async addTags(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { tagIds } = await c.req.json();
@@ -865,7 +865,7 @@ const handlerMethods = {
 
   // 移除對話標籤
   async removeTags(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { tagIds } = await c.req.json();
@@ -891,7 +891,7 @@ const handlerMethods = {
 
   // 設定內部備註
   async setNotes(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
       const { notes } = await c.req.json();
@@ -912,7 +912,7 @@ const handlerMethods = {
 
   // 獲取對話轉移歷史
   async getTransferHistory(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
 
@@ -985,7 +985,7 @@ const handlerMethods = {
 
   // 批量操作對話  
   async bulkOperation(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const { operation, conversationIds, data } = await c.req.json();
       const payload = c.get('jwtPayload');
@@ -1086,7 +1086,7 @@ const handlerMethods = {
 
   // 自動分配邏輯
   async autoAssign(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = drizzle(c.env.DB);
+    const drizzleDb = createDbClient(c.env.DB);
     try {
       const { strategy = 'round_robin', teamId } = await c.req.json();
 

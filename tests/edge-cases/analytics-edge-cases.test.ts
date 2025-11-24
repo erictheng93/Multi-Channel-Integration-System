@@ -2,15 +2,15 @@
 // 邊界條件和極端場景測試
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '@/db/drizzle-factory';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
-  PerformanceAnalytiimport { MockFactory } from '@helpers/mockFactory';
-csQuery
+  PerformanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
+import { MockFactory } from '@helpers/mockFactory';
 
 /**
  * 邊界條件測試配置
@@ -33,7 +33,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const mockD1 = await createInMemoryD1();
 
       analyticsService = new AnalyticsService({
-        database: drizzle(mockD1),
+        database: createDbClient(mockD1),
         kv: undefined,
         env: testEnv
       });

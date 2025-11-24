@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams } from '../db/schema';
 import { convertAgent } from './drizzle-converters';
 import type { DbUser, JWTPayload } from '../types';
@@ -181,7 +181,7 @@ export async function createUser(
   const hashedPassword = await hashPassword(userData.password);
   const now = new Date().toISOString();
   const userId = crypto.randomUUID();
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
 
   await drizzleDb
     .insert(agents)
@@ -211,7 +211,7 @@ export async function createUser(
 }
 
 export async function getUserById(db: D1Database, userId: number | string): Promise<DbUser> {
-  const drizzleDb = drizzle(db);
+  const drizzleDb = createDbClient(db);
   
   // 檢查 agents 表
   const agent = await drizzleDb

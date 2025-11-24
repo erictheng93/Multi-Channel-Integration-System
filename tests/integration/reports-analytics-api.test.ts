@@ -3,7 +3,8 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { Database } from '@/db/drizzle-factory';
 import reportsHandler from '@modules/reports/handlers/reports-main';
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
 import type { Bindings } from '@/types';
@@ -16,7 +17,7 @@ import { MockFactory } from '../helpers/mockFactory';
 let app: Hono<{ Bindings: Bindings }>;
 let mockD1: any;
 let mockKV: any;
-let testDb: ReturnType<typeof drizzle>;
+let testDb: Database;
 let authToken: string;
 let mockEnv: Partial<Bindings>;
 const TEST_JWT_SECRET = 'test-secret-key-for-integration-testing';

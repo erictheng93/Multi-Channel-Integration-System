@@ -1,7 +1,7 @@
 import { Context, Next } from 'hono';
 import type { Bindings, DbUser, JWTPayload } from '@/types';
 import { verifyJWT, getUserById, getSession } from '@modules/auth/services/auth';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -85,7 +85,7 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     try {
       if (typeof user.id === 'string') {
         // agents 表使用字符串 ID - migrated to Drizzle ORM
-        const db = drizzle(c.env.DB);
+        const db = createDbClient(c.env.DB);
         await db.update(agents)
           .set({ lastActive: new Date().toISOString() })
           .where(eq(agents.id, user.id))

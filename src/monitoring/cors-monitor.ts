@@ -3,7 +3,8 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
-import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { corsEvents } from '@/db/schema';
 import { eq, desc, and, gte, sql } from 'drizzle-orm';
 
@@ -76,7 +77,7 @@ export class CORSMonitor {
 
     // 🆕 P2-6: 記錄到 D1（用於持久化和統計）
     try {
-      const db = drizzle(this.env.DB);
+      const db = createDbClient(this.env.DB);
       const eventId = `cors_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
       await db.insert(corsEvents).values({
@@ -193,7 +194,7 @@ export class CORSMonitor {
    */
   async getStats(hours: number = 24): Promise<CORSStats> {
     try {
-      const db = drizzle(this.env.DB);
+      const db = createDbClient(this.env.DB);
       const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
       // 🆕 P2-6: Query events from D1 (last 24 hours by default)
@@ -334,7 +335,7 @@ export class CORSMonitor {
    */
   async cleanup(hours: number = 24): Promise<number> {
     try {
-      const db = drizzle(this.env.DB);
+      const db = createDbClient(this.env.DB);
       const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
       // 🆕 P2-6: Delete expired events from D1

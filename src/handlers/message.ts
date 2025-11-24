@@ -15,7 +15,7 @@ import {
 } from '../utils/api-response';
 import { eq, and, inArray, like, count, or, lte, gte, aliasedTable } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 import { messages, conversations, customers, agents, teams } from '../db/schema';
 import { logger } from '../utils/logger';
@@ -432,7 +432,7 @@ export const messageHandler = {
             const limit = parseInt(pageSize);
 
             // 使用 Drizzle ORM 構建搜索查詢
-            const db = drizzle(c.env.DB);
+            const db = createDbClient(c.env.DB);
             
             // 構建 WHERE 條件
             const whereConditions = [];
@@ -584,7 +584,7 @@ export const messageHandler = {
             }
 
             // 獲取常見搜索詞（基於訊息內容）
-            const db = drizzle(c.env.DB);
+            const db = createDbClient(c.env.DB);
             
             const suggestions = await db
                 .select({
@@ -675,7 +675,7 @@ export const messageHandler = {
             const limit = parseInt(pageSize);
 
             // 使用 Drizzle ORM 進行高級搜索
-            const db = drizzle(c.env.DB);
+            const db = createDbClient(c.env.DB);
             
             // 定義表別名用於 JOIN
             const ct = aliasedTable(schema.conversationTags, 'ct');

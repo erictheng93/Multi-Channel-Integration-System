@@ -17,7 +17,7 @@ import type {
 } from '../types/file-types';
 import type { StorageService } from '@modules/file-management/types/storage-types';
 import type { Bindings } from '@/types';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '../../../db/drizzle-factory';
 import { eq, and, desc, sql, inArray, like, gte, lte } from 'drizzle-orm';
 import { fileAttachments } from '@shared/database/schema';
 
@@ -40,7 +40,7 @@ export class FileService {
   private readonly storageService: StorageService;
 
   constructor(private readonly env: Bindings) {
-    this.db = drizzle(env.DB);
+    this.db = createDbClient(env.DB);
     this.validationService = new FileValidationService();
     this.metadataService = new MetadataService();
     this.storageService = createStorageService(env);

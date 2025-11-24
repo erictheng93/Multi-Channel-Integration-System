@@ -2,15 +2,15 @@
 // 性能壓力測試 - 1000+ 並發查詢
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient } from '@/db/drizzle-factory';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
   PerformanceAnalyticsQuery
-import { MockFactory } from '@helpers/mockFactory';
 } from '../../src/modules/analytics/types/analytics-types';
+import { MockFactory } from '@helpers/mockFactory';
 
 /**
  * 性能壓力測試配置
@@ -33,7 +33,7 @@ describe('Analytics Performance Stress Test', () => {
       const mockD1 = await createInMemoryD1();
 
       analyticsService = new AnalyticsService({
-        database: drizzle(mockD1),
+        database: createDbClient(mockD1),
         kv: undefined,
         env: testEnv
       });

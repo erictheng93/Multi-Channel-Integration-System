@@ -1,10 +1,10 @@
 // 遷移現有資料到 Drizzle schema
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient, type Database } from '../src/db/drizzle-factory';
 import * as schema from '../src/db/schema';
 
 interface MigrationContext {
   db: D1Database;
-  drizzleDb: ReturnType<typeof drizzle>;
+  drizzleDb: Database;
 }
 
 export async function migrateToNewSchema(ctx: MigrationContext) {
