@@ -64,7 +64,7 @@ describe('WebSocketManager', () => {
   let manager: WebSocketManager
   let mockClient: any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     manager = new WebSocketManager()
     const { createWebSocketClient } = await import('../websocketClient')
