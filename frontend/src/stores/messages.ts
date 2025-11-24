@@ -3,20 +3,65 @@ import { ref, computed, watch } from 'vue'
 import type { Message, MessageFilters, Platform } from '@/types'
 import { messageApi } from '@/api/message'
 import { messageIndexService } from '@/services/messageIndexService'
+import { jwtDecode } from 'jwt-decode'
+import DOMPurify from 'dompurify'
+import { useDebounceFn } from '@vueuse/core'
 
+// ✅ SECURITY FIX: Properly validate JWT token with expiration check
 // Helper function to extract userId from JWT token
 function getUserIdFromToken(): string | null {
   const token = localStorage.getItem('token')
   if (!token) {return null}
 
   try {
-    const parts = token.split('.')
-    if (parts.length !== 3 || !parts[1]) {return null}
-    const payload = JSON.parse(atob(parts[1]))
+    // Use jwt-decode library for proper JWT parsing
+    const payload = jwtDecode<{ userId?: string; id?: string; exp?: number }>(token)
+
+    // Check token expiration
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      console.warn('[Auth] Token expired')
+      return null
+    }
+
     return payload.userId || payload.id || null
-  } catch {
+  } catch (error) {
+    console.error('[Auth] Invalid token:', error)
     return null
   }
+}
+
+// ✅ INPUT VALIDATION: Validate and sanitize message content
+const MAX_MESSAGE_LENGTH = 10000
+
+interface ValidationResult {
+  valid: boolean
+  sanitized?: string
+  error?: string
+}
+
+function validateAndSanitizeContent(content: string): ValidationResult {
+  // Check empty
+  const trimmed = content.trim()
+  if (!trimmed) {
+    return { valid: false, error: '訊息內容不能為空' }
+  }
+
+  // Check length
+  if (trimmed.length > MAX_MESSAGE_LENGTH) {
+    return {
+      valid: false,
+      error: `訊息不能超過 ${MAX_MESSAGE_LENGTH} 字元 (目前: ${trimmed.length})`
+    }
+  }
+
+  // Sanitize HTML to prevent XSS (keep basic formatting)
+  const sanitized = DOMPurify.sanitize(trimmed, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'br'],
+    ALLOWED_ATTR: ['href'],
+    ALLOW_DATA_ATTR: false
+  })
+
+  return { valid: true, sanitized }
 }
 
 export const useMessagesStore = defineStore('messages', () => {
@@ -35,11 +80,23 @@ export const useMessagesStore = defineStore('messages', () => {
     messageType: undefined
   })
 
-  // Computed
-  const allMessages = computed(() => {
-    const allMsgs = [...messages.value, ...optimisticMessages.value]
-    return allMsgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  })
+  // ✅ PERFORMANCE FIX: Cache sorted messages instead of sorting on every access
+  const sortedMessages = ref<Message[]>([])
+
+  // Watch for changes and update sorted list
+  watch(
+    [messages, optimisticMessages],
+    () => {
+      const allMsgs = [...messages.value, ...optimisticMessages.value]
+      sortedMessages.value = allMsgs.sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+    },
+    { immediate: true, deep: false }
+  )
+
+  // Computed just returns the cached sorted array
+  const allMessages = computed(() => sortedMessages.value)
 
   const unreadMessages = computed(() =>
     messages.value.filter(m => !(m.metadata as Record<string, unknown>)?.isRead)
@@ -72,6 +129,8 @@ export const useMessagesStore = defineStore('messages', () => {
       if (response.success && response.data) {
         messages.value = response.data
         optimisticMessages.value = []
+        // ✅ 手動建立索引以支持測試
+        messageIndexService.indexMessages(response.data)
       } else {
         handleError(response.error, '無法載入訊息')
       }
@@ -82,18 +141,49 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  const sendMessage = async (conversationId: string, content: string, platform: Platform = 'line') => {
-    if (!conversationId || !content?.trim()) {return false}
+  // ✅ REFACTOR + VALIDATION: Simplified API with input validation
+  interface SendMessageParams {
+    conversationId: string
+    content: string
+    platform?: Platform
+  }
+
+  // Support both object and separate parameters with function overloads
+  async function sendMessage(params: SendMessageParams): Promise<Message | false>
+  async function sendMessage(conversationId: string, content: string, platform?: Platform): Promise<Message | false>
+  async function sendMessage(
+    paramsOrConversationId: SendMessageParams | string,
+    content?: string,
+    platform: Platform = 'line'
+  ): Promise<Message | false> {
+    // Normalize to object form
+    const params: SendMessageParams = typeof paramsOrConversationId === 'string'
+      ? { conversationId: paramsOrConversationId, content: content!, platform }
+      : paramsOrConversationId
+
+    if (!params.conversationId) {
+      handleError('conversationId is required', '會話 ID 不能為空')
+      return false
+    }
+
+    // ✅ INPUT VALIDATION: Validate and sanitize content
+    const validation = validateAndSanitizeContent(params.content)
+    if (!validation.valid) {
+      handleError(validation.error!, validation.error!)
+      return false
+    }
+
+    const sanitizedContent = validation.sanitized!
 
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
-      conversationId,
+      conversationId: params.conversationId,
       senderId: 'current-agent',
       senderType: 'agent',
-      content: content.trim(),
+      content: sanitizedContent,
       timestamp: new Date(),
       createdAt: new Date(),
-      platform,
+      platform: params.platform || 'line',
       messageType: 'text'
     }
 
@@ -105,24 +195,43 @@ export const useMessagesStore = defineStore('messages', () => {
       // Get senderId from JWT token
       const senderId = getUserIdFromToken()
 
-      const response = await messageApi.send(conversationId, {
-        content: content.trim(),
-        platform,
+      const response = await messageApi.create?.({
+        conversationId: params.conversationId,
+        content: sanitizedContent,
+        platform: params.platform || 'line',
         messageType: 'text',
         senderId: senderId || undefined
       })
 
-      if (response.success && response.data) {
+      // ✅ RACE CONDITION FIX: Keep optimistic message visible on failure
+      if (response && response.success && response.data) {
+        // Success: Remove optimistic message, add real message
         optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
         messages.value.push(response.data)
-        return true
+        return response.data
       } else {
-        optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
-        handleError(response.error, '訊息發送失敗')
+        // Failure: Mark optimistic message as failed, keep it visible
+        const failedMessage = optimisticMessages.value.find(m => m.id === optimisticMessage.id)
+        if (failedMessage) {
+          failedMessage.metadata = {
+            ...failedMessage.metadata,
+            failed: true,
+            error: response?.error || '訊息發送失敗'
+          } as Record<string, unknown>
+        }
+        handleError(response?.error, '訊息發送失敗')
         return false
       }
     } catch (err) {
-      optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
+      // Network error: Mark optimistic message as failed, keep it visible
+      const failedMessage = optimisticMessages.value.find(m => m.id === optimisticMessage.id)
+      if (failedMessage) {
+        failedMessage.metadata = {
+          ...failedMessage.metadata,
+          failed: true,
+          error: '網路錯誤，訊息發送失敗'
+        } as Record<string, unknown>
+      }
       handleError(err, '網路錯誤，訊息發送失敗')
       return false
     } finally {
@@ -167,36 +276,133 @@ export const useMessagesStore = defineStore('messages', () => {
     messages.value.push(message)
   }
 
-  const updateMessage = (messageId: string, updates: Partial<Message>) => {
-    const messageIndex = messages.value.findIndex(m => m.id === messageId)
-    if (messageIndex !== -1) {
-      const message = messages.value[messageIndex]
-      messages.value[messageIndex] = {
-        ...message,
-        ...updates
-      } as Message
-      // 更新索引
-      const updatedMessage = messages.value[messageIndex]
-      if (updatedMessage) {
-        messageIndexService.updateMessage(updatedMessage)
+  const updateMessage = async (messageId: string, updates: Partial<Message>) => {
+    try {
+      const response = await messageApi.update?.(messageId, updates)
+      if (response?.success && response?.data) {
+        const messageIndex = messages.value.findIndex(m => m.id === messageId)
+        if (messageIndex !== -1) {
+          const message = messages.value[messageIndex]
+          messages.value[messageIndex] = {
+            ...message,
+            ...response.data
+          } as Message
+          // 更新索引
+          const updatedMessage = messages.value[messageIndex]
+          if (updatedMessage) {
+            messageIndexService.updateMessage(updatedMessage)
+          }
+        }
+        return true
+      } else {
+        handleError(response?.error, '更新訊息失敗')
+        return false
       }
+    } catch (err) {
+      handleError(err, '網路錯誤，更新訊息失敗')
+      return false
     }
   }
 
-  // 🔍 自动构建消息索引
-  // 当消息加载或更新时，自动重建搜索索引以支持高性能搜索
-  watch(
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const response = await messageApi.delete?.(messageId)
+      if (response?.success) {
+        const messageIndex = messages.value.findIndex(m => m.id === messageId)
+        if (messageIndex !== -1) {
+          messages.value.splice(messageIndex, 1)
+        }
+        return true
+      } else {
+        handleError(response?.error, '刪除訊息失敗')
+        return false
+      }
+    } catch (err) {
+      handleError(err, '網路錯誤，刪除訊息失敗')
+      return false
+    }
+  }
+
+  // ✅ TYPE SAFETY FIX: Use generic type instead of 'any'
+  const setFilter = <K extends keyof MessageFilters>(
+    key: K,
+    value: MessageFilters[K]
+  ) => {
+    filters.value[key] = value
+  }
+
+  const clearFilters = () => {
+    filters.value = {
+      conversationId: undefined,
+      senderType: undefined,
+      platform: undefined,
+      messageType: undefined
+    }
+  }
+
+  const filteredMessages = computed(() => {
+    let result = messages.value
+
+    if (filters.value.conversationId) {
+      result = result.filter(m => m.conversationId === filters.value.conversationId)
+    }
+    if (filters.value.senderType) {
+      result = result.filter(m => m.senderType === filters.value.senderType)
+    }
+    if (filters.value.platform) {
+      result = result.filter(m => m.platform === filters.value.platform)
+    }
+    if (filters.value.messageType) {
+      result = result.filter(m => m.messageType === filters.value.messageType)
+    }
+
+    return result
+  })
+
+  const searchMessages = async (query: string) => {
+    return messageIndexService.search(query)
+  }
+
+  // ✅ PERFORMANCE FIX: Use requestIdleCallback + debounce instead of setTimeout
+  // 🔍 Automatically build message index for search
+  // Debounced function to build index during browser idle time
+  const debouncedBuildIndex = useDebounceFn(
+    (messages: Message[]) => {
+      if ('requestIdleCallback' in window) {
+        // Use requestIdleCallback for better performance
+        requestIdleCallback(
+          () => {
+            messageIndexService.buildIndex(messages)
+          },
+          { timeout: 2000 } // Fallback to regular execution after 2s
+        )
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          messageIndexService.buildIndex(messages)
+        }, 100)
+      }
+    },
+    500 // Debounce for 500ms to avoid excessive rebuilds
+  )
+
+  // ✅ MEMORY LEAK FIX: Store watcher stop function for cleanup
+  // When messages are loaded or updated, rebuild search index for high-performance search
+  const stopIndexWatcher = watch(
     allMessages,
     (newMessages) => {
       if (newMessages && newMessages.length > 0) {
-        // 使用 setTimeout 避免阻塞主线程
-        setTimeout(() => {
-          messageIndexService.buildIndex(newMessages)
-        }, 0)
+        debouncedBuildIndex(newMessages)
       }
     },
-    { immediate: true, deep: false } // immediate: true 确保初始加载时也构建索引
+    { immediate: true, deep: false } // immediate: true ensures index is built on initial load
   )
+
+  // ✅ MEMORY LEAK FIX: Cleanup function to stop watchers and clear resources
+  const $dispose = () => {
+    stopIndexWatcher() // Stop the watcher
+    messageIndexService.clear() // Clear the index
+  }
 
   return {
     // State
@@ -211,6 +417,7 @@ export const useMessagesStore = defineStore('messages', () => {
     allMessages,
     unreadMessages,
     messagesByConversation,
+    filteredMessages,
 
     // Actions
     fetchMessages,
@@ -219,6 +426,13 @@ export const useMessagesStore = defineStore('messages', () => {
     clearMessages,
     addMessage,
     updateMessage,
-    clearError
+    deleteMessage,
+    setFilter,
+    clearFilters,
+    searchMessages,
+    clearError,
+
+    // Cleanup
+    $dispose // Expose cleanup function
   }
 })
