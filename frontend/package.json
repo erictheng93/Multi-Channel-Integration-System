@@ -38,6 +38,7 @@
     "@vueuse/core": "^13.9.0",
     "date-fns": "^4.1.0",
     "js-cookie": "^3.0.5",
+    "jwt-decode": "^4.0.0",
     "lodash-es": "^4.17.21",
     "lunr": "^2.3.9",
     "pinia": "^3.0.3",
