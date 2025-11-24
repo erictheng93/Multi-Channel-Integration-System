@@ -32,26 +32,55 @@ vi.mock('../websocketClient', () => {
     isConnected: { value: false },
     lastError: { value: null },
     queueSize: { value: 0 },
+    eventHandlers: null as any,
+
+    // ✅ 添加缺失的 setEventHandlers 方法
+    setEventHandlers: vi.fn((handlers) => {
+      mockClient.eventHandlers = handlers
+    }),
+
     connect: vi.fn(async () => {
       mockClient.isConnected.value = true
       mockClient.connectionState.value = 'connected'
-      if (mockClient.handlers.onConnectionChange) {
-        mockClient.handlers.onConnectionChange('connected')
+      // 觸發連接狀態變化
+      if (mockClient.eventHandlers?.onConnectionChange) {
+        mockClient.eventHandlers.onConnectionChange('connected')
       }
     }),
+
     disconnect: vi.fn(() => {
       mockClient.isConnected.value = false
       mockClient.connectionState.value = 'disconnected'
     }),
-    send: vi.fn(),
-    on: vi.fn((event, handler) => {
-      if (!mockClient.handlers[event]) {
-        mockClient.handlers[event] = []
-      }
-      mockClient.handlers[event].push(handler)
+
+    send: vi.fn((message) => {
+      return true
     }),
-    off: vi.fn(),
-    handlers: {} as Record<string, any[]>
+
+    destroy: vi.fn(),
+
+    // 模擬接收訊息的輔助方法
+    simulateMessage: (message: any) => {
+      if (mockClient.eventHandlers?.onMessage) {
+        mockClient.eventHandlers.onMessage(message)
+      }
+    },
+
+    // 模擬連接狀態變化
+    simulateConnectionChange: (state: string) => {
+      mockClient.connectionState.value = state
+      mockClient.isConnected.value = (state === 'connected')
+      if (mockClient.eventHandlers?.onConnectionChange) {
+        mockClient.eventHandlers.onConnectionChange(state)
+      }
+    },
+
+    // 模擬錯誤
+    simulateError: (error: Error) => {
+      if (mockClient.eventHandlers?.onError) {
+        mockClient.eventHandlers.onError(error)
+      }
+    }
   }
 
   return {
