@@ -32,6 +32,8 @@ vi.mock('@/api/message', () => ({
 vi.mock('@/services/messageIndexService', () => ({
   messageIndexService: {
     indexMessages: vi.fn(),
+    buildIndex: vi.fn(),
+    updateMessage: vi.fn(),
     search: vi.fn(),
     clear: vi.fn()
   }
