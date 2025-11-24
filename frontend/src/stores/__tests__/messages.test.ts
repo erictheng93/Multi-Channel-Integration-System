@@ -512,7 +512,7 @@ describe('Messages Store', () => {
   })
 
   describe('訊息排序', () => {
-    it('應該按時間排序所有訊息', () => {
+    it('應該按時間排序所有訊息', async () => {
       const store = useMessagesStore()
       store.messages = [
         {
@@ -547,14 +547,17 @@ describe('Messages Store', () => {
         }
       ]
 
-      const sorted = store.allMessages
-
-      expect(sorted[0].id).toBe('msg-1')
-      expect(sorted[1].id).toBe('msg-2')
-      expect(sorted[2].id).toBe('msg-3')
+      // ✅ Wait for watcher to update sortedMessages
+      await vi.waitFor(() => {
+        const sorted = store.allMessages
+        expect(sorted.length).toBe(3)
+        expect(sorted[0].id).toBe('msg-1')
+        expect(sorted[1].id).toBe('msg-2')
+        expect(sorted[2].id).toBe('msg-3')
+      })
     })
 
-    it('應該合併並排序樂觀訊息', () => {
+    it('應該合併並排序樂觀訊息', async () => {
       const store = useMessagesStore()
       store.messages = [
         {
@@ -582,11 +585,13 @@ describe('Messages Store', () => {
         }
       ]
 
-      const all = store.allMessages
-
-      expect(all).toHaveLength(2)
-      expect(all[0].id).toBe('msg-1')
-      expect(all[1].id).toBe('opt-1')
+      // ✅ Wait for watcher to merge and sort
+      await vi.waitFor(() => {
+        const all = store.allMessages
+        expect(all).toHaveLength(2)
+        expect(all[0].id).toBe('msg-1')
+        expect(all[1].id).toBe('opt-1')
+      })
     })
   })
 
