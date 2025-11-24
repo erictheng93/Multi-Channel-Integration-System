@@ -4,6 +4,8 @@ import type { Message, MessageFilters, Platform } from '@/types'
 import { messageApi } from '@/api/message'
 import { messageIndexService } from '@/services/messageIndexService'
 import { jwtDecode } from 'jwt-decode'
+import DOMPurify from 'dompurify'
+import { useDebounceFn } from '@vueuse/core'
 
 // ✅ SECURITY FIX: Properly validate JWT token with expiration check
 // Helper function to extract userId from JWT token
@@ -28,6 +30,40 @@ function getUserIdFromToken(): string | null {
   }
 }
 
+// ✅ INPUT VALIDATION: Validate and sanitize message content
+const MAX_MESSAGE_LENGTH = 10000
+
+interface ValidationResult {
+  valid: boolean
+  sanitized?: string
+  error?: string
+}
+
+function validateAndSanitizeContent(content: string): ValidationResult {
+  // Check empty
+  const trimmed = content.trim()
+  if (!trimmed) {
+    return { valid: false, error: '訊息內容不能為空' }
+  }
+
+  // Check length
+  if (trimmed.length > MAX_MESSAGE_LENGTH) {
+    return {
+      valid: false,
+      error: `訊息不能超過 ${MAX_MESSAGE_LENGTH} 字元 (目前: ${trimmed.length})`
+    }
+  }
+
+  // Sanitize HTML to prevent XSS (keep basic formatting)
+  const sanitized = DOMPurify.sanitize(trimmed, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'br'],
+    ALLOWED_ATTR: ['href'],
+    ALLOW_DATA_ATTR: false
+  })
+
+  return { valid: true, sanitized }
+}
+
 export const useMessagesStore = defineStore('messages', () => {
   // State
   const messages = ref<Message[]>([])
@@ -44,11 +80,23 @@ export const useMessagesStore = defineStore('messages', () => {
     messageType: undefined
   })
 
-  // Computed
-  const allMessages = computed(() => {
-    const allMsgs = [...messages.value, ...optimisticMessages.value]
-    return allMsgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  })
+  // ✅ PERFORMANCE FIX: Cache sorted messages instead of sorting on every access
+  const sortedMessages = ref<Message[]>([])
+
+  // Watch for changes and update sorted list
+  watch(
+    [messages, optimisticMessages],
+    () => {
+      const allMsgs = [...messages.value, ...optimisticMessages.value]
+      sortedMessages.value = allMsgs.sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+    },
+    { immediate: true, deep: false }
+  )
+
+  // Computed just returns the cached sorted array
+  const allMessages = computed(() => sortedMessages.value)
 
   const unreadMessages = computed(() =>
     messages.value.filter(m => !(m.metadata as Record<string, unknown>)?.isRead)
@@ -93,40 +141,49 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  // ✅ 支持兩種調用方式：對象參數或分開參數
-  const sendMessage = async (
-    param1: string | { conversationId: string; content: string; platform?: Platform },
-    param2?: string,
-    param3?: Platform
-  ) => {
-    // 解析參數
-    let conversationId: string
-    let content: string
-    let platform: Platform = 'line'
+  // ✅ REFACTOR + VALIDATION: Simplified API with input validation
+  interface SendMessageParams {
+    conversationId: string
+    content: string
+    platform?: Platform
+  }
 
-    if (typeof param1 === 'object') {
-      // 對象參數方式 (測試使用)
-      conversationId = param1.conversationId
-      content = param1.content
-      platform = param1.platform || 'line'
-    } else {
-      // 分開參數方式 (原有代碼使用)
-      conversationId = param1
-      content = param2 || ''
-      platform = param3 || 'line'
+  // Support both object and separate parameters with function overloads
+  async function sendMessage(params: SendMessageParams): Promise<Message | false>
+  async function sendMessage(conversationId: string, content: string, platform?: Platform): Promise<Message | false>
+  async function sendMessage(
+    paramsOrConversationId: SendMessageParams | string,
+    content?: string,
+    platform: Platform = 'line'
+  ): Promise<Message | false> {
+    // Normalize to object form
+    const params: SendMessageParams = typeof paramsOrConversationId === 'string'
+      ? { conversationId: paramsOrConversationId, content: content!, platform }
+      : paramsOrConversationId
+
+    if (!params.conversationId) {
+      handleError('conversationId is required', '會話 ID 不能為空')
+      return false
     }
 
-    if (!conversationId || !content?.trim()) {return false}
+    // ✅ INPUT VALIDATION: Validate and sanitize content
+    const validation = validateAndSanitizeContent(params.content)
+    if (!validation.valid) {
+      handleError(validation.error!, validation.error!)
+      return false
+    }
+
+    const sanitizedContent = validation.sanitized!
 
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
-      conversationId,
+      conversationId: params.conversationId,
       senderId: 'current-agent',
       senderType: 'agent',
-      content: content.trim(),
+      content: sanitizedContent,
       timestamp: new Date(),
       createdAt: new Date(),
-      platform,
+      platform: params.platform || 'line',
       messageType: 'text'
     }
 
@@ -139,9 +196,9 @@ export const useMessagesStore = defineStore('messages', () => {
       const senderId = getUserIdFromToken()
 
       const response = await messageApi.create?.({
-        conversationId,
-        content: content.trim(),
-        platform,
+        conversationId: params.conversationId,
+        content: sanitizedContent,
+        platform: params.platform || 'line',
         messageType: 'text',
         senderId: senderId || undefined
       })
@@ -306,17 +363,36 @@ export const useMessagesStore = defineStore('messages', () => {
     return messageIndexService.search(query)
   }
 
-  // ✅ MEMORY LEAK FIX: Store watcher stop function for cleanup
+  // ✅ PERFORMANCE FIX: Use requestIdleCallback + debounce instead of setTimeout
   // 🔍 Automatically build message index for search
+  // Debounced function to build index during browser idle time
+  const debouncedBuildIndex = useDebounceFn(
+    (messages: Message[]) => {
+      if ('requestIdleCallback' in window) {
+        // Use requestIdleCallback for better performance
+        requestIdleCallback(
+          () => {
+            messageIndexService.buildIndex(messages)
+          },
+          { timeout: 2000 } // Fallback to regular execution after 2s
+        )
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          messageIndexService.buildIndex(messages)
+        }, 100)
+      }
+    },
+    500 // Debounce for 500ms to avoid excessive rebuilds
+  )
+
+  // ✅ MEMORY LEAK FIX: Store watcher stop function for cleanup
   // When messages are loaded or updated, rebuild search index for high-performance search
   const stopIndexWatcher = watch(
     allMessages,
     (newMessages) => {
       if (newMessages && newMessages.length > 0) {
-        // Use setTimeout to avoid blocking the main thread
-        setTimeout(() => {
-          messageIndexService.buildIndex(newMessages)
-        }, 0)
+        debouncedBuildIndex(newMessages)
       }
     },
     { immediate: true, deep: false } // immediate: true ensures index is built on initial load
