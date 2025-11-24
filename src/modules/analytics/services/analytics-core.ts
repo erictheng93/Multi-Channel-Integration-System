@@ -51,7 +51,7 @@ import type { Period, ComparisonData as PeriodComparisonData } from '@modules/an
  * 整合原有的 SessionAnalyticsService, ActivityStatsService, EnterpriseAnalyticsEngine
  */
 export class AnalyticsService implements AnalyticsServiceInterface {
-  private db: DrizzleD1Database;
+  private db: DrizzleD1Database<any>;
   private kv?: Bindings['KV'];
   private env: any;
   private config: AnalyticsServiceConfig;

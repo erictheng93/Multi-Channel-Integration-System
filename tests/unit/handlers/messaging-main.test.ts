@@ -100,9 +100,11 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
     vi.clearAllMocks();
 
     // Use MockFactory to create standardized environment with all required bindings
+    const r2Mock = MockFactory.createR2();
     mockEnv = MockFactory.createEnv({
       DB: MockFactory.createDatabase([]), // Use Drizzle ORM mock (not raw D1)
-      FILE_STORAGE: MockFactory.createR2(),
+      FILE_STORAGE: r2Mock,
+      R2_BUCKET: r2Mock, // Add R2_BUCKET for handler compatibility
       JWT_SECRET: 'test-secret'
     });
 
@@ -231,12 +233,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
         const response = await app.request('/api/messages/bulk-create', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(validBulkRequest)
         });
 
@@ -361,11 +361,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
         const response = await app.request('/api/messages/bulk-delete', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(validBulkDeleteRequest)
         });
 
@@ -583,10 +582,9 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
         const response = await app.request('/api/messages/msg_1/attachments', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
+          headers: {
+            'Authorization': 'Bearer test-token'
+          },
           body: formData
         });
 
@@ -694,11 +692,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
         const response = await app.request('/api/messages/msg_1/forward', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(validForwardRequest)
         });
 
@@ -759,8 +756,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
         const response = await app.request('/api/messages/msg_original/forward', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(validForwardRequest)
         });
 
@@ -816,11 +815,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
         const response = await app.request('/api/messages/msg_1/tags', {
           method: 'PUT',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': 'Bearer test-token',
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(validTagRequest)
         });
 
@@ -1113,9 +1111,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       const createResponse = await app.request('/api/messages/bulk-create', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': 'Bearer test-token',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           messages: [{
             conversationId: 'conv_1',
@@ -1143,8 +1142,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       const forwardResponse = await app.request('/api/messages/msg_1/forward', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': 'Bearer test-token',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           targetConversationIds: ['conv_2']
         })
@@ -1161,8 +1162,10 @@ describe('Messaging Module - Unit Tests (MockFactory Refactored)', () => {
 
       const tagResponse = await app.request('/api/messages/msg_1/tags', {
         method: 'PUT',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': 'Bearer test-token',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           tags: ['workflow-test']
         })
@@ -1240,9 +1243,10 @@ describe('Messaging Module - Error Handling', () => {
   test('should handle invalid JSON gracefully', async () => {
     const response = await app.request('/api/messages/bulk-create', {
       method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': 'Bearer test-token',
+        'Content-Type': 'application/json'
+      },
       body: 'invalid json{'
     });
 

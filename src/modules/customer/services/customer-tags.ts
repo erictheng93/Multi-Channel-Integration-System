@@ -2,6 +2,7 @@
 // 提供客戶標籤管理功能
 
 import { eq, and, inArray, desc, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
 import { createDbClient } from '../../../db/drizzle-factory';
 import {
   customers,

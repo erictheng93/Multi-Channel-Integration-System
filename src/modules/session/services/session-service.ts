@@ -3,6 +3,7 @@
 
 import { createDbClient } from '../../../db/drizzle-factory';
 import { eq, and, desc, asc, sql, count, avg, like } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { conversationSessions, messages, conversations, agents } from '@/db/schema';
 import {
