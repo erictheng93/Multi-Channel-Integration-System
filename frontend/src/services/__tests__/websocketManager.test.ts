@@ -12,6 +12,8 @@
  * 6. 統計數據
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { WebSocketManager } from '../websocketManager'
 import type { WebSocketMessage } from '../websocketClient'
@@ -375,7 +377,7 @@ describe('WebSocketManager', () => {
 
       // 開始打字
       // ✅ 更新訊息類型和結構
-      let typingStartMessage: WebSocketMessage = {
+      const typingStartMessage: WebSocketMessage = {
         type: 'typing_start',
         conversationId,
         data: { userId }
@@ -569,7 +571,7 @@ describe('WebSocketManager', () => {
       const originalCallback = (manager as any).eventCallbacks?.onConversationMessage
       manager.setEventCallbacks({
         onConversationMessage: (convId, message) => {
-          if (originalCallback) originalCallback(convId, message)
+          if (originalCallback) {originalCallback(convId, message)}
           call2 = true
         }
       })
@@ -586,7 +588,7 @@ describe('WebSocketManager', () => {
     })
 
     it('應該觸發連接狀態變化回調', () => {
-      let stateChanges: string[] = []
+      const stateChanges: string[] = []
 
       // ✅ 更新 API
       manager.setEventCallbacks({

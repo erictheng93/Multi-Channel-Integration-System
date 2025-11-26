@@ -149,10 +149,11 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   // Support both object and separate parameters with function overloads
-  // eslint-disable-next-line no-redeclare, no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   async function sendMessage(params: SendMessageParams): Promise<Message | false>
   // eslint-disable-next-line no-redeclare, no-unused-vars
   async function sendMessage(conversationId: string, content: string, platform?: Platform): Promise<Message | false>
+  // eslint-disable-next-line no-redeclare
   async function sendMessage(
     paramsOrConversationId: SendMessageParams | string,
     content?: string,

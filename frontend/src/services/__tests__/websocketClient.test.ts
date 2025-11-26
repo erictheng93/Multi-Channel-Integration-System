@@ -12,9 +12,12 @@
  * 6. 訊息隊列
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type {
+  WebSocketClient} from '../websocketClient';
 import {
-  WebSocketClient,
   createWebSocketClient,
   getGlobalWebSocketClient,
   destroyGlobalWebSocketClient,
@@ -30,6 +33,24 @@ vi.mock('@/stores/auth', () => ({
   }))
 }))
 
+// Mock CloseEvent for test environment
+class MockCloseEvent extends Event {
+  public code: number
+  public reason: string
+  public wasClean: boolean
+
+  constructor(type: string, init?: { code?: number; reason?: string; wasClean?: boolean }) {
+    super(type)
+    this.code = init?.code ?? 1000
+    this.reason = init?.reason ?? ''
+    this.wasClean = init?.wasClean ?? true
+  }
+}
+
+// Assign to global for use in tests
+// eslint-disable-next-line no-undef
+global.CloseEvent = MockCloseEvent as unknown as typeof CloseEvent
+
 // Mock WebSocket - Synchronous version for reliable testing
 class MockWebSocket {
   // ✅ WebSocket state constants (CRITICAL for tests to work)
@@ -41,10 +62,10 @@ class MockWebSocket {
   public readyState: number = MockWebSocket.CONNECTING
   public url: string
   public protocol: string
-  private _onopen: ((event: Event) => void) | null = null
-  private _onclose: ((event: CloseEvent) => void) | null = null
-  private _onmessage: ((event: MessageEvent) => void) | null = null
-  private _onerror: ((event: Event) => void) | null = null
+  private _onopen: ((_event: Event) => void) | null = null
+  private _onclose: ((_event: Event) => void) | null = null
+  private _onmessage: ((_event: MessageEvent) => void) | null = null
+  private _onerror: ((_event: Event) => void) | null = null
 
   constructor(url: string, protocols?: string | string[]) {
     this.url = url
@@ -61,22 +82,22 @@ class MockWebSocket {
 
   // Getters/Setters to track event handlers
   get onopen() { return this._onopen }
-  set onopen(handler: ((event: Event) => void) | null) {
+  set onopen(handler: ((_event: Event) => void) | null) {
     this._onopen = handler
   }
 
   get onclose() { return this._onclose }
-  set onclose(handler: ((event: CloseEvent) => void) | null) {
+  set onclose(handler: ((_event: Event) => void) | null) {
     this._onclose = handler
   }
 
   get onmessage() { return this._onmessage }
-  set onmessage(handler: ((event: MessageEvent) => void) | null) {
+  set onmessage(handler: ((_event: MessageEvent) => void) | null) {
     this._onmessage = handler
   }
 
   get onerror() { return this._onerror }
-  set onerror(handler: ((event: Event) => void) | null) {
+  set onerror(handler: ((_event: Event) => void) | null) {
     this._onerror = handler
   }
 
@@ -92,7 +113,7 @@ class MockWebSocket {
     setTimeout(() => {
       this.readyState = MockWebSocket.CLOSED
       if (this._onclose) {
-        this._onclose(new CloseEvent('close', { code, reason }))
+        this._onclose(new MockCloseEvent('close', { code, reason }))
       }
     }, 0)
   }
@@ -122,7 +143,7 @@ class MockWebSocket {
   simulateClose(code = 1000, reason = 'Normal closure'): void {
     this.readyState = MockWebSocket.CLOSED
     if (this._onclose) {
-      this._onclose(new CloseEvent('close', { code, reason }))
+      this._onclose(new MockCloseEvent('close', { code, reason }))
     }
   }
 }
@@ -152,7 +173,7 @@ beforeEach(async () => {
   createdClients.forEach(client => {
     try {
       client.disconnect()
-    } catch (e) {
+    } catch {
       // Ignore errors
     }
   })
@@ -177,7 +198,7 @@ afterEach(async () => {
   createdClients.forEach(client => {
     try {
       client.disconnect()
-    } catch (e) {
+    } catch {
       // Ignore errors during cleanup
     }
   })
@@ -186,7 +207,7 @@ afterEach(async () => {
   // Flush all pending timers before cleanup
   try {
     await vi.runAllTimersAsync()
-  } catch (e) {
+  } catch {
     // Ignore timer errors during cleanup
   }
 
