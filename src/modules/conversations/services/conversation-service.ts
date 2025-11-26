@@ -1,7 +1,8 @@
 // Conversation Service
 // 對話服務層
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
+import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
 import { conversations, messages, customers, agents, conversationTransfers } from '@/db/schema';

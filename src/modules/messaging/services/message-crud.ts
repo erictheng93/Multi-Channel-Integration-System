@@ -1,8 +1,9 @@
 // Message CRUD Service
 // 基礎訊息增刪改查服務
 
+import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, count, like, sql, or } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   messages,
   conversations,

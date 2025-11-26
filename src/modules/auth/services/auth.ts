@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { agents, teams } from '@/db/schema';
 import { convertAgent } from '@/utils/drizzle-converters';
 import type { JWTPayload } from '@/types';

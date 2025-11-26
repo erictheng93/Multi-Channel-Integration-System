@@ -484,8 +484,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
    * Find existing file by hash
    */
   private async findFileByHash(hash: string): Promise<{ url: string; r2Key: string } | null> {
-    const db = createDbClient(this.env.DB);
-    const result = await db.$client
+    const result = await this.env.DB
       .prepare('SELECT r2_key, url FROM file_attachments WHERE file_hash = ? LIMIT 1')
       .bind(hash)
       .first<{ r2_key: string; url: string }>();
@@ -509,8 +508,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
     mimeType: string;
     conversationId: string;
   }): Promise<void> {
-    const db = createDbClient(this.env.DB);
-    await db.$client
+    await this.env.DB
       .prepare(
         `INSERT INTO file_attachments (
           id, r2_key, filename, mime_type, file_size, url, file_hash,

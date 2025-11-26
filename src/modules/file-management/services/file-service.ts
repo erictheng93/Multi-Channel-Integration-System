@@ -17,7 +17,7 @@ import type {
 } from '../types/file-types';
 import type { StorageService } from '@modules/file-management/types/storage-types';
 import type { Bindings } from '@/types';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, desc, sql, inArray, like, gte, lte } from 'drizzle-orm';
 import { fileAttachments } from '@shared/database/schema';
 
@@ -34,7 +34,7 @@ import {
 import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 
 export class FileService {
-  private readonly db: ReturnType<typeof drizzle>;
+  private readonly db: Database;
   private readonly validationService: FileValidationService;
   private readonly metadataService: MetadataService;
   private readonly storageService: StorageService;

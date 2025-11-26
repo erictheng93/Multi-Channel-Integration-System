@@ -1,7 +1,7 @@
 // Delayed Message Module - Storage Service
 // 延遲訊息模組 - 資料存取服務
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, count, sql } from 'drizzle-orm';
 import { delayedMessages, messageRecallLogs, conversations, customers, messages } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -24,7 +24,7 @@ import { StorageError } from '@modules/delayed-message/types';
  * - 處理儲存相關錯誤
  */
 export class StorageService implements DelayedMessageStorage {
-  private db: ReturnType<typeof drizzle>;
+  private db: Database;
   private kv: KVNamespace;
 
   constructor(env: Bindings) {

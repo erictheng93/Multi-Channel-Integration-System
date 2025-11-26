@@ -48,7 +48,7 @@ class MockWebSocket {
 
   constructor(url: string, protocols?: string | string[]) {
     this.url = url
-    this.protocol = Array.isArray(protocols) ? protocols[0] : protocols || ''
+    this.protocol = (Array.isArray(protocols) ? protocols[0] : protocols) || ''
 
     // ✅ SYNCHRONOUS connection for test reliability
     // Use setTimeout with 0 delay to defer to next tick
@@ -80,7 +80,7 @@ class MockWebSocket {
     this._onerror = handler
   }
 
-  send(data: string | ArrayBuffer | Blob): void {
+  send(_data: string | ArrayBuffer | Blob): void {
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error('WebSocket is not open')
     }
@@ -305,7 +305,8 @@ describe('WebSocketClient', () => {
       client.send(message)
 
       expect(sendSpy).toHaveBeenCalled()
-      const sentData = JSON.parse(sendSpy.mock.calls[0][0] as string)
+      const callArgs = sendSpy.mock.calls[0]
+      const sentData = callArgs ? JSON.parse(callArgs[0] as string) : {}
       expect(sentData.type).toBe('test')
       expect(sentData.data).toEqual({ hello: 'world' })
     })

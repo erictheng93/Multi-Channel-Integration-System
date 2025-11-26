@@ -1,7 +1,7 @@
 import { Context, Next } from 'hono';
 import type { Bindings, DbUser, JWTPayload } from '@/types';
 import { verifyJWT, getUserById, getSession } from '@modules/auth/services/auth';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 

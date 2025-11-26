@@ -1,8 +1,9 @@
 // Customer 統計服務
 // 提供客戶數據統計和分析功能
 
+import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, sql, count, gte } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,

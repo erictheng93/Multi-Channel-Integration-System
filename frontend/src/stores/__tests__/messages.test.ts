@@ -21,9 +21,9 @@ import type { Message, Platform } from '@/types'
 vi.mock('@/api/message', () => ({
   messageApi: {
     list: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
+    send: vi.fn(),
+    edit: vi.fn(),
+    recallMessage: vi.fn(),
     markAsRead: vi.fn()
   }
 }))
@@ -31,11 +31,10 @@ vi.mock('@/api/message', () => ({
 // Mock message index service - must be defined inline
 vi.mock('@/services/messageIndexService', () => ({
   messageIndexService: {
-    indexMessages: vi.fn(),
     buildIndex: vi.fn(),
     updateMessage: vi.fn(),
     search: vi.fn(),
-    clear: vi.fn()
+    clearIndex: vi.fn()
   }
 }))
 
@@ -107,9 +106,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        },
+        } as any,
         {
           id: 'msg-2',
           conversationId: 'conv-1',
@@ -117,9 +116,9 @@ describe('Messages Store', () => {
           senderId: 'user-2',
           senderType: 'agent',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       mockMessageApi.list.mockResolvedValueOnce({
@@ -188,9 +187,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       mockMessageApi.list.mockResolvedValueOnce({
@@ -226,11 +225,11 @@ describe('Messages Store', () => {
         ...newMessage,
         senderId: 'user-1',
         senderType: 'agent',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().getTime(),
         metadata: {}
-      }
+      } as any
 
-      mockMessageApi.create.mockResolvedValueOnce({
+      mockMessageApi.send.mockResolvedValueOnce({
         success: true,
         data: createdMessage
       })
@@ -250,10 +249,10 @@ describe('Messages Store', () => {
         platform: 'line' as Platform
       }
 
-      mockMessageApi.create.mockImplementation(
+      mockMessageApi.send.mockImplementation(
         () => new Promise(resolve => setTimeout(() => resolve({
           success: true,
-          data: { id: 'msg-new', ...newMessage, senderId: 'user-1', senderType: 'agent', createdAt: new Date().toISOString(), metadata: {} }
+          data: { id: 'msg-new', ...newMessage, senderId: 'user-1', senderType: 'agent', createdAt: new Date().getTime(), metadata: {} }
         }), 1000))
       )
 
@@ -280,7 +279,7 @@ describe('Messages Store', () => {
         platform: 'line' as Platform
       }
 
-      mockMessageApi.create.mockResolvedValueOnce({
+      mockMessageApi.send.mockResolvedValueOnce({
         success: false,
         error: '發送失敗'
       })
@@ -303,7 +302,7 @@ describe('Messages Store', () => {
         platform: 'line' as Platform
       }
 
-      mockMessageApi.create.mockImplementation(
+      mockMessageApi.send.mockImplementation(
         () => new Promise(resolve => setTimeout(() => resolve({ success: true, data: {} }), 100))
       )
 
@@ -331,9 +330,9 @@ describe('Messages Store', () => {
           senderType: 'customer',
           platform: 'line' as Platform,
           messageType: 'text',
-          createdAt: '2024-01-01T00:00:00Z',
+          createdAt: new Date('2024-01-01T00:00:00Z').getTime(),
           metadata: {}
-        },
+        } as any,
         {
           id: 'msg-2',
           conversationId: 'conv-1',
@@ -342,9 +341,9 @@ describe('Messages Store', () => {
           senderType: 'agent',
           platform: 'line' as Platform,
           messageType: 'text',
-          createdAt: '2024-01-01T01:00:00Z',
+          createdAt: new Date('2024-01-01T01:00:00Z').getTime(),
           metadata: {}
-        },
+        } as any,
         {
           id: 'msg-3',
           conversationId: 'conv-2',
@@ -353,9 +352,9 @@ describe('Messages Store', () => {
           senderType: 'customer',
           platform: 'facebook' as Platform,
           messageType: 'image',
-          createdAt: '2024-01-01T02:00:00Z',
+          createdAt: new Date('2024-01-01T02:00:00Z').getTime(),
           metadata: {}
-        }
+        } as any
       ]
     })
 
@@ -402,7 +401,7 @@ describe('Messages Store', () => {
       const filtered = store.filteredMessages
 
       expect(filtered).toHaveLength(1)
-      expect(filtered[0].id).toBe('msg-1')
+      expect(filtered[0]?.id).toBe('msg-1')
     })
 
     it('應該能夠清除過濾器', () => {
@@ -430,9 +429,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: { isRead: false }
-        },
+        } as any,
         {
           id: 'msg-2',
           conversationId: 'conv-1',
@@ -440,9 +439,9 @@ describe('Messages Store', () => {
           senderId: 'user-2',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: { isRead: true }
-        },
+        } as any,
         {
           id: 'msg-3',
           conversationId: 'conv-1',
@@ -450,9 +449,9 @@ describe('Messages Store', () => {
           senderId: 'user-3',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: { isRead: false }
-        }
+        } as any
       ]
 
       expect(store.unreadMessages).toHaveLength(2)
@@ -472,9 +471,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: { isRead: false }
-        }
+        } as any
       ]
 
       await store.markAsRead('msg-1')
@@ -498,9 +497,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: { isRead: false }
-        }
+        } as any
       ]
 
       await store.markAsRead('msg-1')
@@ -522,9 +521,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: '2024-01-01T12:00:00Z',
+          createdAt: new Date('2024-01-01T12:00:00Z').getTime(),
           metadata: {}
-        },
+        } as any,
         {
           id: 'msg-1',
           conversationId: 'conv-1',
@@ -532,9 +531,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: '2024-01-01T10:00:00Z',
+          createdAt: new Date('2024-01-01T10:00:00Z').getTime(),
           metadata: {}
-        },
+        } as any,
         {
           id: 'msg-2',
           conversationId: 'conv-1',
@@ -542,18 +541,18 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: '2024-01-01T11:00:00Z',
+          createdAt: new Date('2024-01-01T11:00:00Z').getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       // ✅ Wait for watcher to update sortedMessages
       await vi.waitFor(() => {
         const sorted = store.allMessages
         expect(sorted.length).toBe(3)
-        expect(sorted[0].id).toBe('msg-1')
-        expect(sorted[1].id).toBe('msg-2')
-        expect(sorted[2].id).toBe('msg-3')
+        expect(sorted[0]?.id).toBe('msg-1')
+        expect(sorted[1]?.id).toBe('msg-2')
+        expect(sorted[2]?.id).toBe('msg-3')
       })
     })
 
@@ -567,9 +566,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: '2024-01-01T10:00:00Z',
+          createdAt: new Date('2024-01-01T10:00:00Z').getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       store.optimisticMessages = [
@@ -580,17 +579,17 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: '2024-01-01T11:00:00Z',
+          createdAt: new Date('2024-01-01T11:00:00Z').getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       // ✅ Wait for watcher to merge and sort
       await vi.waitFor(() => {
         const all = store.allMessages
         expect(all).toHaveLength(2)
-        expect(all[0].id).toBe('msg-1')
-        expect(all[1].id).toBe('opt-1')
+        expect(all[0]?.id).toBe('msg-1')
+        expect(all[1]?.id).toBe('opt-1')
       })
     })
   })
@@ -627,7 +626,7 @@ describe('Messages Store', () => {
     it('應該成功更新訊息', async () => {
       const updatedContent = 'Updated content'
 
-      mockMessageApi.update.mockResolvedValueOnce({
+      mockMessageApi.edit.mockResolvedValueOnce({
         success: true,
         data: {
           id: 'msg-1',
@@ -644,9 +643,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       await store.updateMessage('msg-1', { content: updatedContent })
@@ -656,7 +655,7 @@ describe('Messages Store', () => {
     })
 
     it('應該成功刪除訊息', async () => {
-      mockMessageApi.delete.mockResolvedValueOnce({
+      mockMessageApi.recallMessage.mockResolvedValueOnce({
         success: true
       })
 
@@ -669,9 +668,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        },
+        } as any,
         {
           id: 'msg-2',
           conversationId: 'conv-1',
@@ -679,9 +678,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       await store.deleteMessage('msg-1')
@@ -702,9 +701,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       mockMessageApi.list.mockResolvedValueOnce({
@@ -715,7 +714,7 @@ describe('Messages Store', () => {
       const store = useMessagesStore()
       await store.fetchMessages('conv-1')
 
-      expect(mockMessageIndexService.indexMessages).toHaveBeenCalledWith(mockMessages)
+      expect(mockMessageIndexService.buildIndex).toHaveBeenCalledWith(mockMessages)
     })
 
     it('應該支持訊息搜索', async () => {
@@ -727,9 +726,9 @@ describe('Messages Store', () => {
           senderId: 'user-1',
           senderType: 'customer',
           platform: 'line' as Platform,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().getTime(),
           metadata: {}
-        }
+        } as any
       ]
 
       mockMessageIndexService.search.mockReturnValue(searchResults)

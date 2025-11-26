@@ -53,7 +53,7 @@ vi.mock('../websocketClient', () => {
       mockClient.connectionState.value = 'disconnected'
     }),
 
-    send: vi.fn((message) => {
+    send: vi.fn((_message) => {
       return true
     }),
 
@@ -142,7 +142,7 @@ describe('WebSocketManager', () => {
 
     it('應該在斷開時停止運行時間計算', async () => {
       await manager.connect()
-      const uptime = manager.connectionUptime.value
+      // const uptime = manager.connectionUptime.value
 
       manager.disconnect()
 
@@ -268,7 +268,7 @@ describe('WebSocketManager', () => {
       mockClient.simulateMessage(testMessage)
 
       expect(receivedMessage).toBeTruthy()
-      expect(receivedMessage?.content).toBe('Hello!')
+      expect((receivedMessage as unknown as Message)?.content).toBe('Hello!')
       expect(manager.totalMessagesReceived.value).toBe(1)
     })
 
@@ -300,7 +300,7 @@ describe('WebSocketManager', () => {
       mockClient.simulateMessage(testUpdate)
 
       expect(receivedConversation).toBeTruthy()
-      expect(receivedConversation?.status).toBe('active')
+      expect((receivedConversation as unknown as Conversation)?.status).toBe('active')
     })
 
     it('應該過濾非訂閱會話的訊息', () => {
@@ -418,7 +418,7 @@ describe('WebSocketManager', () => {
 
       expect(manager.typingUsers.value[conversationId]).toContain(user1)
       expect(manager.typingUsers.value[conversationId]).toContain(user2)
-      expect(manager.typingUsers.value[conversationId].length).toBe(2)
+      expect(manager.typingUsers.value[conversationId]?.length).toBe(2)
     })
 
     it('應該返回指定會話的打字用戶列表', () => {
@@ -566,7 +566,7 @@ describe('WebSocketManager', () => {
       })
 
       // 第二次調用會合併回調
-      const originalCallback = manager.eventCallbacks?.onConversationMessage
+      const originalCallback = (manager as any).eventCallbacks?.onConversationMessage
       manager.setEventCallbacks({
         onConversationMessage: (convId, message) => {
           if (originalCallback) originalCallback(convId, message)

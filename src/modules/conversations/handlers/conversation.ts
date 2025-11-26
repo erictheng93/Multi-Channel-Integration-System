@@ -2,7 +2,7 @@
 // 對話處理器
 
 import { Context } from 'hono';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { conversations, messages, customers } from '@/db/schema';
 import type { Bindings } from '@/types';

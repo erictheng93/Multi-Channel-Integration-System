@@ -1,9 +1,8 @@
 // Analytics Core Service - 統一分析服務核心實現
 // 整合來自 session、activities、enterprise 模組的分析功能
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import type { ServiceResponse } from '@/types/services';
 
@@ -51,7 +50,7 @@ import type { Period, ComparisonData as PeriodComparisonData } from '@modules/an
  * 整合原有的 SessionAnalyticsService, ActivityStatsService, EnterpriseAnalyticsEngine
  */
 export class AnalyticsService implements AnalyticsServiceInterface {
-  private db: DrizzleD1Database;
+  private db: Database;
   private kv?: Bindings['KV'];
   private env: any;
   private config: AnalyticsServiceConfig;

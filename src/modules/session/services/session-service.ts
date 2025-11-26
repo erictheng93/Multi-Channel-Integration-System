@@ -1,7 +1,8 @@
 // Session Service Implementation
 // 對話會話管理服務的完整實現
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
+import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, like } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { conversationSessions, messages, conversations, agents } from '@/db/schema';
