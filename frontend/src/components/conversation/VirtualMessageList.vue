@@ -217,6 +217,8 @@ const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrol
 const scrollPositionBeforePrepend = ref<{
   scrollTop: number
   scrollHeight: number
+  clientHeight: number
+  wasAtBottom: boolean // 🔧 FIX: 記錄用戶在前插前是否在底部
   firstVisibleMessageId: string | null
 } | null>(null)
 const pendingScrollPreservation = ref(false) // 標記是否需要在下一次 DOM 更新後保持滾動位置
@@ -638,13 +640,21 @@ watch(() => props.isHistoryPrepending, (isPrepending, wasPrepending) => {
   if (isPrepending && !wasPrepending && scrollContainer.value) {
     // 歷史前插開始 - 保存當前滾動位置
     const container = scrollContainer.value
+    const { scrollTop, scrollHeight, clientHeight } = container
+
+    // 🔧 FIX: 檢查用戶是否 "接近底部"（容差 200px，因為文件附件可能導致高度變化）
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    const wasAtBottom = distanceFromBottom < 200
+
     scrollPositionBeforePrepend.value = {
-      scrollTop: container.scrollTop,
-      scrollHeight: container.scrollHeight,
-      firstVisibleMessageId: null // Could be enhanced to track specific message
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+      wasAtBottom, // 🔧 FIX: 記錄用戶是否在底部
+      firstVisibleMessageId: null
     }
     pendingScrollPreservation.value = true
-    console.log(`📌 [ScrollPreservation] Captured position before prepend: scrollTop=${container.scrollTop}, scrollHeight=${container.scrollHeight}`)
+    console.log(`📌 [ScrollPreservation] Captured position before prepend: scrollTop=${scrollTop}, scrollHeight=${scrollHeight}, distanceFromBottom=${distanceFromBottom}, wasAtBottom=${wasAtBottom}`)
   }
 })
 
@@ -659,8 +669,11 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
     const isHistoryPrepend = pendingScrollPreservation.value && scrollPositionBeforePrepend.value
 
     if (isHistoryPrepend) {
-      // 🔧 FIX: 歷史前插 - 保持滾動位置而不是滾動到底部
-      console.log(`📌 [ScrollPreservation] History prepend detected, preserving scroll position...`)
+      // 🔧 FIX: 歷史前插 - 根據用戶之前的位置決定滾動行為
+      const savedPosition = scrollPositionBeforePrepend.value
+      const wasAtBottomBeforePrepend = savedPosition?.wasAtBottom ?? false
+
+      console.log(`📌 [ScrollPreservation] History prepend detected, wasAtBottom: ${wasAtBottomBeforePrepend}`)
 
       // Set programmatic scrolling guard
       isProgrammaticScrolling.value = true
@@ -668,33 +681,50 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
       await nextTick()
       await new Promise(resolve => window.requestAnimationFrame(resolve))
 
-      if (scrollContainer.value && scrollPositionBeforePrepend.value) {
+      if (scrollContainer.value && savedPosition) {
         const container = scrollContainer.value
-        const savedPosition = scrollPositionBeforePrepend.value
 
-        // Calculate the height difference (new content added at top)
-        const newScrollHeight = container.scrollHeight
-        const heightDifference = newScrollHeight - savedPosition.scrollHeight
+        if (wasAtBottomBeforePrepend) {
+          // 🔧 FIX: 用戶之前在底部 - 前插後滾動到底部
+          console.log(`📌 [ScrollPreservation] User was at bottom, scrolling to bottom after prepend...`)
 
-        // Adjust scrollTop to maintain visual position
-        const newScrollTop = savedPosition.scrollTop + heightDifference
-        container.scrollTop = newScrollTop
+          // Clear the saved position first
+          scrollPositionBeforePrepend.value = null
+          pendingScrollPreservation.value = false
 
-        console.log(`📌 [ScrollPreservation] Adjusted scroll position:`)
-        console.log(`   - Old scrollHeight: ${savedPosition.scrollHeight}, New scrollHeight: ${newScrollHeight}`)
-        console.log(`   - Height difference: ${heightDifference}`)
-        console.log(`   - Old scrollTop: ${savedPosition.scrollTop}, New scrollTop: ${newScrollTop}`)
+          // Clear guard temporarily to allow scrollToBottom to work
+          isProgrammaticScrolling.value = false
 
-        // Clear the saved position
-        scrollPositionBeforePrepend.value = null
-        pendingScrollPreservation.value = false
+          // Scroll to bottom
+          await scrollToBottom()
+
+          console.log(`📌 [ScrollPreservation] Scrolled to bottom after history prepend`)
+          return // Don't proceed with normal scroll behavior
+        } else {
+          // 🔧 用戶在中間位置 - 保持相對滾動位置
+          const newScrollHeight = container.scrollHeight
+          const heightDifference = newScrollHeight - savedPosition.scrollHeight
+
+          // Adjust scrollTop to maintain visual position
+          const newScrollTop = savedPosition.scrollTop + heightDifference
+          container.scrollTop = newScrollTop
+
+          console.log(`📌 [ScrollPreservation] Adjusted scroll position (user was NOT at bottom):`)
+          console.log(`   - Old scrollHeight: ${savedPosition.scrollHeight}, New scrollHeight: ${newScrollHeight}`)
+          console.log(`   - Height difference: ${heightDifference}`)
+          console.log(`   - Old scrollTop: ${savedPosition.scrollTop}, New scrollTop: ${newScrollTop}`)
+
+          // Clear the saved position
+          scrollPositionBeforePrepend.value = null
+          pendingScrollPreservation.value = false
+
+          // Clear guard after a short delay
+          setTimeout(() => {
+            isProgrammaticScrolling.value = false
+            console.log(`📌 [ScrollPreservation] Guard cleared`)
+          }, 100)
+        }
       }
-
-      // Clear guard after a short delay
-      setTimeout(() => {
-        isProgrammaticScrolling.value = false
-        console.log(`📌 [ScrollPreservation] Guard cleared`)
-      }, 100)
 
       return // Don't proceed with normal scroll behavior
     }
