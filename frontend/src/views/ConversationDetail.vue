@@ -132,6 +132,8 @@
           :animation-classes="animationClasses"
           :enable-animations="true"
           :websocket-enabled="isWebSocketEnabled"
+          :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
+          :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
           @message-copy="handleMessageCopy"
           @message-reply="handleMessageReply"
           @message-forward="handleMessageForward"

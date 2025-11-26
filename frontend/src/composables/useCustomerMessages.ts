@@ -27,6 +27,8 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   const loadingHistory = ref(false)
   const isLoadingInitial = ref(false) // 🚀 初始加載狀態
   const initialLoadComplete = ref(false) // 🚀 初始加載是否完成
+  const isHistoryPrepending = ref(false) // 🔧 FIX: 標記歷史消息正在前插（用於滾動位置保持）
+  const historyPrependCount = ref(0) // 🔧 FIX: 前插的歷史消息數量
 
   // API Base URL - 永遠使用遠端後端
   const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
@@ -148,6 +150,11 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
 
+        // 🔧 FIX: 標記歷史前插開始，讓 VirtualMessageList 可以保持滾動位置
+        isHistoryPrepending.value = true
+        historyPrependCount.value = olderMessages.length
+        console.log(`📌 [Progressive] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
+
         messages.value = [...olderMessages, ...messages.value]
         hasMore.value = data.hasMore || false
 
@@ -157,6 +164,13 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         conversationCache.set(conversationId, {
           messageCount: messages.value.length
         })
+
+        // 🔧 FIX: 在下一個 tick 重置標記（讓 VirtualMessageList 有時間處理）
+        setTimeout(() => {
+          isHistoryPrepending.value = false
+          historyPrependCount.value = 0
+          console.log(`📌 [Progressive] Reset isHistoryPrepending=false`)
+        }, 100)
       }
     } catch (error) {
       console.error('❌ [Progressive] Error loading history:', error)
@@ -244,10 +258,21 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
 
+        // 🔧 FIX: 標記歷史前插開始
+        isHistoryPrepending.value = true
+        historyPrependCount.value = olderMessages.length
+        console.log(`📌 [loadMoreMessages] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
+
         messages.value = [...olderMessages, ...messages.value]
         hasMore.value = data.hasMore || false
 
         console.log(`✅ [useCustomerMessages] Loaded ${olderMessages.length} more messages`)
+
+        // 🔧 FIX: 重置標記
+        setTimeout(() => {
+          isHistoryPrepending.value = false
+          historyPrependCount.value = 0
+        }, 100)
       }
     } catch (error) {
       console.error('❌ [useCustomerMessages] Error loading more messages:', error)
@@ -360,6 +385,8 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     isLoadingInitial: computed(() => isLoadingInitial.value), // 🚀 初始加載狀態
     initialLoadComplete: computed(() => initialLoadComplete.value), // 🚀 初始加載完成
     loadingHistory: computed(() => loadingHistory.value), // 🚀 歷史加載狀態
+    isHistoryPrepending: computed(() => isHistoryPrepending.value), // 🔧 FIX: 歷史消息正在前插
+    historyPrependCount: computed(() => historyPrependCount.value), // 🔧 FIX: 前插的消息數量
 
     // 方法
     fetchMessages,

@@ -163,6 +163,8 @@ interface Props {
   scrollBehavior?: 'auto' | 'smooth'
   animationClasses?: Record<string, string>
   websocketEnabled?: boolean  // WebSocket connection status
+  isHistoryPrepending?: boolean  // 🔧 FIX: 歷史消息正在前插
+  historyPrependCount?: number   // 🔧 FIX: 前插的消息數量
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -179,7 +181,9 @@ const props = withDefaults(defineProps<Props>(), {
   enableAnimations: true,
   scrollBehavior: 'smooth',
   animationClasses: () => ({}),
-  websocketEnabled: false
+  websocketEnabled: false,
+  isHistoryPrepending: false,  // 🔧 FIX: 默認不是歷史前插
+  historyPrependCount: 0       // 🔧 FIX: 默認前插數量為 0
 })
 
 const emit = defineEmits<{
@@ -208,6 +212,14 @@ const lastScrollDebugTime = ref(0)
 const LOAD_MORE_THROTTLE_MS = 1000 // Prevent too frequent load requests
 const isProgrammaticScrolling = ref(false) // Guard to prevent scroll events during programmatic scroll
 const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrolling up
+
+// 🔧 FIX: 滾動位置保持相關的狀態
+const scrollPositionBeforePrepend = ref<{
+  scrollTop: number
+  scrollHeight: number
+  firstVisibleMessageId: string | null
+} | null>(null)
+const pendingScrollPreservation = ref(false) // 標記是否需要在下一次 DOM 更新後保持滾動位置
 
 // 🔧 FIX: Debounce timers for load-more trigger visibility
 let hideLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
@@ -621,6 +633,21 @@ const handleRetry = (messageId: string) => {
   emit('retry', messageId)
 }
 
+// 🔧 FIX: Watch for history prepending to capture scroll position BEFORE DOM updates
+watch(() => props.isHistoryPrepending, (isPrepending, wasPrepending) => {
+  if (isPrepending && !wasPrepending && scrollContainer.value) {
+    // 歷史前插開始 - 保存當前滾動位置
+    const container = scrollContainer.value
+    scrollPositionBeforePrepend.value = {
+      scrollTop: container.scrollTop,
+      scrollHeight: container.scrollHeight,
+      firstVisibleMessageId: null // Could be enhanced to track specific message
+    }
+    pendingScrollPreservation.value = true
+    console.log(`📌 [ScrollPreservation] Captured position before prepend: scrollTop=${container.scrollTop}, scrollHeight=${container.scrollHeight}`)
+  }
+})
+
 // Watchers with smart scroll behavior - FIXED race condition
 // Watch displayedMessages (not messages) because displayedMessages is what virtualItems uses
 // This ensures we scroll AFTER the UI has actually updated
@@ -628,6 +655,50 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
   console.log(`📨 [DisplayedMessageWatch] Displayed count changed: ${oldCount} → ${newCount}, virtualItems: ${virtualItems.value.length}`)
 
   if (oldCount !== undefined && newCount > oldCount) {
+    // 🔧 FIX: Check if this is a history prepend operation
+    const isHistoryPrepend = pendingScrollPreservation.value && scrollPositionBeforePrepend.value
+
+    if (isHistoryPrepend) {
+      // 🔧 FIX: 歷史前插 - 保持滾動位置而不是滾動到底部
+      console.log(`📌 [ScrollPreservation] History prepend detected, preserving scroll position...`)
+
+      // Set programmatic scrolling guard
+      isProgrammaticScrolling.value = true
+
+      await nextTick()
+      await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+      if (scrollContainer.value && scrollPositionBeforePrepend.value) {
+        const container = scrollContainer.value
+        const savedPosition = scrollPositionBeforePrepend.value
+
+        // Calculate the height difference (new content added at top)
+        const newScrollHeight = container.scrollHeight
+        const heightDifference = newScrollHeight - savedPosition.scrollHeight
+
+        // Adjust scrollTop to maintain visual position
+        const newScrollTop = savedPosition.scrollTop + heightDifference
+        container.scrollTop = newScrollTop
+
+        console.log(`📌 [ScrollPreservation] Adjusted scroll position:`)
+        console.log(`   - Old scrollHeight: ${savedPosition.scrollHeight}, New scrollHeight: ${newScrollHeight}`)
+        console.log(`   - Height difference: ${heightDifference}`)
+        console.log(`   - Old scrollTop: ${savedPosition.scrollTop}, New scrollTop: ${newScrollTop}`)
+
+        // Clear the saved position
+        scrollPositionBeforePrepend.value = null
+        pendingScrollPreservation.value = false
+      }
+
+      // Clear guard after a short delay
+      setTimeout(() => {
+        isProgrammaticScrolling.value = false
+        console.log(`📌 [ScrollPreservation] Guard cleared`)
+      }, 100)
+
+      return // Don't proceed with normal scroll behavior
+    }
+
     // Check if user was at bottom before new messages
     const wasAtBottom = isUserAtBottom.value
     console.log(`📨 [DisplayedMessageWatch] New messages detected, wasAtBottom: ${wasAtBottom}`)
