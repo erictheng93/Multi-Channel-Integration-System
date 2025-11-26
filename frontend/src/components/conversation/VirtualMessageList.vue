@@ -54,13 +54,15 @@
       <div
         v-for="virtualItem in virtualizer.getVirtualItems()"
         :key="String(virtualItem.key)"
+        :ref="(el) => el && virtualizer.measureElement(el as Element)"
+        :data-index="virtualItem.index"
         class="virtual-item"
         :style="{
           position: 'absolute',
           top: 0,
           left: 0,
           width: '100%',
-          height: `${virtualItem.size}px`,
+          minHeight: `${virtualItem.size}px`,
           transform: `translateY(${virtualItem.start}px)`
         }"
       >
@@ -264,9 +266,9 @@ const virtualItems = computed<VirtualItem[]>(() => {
 const virtualizer = useVirtualizer({
   get count() { return virtualItems.value.length },
   getScrollElement: () => scrollContainer.value || null,
-  estimateSize: () => 80,
+  estimateSize: () => 100, // 🔧 FIX: Increased from 80 to 100 for file messages
   overscan: 5,
-  measureElement: (element) => element?.getBoundingClientRect().height || 80,
+  measureElement: (element) => element?.getBoundingClientRect().height || 100,
 })
 
 // Methods
@@ -507,7 +509,7 @@ const handleScroll = () => {
   // Check scroll direction before updating lastScrollTop
   const isScrollingUp = scrollTop < lastScrollTop.value
 
-  // Show/hide load more trigger based on scroll direction
+  // 🔧 FIX: Shload more trigger based on scroll direction
   if (isScrollingUp && props.hasMore && !props.loading) {
     showLoadMoreTrigger.value = true
     // Clear any existing hide timeout
@@ -669,19 +671,21 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Modern Minimalist Container - Now the scroll container */
+/* 🎨 Spacious, Minimal Container Design */
 .virtual-message-list {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+  background: transparent;
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Extra padding for spacious feel */
+  padding: 0.5rem 0;
 
-  /* Modern scrollbar */
+  /* Modern, subtle scrollbar */
   scrollbar-width: thin;
-  scrollbar-color: #e2e8f0 transparent;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
 }
 
 .virtual-message-list::-webkit-scrollbar {
@@ -858,12 +862,14 @@ defineExpose({
   backdrop-filter: blur(8px);
 }
 
-/* Clean Message Item Container */
+/* 🎨 Spacious Message Item Container */
 .message-item {
-  padding: 0.5rem 1.5rem;
+  padding: 0.375rem 1rem;
   display: flex;
   flex-direction: column;
   position: relative;
+  /* More breathing room between messages */
+  margin: 0.125rem 0;
 }
 
 /* Modern Typing Indicator */

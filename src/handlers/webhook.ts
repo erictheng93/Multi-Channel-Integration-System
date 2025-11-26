@@ -561,16 +561,64 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         throw new Error(`Failed to create message: ${messageError}`);
       }
 
+    // 🔧 FIX: Process media BEFORE broadcasting so file_attachments is available
+    // This ensures WebSocket clients receive complete message data including file info
+    let fileAttachmentData: any[] = [];
+    
+    if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
+      console.log(`📥 [LINE Webhook] Processing media BEFORE broadcast for ${message.type} message...`);
+      try {
+        const { processLineMediaMessage } = await import('../utils/file-storage');
+        const mediaFile = await processLineMediaMessage(
+          env,
+          message.id,
+          message.type,
+          message.fileName
+        );
+        
+        if (mediaFile) {
+          // Extract R2 key from the proxy URL
+          const r2Key = mediaFile.url.includes('/api/files/public/')
+            ? mediaFile.url.split('/api/files/public/')[1]
+            : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;
+
+          const newFileAttachment = {
+            id: mediaFile.id,
+            messageId: messageId,
+            filename: mediaFile.filename,
+            mimeType: mediaFile.mimeType,
+            fileSize: mediaFile.size,
+            fileUrl: mediaFile.url,
+            r2Key: r2Key,
+            createdAt: new Date().toISOString()
+          };
+
+          // Store to database
+          await drizzleDb.insert(fileAttachments).values(newFileAttachment);
+          
+          // Keep for broadcast
+          fileAttachmentData = [newFileAttachment];
+          
+          console.log(`✅ [LINE Webhook] Media processed and stored BEFORE broadcast: ${mediaFile.filename}`);
+        }
+      } catch (storageError) {
+        console.error('⚠️ [LINE Webhook] Error processing media before broadcast:', storageError);
+        // Continue with broadcast even if media processing fails
+      }
+    }
+
     // 🚀 WebSocket Real-time Broadcast: Notify CustomerConversationDO
     // This triggers instant UI updates for all connected agents viewing this conversation
     try {
       // Construct complete message object for broadcasting
+      // 🔧 FIX: Include senderId and file_attachments for frontend compatibility
       const broadcastMessage = {
         id: messageId,
         conversationId: conversation!.id,
         senderType: 'customer' as const,
         customerSenderId: user.id,
         agentSenderId: null,
+        senderId: user.id,  // 🔧 FIX: Add senderId for frontend
         content: messageContent,
         messageType: messageType,
         platformMessageId: message.id,
@@ -585,7 +633,8 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         sessionId: null,
         sessionSequence: 1,
         metadata: mediaData ? JSON.stringify(mediaData) : null,
-        createdAt: timestamp
+        createdAt: timestamp,
+        file_attachments: fileAttachmentData  // 🔧 FIX: Include file attachments
       };
 
       // Get CustomerConversationDO instance

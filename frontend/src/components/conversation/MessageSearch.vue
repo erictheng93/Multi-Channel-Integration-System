@@ -172,9 +172,12 @@ interface SearchFilters {
 
 interface Props {
   messages: Message[]
+  autoExpand?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  autoExpand: false
+})
 
 const emit = defineEmits<{
   'search-results': [results: Message[]]
@@ -182,12 +185,22 @@ const emit = defineEmits<{
 }>()
 
 // 狀態
-const isExpanded = ref(false)
+const isExpanded = ref(props.autoExpand)
 const searchQuery = ref('')
 const searchInputRef = ref<HTMLInputElement>()
 const isAdvancedMode = ref(false)
 const showSuggestions = ref(false)
 const searchSuggestions = ref<string[]>([])
+
+// Watch autoExpand prop changes
+watch(() => props.autoExpand, (newVal) => {
+  if (newVal) {
+    isExpanded.value = true
+    nextTick(() => {
+      searchInputRef.value?.focus()
+    })
+  }
+})
 
 const filters = ref<SearchFilters>({
   messageType: '',

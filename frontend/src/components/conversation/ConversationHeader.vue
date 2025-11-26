@@ -70,6 +70,15 @@
     </div>
 
     <div class="header-actions">
+      <!-- 搜索按鈕 -->
+      <button
+        class="header-action-btn"
+        title="搜索消息"
+        @click="$emit('search')"
+      >
+        <SearchIcon :size="18" />
+      </button>
+
       <!-- 指派管理按鈕 -->
       <div
         v-if="conversation && conversation.status !== 'closed'"
@@ -148,7 +157,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { ArrowLeftIcon, AlertCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon } from '@/components/icons'
+import { ArrowLeftIcon, AlertCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -170,6 +179,7 @@ defineEmits<{
   back: []
   close: []
   refresh: []
+  search: []
 }>()
 
 const customerTags = ref<Tag[]>([])
@@ -418,6 +428,27 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* 搜索按鈕樣式 */
+.header-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--background-color, white);
+  border-radius: 0.5rem;
+  color: var(--gray-600, #4b5563);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.header-action-btn:hover {
+  background: var(--hover-color, #f3f4f6);
+  color: var(--primary-color, #6366f1);
+  border-color: var(--primary-color, #6366f1);
 }
 
 /* ====== 漸進式警示按鈕設計 (Progressive Alert Design) ====== */
