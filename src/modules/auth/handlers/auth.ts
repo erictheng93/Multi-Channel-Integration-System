@@ -3,7 +3,7 @@ import type { Context } from 'hono';
 import type { Bindings } from '@/types';
 import type { AuthRequest, LoginResponse } from '@modules/auth/types/auth-types';
 import { signJWT } from '@modules/auth/services/auth';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { eq, and } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import {

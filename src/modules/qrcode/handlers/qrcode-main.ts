@@ -3,7 +3,7 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { QRCodeCrudService } from '@modules/qrcode/services/qrcode-crud-service';
 import { QRCodeGenerationService } from '@modules/qrcode/services/qrcode-generation-service';
 import {

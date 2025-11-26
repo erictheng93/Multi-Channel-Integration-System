@@ -1,9 +1,9 @@
 // Message Recall Service
 // 訊息召回處理服務
 
-import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   messages,
   messageRecallLogs,

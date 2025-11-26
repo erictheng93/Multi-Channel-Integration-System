@@ -1,9 +1,9 @@
 // Customer CRUD 服務
 // 提供客戶的基礎增刪改查操作
 
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { eq, and, desc, sql } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,

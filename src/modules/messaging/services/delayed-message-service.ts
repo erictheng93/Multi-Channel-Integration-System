@@ -1,9 +1,9 @@
 // Delayed Message Service
 // 延遲訊息處理服務
 
-import { eq, and, desc, count, sql, lte } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { eq, and, desc, count, sql, lte } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   delayedMessages,
   messages,

@@ -1,6 +1,6 @@
 // Analytics Core Types - 統一分析服務核心類型定義
 
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import type { Database } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
 
 /**
@@ -441,7 +441,7 @@ export interface ExportResult {
  * 分析服務配置
  */
 export interface AnalyticsServiceConfig {
-  database: DrizzleD1Database<any>;
+  database: Database;
   kv?: Bindings['KV'];
   env: any;
   cache?: {

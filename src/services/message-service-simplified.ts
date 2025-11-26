@@ -1,6 +1,6 @@
 // Simplified Message Service - Extracted from handler complexity
 import type { Bindings, DbMessage } from '../types';
-import { createDbClient } from '../db/drizzle-factory';
+import { createDbClient, type Database } from '../db/drizzle-factory';
 import { messages, conversations, customers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -21,7 +21,7 @@ export interface MessageResult {
 }
 
 export class MessageService {
-  private db: ReturnType<typeof createDbClient>;
+  private db: Database;
   private env: Bindings;
 
   constructor(env: Bindings) {

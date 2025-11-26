@@ -1,10 +1,10 @@
 // Topic Service for Session Module
 // 會話主題檢測與分析服務
 
-import { createDbClient } from '../../../db/drizzle-factory';
-import { eq, and, desc } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import { eq, and, desc } from 'drizzle-orm';
 import { conversationSessions, messages } from '@/db/schema';
 import { DEFAULT_SESSION_CONFIG } from '@modules/session/types/session-types';
 
