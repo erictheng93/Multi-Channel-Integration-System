@@ -208,7 +208,16 @@ const lastScrollDebugTime = ref(0)
 const LOAD_MORE_THROTTLE_MS = 1000 // Prevent too frequent load requests
 const isProgrammaticScrolling = ref(false) // Guard to prevent scroll events during programmatic scroll
 const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrolling up
+
+// 🔧 FIX: Debounce timers for load-more trigger visibility
 let hideLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
+let showLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
+
+// 🔧 FIX: Constants for scroll detection
+const SCROLL_DIRECTION_THRESHOLD = 10 // Minimum pixels to detect scroll direction change
+const SHOW_LOAD_MORE_NEAR_TOP_THRESHOLD = 500 // Only show "load more" when within 500px of top
+const SHOW_LOAD_MORE_DELAY_MS = 200 // Delay before showing load more trigger
+const HIDE_LOAD_MORE_DELAY_MS = 400 // Delay before hiding load more trigger
 
 // Computed
 const displayedMessages = computed(() => {
@@ -506,24 +515,44 @@ const handleScroll = () => {
 
   isUserAtBottom.value = isAtBottom
 
-  // Check scroll direction before updating lastScrollTop
-  const isScrollingUp = scrollTop < lastScrollTop.value
+  // 🔧 FIX: Check scroll direction with threshold to avoid flickering from micro-movements
+  const scrollDelta = lastScrollTop.value - scrollTop
+  const isScrollingUp = scrollDelta > SCROLL_DIRECTION_THRESHOLD
+  const isScrollingDown = scrollDelta < -SCROLL_DIRECTION_THRESHOLD
+  const isNearTop = scrollTop < SHOW_LOAD_MORE_NEAR_TOP_THRESHOLD
 
-  // 🔧 FIX: Shload more trigger based on scroll direction
-  if (isScrollingUp && props.hasMore && !props.loading) {
-    showLoadMoreTrigger.value = true
-    // Clear any existing hide timeout
+  // 🔧 FIX: Only show load-more trigger when:
+  // 1. Scrolling up significantly (not micro-movements)
+  // 2. Near the top of the list
+  // 3. Has more messages to load
+  // 4. Not currently loading
+  const shouldShowLoadMore = isScrollingUp && isNearTop && props.hasMore && !props.loading
+
+  if (shouldShowLoadMore) {
+    // Clear any pending hide timeout
     if (hideLoadMoreTimeout) {
       clearTimeout(hideLoadMoreTimeout)
       hideLoadMoreTimeout = null
     }
-  } else if (!isScrollingUp) {
-    // Hide after a short delay when scrolling down
-    if (!hideLoadMoreTimeout) {
+    // Show with debounce to prevent rapid flickering
+    if (!showLoadMoreTimeout && !showLoadMoreTrigger.value) {
+      showLoadMoreTimeout = setTimeout(() => {
+        showLoadMoreTrigger.value = true
+        showLoadMoreTimeout = null
+      }, SHOW_LOAD_MORE_DELAY_MS)
+    }
+  } else if (isScrollingDown || !isNearTop) {
+    // Clear any pending show timeout
+    if (showLoadMoreTimeout) {
+      clearTimeout(showLoadMoreTimeout)
+      showLoadMoreTimeout = null
+    }
+    // Hide with debounce when scrolling down or moved away from top
+    if (!hideLoadMoreTimeout && showLoadMoreTrigger.value) {
       hideLoadMoreTimeout = setTimeout(() => {
         showLoadMoreTrigger.value = false
         hideLoadMoreTimeout = null
-      }, 800)
+      }, HIDE_LOAD_MORE_DELAY_MS)
     }
   }
 
@@ -569,6 +598,20 @@ const handleManualLoadMore = () => {
     return
   }
   console.log('🔼 [VirtualMessageList] Manual load more triggered')
+
+  // 🔧 FIX: Immediately hide the button after clicking to prevent repeated clicks
+  showLoadMoreTrigger.value = false
+
+  // Clear any pending timeouts
+  if (showLoadMoreTimeout) {
+    clearTimeout(showLoadMoreTimeout)
+    showLoadMoreTimeout = null
+  }
+  if (hideLoadMoreTimeout) {
+    clearTimeout(hideLoadMoreTimeout)
+    hideLoadMoreTimeout = null
+  }
+
   emit('loadMore')
 }
 
@@ -656,9 +699,14 @@ onUnmounted(() => {
   if (scrollContainer.value) {
     scrollContainer.value.removeEventListener('scroll', handleScroll)
   }
-  // Clean up timeout
+  // 🔧 FIX: Clean up all timeouts
   if (hideLoadMoreTimeout) {
     clearTimeout(hideLoadMoreTimeout)
+    hideLoadMoreTimeout = null
+  }
+  if (showLoadMoreTimeout) {
+    clearTimeout(showLoadMoreTimeout)
+    showLoadMoreTimeout = null
   }
 })
 
