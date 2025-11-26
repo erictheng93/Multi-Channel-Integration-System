@@ -3,8 +3,8 @@
  * Enterprise-grade caching for conversation latest messages
  */
 
-import { drizzle } from 'drizzle-orm/d1';
 import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
 import { createDbClient } from '../db/drizzle-factory';
 import type { Bindings } from '../types';
 import * as schema from '../db/schema';
