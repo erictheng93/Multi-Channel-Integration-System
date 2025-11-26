@@ -396,8 +396,12 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           },
         });
 
-        // ✅ GENERATE PUBLIC URL
-        const url = `${this.env.R2_PUBLIC_URL}/${r2Key}`;
+        // ✅ GENERATE PUBLIC URL - 使用 API 代理端點
+        // 從請求 URL 獲取 host，構建代理 URL
+        const requestUrl = new URL(c.req.url);
+        const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+        const url = `${baseUrl}/api/files/public/${r2Key}`;
+        console.log(`[CustomerMessageDO] Generated proxy URL: ${url}`);
 
         // ✅ SAVE FILE RECORD (for dedup)
         await this.saveFileRecord({

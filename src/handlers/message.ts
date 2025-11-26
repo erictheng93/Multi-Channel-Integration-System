@@ -217,19 +217,58 @@ export const messageHandler = {
             let sendResult = false;
             try {
                 if (conversationWithCustomer.platform === 'line') {
-                    const { pushLineMessage, createTextMessage } = await import('../utils/line');
+                    const { pushLineMessage, createTextMessage, createImageMessage, createFileMessage } = await import('../utils/line');
                     let messages: any[] = [];
-                    
+
                     if (content) {
                         messages.push(createTextMessage(content));
                     }
 
+                    // 處理附件 - LINE 發送 (與 Facebook 實現對齊)
+                    if (hasAttachments) {
+                        // 獲取附件資訊
+                        const lineAttachments = await db.select()
+                            .from(schema.fileAttachments)
+                            .where(inArray(schema.fileAttachments.id, attachmentIds));
+
+                        for (const attachment of lineAttachments) {
+                            const fileUrl = attachment.fileUrl;
+
+                            if (fileUrl) {
+                                if (attachment.mimeType?.startsWith('image/')) {
+                                    // 圖片訊息
+                                    messages.push(createImageMessage(fileUrl));
+                                    console.log(`📷 [LINE] Adding image attachment: ${attachment.filename}`);
+                                } else {
+                                    // PDF, 文檔等其他文件類型
+                                    // 注意: LINE 的 file message 需要用戶先同意接收檔案
+                                    // 如果 file message 失敗，會 fallback 到包含下載連結的文字訊息
+                                    try {
+                                        messages.push(createFileMessage(fileUrl, attachment.filename || 'File'));
+                                        console.log(`📎 [LINE] Adding file attachment: ${attachment.filename} (${attachment.mimeType})`);
+                                    } catch (fileError) {
+                                        // Fallback: 發送包含下載連結的文字訊息
+                                        const fallbackText = `📎 檔案: ${attachment.filename}\n下載連結: ${fileUrl}`;
+                                        messages.push(createTextMessage(fallbackText));
+                                        console.log(`📎 [LINE] File fallback to text link: ${attachment.filename}`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (messages.length > 0) {
                         sendResult = await pushLineMessage(
-                            c.env.LINE_CHANNEL_ACCESS_TOKEN, 
-                            conversationWithCustomer.platformUserId, 
+                            c.env.LINE_CHANNEL_ACCESS_TOKEN,
+                            conversationWithCustomer.platformUserId,
                             messages
                         );
+
+                        if (sendResult) {
+                            console.log(`✅ [LINE] Message sent successfully with ${messages.length} item(s)`);
+                        } else {
+                            console.error(`❌ [LINE] Failed to send message to ${conversationWithCustomer.platformUserId}`);
+                        }
                     }
                 } else if (conversationWithCustomer.platform === 'facebook') {
                     // 發送 Facebook Messenger 訊息

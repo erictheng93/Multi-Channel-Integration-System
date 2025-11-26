@@ -1113,8 +1113,11 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
       }, 500);
     }
 
-    // 生成公開URL (使用環境變數中配置的R2公開域名)
-    const fileUrl = `${c.env.R2_PUBLIC_URL}/${r2Key}`;
+    // 生成公開URL - 使用 API 代理端點而非直接 R2 URL
+    const requestUrl = new URL(c.req.url);
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+    const fileUrl = `${baseUrl}/api/files/public/${r2Key}`;
+    console.log(`[Upload] Generated proxy URL: ${fileUrl}`);
 
     // 保存附件記錄到資料庫
     const { fileAttachments } = await import('../shared/database/schema');

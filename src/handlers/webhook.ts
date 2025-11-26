@@ -653,33 +653,61 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2
+    console.log(`🔍 [LINE Webhook] Media processing check:`, {
+      hasMediaData: !!mediaData,
+      messageType: message.type,
+      shouldProcess: !!(mediaData && message.type !== 'location' && message.type !== 'sticker'),
+      lineMessageId: message.id,
+      fileName: message.fileName || 'N/A'
+    });
+
     if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
+      console.log(`📥 [LINE Webhook] Starting media download for ${message.type} message...`);
       try {
         const { processLineMediaMessage } = await import('../utils/file-storage');
+        console.log(`📦 [LINE Webhook] Calling processLineMediaMessage with:`, {
+          lineMessageId: message.id,
+          messageType: message.type,
+          fileName: message.fileName || 'N/A'
+        });
         const mediaFile = await processLineMediaMessage(
-          env, 
-          message.id, 
+          env,
+          message.id,
           message.type,
           message.fileName
         );
+        console.log(`📤 [LINE Webhook] processLineMediaMessage returned:`, mediaFile ? {
+          id: mediaFile.id,
+          filename: mediaFile.filename,
+          size: mediaFile.size,
+          url: mediaFile.url
+        } : 'NULL');
         
         if (mediaFile) {
           // 將檔案資訊存儲到資料庫 - using Drizzle ORM
+          // 🔧 FIX: Column names must match schema.ts exactly!
           const drizzleDb = createDbClient(env.DB);
-          const newFileAttachment: any = {
+
+          // Extract R2 key from the proxy URL
+          // URL format: https://multi-channel.imfinethankyouandyou.com/api/files/public/{r2Key}
+          const r2Key = mediaFile.url.includes('/api/files/public/')
+            ? mediaFile.url.split('/api/files/public/')[1]
+            : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;
+
+          const newFileAttachment = {
             id: mediaFile.id,
             messageId: messageId,
-            fileName: mediaFile.filename,
-            fileType: mediaFile.mimeType,
+            filename: mediaFile.filename,        // 🔧 FIX: was 'fileName'
+            mimeType: mediaFile.mimeType,        // 🔧 FIX: was 'fileType'
             fileSize: mediaFile.size,
-            r2Key: mediaFile.url, // Using url as r2Key for now
-            url: mediaFile.originalUrl,
+            fileUrl: mediaFile.url,              // 🔧 FIX: Added - stores proxy URL
+            r2Key: r2Key,                        // 🔧 FIX: Now stores actual R2 path
             createdAt: new Date().toISOString()
           };
-          
+
           await drizzleDb.insert(fileAttachments).values(newFileAttachment);
-          
-          console.log(`LINE ${message.type} stored: ${mediaFile.filename}`);
+
+          console.log(`✅ [LINE Webhook] Media stored: ${mediaFile.filename}, URL: ${mediaFile.url}`);
         } else {
           console.warn(`Failed to store LINE ${message.type} for message ${message.id}`);
         }
