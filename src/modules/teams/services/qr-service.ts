@@ -1,7 +1,7 @@
 // QR Code Service for Teams
 // 團隊 QR Code 服務
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { QRCodeServiceImpl } from '@/services/qrcode-service-impl';

@@ -13,9 +13,7 @@ import type {
   RetentionPolicy
 } from '../types/metrics-types';
 
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { drizzle } from 'drizzle-orm/d1';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
 import { metrics } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -25,7 +23,7 @@ import type { Bindings } from '@/types';
  * 整合原有的指標收集、存儲、聚合功能
  */
 export class MetricsCollector implements MetricsCollectorInterface {
-  private db: DrizzleD1Database;
+  private db: Database;
   private kv?: Bindings['KV'];
   private config: MetricStorageConfig;
   private batchBuffer: Metric[] = [];
@@ -36,7 +34,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
     kv?: Bindings['KV'],
     config: Partial<MetricStorageConfig> = {}
   ) {
-    this.db = drizzle(database);
+    this.db = createDbClient(database);
     this.kv = kv;
     this.config = {
       backend: 'hybrid',

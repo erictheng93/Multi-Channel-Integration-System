@@ -3,7 +3,7 @@
 
 import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { webhookSecurityEvents } from '@/db/schema';
 import { eq, gte, desc, and } from 'drizzle-orm';

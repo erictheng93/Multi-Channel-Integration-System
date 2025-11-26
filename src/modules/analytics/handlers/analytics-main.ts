@@ -1,7 +1,7 @@
 // Analytics Main Handler - 統一分析服務 API 處理器
 
 import { Hono } from 'hono';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
