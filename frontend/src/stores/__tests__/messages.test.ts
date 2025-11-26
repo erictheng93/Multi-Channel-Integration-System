@@ -12,6 +12,8 @@
  * 6. 快取與索引
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useMessagesStore } from '../messages'
