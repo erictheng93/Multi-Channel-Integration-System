@@ -9,6 +9,7 @@
         @back="goBack"
         @close="closeConversation"
         @refresh="handleRefreshMessages"
+        @search="toggleSearch"
       />
 
       <!-- 🆕 Closed Conversation Banner -->
@@ -73,17 +74,23 @@
         </div>
       </div>
 
-      <!-- Enhanced Search -->
-      <div class="message-search-container">
-        <Suspense>
-          <MessageSearch
-            ref="messageSearchRef"
-            :messages="messages"
-            @search-results="handleSearchResults"
-            @search-clear="handleSearchClear"
-          />
-        </Suspense>
-      </div>
+      <!-- Enhanced Search Panel (toggleable from header) -->
+      <Transition name="search-slide">
+        <div
+          v-if="showSearchPanel"
+          class="message-search-panel"
+        >
+          <Suspense>
+            <MessageSearch
+              ref="messageSearchRef"
+              :messages="messages"
+              :auto-expand="true"
+              @search-results="handleSearchResults"
+              @search-clear="handleSearchClear"
+            />
+          </Suspense>
+        </div>
+      </Transition>
 
       <!-- High Performance Virtual Message List with WebSocket -->
       <div class="messages-container-wrapper">
@@ -214,9 +221,9 @@
           </button>
         </div>
 
-        <!-- 🌐 Connection Status Bar (Phase 1: SSE-Primary) -->
+        <!-- 🌐 Connection Status Bar - 僅在調試模式下顯示 (使用 ?debug=true 或 localStorage.devDebugMode=true) -->
         <div
-          v-if="unifiedIsConnected || unifiedConnectionState === 'error' || isWebSocketEnabled"
+          v-if="isDevDebugMode && (unifiedIsConnected || unifiedConnectionState === 'error' || isWebSocketEnabled)"
           class="connection-status-bar"
         >
           <div class="status-items">
@@ -318,6 +325,29 @@ const KeyboardShortcuts = defineAsyncComponent(() => import('@/components/ui/Key
 const route = useRoute()
 const router = useRouter()
 const conversationsStore = useConversationsStore()
+
+// 🔧 Developer Debug Mode - 用於顯示連接狀態等調試資訊
+// 可以通過 URL 參數 ?debug=true 或 localStorage 設置 devDebugMode=true 啟用
+const isDevDebugMode = ref(false)
+
+// 初始化調試模式
+const initDebugMode = () => {
+  // 檢查 URL 參數
+  const urlParams = new URLSearchParams(window.location.search)
+  if (urlParams.get('debug') === 'true') {
+    isDevDebugMode.value = true
+    return
+  }
+  // 檢查 localStorage
+  try {
+    isDevDebugMode.value = localStorage.getItem('devDebugMode') === 'true'
+  } catch {
+    isDevDebugMode.value = false
+  }
+}
+
+// 立即初始化
+initDebugMode()
 
 // 🚀 WebSocket-Only Strategy (Backend 100% Support)
 const migration = useWebSocketMigration({
@@ -569,6 +599,12 @@ const debouncedStopTyping = eventHandler.debounce(() => {
 // Search state
 const searchResults = ref<Message[]>([])
 const isSearchActive = ref(false)
+const showSearchPanel = ref(false)
+
+// Toggle search panel from header button
+const toggleSearch = () => {
+  showSearchPanel.value = !showSearchPanel.value
+}
 
 // New message notification
 const showNewMessageModal = ref(false)
@@ -1124,7 +1160,10 @@ const handleVirtualScroll = performanceUtils.throttle((scrollInfo: unknown) => {
 }, 16)
 
 const handleNewMessageWhileScrolled = () => {
-  showNewMessageModal.value = true
+  // 🔧 FIX: 只有當新消息數量 > 0 時才顯示提示
+  if (newMessageCount.value > 0) {
+    showNewMessageModal.value = true
+  }
 }
 
 // New message modal
@@ -1221,7 +1260,8 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
 
 // Watch for new messages from WebSocket
 watch(() => hasNewMessages.value, (hasNew) => {
-  if (hasNew) {
+  // 🔧 FIX: 只有當新消息數量 > 0 時才顯示提示
+  if (hasNew && newMessagesCount.value > 0) {
     showNewMessageModal.value = true
   }
 })
@@ -1447,12 +1487,12 @@ if (import.meta.env.DEV) {
 </script>
 
 <style scoped>
-/* Enhanced styles with WebSocket features */
+/* ====== Minimal, Spacious Design System ====== */
 .conversation-detail {
   height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-  background-color: var(--gray-50);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   overflow: hidden;
   margin: -24px;
 }
@@ -1827,11 +1867,36 @@ if (import.meta.env.DEV) {
   opacity: 0.8;
 }
 
-.message-search-container {
+/* Search Panel Styles */
+.message-search-panel {
   flex: 0 0 auto;
-  background-color: var(--gray-50);
-  padding: 0 var(--space-6);
-  border-bottom: 1px solid var(--gray-200);
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Search Panel Transition */
+.search-slide-enter-active,
+.search-slide-leave-active {
+  transition: all 0.25s ease;
+}
+
+.search-slide-enter-from,
+.search-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.search-slide-enter-to,
+.search-slide-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 200px;
 }
 
 .messages-container-wrapper {
@@ -1840,6 +1905,14 @@ if (import.meta.env.DEV) {
   position: relative;
   contain: layout style paint;
   will-change: scroll-position;
+  /* 🎨 Spacious feel with subtle background */
+  background: linear-gradient(
+    180deg,
+    rgba(248, 250, 252, 0.5) 0%,
+    rgba(241, 245, 249, 0.3) 50%,
+    rgba(248, 250, 252, 0.5) 100%
+  );
+  padding: 0 1rem;
 }
 
 .empty-state-wrapper {
@@ -1850,47 +1923,45 @@ if (import.meta.env.DEV) {
 }
 
 .input-section {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.95));
+  /* 🎨 Clean, floating input area design */
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(226, 232, 240, 0.6);
-  padding: 24px;
+  border-top: none;
+  padding: 1rem 1.5rem 1.5rem;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0.75rem;
+  /* Subtle lift effect */
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .quick-replies {
-  max-width: 1500px;
-  margin: 20px auto 0;
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
-  gap: 12px;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  padding: 0 4px;
+  justify-content: center;
 }
 
 .quick-reply-btn {
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 28px;
-  font-size: 14px;
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: #475569;
+  color: #64748b;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
 }
 
 .quick-reply-btn:hover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.25);
+  background: #f8fafc;
+  border-color: #6366f1;
   color: #6366f1;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
 }
 
 /* 🌐 Connection Status Bar (Phase 1: SSE-Primary) */
