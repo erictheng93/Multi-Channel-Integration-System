@@ -24,35 +24,61 @@ export class FileStorageService {
    * 從 URL 下載檔案並存儲到 R2
    */
   async downloadAndStore(
-    originalUrl: string, 
-    filename: string, 
+    originalUrl: string,
+    filename: string,
     mimeType: string,
     platform: string,
     messageId?: string
   ): Promise<MediaFile | null> {
     try {
       const storageLogger = createContextLogger('FileStorage');
+      console.log(`📥 [FileStorage] downloadAndStore called:`, {
+        originalUrl,
+        filename,
+        mimeType,
+        platform,
+        messageId
+      });
       storageLogger.info('Downloading file', { originalUrl });
-      
+
       // 設置授權標頭（如果是 LINE API）
       const headers: Record<string, string> = {
         'User-Agent': 'Multi-Channel-Platform-Bot/1.0'
       };
-      
-      if (platform === 'line' && originalUrl.includes('api.line.me')) {
+
+      if (platform === 'line' && (originalUrl.includes('api.line.me') || originalUrl.includes('api-data.line.me'))) {
+        const hasToken = !!this.env.LINE_CHANNEL_ACCESS_TOKEN;
+        const tokenPrefix = hasToken ? this.env.LINE_CHANNEL_ACCESS_TOKEN.substring(0, 10) + '...' : 'MISSING';
+        console.log(`🔑 [FileStorage] LINE auth token status:`, { hasToken, tokenPrefix });
         headers['Authorization'] = `Bearer ${this.env.LINE_CHANNEL_ACCESS_TOKEN}`;
       }
 
       // 下載檔案
+      console.log(`🌐 [FileStorage] Fetching from LINE API...`);
       const response = await fetch(originalUrl, { headers });
-      
+
+      console.log(`📡 [FileStorage] LINE API response:`, {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length')
+      });
+
       if (!response.ok) {
+        const errorBody = await response.text().catch(() => 'Could not read error body');
+        console.error(`❌ [FileStorage] LINE API download failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorBody.substring(0, 500)
+        });
         storageLogger.error('Failed to download file', { status: response.status, statusText: response.statusText, url: originalUrl });
         return null;
       }
 
       const fileBuffer = await response.arrayBuffer();
       const contentLength = fileBuffer.byteLength;
+      console.log(`✅ [FileStorage] Downloaded ${contentLength} bytes from LINE API`);
       
       // 檢查檔案大小限制（10MB）
       if (contentLength > 10 * 1024 * 1024) {
@@ -64,12 +90,15 @@ export class FileStorageService {
       const fileId = crypto.randomUUID();
       const extension = this.getFileExtension(filename, mimeType);
       const storageKey = `media/${platform}/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${fileId}${extension}`;
+      console.log(`📁 [FileStorage] Generated storage key:`, { fileId, extension, storageKey });
 
       // 上傳到 R2
       if (!this.env.R2_BUCKET) {
+        console.error(`❌ [FileStorage] R2_BUCKET is not configured!`);
         throw new Error('R2_BUCKET is not configured');
       }
-      
+
+      console.log(`☁️ [FileStorage] Uploading to R2...`);
       await this.env.R2_BUCKET.put(storageKey, fileBuffer, {
         httpMetadata: {
           contentType: mimeType,
@@ -82,23 +111,33 @@ export class FileStorageService {
           uploadedAt: new Date().toISOString()
         }
       });
+      console.log(`✅ [FileStorage] Successfully uploaded to R2: ${storageKey}`);
 
       storageLogger.info('File uploaded to R2', { storageKey, size: contentLength });
+
+      const publicUrl = this.generatePublicUrl(storageKey);
+      console.log(`🔗 [FileStorage] Generated public URL: ${publicUrl}`);
 
       const mediaFile: MediaFile = {
         id: fileId,
         filename: filename || `file_${fileId}${extension}`,
         mimeType,
         size: contentLength,
-        url: this.generatePublicUrl(storageKey),
+        url: publicUrl,
         originalUrl,
         platform,
         messageId: messageId || ''
       };
 
+      console.log(`✅ [FileStorage] Returning mediaFile:`, mediaFile);
       return mediaFile;
     } catch (error) {
       const storageLogger = createContextLogger('FileStorage');
+      console.error(`❌ [FileStorage] Exception during download/store:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        originalUrl
+      });
       storageLogger.error('Error downloading and storing file', { originalUrl }, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
@@ -191,15 +230,15 @@ export class FileStorageService {
 
   /**
    * 生成檔案的公開 URL
+   * 使用 API 代理端點而非直接 R2 URL
    */
   generatePublicUrl(storageKey: string): string {
-    // 優先使用 R2_PUBLIC_URL 環境變數
-    if (this.env.R2_PUBLIC_URL) {
-      return `${this.env.R2_PUBLIC_URL}/${storageKey}`;
-    }
-    
-    // 回退到自定義域名或預設 R2 URL
-    return `https://${this.env.R2_CUSTOM_DOMAIN || `${this.env.R2_BUCKET_NAME}.${this.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`}/${storageKey}`;
+    // 使用 API 代理端點 - 生產環境使用固定域名
+    // 這樣可以繞過 R2 公開訪問未配置的問題
+    const apiHost = 'https://multi-channel.imfinethankyouandyou.com';
+    const proxyUrl = `${apiHost}/api/files/public/${storageKey}`;
+    console.log(`[FileStorage] Generated proxy URL: ${proxyUrl}`);
+    return proxyUrl;
   }
 
   /**
@@ -246,8 +285,11 @@ export async function processLineMediaMessage(
   fileName?: string
 ): Promise<MediaFile | null> {
   const fileStorage = new FileStorageService(env);
-  
-  const originalUrl = `https://api.line.me/v2/bot/message/${messageId}/content`;
+
+  // 🔧 FIX: Use api-data.line.me instead of api.line.me for content download
+  // According to LINE API documentation, content download should use the data subdomain
+  // See: https://developers.line.biz/en/reference/messaging-api/#get-content
+  const originalUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
   const mimeTypeMap: Record<string, string> = {
     'image': 'image/jpeg',
     'video': 'video/mp4', 

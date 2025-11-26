@@ -2,337 +2,749 @@
   <div
     ref="scrollContainer"
     class="virtual-message-list"
-    @scroll="handleScroll"
   >
-    <!-- Load more trigger at TOP (for loading older messages) -->
+    <!-- Search Results Header -->
     <div
-      v-if="hasMore && !loading"
-      ref="loadTrigger"
-      class="load-more-trigger load-more-top"
-      @click="handleLoadMore"
+      v-if="isSearchActive"
+      class="search-results-header"
     >
-      <div class="load-more-content">
-        <span class="load-more-icon">↑</span>
-        <span>載入更早的訊息</span>
-      </div>
+      <span>搜索結果 ({{ displayedMessages.length }})</span>
+      <button
+        class="clear-search-btn"
+        @click="$emit('searchClear')"
+      >
+        清除搜索
+      </button>
     </div>
 
-    <!-- Loading indicator at TOP -->
+    <!-- Loading indicator at TOP (for loading older messages) -->
     <div
-      v-if="loading"
+      v-if="loading && hasMore"
       class="loading-indicator loading-top"
     >
       <span class="loading-spinner">⏳</span>
       <span>載入中...</span>
     </div>
 
-    <!-- Simple Virtual Content -->
+    <!-- Load more trigger at TOP (for loading older messages) - only show when scrolling up -->
+    <Transition name="load-more-fade">
+      <div
+        v-if="hasMore && !loading && showLoadMoreTrigger"
+        class="load-more-trigger load-more-top"
+        @click="handleManualLoadMore"
+      >
+        <div class="load-more-content">
+          <span class="load-more-icon">↑</span>
+          <span>載入更早的訊息</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Virtual Content Container -->
     <div
       ref="listContainer"
       class="virtual-content"
-      :style="{ height: `${totalHeight}px`, position: 'relative' }"
+      :class="{ updating: props.isUpdating }"
+      :style="{
+        height: `${virtualizer.getTotalSize()}px`,
+        width: '100%',
+        position: 'relative'
+      }"
     >
       <div
-        v-for="item in visibleItems"
-        :key="item.id"
-        class="message-item"
+        v-for="virtualItem in virtualizer.getVirtualItems()"
+        :key="String(virtualItem.key)"
+        class="virtual-item"
         :style="{
           position: 'absolute',
           top: 0,
           left: 0,
           width: '100%',
-          transform: `translateY(${item.top}px)`
+          height: `${virtualItem.size}px`,
+          transform: `translateY(${virtualItem.start}px)`
         }"
       >
-        <MessageBubble
-          :message="item.message"
-          :is-loading="false"
-          :show-avatar="true"
-          @retry="handleRetry"
-        />
+        <div
+          :class="{
+            'date-separator-item': virtualItems[virtualItem.index]?.type === 'date',
+            'message-item': virtualItems[virtualItem.index]?.type === 'message'
+          }"
+        >
+          <!-- Date Separator -->
+          <DateSeparator
+            v-if="virtualItems[virtualItem.index]?.type === 'date'"
+            :date="virtualItems[virtualItem.index]?.data as Date"
+          />
+
+          <!-- Message with v-memo optimization and smooth entrance animation -->
+          <Transition
+            v-else-if="virtualItems[virtualItem.index]?.type === 'message'"
+            name="message"
+            mode="out-in"
+            appear
+          >
+            <MessageBubble
+              :key="(virtualItems[virtualItem.index]?.data as Message).id"
+              :class="[
+                'message-bubble-wrapper',
+                props.animationClasses?.[(virtualItems[virtualItem.index]?.data as Message).id] || '',
+                { 'message-new': isNewMessage((virtualItems[virtualItem.index]?.data as Message).id) }
+              ]"
+              :message="virtualItems[virtualItem.index]?.data as Message"
+              :delivered="true"
+              @copy="$emit('messageCopy', $event)"
+              @reply="$emit('messageReply', $event)"
+              @forward="$emit('messageForward', $event)"
+              @recall="$emit('messageRecall', $event)"
+              @select="$emit('messageSelect', $event)"
+              @retry="handleRetry"
+            />
+          </Transition>
+
+          <!-- Typing Indicator -->
+          <div
+            v-else-if="virtualItems[virtualItem.index]?.type === 'typing'"
+            class="typing-indicator"
+          >
+            <div class="typing-dots">
+              <span />
+              <span />
+              <span />
+            </div>
+            <span class="typing-text">對方正在輸入...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading States with fixed height to prevent CLS -->
+    <div
+      v-if="loadingHistory && messages.length > 0"
+      class="history-loading-wrapper"
+      style="height: 60px; display: flex; align-items: center; justify-content: center;"
+    >
+      <div class="history-loading-content">
+        <HamsterLoader message="載入更多歷史訊息..." />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import MessageBubble from './MessageBubble.vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import type { Message } from '@/types'
+import MessageBubble from '@/components/conversation/MessageBubble.vue'
+import DateSeparator from '@/components/conversation/DateSeparator.vue'
+import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+
+interface VirtualItem {
+  type: 'message' | 'date' | 'typing'
+  data: Message | Date
+  id: string
+}
+
 
 interface Props {
   messages: Message[]
-  loading?: boolean
-  hasMore?: boolean
+  displayedMessages?: Message[]
+  loading?: boolean           // General loading state
+  hasMore?: boolean           // Has more messages to load
+  loadingHistory?: boolean    // Loading historical messages
+  showDateSeparators?: boolean
+  isSearchActive?: boolean
+  isUpdating?: boolean
+  isTyping?: boolean
+  typingUsers?: string[]      // Typing users from parent
+  searchTerm?: string
+  enableAnimations?: boolean
+  scrollBehavior?: 'auto' | 'smooth'
+  animationClasses?: Record<string, string>
+  websocketEnabled?: boolean  // WebSocket connection status
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  displayedMessages: undefined,
   loading: false,
-  hasMore: false
+  hasMore: false,
+  loadingHistory: false,
+  showDateSeparators: true,
+  isSearchActive: false,
+  isUpdating: false,
+  isTyping: false,
+  typingUsers: () => [],
+  searchTerm: '',
+  enableAnimations: true,
+  scrollBehavior: 'smooth',
+  animationClasses: () => ({}),
+  websocketEnabled: false
 })
 
-// 🔼 處理加載更多（加載更早的消息）
 const emit = defineEmits<{
+  messageCopy: [message: Message]
+  messageReply: [message: Message]
+  messageForward: [message: Message]
+  messageRecall: [message: Message]
+  messageSelect: [message: Message]
+  searchClear: []
   loadMore: []
-  retry: [messageId: string] // ⚡ Retry failed message
+  scroll: [scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }]
+  scrollToTop: []
+  scrollToBottom: []
+  newMessageWhileScrolled: []
+  retry: [messageId: string]  // Retry failed message
 }>()
+
 // Refs
 const scrollContainer = ref<HTMLElement>()
 const listContainer = ref<HTMLElement>()
-const loadTrigger = ref<HTMLElement>()
+const newMessageIds = ref(new Set<string>())
+const isUserAtBottom = ref(true)
+const lastScrollTop = ref(0)
+const lastLoadMoreTime = ref(0)
+const lastScrollDebugTime = ref(0)
+const LOAD_MORE_THROTTLE_MS = 1000 // Prevent too frequent load requests
+const isProgrammaticScrolling = ref(false) // Guard to prevent scroll events during programmatic scroll
+const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrolling up
+let hideLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
 
-// 🚀 Dynamic Virtual Scrolling Configuration
-// 根據設備和內容動態調整參數以優化性能
-const BASE_ITEM_HEIGHT = 80 // 基礎消息高度
-const CONTAINER_HEIGHT = 600 // Default container height
-
-// 🎯 動態計算最佳 ITEM_HEIGHT（基於實際渲染）
-const getOptimalItemHeight = () => {
-  // 可以基於屏幕尺寸、消息複雜度動態調整
-  const screenHeight = window.innerHeight
-  if (screenHeight > 1080) {return BASE_ITEM_HEIGHT * 1.2} // 大屏幕
-  if (screenHeight < 720) {return BASE_ITEM_HEIGHT * 0.8}  // 小屏幕
-  return BASE_ITEM_HEIGHT
-}
-
-// 🎯 動態計算最佳 BUFFER_SIZE（基於視口大小）
-const getOptimalBufferSize = () => {
-  const screenHeight = window.innerHeight
-  const itemsInViewport = Math.ceil(screenHeight / BASE_ITEM_HEIGHT)
-  // 緩衝區為視口項目數的 50%，至少 3 個，最多 10 個
-  return Math.max(3, Math.min(10, Math.floor(itemsInViewport * 0.5)))
-}
-
-const ITEM_HEIGHT = getOptimalItemHeight()
-const BUFFER_SIZE = getOptimalBufferSize()
-
-console.log(`🚀 [VirtualScrolling] Optimized params:`, {
-  ITEM_HEIGHT,
-  BUFFER_SIZE,
-  screenHeight: window.innerHeight,
-  itemsInViewport: Math.ceil(window.innerHeight / ITEM_HEIGHT)
-})
-
-// State
-const scrollTop = ref(0)
-const containerHeight = ref(CONTAINER_HEIGHT)
-
-// Computed properties
-const totalHeight = computed(() => props.messages.length * ITEM_HEIGHT)
-
-const visibleRange = computed(() => {
-  // 🔥 On first load, force show bottom items to prevent flash of old messages
-  if (isFirstLoad.value && props.messages.length > 0 && scrollTop.value === 0) {
-    // Calculate range to show last items
-    const itemsToShow = Math.ceil(containerHeight.value / ITEM_HEIGHT) + BUFFER_SIZE
-    const start = Math.max(0, props.messages.length - itemsToShow)
-    const end = props.messages.length
-    console.log(`🎯 [visibleRange] First load: showing bottom items ${start} to ${end}`)
-    return { start, end }
+// Computed
+const displayedMessages = computed(() => {
+  // Use provided displayedMessages if available, otherwise use messages
+  if (props.displayedMessages) {
+    return props.displayedMessages
   }
 
-  const start = Math.max(0, Math.floor(scrollTop.value / ITEM_HEIGHT) - BUFFER_SIZE)
-  const end = Math.min(
-    props.messages.length,
-    Math.ceil((scrollTop.value + containerHeight.value) / ITEM_HEIGHT) + BUFFER_SIZE
-  )
-  return { start, end }
+  if (props.isSearchActive && props.searchTerm) {
+    return props.messages.filter(msg =>
+      msg.content.toLowerCase().includes(props.searchTerm.toLowerCase())
+    )
+  }
+  return props.messages
 })
 
-const visibleItems = computed(() => {
-  const { start, end } = visibleRange.value
-  return props.messages.slice(start, end).map((message, index) => ({
-    id: message.id,
-    message,
-    top: (start + index) * ITEM_HEIGHT
-  }))
+const virtualItems = computed<VirtualItem[]>(() => {
+  const items: VirtualItem[] = []
+
+  if (props.showDateSeparators) {
+    let currentDate = ''
+
+    displayedMessages.value.forEach((message) => {
+      const messageDate = new Date(message.createdAt).toDateString()
+
+      if (messageDate !== currentDate) {
+        currentDate = messageDate
+        items.push({
+          type: 'date',
+          data: new Date(message.createdAt),
+          id: `date-${messageDate}`
+        })
+      }
+
+      items.push({
+        type: 'message',
+        data: message,
+        id: `message-${message.id}`
+      })
+    })
+  } else {
+    displayedMessages.value.forEach((message) => {
+      items.push({
+        type: 'message',
+        data: message,
+        id: `message-${message.id}`
+      })
+    })
+  }
+
+  return items
+})
+
+// Virtualizer setup
+const virtualizer = useVirtualizer({
+  get count() { return virtualItems.value.length },
+  getScrollElement: () => scrollContainer.value || null,
+  estimateSize: () => 80,
+  overscan: 5,
+  measureElement: (element) => element?.getBoundingClientRect().height || 80,
 })
 
 // Methods
-const handleScroll = () => {
-  if (scrollContainer.value) {
-    scrollTop.value = scrollContainer.value.scrollTop
+const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
+  const index = virtualItems.value.findIndex(item =>
+    item.type === 'message' && (item.data as Message).id === messageId
+  )
 
-    // 🎯 自動觸發加載更多：當滾動到頂部附近時（距離頂部 < 100px）
-    if (props.hasMore && !props.loading && scrollTop.value < 100) {
-      console.log('📜 [VirtualMessageList] Near top, auto-loading more messages...')
-      handleLoadMore()
+  if (index < 0 || !virtualizer.value) {
+    return
+  }
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Wait for virtualizer to be ready
+      await nextTick()
+
+      const container = virtualizer.value.scrollElement
+      if (container && virtualizer.value.options.count === virtualItems.value.length) {
+        virtualizer.value.scrollToIndex(index, {
+          align: 'center'
+        })
+        return // Success
+      }
+    } catch (error) {
+      console.warn(`Scroll to message attempt ${attempt + 1} failed:`, error)
+    }
+
+    // Wait before retry
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay))
     }
   }
 }
 
-const updateContainerHeight = () => {
-  if (scrollContainer.value) {
-    containerHeight.value = scrollContainer.value.clientHeight
-  }
-}
-
-const handleLoadMore = () => {
-  if (props.loading || !props.hasMore) {
-    console.log('⚠️ [VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
+const scrollToTop = async (retries = 5, delay = 150) => {
+  if (!virtualizer.value || virtualItems.value.length === 0) {
     return
   }
 
-  // 記錄當前滾動高度，用於加載後恢復位置
-  const currentScrollHeight = scrollContainer.value?.scrollHeight || 0
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Wait a tick for the virtualizer to process any pending updates
+      await nextTick()
 
-  console.log('🔼 [VirtualMessageList] Loading more messages...', { currentScrollHeight })
-
-  // 發出 loadMore 事件
-  emit('loadMore')
-
-  // 加載完成後恢復滾動位置（防止跳動）
-  nextTick(() => {
-    if (scrollContainer.value) {
-      const newScrollHeight = scrollContainer.value.scrollHeight
-      const heightDifference = newScrollHeight - currentScrollHeight
-
-      if (heightDifference > 0) {
-        scrollContainer.value.scrollTop += heightDifference
-        console.log('✅ [VirtualMessageList] Scroll position restored', { heightDifference })
+      // Check if virtualizer has the correct count and container element
+      const container = virtualizer.value.scrollElement
+      if (container && virtualizer.value.options.count === virtualItems.value.length) {
+        // Use direct scroll for more reliable scrolling
+        container.scrollTop = 0
+        return // Success
       }
+    } catch (error) {
+      console.warn(`Scroll to top attempt ${attempt + 1} failed:`, error)
+    }
+
+    // Wait before retry with exponential backoff
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)))
+    }
+  }
+
+  // Final fallback: try scrollToIndex with a longer timeout
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300))
+    if (virtualizer.value) {
+      virtualizer.value.scrollToIndex(0, { align: 'start' })
+    }
+  } catch (error) {
+    console.warn('Final scroll to top attempt failed:', error)
+  }
+}
+
+const scrollToBottom = async (retries = 10, delay = 100) => {
+  const lastIndex = virtualItems.value.length - 1
+  if (lastIndex < 0 || !virtualizer.value) {
+    console.log('🔽 [ScrollToBottom] Skipped - no items or virtualizer')
+    return
+  }
+
+  console.log(`🔽 [ScrollToBottom] Starting scroll to bottom, items: ${virtualItems.value.length}`)
+
+  // Set guard to prevent scroll events from triggering during programmatic scroll
+  isProgrammaticScrolling.value = true
+
+  // Helper: Wait for next animation frame for better DOM sync
+  const waitForFrame = () => new Promise(resolve => window.requestAnimationFrame(resolve))
+
+  // Helper: Check if virtualizer is ready (relaxed conditions)
+  const isVirtualizerReady = (): boolean => {
+    if (!virtualizer.value) {return false}
+    const container = virtualizer.value.scrollElement
+    if (!container) {return false}
+
+    const totalSize = virtualizer.value.getTotalSize()
+    // Relaxed condition: just need totalSize > 0 and container exists
+    // Removed strict count comparison which caused race conditions
+    return totalSize > 0
+  }
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Phase 1: Wait for DOM using RAF instead of fixed timeout
+      await waitForFrame()
+      await nextTick()
+
+      // Phase 2: Check if virtualizer is ready
+      if (isVirtualizerReady() && virtualizer.value?.scrollElement) {
+        const container = virtualizer.value.scrollElement
+
+        // Phase 3: Execute scroll - use scrollHeight for accurate positioning
+        // getTotalSize() uses estimated sizes which can be inaccurate for items like file attachments
+        // scrollHeight gives the actual rendered content height
+        const actualScrollHeight = container.scrollHeight
+        container.scrollTop = actualScrollHeight // This will be clamped to max scroll position
+
+        console.log(`✅ [ScrollToBottom] Scrolled on attempt ${attempt + 1}, scrollHeight: ${actualScrollHeight}`)
+
+        // Phase 4: Verification scroll after a short delay
+        await new Promise(resolve => setTimeout(resolve, 50))
+        await waitForFrame()
+
+        // Double-check and fine-tune with scrollToIndex
+        if (virtualizer.value && virtualItems.value.length > 0) {
+          const finalIndex = virtualItems.value.length - 1
+          virtualizer.value.scrollToIndex(finalIndex, { align: 'end' })
+        }
+
+        // Final verification: scroll again after content has fully rendered
+        // File attachments and other dynamic content may change scrollHeight
+        setTimeout(async () => {
+          if (scrollContainer.value) {
+            const finalScrollHeight = scrollContainer.value.scrollHeight
+            scrollContainer.value.scrollTop = finalScrollHeight
+            console.log(`🔽 [ScrollToBottom] Final verification scroll, scrollHeight: ${finalScrollHeight}`)
+          }
+        }, 150)
+
+        // Clear guard after successful scroll
+        setTimeout(() => {
+          isProgrammaticScrolling.value = false
+          isUserAtBottom.value = true // We just scrolled to bottom
+          console.log('🔽 [ScrollToBottom] Success - guard cleared')
+        }, 200)
+
+        return // Success
+      }
+    } catch (error) {
+      console.warn(`⚠️ [ScrollToBottom] Attempt ${attempt + 1} failed:`, error)
+    }
+
+    // Wait before retry with exponential backoff (capped at 500ms)
+    if (attempt < retries - 1) {
+      const waitTime = Math.min(delay * Math.pow(1.5, attempt), 500)
+      await new Promise(resolve => setTimeout(resolve, waitTime))
+    }
+  }
+
+  // Final fallback: force scroll using multiple methods
+  console.log('🔄 [ScrollToBottom] Using final fallback methods...')
+  try {
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    if (virtualizer.value) {
+      // Method 1: Direct scrollTop
+      const container = virtualizer.value.scrollElement
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+
+      // Method 2: scrollToIndex
+      await new Promise(resolve => setTimeout(resolve, 50))
+      virtualizer.value.scrollToIndex(virtualItems.value.length - 1, { align: 'end' })
+    }
+  } catch (error) {
+    console.warn('❌ [ScrollToBottom] Final fallback failed:', error)
+  } finally {
+    // Clear guard after final fallback completes
+    setTimeout(() => {
+      isProgrammaticScrolling.value = false
+      isUserAtBottom.value = true // We just scrolled to bottom, so user is at bottom
+      console.log('🔽 [ScrollToBottom] Guard cleared, isUserAtBottom set to true')
+    }, 100)
+  }
+}
+
+// Animation handling with smooth entrance
+const isNewMessage = (messageId: string) => {
+  return newMessageIds.value.has(messageId)
+}
+
+const addMessageAnimation = () => {
+  // Mark new messages for animation
+  const existingIds = new Set(props.messages.map(m => m.id))
+  displayedMessages.value.forEach(msg => {
+    if (!existingIds.has(msg.id)) {
+      newMessageIds.value.add(msg.id)
+      // Auto-remove after animation completes
+      setTimeout(() => {
+        newMessageIds.value.delete(msg.id)
+      }, 500)
     }
   })
 }
 
-// Track if this is the first load to prevent flash of old messages
-const isFirstLoad = ref(true)
-
-const scrollToBottom = (smooth = false) => {
-  if (scrollContainer.value) {
-    const targetScrollTop = scrollContainer.value.scrollHeight - scrollContainer.value.clientHeight
-
-    if (smooth) {
-      // 🎨 平滑滾動動畫
-      scrollContainer.value.style.scrollBehavior = 'smooth'
-      scrollContainer.value.scrollTop = targetScrollTop
-
-      // 恢復為 auto，避免影響用戶手動滾動
-      setTimeout(() => {
-        if (scrollContainer.value) {
-          scrollContainer.value.style.scrollBehavior = 'auto'
-        }
-      }, 500)
-    } else {
-      scrollContainer.value.style.scrollBehavior = 'auto'
-      scrollContainer.value.scrollTop = targetScrollTop
-    }
-
-    console.log(`📜 [VirtualMessageList] Scrolled to bottom: scrollTop=${targetScrollTop}, ${smooth ? 'smooth' : 'instant'}`)
-  }
+// Smart scroll management
+const checkIfUserAtBottom = () => {
+  if (!scrollContainer.value) {return true}
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
+  const threshold = 100 // pixels from bottom
+  return scrollHeight - scrollTop - clientHeight < threshold
 }
 
-// ⚡ Handle retry event from MessageBubble
+const checkIfUserAtTop = () => {
+  if (!scrollContainer.value) {return false}
+  const { scrollTop } = scrollContainer.value
+  const threshold = 2500 // Increased threshold for virtual scrolling compatibility
+  return scrollTop < threshold
+}
+
+const handleScroll = () => {
+  if (!scrollContainer.value) {return}
+
+  // Skip scroll handling during programmatic scrolling to prevent race conditions
+  if (isProgrammaticScrolling.value) {
+    console.log('🔒 [handleScroll] Skipped - programmatic scrolling in progress')
+    return
+  }
+
+  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
+
+  // Update user position
+  const isAtBottom = checkIfUserAtBottom()
+  const isAtTop = checkIfUserAtTop()
+
+  isUserAtBottom.value = isAtBottom
+
+  // Check scroll direction before updating lastScrollTop
+  const isScrollingUp = scrollTop < lastScrollTop.value
+
+  // Show/hide load more trigger based on scroll direction
+  if (isScrollingUp && props.hasMore && !props.loading) {
+    showLoadMoreTrigger.value = true
+    // Clear any existing hide timeout
+    if (hideLoadMoreTimeout) {
+      clearTimeout(hideLoadMoreTimeout)
+      hideLoadMoreTimeout = null
+    }
+  } else if (!isScrollingUp) {
+    // Hide after a short delay when scrolling down
+    if (!hideLoadMoreTimeout) {
+      hideLoadMoreTimeout = setTimeout(() => {
+        showLoadMoreTrigger.value = false
+        hideLoadMoreTimeout = null
+      }, 800)
+    }
+  }
+
+  // Debug scroll state every few scrolls
+  if (Date.now() - lastScrollDebugTime.value > 2000) { // Debug every 2 seconds
+    console.log(`🔍 [VirtualMessageList] Scroll State:`, {
+      scrollTop: Math.round(scrollTop),
+      scrollHeight: Math.round(scrollHeight),
+      clientHeight: Math.round(clientHeight),
+      isAtTop,
+      isScrollingUp,
+      loadingHistory: props.loadingHistory,
+      loading: props.loading,
+      hasMore: props.hasMore,
+      threshold: 100,
+      topDistance: Math.round(scrollTop)
+    })
+    lastScrollDebugTime.value = Date.now()
+  }
+
+  // Load more historical messages when scrolling near top AND scrolling up
+  if (isAtTop && !props.loadingHistory && !props.loading && props.hasMore && isScrollingUp) {
+    // Throttle load-more requests to prevent spam
+    const now = Date.now()
+    if (now - lastLoadMoreTime.value > LOAD_MORE_THROTTLE_MS) {
+      console.log('📜 User scrolled up to top, loading more history...')
+      lastLoadMoreTime.value = now
+      emit('loadMore')
+    }
+  }
+
+  // Emit scroll event
+  emit('scroll', { scrollTop, scrollHeight, clientHeight })
+
+  // Update lastScrollTop AFTER direction detection
+  lastScrollTop.value = scrollTop
+}
+
+// Manual load more (click on button)
+const handleManualLoadMore = () => {
+  if (props.loading || !props.hasMore) {
+    console.log('⚠️ [VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
+    return
+  }
+  console.log('🔼 [VirtualMessageList] Manual load more triggered')
+  emit('loadMore')
+}
+
+// Handle retry event from MessageBubble
 const handleRetry = (messageId: string) => {
   console.log('🔄 [VirtualMessageList] Retry event received for message:', messageId)
   emit('retry', messageId)
 }
 
-// Lifecycle
-onMounted(() => {
+// Watchers with smart scroll behavior - FIXED race condition
+// Watch displayedMessages (not messages) because displayedMessages is what virtualItems uses
+// This ensures we scroll AFTER the UI has actually updated
+watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
+  console.log(`📨 [DisplayedMessageWatch] Displayed count changed: ${oldCount} → ${newCount}, virtualItems: ${virtualItems.value.length}`)
+
+  if (oldCount !== undefined && newCount > oldCount) {
+    // Check if user was at bottom before new messages
+    const wasAtBottom = isUserAtBottom.value
+    console.log(`📨 [DisplayedMessageWatch] New messages detected, wasAtBottom: ${wasAtBottom}`)
+
+    await nextTick()
+    addMessageAnimation()
+
+    // Wait for RAF + multiple ticks to ensure virtualizer has FULLY updated
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+    await nextTick()
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+    // Extra wait to ensure virtualItems computed has recalculated
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    console.log(`📨 [DisplayedMessageWatch] After wait - virtualItems: ${virtualItems.value.length}`)
+
+    // Only auto-scroll if user was already at bottom
+    if (!props.isSearchActive && wasAtBottom) {
+      console.log('📨 [DisplayedMessageWatch] Auto-scrolling to bottom...')
+      await scrollToBottom()
+    } else if (!wasAtBottom) {
+      // Show new message notification to parent
+      console.log('📨 [DisplayedMessageWatch] User not at bottom, showing notification')
+      emit('newMessageWhileScrolled')
+    }
+  } else if (oldCount === undefined && newCount > 0) {
+    // Initial load - always scroll to bottom
+    console.log('📨 [DisplayedMessageWatch] Initial load detected, scrolling to bottom...')
+    await nextTick()
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+    await scrollToBottom()
+  }
+})
+
+// Lifecycle with scroll listener - FIXED race condition
+onMounted(async () => {
+  console.log('🚀 [VirtualMessageList] Component mounted')
+  await nextTick()
+
+  // Wait for multiple animation frames to ensure DOM and virtualizer are ready
+  await new Promise(resolve => window.requestAnimationFrame(resolve))
+  await nextTick()
+  await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+  // Add scroll listener for smart scroll management (do this first)
   if (scrollContainer.value) {
     scrollContainer.value.addEventListener('scroll', handleScroll, { passive: true })
-    updateContainerHeight()
-
-    // 🔥 CRITICAL: Set initial scrollTop to bottom BEFORE rendering
-    // This prevents visibleRange from calculating based on scrollTop=0
-    if (props.messages.length > 0) {
-      const maxScrollTop = scrollContainer.value.scrollHeight - scrollContainer.value.clientHeight
-      scrollContainer.value.scrollTop = maxScrollTop
-      scrollTop.value = maxScrollTop
-      console.log(`🎯 [VirtualMessageList] Initial scrollTop set to ${maxScrollTop}`)
-    }
   }
 
-  // Resize observer for container height
-  const resizeObserver = new (window as { ResizeObserver: new (_callback: () => void) => { observe: (_element: HTMLElement) => void; disconnect: () => void } }).ResizeObserver(() => {
-    updateContainerHeight()
-  })
+  // Now scroll to bottom if we have messages
+  if (!props.isSearchActive && displayedMessages.value.length > 0) {
+    console.log(`🚀 [VirtualMessageList] Initial scroll to bottom with ${displayedMessages.value.length} messages`)
+    // Give virtualizer more time to initialize
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await scrollToBottom()
 
+    // Secondary verification scroll after a delay
+    setTimeout(async () => {
+      if (isUserAtBottom.value !== false) { // Only if user hasn't scrolled away
+        await scrollToBottom()
+        console.log('🚀 [VirtualMessageList] Secondary verification scroll complete')
+      }
+    }, 300)
+  }
+})
+
+onUnmounted(() => {
   if (scrollContainer.value) {
-    resizeObserver.observe(scrollContainer.value)
+    scrollContainer.value.removeEventListener('scroll', handleScroll)
   }
-
-  onUnmounted(() => {
-    if (scrollContainer.value) {
-      scrollContainer.value.removeEventListener('scroll', handleScroll)
-    }
-    resizeObserver.disconnect()
-  })
-})
-
-// 🔥 CRITICAL FIX: Watch messages and scroll to bottom with smooth animation
-// This prevents the flash of old messages before auto-scrolling
-watch(() => props.messages.length, (newLength, oldLength) => {
-  if (newLength > 0) {
-    if (isFirstLoad.value) {
-      // 🔥 On first load, instant scroll without animation
-      console.log('🎯 [VirtualMessageList] First load detected, preparing to scroll...')
-
-      nextTick(() => {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-              // Triple RAF to absolutely ensure DOM is ready
-              scrollToBottom(false) // Instant scroll on first load
-              isFirstLoad.value = false
-              console.log('✅ [VirtualMessageList] First load: scrolled to bottom')
-            })
-          })
-        })
-      })
-    } else if (newLength > oldLength) {
-      // 🎨 New messages added, smooth scroll to show them
-      nextTick(() => {
-        scrollToBottom(true) // Smooth scroll for new messages
-      })
-    }
+  // Clean up timeout
+  if (hideLoadMoreTimeout) {
+    clearTimeout(hideLoadMoreTimeout)
   }
 })
 
-// Expose scrollToBottom method to parent component
+// Expose methods
 defineExpose({
+  scrollToMessage,
+  scrollToTop,
   scrollToBottom
 })
 </script>
 
 <style scoped>
+/* Modern Minimalist Container - Now the scroll container */
 .virtual-message-list {
   height: 100%;
-  overflow-y: auto;
-  padding: 1rem;
-  /* 🎨 平滑滾動 - 由 JS 動態控制 */
-  scroll-behavior: auto;
-}
-
-.virtual-content {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* Modern scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
 }
 
-.message-item {
-  padding: 0.5rem 0;
-  /* 🎨 消息淡入動畫 */
-  animation: message-fade-in 0.3s ease-out;
-  transform-origin: top;
+.virtual-message-list::-webkit-scrollbar {
+  width: 6px;
 }
 
-/* 🎨 消息淡入動畫關鍵幀 */
-@keyframes message-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.virtual-message-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.virtual-message-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.virtual-message-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Clean Search Header */
+.search-results-header {
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clear-search-btn {
+  background: transparent;
+  color: #3b82f6;
+  border: 1px solid #dbeafe;
+  padding: 0.375rem 1rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.clear-search-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
 /* 🔼 載入指示器（頂部） */
 .loading-indicator {
   text-align: center;
   padding: 1rem;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #64748b);
 }
 
 .loading-top {
@@ -341,7 +753,7 @@ defineExpose({
   background: linear-gradient(to bottom, rgba(255,255,255,0.98), rgba(255,255,255,0.95));
   backdrop-filter: blur(8px);
   z-index: 10;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,7 +774,7 @@ defineExpose({
   text-align: center;
   padding: 1rem;
   cursor: pointer;
-  color: var(--primary-color);
+  color: var(--primary-color, #3b82f6);
   transition: all 0.2s;
 }
 
@@ -372,13 +784,25 @@ defineExpose({
   background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.02));
   backdrop-filter: blur(4px);
   z-index: 10;
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom: 2px solid var(--primary-color, #3b82f6);
   margin-bottom: 0.5rem;
 }
 
 .load-more-top:hover {
   background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
-  border-bottom-color: var(--primary-color);
+  border-bottom-color: var(--primary-color, #3b82f6);
+}
+
+/* Load more trigger fade transition */
+.load-more-fade-enter-active,
+.load-more-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.load-more-fade-enter-from,
+.load-more-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 .load-more-content {
@@ -397,5 +821,324 @@ defineExpose({
 @keyframes bounce-up {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
+}
+
+/* Smooth Scrollable Container */
+/* Virtual Content Container - No longer scrollable, just content */
+.virtual-content {
+  position: relative;
+  contain: layout style paint;
+  flex-shrink: 0; /* Don't shrink this container */
+}
+
+.virtual-content.updating {
+  pointer-events: none;
+  opacity: 0.98;
+}
+
+/* Optimized Virtual Items */
+.virtual-item {
+  contain: layout style paint;
+  will-change: transform;
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Elegant Date Separator */
+.date-separator-item {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(to bottom,
+    rgba(250, 251, 252, 0.95) 0%,
+    rgba(250, 251, 252, 0.8) 50%,
+    transparent 100%);
+  backdrop-filter: blur(8px);
+}
+
+/* Clean Message Item Container */
+.message-item {
+  padding: 0.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Modern Typing Indicator */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.5rem;
+  margin: 0.5rem 1.5rem;
+  background: rgba(248, 250, 252, 0.8);
+  border-radius: 1.5rem;
+  width: fit-content;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.typing-dots {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #64748b, #94a3b8);
+  border-radius: 50%;
+  animation: typing-pulse 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.typing-text {
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+@keyframes typing-pulse {
+  0%, 60%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  30% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+/* Smooth Message Animations */
+.message-bubble-wrapper {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+/* Elegant Entrance Animations */
+.message-enter-from,
+.message-appear-from {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+
+.message-enter-active,
+.message-appear-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.message-enter-to,
+.message-appear-to {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Subtle Leave Animation */
+.message-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.message-leave-active {
+  transition: all 0.15s cubic-bezier(0.4, 0, 1, 1);
+  position: absolute;
+  width: 100%;
+}
+
+.message-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+}
+
+/* New Message Animation */
+.message-new {
+  animation: messageSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Smooth Loading Animation */
+.message-fade-in {
+  animation: smoothFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes smoothFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Clean Loading State */
+.history-loading-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(16px);
+}
+
+.history-loading-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Responsive Design - Mobile First */
+@media (max-width: 768px) {
+  .virtual-message-list {
+    background: #ffffff;
+  }
+
+  .message-item {
+    padding: 0.375rem 1rem;
+  }
+
+  .date-separator-item {
+    padding: 1rem 0;
+  }
+
+  .search-results-header {
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .clear-search-btn {
+    padding: 0.3125rem 0.875rem;
+    font-size: 0.75rem;
+  }
+
+  .typing-indicator {
+    margin: 0.375rem 1rem;
+    padding: 0.75rem 1.25rem;
+  }
+
+  .virtual-message-list::-webkit-scrollbar {
+    width: 4px;
+  }
+}
+
+/* Tablet Adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .message-item {
+    padding: 0.5rem 1.25rem;
+  }
+}
+
+/* Large Screens */
+@media (min-width: 1440px) {
+  .message-item {
+    padding: 0.625rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .date-separator-item {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .typing-indicator {
+    margin: 0.5rem 2rem;
+  }
+}
+
+/* Accessibility & Performance */
+@media (prefers-reduced-motion: reduce) {
+  .message-enter-from,
+  .message-enter-active,
+  .message-appear-from,
+  .message-appear-active,
+  .message-leave-from,
+  .message-leave-active,
+  .message-bubble-wrapper,
+  .message-new,
+  .message-fade-in {
+    animation: none !important;
+    transition: opacity 0.15s ease !important;
+  }
+
+  .typing-dots span {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .virtual-message-list {
+    scroll-behavior: auto;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .search-results-header {
+    border-bottom: 2px solid currentColor;
+  }
+
+  .clear-search-btn {
+    border-width: 2px;
+  }
+
+  .typing-indicator {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Dark Mode Support (Future Enhancement) */
+@media (prefers-color-scheme: dark) {
+  .virtual-message-list {
+    background: linear-gradient(to bottom, #0f172a 0%, #1e293b 100%);
+  }
+
+  .search-results-header {
+    background: rgba(15, 23, 42, 0.95);
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+  }
+
+  .typing-indicator {
+    background: rgba(30, 41, 59, 0.8);
+    color: #94a3b8;
+  }
+
+  .virtual-message-list::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+
+  .virtual-message-list::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
 }
 </style>

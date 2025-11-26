@@ -290,6 +290,20 @@ console.log('   • GET /api/security/dashboard/events/recent (Admin only - requ
 console.log('   • GET /api/security/dashboard/summary (Admin only - requires JWT)');
 
 // =================================================================================
+// 🆕 PUBLIC FILE PROXY - R2 文件代理下載 (無需認證)
+// =================================================================================
+// 用於代理 R2 文件下載，解決 R2 公開訪問未配置的問題
+// 客服和 LINE 消費者都可以通過此端點下載文件
+// =================================================================================
+
+import fileProxyHandler from './handlers/file-proxy';
+
+app.route('/api/files', fileProxyHandler);
+console.log('✅ File proxy endpoints PRE-REGISTERED (public access):');
+console.log('   • GET /api/files/public/* (Public - R2 path proxy)');
+console.log('   • GET /api/files/download/:attachmentId (Public - attachment ID proxy)');
+
+// =================================================================================
 // ⚠️  CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
 // =================================================================================
 //

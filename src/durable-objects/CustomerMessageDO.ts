@@ -186,26 +186,34 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           agentId = sessionId;
         }
 
-        const { content, assets } = await c.req.json();
+        const { content, assets, attachmentIds, messageType, platform } = await c.req.json();
 
-        if (!content?.trim()) {
-          return c.json({ success: false, error: 'Message content is required' }, 400);
+        // Allow empty content if there are attachments
+        const hasAttachments = attachmentIds && attachmentIds.length > 0;
+        if (!content?.trim() && !hasAttachments) {
+          return c.json({ success: false, error: 'Message content or attachments are required' }, 400);
         }
 
         console.log(`📝 [CustomerMessageDO] Creating message:`, {
           conversationId,
           agentId,
-          contentLength: content.length,
-          assetsCount: assets?.length || 0
+          contentLength: content?.length || 0,
+          assetsCount: assets?.length || 0,
+          attachmentIds: attachmentIds || []
         });
 
         const messageId = crypto.randomUUID();
         const createdAt = new Date().toISOString();
 
-        // Store assets in metadata field as JSON
+        // Store assets and attachmentIds in metadata field as JSON
         const metadata = JSON.stringify({
-          assets: assets || []
+          assets: assets || [],
+          attachmentIds: attachmentIds || [],
+          platform: platform || 'system'
         });
+
+        // Determine message type - use 'file' if there are attachments
+        const effectiveMessageType = hasAttachments ? 'file' : (messageType || 'text');
 
         // Construct the complete message object with ALL required fields
         // This prevents Drizzle ORM schema mismatch errors
@@ -215,8 +223,8 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           senderType: 'agent' as const,
           customerSenderId: null,
           agentSenderId: agentId,
-          content: content,
-          messageType: 'text' as const,
+          content: content || '',
+          messageType: effectiveMessageType as 'text' | 'file',
           platformMessageId: null,
           isRecalled: false,
           recallDeadline: null,
@@ -236,14 +244,38 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         const db = createDbClient(this.env.DB);
         await db.insert(messages).values(messageData);
 
+        // 🔧 FIX: Link attachments to the message
+        if (hasAttachments) {
+          console.log(`📎 [CustomerMessageDO] Linking ${attachmentIds.length} attachments to message ${messageId}`);
+          for (const attachmentId of attachmentIds) {
+            await db
+              .update(fileAttachments)
+              .set({ messageId: messageId })
+              .where(eq(fileAttachments.id, attachmentId));
+          }
+          console.log(`✅ [CustomerMessageDO] Attachments linked successfully`);
+        }
+
         console.log(`✅ [CustomerMessageDO] Message created: ${messageId}`);
+
+        // 🔧 FIX: Fetch linked attachments for response
+        let linkedAttachments: any[] = [];
+        if (hasAttachments) {
+          linkedAttachments = await db
+            .select()
+            .from(fileAttachments)
+            .where(eq(fileAttachments.messageId, messageId))
+            .all();
+          console.log(`📎 [CustomerMessageDO] Fetched ${linkedAttachments.length} linked attachments`);
+        }
 
         // Use the inserted data directly for broadcasting
         // This avoids D1 eventual consistency issues
-        // 🔧 FIX: Add senderId field for frontend compatibility
+        // 🔧 FIX: Add senderId field and file_attachments for frontend compatibility
         const createdMessage = {
           ...messageData,
-          senderId: messageData.agentSenderId || messageData.customerSenderId
+          senderId: messageData.agentSenderId || messageData.customerSenderId,
+          file_attachments: linkedAttachments
         };
 
         console.log(`📋 [CustomerMessageDO] Using direct message data for broadcast`);
