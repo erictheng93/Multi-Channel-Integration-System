@@ -1,7 +1,7 @@
 // 對話管理處理器 - 主要實現
 import { Hono } from 'hono';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {

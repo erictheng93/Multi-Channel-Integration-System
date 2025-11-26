@@ -1,7 +1,7 @@
 // Period Comparison Service - 期間比較功能
 // 提供當前期間與歷史期間的數據對比分析
 
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import type { Database } from '@/db/drizzle-factory';
 import { and, gte, lte, count, sql } from 'drizzle-orm';
 import { conversations, messages, activities } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
@@ -73,7 +73,7 @@ export class PeriodComparisonService {
   private cacheService?: AnalyticsCacheService;
 
   constructor(
-    private db: DrizzleD1Database,
+    private db: Database,
     cacheService?: AnalyticsCacheService
   ) {
     this.cacheService = cacheService;

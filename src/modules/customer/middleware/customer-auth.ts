@@ -3,7 +3,7 @@
 
 import { Context, Next } from 'hono';
 import { eq, or, sql } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers
 } from '@/db/schema';

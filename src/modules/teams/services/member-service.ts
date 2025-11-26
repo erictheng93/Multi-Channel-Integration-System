@@ -1,7 +1,8 @@
 // Team Member Service
 // 團隊成員業務邏輯服務
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
+import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, or, desc, sql, ne } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import { hashPassword } from '@/utils/auth';

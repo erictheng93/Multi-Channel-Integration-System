@@ -2,7 +2,7 @@
 // 活動模組 - 核心活動記錄服務
 
 import { eq, and, gte, lte, desc, count, lt, sql } from 'drizzle-orm'
-import { createDbClient } from '../../../db/drizzle-factory'
+import { createDbClient } from '@/db/drizzle-factory'
 import { activities } from '@/db/schema'
 import {
   ActivityLog,

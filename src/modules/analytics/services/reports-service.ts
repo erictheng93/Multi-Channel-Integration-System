@@ -1,9 +1,10 @@
 // Reports Service - 統一報表生成服務
 // 提供報表模板管理、數據查詢、生成和分發功能
 
+import { drizzle } from 'drizzle-orm/d1';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '@/types';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
 import type {

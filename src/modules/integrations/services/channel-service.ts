@@ -1,7 +1,8 @@
 // Channel Integration Service
 // Business logic for multi-tenant channel management
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
+import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc } from 'drizzle-orm';
 import { channelIntegrations } from '@/db/schema';

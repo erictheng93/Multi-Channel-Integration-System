@@ -2,7 +2,7 @@
 // 提供期間比較的 RESTful API endpoints
 
 import { Hono } from 'hono';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';

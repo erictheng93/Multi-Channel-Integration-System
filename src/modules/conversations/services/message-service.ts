@@ -1,7 +1,8 @@
 // Message Service for Conversations Module
 // 訊息服務層
 
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
+import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and } from 'drizzle-orm';
 import { messages, conversations, customers } from '@/db/schema';

@@ -1,8 +1,9 @@
 // Customer 搜索服務
 // 提供客戶的搜索、篩選、分頁等功能
 
+import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, like, sql, or, inArray, count } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,

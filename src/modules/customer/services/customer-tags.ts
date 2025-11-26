@@ -1,8 +1,9 @@
 // Customer 標籤服務
 // 提供客戶標籤管理功能
 
+import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, inArray, desc, sql } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,

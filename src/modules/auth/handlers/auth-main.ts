@@ -14,7 +14,7 @@ import {
   rateLimit
 } from '../middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@shared/utils/logger';

@@ -1,7 +1,7 @@
 // Activities Module - Activity Statistics Service
 // 活動模組 - 活動統計分析服務
 
-import { createDbClient } from '../../../db/drizzle-factory'
+import { createDbClient } from '@/db/drizzle-factory'
 import { sql, gte, count, desc } from 'drizzle-orm'
 import { activities } from '@/db/schema'
 import { ActivityOverview } from '@modules/activities/types/interfaces'

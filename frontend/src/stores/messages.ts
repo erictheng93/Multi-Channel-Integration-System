@@ -11,7 +11,7 @@ import { useDebounceFn } from '@vueuse/core'
 // Helper function to extract userId from JWT token
 function getUserIdFromToken(): string | null {
   const token = localStorage.getItem('token')
-  if (!token) {return null}
+  if (!token) { return null }
 
   try {
     // Use jwt-decode library for proper JWT parsing
@@ -119,7 +119,7 @@ export const useMessagesStore = defineStore('messages', () => {
 
   // Actions
   const fetchMessages = async (conversationId: string) => {
-    if (!conversationId) {return}
+    if (!conversationId) { return }
 
     loading.value = true
     error.value = null
@@ -130,7 +130,7 @@ export const useMessagesStore = defineStore('messages', () => {
         messages.value = response.data
         optimisticMessages.value = []
         // ✅ 手動建立索引以支持測試
-        messageIndexService.indexMessages(response.data)
+        messageIndexService.buildIndex(response.data)
       } else {
         handleError(response.error, '無法載入訊息')
       }
@@ -149,7 +149,9 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   // Support both object and separate parameters with function overloads
+  // eslint-disable-next-line no-redeclare, no-unused-vars
   async function sendMessage(params: SendMessageParams): Promise<Message | false>
+  // eslint-disable-next-line no-redeclare, no-unused-vars
   async function sendMessage(conversationId: string, content: string, platform?: Platform): Promise<Message | false>
   async function sendMessage(
     paramsOrConversationId: SendMessageParams | string,
@@ -158,7 +160,7 @@ export const useMessagesStore = defineStore('messages', () => {
   ): Promise<Message | false> {
     // Normalize to object form
     const params: SendMessageParams = typeof paramsOrConversationId === 'string'
-      ? { conversationId: paramsOrConversationId, content: content!, platform }
+      ? { conversationId: paramsOrConversationId, content: content ?? '', platform }
       : paramsOrConversationId
 
     if (!params.conversationId) {
@@ -169,11 +171,11 @@ export const useMessagesStore = defineStore('messages', () => {
     // ✅ INPUT VALIDATION: Validate and sanitize content
     const validation = validateAndSanitizeContent(params.content)
     if (!validation.valid) {
-      handleError(validation.error!, validation.error!)
+      handleError(validation.error ?? 'Validation error', validation.error ?? 'Validation error')
       return false
     }
 
-    const sanitizedContent = validation.sanitized!
+    const sanitizedContent = validation.sanitized ?? ''
 
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
@@ -195,8 +197,7 @@ export const useMessagesStore = defineStore('messages', () => {
       // Get senderId from JWT token
       const senderId = getUserIdFromToken()
 
-      const response = await messageApi.create?.({
-        conversationId: params.conversationId,
+      const response = await messageApi.send?.(params.conversationId, {
         content: sanitizedContent,
         platform: params.platform || 'line',
         messageType: 'text',
@@ -241,8 +242,12 @@ export const useMessagesStore = defineStore('messages', () => {
 
   const markAsRead = async (messageId: string) => {
     try {
-      const response = await messageApi.markAsRead?.(messageId)
-      if (response?.success) {
+      const message = messages.value.find(m => m.id === messageId)
+      if (!message) {return false}
+
+      const res = await messageApi.markAsRead(message.conversationId, messageId)
+
+      if (res?.success) {
         const messageIndex = messages.value.findIndex(m => m.id === messageId)
         if (messageIndex !== -1) {
           const message = messages.value[messageIndex]
@@ -258,7 +263,7 @@ export const useMessagesStore = defineStore('messages', () => {
         }
         return true
       } else {
-        handleError(response?.error, '標記已讀失敗')
+        handleError(res?.error, '標記已讀失敗')
         return false
       }
     } catch (err) {
@@ -278,26 +283,37 @@ export const useMessagesStore = defineStore('messages', () => {
 
   const updateMessage = async (messageId: string, updates: Partial<Message>) => {
     try {
-      const response = await messageApi.update?.(messageId, updates)
-      if (response?.success && response?.data) {
-        const messageIndex = messages.value.findIndex(m => m.id === messageId)
-        if (messageIndex !== -1) {
-          const message = messages.value[messageIndex]
-          messages.value[messageIndex] = {
-            ...message,
-            ...response.data
-          } as Message
-          // 更新索引
-          const updatedMessage = messages.value[messageIndex]
-          if (updatedMessage) {
-            messageIndexService.updateMessage(updatedMessage)
+      // Only support content update for now as per API
+      if (updates.content) {
+        const message = messages.value.find(m => m.id === messageId)
+        if (!message) {return false}
+
+        const response = await messageApi.edit?.(
+          message.conversationId,
+          messageId,
+          updates.content
+        )
+        if (response?.success && response?.data) {
+          const messageIndex = messages.value.findIndex(m => m.id === messageId)
+          if (messageIndex !== -1) {
+            const message = messages.value[messageIndex]
+            messages.value[messageIndex] = {
+              ...message,
+              ...response.data
+            } as Message
+            // 更新索引
+            const updatedMessage = messages.value[messageIndex]
+            if (updatedMessage) {
+              messageIndexService.updateMessage(updatedMessage)
+            }
           }
+          return true
+        } else {
+          handleError(response?.error, '更新訊息失敗')
+          return false
         }
-        return true
-      } else {
-        handleError(response?.error, '更新訊息失敗')
-        return false
       }
+      return false
     } catch (err) {
       handleError(err, '網路錯誤，更新訊息失敗')
       return false
@@ -306,7 +322,10 @@ export const useMessagesStore = defineStore('messages', () => {
 
   const deleteMessage = async (messageId: string) => {
     try {
-      const response = await messageApi.delete?.(messageId)
+      const message = messages.value.find(m => m.id === messageId)
+      if (!message) {return false}
+
+      const response = await messageApi.recallMessage?.(message.conversationId, { messageId })
       if (response?.success) {
         const messageIndex = messages.value.findIndex(m => m.id === messageId)
         if (messageIndex !== -1) {
@@ -370,7 +389,7 @@ export const useMessagesStore = defineStore('messages', () => {
     (messages: Message[]) => {
       if ('requestIdleCallback' in window) {
         // Use requestIdleCallback for better performance
-        requestIdleCallback(
+        window.requestIdleCallback(
           () => {
             messageIndexService.buildIndex(messages)
           },
@@ -401,7 +420,7 @@ export const useMessagesStore = defineStore('messages', () => {
   // ✅ MEMORY LEAK FIX: Cleanup function to stop watchers and clear resources
   const $dispose = () => {
     stopIndexWatcher() // Stop the watcher
-    messageIndexService.clear() // Clear the index
+    messageIndexService.clearIndex() // Clear the index
   }
 
   return {

@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
-import { createDbClient } from '../../../db/drizzle-factory';
+import { createDbClient } from '@/db/drizzle-factory';
 import { eq } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';

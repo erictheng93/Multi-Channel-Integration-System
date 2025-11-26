@@ -55,7 +55,9 @@
       "mcp__chrome-devtools__get_network_request",
       "Bash(Select-String \"file_attachments\")",
       "Bash(Select-String -Pattern \"url\")",
-      "Bash(npx wrangler r2 object list:*)"
+      "Bash(npx wrangler r2 object list:*)",
+      "Bash(cd:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": [],
