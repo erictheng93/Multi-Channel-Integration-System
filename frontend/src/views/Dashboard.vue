@@ -1,6 +1,12 @@
 <template>
   <AppLayout>
-    <div class="dashboard">
+    <!-- ⚡ LCP 優化：全頁面骨架屏 (初始載入時顯示) -->
+    <DashboardSkeleton v-if="isInitialLoading" />
+
+    <div
+      v-else
+      class="dashboard"
+    >
       <!-- Welcome Section -->
       <div class="welcome-section">
         <div class="welcome-content">
@@ -367,7 +373,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { onMounted, onBeforeUnmount, computed, watch, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { useAuth } from '@/composables/useAuth'
@@ -378,6 +384,7 @@ import { useActivityTracker } from '@/composables/useActivityTracker'
 // REMOVED: useActivityStream (SSE-based, replaced by WebSocket in Phase 1 cleanup)
 // import { useActivityStream } from '@/composables/useActivityStream'
 import AppLayout from '@/components/ui/AppLayout.vue'
+import DashboardSkeleton from '@/components/ui/DashboardSkeleton.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
@@ -391,6 +398,9 @@ import type { Conversation } from '@/types'
 const router = useRouter()
 const { currentAgent } = useAuth()
 const { t } = useI18n()
+
+// ⚡ LCP 優化：初始載入狀態 - 用於顯示骨架屏
+const isInitialLoading = ref(true)
 
 // 開發模式檢查
 // const isDev = computed(() => import.meta.env.DEV)
@@ -572,6 +582,17 @@ watch(() => router.currentRoute.value.path, (newPath, oldPath) => {
 onMounted(async () => {
   // 數據會自動載入，因為 useAsyncData 和 useConversations 都設置了 immediate: true
   console.log('🚀 Dashboard mounted')
+
+  // ⚡ LCP 優化：快速切換到實際內容
+  // 使用 requestAnimationFrame 確保骨架屏至少渲染一幀後再切換
+  // 這可以避免閃爍並確保 LCP 元素盡快顯示
+  window.requestAnimationFrame(() => {
+    // 延遲一小段時間讓數據有機會載入
+    setTimeout(() => {
+      isInitialLoading.value = false
+      console.log('⚡ [Dashboard] Initial skeleton hidden, showing content')
+    }, 150) // 短暫延遲確保數據開始載入
+  })
 
   // 啟動 token 刷新檢查和活動追蹤
   startTokenRefreshCheck()

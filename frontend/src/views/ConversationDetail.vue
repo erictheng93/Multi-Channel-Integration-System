@@ -298,7 +298,7 @@ import { usePerformanceOptimization } from '@/composables/usePerformanceOptimiza
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
 import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Prevent duplicate sending
 import { useAuthStore } from '@/stores/auth' // ⚡ For optimistic message creation
-import type { Message } from '@/types'
+import type { Message, FileAttachmentData } from '@/types'
 // ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
 import { createCustomerRealtimeConnection, type CustomerRealtimeConnection, type ConnectionState } from '@/services/customerWebSocketManager'
 type RealtimeConnection = CustomerRealtimeConnection
@@ -752,7 +752,7 @@ const lastUserActivity = ref(Date.now())
 
 // ⚡ Enhanced message handlers with Optimistic UI Update
 // 📤 Optimistic Message Sending - Instant UI feedback with background API sync
-const handleMessageSent = async (data: { content: string; attachments: unknown[] }) => {
+const handleMessageSent = async (data: { content: string; attachments: unknown[]; file_attachments?: FileAttachmentData[] }) => {
   console.log('📤 [Message] Sending via:', currentProtocol.value)
   trackUserActivity()
 
@@ -778,13 +778,15 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
   const authStore = useAuthStore()
 
   // ⚡ STEP 3: Create Optimistic Message - Instant UI Update
+  // 🔧 FIX: Determine messageType based on attachments
+  const hasFileAttachments = data.file_attachments && data.file_attachments.length > 0
   const optimisticMessage: Message = {
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     conversationId: conversationId.value,
     senderId: authStore.currentAgent?.id || 'unknown',
     senderType: 'agent' as const,
     content: data.content.trim(),
-    messageType: 'text' as const,
+    messageType: hasFileAttachments ? 'file' as const : 'text' as const,
     platform: conversation.value?.platform || 'line',
     timestamp: Date.now(),
     createdAt: Date.now(),
@@ -792,7 +794,9 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
     deliveryStatus: 'sending' as const,
     senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    attachments: data.attachments as any[]
+    attachments: data.attachments as any[], // Legacy attachments format
+    // eslint-disable-next-line camelcase
+    file_attachments: data.file_attachments || [] // 檔案附件資料，用於 Flex Message Card 顯示
   }
 
   // ⚡ STEP 4: Add message to UI immediately

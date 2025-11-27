@@ -89,6 +89,15 @@ export interface MessageMetadata {
   [key: string]: unknown
 }
 
+// 檔案附件資料 - 用於前端 UI 顯示 (Flex Message Card)
+export interface FileAttachmentData {
+  id: string
+  filename: string
+  mimeType: string
+  fileSize: number
+  fileUrl: string
+}
+
 export interface Message {
   id: EntityId
   conversationId: EntityId
@@ -104,7 +113,8 @@ export interface Message {
   deliveryStatus?: DeliveryStatus
   status?: DeliveryStatus // 別名，向後兼容
   metadata?: MessageMetadata
-  attachments?: MessageAttachment[] // 附件陣列
+  attachments?: MessageAttachment[] // 附件陣列 (legacy)
+  file_attachments?: FileAttachmentData[] // 檔案附件陣列 (新格式，用於 Flex Message Card 顯示)
   senderName?: string // 發送者名稱，用於 UI 顯示
 }
 

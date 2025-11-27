@@ -10,6 +10,7 @@ export type {
   Customer,
   Conversation,
   Message,
+  FileAttachmentData, // 檔案附件資料 (用於 Flex Message Card 顯示)
   ApiResponse
 } from '@shared/types/index';
 

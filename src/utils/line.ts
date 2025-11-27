@@ -208,6 +208,290 @@ export function createFlexMessage(altText: string, contents: LineFlexBubble): Li
 }
 
 /**
+ * 根據 MIME 類型和檔案名獲取檔案類型資訊
+ */
+function getFileTypeInfo(mimeType: string, filename: string): {
+  icon: string;
+  label: string;
+  typeName: string;
+  headerColor: string;
+  buttonColor: string;
+} {
+  const mime = mimeType.toLowerCase();
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+
+  // PDF
+  if (mime.includes('pdf') || ext === 'pdf') {
+    return {
+      icon: '📄',
+      label: 'PDF 文件',
+      typeName: 'PDF 文檔',
+      headerColor: '#E53935',
+      buttonColor: '#E53935'
+    };
+  }
+
+  // Word
+  if (mime.includes('word') || mime.includes('document') || ['doc', 'docx'].includes(ext)) {
+    return {
+      icon: '📝',
+      label: 'Word 文件',
+      typeName: 'Word 文檔',
+      headerColor: '#2196F3',
+      buttonColor: '#2196F3'
+    };
+  }
+
+  // Excel
+  if (mime.includes('excel') || mime.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
+    return {
+      icon: '📊',
+      label: 'Excel 文件',
+      typeName: 'Excel 表格',
+      headerColor: '#4CAF50',
+      buttonColor: '#4CAF50'
+    };
+  }
+
+  // PowerPoint
+  if (mime.includes('powerpoint') || mime.includes('presentation') || ['ppt', 'pptx'].includes(ext)) {
+    return {
+      icon: '📑',
+      label: 'PPT 文件',
+      typeName: 'PowerPoint 簡報',
+      headerColor: '#FF9800',
+      buttonColor: '#FF9800'
+    };
+  }
+
+  // Images
+  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
+    return {
+      icon: '🖼️',
+      label: '圖片',
+      typeName: '圖片檔案',
+      headerColor: '#00BCD4',
+      buttonColor: '#00BCD4'
+    };
+  }
+
+  // Video
+  if (mime.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+    return {
+      icon: '🎬',
+      label: '影片',
+      typeName: '影片檔案',
+      headerColor: '#9C27B0',
+      buttonColor: '#9C27B0'
+    };
+  }
+
+  // Audio
+  if (mime.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) {
+    return {
+      icon: '🎵',
+      label: '音訊',
+      typeName: '音訊檔案',
+      headerColor: '#E91E63',
+      buttonColor: '#E91E63'
+    };
+  }
+
+  // Archive
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z') ||
+      ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return {
+      icon: '📦',
+      label: '壓縮檔',
+      typeName: '壓縮檔案',
+      headerColor: '#795548',
+      buttonColor: '#795548'
+    };
+  }
+
+  // Text files
+  if (mime.includes('text') || ['txt', 'md', 'json', 'xml', 'log'].includes(ext)) {
+    return {
+      icon: '📃',
+      label: '文字檔',
+      typeName: '文字文件',
+      headerColor: '#607D8B',
+      buttonColor: '#607D8B'
+    };
+  }
+
+  // Code files
+  if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css', 'vue', 'jsx', 'tsx'].includes(ext)) {
+    return {
+      icon: '💻',
+      label: '程式碼',
+      typeName: '程式檔案',
+      headerColor: '#3F51B5',
+      buttonColor: '#3F51B5'
+    };
+  }
+
+  // Default
+  return {
+    icon: '📁',
+    label: '檔案',
+    typeName: '檔案',
+    headerColor: '#9C27B0',
+    buttonColor: '#9C27B0'
+  };
+}
+
+/**
+ * 格式化檔案大小
+ */
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return '';
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${units[i]}`;
+}
+
+/**
+ * 建立檔案附件 Flex Message (LINE 風格卡片)
+ *
+ * @param fileUrl - 檔案下載 URL
+ * @param filename - 檔案名稱
+ * @param mimeType - MIME 類型
+ * @param fileSize - 檔案大小 (bytes)
+ * @returns Flex Message 對象
+ */
+export function createFileFlexMessage(
+  fileUrl: string,
+  filename: string,
+  mimeType: string = '',
+  fileSize: number = 0
+): LineReplyMessage {
+  const fileInfo = getFileTypeInfo(mimeType, filename);
+  const formattedSize = formatFileSize(fileSize);
+
+  // Truncate long filenames
+  const maxLength = 30;
+  let displayFilename = filename;
+  if (filename.length > maxLength) {
+    const extension = filename.split('.').pop() || '';
+    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+    const availableLength = maxLength - extension.length - 4;
+    displayFilename = `${nameWithoutExt.substring(0, availableLength)}...${extension ? `.${extension}` : ''}`;
+  }
+
+  const flexBubble: LineFlexBubble = {
+    type: 'bubble',
+    styles: {
+      header: {
+        backgroundColor: fileInfo.headerColor
+      },
+      footer: {
+        backgroundColor: '#f8f9fa'
+      }
+    },
+    header: {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        {
+          type: 'text',
+          text: fileInfo.icon,
+          size: 'xl',
+          color: '#ffffff'
+        } as any,
+        {
+          type: 'text',
+          text: fileInfo.label,
+          size: 'lg',
+          weight: 'bold',
+          color: '#ffffff',
+          margin: 'sm'
+        } as any
+      ],
+      paddingAll: '14px',
+      justifyContent: 'center',
+      alignItems: 'center'
+    } as any,
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'text',
+          text: displayFilename,
+          weight: 'bold',
+          size: 'md',
+          wrap: true,
+          color: '#333333'
+        } as any,
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: fileInfo.typeName,
+              size: 'sm',
+              color: '#888888',
+              flex: 1
+            } as any,
+            ...(formattedSize ? [{
+              type: 'text',
+              text: formattedSize,
+              size: 'sm',
+              color: '#888888',
+              align: 'end'
+            } as any] : [])
+          ],
+          margin: 'md'
+        } as any,
+        {
+          type: 'separator',
+          margin: 'lg',
+          color: '#eeeeee'
+        } as any,
+        {
+          type: 'text',
+          text: '點擊下方按鈕下載或開啟檔案',
+          size: 'xs',
+          color: '#aaaaaa',
+          align: 'center',
+          margin: 'md'
+        } as any
+      ],
+      paddingAll: '14px'
+    } as any,
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          action: {
+            type: 'uri',
+            label: '📥 打開此文件',
+            uri: fileUrl
+          },
+          style: 'primary',
+          color: fileInfo.buttonColor,
+          height: 'sm'
+        } as any
+      ],
+      paddingAll: '10px'
+    } as any
+  };
+
+  return {
+    type: 'flex',
+    altText: `📎 ${filename}`,
+    contents: flexBubble
+  };
+}
+
+/**
  * 獲取 LINE 用戶資訊
  */
 export async function getLineUserProfile(
