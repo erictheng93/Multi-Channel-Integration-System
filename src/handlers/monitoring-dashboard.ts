@@ -3,7 +3,7 @@ import type { Context } from 'hono';
 import type { Bindings } from '../types';
 import { automatedHealthMonitoring } from '../services/automated-health-monitoring';
 import { healthCheckService } from '../services/health-check-service';
-import { ApiResponse } from '../utils/api-response-simplified';
+import { successResponse, internalErrorResponse } from '../utils/api-response';
 
 /**
  * 獲取監控儀表板數據
@@ -52,10 +52,10 @@ export async function getMonitoringDashboard(c: Context<{ Bindings: Bindings }>)
       performance: currentHealth.performance
     };
 
-    return ApiResponse.success(c, dashboardData, 'Monitoring dashboard data retrieved');
+    return successResponse(c, dashboardData, 'Monitoring dashboard data retrieved');
   } catch (error) {
     console.error('Monitoring dashboard error:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -75,13 +75,13 @@ export async function getHealthHistory(c: Context<{ Bindings: Bindings }>) {
       issues: record.issues
     }));
 
-    return ApiResponse.success(c, {
+    return successResponse(c, {
       history: processedHistory,
       total: processedHistory.length
     }, 'Health history retrieved');
   } catch (error) {
     console.error('Health history error:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -99,13 +99,13 @@ export async function getAlertHistory(c: Context<{ Bindings: Bindings }>) {
       alerts = alerts.filter(alert => !alert.resolved);
     }
 
-    return ApiResponse.success(c, {
+    return successResponse(c, {
       alerts,
       total: alerts.length
     }, 'Alert history retrieved');
   } catch (error) {
     console.error('Alert history error:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -127,10 +127,10 @@ export async function updateMonitoringConfig(c: Context<{ Bindings: Bindings }>)
 
     automatedHealthMonitoring.updateConfig(config);
 
-    return ApiResponse.success(c, { updated: true }, 'Monitoring configuration updated');
+    return successResponse(c, { updated: true }, 'Monitoring configuration updated');
   } catch (error) {
     console.error('Update monitoring config error:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -141,10 +141,10 @@ export async function triggerHealthCheck(c: Context<{ Bindings: Bindings }>) {
   try {
     const health = await healthCheckService.runAllChecks();
 
-    return ApiResponse.success(c, health, 'Manual health check completed');
+    return successResponse(c, health, 'Manual health check completed');
   } catch (error) {
     console.error('Manual health check error:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -208,10 +208,10 @@ export async function getMonitoringStats(c: Context<{ Bindings: Bindings }>) {
   try {
     const stats = automatedHealthMonitoring.getMonitoringStats();
 
-    return ApiResponse.success(c, stats, 'Monitoring statistics retrieved');
+    return successResponse(c, stats, 'Monitoring statistics retrieved');
   } catch (error) {
     console.error('Monitoring stats error:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
