@@ -67,6 +67,7 @@ export interface MessageSendRequest {
   messageType?: 'text' | 'image' | 'file' | 'quick_reply';
   metadata?: Record<string, any>;
   replyToId?: string;
+  attachmentIds?: string[];  // 🔧 FIX: Add attachmentIds for file attachments
 }
 
 export interface MessageSendResponse {

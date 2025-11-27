@@ -33,6 +33,7 @@ export type {
   Conversation,
   Message,
   FileAttachment,
+  FileAttachmentData, // 檔案附件資料 (前端 UI 顯示用)
   TeamMember,
   Invitation,
   SystemSettings,

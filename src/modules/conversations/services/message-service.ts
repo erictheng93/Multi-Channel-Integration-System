@@ -4,8 +4,8 @@
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, desc, and } from 'drizzle-orm';
-import { messages, conversations, customers } from '@/db/schema';
+import { eq, desc, and, inArray } from 'drizzle-orm';
+import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   Message,
@@ -70,35 +70,78 @@ export class MessageService implements MessageServiceInterface {
         try {
           console.log(`[MessageService] Sending LINE message to user ${customer.platformUserId}`);
 
-          // Initialize LINE service
-          const lineService = new LineIntegrationService(
-            this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
-            this.bindings.LINE_CHANNEL_SECRET,
-            {
-              channelId: 'default',
-              enabled: true,
-              autoRetry: true,
-              maxRetries: 3,
-              retryDelayMs: 1000
-            },
-            this.bindings
+          // 🔧 FIX: Use pushLineMessage with Flex Messages for file attachments
+          const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
+          const lineMessages: any[] = [];
+
+          // 🔧 FIX: 檢查是否為純文件描述訊息
+          const hasAttachments = request.attachmentIds && request.attachmentIds.length > 0;
+          const isFileOnlyContent = request.content && (
+            /^Sent a file:\s*.+$/i.test(request.content) ||        // "Sent a file: xxx"
+            /^Sent \d+ files$/i.test(request.content) ||           // "Sent 2 files", "Sent 3 files"
+            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content)       // "[檔案] xxx", "[圖片] xxx"
           );
 
-          // Send message via LINE API
-          const lineResponse = await lineService.sendMessage(
-            customer.platformUserId,
-            request.content
-          );
+          // 只有在有實際內容（非純文件描述）時才發送文字訊息
+          if (request.content && request.content.trim() && !isFileOnlyContent) {
+            lineMessages.push(createTextMessage(request.content));
+          } else if (request.content && isFileOnlyContent && !hasAttachments) {
+            // 如果是文件描述但沒有附件，還是要發送（fallback）
+            lineMessages.push(createTextMessage(request.content));
+          }
 
-          if (lineResponse.success) {
-            platformMessageId = lineResponse.messageId;
-            isSent = true;
-            deliveryStatus = 'sent';
-            console.log(`[MessageService] ✅ LINE message sent successfully: ${platformMessageId}`);
+          // 🔧 FIX: Handle file attachments with Flex Message cards
+          if (request.attachmentIds && request.attachmentIds.length > 0) {
+            // Fetch attachment data from database
+            const attachmentsData = await this.db
+              .select()
+              .from(fileAttachments)
+              .where(inArray(fileAttachments.id, request.attachmentIds));
+
+            for (const attachment of attachmentsData) {
+              const fileUrl = attachment.fileUrl;
+              if (fileUrl) {
+                if (attachment.mimeType?.startsWith('image/')) {
+                  // Use native image message for images
+                  lineMessages.push(createImageMessage(fileUrl));
+                  console.log(`[MessageService] 📷 Adding image: ${attachment.filename}`);
+                } else {
+                  // Use Flex Message card for other files
+                  const flexMessage = createFileFlexMessage(
+                    fileUrl,
+                    attachment.filename || 'File',
+                    attachment.mimeType || '',
+                    attachment.fileSize || 0
+                  );
+                  lineMessages.push(flexMessage);
+                  console.log(`[MessageService] 📎 Adding file Flex card: ${attachment.filename}`);
+                }
+              }
+            }
+          }
+
+          // Send messages via LINE Push API
+          if (lineMessages.length > 0) {
+            const sendSuccess = await pushLineMessage(
+              this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
+              customer.platformUserId,
+              lineMessages
+            );
+
+            if (sendSuccess) {
+              platformMessageId = `line_${Date.now()}`;
+              isSent = true;
+              deliveryStatus = 'sent';
+              console.log(`[MessageService] ✅ LINE message sent successfully: ${lineMessages.length} item(s)`);
+            } else {
+              errorMessage = 'LINE API returned failure';
+              deliveryStatus = 'failed';
+              console.error(`[MessageService] ❌ LINE API failed`);
+            }
           } else {
-            errorMessage = 'LINE API returned failure';
+            errorMessage = 'No content or attachments to send';
             deliveryStatus = 'failed';
-            console.error(`[MessageService] ❌ LINE API failed:`, errorMessage);
+            console.error(`[MessageService] ❌ No content to send`);
           }
 
         } catch (lineError) {
@@ -138,6 +181,16 @@ export class MessageService implements MessageServiceInterface {
       };
 
       await this.db.insert(messages).values(messageData);
+
+      // 🔧 FIX: Step 3.5: Link attachments to the message
+      if (request.attachmentIds && request.attachmentIds.length > 0) {
+        console.log(`[MessageService] 📎 Linking ${request.attachmentIds.length} attachments to message ${messageId}`);
+        await this.db
+          .update(fileAttachments)
+          .set({ messageId: messageId })
+          .where(inArray(fileAttachments.id, request.attachmentIds));
+        console.log(`[MessageService] ✅ Attachments linked successfully`);
+      }
 
       // Step 4: Update conversation last message time
       await this.db
@@ -342,24 +395,35 @@ export class MessageRequestService {
     const conversationId = c.req.param('id');
     const body = await c.req.json();
 
+    console.log(`[MessageRequestService] 📥 Raw request body:`, JSON.stringify(body));
+    console.log(`[MessageRequestService] 📎 attachmentIds in body:`, body.attachmentIds);
+
     if (!conversationId) {
       throw new Error('Missing conversation ID');
     }
 
-    if (!body.content?.trim()) {
-      throw new Error('Message content is required');
+    // 🔧 FIX: Content is required unless attachments are provided
+    const hasAttachments = body.attachmentIds && body.attachmentIds.length > 0;
+    console.log(`[MessageRequestService] 📎 hasAttachments:`, hasAttachments);
+
+    if (!body.content?.trim() && !hasAttachments) {
+      throw new Error('Message content or attachments are required');
     }
 
     if (!body.senderId) {
       throw new Error('Sender ID is required');
     }
 
-    return {
+    const result = {
       conversationId,
-      content: body.content.trim(),
+      content: body.content?.trim() || '',
       senderId: body.senderId,
       messageType: body.messageType || 'text',
-      metadata: body.metadata || {}
+      metadata: body.metadata || {},
+      attachmentIds: body.attachmentIds || []  // 🔧 FIX: Include attachmentIds
     };
+
+    console.log(`[MessageRequestService] ✅ Parsed request:`, JSON.stringify(result));
+    return result;
   }
 }

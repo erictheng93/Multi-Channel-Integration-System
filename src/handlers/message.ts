@@ -217,14 +217,26 @@ export const messageHandler = {
             let sendResult = false;
             try {
                 if (conversationWithCustomer.platform === 'line') {
-                    const { pushLineMessage, createTextMessage, createImageMessage, createFileMessage } = await import('../utils/line');
+                    const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('../utils/line');
                     let messages: any[] = [];
 
-                    if (content) {
+                    // 🔧 FIX: 檢查是否為純文件描述訊息
+                    // 如果有附件且內容只是文件描述，則不發送文字訊息
+                    const isFileOnlyContent = content && (
+                        /^Sent a file:\s*.+$/i.test(content) ||        // "Sent a file: xxx"
+                        /^Sent \d+ files$/i.test(content) ||           // "Sent 2 files", "Sent 3 files"
+                        /^\[(?:檔案|圖片)\]\s*.+$/.test(content)       // "[檔案] xxx", "[圖片] xxx"
+                    );
+
+                    // 只有在有實際內容（非純文件描述）時才發送文字訊息
+                    if (content && !isFileOnlyContent) {
+                        messages.push(createTextMessage(content));
+                    } else if (content && isFileOnlyContent && !hasAttachments) {
+                        // 如果是文件描述但沒有附件，還是要發送（fallback）
                         messages.push(createTextMessage(content));
                     }
 
-                    // 處理附件 - LINE 發送 (與 Facebook 實現對齊)
+                    // 處理附件 - LINE 發送 (使用 Flex Message 卡片樣式)
                     if (hasAttachments) {
                         // 獲取附件資訊
                         const lineAttachments = await db.select()
@@ -236,22 +248,20 @@ export const messageHandler = {
 
                             if (fileUrl) {
                                 if (attachment.mimeType?.startsWith('image/')) {
-                                    // 圖片訊息
+                                    // 圖片訊息 - 使用原生圖片訊息以顯示預覽
                                     messages.push(createImageMessage(fileUrl));
                                     console.log(`📷 [LINE] Adding image attachment: ${attachment.filename}`);
                                 } else {
-                                    // PDF, 文檔等其他文件類型
-                                    // 注意: LINE 的 file message 需要用戶先同意接收檔案
-                                    // 如果 file message 失敗，會 fallback 到包含下載連結的文字訊息
-                                    try {
-                                        messages.push(createFileMessage(fileUrl, attachment.filename || 'File'));
-                                        console.log(`📎 [LINE] Adding file attachment: ${attachment.filename} (${attachment.mimeType})`);
-                                    } catch (fileError) {
-                                        // Fallback: 發送包含下載連結的文字訊息
-                                        const fallbackText = `📎 檔案: ${attachment.filename}\n下載連結: ${fileUrl}`;
-                                        messages.push(createTextMessage(fallbackText));
-                                        console.log(`📎 [LINE] File fallback to text link: ${attachment.filename}`);
-                                    }
+                                    // 🔧 FIX: 使用 Flex Message 卡片樣式發送檔案
+                                    // 這樣 LINE 用戶會看到漂亮的檔案卡片，而非純文字
+                                    const flexMessage = createFileFlexMessage(
+                                        fileUrl,
+                                        attachment.filename || 'File',
+                                        attachment.mimeType || '',
+                                        attachment.fileSize || 0
+                                    );
+                                    messages.push(flexMessage);
+                                    console.log(`📎 [LINE] Adding file Flex Message card: ${attachment.filename} (${attachment.mimeType})`);
                                 }
                             }
                         }

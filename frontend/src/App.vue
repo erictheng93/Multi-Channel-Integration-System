@@ -46,7 +46,7 @@ watch(() => route.path, (newPath, oldPath) => {
   console.log('🔄 Route key updated:', routeKey.value)
 }, { immediate: true })
 
-onMounted(async () => {
+onMounted(() => {
   console.log('🚀 App.vue mounted')
 
   // ✅ 優化：智能初始化認證狀態
@@ -55,27 +55,38 @@ onMounted(async () => {
     authStore.initializeSession()
   }
 
-  // ⚡ 優化：預加載關鍵數據（團隊、標籤等）
-  // 🔧 修復閃爍問題：只在已登入時預加載數據
+  // ⚡ LCP 優化：非阻塞式預加載關鍵數據（團隊、標籤等）
+  // 🔧 修復：移除 await 阻塞，讓 UI 先渲染，數據後台載入
   if (authStore.isAuthenticated) {
-    console.log('⚡ [App.vue] Initializing preload services...')
+    console.log('⚡ [App.vue] Starting non-blocking preload services...')
     const preloadStart = performance.now()
 
-    await Promise.allSettled([
-      preloadService.init(),
-      tagCacheService.init()
-    ]).then(results => {
-      const duration = performance.now() - preloadStart
-      const successCount = results.filter(r => r.status === 'fulfilled').length
-      console.log(`✅ [App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
+    // 使用 requestIdleCallback 在瀏覽器空閒時執行，避免阻塞 LCP
+    const schedulePreload = () => {
+      Promise.allSettled([
+        preloadService.init(),
+        tagCacheService.init()
+      ]).then(results => {
+        const duration = performance.now() - preloadStart
+        const successCount = results.filter(r => r.status === 'fulfilled').length
+        console.log(`✅ [App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
 
-      results.forEach((result, index) => {
-        const serviceName = index === 0 ? 'preloadService' : 'tagCacheService'
-        if (result.status === 'rejected') {
-          console.error(`❌ [App.vue] ${serviceName} initialization failed:`, result.reason)
-        }
+        results.forEach((result, index) => {
+          const serviceName = index === 0 ? 'preloadService' : 'tagCacheService'
+          if (result.status === 'rejected') {
+            console.error(`❌ [App.vue] ${serviceName} initialization failed:`, result.reason)
+          }
+        })
       })
-    })
+    }
+
+    // 優先使用 requestIdleCallback，否則使用 setTimeout 延遲執行
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(schedulePreload, { timeout: 2000 })
+    } else {
+      // Fallback: 延遲 100ms 讓 LCP 先完成
+      setTimeout(schedulePreload, 100)
+    }
   } else {
     console.log('⏭️  [App.vue] Skipping preload (not authenticated)')
   }

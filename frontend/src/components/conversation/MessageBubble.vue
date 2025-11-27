@@ -576,9 +576,8 @@ const attachmentSize = computed(() => {
   return props.message.metadata?.attachment?.size
 })
 
-// 🔧 FIX: Handle file_attachments array from API
+// 處理 file_attachments 陣列 - 用於 Flex Message Card 顯示
 const fileAttachments = computed(() => {
-  // @ts-ignore - file_attachments may not be in type definition yet
   return props.message.file_attachments || []
 })
 
@@ -587,7 +586,13 @@ const hasMultipleAttachments = computed(() => {
 })
 
 const isFileOnlyContent = computed(() => {
-  return /^\[(?:檔案|圖片)\]\s*.+$/.test(props.message.content || '')
+  const content = props.message.content || ''
+  // Match Chinese format: [檔案] filename or [圖片] filename
+  // Match English format: Sent a file: filename
+  // Match multi-file format: Sent 2 files, Sent 3 files
+  return /^\[(?:檔案|圖片)\]\s*.+$/.test(content) ||
+         /^Sent a file:\s*.+$/i.test(content) ||
+         /^Sent \d+ files$/i.test(content)
 })
 
 // ⚡ Message Status for Optimistic UI

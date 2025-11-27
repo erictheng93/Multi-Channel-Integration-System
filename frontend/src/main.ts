@@ -17,15 +17,10 @@ import { swManager } from '@/services/serviceWorkerManager'
 import { preloadService } from '@/services/preloadService'
 
 const startApp = async () => {
+  const startTime = performance.now()
+
   try {
-    // 首先嘗試初始化安全配置，但不讓它阻止應用啟動
-    try {
-      await initializeSecurity()
-      console.log('✅ Security initialization completed')
-    } catch (securityError) {
-      console.warn('⚠️ Security initialization failed, continuing with basic setup:', securityError)
-    }
-    
+    // ⚡ LCP 優化：建立 Vue 應用實例 (最高優先級)
     const app = createApp(App)
     const pinia = createPinia()
 
@@ -33,38 +28,60 @@ const startApp = async () => {
     app.use(router)
     app.use(i18n)
 
-    // Performance monitoring enabled in development
-    if (import.meta.env.DEV) {
-      console.log('🚀 Performance monitoring enabled')
-    }
-
-    // 🔧 CRITICAL FIX: 使用統一的會話初始化 - 解決競爭條件
-    const authStore = useAuthStore()
-
-    console.log('🏁 App startup: Initializing session...')
-    await authStore.initializeSession()
-    console.log(`✅ App startup: Session initialization completed, status: ${authStore.sessionStatus}`)
-
-    // 🚀 Phase 2 优化：应用启动时预加载数据
-    // 仅对已登录的管理员用户预加载团队数据，提升用户体验
-    if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
-      console.log('🔥 App startup: Preloading data for admin user...')
-      // 非阻塞预加载，不影响应用启动速度
-      preloadService.warmup().catch(err => {
-        console.warn('⚠️ App startup: Preload warmup failed (non-critical):', err)
-      })
-    }
-
-    // Performance monitoring enabled in development
-    if (import.meta.env.DEV) {
-      console.log('🚀 Performance monitoring enabled')
-    }
-
+    // ⚡ LCP 優化：盡快掛載應用，讓骨架屏顯示
+    // 這是關鍵的 LCP 優化 - 先渲染 UI，再初始化後台服務
     app.mount('#app')
+
+    const mountTime = performance.now() - startTime
+    console.log(`⚡ [LCP] App mounted in ${mountTime.toFixed(2)}ms`)
+
+    // 🔧 關鍵修復：在應用掛載後初始化會話
+    // 使用 requestIdleCallback 在瀏覽器空閒時執行，避免阻塞 LCP
+    const initializePostMount = async () => {
+      try {
+        // 安全配置初始化（非阻塞）
+        initializeSecurity()
+          .then(() => console.log('✅ Security initialization completed'))
+          .catch(err => console.warn('⚠️ Security initialization failed:', err))
+
+        // 會話初始化 - 這需要同步完成以確保正確的認證狀態
+        const authStore = useAuthStore()
+        console.log('🏁 App startup: Initializing session...')
+        await authStore.initializeSession()
+        console.log(`✅ App startup: Session completed in ${(performance.now() - startTime).toFixed(2)}ms, status: ${authStore.sessionStatus}`)
+
+        // 🚀 非阻塞預加載：僅對管理員用戶
+        if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
+          console.log('🔥 App startup: Preloading data for admin user...')
+          preloadService.warmup().catch(err => {
+            console.warn('⚠️ App startup: Preload warmup failed (non-critical):', err)
+          })
+        }
+
+        // Performance monitoring in development
+        if (import.meta.env.DEV) {
+          console.log('🚀 Performance monitoring enabled')
+        }
+
+        // 🚀 初始化 PWA 功能（低優先級）
+        initializePWAFeatures().catch(err => {
+          console.warn('⚠️ PWA initialization failed (non-critical):', err)
+        })
+
+      } catch (error) {
+        console.error('❌ Post-mount initialization failed:', error)
+      }
+    }
+
+    // 使用 requestIdleCallback 延遲非關鍵初始化
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => initializePostMount(), { timeout: 3000 })
+    } else {
+      // Fallback: 使用 setTimeout 延遲執行
+      setTimeout(initializePostMount, 50)
+    }
+
     console.log('✅ Application started successfully')
-    
-    // 🚀 初始化 PWA 功能（在應用掛載後）
-    await initializePWAFeatures()
     
   } catch (error) {
     console.error('❌ Failed to start application:', error)

@@ -173,10 +173,23 @@
     file: globalThis.File
   }
 
+  // 檔案附件資料 - 用於 Flex Message Card 顯示
+  interface FileAttachmentEmitData {
+    id: string
+    filename: string
+    mimeType: string
+    fileSize: number
+    fileUrl: string
+  }
+
   const props = defineProps<Props>()
 
   const emit = defineEmits<{
-    'message-sent': [data: { content: string; attachments: Attachment[] }]
+    'message-sent': [data: {
+      content: string
+      attachments: Attachment[]
+      file_attachments?: FileAttachmentEmitData[] // 檔案附件資料，用於即時顯示 Flex Message Card
+    }]
     'attachment-upload': [attachment: Attachment]
   }>()
   // Auth Store
@@ -297,6 +310,14 @@
 
     try {
       const attachmentIds: string[] = []
+      // 🔧 FIX: Collect file_attachments data for immediate Flex Message card display
+      const fileAttachmentsData: Array<{
+        id: string
+        filename: string
+        mimeType: string
+        fileSize: number
+        fileUrl: string
+      }> = []
 
       // Upload attachments first if any
       if (currentAttachments.length > 0) {
@@ -309,6 +330,15 @@
 
             if (uploadResponse.success && uploadResponse.data) {
               attachmentIds.push(uploadResponse.data.attachmentId) // 使用 attachmentId 作為標識符
+
+              // 🔧 FIX: Collect full attachment data for Flex Message card
+              fileAttachmentsData.push({
+                id: uploadResponse.data.attachmentId,
+                filename: uploadResponse.data.filename || attachment.file.name,
+                mimeType: attachment.file.type,
+                fileSize: attachment.file.size,
+                fileUrl: uploadResponse.data.url
+              })
             } else {
               throw new Error(uploadResponse.error || 'File upload failed')
             }
@@ -345,10 +375,12 @@
           successMessage.value = ''
         }, 3000)
 
-        // Emit success event
+        // Emit success event with file_attachments for immediate Flex Message card display
         emit('message-sent', {
           content: finalContent,
           attachments: currentAttachments,
+          // eslint-disable-next-line camelcase
+          file_attachments: fileAttachmentsData, // 🔧 FIX: Include for immediate card display
         })
       } else {
         const errorMsg = (response.error as { message?: string })?.message || '發送失敗'
