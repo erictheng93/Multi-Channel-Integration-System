@@ -5,7 +5,7 @@ import { healthCheckService } from '../services/health-check-service';
 import { DatabaseHealthChecker } from '../health-checkers/database-checker';
 import { CacheHealthChecker } from '../health-checkers/cache-checker';
 import { APIHealthChecker } from '../health-checkers/api-checker';
-import { ApiResponse } from '../utils/api-response-simplified';
+import { successResponse, internalErrorResponse } from '../utils/api-response';
 
 let initialized = false;
 
@@ -38,7 +38,7 @@ export async function getSystemHealth(c: Context<{ Bindings: Bindings }>) {
                       health.overall.status === 'critical' ? 503 : 500;
 
     if (health.overall.status === 'healthy') {
-      return ApiResponse.success(c, health, health.overall.message);
+      return successResponse(c, health, health.overall.message);
     } else {
       return c.json({
         success: false,
@@ -50,7 +50,7 @@ export async function getSystemHealth(c: Context<{ Bindings: Bindings }>) {
 
   } catch (error) {
     console.error('System health check failed:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -66,14 +66,14 @@ export async function getInfrastructureHealth(c: Context<{ Bindings: Bindings }>
     const overallStatus = health.every(h => h.status.status === 'healthy') ? 'healthy' :
                          health.some(h => h.status.status === 'critical') ? 'critical' : 'warning';
 
-    return ApiResponse.success(c, {
+    return successResponse(c, {
       overall: overallStatus,
       components: health
     }, `Infrastructure status: ${overallStatus}`);
 
   } catch (error) {
     console.error('Infrastructure health check failed:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -90,7 +90,7 @@ export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
                          health.some(h => h.status.status === 'critical') ? 'critical' : 'warning';
 
     if (overallStatus === 'healthy') {
-      return ApiResponse.success(c, {
+      return successResponse(c, {
         overall: overallStatus,
         services: health,
         metadata: {
@@ -116,7 +116,7 @@ export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
 
   } catch (error) {
     console.error('Services health check failed:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -145,7 +145,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
                       result.status === 'critical' ? 503 : 500;
 
     if (result.status === 'healthy') {
-      return ApiResponse.success(c, {
+      return successResponse(c, {
         component,
         check: result,
         metadata: {
@@ -171,7 +171,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
 
   } catch (error) {
     console.error('Component health check failed:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
@@ -224,7 +224,7 @@ export async function getHealthStats(c: Context<{ Bindings: Bindings }>) {
       }
     };
 
-    return ApiResponse.success(c, {
+    return successResponse(c, {
       ...stats,
       metadata: {
         timestamp: new Date().toISOString(),
@@ -234,7 +234,7 @@ export async function getHealthStats(c: Context<{ Bindings: Bindings }>) {
 
   } catch (error) {
     console.error('Health stats retrieval failed:', error);
-    return ApiResponse.error(c, error, 500);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
