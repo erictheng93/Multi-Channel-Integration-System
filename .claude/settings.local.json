@@ -57,7 +57,8 @@
       "Bash(Select-String -Pattern \"url\")",
       "Bash(npx wrangler r2 object list:*)",
       "Bash(cd:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__chrome-devtools__list_pages"
     ],
     "deny": [],
     "ask": [],

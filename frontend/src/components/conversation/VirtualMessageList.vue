@@ -212,6 +212,7 @@ const lastScrollDebugTime = ref(0)
 const LOAD_MORE_THROTTLE_MS = 1000 // Prevent too frequent load requests
 const isProgrammaticScrolling = ref(false) // Guard to prevent scroll events during programmatic scroll
 const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrolling up
+const isInitialScrollDone = ref(false) // 🔧 FIX: Prevent race condition between onMounted and watch
 
 // 🔧 FIX: 滾動位置保持相關的狀態
 const scrollPositionBeforePrepend = ref<{
@@ -410,32 +411,18 @@ const scrollToBottom = async (retries = 10, delay = 100) => {
 
         console.log(`✅ [ScrollToBottom] Scrolled on attempt ${attempt + 1}, scrollHeight: ${actualScrollHeight}`)
 
-        // Phase 4: Verification scroll after a short delay
-        await new Promise(resolve => setTimeout(resolve, 50))
-        await waitForFrame()
-
-        // Double-check and fine-tune with scrollToIndex
-        if (virtualizer.value && virtualItems.value.length > 0) {
-          const finalIndex = virtualItems.value.length - 1
-          virtualizer.value.scrollToIndex(finalIndex, { align: 'end' })
-        }
-
-        // Final verification: scroll again after content has fully rendered
-        // File attachments and other dynamic content may change scrollHeight
-        setTimeout(async () => {
-          if (scrollContainer.value) {
-            const finalScrollHeight = scrollContainer.value.scrollHeight
-            scrollContainer.value.scrollTop = finalScrollHeight
-            console.log(`🔽 [ScrollToBottom] Final verification scroll, scrollHeight: ${finalScrollHeight}`)
-          }
-        }, 150)
+        // 🔧 FIX: Removed Phase 4 & 5 verification scrolls (were causing "shaking")
+        // - Phase 4: 50ms delay + scrollToIndex (removed)
+        // - Phase 5: 150ms delayed re-scroll for dynamic content (removed in previous commit)
+        // Now relying on waitForStableScrollHeight() called BEFORE scrollToBottom()
+        // If this causes issues, revert to commit: 3f452cc
 
         // Clear guard after successful scroll
         setTimeout(() => {
           isProgrammaticScrolling.value = false
           isUserAtBottom.value = true // We just scrolled to bottom
-          console.log('🔽 [ScrollToBottom] Success - guard cleared')
-        }, 200)
+          console.log('🔽 [ScrollToBottom] Success - guard cleared (no final verification)')
+        }, 100) // Reduced from 200ms since we removed the 150ms verification
 
         return // Success
       }
@@ -695,8 +682,16 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
           // Clear guard temporarily to allow scrollToBottom to work
           isProgrammaticScrolling.value = false
 
-          // Scroll to bottom
+          // 🔧 FIX: Wait for stable scroll height before scrolling
+          await waitForStableScrollHeight()
           await scrollToBottom()
+
+          // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
+          await new Promise(resolve => setTimeout(resolve, 200))
+          if (!checkIfUserAtBottom()) {
+            console.log('📌 [ScrollPreservation] Post-scroll verification: not at bottom, scrolling again...')
+            await scrollToBottom()
+          }
 
           console.log(`📌 [ScrollPreservation] Scrolled to bottom after history prepend`)
           return // Don't proceed with normal scroll behavior
@@ -749,18 +744,47 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
     // Only auto-scroll if user was already at bottom
     if (!props.isSearchActive && wasAtBottom) {
       console.log('📨 [DisplayedMessageWatch] Auto-scrolling to bottom...')
+      // 🔧 FIX: Wait for stable scroll height before scrolling
+      // Without this, virtual list items may not be fully measured yet
+      await waitForStableScrollHeight()
       await scrollToBottom()
+
+      // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
+      // Virtual list may continue rendering after initial scroll
+      await new Promise(resolve => setTimeout(resolve, 200))
+      if (!checkIfUserAtBottom()) {
+        console.log('📨 [DisplayedMessageWatch] Post-scroll verification: not at bottom, scrolling again...')
+        await scrollToBottom()
+      }
     } else if (!wasAtBottom) {
       // Show new message notification to parent
       console.log('📨 [DisplayedMessageWatch] User not at bottom, showing notification')
       emit('newMessageWhileScrolled')
     }
   } else if (oldCount === undefined && newCount > 0) {
-    // Initial load - always scroll to bottom
+    // Initial load - scroll to bottom ONLY if onMounted hasn't already done it
+    // 🔧 FIX: Prevents race condition where both onMounted and watch scroll to bottom
+    if (isInitialScrollDone.value) {
+      console.log('📨 [DisplayedMessageWatch] Initial load detected, but onMounted already handled scroll - skipping')
+      return
+    }
+
     console.log('📨 [DisplayedMessageWatch] Initial load detected, scrolling to bottom...')
     await nextTick()
     await new Promise(resolve => window.requestAnimationFrame(resolve))
+    // 🔧 FIX: Wait for stable scroll height before scrolling
+    await waitForStableScrollHeight()
     await scrollToBottom()
+
+    // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
+    await new Promise(resolve => setTimeout(resolve, 200))
+    if (!checkIfUserAtBottom()) {
+      console.log('📨 [DisplayedMessageWatch] Initial load post-scroll verification: not at bottom, scrolling again...')
+      await scrollToBottom()
+    }
+
+    // Mark as done so future watches don't repeat
+    isInitialScrollDone.value = true
   }
 })
 
@@ -787,8 +811,20 @@ onMounted(async () => {
     // This replaces the previous two-scroll approach
     await waitForStableScrollHeight()
     await scrollToBottom()
-    console.log('🚀 [VirtualMessageList] Single optimized scroll complete')
+
+    // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
+    await new Promise(resolve => setTimeout(resolve, 200))
+    if (!checkIfUserAtBottom()) {
+      console.log('🚀 [VirtualMessageList] Post-scroll verification: not at bottom, scrolling again...')
+      await scrollToBottom()
+    }
+
+    // 🔧 FIX: Mark initial scroll as done to prevent race condition with watch
+    isInitialScrollDone.value = true
+    console.log('🚀 [VirtualMessageList] Single optimized scroll complete, isInitialScrollDone=true')
   }
+  // 🔧 FIX: Do NOT set isInitialScrollDone=true if no messages
+  // The watch will handle scrolling when messages arrive later
 })
 
 /**
@@ -797,7 +833,7 @@ onMounted(async () => {
  * Replaces the old approach of scrolling twice
  */
 const waitForStableScrollHeight = async (maxWaitMs = 500, checkIntervalMs = 50): Promise<void> => {
-  if (!scrollContainer.value) return
+  if (!scrollContainer.value) {return}
 
   let lastScrollHeight = scrollContainer.value.scrollHeight
   let stableCount = 0
@@ -808,7 +844,7 @@ const waitForStableScrollHeight = async (maxWaitMs = 500, checkIntervalMs = 50):
     await new Promise(resolve => setTimeout(resolve, checkIntervalMs))
     await new Promise(resolve => window.requestAnimationFrame(resolve))
 
-    if (!scrollContainer.value) return
+    if (!scrollContainer.value) {return}
 
     const currentScrollHeight = scrollContainer.value.scrollHeight
 
