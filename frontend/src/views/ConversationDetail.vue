@@ -93,58 +93,67 @@
       </Transition>
 
       <!-- High Performance Virtual Message List with WebSocket -->
+      <!-- 🔧 FIX: Added Transition wrapper to prevent flicker/shaking during navigation -->
       <div class="messages-container-wrapper">
-        <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
-        <MessageListSkeleton
-          v-if="isInitialLoading && !hasLoadedInitially"
-          :count="skeletonCount"
-          :loading-text="skeletonLoadingText"
-        />
-
-        <!-- Empty State -->
-        <div
-          v-else-if="hasLoadedInitially && displayedMessages.length === 0"
-          class="empty-state-wrapper"
+        <Transition
+          name="fade-content"
+          mode="out-in"
         >
-          <EmptyState
-            :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
-            :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
-          >
-            <template #icon>
-              <MessageCircleIcon />
-            </template>
-          </EmptyState>
-        </div>
+          <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
+          <MessageListSkeleton
+            v-if="isInitialLoading && !hasLoadedInitially"
+            key="skeleton"
+            :count="skeletonCount"
+            :loading-text="skeletonLoadingText"
+          />
 
-        <!-- Virtual Message List -->
-        <VirtualMessageList
-          v-else
-          ref="virtualMessageListRef"
-          :messages="messages"
-          :displayed-messages="displayedMessages"
-          :is-search-active="isSearchActive"
-          :loading="httpMessages.loading.value"
-          :has-more="httpMessages.hasMore.value"
-          :loading-history="loadingHistory"
-          :is-updating="isUpdating"
-          :is-typing="isTyping"
-          :typing-users="typingUsers"
-          :animation-classes="animationClasses"
-          :enable-animations="true"
-          :websocket-enabled="isWebSocketEnabled"
-          :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
-          :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
-          @message-copy="handleMessageCopy"
-          @message-reply="handleMessageReply"
-          @message-forward="handleMessageForward"
-          @message-recall="handleMessageRecall"
-          @message-select="handleMessageSelect"
-          @search-clear="handleSearchClear"
-          @load-more="loadMoreMessages"
-          @scroll="handleVirtualScroll"
-          @new-message-while-scrolled="handleNewMessageWhileScrolled"
-          @retry="retryFailedMessage"
-        />
+          <!-- Empty State -->
+          <div
+            v-else-if="hasLoadedInitially && displayedMessages.length === 0"
+            key="empty"
+            class="empty-state-wrapper"
+          >
+            <EmptyState
+              :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
+              :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
+            >
+              <template #icon>
+                <MessageCircleIcon />
+              </template>
+            </EmptyState>
+          </div>
+
+          <!-- Virtual Message List -->
+          <VirtualMessageList
+            v-else
+            key="messages"
+            ref="virtualMessageListRef"
+            :messages="messages"
+            :displayed-messages="displayedMessages"
+            :is-search-active="isSearchActive"
+            :loading="httpMessages.loading.value"
+            :has-more="httpMessages.hasMore.value"
+            :loading-history="loadingHistory"
+            :is-updating="isUpdating"
+            :is-typing="isTyping"
+            :typing-users="typingUsers"
+            :animation-classes="animationClasses"
+            :enable-animations="true"
+            :websocket-enabled="isWebSocketEnabled"
+            :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
+            :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
+            @message-copy="handleMessageCopy"
+            @message-reply="handleMessageReply"
+            @message-forward="handleMessageForward"
+            @message-recall="handleMessageRecall"
+            @message-select="handleMessageSelect"
+            @search-clear="handleSearchClear"
+            @load-more="loadMoreMessages"
+            @scroll="handleVirtualScroll"
+            @new-message-while-scrolled="handleNewMessageWhileScrolled"
+            @retry="retryFailedMessage"
+          />
+        </Transition>
       </div>
 
       <!-- 新消息提醒 with WebSocket enhancements -->
@@ -376,11 +385,13 @@ const conversationId = computed(() => route.params.id as string)
 
 
 
-// ✅ CUSTOMER API: HTTP API System for Customer Conversations with Progressive Loading
+// ✅ CUSTOMER API: HTTP API System for Customer Conversations
+// 🔧 FIX: Disabled progressive loading to prevent flicker/shaking during navigation
+// Progressive loading (2-phase: 10 recent → 20 history) causes layout shifts
 const httpMessages = useCustomerMessages(conversationId.value, {
   enablePagination: true,
-  pageSize: 30, // 🚀 Progressive loading: 10 recent + 20 history
-  enableProgressiveLoading: true // 🚀 Enable two-phase loading
+  pageSize: 30,
+  enableProgressiveLoading: false // 🔧 FIX: Disabled - causes flicker when message count changes 10→30
 })
 
 // 🚀 Unified Connection Manager (Primary Real-time System)
@@ -1905,12 +1916,23 @@ if (import.meta.env.DEV) {
   max-height: 200px;
 }
 
+/* 🔧 FIX: Fade transition for content switching (prevents flicker) */
+.fade-content-enter-active,
+.fade-content-leave-active {
+  transition: opacity 0.15s ease-out;
+}
+
+.fade-content-enter-from,
+.fade-content-leave-to {
+  opacity: 0;
+}
+
 .messages-container-wrapper {
   flex: 1;
   min-height: 0;
   position: relative;
   contain: layout style paint;
-  will-change: scroll-position;
+  will-change: contents; /* 🔧 FIX: Changed from scroll-position to contents */
   /* 🎨 Spacious feel with subtle background */
   background: linear-gradient(
     180deg,
@@ -1919,13 +1941,25 @@ if (import.meta.env.DEV) {
     rgba(248, 250, 252, 0.5) 100%
   );
   padding: 0 1rem;
+  /* 🔧 FIX: Prevent layout shift during transitions */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 🔧 FIX: Ensure skeleton and content have consistent sizing */
+.messages-container-wrapper > .message-list-skeleton,
+.messages-container-wrapper > .virtual-message-list,
+.messages-container-wrapper > .empty-state-wrapper {
+  flex: 1;
+  min-height: 300px;
 }
 
 .empty-state-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 200px;
+  min-height: 300px; /* 🔧 FIX: Increased from 200px for consistency */
 }
 
 .input-section {

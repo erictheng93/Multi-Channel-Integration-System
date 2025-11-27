@@ -16,7 +16,10 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
   // 配置
   const pageSize = options?.pageSize ?? 30
-  const enableProgressiveLoading = options?.enableProgressiveLoading ?? true
+  // 🔧 FIX: Disabled progressive loading by default to prevent flicker/shaking
+  // Progressive loading causes two-phase render which leads to layout shifts
+  // Set to true only if you want faster initial display at the cost of visual stability
+  const enableProgressiveLoading = options?.enableProgressiveLoading ?? false
   // enablePagination 保留供未來使用
   // const enablePagination = options?.enablePagination ?? false
 

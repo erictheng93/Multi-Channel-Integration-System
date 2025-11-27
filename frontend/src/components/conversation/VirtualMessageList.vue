@@ -764,7 +764,7 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
   }
 })
 
-// Lifecycle with scroll listener - FIXED race condition
+// Lifecycle with scroll listener - OPTIMIZED: Single smart scroll
 onMounted(async () => {
   console.log('🚀 [VirtualMessageList] Component mounted')
   await nextTick()
@@ -782,19 +782,51 @@ onMounted(async () => {
   // Now scroll to bottom if we have messages
   if (!props.isSearchActive && displayedMessages.value.length > 0) {
     console.log(`🚀 [VirtualMessageList] Initial scroll to bottom with ${displayedMessages.value.length} messages`)
-    // Give virtualizer more time to initialize
-    await new Promise(resolve => setTimeout(resolve, 100))
-    await scrollToBottom()
 
-    // Secondary verification scroll after a delay
-    setTimeout(async () => {
-      if (isUserAtBottom.value !== false) { // Only if user hasn't scrolled away
-        await scrollToBottom()
-        console.log('🚀 [VirtualMessageList] Secondary verification scroll complete')
-      }
-    }, 300)
+    // 🔧 OPTIMIZED: Wait for scrollHeight to stabilize before scrolling (single scroll)
+    // This replaces the previous two-scroll approach
+    await waitForStableScrollHeight()
+    await scrollToBottom()
+    console.log('🚀 [VirtualMessageList] Single optimized scroll complete')
   }
 })
+
+/**
+ * 🔧 OPTIMIZED: Wait for scrollHeight to stabilize before scrolling
+ * This ensures virtual list has fully rendered before we scroll
+ * Replaces the old approach of scrolling twice
+ */
+const waitForStableScrollHeight = async (maxWaitMs = 500, checkIntervalMs = 50): Promise<void> => {
+  if (!scrollContainer.value) return
+
+  let lastScrollHeight = scrollContainer.value.scrollHeight
+  let stableCount = 0
+  const requiredStableChecks = 2 // Need 2 consecutive stable readings
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, checkIntervalMs))
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+    if (!scrollContainer.value) return
+
+    const currentScrollHeight = scrollContainer.value.scrollHeight
+
+    if (currentScrollHeight === lastScrollHeight) {
+      stableCount++
+      if (stableCount >= requiredStableChecks) {
+        console.log(`📏 [ScrollHeight] Stabilized at ${currentScrollHeight}px after ${Date.now() - startTime}ms`)
+        return
+      }
+    } else {
+      stableCount = 0
+      console.log(`📏 [ScrollHeight] Changed: ${lastScrollHeight} → ${currentScrollHeight}`)
+      lastScrollHeight = currentScrollHeight
+    }
+  }
+
+  console.log(`📏 [ScrollHeight] Timeout after ${maxWaitMs}ms, proceeding with current height: ${lastScrollHeight}`)
+}
 
 onUnmounted(() => {
   if (scrollContainer.value) {
