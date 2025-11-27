@@ -122,49 +122,24 @@
         </div>
       </div>
 
-      <!-- 🔧 FIX: Multiple File Attachments -->
+      <!-- 🔧 FIX: Multiple File Attachments with Flex Message Card Style -->
       <div
         v-else-if="fileAttachments.length > 0"
         class="message-file-attachments"
       >
-        <div
+        <FileAttachmentCard
           v-for="attachment in fileAttachments"
           :key="attachment.id"
-          class="file-attachment-item"
-        >
-          <div class="file-container">
-            <div
-              class="file-icon"
-              :class="getFileTypeClass(attachment.filename)"
-            >
-              <component :is="getFileIcon(attachment.filename)" />
-            </div>
-            <div class="file-info">
-              <div
-                class="file-name"
-                :title="attachment.filename"
-              >
-                {{ attachment.filename }}
-              </div>
-              <div class="file-meta">
-                <span class="file-size">{{ formatFileSize(attachment.fileSize) }}</span>
-                <span class="file-type">{{ getFileExtension(attachment.filename) }}</span>
-              </div>
-            </div>
-            <div class="file-actions">
-              <a
-                :href="attachment.fileUrl"
-                :download="attachment.filename"
-                class="file-action-btn primary"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <DownloadIcon />
-                下載
-              </a>
-            </div>
-          </div>
-        </div>
+          :attachment="{
+            id: attachment.id,
+            filename: attachment.filename,
+            mimeType: attachment.mimeType || '',
+            fileSize: attachment.fileSize || 0,
+            fileUrl: attachment.fileUrl
+          }"
+          :compact="fileAttachments.length > 1"
+          @preview="handleAttachmentPreview"
+        />
         <div
           v-if="message.content && !isFileOnlyContent"
           class="media-caption"
@@ -488,12 +463,24 @@ import type { Message } from '@/types'
 import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
 import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
 import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'
-import { 
-  CheckIcon, 
-  XIcon, 
-  SearchIcon, 
-  DownloadIcon, 
-  FileIcon, 
+import FileAttachmentCard from '@/components/file/FileAttachmentCard.vue'
+
+// Local interface matching FileAttachmentCard's expected type
+interface FileAttachment {
+  id: string
+  filename: string
+  mimeType: string
+  fileSize: number
+  fileUrl: string
+  r2Key?: string
+}
+
+import {
+  CheckIcon,
+  XIcon,
+  SearchIcon,
+  DownloadIcon,
+  FileIcon,
   ImageIcon,
   CopyIcon,
   ReplyIcon,
@@ -1056,6 +1043,14 @@ const handleRetry = () => {
   console.log('🔄 [MessageBubble] Retry button clicked for message:', props.message.id)
   emit('retry', props.message.id)
 }
+
+// 🔧 Handle attachment preview (for image files)
+const handleAttachmentPreview = (attachment: FileAttachment) => {
+  console.log('🖼️ [MessageBubble] Attachment preview requested:', attachment)
+  // For image attachments, we could open a preview modal
+  // For now, just log and potentially emit an event
+  emit('preview', props.message)
+}
 </script>
 
 <style scoped>
@@ -1449,25 +1444,49 @@ const handleRetry = () => {
   margin-top: var(--space-1);
 }
 
-/* 🔧 FIX: Multiple File Attachments Styles */
+/* 🔧 FIX: Multiple File Attachments Styles - Flex Message Card Style */
 .message-file-attachments {
-  min-width: 280px;
-  max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-.file-attachment-item {
-  width: 100%;
-}
-
-.file-attachment-item .file-container {
-  width: 100%;
-}
-
-.file-attachment-item:not(:last-child) {
+  gap: var(--space-3);
+  /* Remove background/padding from message-content to show card style */
+  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1);
   margin-bottom: var(--space-2);
+}
+
+.message-file-attachments :deep(.file-attachment-card) {
+  margin: 0;
+  box-shadow: none;
+  border-radius: var(--radius-lg);
+}
+
+/* For outgoing messages, adjust card style */
+.message-outgoing .message-file-attachments :deep(.file-attachment-card) {
+  /* Cards look better with their own background in outgoing bubbles */
+}
+
+/* Remove the blue background for file attachment messages */
+.message-outgoing .message-content:has(.message-file-attachments) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.message-outgoing .message-content:has(.message-file-attachments)::before {
+  display: none;
+}
+
+/* For incoming messages with file attachments */
+.message-incoming .message-content:has(.message-file-attachments) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.message-incoming .message-content:has(.message-file-attachments)::before {
+  display: none;
 }
 
 /* Make download links look like buttons */
