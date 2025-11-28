@@ -25,12 +25,13 @@ interface RealtimeAuthConfig {
   validRoles: string[];              // 有效的角色列表
 }
 
+// SECURITY: 2-tier role system configuration
 const defaultConfig: RealtimeAuthConfig = {
   allowQueryToken: true,
   allowHeaderToken: true,
   requireConversationAccess: false,
   enableRoleValidation: true,
-  validRoles: ['admin', 'team', 'agent']
+  validRoles: ['admin', 'agent']
 };
 
 // Real-time 認證中間件
@@ -228,31 +229,31 @@ async function checkConversationAccess(
   }
 }
 
-// 特殊的 SSE 認證中間件
+// SECURITY: SSE auth - 2-tier role system
 export const sseAuth = realtimeAuth({
   allowQueryToken: true,
   allowHeaderToken: true,
   requireConversationAccess: true,
   enableRoleValidation: true,
-  validRoles: ['admin', 'team', 'agent']
+  validRoles: ['admin', 'agent']
 });
 
-// 事件發送認證中間件
+// SECURITY: Event send auth - 2-tier role system
 export const eventSendAuth = realtimeAuth({
   allowQueryToken: false,
   allowHeaderToken: true,
   requireConversationAccess: false,
   enableRoleValidation: true,
-  validRoles: ['admin', 'team', 'agent']
+  validRoles: ['admin', 'agent']
 });
 
-// 管理端點認證中間件
+// SECURITY: Management auth - admin only
 export const managementAuth = realtimeAuth({
   allowQueryToken: false,
   allowHeaderToken: true,
   requireConversationAccess: false,
   enableRoleValidation: true,
-  validRoles: ['admin', 'team']
+  validRoles: ['admin']
 });
 
 // 從 context 獲取 Real-time 認證信息的便利函數
@@ -267,11 +268,11 @@ export function hasRealtimePermission(
 ): boolean {
   switch (permission) {
     case 'read':
-      return ['admin', 'team', 'agent'].includes(auth.role || '');
+      return ['admin', 'agent'].includes(auth.role || '');
     case 'write':
-      return ['admin', 'team', 'agent'].includes(auth.role || '');
+      return ['admin', 'agent'].includes(auth.role || '');
     case 'manage':
-      return ['admin', 'team'].includes(auth.role || '');
+      return auth.role === 'admin';
     case 'admin':
       return auth.role === 'admin';
     default:

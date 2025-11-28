@@ -16,10 +16,11 @@ dataOptimizationHandler.get('/config', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions',
-        message: 'Only administrators and team members can view optimization config'
+        message: 'Only administrators can view optimization config'
       }, 403);
     }
 
@@ -91,7 +92,8 @@ dataOptimizationHandler.get('/stats', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
       }, 403);
@@ -138,7 +140,8 @@ dataOptimizationHandler.post('/test-cache', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
       }, 403);
@@ -223,7 +226,8 @@ dataOptimizationHandler.post('/test-batch', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
       }, 403);
@@ -320,7 +324,8 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
       }, 403);
@@ -466,10 +471,11 @@ dataOptimizationHandler.post('/initialize-baseline', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions',
-        message: 'Only administrators and team members can initialize baseline'
+        message: 'Only administrators can initialize baseline'
       }, 403);
     }
 

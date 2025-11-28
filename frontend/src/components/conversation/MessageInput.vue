@@ -91,7 +91,7 @@
       @change="handleFileSelect"
     >
 
-    <!-- Attachments preview -->
+    <!-- Attachments preview - Phase 3A 增強預覽卡片 -->
     <div
       v-if="attachments.length > 0"
       class="attachments-preview"
@@ -99,20 +99,52 @@
       <div
         v-for="(attachment, index) in attachments"
         :key="index"
-        class="attachment-item"
+        class="attachment-card"
       >
-        <div class="attachment-info">
-          <FileIcon />
-          <span class="attachment-name">{{ attachment.name }}</span>
-          <span class="attachment-size">({{ formatFileSize(attachment.size) }})</span>
-        </div>
-        <button
-          class="remove-attachment"
-          type="button"
-          @click="removeAttachment(index)"
+        <!-- 圖片預覽 -->
+        <div
+          v-if="attachment.isImage && attachment.blobUrl"
+          class="attachment-thumbnail"
         >
-          <XIcon />
-        </button>
+          <img
+            :src="attachment.blobUrl"
+            :alt="attachment.name"
+            class="thumbnail-image"
+          >
+        </div>
+        <!-- 非圖片檔案圖標 -->
+        <div
+          v-else
+          class="attachment-icon"
+          :style="{ backgroundColor: attachment.typeColor + '15' }"
+        >
+          <FileIcon :style="{ color: attachment.typeColor }" />
+        </div>
+
+        <!-- 檔案資訊 -->
+        <div class="attachment-details">
+          <div class="attachment-name-row">
+            <span class="attachment-name">{{ attachment.name }}</span>
+            <button
+              class="remove-attachment"
+              type="button"
+              title="移除附件"
+              @click="removeAttachment(index)"
+            >
+              <XIcon />
+            </button>
+          </div>
+          <div class="attachment-meta">
+            <span
+              class="attachment-type"
+              :style="{ color: attachment.typeColor }"
+            >
+              {{ attachment.fileType }}
+            </span>
+            <span class="attachment-size">{{ formatFileSize(attachment.size) }}</span>
+            <span class="attachment-status">待發送</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -171,6 +203,10 @@
     name: string
     size: number
     file: globalThis.File
+    blobUrl?: string      // 用於圖片預覽
+    isImage: boolean      // 是否為圖片
+    fileType: string      // 檔案類型標籤
+    typeColor: string     // 類型顏色
   }
 
   // 檔案附件資料 - 用於 Flex Message Card 顯示
@@ -184,16 +220,130 @@
 
   const props = defineProps<Props>()
 
+  // Phase 3B: 擴展 emit 事件支援樂觀更新
   const emit = defineEmits<{
+    // 原有事件 - 訊息發送成功
     'message-sent': [data: {
       content: string
       attachments: Attachment[]
-      file_attachments?: FileAttachmentEmitData[] // 檔案附件資料，用於即時顯示 Flex Message Card
+      file_attachments?: FileAttachmentEmitData[]
+    }]
+    // Phase 3B: 訊息開始發送（樂觀更新）
+    'message-pending': [data: {
+      tempId: string                    // 臨時 ID
+      content: string
+      attachments: Attachment[]         // 包含 blobUrl 的附件
+      status: 'uploading' | 'sending'
+      uploadProgress?: number           // 上傳進度 0-100
+    }]
+    // Phase 3B: 上傳進度更新
+    'upload-progress': [data: {
+      tempId: string
+      progress: number                  // 0-100
+      status: 'uploading' | 'sending'
+    }]
+    // Phase 3B: 訊息發送完成（替換臨時訊息）
+    'message-confirmed': [data: {
+      tempId: string                    // 臨時 ID
+      realId: string                    // 真實訊息 ID
+      file_attachments?: FileAttachmentEmitData[]
+    }]
+    // Phase 3C: 訊息發送失敗（含重試資料）
+    'message-failed': [data: {
+      tempId: string
+      error: string
+      // 重試所需的原始資料
+      retryData?: {
+        content: string
+        attachments: Attachment[]  // 原始檔案物件供重試上傳
+      }
     }]
     'attachment-upload': [attachment: Attachment]
   }>()
   // Auth Store
   const authStore = useAuthStore()
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // API URL Helper - 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * 獲取 API URL
+   * - 開發環境 (localhost): 使用相對路徑，通過 Vite Proxy 避免 CORS 問題
+   * - 生產環境: 使用絕對路徑直接連接後端
+   *
+   * @param endpoint - API 端點 (例如 '/api/files/upload')
+   * @returns 完整的 URL 或相對路徑
+   */
+  const getApiUrl = (endpoint: string): string => {
+    const isDev = import.meta.env.DEV
+
+    if (isDev) {
+      // 開發環境: 使用相對路徑，讓 Vite Proxy 處理
+      console.log(`[API URL] Dev mode - using relative path: ${endpoint}`)
+      return endpoint
+    } else {
+      // 生產環境: 使用絕對路徑
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+      const fullUrl = `${baseUrl}${endpoint}`
+      console.log(`[API URL] Production mode - using absolute URL: ${fullUrl}`)
+      return fullUrl
+    }
+  }
+
+  // 獲取檔案類型資訊
+  const getFileTypeInfo = (file: globalThis.File): { fileType: string; typeColor: string; isImage: boolean } => {
+    const mimeType = file.type.toLowerCase()
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+
+    // 圖片
+    if (mimeType.startsWith('image/')) {
+      return { fileType: '圖片', typeColor: '#00BCD4', isImage: true }
+    }
+
+    // PDF
+    if (mimeType.includes('pdf') || ext === 'pdf') {
+      return { fileType: 'PDF', typeColor: '#E53935', isImage: false }
+    }
+
+    // Word
+    if (mimeType.includes('word') || mimeType.includes('document') || ['doc', 'docx'].includes(ext)) {
+      return { fileType: 'Word', typeColor: '#2196F3', isImage: false }
+    }
+
+    // Excel
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
+      return { fileType: 'Excel', typeColor: '#4CAF50', isImage: false }
+    }
+
+    // PowerPoint
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation') || ['ppt', 'pptx'].includes(ext)) {
+      return { fileType: 'PPT', typeColor: '#FF9800', isImage: false }
+    }
+
+    // 影片
+    if (mimeType.startsWith('video/')) {
+      return { fileType: '影片', typeColor: '#9C27B0', isImage: false }
+    }
+
+    // 音訊
+    if (mimeType.startsWith('audio/')) {
+      return { fileType: '音訊', typeColor: '#E91E63', isImage: false }
+    }
+
+    // 壓縮檔
+    if (mimeType.includes('zip') || mimeType.includes('rar') || ['zip', 'rar', '7z'].includes(ext)) {
+      return { fileType: '壓縮檔', typeColor: '#795548', isImage: false }
+    }
+
+    // 文字檔
+    if (mimeType.includes('text') || ['txt', 'md', 'json', 'xml'].includes(ext)) {
+      return { fileType: '文字', typeColor: '#607D8B', isImage: false }
+    }
+
+    // 預設
+    return { fileType: '檔案', typeColor: '#9E9E9E', isImage: false }
+  }
 
   // defineExpose moved to end of script section
 
@@ -282,6 +432,7 @@
     }
   }
 
+  // Phase 3B: 樂觀更新版本的發送訊息
   const sendMessage = async () => {
     if (sending.value) {
       return
@@ -298,40 +449,69 @@
     let finalContent = content
     if (!finalContent && currentAttachments.length > 0) {
       if (currentAttachments.length === 1 && currentAttachments[0]) {
-        finalContent = `Sent a file: ${currentAttachments[0].name}`
+        finalContent = `📎 ${currentAttachments[0].name}`
       } else {
-        finalContent = `Sent ${currentAttachments.length} files`
+        finalContent = `📎 ${currentAttachments.length} 個檔案`
       }
     }
+
+    // Phase 3B: 生成臨時 ID
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const hasAttachments = currentAttachments.length > 0
 
     sending.value = true
     error.value = ''
     successMessage.value = ''
 
+    // ⚡ Phase 3B: 立即發送樂觀更新 - 用戶馬上看到訊息
+    emit('message-pending', {
+      tempId,
+      content: finalContent,
+      attachments: currentAttachments, // 包含 blobUrl 供預覽
+      status: hasAttachments ? 'uploading' : 'sending',
+      uploadProgress: 0
+    })
+
+    // ⚡ Phase 3B: 立即清空輸入區 - 提供即時反饋
+    const savedContent = finalContent
+    const savedAttachments = currentAttachments
+    messageText.value = ''
+    // 不要清理 blob URLs，因為它們正在被使用
+    attachments.value = []
+    replyToMessage.value = null
+
+    await nextTick()
+    autoResize()
+
     try {
       const attachmentIds: string[] = []
-      // 🔧 FIX: Collect file_attachments data for immediate Flex Message card display
-      const fileAttachmentsData: Array<{
-        id: string
-        filename: string
-        mimeType: string
-        fileSize: number
-        fileUrl: string
-      }> = []
+      const fileAttachmentsData: FileAttachmentEmitData[] = []
 
-      // Upload attachments first if any
-      if (currentAttachments.length > 0) {
-        for (const attachment of currentAttachments) {
+      // Phase 3B: 背景上傳檔案，發送進度更新
+      if (hasAttachments) {
+        const totalFiles = savedAttachments.length
+        let completedFiles = 0
+
+        for (const attachment of savedAttachments) {
           try {
-            const uploadResponse = await messageApi.uploadAttachment(props.conversationId, {
-              file: attachment.file,
-              messageType: attachment.file.type.startsWith('image/') ? 'image' : 'file',
-            })
+            // 使用帶進度的上傳
+            const uploadResponse = await uploadAttachmentWithProgress(
+              attachment,
+              (fileProgress) => {
+                // 計算總進度: 已完成檔案 + 當前檔案進度
+                const overallProgress = Math.round(
+                  ((completedFiles + fileProgress / 100) / totalFiles) * 100
+                )
+                emit('upload-progress', {
+                  tempId,
+                  progress: overallProgress,
+                  status: 'uploading'
+                })
+              }
+            )
 
             if (uploadResponse.success && uploadResponse.data) {
-              attachmentIds.push(uploadResponse.data.attachmentId) // 使用 attachmentId 作為標識符
-
-              // 🔧 FIX: Collect full attachment data for Flex Message card
+              attachmentIds.push(uploadResponse.data.attachmentId)
               fileAttachmentsData.push({
                 id: uploadResponse.data.attachmentId,
                 filename: uploadResponse.data.filename || attachment.file.name,
@@ -339,72 +519,172 @@
                 fileSize: attachment.file.size,
                 fileUrl: uploadResponse.data.url
               })
+              completedFiles++
             } else {
               throw new Error(uploadResponse.error || 'File upload failed')
             }
           } catch (uploadError) {
             console.error('Attachment upload error:', uploadError)
-            error.value = `File ${attachment.name} upload failed`
+            // Phase 3C: 上傳失敗，發送失敗事件（含重試資料）
+            emit('message-failed', {
+              tempId,
+              error: `檔案 ${attachment.name} 上傳失敗`,
+              retryData: {
+                content: savedContent,
+                attachments: savedAttachments  // 保留原始檔案供重試
+              }
+            })
+            error.value = `檔案 ${attachment.name} 上傳失敗`
+            sending.value = false
             return
           }
         }
+
+        // 上傳完成，更新狀態為發送中
+        emit('upload-progress', {
+          tempId,
+          progress: 100,
+          status: 'sending'
+        })
       }
 
-      // Send message with attachment IDs
+      // 發送訊息到後端
       const response = await messageApi.send(props.conversationId, {
-        content: finalContent,
-        messageType: currentAttachments.length > 0 ? 'file' : 'text',
+        content: savedContent,
+        messageType: hasAttachments ? 'file' : 'text',
         platform: 'line',
         attachmentIds,
         senderId: authStore.currentAgent?.id,
       })
 
-      if (response.success) {
-        // Clear input
-        messageText.value = ''
-        attachments.value = []
-        replyToMessage.value = null
+      if (response.success && response.data) {
+        // ⚡ Phase 3B: 發送成功，確認訊息
+        emit('message-confirmed', {
+          tempId,
+          realId: response.data.id || tempId,
+          // eslint-disable-next-line camelcase
+          file_attachments: fileAttachmentsData
+        })
 
-        // Reset textarea height
-        await nextTick()
-        autoResize()
+        // 同時發送原有事件保持向後相容
+        emit('message-sent', {
+          content: savedContent,
+          attachments: savedAttachments,
+          // eslint-disable-next-line camelcase
+          file_attachments: fileAttachmentsData
+        })
 
-        // Show success message
         successMessage.value = '訊息發送成功'
         setTimeout(() => {
           successMessage.value = ''
         }, 3000)
-
-        // Emit success event with file_attachments for immediate Flex Message card display
-        emit('message-sent', {
-          content: finalContent,
-          attachments: currentAttachments,
-          // eslint-disable-next-line camelcase
-          file_attachments: fileAttachmentsData, // 🔧 FIX: Include for immediate card display
-        })
       } else {
         const errorMsg = (response.error as { message?: string })?.message || '發送失敗'
+        // Phase 3C: 發送失敗（含重試資料）
+        emit('message-failed', {
+          tempId,
+          error: errorMsg,
+          retryData: {
+            content: savedContent,
+            attachments: savedAttachments
+          }
+        })
         error.value = errorMsg
-
-        // 提供重試建議
-        if (errorMsg.includes('網路')) {
-          error.value += ' - 請檢查網路連接後重試'
-        }
       }
     } catch (err) {
       console.error('Send message error:', err)
 
-      // 根據錯誤類型提供不同的提示
+      let errorMsg = '發送失敗，請重試'
       if (err instanceof TypeError && err.message.includes('fetch')) {
-        error.value = '網路連接失敗，請檢查網路後重試'
+        errorMsg = '網路連接失敗，請檢查網路後重試'
       } else if (err instanceof Error) {
-        error.value = `發送失敗：${err.message}`
-      } else {
-        error.value = '發送失敗，請重試'
+        errorMsg = `發送失敗：${err.message}`
       }
+
+      // Phase 3C: 發送失敗（含重試資料）
+      emit('message-failed', {
+        tempId,
+        error: errorMsg,
+        retryData: {
+          content: savedContent,
+          attachments: savedAttachments
+        }
+      })
+      error.value = errorMsg
     } finally {
       sending.value = false
     }
+  }
+
+  // Phase 3B: 帶進度追蹤的檔案上傳
+  const uploadAttachmentWithProgress = async (
+    attachment: Attachment,
+    onProgress: (_progress: number) => void
+  ): Promise<{ success: boolean; data?: { attachmentId: string; filename: string; url: string }; error?: string }> => {
+    return new Promise((resolve) => {
+      const xhr = new globalThis.XMLHttpRequest()
+
+      // 獲取 API URL - 開發環境使用相對路徑 (Vite Proxy)，生產環境使用絕對路徑
+      const url = getApiUrl(`/api/conversations/${props.conversationId}/attachments`)
+
+      const token = localStorage.getItem('authToken')
+
+      // 真實上傳進度追蹤
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100)
+          onProgress(Math.min(percentComplete, 95)) // 保留 5% 給伺服器處理
+        }
+      }
+
+      xhr.onload = () => {
+        onProgress(100)
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText)
+            resolve({
+              success: true,
+              data: {
+                attachmentId: response.data?.attachmentId || response.attachmentId,
+                filename: response.data?.filename || attachment.name,
+                url: response.data?.url || ''
+              }
+            })
+          } catch {
+            resolve({ success: false, error: '解析伺服器響應失敗' })
+          }
+        } else {
+          try {
+            const errorResponse = JSON.parse(xhr.responseText)
+            resolve({ success: false, error: errorResponse.error || `上傳失敗 (${xhr.status})` })
+          } catch {
+            resolve({ success: false, error: `上傳失敗 (${xhr.status})` })
+          }
+        }
+      }
+
+      xhr.onerror = () => {
+        resolve({ success: false, error: '網路錯誤，請檢查網路連線' })
+      }
+
+      xhr.ontimeout = () => {
+        resolve({ success: false, error: '上傳超時，請稍後重試' })
+      }
+
+      xhr.open('POST', url, true)
+      xhr.timeout = 120000 // 2 分鐘超時
+
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      }
+
+      const formData = new globalThis.FormData()
+      formData.append('file', attachment.file)
+      formData.append('messageType', attachment.isImage ? 'image' : 'file')
+
+      xhr.send(formData)
+    })
   }
 
   const triggerFileUpload = () => {
@@ -432,10 +712,20 @@
         continue
       }
 
+      // 獲取檔案類型資訊
+      const typeInfo = getFileTypeInfo(file)
+
+      // 為圖片生成 blob URL 預覽
+      const blobUrl = typeInfo.isImage ? URL.createObjectURL(file) : undefined
+
       const attachment: Attachment = {
         name: file.name,
         size: file.size,
         file,
+        blobUrl,
+        isImage: typeInfo.isImage,
+        fileType: typeInfo.fileType,
+        typeColor: typeInfo.typeColor,
       }
 
       attachments.value.push(attachment)
@@ -447,7 +737,21 @@
   }
 
   const removeAttachment = (index: number) => {
+    const attachment = attachments.value[index]
+    // 清理 blob URL 以釋放記憶體
+    if (attachment?.blobUrl) {
+      URL.revokeObjectURL(attachment.blobUrl)
+    }
     attachments.value.splice(index, 1)
+  }
+
+  // 清理所有 blob URLs
+  const cleanupBlobUrls = () => {
+    attachments.value.forEach(attachment => {
+      if (attachment.blobUrl) {
+        URL.revokeObjectURL(attachment.blobUrl)
+      }
+    })
   }
 
   const formatFileSize = (bytes: number): string => {
@@ -548,6 +852,9 @@
   watch(
     () => props.conversationId,
     () => {
+      // 清理 blob URLs
+      cleanupBlobUrls()
+
       // Clear input when conversation changes
       messageText.value = ''
       attachments.value = []
@@ -576,6 +883,8 @@
 
   onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside)
+    // 清理 blob URLs 以釋放記憶體
+    cleanupBlobUrls()
   })
 
   // 暴露方法給父組件調用
@@ -904,65 +1213,128 @@
     display: none;
   }
 
+  /* Phase 3A: 增強附件預覽卡片樣式 */
   .attachments-preview {
     margin-top: var(--space-3);
     display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 
-  .attachment-item {
+  .attachment-card {
+    display: flex;
+    align-items: stretch;
+    width: calc(50% - var(--space-2));
+    min-width: 200px;
+    max-width: 300px;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+  }
+
+  .attachment-card:hover {
+    border-color: var(--gray-300);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .attachment-thumbnail {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    background: var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .thumbnail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .attachment-icon {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .attachment-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .attachment-details {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .attachment-name-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-2) var(--space-3);
-    background: var(--gray-50);
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-md);
+    gap: var(--space-2);
   }
 
-  .attachment-info {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+  .attachment-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--gray-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     flex: 1;
     min-width: 0;
   }
 
-  .attachment-info svg {
-    width: 16px;
-    height: 16px;
-    color: var(--gray-500);
-    flex-shrink: 0;
+  .attachment-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.6875rem;
   }
 
-  .attachment-name {
-    font-size: 0.875rem;
-    color: var(--gray-900);
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .attachment-type {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
   }
 
   .attachment-size {
-    font-size: 0.75rem;
     color: var(--gray-500);
-    flex-shrink: 0;
+  }
+
+  .attachment-status {
+    color: var(--gray-400);
+    padding-left: var(--space-2);
+    border-left: 1px solid var(--gray-200);
   }
 
   .remove-attachment {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border: none;
     background: none;
     color: var(--gray-400);
     cursor: pointer;
     border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease;
+    flex-shrink: 0;
   }
 
   .remove-attachment:hover {
@@ -971,8 +1343,8 @@
   }
 
   .remove-attachment svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
   }
 
   .error-message {
@@ -1181,9 +1553,27 @@
 
     .attachments-preview {
       margin-top: var(--space-2);
+      gap: var(--space-2);
     }
 
-    .attachment-item {
+    .attachment-card {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+
+    .attachment-thumbnail,
+    .attachment-icon {
+      width: 56px;
+      height: 56px;
+    }
+
+    .attachment-icon svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .attachment-details {
       padding: var(--space-2);
     }
 
@@ -1191,7 +1581,7 @@
       font-size: 0.75rem;
     }
 
-    .attachment-size {
+    .attachment-meta {
       font-size: 0.625rem;
     }
 

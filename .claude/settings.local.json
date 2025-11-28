@@ -58,7 +58,11 @@
       "Bash(npx wrangler r2 object list:*)",
       "Bash(cd:*)",
       "Bash(git commit:*)",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "Bash(npx wrangler:*)",
+      "Bash(ConvertTo-Json -Depth 10)",
+      "Bash(npm audit:*)",
+      "Bash(Select-String -Pattern \"file_attach\" -SimpleMatch)"
     ],
     "deny": [],
     "ask": [],

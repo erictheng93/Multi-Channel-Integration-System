@@ -149,7 +149,7 @@ export type DurableObjectEventType =
   | 'delayed_message_countdown' | 'delayed_message_sent' | 'delayed_message_recalled'
   | 'delayed_message_failed' | 'user_online' | 'user_offline' | 'user_away'
   | 'agent_available' | 'agent_busy' | 'agent_offline' | 'message_recall_success'
-  | 'message_recall_failed' | 'batch_message';
+  | 'message_recall_failed' | 'batch_message' | 'message_updated';
 
 export interface DurableObjectEvent {
   id: string;

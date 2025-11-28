@@ -132,12 +132,20 @@ export const filesApi = {
   },
 
   // 生成簽名URL（用於直接上傳到R2）
-  generateSignedUrl: async (filename: string, contentType: string): Promise<ApiResponse<{ 
-    signedUrl: string; 
-    fileId: string; 
-    expiresAt: string 
+  generateSignedUrl: async (filename: string, contentType: string, size?: number): Promise<ApiResponse<{
+    presignedUrl: string;
+    signedUrl?: string; // Alias for presignedUrl
+    fileId: string;
+    publicUrl: string;
+    expiresAt: string
   }>> => {
-    return apiClient.post('/files/signed-url', { filename, contentType })
+    // 如果沒有提供 size，使用估計值（1MB），後端會在確認時驗證實際大小
+    const estimatedSize = size || 1024 * 1024
+    return apiClient.post('/files/presigned-url', {
+      filename,
+      mimeType: contentType,
+      size: estimatedSize
+    })
   },
 
   // 確認檔案上傳完成（用於直接上傳到R2後的確認）

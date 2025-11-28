@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments } from '@/db/schema';
+import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   NewConversationTransfer
@@ -12,7 +12,7 @@ import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { verifyJWT, getUserById } from '@modules/auth/services/auth';
 import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-service';
-import { successResponse, errorResponse } from '@shared/utils/api-response';
+import { successResponse, errorResponse, validationErrorResponse } from '@shared/utils/api-response';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { getSSECorsHeaders } from '@/config/cors';
 
@@ -238,6 +238,142 @@ conversationHandler.get('/stream', async (c) => {
       error: 'Failed to establish SSE connection',
       timestamp: new Date().toISOString()
     }, 500);
+  }
+});
+
+// 📦 批量操作端點 - POST /bulk
+// 支援操作: assign, close, reopen, set_priority, add_tags
+conversationHandler.post('/bulk', jwtAuth, async (c) => {
+  const drizzleDb = createDbClient(c.env.DB);
+  try {
+    const { operation, conversationIds, data } = await c.req.json();
+    const payload = c.get('jwtPayload');
+
+    // 驗證 conversationIds
+    if (!Array.isArray(conversationIds) || conversationIds.length === 0) {
+      return validationErrorResponse(c, [
+        { field: 'conversationIds', message: 'Conversation IDs array is required' }
+      ]);
+    }
+
+    // 限制批量操作數量
+    if (conversationIds.length > 100) {
+      return validationErrorResponse(c, [
+        { field: 'conversationIds', message: 'Bulk operation limited to 100 conversations at a time' }
+      ]);
+    }
+
+    const conversationIdsArray = conversationIds as string[];
+
+    switch (operation) {
+      case 'assign':
+        if (!data?.userId && !data?.teamId) {
+          return validationErrorResponse(c, [
+            { field: 'data', message: 'User ID or Team ID is required for assignment' }
+          ]);
+        }
+        await drizzleDb.update(conversations)
+          .set({
+            assignedUserId: data.userId || null,
+            assignedTeamId: data.teamId || null,
+            status: 'assigned',
+            updatedAt: sql`datetime('now')`
+          })
+          .where(inArray(conversations.id, conversationIdsArray));
+        break;
+
+      case 'close':
+        await drizzleDb.update(conversations)
+          .set({
+            status: 'closed',
+            updatedAt: sql`datetime('now')`
+          })
+          .where(inArray(conversations.id, conversationIdsArray));
+        break;
+
+      case 'reopen':
+        await drizzleDb.update(conversations)
+          .set({
+            status: 'active',
+            updatedAt: sql`datetime('now')`
+          })
+          .where(inArray(conversations.id, conversationIdsArray));
+        break;
+
+      case 'set_priority':
+        if (!data?.priority) {
+          return validationErrorResponse(c, [
+            { field: 'data.priority', message: 'Priority is required' }
+          ]);
+        }
+        await drizzleDb.update(conversations)
+          .set({
+            priority: data.priority,
+            updatedAt: sql`datetime('now')`
+          })
+          .where(inArray(conversations.id, conversationIdsArray));
+        break;
+
+      case 'add_tags':
+        if (!data?.tagIds || !Array.isArray(data.tagIds)) {
+          return validationErrorResponse(c, [
+            { field: 'data.tagIds', message: 'Tag IDs array is required' }
+          ]);
+        }
+        // 為每個對話添加標籤
+        const tagInsertPromises = [];
+        for (const convId of conversationIdsArray) {
+          for (const tagId of data.tagIds) {
+            tagInsertPromises.push(
+              drizzleDb.insert(conversationTags)
+                .values({
+                  conversationId: convId,
+                  tagId: parseInt(tagId),
+                  assignedBy: payload?.userId ? String(payload.userId) : 'system'
+                })
+                .onConflictDoNothing()
+            );
+          }
+        }
+        await Promise.all(tagInsertPromises);
+        break;
+
+      case 'remove_tags':
+        if (!data?.tagIds || !Array.isArray(data.tagIds)) {
+          return validationErrorResponse(c, [
+            { field: 'data.tagIds', message: 'Tag IDs array is required' }
+          ]);
+        }
+        // 從對話移除標籤
+        for (const convId of conversationIdsArray) {
+          for (const tagId of data.tagIds) {
+            await drizzleDb.delete(conversationTags)
+              .where(
+                and(
+                  eq(conversationTags.conversationId, convId),
+                  eq(conversationTags.tagId, parseInt(tagId))
+                )
+              );
+          }
+        }
+        break;
+
+      default:
+        return validationErrorResponse(c, [
+          { field: 'operation', message: `Invalid operation: ${operation}. Valid operations: assign, close, reopen, set_priority, add_tags, remove_tags` }
+        ]);
+    }
+
+    console.log(`📦 [Conversations] Bulk ${operation} completed for ${conversationIdsArray.length} conversations`);
+    return successResponse(c, {
+      operation,
+      affectedCount: conversationIdsArray.length,
+      conversationIds: conversationIdsArray
+    }, `Bulk ${operation} completed successfully`);
+
+  } catch (error) {
+    console.error('❌ [Conversations] Bulk operation error:', error);
+    return errorResponse(c, error instanceof Error ? error.message : 'Failed to perform bulk operation', 500);
   }
 });
 
@@ -977,11 +1113,13 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
     await db.insert(fileAttachments).values({
       id: attachmentId,
       messageId: null, // Will be updated when message is sent
+      conversationId, // Associate with conversation for tracking
       filename: file.name,
       mimeType: file.type,
       fileSize: file.size,
       fileUrl,
       r2Key,
+      uploadStatus: 'completed', // Direct upload completed
       createdAt: new Date().toISOString()
     });
 
@@ -1050,28 +1188,21 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
         : 'Permission denied', 403);
     }
 
-    // 3. Send message through service
+    // 3. Send message (Async Pattern)
     console.log('🔵 [SERVICE] Creating MessageService instance...');
     const messageService = new MessageService(c.env);
-    console.log('🔵 [SERVICE] Calling sendMessage...');
-    const result = await messageService.sendMessage(request);
-    console.log('🔵 [SERVICE] sendMessage result:', result.success);
+    
+    console.log('🔵 [SERVICE] Creating pending message...');
+    const result = await messageService.createPendingMessage(request);
+    console.log('🔵 [SERVICE] Pending message created, ID:', result.messageId);
 
-    if (!result.success) {
-      console.log('🔴 [SERVICE] Send message failed:', result.error);
-      return errorResponse(c, result.error || 'Failed to send message', 400);
-    }
-
-    console.log('🔵 [SERVICE] Message sent successfully, ID:', result.messageId);
-
-    // 4. Broadcast WebSocket event
-    console.log('🔵 [WEBSOCKET] Starting WebSocket broadcast...');
+    // 3.1 Broadcast Pending Message
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
       await broadcastService.broadcastMessageEvent({
         type: 'message_sent',
         conversationId: request.conversationId,
-        messageId: result.messageId!,
+        messageId: result.messageId,
         agentId: request.senderId,
         data: {
           content: request.content,
@@ -1081,38 +1212,25 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
             name: user.displayName,
             role: user.role
           },
-          deliveryStatus: 'sent',
+          deliveryStatus: 'pending',
           timestamp: new Date().toISOString()
         },
         priority: 'normal'
       });
-      console.log('🔵 [WEBSOCKET] Broadcast successful');
     } catch (broadcastError) {
-      console.warn('⚠️ [WEBSOCKET] Message broadcast failed:', broadcastError);
+      console.warn('⚠️ [WEBSOCKET] Pending message broadcast failed:', broadcastError);
     }
 
-    // ✅ 5. Return complete Message object formatted for frontend
-    console.log('🔵 [RESPONSE] Preparing response...');
-    console.log('🔵 [RESPONSE] Has result.message:', !!result.message);
+    // 4. Trigger background sending
+    console.log('🔵 [BACKGROUND] Scheduling background delivery...');
+    c.executionCtx.waitUntil(
+      messageService.processBackgroundSending(result.messageId, request, user)
+    );
 
-    if (!result.message) {
-      console.log('🔵 [RESPONSE] Using fallback message format');
-      // Fallback: construct minimal message if query failed
-      return successResponse(c, {
-        id: result.messageId,
-        conversationId: request.conversationId,
-        senderType: 'agent' as const,
-        senderId: request.senderId,
-        senderName: user.displayName,
-        content: request.content,
-        messageType: request.messageType || 'text',
-        platform: 'line' as const,
-        createdAt: Date.now(),
-        deliveryStatus: 'sent'
-      }, 'Message sent successfully');
-    }
-
-    // Transform database message to frontend Message format
+    // 5. Return response immediately
+    console.log('🔵 [RESPONSE] Returning early success response...');
+    
+    // Transform to frontend format (Pending status)
     // ✅ Safe metadata parsing with error handling
     let parsedMetadata = {};
     if (result.message.metadata) {
@@ -1136,17 +1254,13 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       platform: 'line' as const,
       createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
       timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
-      deliveryStatus: result.message.deliveryStatus || 'sent',
-      isSent: result.message.isSent,
-      platformMessageId: result.message.platformMessageId,
+      deliveryStatus: 'pending',
+      isSent: false,
+      platformMessageId: null,
       metadata: parsedMetadata
     };
 
-    console.log('🔵 [RESPONSE] Formatted message prepared');
-    console.log('🔵 [RESPONSE] Calling successResponse...');
-    const response = successResponse(c, formattedMessage, 'Message sent successfully');
-    console.log('🔵 [RESPONSE] ========== SUCCESS - RETURNING RESPONSE ==========');
-    return response;
+    return successResponse(c, formattedMessage, 'Message queued for delivery');
 
   } catch (error) {
     console.error('🔴 [ERROR] ========== EXCEPTION CAUGHT ==========');

@@ -54,6 +54,12 @@ export class UserConnection implements DurableObject {
   private readonly MAX_SUBSCRIPTIONS = 50; // Reduced from 100
   private readonly CONNECTION_CLEANUP_INTERVAL = 300000; // 5 minutes
 
+  // SECURITY: Rate limiting configuration
+  private readonly RATE_LIMIT_WINDOW_MS = 1000; // 1 second window
+  private readonly RATE_LIMIT_MAX_MESSAGES = 10; // Max 10 messages per second
+  private readonly RATE_LIMIT_MAX_MESSAGE_SIZE = 10240; // 10KB max message size
+  private rateLimitState = new Map<string, { count: number; windowStart: number }>();
+
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.env = env;
@@ -214,6 +220,21 @@ export class UserConnection implements DurableObject {
   private async handleWebSocketMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
     const { connectionId } = connection;
 
+    // SECURITY: Rate limiting check
+    if (!this.checkRateLimit(connectionId)) {
+      console.warn(`⚠️ [UserConnection] Rate limit exceeded for connection ${connectionId}`);
+      this.sendError(connection, 'Rate limit exceeded. Please slow down.');
+      return;
+    }
+
+    // SECURITY: Message size validation
+    const messageSize = JSON.stringify(message).length;
+    if (messageSize > this.RATE_LIMIT_MAX_MESSAGE_SIZE) {
+      console.warn(`⚠️ [UserConnection] Message too large (${messageSize} bytes) from ${connectionId}`);
+      this.sendError(connection, `Message too large. Maximum size is ${this.RATE_LIMIT_MAX_MESSAGE_SIZE} bytes.`);
+      return;
+    }
+
     // Update activity
     connection.lastActivity = Date.now();
     this.lastSeen = Date.now();
@@ -279,6 +300,9 @@ export class UserConnection implements DurableObject {
 
     // Remove connection
     this.connections.delete(connectionId);
+
+    // SECURITY: Clean up rate limit state for this connection
+    this.cleanupRateLimitState(connectionId);
 
     // Update online status
     this.isOnline = this.connections.size > 0;
@@ -565,8 +589,10 @@ export class UserConnection implements DurableObject {
     try {
       // Import JWT verification utility
       const { verifyJWT } = await import('../utils/auth');
-      const jwtSecret = this.env.JWT_SECRET || 'default-secret-key';
-      const payload = await verifyJWT(token, jwtSecret);
+      if (!this.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is required');
+      }
+      const payload = await verifyJWT(token, this.env.JWT_SECRET);
 
       // Verify that the token belongs to the expected user
       if (payload.userId !== userId) {
@@ -582,9 +608,111 @@ export class UserConnection implements DurableObject {
     }
   }
 
-  private async checkConversationPermission(_userId: string, _conversationId: string, _action: string): Promise<boolean> {
-    // Integration with existing PermissionService
-    return true; // Placeholder
+  private async checkConversationPermission(userId: string, conversationId: string, action: string): Promise<boolean> {
+    // Security: Actually validate conversation access through database
+    try {
+      // Import schema and drizzle for database access
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { eq, and } = await import('drizzle-orm');
+      const schema = await import('../db/schema');
+
+      const db = drizzle(this.env.DB, { schema });
+
+      // Get the conversation
+      const conversation = await db
+        .select({
+          id: schema.conversations.id,
+          assignedUserId: schema.conversations.assignedUserId,
+          assignedTeamId: schema.conversations.assignedTeamId,
+        })
+        .from(schema.conversations)
+        .where(eq(schema.conversations.id, conversationId))
+        .get();
+
+      if (!conversation) {
+        console.warn(`❌ [UserConnection] Conversation ${conversationId} not found`);
+        return false;
+      }
+
+      // Get the user's role and team
+      const user = await db
+        .select({
+          id: schema.agents.id,
+          role: schema.agents.role,
+          teamId: schema.agents.teamId,
+        })
+        .from(schema.agents)
+        .where(eq(schema.agents.id, userId))
+        .get();
+
+      if (!user) {
+        console.warn(`❌ [UserConnection] User ${userId} not found`);
+        return false;
+      }
+
+      // Admin has full access
+      if (user.role === 'admin') {
+        return true;
+      }
+
+      // For unassigned conversations, allow access (queue management)
+      if (!conversation.assignedUserId && !conversation.assignedTeamId) {
+        return action === 'read'; // Read-only for unassigned
+      }
+
+      // Check if user is assigned to this conversation
+      if (conversation.assignedUserId === userId) {
+        return true;
+      }
+
+      // Check if user is in the assigned team
+      if (conversation.assignedTeamId && user.teamId === conversation.assignedTeamId) {
+        return true;
+      }
+
+      console.warn(`❌ [UserConnection] User ${userId} denied ${action} access to conversation ${conversationId}`);
+      return false;
+    } catch (error) {
+      console.error(`❌ [UserConnection] Permission check failed:`, error);
+      return false; // Fail secure - deny access on error
+    }
+  }
+
+  /**
+   * SECURITY: Rate limiting to prevent message flooding and DoS attacks
+   * Uses a sliding window approach with per-connection tracking
+   */
+  private checkRateLimit(connectionId: string): boolean {
+    const now = Date.now();
+    const state = this.rateLimitState.get(connectionId);
+
+    if (!state) {
+      // First message from this connection
+      this.rateLimitState.set(connectionId, { count: 1, windowStart: now });
+      return true;
+    }
+
+    // Check if we're in the same time window
+    if (now - state.windowStart < this.RATE_LIMIT_WINDOW_MS) {
+      // Still in the same window
+      if (state.count >= this.RATE_LIMIT_MAX_MESSAGES) {
+        // Rate limit exceeded
+        return false;
+      }
+      state.count++;
+      return true;
+    } else {
+      // New time window - reset the counter
+      this.rateLimitState.set(connectionId, { count: 1, windowStart: now });
+      return true;
+    }
+  }
+
+  /**
+   * Clean up rate limit state for disconnected connections
+   */
+  private cleanupRateLimitState(connectionId: string): void {
+    this.rateLimitState.delete(connectionId);
   }
 
   private generateConnectionId(): string {

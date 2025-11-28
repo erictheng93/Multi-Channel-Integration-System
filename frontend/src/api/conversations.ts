@@ -429,5 +429,102 @@ export const conversationApi = {
 
   close: async (conversationId: string): Promise<ApiResponse<void>> => {
     return conversationApi.closeConversation(conversationId);
+  },
+
+  // ==================== 批量操作 ====================
+
+  /**
+   * 批量操作對話 (最多 100 筆)
+   * 支援操作: assign, close, reopen, set_priority, add_tags, remove_tags
+   */
+  bulkOperation: async (
+    operation: 'assign' | 'close' | 'reopen' | 'set_priority' | 'add_tags' | 'remove_tags',
+    conversationIds: string[],
+    data?: {
+      userId?: string;
+      teamId?: number;
+      priority?: string;
+      tagIds?: number[];
+    }
+  ): Promise<ApiResponse<{
+    operation: string;
+    affectedCount: number;
+    conversationIds: string[];
+  }>> => {
+    if (conversationIds.length === 0) {
+      return { success: false, error: '至少需要選擇一個對話' };
+    }
+    if (conversationIds.length > 100) {
+      return { success: false, error: '批量操作限制最多 100 個對話' };
+    }
+    return apiClient.post('/conversations/bulk', {
+      operation,
+      conversationIds,
+      data
+    });
+  },
+
+  /**
+   * 批量關閉對話
+   */
+  bulkClose: async (conversationIds: string[]): Promise<ApiResponse<{
+    operation: string;
+    affectedCount: number;
+    conversationIds: string[];
+  }>> => {
+    return conversationApi.bulkOperation('close', conversationIds);
+  },
+
+  /**
+   * 批量重新開啟對話
+   */
+  bulkReopen: async (conversationIds: string[]): Promise<ApiResponse<{
+    operation: string;
+    affectedCount: number;
+    conversationIds: string[];
+  }>> => {
+    return conversationApi.bulkOperation('reopen', conversationIds);
+  },
+
+  /**
+   * 批量指派對話
+   */
+  bulkAssign: async (
+    conversationIds: string[],
+    options: { userId?: string; teamId?: number }
+  ): Promise<ApiResponse<{
+    operation: string;
+    affectedCount: number;
+    conversationIds: string[];
+  }>> => {
+    return conversationApi.bulkOperation('assign', conversationIds, options);
+  },
+
+  /**
+   * 批量添加標籤到對話
+   */
+  bulkAddTags: async (
+    conversationIds: string[],
+    tagIds: number[]
+  ): Promise<ApiResponse<{
+    operation: string;
+    affectedCount: number;
+    conversationIds: string[];
+  }>> => {
+    return conversationApi.bulkOperation('add_tags', conversationIds, { tagIds });
+  },
+
+  /**
+   * 批量從對話移除標籤
+   */
+  bulkRemoveTags: async (
+    conversationIds: string[],
+    tagIds: number[]
+  ): Promise<ApiResponse<{
+    operation: string;
+    affectedCount: number;
+    conversationIds: string[];
+  }>> => {
+    return conversationApi.bulkOperation('remove_tags', conversationIds, { tagIds });
   }
 }

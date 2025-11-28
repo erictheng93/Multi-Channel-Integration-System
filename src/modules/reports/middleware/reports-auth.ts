@@ -273,8 +273,8 @@ export async function checkReportsStatsPermission(c: Context<{ Bindings: Binding
       }, 401);
     }
 
-    // 只有 Admin 和 Team 角色可以檢視報告統計
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({
         success: false,
         error: 'Insufficient permissions to view report statistics',
@@ -308,8 +308,8 @@ export async function checkReportsBatchPermission(c: Context<{ Bindings: Binding
       }, 401);
     }
 
-    // 只有 Admin 和 Team 角色可以執行批量操作
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({
         success: false,
         error: 'Insufficient permissions for batch operations',
@@ -398,8 +398,9 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
     // 某些報告類型需要特殊權限
     const restrictedReportTypes = ['system_health', 'custom', 'team_analytics'];
 
+    // SECURITY: Admin-only access for restricted report types (2-tier role system)
     if (restrictedReportTypes.includes(reportType)) {
-      if (!['admin', 'team'].includes(payload.role)) {
+      if (payload.role !== 'admin') {
         return c.json({
           success: false,
           error: `Insufficient permissions for report type: ${reportType}`,

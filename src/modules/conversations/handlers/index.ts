@@ -44,6 +44,7 @@ conversationsMainHandler.get('/info', (c) => {
         'GET /info - Module information',
         'GET / - List conversations',
         'GET /:id - Get conversation details',
+        'POST /bulk - Bulk operations (assign, close, reopen, set_priority, add_tags, remove_tags)',
         'POST /:id/assign - Assign conversation',
         'POST /:id/transfer - Transfer conversation',
         'POST /:id/messages - Send message',

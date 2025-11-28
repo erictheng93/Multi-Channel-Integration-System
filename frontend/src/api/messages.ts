@@ -50,6 +50,38 @@ export interface PendingMessagesResponse {
   pageSize: number
 }
 
+// ==================== 批量操作類型 ====================
+
+export interface BulkCreateMessageRequest {
+  conversationId: string
+  content: string
+  messageType?: 'text' | 'image' | 'file'
+  attachmentIds?: string[]
+}
+
+export interface BulkCreateMessagesRequest {
+  messages: BulkCreateMessageRequest[]
+}
+
+export interface BulkDeleteMessagesRequest {
+  messageIds: string[]
+  hardDelete?: boolean
+}
+
+export interface BulkOperationResult {
+  success: boolean
+  results: Array<{
+    id?: string
+    success: boolean
+    error?: string
+  }>
+  errors: Array<{
+    index: number
+    error: string
+  }>
+  message: string
+}
+
 export const messagesApi = {
   // 發送延遲訊息
   sendDelayedMessage: async (request: DelayedMessageRequest): Promise<ApiResponse<DelayedMessageResponse>> => {
@@ -74,6 +106,41 @@ export const messagesApi = {
   // 獲取訊息詳情
   getMessageDetails: async (messageId: string): Promise<ApiResponse<PendingMessage>> => {
     return apiClient.get(`/messages/${messageId}`)
+  },
+
+  // ==================== 批量操作 ====================
+
+  /**
+   * 批量創建訊息 (最多 100 筆)
+   */
+  bulkCreate: async (request: BulkCreateMessagesRequest): Promise<ApiResponse<BulkOperationResult>> => {
+    if (request.messages.length > 100) {
+      return {
+        success: false,
+        error: 'Bulk operation limited to 100 messages at a time'
+      }
+    }
+    return apiClient.post('/messages/bulk-create', request)
+  },
+
+  /**
+   * 批量刪除訊息 (最多 100 筆)
+   */
+  bulkDelete: async (request: BulkDeleteMessagesRequest): Promise<ApiResponse<BulkOperationResult>> => {
+    if (request.messageIds.length > 100) {
+      return {
+        success: false,
+        error: 'Bulk operation limited to 100 messages at a time'
+      }
+    }
+    return apiClient.post('/messages/bulk-delete', request)
+  },
+
+  /**
+   * 批量刪除訊息的便捷方法
+   */
+  bulkDeleteByIds: async (messageIds: string[], hardDelete = false): Promise<ApiResponse<BulkOperationResult>> => {
+    return messagesApi.bulkDelete({ messageIds, hardDelete })
   }
 }
 

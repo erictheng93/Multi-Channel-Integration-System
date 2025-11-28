@@ -174,7 +174,7 @@ export async function createUser(
     email: string;
     password: string;
     displayName: string;
-    role: 'admin' | 'team' | 'agent';
+    role: 'admin' | 'agent'; // 2-tier role system
     teamId?: number;
   }
 ): Promise<DbUser> {
@@ -324,8 +324,8 @@ export async function authenticateUserByEmail(
   return result.user;
 }
 
-// 權限檢查
-export function hasPermission(user: DbUser, requiredRole: 'admin' | 'team' | 'agent'): boolean {
+// 權限檢查 (2-tier role system: admin/agent)
+export function hasPermission(user: DbUser, requiredRole: 'admin' | 'agent'): boolean {
   if (user.role === 'admin') {
     return true; // admin 有所有權限
   }

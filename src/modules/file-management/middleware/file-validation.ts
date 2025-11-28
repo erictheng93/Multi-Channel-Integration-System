@@ -340,6 +340,49 @@ function validateFileContent(bytes: Uint8Array, mimeType: string): boolean {
     return true;
   }
 
-  // 對於其他檔案類型，暫時允許通過
-  return true;
+  // WebP
+  if (mimeType === 'image/webp' &&
+      bytes[0] === 0x52 && bytes[1] === 0x49 &&
+      bytes[2] === 0x46 && bytes[3] === 0x46) {
+    return true;
+  }
+
+  // ZIP (also covers .docx, .xlsx, .pptx which are ZIP-based)
+  if ((mimeType === 'application/zip' ||
+       mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+       mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+       mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') &&
+      bytes[0] === 0x50 && bytes[1] === 0x4B) {
+    return true;
+  }
+
+  // MP4 (check at offset 4 for 'ftyp')
+  if (mimeType === 'video/mp4' && bytes.length >= 8 &&
+      bytes[4] === 0x66 && bytes[5] === 0x74 &&
+      bytes[6] === 0x79 && bytes[7] === 0x70) {
+    return true;
+  }
+
+  // MP3 (ID3 header or sync word)
+  if (mimeType === 'audio/mpeg' &&
+      ((bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) || // ID3
+       (bytes[0] === 0xFF && (bytes[1] & 0xE0) === 0xE0))) { // MPEG sync
+    return true;
+  }
+
+  // Text files - basic validation (printable ASCII or UTF-8 BOM)
+  if (mimeType === 'text/plain') {
+    // UTF-8 BOM
+    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+      return true;
+    }
+    // Check first few bytes are printable ASCII or common whitespace
+    const isPrintable = Array.from(bytes.slice(0, Math.min(16, bytes.length)))
+      .every(b => (b >= 0x20 && b <= 0x7E) || b === 0x09 || b === 0x0A || b === 0x0D);
+    return isPrintable;
+  }
+
+  // SECURITY: Unknown file types are NOT allowed - fail secure
+  console.warn(`⚠️ [File Validation] Unknown file signature for MIME type: ${mimeType}`);
+  return false;
 }

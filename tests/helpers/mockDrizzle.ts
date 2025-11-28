@@ -22,6 +22,20 @@ export class MockDrizzleDB {
   update = vi.fn((table: any) => this.createQueryBuilder('update', table))
   delete = vi.fn((table: any) => this.createQueryBuilder('delete', table))
 
+  // Batch method for executing multiple queries atomically
+  batch = vi.fn(async (queries: any[]) => {
+    // Execute all queries and return their results
+    const results = await Promise.all(
+      queries.map(async (query) => {
+        if (query && typeof query.then === 'function') {
+          return await query
+        }
+        return { success: true }
+      })
+    )
+    return results
+  })
+
   // Query builder
   private createQueryBuilder(type: string, target: any) {
     const self = this

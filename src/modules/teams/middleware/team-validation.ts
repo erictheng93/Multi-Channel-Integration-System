@@ -188,9 +188,9 @@ export const validateAddMemberData = (): MiddlewareHandler<{ Bindings: Bindings 
         throw new InvalidTeamDataError('Invalid user ID format');
       }
 
-      // 角色驗證
-      if (!['team', 'agent'].includes(body.role)) {
-        throw new InvalidTeamDataError('Invalid role. Must be team or agent');
+      // SECURITY: Role validation (2-tier system: admin/agent - team members can only be agents)
+      if (body.role !== 'agent') {
+        throw new InvalidTeamDataError('Invalid role. Team members must have agent role');
       }
 
       // 權限檢查（如果提供）
@@ -219,9 +219,9 @@ export const validateUpdateMemberData = (): MiddlewareHandler<{ Bindings: Bindin
         throw new InvalidTeamDataError('No update data provided');
       }
 
-      // 角色驗證（如果提供）
-      if (body.role && !['team', 'agent'].includes(body.role)) {
-        throw new InvalidTeamDataError('Invalid role. Must be team or agent');
+      // SECURITY: Role validation (2-tier system: admin/agent - team members can only be agents)
+      if (body.role && body.role !== 'agent') {
+        throw new InvalidTeamDataError('Invalid role. Team members must have agent role');
       }
 
       // 權限檢查（如果提供）

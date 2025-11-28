@@ -339,7 +339,8 @@ alertConfigHandler.get('/channels/status', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
       }, 403);

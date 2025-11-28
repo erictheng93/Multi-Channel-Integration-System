@@ -65,11 +65,11 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
     const user = c.get('user');
     const { targetUserId, expiresIn = 3600 } = await c.req.json();
 
-    // 檢查權限
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions',
-        message: 'Only administrators and team members can generate user tokens'
+        message: 'Only administrators can generate user tokens'
       }, 403);
     }
 
@@ -316,8 +316,8 @@ phase2AuthHandler.get('/status', jwtAuth, async (c) => {
       },
       permissions: {
         canGenerateMonitoringToken: user.role === 'admin',
-        canGenerateUserToken: ['admin', 'team'].includes(user.role),
-        canAccessAnalytics: ['admin', 'team'].includes(user.role),
+        canGenerateUserToken: user.role === 'admin',
+        canAccessAnalytics: user.role === 'admin',
         canTriggerAlerts: user.role === 'admin'
       },
       timestamp: Date.now()

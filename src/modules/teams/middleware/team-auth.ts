@@ -63,14 +63,15 @@ export const requireAdminRole = (): MiddlewareHandler<{ Bindings: Bindings }> =>
   };
 };
 
-// 團隊領導或管理員權限檢查中介層
+// Admin role required middleware (2-tier role system: admin/agent)
 export const requireTeamLeaderOrAdmin = (): MiddlewareHandler<{ Bindings: Bindings }> => {
   return async (c, next): Promise<Response | void> => {
     try {
       const user = c.get('user');
 
-      if (!user || !['admin', 'team'].includes(user.role)) {
-        return c.json({ error: 'Team leader or admin role required' }, 403);
+      // SECURITY: Admin-only access (2-tier role system)
+      if (!user || user.role !== 'admin') {
+        return c.json({ error: 'Admin role required' }, 403);
       }
 
       await next();
