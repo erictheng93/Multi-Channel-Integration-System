@@ -144,17 +144,23 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
-// NOTE: Database uses camelCase column names (mimeType, fileSize, etc.)
+// NOTE: Database uses mixed column naming:
+//   - camelCase: mimeType, fileSize, fileUrl, r2Key, uploadStatus
+//   - snake_case: message_id, conversation_id, uploaded_by, created_at, updated_at
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),
+  conversationId: text('conversation_id').references(() => conversations.id), // Added: exists in DB
   filename: text('filename').notNull(),
-  mimeType: text('mimeType').notNull(), // Fixed: database column is camelCase
-  fileSize: integer('fileSize').notNull(), // Fixed: database column is camelCase
+  mimeType: text('mimeType').notNull(), // Database column is camelCase
+  fileSize: integer('fileSize').notNull(), // Database column is camelCase
   fileUrl: text('fileUrl'), // 公開訪問URL（主要使用此欄位）
-  r2Key: text('r2Key').notNull(), // Fixed: database column is camelCase
-  // url: text('url'), // REMOVED: @deprecated 與 fileUrl 重複 - Drizzle was trying to insert null causing 500 errors
+  r2Key: text('r2Key').notNull(), // Database column is camelCase
+  url: text('url'), // Legacy column - exists in DB
+  uploadStatus: text('uploadStatus').default('completed'), // 'pending', 'completed', 'failed'
+  uploadedBy: text('uploaded_by'), // Fixed: DB column is snake_case (uploaded_by)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
 });
 
 // Conversation sessions table - 對話會話管理

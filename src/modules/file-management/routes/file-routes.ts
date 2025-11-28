@@ -10,6 +10,12 @@ import { jwtAuth } from '@/middleware/auth';
 // 導入處理器
 import { createFileHandler } from '@modules/file-management/handlers/file-handler';
 import { createUploadHandler } from '@modules/file-management/handlers/upload-handler';
+import {
+  generatePresignedUrl,
+  confirmUpload,
+  checkPresignedUrlStatus,
+  getFileStatus
+} from '@modules/file-management/handlers/presigned-handler';
 
 // 導入中間件
 import {
@@ -103,6 +109,20 @@ export function createFileRoutes() {
     const uploadHandler = createUploadHandler(c.env);
     return await uploadHandler.cancelChunkedUpload(c);
   });
+
+  // === 🆕 Presigned URL 路由 (直接上傳到 R2) ===
+
+  // 檢查 Presigned URL 服務狀態
+  fileRoutes.get('/presigned-url/status', jwtAuth, checkPresignedUrlStatus);
+
+  // 生成 Presigned URL
+  fileRoutes.post('/presigned-url', jwtAuth, generatePresignedUrl);
+
+  // 確認上傳完成 (需要在 :fileId 路由之前註冊)
+  fileRoutes.post('/:fileId/confirm', jwtAuth, confirmUpload);
+
+  // 獲取檔案上傳狀態
+  fileRoutes.get('/:fileId/status', jwtAuth, getFileStatus);
 
   // === 檔案操作路由 ===
 

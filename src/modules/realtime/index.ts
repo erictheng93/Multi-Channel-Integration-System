@@ -129,7 +129,7 @@ export const defaultRealtimeConfig = {
   authConfig: {
     allowQueryToken: true,
     requireConversationAccess: true,
-    validRoles: ['admin', 'team', 'agent']
+    validRoles: ['admin', 'agent']
   }
 };
 

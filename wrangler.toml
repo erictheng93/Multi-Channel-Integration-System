@@ -10,6 +10,9 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
 
+# 🆕 Presigned URL Configuration (Direct Upload to R2)
+# R2_ACCOUNT_ID and R2_BUCKET_NAME are stored as secrets (wrangler secret put)
+
 # Production routes
 [[routes]]
 pattern = "multi-channel.imfinethankyouandyou.com/*"
@@ -52,6 +55,27 @@ preview_bucket_name = "multi-channel-platform-attachments"
 # Real-time events are now handled by Durable Objects (MessageBroadcaster, ConversationRoom)
 # Latest message cache updates are handled by LatestMessageCacheCoordinator Durable Object
 # Migration completed: Phase 1.4b (2025-10-17)
+
+# =================== LINE MESSAGE QUEUE (NEW - Phase 3) ===================
+#
+# ⚠️ LINE_MESSAGE_QUEUE - DISABLED (Requires Workers Paid Plan)
+# Async LINE message delivery functionality is temporarily unavailable
+# To enable: Upgrade to Workers Paid plan and uncomment the queue configurations
+#
+# [[queues.producers]]
+# queue = "line-message-queue"
+# binding = "LINE_MESSAGE_QUEUE"
+#
+# [[queues.consumers]]
+# queue = "line-message-queue"
+# max_batch_size = 10
+# max_batch_timeout = 5
+# max_retries = 3
+# dead_letter_queue = "line-message-dlq"
+#
+# [[queues.producers]]
+# queue = "line-message-dlq"
+# binding = "LINE_MESSAGE_DLQ"
 
 # =================== DURABLE OBJECTS (WebSocket) ===================
 

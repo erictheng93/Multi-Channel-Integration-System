@@ -33,10 +33,14 @@ export interface Bindings {
   R2_BUCKET_PROD: R2Bucket;
   R2_BUCKET_DEV: R2Bucket;
 
-  // Queues - Removed (Phase 2: 2025-10-17)
+  // Queues - Partially restored (Phase 3: LINE Async)
   // AGENT_QUEUE removed - replaced by DelayedMessageBuffer Durable Object
   // REALTIME_QUEUE removed - replaced by Durable Objects (MessageBroadcaster, ConversationRoom, LatestMessageCacheCoordinator)
-  // All queue functionality now handled by Durable Objects architecture
+  //
+  // 🆕 LINE_MESSAGE_QUEUE - Restored for async LINE message delivery (Phase 3)
+  // Purpose: Decouple HTTP response from LINE API calls for better UX
+  LINE_MESSAGE_QUEUE: Queue<LineMessageQueuePayload>;
+  LINE_MESSAGE_DLQ: Queue<LineMessageQueuePayload>; // Dead Letter Queue for failed messages
 
   // These are set by resourceMiddleware based on ENVIRONMENT
   DB: D1Database;
@@ -97,6 +101,12 @@ export interface Bindings {
   R2_PUBLIC_URL: string;
   R2_CUSTOM_DOMAIN?: string;
   R2_BUCKET_NAME?: string;
+
+  // 🆕 R2 S3 API Configuration (用於 Presigned URLs)
+  // 這些需要通過 Cloudflare Dashboard 創建 R2 API Token 後設置
+  R2_ACCOUNT_ID?: string;        // Cloudflare Account ID
+  R2_ACCESS_KEY_ID?: string;     // R2 API Token Access Key ID
+  R2_SECRET_ACCESS_KEY?: string; // R2 API Token Secret Access Key
   
   // Additional optional buckets
   FILES?: R2Bucket;
@@ -168,9 +178,9 @@ export interface AuditContext {
 
 // Export commonly used types from schema
 // 注意：使用表名而不是類型名
-export type { 
-  agents, 
-  conversations, 
+export type {
+  agents,
+  conversations,
   messages,
   fileAttachments,
   delayedMessages,
@@ -178,3 +188,66 @@ export type {
   teams,
   NewTeam
 } from '../db/schema';
+
+// =================== LINE Message Queue Types (Phase 3) ===================
+
+/**
+ * LINE Message Queue Payload
+ * Represents a message to be sent asynchronously to LINE
+ */
+export interface LineMessageQueuePayload {
+  // Message identification
+  messageId: string;
+  conversationId: string;
+
+  // Recipient information
+  recipientPlatformId: string; // LINE User ID
+
+  // Message content
+  content: string;
+  messageType: 'text' | 'image' | 'file' | 'flex';
+
+  // Attachments (optional)
+  attachments?: LineMessageAttachment[];
+
+  // Metadata for tracking
+  metadata: {
+    agentId: string;
+    agentName?: string;
+    enqueuedAt: number; // Unix timestamp
+    retryCount?: number;
+    originalRequestId?: string;
+  };
+
+  // LINE-specific options
+  lineOptions?: {
+    notificationDisabled?: boolean;
+    customAggregationUnit?: string;
+  };
+}
+
+/**
+ * LINE Message Attachment
+ */
+export interface LineMessageAttachment {
+  id: string;
+  type: 'image' | 'video' | 'audio' | 'file';
+  url: string;
+  filename?: string;
+  mimeType?: string;
+  fileSize?: number;
+}
+
+/**
+ * LINE Message Queue Result
+ * Used for WebSocket status updates
+ */
+export interface LineMessageQueueResult {
+  messageId: string;
+  conversationId: string;
+  success: boolean;
+  deliveredAt?: number;
+  error?: string;
+  retryCount?: number;
+  lineMessageId?: string; // LINE's internal message ID if available
+}

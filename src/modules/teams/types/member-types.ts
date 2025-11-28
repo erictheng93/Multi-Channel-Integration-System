@@ -7,7 +7,7 @@ export interface TeamMember {
   email: string;
   name: string;
   displayName: string;
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // 2-tier role system
   teamId: number | null;
   group: string;
   isActive: boolean;
@@ -21,7 +21,7 @@ export interface AddTeamMemberRequest {
   email: string;
   password: string;
   displayName: string;
-  role?: 'admin' | 'team' | 'agent';
+  role?: 'admin' | 'agent'; // 2-tier role system
   teamId?: number;
   isActive?: boolean;
 }
@@ -32,14 +32,14 @@ export interface UpdateMemberStatusRequest {
 }
 
 export interface UpdateMemberRoleRequest {
-  role: 'admin' | 'team' | 'agent';
+  role: 'admin' | 'agent'; // 2-tier role system
   reason?: string;
 }
 
 export interface UpdateMemberRequest {
   email?: string;
   displayName?: string;
-  role?: 'admin' | 'team' | 'agent';
+  role?: 'admin' | 'agent'; // 2-tier role system
   teamId?: number | null;
   isActive?: boolean;
 }
@@ -51,7 +51,7 @@ export interface DeleteMemberRequest {
 
 export interface MemberListQuery {
   teamId?: number;
-  role?: 'admin' | 'team' | 'agent';
+  role?: 'admin' | 'agent'; // 2-tier role system
   status?: 'active' | 'inactive';
   search?: string;
   page?: number;

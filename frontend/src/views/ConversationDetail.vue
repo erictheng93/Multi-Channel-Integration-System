@@ -212,6 +212,10 @@
           :websocket-enabled="isWebSocketEnabled"
           :connection-quality="connectionQuality"
           @message-sent="handleMessageSent"
+          @message-pending="handleMessagePending"
+          @upload-progress="handleUploadProgress"
+          @message-confirmed="handleMessageConfirmed"
+          @message-failed="handleMessageFailed"
           @typing-start="handleTypingStart"
           @typing-stop="handleTypingStop"
           @attachment-upload="handleAttachmentUpload"
@@ -306,6 +310,8 @@ import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
 import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Prevent duplicate sending
+import { useFileUpload } from '@/composables/useFileUpload' // ⚡ Phase 3C: For retry file uploads
+import { messageApi } from '@/api/message' // ⚡ Phase 3C: For retry message send
 import { useAuthStore } from '@/stores/auth' // ⚡ For optimistic message creation
 import type { Message, FileAttachmentData } from '@/types'
 // ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
@@ -830,6 +836,180 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
   resetPollingDelay()
 }
 
+// ⚡ Phase 3B: 處理訊息開始發送（樂觀更新）
+interface MessagePendingData {
+  tempId: string
+  content: string
+  attachments: Array<{
+    name: string
+    size: number
+    blobUrl?: string
+    isImage: boolean
+    fileType: string
+    typeColor: string
+  }>
+  status: 'uploading' | 'sending'
+  uploadProgress?: number
+}
+
+const handleMessagePending = (data: MessagePendingData) => {
+  console.log('⚡ [Phase 3B] Message pending - showing immediately:', data.tempId)
+  trackUserActivity()
+
+  const authStore = useAuthStore()
+
+  // 創建樂觀訊息，立即顯示給用戶
+  // 使用 'pending' 作為 deliveryStatus（符合 DeliveryStatus 類型）
+  // 實際上傳狀態存儲在 metadata.uploadStatus 中
+  const optimisticMessage: Message = {
+    id: data.tempId,
+    conversationId: conversationId.value,
+    senderId: authStore.currentAgent?.id || 'unknown',
+    senderType: 'agent' as const,
+    content: data.content,
+    messageType: data.attachments.length > 0 ? 'file' as const : 'text' as const,
+    platform: conversation.value?.platform || 'line',
+    timestamp: Date.now(),
+    createdAt: Date.now(),
+    status: 'pending' as const,  // 使用 pending，實際狀態在 metadata
+    deliveryStatus: 'pending' as const,
+    senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我',
+    // 保存附件資訊（包含 blobUrl）供顯示
+    metadata: {
+      uploadStatus: data.status, // 'uploading' | 'sending' - Phase 3B 專用
+      uploadProgress: data.uploadProgress || 0,
+      pendingAttachments: data.attachments.map(a => ({
+        name: a.name,
+        size: a.size,
+        blobUrl: a.blobUrl,
+        isImage: a.isImage,
+        fileType: a.fileType,
+        typeColor: a.typeColor
+      }))
+    } as Record<string, unknown>
+  }
+
+  // 立即添加到訊息列表
+  httpMessages.addMessage(optimisticMessage)
+
+  // 滾動到最新訊息
+  setTimeout(() => scrollToNewest(), 50)
+}
+
+// ⚡ Phase 3B: 處理上傳進度更新
+interface UploadProgressData {
+  tempId: string
+  progress: number
+  status: 'uploading' | 'sending'
+}
+
+const handleUploadProgress = (data: UploadProgressData) => {
+  console.log(`⚡ [Phase 3B] Upload progress: ${data.progress}% - ${data.status}`)
+
+  const messageList = httpMessages.messages.value
+  const message = messageList.find(m => m.id === data.tempId)
+
+  if (message) {
+    // 根據狀態設置有效的 DeliveryStatus
+    // 'uploading' -> 保持 'pending'
+    // 'sending' -> 使用 'sending' (有效的 DeliveryStatus)
+    const deliveryStatus = data.status === 'sending' ? 'sending' as const : 'pending' as const
+    message.status = deliveryStatus
+    message.deliveryStatus = deliveryStatus
+
+    // 在 metadata 中儲存實際上傳狀態，供 UI 顯示使用
+    if (message.metadata && typeof message.metadata === 'object') {
+      const meta = message.metadata as Record<string, unknown>
+      meta.uploadProgress = data.progress
+      meta.uploadStatus = data.status  // 'uploading' | 'sending'
+    }
+  }
+}
+
+// ⚡ Phase 3B: 處理訊息發送成功確認
+interface MessageConfirmedData {
+  tempId: string
+  realId: string
+  file_attachments?: FileAttachmentData[]
+}
+
+const handleMessageConfirmed = (data: MessageConfirmedData) => {
+  console.log('✅ [Phase 3B] Message confirmed:', data.tempId, '->', data.realId)
+
+  const messageList = httpMessages.messages.value
+  const message = messageList.find(m => m.id === data.tempId)
+
+  if (message) {
+    // 更新訊息狀態為已發送
+    message.status = 'sent' as const
+    message.deliveryStatus = 'sent' as const
+
+    // 如果有真實的檔案附件資料，更新它
+    if (data.file_attachments && data.file_attachments.length > 0) {
+      // eslint-disable-next-line camelcase
+      message.file_attachments = data.file_attachments
+    }
+
+    // 清理臨時資料
+    if (message.metadata && typeof message.metadata === 'object') {
+      delete (message.metadata as Record<string, unknown>).uploadProgress
+      delete (message.metadata as Record<string, unknown>).pendingAttachments
+    }
+
+    console.log('✅ [Phase 3B] Message status updated to sent')
+  }
+}
+
+// ⚡ Phase 3C: 附件介面定義（重試用）
+interface RetryAttachment {
+  name: string
+  size: number
+  file: globalThis.File  // 原始檔案物件
+  blobUrl?: string
+  isImage: boolean
+  fileType: string
+  typeColor: string
+}
+
+// ⚡ Phase 3C: 處理訊息發送失敗（含重試資料）
+interface MessageFailedData {
+  tempId: string
+  error: string
+  retryData?: {
+    content: string
+    attachments: RetryAttachment[]
+  }
+}
+
+const handleMessageFailed = (data: MessageFailedData) => {
+  console.error('❌ [Phase 3C] Message failed:', data.tempId, '-', data.error)
+
+  const messageList = httpMessages.messages.value
+  const message = messageList.find(m => m.id === data.tempId)
+
+  if (message) {
+    message.status = 'failed' as const
+    message.deliveryStatus = 'failed' as const
+
+    // Phase 3C: 儲存錯誤訊息和重試資料到 metadata
+    if (message.metadata && typeof message.metadata === 'object') {
+      const meta = message.metadata as Record<string, unknown>
+      meta.error = data.error
+      // 儲存重試資料（如果有）
+      if (data.retryData) {
+        meta.retryContent = data.retryData.content
+        meta.retryAttachments = data.retryData.attachments
+      }
+    }
+
+    console.log('❌ [Phase 3C] Failed message stored with retry data:', {
+      tempId: data.tempId,
+      hasRetryData: !!data.retryData,
+      attachmentCount: data.retryData?.attachments?.length || 0
+    })
+  }
+}
+
 // ⚡ Helper function to update optimistic message status
 const updateOptimisticMessageStatus = (messageId: string, newStatus: 'sending' | 'sent' | 'failed') => {
   const messageList = httpMessages.messages.value
@@ -844,7 +1024,7 @@ const updateOptimisticMessageStatus = (messageId: string, newStatus: 'sending' |
   }
 }
 
-// 🔄 Retry failed message
+// 🔄 Phase 3C: Enhanced retry with attachment support
 const retryFailedMessage = async (messageId: string) => {
   const messageList = httpMessages.messages.value
   const failedMessage = messageList.find(m => m.id === messageId && m.status === 'failed')
@@ -854,24 +1034,126 @@ const retryFailedMessage = async (messageId: string) => {
     return
   }
 
-  console.log('🔄 [Retry] Retrying failed message:', messageId)
+  console.log('🔄 [Phase 3C] Retrying failed message:', messageId)
 
-  // Update status to sending
-  updateOptimisticMessageStatus(messageId, 'sending')
+  // Phase 3C: 從 metadata 獲取重試資料
+  const meta = failedMessage.metadata as Record<string, unknown> | undefined
+  const retryContent = (meta?.retryContent as string) || failedMessage.content
+  const retryAttachments = (meta?.retryAttachments as RetryAttachment[]) || []
+  const hasAttachments = retryAttachments.length > 0
+
+  console.log('🔄 [Phase 3C] Retry data:', {
+    content: retryContent,
+    attachmentCount: retryAttachments.length
+  })
+
+  // Update status to sending/uploading
+  if (hasAttachments) {
+    failedMessage.status = 'pending' as const
+    failedMessage.deliveryStatus = 'pending' as const
+    if (meta) {
+      meta.uploadStatus = 'uploading'
+      meta.uploadProgress = 0
+    }
+  } else {
+    updateOptimisticMessageStatus(messageId, 'sending')
+  }
 
   try {
-    const success = await httpMessages.sendMessage(failedMessage.content)
+    const { uploadSingleFile } = useFileUpload()
+    const attachmentIds: string[] = []
+
+    // Phase 3C: 如果有附件，重新上傳
+    if (hasAttachments) {
+      console.log('🔄 [Phase 3C] Re-uploading attachments...')
+      const totalFiles = retryAttachments.length
+      let completedFiles = 0
+
+      for (const attachment of retryAttachments) {
+        try {
+          // 使用原始檔案物件重新上傳
+          const result = await uploadSingleFile(attachment.file, {}, (progress) => {
+            if (meta) {
+              const overallProgress = Math.round(
+                ((completedFiles + progress / 100) / totalFiles) * 100
+              )
+              meta.uploadProgress = overallProgress
+            }
+          })
+
+          if (result.success && result.fileId) {
+            attachmentIds.push(result.fileId)
+            completedFiles++
+            console.log(`✅ [Phase 3C] Attachment uploaded: ${attachment.name}`)
+          } else {
+            throw new Error(result.error || '上傳失敗')
+          }
+        } catch (uploadError) {
+          console.error('❌ [Phase 3C] Attachment re-upload failed:', uploadError)
+          updateOptimisticMessageStatus(messageId, 'failed')
+          if (meta) {
+            meta.error = `重試上傳失敗: ${attachment.name}`
+          }
+          const { showError } = useToast()
+          showError(`檔案 ${attachment.name} 重試上傳失敗`)
+          return
+        }
+      }
+
+      // 上傳完成，更新狀態
+      if (meta) {
+        meta.uploadStatus = 'sending'
+        meta.uploadProgress = 100
+      }
+    }
+
+    // Phase 3C: 發送訊息
+    updateOptimisticMessageStatus(messageId, 'sending')
+
+    // 根據是否有附件選擇發送方式
+    let success: boolean
+    if (attachmentIds.length > 0) {
+      // 使用 messageApi.send() 發送帶附件的訊息
+      const authStore = useAuthStore()
+      const response = await messageApi.send(conversationId.value as string, {
+        content: retryContent,
+        messageType: 'file',
+        platform: 'line',
+        attachmentIds,
+        senderId: authStore.currentAgent?.id,
+      })
+      success = response.success
+    } else {
+      success = await httpMessages.sendMessage(retryContent)
+    }
 
     if (success) {
       updateOptimisticMessageStatus(messageId, 'sent')
-      console.log('✅ [Retry] Message sent successfully')
+      // 清理重試資料
+      if (meta) {
+        delete meta.retryContent
+        delete meta.retryAttachments
+        delete meta.uploadStatus
+        delete meta.uploadProgress
+        delete meta.error
+      }
+      console.log('✅ [Phase 3C] Retry successful')
+      const { showSuccess } = useToast()
+      showSuccess('訊息重試發送成功')
     } else {
       updateOptimisticMessageStatus(messageId, 'failed')
-      console.error('❌ [Retry] Message send failed again')
+      if (meta) {
+        meta.error = '重試發送失敗'
+      }
+      console.error('❌ [Phase 3C] Retry send failed')
+      const { showError } = useToast()
+      showError('訊息重試發送失敗，請再試一次')
     }
   } catch (error) {
     updateOptimisticMessageStatus(messageId, 'failed')
-    console.error('❌ [Retry] Exception during retry:', error)
+    console.error('❌ [Phase 3C] Exception during retry:', error)
+    const { showError } = useToast()
+    showError('重試時發生錯誤，請稍後再試')
   }
 }
 

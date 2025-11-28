@@ -30,9 +30,9 @@ export const validateCreateAgentData = (): MiddlewareHandler<{ Bindings: Binding
         throw new InvalidAgentDataError('Display name must be between 2 and 50 characters');
       }
 
-      // 角色驗證
-      if (body.role && !['admin', 'team', 'agent'].includes(body.role)) {
-        throw new InvalidAgentDataError('Invalid role. Must be admin, team, or agent');
+      // SECURITY: Role validation - 2-tier system only (admin/agent)
+      if (body.role && !['admin', 'agent'].includes(body.role)) {
+        throw new InvalidAgentDataError('Invalid role. Must be admin or agent');
       }
 
       // TeamId 格式檢查
@@ -79,9 +79,9 @@ export const validateUpdateAgentData = (): MiddlewareHandler<{ Bindings: Binding
         }
       }
 
-      // 角色驗證（如果提供）
-      if (body.role && !['admin', 'team', 'agent'].includes(body.role)) {
-        throw new InvalidAgentDataError('Invalid role. Must be admin, team, or agent');
+      // SECURITY: Role validation (if provided) - 2-tier system only (admin/agent)
+      if (body.role && !['admin', 'agent'].includes(body.role)) {
+        throw new InvalidAgentDataError('Invalid role. Must be admin or agent');
       }
 
       // TeamId 格式檢查（如果提供）

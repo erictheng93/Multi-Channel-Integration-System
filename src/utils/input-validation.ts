@@ -31,8 +31,8 @@ export const commonSchemas = {
   messageContent: z.string().min(1).max(LIMITS.MESSAGE_CONTENT).trim(),
   conversationId: z.string().min(1).max(LIMITS.CONVERSATION_ID),
 
-  // System
-  role: z.enum(['admin', 'team', 'agent']),
+  // System (2-tier role system: admin/agent)
+  role: z.enum(['admin', 'agent']),
   status: z.enum(['active', 'inactive', 'suspended']),
   platform: z.enum(['line', 'facebook', 'telegram', 'whatsapp']),
 

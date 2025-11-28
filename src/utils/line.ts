@@ -76,6 +76,361 @@ export async function pushLineMessage(
   }
 }
 
+// =================== LINE Multicast API (批量發送) ===================
+
+/**
+ * Multicast API 結果介面
+ */
+export interface MulticastResult {
+  success: boolean;
+  totalUsers: number;
+  successCount: number;
+  failedCount: number;
+  failedUserIds?: string[];
+  error?: string;
+  apiCalls: number;  // 實際 API 調用次數
+}
+
+/**
+ * 批量發送相同訊息給多個用戶 (Multicast API)
+ *
+ * LINE Multicast API 限制：
+ * - 最多 500 個用戶/次
+ * - 訊息內容必須完全相同
+ * - 每則訊息仍按正常費率計費
+ *
+ * @param accessToken - LINE Channel Access Token
+ * @param userIds - 用戶 ID 陣列 (最多 500 個，超過會自動分批)
+ * @param messages - 訊息陣列 (最多 5 則訊息)
+ * @param options - 選項配置
+ * @returns MulticastResult
+ */
+export async function multicastLineMessage(
+  accessToken: string,
+  userIds: string[],
+  messages: LineReplyMessage[],
+  options: {
+    notificationDisabled?: boolean;
+    retryOnFail?: boolean;
+    maxRetries?: number;
+  } = {}
+): Promise<MulticastResult> {
+  const {
+    notificationDisabled = false,
+    retryOnFail = true,
+    maxRetries = 3
+  } = options;
+
+  // 驗證參數
+  if (!userIds || userIds.length === 0) {
+    return {
+      success: false,
+      totalUsers: 0,
+      successCount: 0,
+      failedCount: 0,
+      error: 'No user IDs provided',
+      apiCalls: 0
+    };
+  }
+
+  if (!messages || messages.length === 0) {
+    return {
+      success: false,
+      totalUsers: userIds.length,
+      successCount: 0,
+      failedCount: userIds.length,
+      error: 'No messages provided',
+      apiCalls: 0
+    };
+  }
+
+  if (messages.length > 5) {
+    return {
+      success: false,
+      totalUsers: userIds.length,
+      successCount: 0,
+      failedCount: userIds.length,
+      error: 'Maximum 5 messages per multicast request',
+      apiCalls: 0
+    };
+  }
+
+  // 去除重複的 userIds
+  const uniqueUserIds = [...new Set(userIds)];
+  const totalUsers = uniqueUserIds.length;
+
+  // 分批處理 (每批最多 500 個用戶)
+  const BATCH_SIZE = 500;
+  const batches: string[][] = [];
+  for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
+    batches.push(uniqueUserIds.slice(i, i + BATCH_SIZE));
+  }
+
+  console.log(`📨 [LINE Multicast] Starting multicast to ${totalUsers} users in ${batches.length} batch(es)`);
+
+  let successCount = 0;
+  let failedCount = 0;
+  const failedUserIds: string[] = [];
+  let apiCalls = 0;
+
+  // 執行每個批次
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    let retryCount = 0;
+    let batchSuccess = false;
+
+    while (!batchSuccess && retryCount <= (retryOnFail ? maxRetries : 0)) {
+      try {
+        const multicastRequest = {
+          to: batch,
+          messages,
+          notificationDisabled
+        };
+
+        const response = await fetch('https://api.line.me/v2/bot/message/multicast', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(multicastRequest),
+        });
+
+        apiCalls++;
+
+        if (response.ok) {
+          successCount += batch.length;
+          batchSuccess = true;
+          console.log(`✅ [LINE Multicast] Batch ${batchIndex + 1}/${batches.length} sent successfully (${batch.length} users)`);
+        } else {
+          const errorText = await response.text();
+          console.error(`❌ [LINE Multicast] Batch ${batchIndex + 1} failed:`, response.status, errorText);
+
+          // 如果是 400 錯誤，可能是部分用戶 ID 無效
+          if (response.status === 400) {
+            // 嘗試解析錯誤以找出無效的用戶 ID
+            try {
+              const errorJson = JSON.parse(errorText);
+              if (errorJson.details) {
+                console.error('[LINE Multicast] Error details:', errorJson.details);
+              }
+            } catch {
+              // 忽略 JSON 解析錯誤
+            }
+          }
+
+          retryCount++;
+          if (retryCount <= maxRetries && retryOnFail) {
+            // 指數退避
+            const delay = Math.pow(2, retryCount) * 1000;
+            console.log(`🔄 [LINE Multicast] Retrying batch ${batchIndex + 1} in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      } catch (error) {
+        console.error(`❌ [LINE Multicast] Batch ${batchIndex + 1} exception:`, error);
+        retryCount++;
+        if (retryCount <= maxRetries && retryOnFail) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // 如果批次最終失敗
+    if (!batchSuccess) {
+      failedCount += batch.length;
+      failedUserIds.push(...batch);
+    }
+  }
+
+  const result: MulticastResult = {
+    success: failedCount === 0,
+    totalUsers,
+    successCount,
+    failedCount,
+    apiCalls,
+    ...(failedUserIds.length > 0 && { failedUserIds })
+  };
+
+  console.log(`📊 [LINE Multicast] Complete: ${successCount}/${totalUsers} users, ${apiCalls} API calls`);
+
+  return result;
+}
+
+/**
+ * 廣播訊息給所有好友 (Broadcast API)
+ *
+ * 注意：此 API 會發送給所有關注此 LINE OA 的用戶
+ *
+ * @param accessToken - LINE Channel Access Token
+ * @param messages - 訊息陣列 (最多 5 則訊息)
+ * @param notificationDisabled - 是否禁用通知
+ * @returns Promise<boolean>
+ */
+export async function broadcastLineMessage(
+  accessToken: string,
+  messages: LineReplyMessage[],
+  notificationDisabled: boolean = false
+): Promise<{ success: boolean; error?: string }> {
+  // 驗證參數
+  if (!messages || messages.length === 0) {
+    return { success: false, error: 'No messages provided' };
+  }
+
+  if (messages.length > 5) {
+    return { success: false, error: 'Maximum 5 messages per broadcast request' };
+  }
+
+  try {
+    const broadcastRequest = {
+      messages,
+      notificationDisabled
+    };
+
+    console.log(`📢 [LINE Broadcast] Broadcasting message to all followers`);
+
+    const response = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(broadcastRequest),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ [LINE Broadcast] API error:', response.status, errorText);
+      return { success: false, error: `LINE API error: ${response.status}` };
+    }
+
+    console.log('✅ [LINE Broadcast] Message broadcast successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [LINE Broadcast] Failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * 智能批量發送訊息
+ *
+ * 根據用戶數量自動選擇最佳發送方式：
+ * - 1 個用戶: 使用 Push API
+ * - 2-500 個用戶: 使用 Multicast API (單次調用)
+ * - 500+ 個用戶: 使用 Multicast API (自動分批)
+ *
+ * @param accessToken - LINE Channel Access Token
+ * @param userIds - 用戶 ID 陣列
+ * @param messages - 訊息陣列
+ * @returns MulticastResult
+ */
+export async function smartBatchSendLineMessages(
+  accessToken: string,
+  userIds: string[],
+  messages: LineReplyMessage[]
+): Promise<MulticastResult> {
+  const uniqueUserIds = [...new Set(userIds)];
+
+  console.log(`🧠 [LINE Smart Batch] Processing ${uniqueUserIds.length} users`);
+
+  // 單一用戶：使用 Push API
+  if (uniqueUserIds.length === 1) {
+    console.log(`📤 [LINE Smart Batch] Using Push API for single user`);
+    const success = await pushLineMessage(accessToken, uniqueUserIds[0], messages);
+    return {
+      success,
+      totalUsers: 1,
+      successCount: success ? 1 : 0,
+      failedCount: success ? 0 : 1,
+      apiCalls: 1,
+      ...(success ? {} : { failedUserIds: uniqueUserIds })
+    };
+  }
+
+  // 多用戶：使用 Multicast API
+  console.log(`📨 [LINE Smart Batch] Using Multicast API for ${uniqueUserIds.length} users`);
+  return multicastLineMessage(accessToken, uniqueUserIds, messages);
+}
+
+/**
+ * 獲取 LINE 訊息配額資訊
+ *
+ * @param accessToken - LINE Channel Access Token
+ * @returns 配額資訊
+ */
+export async function getLineMessageQuota(accessToken: string): Promise<{
+  success: boolean;
+  type?: 'none' | 'limited' | 'unlimited';
+  value?: number;
+  error?: string;
+}> {
+  try {
+    const response = await fetch('https://api.line.me/v2/bot/message/quota', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LINE Quota API error:', response.status, errorText);
+      return { success: false, error: `API error: ${response.status}` };
+    }
+
+    const data = await response.json() as { type: 'none' | 'limited' | 'unlimited'; value?: number };
+    console.log(`📊 [LINE Quota] Type: ${data.type}, Value: ${data.value || 'unlimited'}`);
+    return {
+      success: true,
+      type: data.type,
+      value: data.value
+    };
+  } catch (error) {
+    console.error('Failed to get LINE message quota:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * 獲取 LINE 訊息使用量
+ *
+ * @param accessToken - LINE Channel Access Token
+ * @returns 使用量資訊
+ */
+export async function getLineMessageUsage(accessToken: string): Promise<{
+  success: boolean;
+  totalUsage?: number;
+  error?: string;
+}> {
+  try {
+    // 獲取當月使用量
+    const response = await fetch('https://api.line.me/v2/bot/message/quota/consumption', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LINE Usage API error:', response.status, errorText);
+      return { success: false, error: `API error: ${response.status}` };
+    }
+
+    const data = await response.json() as { totalUsage: number };
+    console.log(`📊 [LINE Usage] Total usage this month: ${data.totalUsage}`);
+    return {
+      success: true,
+      totalUsage: data.totalUsage
+    };
+  } catch (error) {
+    console.error('Failed to get LINE message usage:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 /**
  * 驗證 LINE Webhook 簽名
  */
@@ -487,6 +842,151 @@ export function createFileFlexMessage(
   return {
     type: 'flex',
     altText: `📎 ${filename}`,
+    contents: flexBubble
+  };
+}
+
+/**
+ * 建立圖片附件 Flex Message (LINE 風格卡片 - 含圖片預覽)
+ *
+ * @param imageUrl - 圖片 URL
+ * @param filename - 檔案名稱
+ * @param fileSize - 檔案大小 (bytes)
+ * @returns Flex Message 對象
+ */
+export function createImageFlexMessage(
+  imageUrl: string,
+  filename: string,
+  fileSize: number = 0
+): LineReplyMessage {
+  const formattedSize = formatFileSize(fileSize);
+
+  // Truncate long filenames
+  const maxLength = 25;
+  let displayFilename = filename;
+  if (filename.length > maxLength) {
+    const extension = filename.split('.').pop() || '';
+    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+    const availableLength = maxLength - extension.length - 4;
+    displayFilename = `${nameWithoutExt.substring(0, availableLength)}...${extension ? `.${extension}` : ''}`;
+  }
+
+  const flexBubble: LineFlexBubble = {
+    type: 'bubble',
+    styles: {
+      header: {
+        backgroundColor: '#00BCD4'
+      },
+      footer: {
+        backgroundColor: '#f8f9fa'
+      }
+    },
+    header: {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        {
+          type: 'text',
+          text: '🖼️',
+          size: 'xl',
+          color: '#ffffff'
+        } as any,
+        {
+          type: 'text',
+          text: '圖片',
+          size: 'lg',
+          weight: 'bold',
+          color: '#ffffff',
+          margin: 'sm'
+        } as any
+      ],
+      paddingAll: '14px',
+      justifyContent: 'center',
+      alignItems: 'center'
+    } as any,
+    hero: {
+      type: 'image',
+      url: imageUrl,
+      size: 'full',
+      aspectRatio: '4:3',
+      aspectMode: 'cover',
+      action: {
+        type: 'uri',
+        uri: imageUrl
+      }
+    } as any,
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'text',
+          text: displayFilename,
+          weight: 'bold',
+          size: 'md',
+          wrap: true,
+          color: '#333333'
+        } as any,
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: '圖片檔案',
+              size: 'sm',
+              color: '#888888',
+              flex: 1
+            } as any,
+            ...(formattedSize ? [{
+              type: 'text',
+              text: formattedSize,
+              size: 'sm',
+              color: '#888888',
+              align: 'end'
+            } as any] : [])
+          ],
+          margin: 'md'
+        } as any,
+        {
+          type: 'separator',
+          margin: 'lg',
+          color: '#eeeeee'
+        } as any,
+        {
+          type: 'text',
+          text: '點擊下方按鈕下載或開啟圖片',
+          size: 'xs',
+          color: '#aaaaaa',
+          align: 'center',
+          margin: 'md'
+        } as any
+      ],
+      paddingAll: '14px'
+    } as any,
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          action: {
+            type: 'uri',
+            label: '📥 打開此圖片',
+            uri: imageUrl
+          },
+          style: 'primary',
+          color: '#00BCD4',
+          height: 'sm'
+        } as any
+      ],
+      paddingAll: '10px'
+    } as any
+  };
+
+  return {
+    type: 'flex',
+    altText: `🖼️ ${filename}`,
     contents: flexBubble
   };
 }

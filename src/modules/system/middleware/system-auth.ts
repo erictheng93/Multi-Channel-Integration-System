@@ -45,9 +45,8 @@ export async function checkSystemAccess(c: Context<{ Bindings: Bindings }>, next
       return unauthorizedResponse(c, 'Authentication required for system access');
     }
 
-    // 檢查用戶角色是否有系統權限
-    const allowedRoles = ['admin', 'team'];
-    if (!allowedRoles.includes(userPayload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (userPayload.role !== 'admin') {
       return forbiddenResponse(c, 'Insufficient permissions for system access');
     }
 

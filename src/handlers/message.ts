@@ -178,22 +178,47 @@ export const messageHandler = {
             // 生成訊息 ID
             const messageId = crypto.randomUUID();
             const hasAttachments = attachmentIds && attachmentIds.length > 0;
+            const now = new Date().toISOString();
 
-            // ✅ 使用 Drizzle ORM 插入訊息（類型安全）
-            await db.insert(schema.messages).values({
-                id: messageId,
-                conversationId: conversationId,
-                senderType: 'agent',
-                agentSenderId: agent.id, // 使用已認證的 agent.id
-                content: content || '',
-                messageType: mediaType || (hasAttachments ? 'file' : 'text'),
-                isSent: false,
-                deliveryStatus: 'pending',
-                metadata: hasAttachments ? JSON.stringify({ attachmentIds }) : null,
-                createdAt: new Date().toISOString()
-            });
+            // ✅ 優化：使用 db.batch() 合併初始寫入操作（減少 DB 往返）
+            // 將 INSERT messages + UPDATE fileAttachments 合併為單次往返
+            if (hasAttachments) {
+                // 有附件：批量執行 INSERT + UPDATE
+                await db.batch([
+                    db.insert(schema.messages).values({
+                        id: messageId,
+                        conversationId: conversationId,
+                        senderType: 'agent',
+                        agentSenderId: agent.id,
+                        content: content || '',
+                        messageType: mediaType || 'file',
+                        isSent: false,
+                        deliveryStatus: 'pending',
+                        metadata: JSON.stringify({ attachmentIds }),
+                        createdAt: now
+                    }),
+                    db.update(schema.fileAttachments)
+                        .set({ messageId: messageId })
+                        .where(inArray(schema.fileAttachments.id, attachmentIds))
+                ]);
+                console.log(`📦 [DB Batch] Message inserted + ${attachmentIds.length} attachments linked in single batch`);
+            } else {
+                // 無附件：單獨 INSERT
+                await db.insert(schema.messages).values({
+                    id: messageId,
+                    conversationId: conversationId,
+                    senderType: 'agent',
+                    agentSenderId: agent.id,
+                    content: content || '',
+                    messageType: mediaType || 'text',
+                    isSent: false,
+                    deliveryStatus: 'pending',
+                    metadata: null,
+                    createdAt: now
+                });
+            }
 
-            // 🚀 Trigger latest message cache update
+            // 🚀 Trigger latest message cache update (non-blocking)
             try {
                 const { LatestMessageJobQueue } = await import('../workers/latest-message-worker');
                 const jobQueue = new LatestMessageJobQueue(c.env);
@@ -204,80 +229,96 @@ export const messageHandler = {
                 // Don't fail the message creation for cache update failures
             }
 
-            // ✅ 如果有附件，使用 Drizzle ORM 更新附件
-            if (hasAttachments) {
-                const { inArray } = await import('drizzle-orm');
-                await db.update(schema.fileAttachments)
-                    .set({ 
-                        messageId: messageId
-                    })
-                    .where(inArray(schema.fileAttachments.id, attachmentIds));
-            }
-
             let sendResult = false;
+            let isAsyncLineMessage = false; // Track if we're using async LINE sending
             try {
                 if (conversationWithCustomer.platform === 'line') {
-                    const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('../utils/line');
-                    let messages: any[] = [];
+                    // 🆕 Phase 3: LINE 非同步化 - 使用 Queue 發送
+                    // 將訊息放入佇列，立即返回，背景處理 LINE API 調用
+                    const { enqueueLineMessage, createLineMessagePayload } = await import('./line-message-queue');
 
-                    // 🔧 FIX: 檢查是否為純文件描述訊息
-                    // 如果有附件且內容只是文件描述，則不發送文字訊息
-                    const isFileOnlyContent = content && (
-                        /^Sent a file:\s*.+$/i.test(content) ||        // "Sent a file: xxx"
-                        /^Sent \d+ files$/i.test(content) ||           // "Sent 2 files", "Sent 3 files"
-                        /^\[(?:檔案|圖片)\]\s*.+$/.test(content)       // "[檔案] xxx", "[圖片] xxx"
-                    );
+                    // 準備附件資訊 (如果有的話)
+                    let lineAttachments: Array<{
+                        id: string;
+                        type: 'image' | 'video' | 'audio' | 'file';
+                        url: string;
+                        filename?: string;
+                        mimeType?: string;
+                        fileSize?: number;
+                    }> = [];
 
-                    // 只有在有實際內容（非純文件描述）時才發送文字訊息
-                    if (content && !isFileOnlyContent) {
-                        messages.push(createTextMessage(content));
-                    } else if (content && isFileOnlyContent && !hasAttachments) {
-                        // 如果是文件描述但沒有附件，還是要發送（fallback）
-                        messages.push(createTextMessage(content));
-                    }
-
-                    // 處理附件 - LINE 發送 (使用 Flex Message 卡片樣式)
                     if (hasAttachments) {
-                        // 獲取附件資訊
-                        const lineAttachments = await db.select()
+                        const attachmentRecords = await db.select()
                             .from(schema.fileAttachments)
                             .where(inArray(schema.fileAttachments.id, attachmentIds));
 
-                        for (const attachment of lineAttachments) {
-                            const fileUrl = attachment.fileUrl;
-
-                            if (fileUrl) {
-                                if (attachment.mimeType?.startsWith('image/')) {
-                                    // 圖片訊息 - 使用原生圖片訊息以顯示預覽
-                                    messages.push(createImageMessage(fileUrl));
-                                    console.log(`📷 [LINE] Adding image attachment: ${attachment.filename}`);
-                                } else {
-                                    // 🔧 FIX: 使用 Flex Message 卡片樣式發送檔案
-                                    // 這樣 LINE 用戶會看到漂亮的檔案卡片，而非純文字
-                                    const flexMessage = createFileFlexMessage(
-                                        fileUrl,
-                                        attachment.filename || 'File',
-                                        attachment.mimeType || '',
-                                        attachment.fileSize || 0
-                                    );
-                                    messages.push(flexMessage);
-                                    console.log(`📎 [LINE] Adding file Flex Message card: ${attachment.filename} (${attachment.mimeType})`);
-                                }
-                            }
-                        }
+                        lineAttachments = attachmentRecords.map(att => ({
+                            id: att.id,
+                            type: att.mimeType?.startsWith('image/') ? 'image' as const :
+                                  att.mimeType?.startsWith('video/') ? 'video' as const :
+                                  att.mimeType?.startsWith('audio/') ? 'audio' as const : 'file' as const,
+                            url: att.fileUrl || '',
+                            filename: att.filename || undefined,
+                            mimeType: att.mimeType || undefined,
+                            fileSize: att.fileSize || undefined
+                        }));
                     }
 
-                    if (messages.length > 0) {
-                        sendResult = await pushLineMessage(
-                            c.env.LINE_CHANNEL_ACCESS_TOKEN,
-                            conversationWithCustomer.platformUserId,
-                            messages
+                    // 創建 Queue Payload
+                    const queuePayload = createLineMessagePayload({
+                        messageId: messageId,
+                        conversationId: conversationId,
+                        recipientPlatformId: conversationWithCustomer.platformUserId,
+                        content: content || '',
+                        messageType: hasAttachments ? 'file' : 'text',
+                        agentId: agent.id,
+                        agentName: agent.displayName || undefined,
+                        attachments: lineAttachments.length > 0 ? lineAttachments : undefined,
+                        requestId: c.req.header('X-Request-Id') || undefined
+                    });
+
+                    // 將訊息放入佇列
+                    const enqueueResult = await enqueueLineMessage(c.env, queuePayload);
+
+                    if (enqueueResult.success) {
+                        console.log(`📤 [LINE Async] Message ${messageId} enqueued for delivery`);
+                        isAsyncLineMessage = true;
+                        sendResult = true; // 樂觀更新：假設會成功
+                    } else {
+                        console.error(`❌ [LINE Async] Failed to enqueue message: ${enqueueResult.error}`);
+                        // Fallback: 嘗試同步發送
+                        console.log(`🔄 [LINE Async] Falling back to synchronous sending...`);
+                        const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('../utils/line');
+                        let messages: any[] = [];
+
+                        const isFileOnlyContent = content && (
+                            /^Sent a file:\s*.+$/i.test(content) ||
+                            /^Sent \d+ files$/i.test(content) ||
+                            /^\[(?:檔案|圖片)\]\s*.+$/.test(content)
                         );
 
-                        if (sendResult) {
-                            console.log(`✅ [LINE] Message sent successfully with ${messages.length} item(s)`);
-                        } else {
-                            console.error(`❌ [LINE] Failed to send message to ${conversationWithCustomer.platformUserId}`);
+                        if (content && !isFileOnlyContent) {
+                            messages.push(createTextMessage(content));
+                        } else if (content && isFileOnlyContent && !hasAttachments) {
+                            messages.push(createTextMessage(content));
+                        }
+
+                        for (const att of lineAttachments) {
+                            if (att.type === 'image') {
+                                // Use native LINE image message (直接顯示圖片，可儲存/分享)
+                                messages.push(createImageMessage(att.url));
+                            } else {
+                                // Use Flex Message card for files (PDF, Word, Excel, etc.)
+                                messages.push(createFileFlexMessage(att.url, att.filename || 'File', att.mimeType || '', att.fileSize || 0));
+                            }
+                        }
+
+                        if (messages.length > 0) {
+                            sendResult = await pushLineMessage(
+                                c.env.LINE_CHANNEL_ACCESS_TOKEN,
+                                conversationWithCustomer.platformUserId,
+                                messages
+                            );
                         }
                     }
                 } else if (conversationWithCustomer.platform === 'facebook') {
@@ -351,27 +392,41 @@ export const messageHandler = {
                 sendResult = false;
             }
 
-            // ✅ 使用 Drizzle ORM 更新訊息發送狀態（類型安全）
-            await db.update(schema.messages)
-                .set({
-                    isSent: sendResult,
-                    deliveryStatus: sendResult ? 'sent' : 'failed',
-                    sentAt: new Date().toISOString()
-                })
-                .where(eq(schema.messages.id, messageId));
+            // ✅ 優化：使用 db.batch() 合併發送後的狀態更新（減少 DB 往返）
+            // 將 UPDATE messages status + UPDATE conversations lastMessageAt 合併為單次往返
+            const sentAt = new Date().toISOString();
 
-            // ✅ 使用 Drizzle ORM 更新對話的最後訊息時間（類型安全）
-            await db.update(schema.conversations)
-                .set({
-                    lastMessageAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                })
-                .where(eq(schema.conversations.id, conversationId));
+            // 🆕 Phase 3: 非同步 LINE 訊息使用 'sending' 狀態
+            // 同步發送的訊息使用 'sent' 或 'failed'
+            // Queue consumer 會在實際發送後更新為 'delivered' 或 'failed'
+            const deliveryStatus = isAsyncLineMessage
+                ? 'sending'  // LINE 非同步：等待 Queue Consumer 處理
+                : (sendResult ? 'sent' : 'failed');  // 同步：立即知道結果
+
+            await db.batch([
+                // 更新訊息發送狀態
+                db.update(schema.messages)
+                    .set({
+                        isSent: sendResult,
+                        deliveryStatus: deliveryStatus,
+                        sentAt: sentAt
+                    })
+                    .where(eq(schema.messages.id, messageId)),
+                // 更新對話的最後訊息時間
+                db.update(schema.conversations)
+                    .set({
+                        lastMessageAt: sentAt,
+                        updatedAt: sentAt
+                    })
+                    .where(eq(schema.conversations.id, conversationId))
+            ]);
+            console.log(`📦 [DB Batch] Message status (${deliveryStatus}) + conversation timestamp updated in single batch`);
 
             // 🚀 WebSocket Broadcasting: Message Sent
             try {
                 const broadcastService = new WebSocketBroadcastService(c.env);
                 await broadcastService.broadcastMessageEvent({
+                    // 🆕 Phase 3: 非同步訊息使用 'message_sent' 表示已入隊
                     type: sendResult ? 'message_sent' : 'message_recall_failed',
                     conversationId: conversationId,
                     messageId: messageId,
@@ -387,12 +442,14 @@ export const messageHandler = {
                         platform: conversationWithCustomer.platform,
                         hasAttachments: hasAttachments,
                         attachmentCount: hasAttachments ? (attachmentIds?.length || 0) : 0,
-                        deliveryStatus: sendResult ? 'sent' : 'failed',
+                        // 🆕 Phase 3: 使用計算後的 deliveryStatus
+                        deliveryStatus: deliveryStatus,
+                        isAsyncDelivery: isAsyncLineMessage, // 標記是否為非同步發送
                         timestamp: new Date().toISOString()
                     },
                     priority: 'normal'
                 });
-                console.log('✅ [WebSocket] Message sent event broadcasted');
+                console.log(`✅ [WebSocket] Message ${isAsyncLineMessage ? 'queued' : 'sent'} event broadcasted`);
             } catch (broadcastError) {
                 console.warn('⚠️ [WebSocket] Message broadcast failed, continuing with fallback:', broadcastError);
             }

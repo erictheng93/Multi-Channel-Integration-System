@@ -82,8 +82,8 @@ dashboardApp.get('/metrics', async (c) => {
   try {
     const payload = c.get('jwtPayload');
 
-    // 僅 Admin 和 Team 角色可查看
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -111,7 +111,8 @@ dashboardApp.get('/connections', async (c) => {
   try {
     const payload = c.get('jwtPayload');
 
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -139,7 +140,8 @@ dashboardApp.get('/history', async (c) => {
   try {
     const payload = c.get('jwtPayload');
 
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -168,7 +170,8 @@ dashboardApp.get('/trends', async (c) => {
   try {
     const payload = c.get('jwtPayload');
 
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -223,7 +226,8 @@ dashboardApp.get('/alerts', async (c) => {
   try {
     const payload = c.get('jwtPayload');
 
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 

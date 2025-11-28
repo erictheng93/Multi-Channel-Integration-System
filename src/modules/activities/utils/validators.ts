@@ -56,8 +56,8 @@ export class ActivityValidator {
       })
     }
 
-    // 檢查用戶角色格式
-    const validRoles = ['admin', 'team', 'agent']
+    // SECURITY: Check user role format (2-tier system)
+    const validRoles = ['admin', 'agent']
     if (request.userRole && !validRoles.includes(request.userRole)) {
       errors.push({
         field: 'userRole',

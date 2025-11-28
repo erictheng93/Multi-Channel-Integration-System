@@ -36,7 +36,7 @@ export class WebSocketBroadcastService {
    * Broadcast message-related events
    */
   async broadcastMessageEvent(event: {
-    type: 'message_sent' | 'message_delivered' | 'message_read' | 'message_recall_success' | 'message_recall_failed';
+    type: 'message_sent' | 'message_delivered' | 'message_read' | 'message_recall_success' | 'message_recall_failed' | 'message_updated';
     conversationId: string;
     messageId: string;
     userId?: string;

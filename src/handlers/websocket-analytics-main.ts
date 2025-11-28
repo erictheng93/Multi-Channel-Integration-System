@@ -17,11 +17,11 @@ analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    // 檢查權限 - 只有管理員和團隊角色可以查看分析數據
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions',
-        message: 'Only administrators and team members can access analytics'
+        message: 'Only administrators can access analytics'
       }, 403);
     }
 
@@ -49,7 +49,8 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -208,7 +209,8 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -267,7 +269,8 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
@@ -363,7 +366,8 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    if (!['admin', 'team'].includes(user.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (user.role !== 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 

@@ -214,8 +214,9 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
       return c.json({ error: 'All fields are required' }, 400);
     }
 
-    if (!['admin', 'team', 'agent'].includes(role)) {
-      return c.json({ error: 'Invalid role' }, 400);
+    // SECURITY: Only allow 2-tier role system (admin/agent)
+    if (!['admin', 'agent'].includes(role)) {
+      return c.json({ error: 'Invalid role. Allowed roles: admin, agent' }, 400);
     }
 
     // 檢查 email 是否已存在

@@ -63,8 +63,8 @@ export async function checkSessionViewPermission(c: Context<{ Bindings: Bindings
       }, 401);
     }
 
-    // Admin 和 Team 角色可以檢視所有會話，Agent 只能檢視分配的對話
-    if (!['admin', 'team', 'agent'].includes(payload.role)) {
+    // SECURITY: Admin can view all sessions, Agent can view assigned only (2-tier system)
+    if (!['admin', 'agent'].includes(payload.role)) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to view sessions',
@@ -98,8 +98,8 @@ export async function checkSessionCreatePermission(c: Context<{ Bindings: Bindin
       }, 401);
     }
 
-    // 所有角色都可以建立會話
-    if (!['admin', 'team', 'agent'].includes(payload.role)) {
+    // SECURITY: All valid roles can create sessions (2-tier system)
+    if (!['admin', 'agent'].includes(payload.role)) {
       return c.json({
         success: false,
         error: 'Insufficient permissions to create sessions',
@@ -133,8 +133,8 @@ export async function checkSessionUpdatePermission(c: Context<{ Bindings: Bindin
       }, 401);
     }
 
-    // Admin 和 Team 角色可以更新所有會話
-    if (['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin can update all sessions (2-tier role system)
+    if (payload.role === 'admin') {
       await next();
       return;
     }
@@ -211,8 +211,8 @@ export async function checkSessionStatsPermission(c: Context<{ Bindings: Binding
       }, 401);
     }
 
-    // Admin 和 Team 角色可以檢視統計
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({
         success: false,
         error: 'Insufficient permissions to view session statistics',
@@ -246,8 +246,8 @@ export async function checkSessionBatchPermission(c: Context<{ Bindings: Binding
       }, 401);
     }
 
-    // 只有 Admin 和 Team 角色可以執行批量操作
-    if (!['admin', 'team'].includes(payload.role)) {
+    // SECURITY: Admin-only access (2-tier role system)
+    if (payload.role !== 'admin') {
       return c.json({
         success: false,
         error: 'Insufficient permissions for batch operations',

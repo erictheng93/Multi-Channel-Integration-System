@@ -24,8 +24,8 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
       return unauthorizedResponse(c, 'Authentication required for message access');
     }
 
-    // 檢查用戶角色是否有訊息權限
-    const allowedRoles = ['admin', 'team', 'agent'];
+    // SECURITY: Check user role has message permissions (2-tier system)
+    const allowedRoles = ['admin', 'agent'];
     if (!allowedRoles.includes(userPayload.role)) {
       return forbiddenResponse(c, 'Insufficient permissions for message access');
     }

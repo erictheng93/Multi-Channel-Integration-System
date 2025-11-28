@@ -14,9 +14,12 @@ import type {
   MessageSendResponse,
 } from '../types/conversation-types';
 import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
+import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-service';
 
 export interface MessageServiceInterface {
   sendMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
+  createPendingMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
+  processBackgroundSending(messageId: string, request: MessageSendRequest, user: any): Promise<void>;
   getMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
   recallMessage(messageId: string, userId: string): Promise<boolean>;
   updateMessage(messageId: string, updates: Partial<Message>): Promise<Message>;
@@ -32,8 +35,225 @@ export class MessageService implements MessageServiceInterface {
   }
 
   /**
-   * Send a new message in a conversation
-   * ✅ FIXED: Now integrates with LINE API to actually send messages
+   * Create a pending message (Step 1 of Async Sending)
+   * Inserts message to DB with 'pending' status and returns immediately.
+   */
+  async createPendingMessage(request: MessageSendRequest): Promise<MessageSendResponse> {
+    const messageId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+
+    try {
+      // Step 1: Get conversation with customer details
+      const [conversationData] = await this.db
+        .select({
+          conversation: conversations,
+          customer: customers
+        })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(eq(conversations.id, request.conversationId))
+        .limit(1);
+
+      if (!conversationData || !conversationData.customer) {
+        throw new Error(`Conversation or customer not found`);
+      }
+
+      const { customer } = conversationData;
+
+      // Step 2: Insert Message (Pending)
+      const messageData: NewMessage = {
+        id: messageId,
+        conversationId: request.conversationId,
+        content: request.content,
+        senderType: 'agent',
+        agentSenderId: request.senderId,
+        messageType: request.messageType || 'text',
+        platformMessageId: null,
+        isSent: false,
+        deliveryStatus: 'pending',
+        createdAt: timestamp,
+        metadata: JSON.stringify({
+          ...request.metadata,
+          platform: customer.platform,
+          platformUserId: customer.platformUserId
+        })
+      };
+
+      const batchOperations = [];
+      batchOperations.push(this.db.insert(messages).values(messageData));
+
+      if (request.attachmentIds && request.attachmentIds.length > 0) {
+        batchOperations.push(
+          this.db
+            .update(fileAttachments)
+            .set({ messageId: messageId })
+            .where(inArray(fileAttachments.id, request.attachmentIds))
+        );
+      }
+
+      batchOperations.push(
+        this.db
+          .update(conversations)
+          .set({ lastMessageAt: timestamp, updatedAt: timestamp })
+          .where(eq(conversations.id, request.conversationId))
+      );
+
+      await this.db.batch(batchOperations as any);
+
+      const insertedMessage = { ...messageData, updatedAt: timestamp };
+
+      return {
+        success: true,
+        messageId,
+        message: insertedMessage as any,
+        conversationId: request.conversationId,
+        content: request.content,
+        timestamp
+      };
+    } catch (error) {
+      console.error('[MessageService] createPendingMessage error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process background sending (Step 2 of Async Sending)
+   * Sends to LINE and updates DB status.
+   */
+  async processBackgroundSending(messageId: string, request: MessageSendRequest, user: any): Promise<void> {
+    try {
+      console.log(`[MessageService] 🚀 Starting background sending for message ${messageId}`);
+      
+      const [conversationData] = await this.db
+        .select({
+          conversation: conversations,
+          customer: customers
+        })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(eq(conversations.id, request.conversationId))
+        .limit(1);
+
+      if (!conversationData?.customer) {
+        console.error('[MessageService] Customer not found for background sending');
+        return;
+      }
+      const { customer } = conversationData;
+
+      let isSent = false;
+      let deliveryStatus: 'sent' | 'failed' = 'failed';
+      let platformMessageId: string | null = null;
+      let errorMessage: string | undefined;
+
+      // LINE Sending Logic
+      if (customer.platform === 'line' && customer.platformUserId) {
+        try {
+          const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
+          const lineMessages: any[] = [];
+
+          const hasAttachments = request.attachmentIds && request.attachmentIds.length > 0;
+          const isFileOnlyContent = request.content && (
+            /^Sent a file:\s*.+$/i.test(request.content) ||
+            /^Sent \d+ files$/i.test(request.content) ||
+            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content)
+          );
+
+          if (request.content && request.content.trim() && !isFileOnlyContent) {
+            lineMessages.push(createTextMessage(request.content));
+          } else if (request.content && isFileOnlyContent && !hasAttachments) {
+            lineMessages.push(createTextMessage(request.content));
+          }
+
+          if (request.attachmentIds && request.attachmentIds.length > 0) {
+            const attachmentsData = await this.db
+              .select()
+              .from(fileAttachments)
+              .where(inArray(fileAttachments.id, request.attachmentIds));
+
+            for (const attachment of attachmentsData) {
+              const fileUrl = attachment.fileUrl;
+              if (fileUrl) {
+                if (attachment.mimeType?.startsWith('image/')) {
+                  // Use native LINE image message (直接顯示圖片，可儲存/分享)
+                  lineMessages.push(createImageMessage(fileUrl));
+                } else {
+                  // Use Flex Message card for files (PDF, Word, Excel, etc.)
+                  const flexMessage = createFileFlexMessage(
+                    fileUrl,
+                    attachment.filename || 'File',
+                    attachment.mimeType || '',
+                    attachment.fileSize || 0
+                  );
+                  lineMessages.push(flexMessage);
+                }
+              }
+            }
+          }
+
+          if (lineMessages.length > 0) {
+            const sendSuccess = await pushLineMessage(
+              this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
+              customer.platformUserId,
+              lineMessages
+            );
+
+            if (sendSuccess) {
+              platformMessageId = `line_${Date.now()}`;
+              isSent = true;
+              deliveryStatus = 'sent';
+              console.log(`[MessageService] ✅ LINE message sent successfully`);
+            } else {
+              errorMessage = 'LINE API returned failure';
+              console.error(`[MessageService] ❌ LINE API failed`);
+            }
+          }
+        } catch (lineError) {
+          errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
+          console.error(`[MessageService] ❌ LINE API error:`, lineError);
+        }
+      }
+
+      // Update Message Status
+      await this.db.update(messages).set({
+        isSent,
+        deliveryStatus,
+        platformMessageId,
+        metadata: JSON.stringify({
+          ...request.metadata,
+          platform: customer.platform,
+          platformUserId: customer.platformUserId,
+          ...(errorMessage && { error: errorMessage })
+        })
+      }).where(eq(messages.id, messageId));
+
+      // Broadcast Update
+      const broadcastService = new WebSocketBroadcastService(this.bindings);
+      await broadcastService.broadcastMessageEvent({
+        type: 'message_updated',
+        conversationId: request.conversationId,
+        messageId: messageId,
+        agentId: request.senderId,
+        data: {
+          deliveryStatus,
+          isSent,
+          platformMessageId,
+          timestamp: new Date().toISOString()
+        },
+        priority: 'normal'
+      });
+      console.log(`[MessageService] 📡 Broadcasted message update: ${deliveryStatus}`);
+
+    } catch (error) {
+      console.error('[MessageService] Background sending failed:', error);
+      await this.db.update(messages).set({
+        deliveryStatus: 'failed',
+        metadata: JSON.stringify({ error: String(error) })
+      }).where(eq(messages.id, messageId));
+    }
+  }
+
+  /**
+   * Send a new message in a conversation (Synchronous - Legacy/Fallback)
    */
   async sendMessage(request: MessageSendRequest): Promise<MessageSendResponse> {
     const messageId = crypto.randomUUID();
@@ -70,11 +290,9 @@ export class MessageService implements MessageServiceInterface {
         try {
           console.log(`[MessageService] Sending LINE message to user ${customer.platformUserId}`);
 
-          // 🔧 FIX: Use pushLineMessage with Flex Messages for file attachments
           const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
           const lineMessages: any[] = [];
 
-          // 🔧 FIX: 檢查是否為純文件描述訊息
           const hasAttachments = request.attachmentIds && request.attachmentIds.length > 0;
           const isFileOnlyContent = request.content && (
             /^Sent a file:\s*.+$/i.test(request.content) ||        // "Sent a file: xxx"
@@ -82,17 +300,13 @@ export class MessageService implements MessageServiceInterface {
             /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content)       // "[檔案] xxx", "[圖片] xxx"
           );
 
-          // 只有在有實際內容（非純文件描述）時才發送文字訊息
           if (request.content && request.content.trim() && !isFileOnlyContent) {
             lineMessages.push(createTextMessage(request.content));
           } else if (request.content && isFileOnlyContent && !hasAttachments) {
-            // 如果是文件描述但沒有附件，還是要發送（fallback）
             lineMessages.push(createTextMessage(request.content));
           }
 
-          // 🔧 FIX: Handle file attachments with Flex Message cards
           if (request.attachmentIds && request.attachmentIds.length > 0) {
-            // Fetch attachment data from database
             const attachmentsData = await this.db
               .select()
               .from(fileAttachments)
@@ -102,11 +316,10 @@ export class MessageService implements MessageServiceInterface {
               const fileUrl = attachment.fileUrl;
               if (fileUrl) {
                 if (attachment.mimeType?.startsWith('image/')) {
-                  // Use native image message for images
+                  // Use native LINE image message (直接顯示圖片，可儲存/分享)
                   lineMessages.push(createImageMessage(fileUrl));
-                  console.log(`[MessageService] 📷 Adding image: ${attachment.filename}`);
                 } else {
-                  // Use Flex Message card for other files
+                  // Use Flex Message card for files (PDF, Word, Excel, etc.)
                   const flexMessage = createFileFlexMessage(
                     fileUrl,
                     attachment.filename || 'File',
@@ -114,13 +327,11 @@ export class MessageService implements MessageServiceInterface {
                     attachment.fileSize || 0
                   );
                   lineMessages.push(flexMessage);
-                  console.log(`[MessageService] 📎 Adding file Flex card: ${attachment.filename}`);
                 }
               }
             }
           }
 
-          // Send messages via LINE Push API
           if (lineMessages.length > 0) {
             const sendSuccess = await pushLineMessage(
               this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
@@ -132,35 +343,30 @@ export class MessageService implements MessageServiceInterface {
               platformMessageId = `line_${Date.now()}`;
               isSent = true;
               deliveryStatus = 'sent';
-              console.log(`[MessageService] ✅ LINE message sent successfully: ${lineMessages.length} item(s)`);
             } else {
               errorMessage = 'LINE API returned failure';
               deliveryStatus = 'failed';
-              console.error(`[MessageService] ❌ LINE API failed`);
             }
           } else {
             errorMessage = 'No content or attachments to send';
             deliveryStatus = 'failed';
-            console.error(`[MessageService] ❌ No content to send`);
           }
 
         } catch (lineError) {
           errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
           deliveryStatus = 'failed';
-          console.error(`[MessageService] ❌ LINE API error:`, lineError);
         }
       } else if (customer.platform !== 'line') {
-        // For non-LINE platforms, mark as pending (not yet implemented)
         deliveryStatus = 'pending';
         errorMessage = `Platform ${customer.platform} not yet supported`;
-        console.warn(`[MessageService] ⚠️ Platform ${customer.platform} not yet supported`);
       } else {
         errorMessage = 'Missing platformUserId for LINE customer';
         deliveryStatus = 'failed';
-        console.error(`[MessageService] ❌ Missing platformUserId`);
       }
 
-      // Step 3: Save message to database with correct status
+      // Step 3: Prepare DB operations for Batch Execution
+      const batchOperations = [];
+
       const messageData: NewMessage = {
         id: messageId,
         conversationId: request.conversationId,
@@ -168,9 +374,9 @@ export class MessageService implements MessageServiceInterface {
         senderType: 'agent',
         agentSenderId: request.senderId,
         messageType: request.messageType || 'text',
-        platformMessageId,  // ✅ NOW SET from LINE API response
-        isSent,             // ✅ NOW based on actual LINE API result
-        deliveryStatus,     // ✅ NOW reflects real delivery status
+        platformMessageId,
+        isSent,
+        deliveryStatus,
         createdAt: timestamp,
         metadata: JSON.stringify({
           ...request.metadata,
@@ -179,43 +385,38 @@ export class MessageService implements MessageServiceInterface {
           ...(errorMessage && { error: errorMessage })
         })
       };
+      batchOperations.push(this.db.insert(messages).values(messageData));
 
-      await this.db.insert(messages).values(messageData);
-
-      // 🔧 FIX: Step 3.5: Link attachments to the message
       if (request.attachmentIds && request.attachmentIds.length > 0) {
-        console.log(`[MessageService] 📎 Linking ${request.attachmentIds.length} attachments to message ${messageId}`);
-        await this.db
-          .update(fileAttachments)
-          .set({ messageId: messageId })
-          .where(inArray(fileAttachments.id, request.attachmentIds));
-        console.log(`[MessageService] ✅ Attachments linked successfully`);
+        batchOperations.push(
+          this.db
+            .update(fileAttachments)
+            .set({ messageId: messageId })
+            .where(inArray(fileAttachments.id, request.attachmentIds))
+        );
       }
 
-      // Step 4: Update conversation last message time
-      await this.db
-        .update(conversations)
-        .set({
-          lastMessageAt: timestamp,
-          updatedAt: timestamp
-        })
-        .where(eq(conversations.id, request.conversationId));
+      batchOperations.push(
+        this.db
+          .update(conversations)
+          .set({
+            lastMessageAt: timestamp,
+            updatedAt: timestamp
+          })
+          .where(eq(conversations.id, request.conversationId))
+      );
 
-      // Step 5: Query back the complete message object
-      const [insertedMessage] = await this.db
-        .select()
-        .from(messages)
-        .where(eq(messages.id, messageId))
-        .limit(1);
+      await this.db.batch(batchOperations as any);
 
-      if (!insertedMessage) {
-        throw new Error('Failed to retrieve inserted message');
-      }
+      const insertedMessage = {
+        ...messageData,
+        updatedAt: timestamp
+      };
 
       return {
-        success: isSent, // ✅ NOW reflects actual LINE API success
+        success: isSent,
         messageId,
-        message: insertedMessage,
+        message: insertedMessage as any,
         conversationId: request.conversationId,
         content: request.content,
         timestamp,
@@ -225,7 +426,6 @@ export class MessageService implements MessageServiceInterface {
     } catch (error) {
       console.error('[MessageService] sendMessage error:', error);
 
-      // Save failed message to database for tracking
       try {
         const failedMessageData: NewMessage = {
           id: messageId,

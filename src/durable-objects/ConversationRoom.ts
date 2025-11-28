@@ -280,8 +280,10 @@ export class ConversationRoom implements DurableObject {
 
       try {
         const { verifyJWT } = await import('../utils/auth');
-        const jwtSecret = this.env.JWT_SECRET || 'default-secret-key';
-        const payload = await verifyJWT(token, jwtSecret);
+        if (!this.env.JWT_SECRET) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        const payload = await verifyJWT(token, this.env.JWT_SECRET);
 
         testSafeLog(`${getEmojiPrefix('CHECK')}[ConversationRoom] Token valid for user ${payload.userId} with role ${payload.role}`);
         return {
@@ -943,8 +945,8 @@ export class ConversationRoom implements DurableObject {
 
       const userRole = userConnections[0]?.role || role;
 
-      // Basic permission checks based on role hierarchy
-      return ['admin', 'team', 'agent'].includes(userRole);
+      // SECURITY: Basic permission checks based on 2-tier role hierarchy
+      return ['admin', 'agent'].includes(userRole);
     } catch (error) {
       testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Permission check failed:`, error);
       return false;

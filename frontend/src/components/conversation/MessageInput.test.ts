@@ -254,7 +254,8 @@ describe('MessageInput Component', () => {
       expect(wrapper.emitted('message-sent')).toBeTruthy()
       expect(wrapper.emitted('message-sent')?.[0]).toEqual([{
         content: 'Test message',
-        attachments: []
+        attachments: [],
+        fileAttachments: []
       }])
     })
 

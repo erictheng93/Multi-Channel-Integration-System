@@ -44,6 +44,10 @@ import { qrCodeRouter } from '@modules/qrcode/handlers/index';
 // Direct import for messaging handler (troubleshooting)
 import messagingMainHandler from './handlers/messaging-main';
 
+// 🆕 Phase 3: LINE Message Queue Consumer
+import { handleLineMessageQueue } from './handlers/line-message-queue';
+import type { LineMessageQueuePayload } from './types/bindings';
+
 // Debug: Log messaging handler
 console.log('🔍 [DEBUG] messagingMainHandler imported:', typeof messagingMainHandler);
 console.log('🔍 [DEBUG] messagingMainHandler object:', messagingMainHandler);
@@ -86,7 +90,7 @@ import {
 } from './handlers/credentials';
 // Import middleware and utilities
 import { jwtAuth } from './middleware/auth';
-import { signJWT } from './utils/auth';
+import { signJWT, verifyJWT } from './utils/auth';
 import { getSecurityConfig, getSecurityHeaders } from './config/security';
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -408,7 +412,53 @@ app.get('/api/customer-ws', async (c) => {
     }, 400);
   }
 
-  console.log('🔌 [Customer WebSocket] Connection request:', { conversationId, sessionId });
+  // SECURITY: Validate the session token
+  if (!c.env.JWT_SECRET) {
+    console.error('❌ [Customer WebSocket] JWT_SECRET not configured');
+    return c.json({ success: false, error: 'Server configuration error' }, 500);
+  }
+
+  try {
+    // Verify the session token is a valid JWT
+    const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
+
+    // Validate user has access to this conversation
+    const { drizzle } = await import('drizzle-orm/d1');
+    const { eq } = await import('drizzle-orm');
+    const schema = await import('./db/schema');
+    const db = drizzle(c.env.DB, { schema });
+
+    const conversation = await db.select({
+      id: schema.conversations.id,
+      customerId: schema.conversations.customerId,
+      assignedUserId: schema.conversations.assignedUserId,
+    }).from(schema.conversations)
+      .where(eq(schema.conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({ success: false, error: 'Conversation not found' }, 404);
+    }
+
+    // Allow access if user is assigned, is admin, or owns the conversation
+    const isAdmin = payload.role === 'admin';
+    const isAssigned = conversation.assignedUserId === String(payload.userId);
+    const isCustomer = String(conversation.customerId) === String(payload.userId);
+
+    if (!isAdmin && !isAssigned && !isCustomer) {
+      console.warn(`❌ [Customer WebSocket] Access denied: user ${payload.userId} to conversation ${conversationId}`);
+      return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
+    }
+
+    console.log('🔌 [Customer WebSocket] Authenticated connection:', {
+      conversationId,
+      userId: payload.userId,
+      role: payload.role
+    });
+  } catch (authError) {
+    console.error('❌ [Customer WebSocket] Authentication failed:', authError);
+    return c.json({ success: false, error: 'Invalid or expired session' }, 401);
+  }
 
   try {
     // Get CustomerConversationDO instance by conversationId
@@ -446,7 +496,55 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
     }, 400);
   }
 
-  console.log(`📨 [Customer Messages] ${requestMethod} request for conversation: ${conversationId}`);
+  // SECURITY: Validate the session token from header
+  const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id') || c.req.header('Authorization')?.replace('Bearer ', '');
+
+  if (!sessionId) {
+    return c.json({ success: false, error: 'Authentication required' }, 401);
+  }
+
+  if (!c.env.JWT_SECRET) {
+    console.error('❌ [Customer Messages] JWT_SECRET not configured');
+    return c.json({ success: false, error: 'Server configuration error' }, 500);
+  }
+
+  try {
+    // Verify the session token is a valid JWT
+    const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
+
+    // Validate user has access to this conversation
+    const { drizzle } = await import('drizzle-orm/d1');
+    const { eq } = await import('drizzle-orm');
+    const schema = await import('./db/schema');
+    const db = drizzle(c.env.DB, { schema });
+
+    const conversation = await db.select({
+      id: schema.conversations.id,
+      customerId: schema.conversations.customerId,
+      assignedUserId: schema.conversations.assignedUserId,
+    }).from(schema.conversations)
+      .where(eq(schema.conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({ success: false, error: 'Conversation not found' }, 404);
+    }
+
+    // Allow access if user is assigned, is admin, or owns the conversation
+    const isAdmin = payload.role === 'admin';
+    const isAssigned = conversation.assignedUserId === String(payload.userId);
+    const isCustomer = String(conversation.customerId) === String(payload.userId);
+
+    if (!isAdmin && !isAssigned && !isCustomer) {
+      console.warn(`❌ [Customer Messages] Access denied: user ${payload.userId} to conversation ${conversationId}`);
+      return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
+    }
+
+    console.log(`📨 [Customer Messages] Authenticated ${requestMethod} for conversation: ${conversationId} by user ${payload.userId}`);
+  } catch (authError) {
+    console.error('❌ [Customer Messages] Authentication failed:', authError);
+    return c.json({ success: false, error: 'Invalid or expired session' }, 401);
+  }
 
   try {
     // Get CustomerMessageDO instance by conversationId
@@ -457,8 +555,7 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
     const headers = new Headers(c.req.raw.headers);
     headers.set('X-Conversation-Id', conversationId);
 
-    // Pass through session ID from original request
-    const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id');
+    // Pass through session ID (already validated)
     if (sessionId) {
       headers.set('X-Session-Id', sessionId);
     }
@@ -496,7 +593,55 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
     }, 400);
   }
 
-  console.log(`📤 [Customer Upload] File upload for conversation: ${conversationId}`);
+  // SECURITY: Validate the session token from header
+  const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id') || c.req.header('Authorization')?.replace('Bearer ', '');
+
+  if (!sessionId) {
+    return c.json({ success: false, error: 'Authentication required' }, 401);
+  }
+
+  if (!c.env.JWT_SECRET) {
+    console.error('❌ [Customer Upload] JWT_SECRET not configured');
+    return c.json({ success: false, error: 'Server configuration error' }, 500);
+  }
+
+  try {
+    // Verify the session token is a valid JWT
+    const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
+
+    // Validate user has access to this conversation
+    const { drizzle } = await import('drizzle-orm/d1');
+    const { eq } = await import('drizzle-orm');
+    const schema = await import('./db/schema');
+    const db = drizzle(c.env.DB, { schema });
+
+    const conversation = await db.select({
+      id: schema.conversations.id,
+      customerId: schema.conversations.customerId,
+      assignedUserId: schema.conversations.assignedUserId,
+    }).from(schema.conversations)
+      .where(eq(schema.conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({ success: false, error: 'Conversation not found' }, 404);
+    }
+
+    // Allow access if user is assigned, is admin, or owns the conversation
+    const isAdmin = payload.role === 'admin';
+    const isAssigned = conversation.assignedUserId === String(payload.userId);
+    const isCustomer = String(conversation.customerId) === String(payload.userId);
+
+    if (!isAdmin && !isAssigned && !isCustomer) {
+      console.warn(`❌ [Customer Upload] Access denied: user ${payload.userId} to conversation ${conversationId}`);
+      return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
+    }
+
+    console.log(`📤 [Customer Upload] Authenticated upload for conversation: ${conversationId} by user ${payload.userId}`);
+  } catch (authError) {
+    console.error('❌ [Customer Upload] Authentication failed:', authError);
+    return c.json({ success: false, error: 'Invalid or expired session' }, 401);
+  }
 
   try {
     // Get CustomerMessageDO instance by conversationId
@@ -507,8 +652,7 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
     const headers = new Headers(c.req.raw.headers);
     headers.set('X-Conversation-Id', conversationId);
 
-    // Pass through session ID from original request
-    const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id');
+    // Pass through session ID (already validated)
     if (sessionId) {
       headers.set('X-Session-Id', sessionId);
     }
@@ -1165,16 +1309,26 @@ export { DelayedMessageScheduler as DelayedMessageBuffer };
 export { DelayedMessageScheduler as DelayedMessageProcessor };
 
 // ==================== 導出 Worker 處理器 ====================
-// Phase 2.1: Queue Consumer 已移除 (2025-10-17)
-// - REALTIME_QUEUE 由 LatestMessageCacheCoordinator Durable Object 替代
-// - AGENT_QUEUE 已在 Phase 1 移除，由 DelayedMessageScheduler DO 替代
-// - Queue 现在完全可选，仅用于大规模广播和背景任务
+// Phase 2.1: Queue Consumer 部分恢復 (Phase 3: LINE Async)
+// - REALTIME_QUEUE 由 LatestMessageCacheCoordinator Durable Object 替代 (保持)
+// - AGENT_QUEUE 由 DelayedMessageScheduler DO 替代 (保持)
+// - 🆕 LINE_MESSAGE_QUEUE 新增用於 LINE 非同步訊息發送 (Phase 3)
 
-// ✅ Queue handler removed (2025-10-17)
-// All queue consumers successfully unbound from worker:
-//   - agent-queue: 0 consumers
-//   - realtime-events: 0 consumers
-// Queue functionality fully migrated to Durable Objects
+// ✅ LINE Message Queue Consumer (Phase 3 - 2025-01)
+// Purpose: Async LINE message delivery for better UX
+// Benefits:
+//   - Immediate response to agents (~10ms vs ~100-500ms)
+//   - Automatic retry with exponential backoff
+//   - Built-in dead letter queue handling
 export default {
-  fetch: app.fetch
+  fetch: app.fetch,
+
+  // 🆕 LINE Message Queue Consumer
+  async queue(
+    batch: MessageBatch<LineMessageQueuePayload>,
+    env: Bindings
+  ): Promise<void> {
+    console.log(`📨 [LINE Queue] Received batch of ${batch.messages.length} messages`);
+    await handleLineMessageQueue(batch, env);
+  }
 };
