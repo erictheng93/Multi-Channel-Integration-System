@@ -824,6 +824,7 @@ const handlerMethods = {
   },
 
   // 為對話添加標籤
+  // ✅ 優化版本：使用 Drizzle 批量插入（單條 SQL 語句）
   async addTags(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
@@ -847,18 +848,20 @@ const handlerMethods = {
         return notFoundResponse(c, 'Conversation');
       }
 
-      // 批量添加標籤
-      const insertPromises = tagIds.map(tagId => 
-        drizzleDb.insert(conversationTags)
-          .values({
-            conversationId: conversationId,
-            tagId: tagId,
-            assignedBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system'
-          })
-          .onConflictDoNothing()
-      );
+      // ✅ 優化：構建批量插入值，使用單條 SQL 語句
+      const assignedBy = payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system';
+      const tagInsertValues = tagIds.map(tagId => ({
+        conversationId: conversationId,
+        tagId: tagId,
+        assignedBy: assignedBy
+      }));
 
-      await Promise.all(insertPromises);
+      // Drizzle 支持 values() 接受數組，生成單條 INSERT 語句
+      await drizzleDb.insert(conversationTags)
+        .values(tagInsertValues)
+        .onConflictDoNothing();
+
+      console.log(`📦 [Tags] Added ${tagIds.length} tags to conversation ${conversationId} using batch insert`);
 
       return successResponse(c, null, 'Tags added successfully');
 
@@ -1057,22 +1060,32 @@ const handlerMethods = {
               { field: 'data.tagIds', message: 'Tag IDs array is required' }
             ]);
           }
-          // 為每個對話添加標籤
-          const tagInsertPromises = [];
+          // ✅ 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+          const assignedBy = payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system';
+          const tagInsertValues: { conversationId: string; tagId: number; assignedBy: string }[] = [];
+
           for (const convId of conversationIds) {
             for (const tagId of data.tagIds) {
-              tagInsertPromises.push(
-                drizzleDb.insert(conversationTags)
-                  .values({
-                    conversationId: convId, // 保持字符串
-                    tagId: parseInt(tagId),
-                    assignedBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system'
-                  })
-                  .onConflictDoNothing()
-              );
+              tagInsertValues.push({
+                conversationId: convId,
+                tagId: parseInt(tagId),
+                assignedBy: assignedBy
+              });
             }
           }
-          await Promise.all(tagInsertPromises);
+
+          // 使用 Drizzle 批量插入（每批最多 100 條記錄以避免 SQL 語句過長）
+          const BULK_BATCH_SIZE = 100;
+          for (let i = 0; i < tagInsertValues.length; i += BULK_BATCH_SIZE) {
+            const batch = tagInsertValues.slice(i, i + BULK_BATCH_SIZE);
+            if (batch.length > 0) {
+              await drizzleDb.insert(conversationTags)
+                .values(batch)
+                .onConflictDoNothing();
+            }
+          }
+
+          console.log(`📦 [Bulk Tags] Inserted ${tagInsertValues.length} tag associations using batch insert`);
           break;
 
         default:
