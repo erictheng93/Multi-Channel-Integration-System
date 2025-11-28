@@ -242,12 +242,14 @@ conversationHandler.get('/stream', async (c) => {
 });
 
 // 📦 批量操作端點 - POST /bulk
-// 支援操作: assign, close, reopen, set_priority, add_tags
+// 支援操作: assign, close, reopen, set_priority, add_tags, remove_tags
+// ✅ 優化版本：添加權限檢查、批量操作優化、WebSocket 廣播
 conversationHandler.post('/bulk', jwtAuth, async (c) => {
   const drizzleDb = createDbClient(c.env.DB);
   try {
     const { operation, conversationIds, data } = await c.req.json();
     const payload = c.get('jwtPayload');
+    const user = c.get('user');
 
     // 驗證 conversationIds
     if (!Array.isArray(conversationIds) || conversationIds.length === 0) {
@@ -264,6 +266,19 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
     }
 
     const conversationIdsArray = conversationIds as string[];
+
+    // ✅ P1 優化：添加權限檢查 - 驗證用戶是否有權訪問這些對話
+    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
+    const unauthorizedIds = conversationIdsArray.filter(id => !visibleConversationIds.includes(id));
+
+    if (unauthorizedIds.length > 0) {
+      console.warn(`⚠️ [Bulk] User ${user.id} attempted to access unauthorized conversations:`, unauthorizedIds);
+      return errorResponse(c, `Permission denied for ${unauthorizedIds.length} conversation(s). You can only perform bulk operations on conversations you have access to.`, 403);
+    }
+
+    // 用於追蹤標籤操作，以便後續 WebSocket 廣播
+    let tagOperation: 'add' | 'remove' | null = null;
+    let affectedTagIds: number[] = [];
 
     switch (operation) {
       case 'assign':
@@ -320,22 +335,39 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
             { field: 'data.tagIds', message: 'Tag IDs array is required' }
           ]);
         }
-        // 為每個對話添加標籤
-        const tagInsertPromises = [];
+
+        // ✅ P2 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+        // 構建所有需要插入的值
+        const tagInsertValues: { conversationId: string; tagId: number; assignedBy: string }[] = [];
+        const parsedTagIds = data.tagIds.map((id: string | number) => parseInt(String(id)));
+
         for (const convId of conversationIdsArray) {
-          for (const tagId of data.tagIds) {
-            tagInsertPromises.push(
-              drizzleDb.insert(conversationTags)
-                .values({
-                  conversationId: convId,
-                  tagId: parseInt(tagId),
-                  assignedBy: payload?.userId ? String(payload.userId) : 'system'
-                })
-                .onConflictDoNothing()
-            );
+          for (const tagId of parsedTagIds) {
+            tagInsertValues.push({
+              conversationId: convId,
+              tagId: tagId,
+              assignedBy: payload?.userId ? String(payload.userId) : 'system'
+            });
           }
         }
-        await Promise.all(tagInsertPromises);
+
+        // 使用 Drizzle 批量插入（每批最多 100 條記錄以避免 SQL 語句過長）
+        const INSERT_BATCH_SIZE = 100;
+        for (let i = 0; i < tagInsertValues.length; i += INSERT_BATCH_SIZE) {
+          const batch = tagInsertValues.slice(i, i + INSERT_BATCH_SIZE);
+          if (batch.length > 0) {
+            // Drizzle 支持 values() 接受數組，生成單條 INSERT 語句
+            await drizzleDb.insert(conversationTags)
+              .values(batch)
+              .onConflictDoNothing();
+          }
+        }
+
+        console.log(`📦 [Bulk Tags] Inserted ${tagInsertValues.length} tag associations using batch insert`);
+
+        // 記錄標籤操作以便 WebSocket 廣播
+        tagOperation = 'add';
+        affectedTagIds = parsedTagIds;
         break;
 
       case 'remove_tags':
@@ -344,24 +376,63 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
             { field: 'data.tagIds', message: 'Tag IDs array is required' }
           ]);
         }
-        // 從對話移除標籤
-        for (const convId of conversationIdsArray) {
-          for (const tagId of data.tagIds) {
-            await drizzleDb.delete(conversationTags)
-              .where(
-                and(
-                  eq(conversationTags.conversationId, convId),
-                  eq(conversationTags.tagId, parseInt(tagId))
-                )
-              );
-          }
-        }
+
+        // ✅ P3 優化：使用單條 SQL 批量刪除（替代嵌套循環 + 順序 await）
+        const tagIdsToRemove = data.tagIds.map((id: string | number) => parseInt(String(id)));
+
+        await drizzleDb.delete(conversationTags)
+          .where(
+            and(
+              inArray(conversationTags.conversationId, conversationIdsArray),
+              inArray(conversationTags.tagId, tagIdsToRemove)
+            )
+          );
+
+        console.log(`📦 [Bulk Tags] Removed tags from ${conversationIdsArray.length} conversations using single SQL`);
+
+        // 記錄標籤操作以便 WebSocket 廣播
+        tagOperation = 'remove';
+        affectedTagIds = tagIdsToRemove;
         break;
 
       default:
         return validationErrorResponse(c, [
           { field: 'operation', message: `Invalid operation: ${operation}. Valid operations: assign, close, reopen, set_priority, add_tags, remove_tags` }
         ]);
+    }
+
+    // ✅ P4 優化：添加 WebSocket 廣播 - 通知其他用戶標籤變更
+    if (tagOperation && affectedTagIds.length > 0) {
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+
+        // 為每個受影響的對話廣播事件
+        const broadcastPromises = conversationIdsArray.map(conversationId =>
+          broadcastService.broadcastConversationEvent({
+            type: 'conversation_status_changed',
+            conversationId,
+            userId: String(user.id),
+            data: {
+              changeType: 'tags_updated',
+              tagOperation,
+              tagIds: affectedTagIds,
+              updatedBy: {
+                id: user.id,
+                name: user.displayName,
+                role: user.role
+              },
+              timestamp: new Date().toISOString()
+            },
+            priority: 'normal'
+          })
+        );
+
+        await Promise.allSettled(broadcastPromises);
+        console.log(`✅ [WebSocket] Bulk tag ${tagOperation} broadcasted for ${conversationIdsArray.length} conversations`);
+      } catch (broadcastError) {
+        console.warn('⚠️ [WebSocket] Bulk tag broadcast failed, continuing:', broadcastError);
+        // 不中斷主流程，廣播失敗不影響操作結果
+      }
     }
 
     console.log(`📦 [Conversations] Bulk ${operation} completed for ${conversationIdsArray.length} conversations`);
