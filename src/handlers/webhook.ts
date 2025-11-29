@@ -19,13 +19,31 @@ import type {
   FacebookMediaData
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  successResponse, 
-  errorResponse, 
+import {
+  successResponse,
+  errorResponse,
   unauthorizedResponse,
-  handleApiError 
+  handleApiError
 } from '../utils/api-response';
 import { ActivityService } from '../services/activity-service';
+
+// 🆕 P2-1: Import shared webhook services
+import {
+  verifyWebhookSignature,
+  type SignatureVerificationResult
+} from '../services/webhook-signature-service';
+import {
+  validateLineWebhook as validateLinePayload,
+  validateFacebookWebhook as validateFacebookPayload,
+  validatePayloadSize,
+  isLineWebhookBody,
+  isFacebookWebhookBody
+} from '../services/webhook-validation';
+import {
+  parseLineMessage as parseLineMessageContent,
+  parseFacebookMessage as parseFacebookMessageContent,
+  hasDownloadableMedia
+} from '../services/platform-message-parser';
 
 export const webhookHandler = {
   // 處理 Line Webhook
@@ -43,26 +61,30 @@ export const webhookHandler = {
         'Content-Length': body.length
       });
 
-      // 檢查 payload 大小 (1MB 限制)
-      if (body.length > 1024 * 1024) {
-        console.error('❌ [LINE Webhook] Payload too large:', body.length);
+      // 🆕 P2-1: 使用共享服務驗證 payload 大小
+      const sizeValidation = validatePayloadSize(body, 1024 * 1024); // 1MB limit
+      if (!sizeValidation.valid) {
+        console.error('❌ [LINE Webhook] Payload too large:', sizeValidation.size);
         return errorResponse(c, 'Payload too large', 413);
       }
 
-      if (!signature) {
-        console.error('❌ [LINE Webhook] Missing X-Line-Signature header');
-        return errorResponse(c, 'Missing signature');
+      // 🆕 P2-1: 使用共享簽名驗證服務
+      const headers = Object.fromEntries(
+        [...c.req.raw.headers.entries()].map(([k, v]) => [k.toLowerCase(), v])
+      );
+
+      const signatureResult = await verifyWebhookSignature(
+        'line',
+        body,
+        headers,
+        c.env.LINE_CHANNEL_SECRET
+      );
+
+      if (!signatureResult.valid) {
+        console.error('❌ [LINE Webhook] Signature verification failed:', signatureResult.error);
+        return unauthorizedResponse(c, signatureResult.error || 'Invalid signature');
       }
 
-      // Verifying LINE webhook signature
-      const isValid = await verifyLineSignature(body, signature, c.env.LINE_CHANNEL_SECRET);
-      
-      if (!isValid) {
-        console.error('❌ [LINE Webhook] Invalid signature');
-        console.log('   Received signature:', signature.substring(0, 20) + '...');
-        return unauthorizedResponse(c, 'Invalid signature');
-      }
-      
       console.log('✅ [LINE Webhook] Signature verified successfully');
 
       let data: LineWebhookBody;
@@ -72,10 +94,11 @@ export const webhookHandler = {
         return errorResponse(c, 'Invalid JSON payload');
       }
 
-      // 輸入驗證
-      if (!validateLineWebhook(data)) {
-        console.error('❌ [LINE Webhook] Invalid webhook payload structure');
-        return errorResponse(c, 'Invalid webhook payload');
+      // 🆕 P2-1: 使用共享驗證服務
+      const validationResult = validateLinePayload(data);
+      if (!validationResult.valid) {
+        console.error('❌ [LINE Webhook] Invalid webhook payload:', validationResult.errors);
+        return errorResponse(c, validationResult.errors.join(', ') || 'Invalid webhook payload');
       }
 
       console.log('📦 [LINE Webhook] Processing events:', {
@@ -156,42 +179,29 @@ export const webhookHandler = {
   }
 };
 
-// 輸入驗證函數
+// ==================== DEPRECATED FUNCTIONS ====================
+// 🚨 These functions are deprecated and will be removed in a future version.
+// Please use the shared services from:
+// - src/services/webhook-validation.ts
+// - src/services/webhook-signature-service.ts
+// - src/services/platform-message-parser.ts
+
+/**
+ * @deprecated Use `validateLineWebhook` from `src/services/webhook-validation.ts` instead.
+ * This function is kept for backward compatibility with external imports.
+ */
 export function validateLineWebhook(data: unknown): data is LineWebhookBody {
-  if (!data || typeof data !== 'object' || data === null) return false;
-  
-  const webhook = data as Record<string, unknown>;
-  
-  return typeof webhook.destination === 'string' &&
-         Array.isArray(webhook.events) &&
-         webhook.events.every((event: unknown) => {
-           if (!event || typeof event !== 'object' || event === null) return false;
-           const lineEvent = event as Record<string, unknown>;
-           
-           return typeof lineEvent.type === 'string' &&
-                  typeof lineEvent.timestamp === 'number' &&
-                  lineEvent.source &&
-                  typeof lineEvent.source === 'object' &&
-                  lineEvent.source !== null &&
-                  typeof (lineEvent.source as Record<string, unknown>).userId === 'string';
-         });
+  // Delegate to shared service
+  return isLineWebhookBody(data);
 }
 
+/**
+ * @deprecated Use `validateFacebookWebhook` from `src/services/webhook-validation.ts` instead.
+ * This function is kept for backward compatibility.
+ */
 function validateFacebookWebhook(data: unknown): data is FacebookWebhookBody {
-  if (!data || typeof data !== 'object' || data === null) return false;
-  
-  const webhook = data as Record<string, unknown>;
-  
-  return webhook.object === 'page' &&
-         Array.isArray(webhook.entry) &&
-         webhook.entry.every((entry: unknown) => {
-           if (!entry || typeof entry !== 'object' || entry === null) return false;
-           const fbEntry = entry as Record<string, unknown>;
-           
-           return typeof fbEntry.id === 'string' &&
-                  typeof fbEntry.time === 'number' &&
-                  (!fbEntry.messaging || Array.isArray(fbEntry.messaging));
-         });
+  // Delegate to shared service
+  return isFacebookWebhookBody(data);
 }
 
 // 安全日誌記錄函數
@@ -199,26 +209,15 @@ function logSecurely(platform: string, userId: string, messageLength: number) {
   console.log(`Processed ${platform} message from user [${userId.slice(0, 8)}...]: [${messageLength} chars]`);
 }
 
-// 驗證 Line 簽名（使用 Web Crypto API）
+/**
+ * @deprecated Use `verifyWebhookSignature` from `src/services/webhook-signature-service.ts` instead.
+ * The new service provides timing-safe comparison and better error handling.
+ * This function is kept for backward compatibility with external imports.
+ */
 export async function verifyLineSignature(body: string, signature: string, secret: string): Promise<boolean> {
-  try {
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-
-    const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
-    const hash = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
-
-    return hash === signature;
-  } catch (error) {
-    console.error('Signature verification error:', error);
-    return false;
-  }
+  // Delegate to shared service with timing-safe comparison
+  const result = await verifyWebhookSignature('line', body, { 'x-line-signature': signature }, secret);
+  return result.valid;
 }
 
 // 處理 Line 訊息
