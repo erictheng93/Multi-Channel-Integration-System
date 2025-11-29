@@ -4,7 +4,7 @@
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, desc, and, count, or, like, sql } from 'drizzle-orm';
+import { eq, desc, and, count, or, like, sql, inArray } from 'drizzle-orm';
 import { teams, agents, conversations, messages } from '@/db/schema';
 import type {
   Team,
@@ -445,33 +445,58 @@ export class TeamService implements TeamServiceInterface {
   }
 
   // Transfer members between teams
+  // ✅ 優化版本：使用 inArray 批量更新（單條 SQL 語句）
   async transferMembers(request: TeamTransferRequest): Promise<TeamTransferResponse> {
-    const transferredAgents: string[] = [];
-    const failedTransfers: Array<{ agentId: string; reason: string }> = [];
+    try {
+      // 先驗證哪些 agents 屬於來源團隊
+      const validAgents = await this.db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(
+          and(
+            inArray(agents.id, request.agentIds),
+            eq(agents.teamId, request.fromTeamId)
+          )
+        );
 
-    for (const agentId of request.agentIds) {
-      try {
+      const validAgentIds = validAgents.map(a => a.id);
+      const invalidAgentIds = request.agentIds.filter(id => !validAgentIds.includes(id));
+
+      // 批量更新有效的 agents
+      if (validAgentIds.length > 0) {
         await this.db
           .update(agents)
           .set({
             teamId: request.toTeamId,
             updatedAt: new Date().toISOString()
           })
-          .where(and(eq(agents.id, agentId), eq(agents.teamId, request.fromTeamId)));
+          .where(inArray(agents.id, validAgentIds));
 
-        transferredAgents.push(agentId);
-      } catch (error) {
-        failedTransfers.push({
-          agentId,
-          reason: `Transfer failed: ${error}`
-        });
+        console.log(`📦 [Team Transfer] Transferred ${validAgentIds.length} agents using batch update`);
       }
-    }
 
-    return {
-      success: failedTransfers.length === 0,
-      transferredAgents,
-      failedTransfers
-    };
+      // 構建失敗列表（不屬於來源團隊的 agents）
+      const failedTransfers = invalidAgentIds.map(agentId => ({
+        agentId,
+        reason: `Agent not found in source team (teamId: ${request.fromTeamId})`
+      }));
+
+      return {
+        success: failedTransfers.length === 0,
+        transferredAgents: validAgentIds,
+        failedTransfers
+      };
+    } catch (error) {
+      console.error('Transfer members error:', error);
+      // 如果批量操作失敗，所有都標記為失敗
+      return {
+        success: false,
+        transferredAgents: [],
+        failedTransfers: request.agentIds.map(agentId => ({
+          agentId,
+          reason: `Transfer failed: ${error instanceof Error ? error.message : String(error)}`
+        }))
+      };
+    }
   }
 }

@@ -232,15 +232,18 @@ export const customerTagsHandler = {
           return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
         }
 
-        for (const tagId of newTagIds) {
-          await drizzleDb
-            .insert(customerTags)
-            .values({
-              customerId,
-              tagId,
-              assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
-            });
-        }
+        // ✅ 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+        const tagInsertValues = newTagIds.map(tagId => ({
+          customerId,
+          tagId,
+          assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
+        }));
+
+        await drizzleDb
+          .insert(customerTags)
+          .values(tagInsertValues);
+
+        console.log(`📦 [Customer Tags] Added ${newTagIds.length} tags using batch insert`);
       }
 
       return successResponse(
@@ -364,15 +367,18 @@ export const customerTagsHandler = {
           return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
         }
 
-        for (const tagId of tagIds) {
-          await drizzleDb
-            .insert(customerTags)
-            .values({
-              customerId,
-              tagId,
-              assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
-            });
-        }
+        // ✅ 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+        const tagInsertValues = tagIds.map(tagId => ({
+          customerId,
+          tagId,
+          assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
+        }));
+
+        await drizzleDb
+          .insert(customerTags)
+          .values(tagInsertValues);
+
+        console.log(`📦 [Customer Tags] Set ${tagIds.length} tags using batch insert`);
       }
 
       return successResponse(
