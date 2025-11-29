@@ -22,3 +22,7 @@ export { useDelayedMessages } from './useDelayedMessages'
 export { useFileUpload } from './useFileUpload'
 export { useAccountStatusMonitor } from './useAccountStatusMonitor'
 export { usePrefetch } from './usePrefetch'
+
+// 🆕 P1-2: New composables extracted from ConversationDetail.vue
+export { useConversationActions } from './useConversationActions'
+export { useMessageEventHandlers } from './useMessageEventHandlers'
