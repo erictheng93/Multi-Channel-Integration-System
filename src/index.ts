@@ -92,6 +92,7 @@ import {
 import { jwtAuth } from './middleware/auth';
 import { signJWT, verifyJWT } from './utils/auth';
 import { getSecurityConfig, getSecurityHeaders } from './config/security';
+import { globalErrorHandler } from './middleware/error-handler';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -1233,15 +1234,13 @@ if (securityConfig.debug.enabled) {
 
 // ==================== 錯誤處理 ====================
 
-// 全域錯誤處理
+// 全域錯誤處理 - 使用統一的錯誤處理器
 app.onError((err, c) => {
   const contextLogger = createContextLogger('GlobalErrorHandler');
   contextLogger.error('Global error occurred', { path: c.req.path, method: c.req.method }, err);
-  return c.json({
-    error: 'Internal Server Error',
-    message: err.message,
-    timestamp: new Date().toISOString()
-  }, 500);
+
+  // 使用統一的錯誤處理器處理所有錯誤
+  return globalErrorHandler(err, c);
 });
 
 // ==================== 靜態檔案服務 ====================
