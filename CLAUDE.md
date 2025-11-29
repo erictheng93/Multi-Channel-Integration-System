@@ -67,58 +67,63 @@ The backend uses a modular handler-based approach:
 
 ## Development Commands
 
+> ⚠️ **IMPORTANT**: This project uses **REMOTE RESOURCES ONLY**. All development connects directly to production D1, KV, R2, and Durable Objects. There is no local development environment.
+
 ### Backend (Root Directory)
 ```bash
-# Development
-npm run dev # Start Wrangler dev server with local persistence
-npm run dev:remote # Start Wrangler dev server with remote bindings
-npm run build # TypeScript compilation check
-npm run lint:check # TypeScript + Vue type checking with linting
+# Development (connects to REMOTE resources)
+npm run dev              # Start Wrangler dev server with REMOTE bindings
+npm run build            # TypeScript compilation check
+npm run lint:check       # TypeScript + Vue type checking with linting
 
-# Database Operations
-npm run db:migrate # Apply migrations locally
-npm run db:migrate:prod # Apply migrations to production
-npm run db:studio:local # Open Drizzle Studio for local DB
-npm run db:generate # Generate Drizzle migrations
-npm run db:push # Push schema changes
+# Database Operations (all operate on REMOTE D1)
+npm run db:migrate       # Apply migrations to REMOTE D1
+npm run db:generate      # Generate Drizzle migrations
+npm run db:push          # Push schema changes to REMOTE
+npm run db:studio        # Open Drizzle Studio for REMOTE DB
+npm run db:query         # Execute queries on REMOTE D1
 
 # Deployment & Production
-npm run deploy # Deploy to production
-npm run health:check:all # Check system health endpoints
-npm run monitor:deployment # Monitor deployment health
+npm run deploy           # Deploy to production
+
+# Health Checks & Monitoring
+npm run health:check     # Check system health (formatted JSON)
+npm run health:check:ws  # Check WebSocket health (formatted JSON)
+npm run health:check:all # Check both system and WebSocket health
+npm run health:check:detail # Detailed WebSocket health info
+npm run monitor:deployment # Continuous health monitoring (every 30s)
+npm run perf:baseline    # View WebSocket performance metrics
 
 # Testing & Validation
-npm run test:handlers # Test all handlers
-npm run test:api # API integration tests
-npm run test:recall # Message recall functionality tests
-npm run test:upload # File upload end-to-end tests
+npm run test:handlers    # Test all handlers
+npm run test:api         # API integration tests
+npm run test:upload      # File upload end-to-end tests
 
 # Performance & Monitoring
-npm run benchmark:baseline # Performance baseline establishment
-npm run profile:memory # Memory usage profiling
+npm run benchmark        # Run performance benchmark suite
+npm run profile:memory   # Memory usage profiling
 ```
 
 ### Frontend (frontend/ directory)
 ```bash
 # Development
-npm run dev # Start Vite dev server (port 3000)
-npm run dev:local # Development with local backend
-npm run build # Build for production
-npm run type-check # Vue TypeScript checking
+npm run dev              # Start Vite dev server (port 3000)
+npm run build            # Build for production
+npm run type-check       # Vue TypeScript checking
 
 # Testing (132+ tests)
-npm run test # Run all tests with Vitest
-npm run test:run # Single test run
-npm run test:coverage # Generate coverage report
-npm run test:ui # Interactive test UI
+npm run test             # Run all tests with Vitest
+npm run test:run         # Single test run
+npm run test:coverage    # Generate coverage report
+npm run test:ui          # Interactive test UI
 
 # Linting & Code Quality
-npm run lint # ESLint with auto-fix
-npm run lint:check # ESLint check only
+npm run lint             # ESLint with auto-fix
+npm run lint:check       # ESLint check only
 
 # Deployment
-npm run build:pages # Build and copy Cloudflare Pages config
-npm run deploy:pages # Deploy to Cloudflare Pages
+npm run build:pages      # Build and copy Cloudflare Pages config
+npm run deploy:pages     # Deploy to Cloudflare Pages
 npm run verify:deployment # Verify production deployment
 ```
 
@@ -445,22 +450,24 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 
 ## Quick Start for Development
 
+> ⚠️ **IMPORTANT**: This project connects to **REMOTE PRODUCTION RESOURCES**. All database and storage operations affect production data.
+
 1. **Prerequisites**: Node.js 18+, npm, and Cloudflare account with Wrangler CLI
 2. **Install Dependencies**:
  ```bash
  npm install
  cd frontend && npm install
  ```
-3. **Environment Setup**: Configure `.env` from `.env.example` template
-4. **Database Setup**:
+3. **Environment Setup**: Configure `.env` from `.env.example` template with Cloudflare credentials
+4. **Verify Remote Connection**:
  ```bash
- npm run db:migrate # Apply database migrations
- npm run db:studio:local # (Optional) Open Drizzle Studio
+ npm run health:check:all  # Verify connection to production
+ npm run db:studio         # Open Drizzle Studio for REMOTE DB
  ```
 5. **Start Development**:
  ```bash
- # Terminal 1 - Backend
- npm run dev # Cloudflare Worker on localhost:8787
+ # Terminal 1 - Backend (connects to REMOTE resources)
+ npm run dev               # Wrangler dev with REMOTE D1, KV, R2
 
  # Terminal 2 - Frontend
  cd frontend && npm run dev # Vite dev server on localhost:3000
@@ -471,15 +478,15 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 
 ### ⚠️ Deployment Environment Policy
 
-**THIS PROJECT USES PRODUCTION ENVIRONMENT ONLY**
+**THIS PROJECT USES REMOTE PRODUCTION RESOURCES ONLY**
 
-- **No Development Environment**: This project does NOT use a separate `[env.development]` configuration in `wrangler.toml`
-- **Local Development**: Use `wrangler dev` which automatically creates temporary resources (D1, KV, R2)
+- **No Local Resources**: This project does NOT use local D1, KV, or R2 resources
+- **Development**: Use `npm run dev` which connects to REMOTE production resources
 - **Production Deployment**: Use `wrangler deploy` or `npm run deploy` to deploy to production
-- **No Staging Environment**: All testing happens locally, then deploys directly to production
+- **No Staging Environment**: All testing uses production resources, deploys directly to production
 - **Environment Configuration**: See `wrangler.toml` - all config is for production only
 
-**Important**: DO NOT add `[env.development]` or `[env.staging]` sections to `wrangler.toml`. The default configuration IS the production configuration.
+**Important**: DO NOT add `[env.development]` or `[env.staging]` sections to `wrangler.toml`. The default configuration IS the production configuration. All development operations affect production data.
 
 ### Production Infrastructure
 
@@ -497,8 +504,9 @@ The system is production-ready and deployed on Cloudflare infrastructure:
 ### Common Issues
 - **TypeScript errors**: Run `npm run type-check` in both root and frontend
 - **Test failures**: Check test environment setup in `frontend/vitest.setup.ts`
-- **Database issues**: Use `npm run db:studio:local` to inspect data
-- **API connectivity**: Verify environment variables in `wrangler.toml`
+- **Database issues**: Use `npm run db:studio` to inspect REMOTE data
+- **API connectivity**: Verify Cloudflare credentials and run `npm run health:check:all`
+- **Connection errors**: Ensure `wrangler` is authenticated with `wrangler login`
 
 ### Performance Optimization
 - **Virtual scrolling** with @tanstack/vue-virtual for large conversation lists
