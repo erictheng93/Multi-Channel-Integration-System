@@ -129,6 +129,12 @@ npm run verify:deployment # Verify production deployment
 - **Cloudflare D1** as the primary database
 - **Cloudflare KV** for caching and session management
 - Schema located in `src/db/schema.ts`
+- **Recent Schema Optimizations** (Migration 0024-0027):
+  - **Phase 1**: Added indexes for `agents` table (team_id, role)
+  - **Phase 2**: Standardized `file_attachments` column naming to snake_case
+  - **Phase 3**: Refactored `channel_integrations` to JSON-based config for extensibility
+  - **Soft Delete**: Added `deletedAt` columns to core tables (teams, agents, customers, conversations, messages, tags)
+  - **14+ Performance Indexes**: Optimized common query patterns
 
 ### External APIs
 - **LINE Messaging API** - Full webhook integration for LINE OA
@@ -375,6 +381,9 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 - Always handle database errors gracefully
 - **WebSocket State Management**: Use Durable Objects for stateful real-time connections
 - **Event Broadcasting**: Integrate database operations with WebSocket event distribution
+- **Soft Delete Pattern**: Use `deletedAt` column instead of hard delete for core entities (teams, agents, customers, conversations, messages, tags)
+- **Channel Integrations**: Use JSON columns (`config`, `credentials`, `webhookConfig`, `stats`) for platform-specific data - no schema changes needed for new platforms
+- **Sensitive Data**: Credentials stored in `credentials` JSON column are encrypted using AES-256-GCM via `encryption-service.ts`
 
 ### Authentication Flow
 - JWT tokens managed in `src/utils/auth.ts`
