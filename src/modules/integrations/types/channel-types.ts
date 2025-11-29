@@ -5,8 +5,107 @@ import type { channelIntegrations } from '@/db/schema';
 
 /**
  * Supported channel platforms
+ * NOTE: New platforms can be added without schema changes (Migration 0026)
  */
-export type ChannelPlatform = 'line' | 'facebook' | 'whatsapp';
+export type ChannelPlatform = 'line' | 'facebook' | 'whatsapp' | 'telegram' | 'instagram' | string;
+
+// ==================== NEW JSON-based Configuration Types (Migration 0026) ====================
+
+/**
+ * Platform-specific configuration (non-sensitive)
+ * Stored in channelIntegrations.config JSON field
+ */
+export interface ChannelConfig {
+  // LINE
+  channelId?: string;
+  // Facebook
+  pageId?: string;
+  // WhatsApp
+  phoneNumber?: string;
+  businessAccountId?: string;
+  // Telegram (future)
+  botUsername?: string;
+  // Instagram (future)
+  instagramAccountId?: string;
+  // Generic extensible fields
+  [key: string]: string | number | boolean | undefined;
+}
+
+/**
+ * Encrypted credentials structure
+ * Stored in channelIntegrations.credentials JSON field
+ */
+export interface ChannelCredentials {
+  // Common
+  accessToken?: string;
+  // LINE
+  secret?: string;
+  // Facebook
+  appSecret?: string;
+  // Generic extensible fields
+  [key: string]: string | undefined;
+}
+
+/**
+ * Webhook configuration
+ * Stored in channelIntegrations.webhookConfig JSON field
+ */
+export interface ChannelWebhookConfig {
+  url?: string;
+  token?: string;
+  verifyToken?: string;
+}
+
+/**
+ * Channel usage statistics
+ * Stored in channelIntegrations.stats JSON field
+ */
+export interface ChannelStats {
+  totalSent: number;
+  totalReceived: number;
+  lastMessageAt?: string;
+}
+
+/**
+ * Helper to parse JSON config fields safely
+ */
+export function parseChannelConfig(json: string | null | undefined): ChannelConfig {
+  if (!json) return {};
+  try {
+    return JSON.parse(json) as ChannelConfig;
+  } catch {
+    return {};
+  }
+}
+
+export function parseChannelCredentials(json: string | null | undefined): ChannelCredentials {
+  if (!json) return {};
+  try {
+    return JSON.parse(json) as ChannelCredentials;
+  } catch {
+    return {};
+  }
+}
+
+export function parseChannelWebhookConfig(json: string | null | undefined): ChannelWebhookConfig {
+  if (!json) return {};
+  try {
+    return JSON.parse(json) as ChannelWebhookConfig;
+  } catch {
+    return {};
+  }
+}
+
+export function parseChannelStats(json: string | null | undefined): ChannelStats {
+  if (!json) return { totalSent: 0, totalReceived: 0 };
+  try {
+    return JSON.parse(json) as ChannelStats;
+  } catch {
+    return { totalSent: 0, totalReceived: 0 };
+  }
+}
+
+// ==================== End of NEW types ====================
 
 /**
  * Channel integration record from database

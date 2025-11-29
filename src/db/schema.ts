@@ -10,13 +10,15 @@ export const teams = sqliteTable('teams', {
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
 
 // Agents table - 客服人員
+// ENCRYPTION NOTE: passwordHash uses bcrypt (not reversible encryption)
 export const agents = sqliteTable('agents', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  passwordHash: text('password_hash').notNull(), // 🔐 Bcrypt hashed
   displayName: text('display_name').notNull(),
   role: text('role').notNull().default('agent'), // 'admin', 'agent' (simplified from 3-tier to 2-tier system)
   teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table (team functionality preserved)
@@ -26,21 +28,24 @@ export const agents = sqliteTable('agents', {
   lastLoginAt: text('last_login_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
 
 // Customers table - 平台客戶資訊表
+// ENCRYPTION NOTE: Consider encrypting email, phone, metadata for PII protection
 export const customers = sqliteTable('customers', {
   id: integer('id').primaryKey(),
   platform: text('platform').notNull(), // 'line', 'facebook', etc.
   platformUserId: text('platform_user_id').notNull(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
-  email: text('email'),
-  phone: text('phone'),
+  email: text('email'), // 📋 Consider encryption for PII
+  phone: text('phone'), // 📋 Consider encryption for PII
   sourceTeamId: integer('source_team_id').references(() => teams.id),
-  metadata: text('metadata'), // JSON string for platform-specific data
+  metadata: text('metadata'), // JSON string for platform-specific data (📋 may contain PII)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 }, (table) => ({
   platformUserUnique: unique().on(table.platform, table.platformUserId),
 }));
@@ -101,9 +106,12 @@ export const conversations = sqliteTable('conversations', {
   lastMessageAt: text('last_message_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
 
 // Messages table - 訊息
+// NOTE: replyToMessageId is a self-reference to messages.id
+// Foreign key constraint is enforced at application layer (see message-crud.ts)
 export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').notNull().references(() => conversations.id),
@@ -119,12 +127,13 @@ export const messages = sqliteTable('messages', {
   isSent: integer('is_sent', { mode: 'boolean' }).default(true),
   sentAt: text('sent_at'),
   deliveryStatus: text('delivery_status').default('delivered'),
-  replyToMessageId: text('reply_to_message_id'),
+  replyToMessageId: text('reply_to_message_id'), // Self-reference to messages.id (app-level FK)
   threadId: text('thread_id'),
   sessionId: text('session_id'),
   sessionSequence: integer('session_sequence').default(1),
   metadata: text('metadata'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
 
 // Delayed messages table - 延遲訊息
@@ -223,6 +232,7 @@ export const tags = sqliteTable('tags', {
   createdBy: text('created_by').notNull().references(() => agents.id),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 }, (table) => ({
   nameTeamUnique: unique().on(table.name, table.teamId),
 }));
@@ -282,39 +292,73 @@ export const metrics = sqliteTable('metrics', {
 });
 
 // Channel Integrations table - 渠道集成配置（多租户支持）
+// NOTE: Migration 0026 introduced JSON-based configuration for extensibility
+// Legacy platform-specific columns are preserved for backward compatibility
 export const channelIntegrations = sqliteTable('channel_integrations', {
   id: integer('id').primaryKey(),
   teamId: integer('team_id').notNull().references(() => teams.id),
 
   // Channel type
-  platform: text('platform').notNull(), // 'line', 'facebook', 'whatsapp'
+  platform: text('platform').notNull(), // 'line', 'facebook', 'whatsapp', 'telegram', etc.
 
-  // LINE-specific configuration
+  // ==================== NEW JSON-based Configuration (Migration 0026) ====================
+  // Platform-specific configuration (non-sensitive)
+  // LINE: { channelId: "xxx" }
+  // FB: { pageId: "xxx" }
+  // WA: { phoneNumber: "xxx", businessAccountId: "xxx" }
+  config: text('config'), // JSON
+
+  // Encrypted sensitive credentials
+  // LINE: { accessToken: "encrypted", secret: "encrypted" }
+  // FB: { accessToken: "encrypted", appSecret: "encrypted" }
+  // WA: { accessToken: "encrypted" }
+  credentials: text('credentials'), // JSON (encrypted)
+
+  // Unified webhook configuration
+  // { url: "https://...", token: "uuid" }
+  webhookConfig: text('webhook_config'), // JSON
+
+  // Consolidated usage statistics
+  // { totalSent: 0, totalReceived: 0, lastMessageAt: "timestamp" }
+  stats: text('stats'), // JSON
+
+  // ==================== LEGACY columns (deprecated, to be removed in 0027+) ====================
+  // @deprecated Use config.channelId instead
   lineChannelId: text('line_channel_id'),
-  lineChannelAccessToken: text('line_channel_access_token'), // Encrypted
-  lineChannelSecret: text('line_channel_secret'), // Encrypted
+  // @deprecated Use credentials.accessToken instead
+  lineChannelAccessToken: text('line_channel_access_token'),
+  // @deprecated Use credentials.secret instead
+  lineChannelSecret: text('line_channel_secret'),
+  // @deprecated Use webhookConfig.url instead
   lineWebhookUrl: text('line_webhook_url'),
-  lineWebhookToken: text('line_webhook_token'), // Random token for verification
+  // @deprecated Use webhookConfig.token instead
+  lineWebhookToken: text('line_webhook_token'),
 
-  // Facebook-specific configuration (future use)
+  // @deprecated Use config.pageId instead
   facebookPageId: text('facebook_page_id'),
+  // @deprecated Use credentials.accessToken instead
   facebookAccessToken: text('facebook_access_token'),
+  // @deprecated Use credentials.appSecret instead
   facebookAppSecret: text('facebook_app_secret'),
 
-  // WhatsApp-specific configuration (future use)
+  // @deprecated Use config.phoneNumber and config.businessAccountId instead
   whatsappPhoneNumber: text('whatsapp_phone_number'),
   whatsappBusinessAccountId: text('whatsapp_business_account_id'),
+  // @deprecated Use credentials.accessToken instead
   whatsappAccessToken: text('whatsapp_access_token'),
+
+  // @deprecated Use stats.totalSent instead
+  totalMessagesSent: integer('total_messages_sent').default(0),
+  // @deprecated Use stats.totalReceived instead
+  totalMessagesReceived: integer('total_messages_received').default(0),
+  // @deprecated Use stats.lastMessageAt instead
+  lastMessageAt: text('last_message_at'),
+  // ==================== End of LEGACY columns ====================
 
   // Configuration status
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   isVerified: integer('is_verified', { mode: 'boolean' }).default(false),
   lastVerifiedAt: text('last_verified_at'),
-
-  // Usage statistics
-  totalMessagesSent: integer('total_messages_sent').default(0),
-  totalMessagesReceived: integer('total_messages_received').default(0),
-  lastMessageAt: text('last_message_at'),
 
   // Configuration metadata
   configuredBy: text('configured_by').references(() => agents.id),
