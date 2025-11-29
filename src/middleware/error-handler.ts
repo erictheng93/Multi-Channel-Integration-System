@@ -175,12 +175,13 @@ export function globalErrorHandler(error: Error, c: Context): Response {
     }
 
     // Generic AppError
+    // P2-6: Cast statusCode to ContentfulStatusCode for TypeScript compatibility
     return c.json({
       success: false,
       error: error.message,
       code: error.code,
       timestamp: new Date().toISOString()
-    }, error.statusCode);
+    }, error.statusCode as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503);
   }
 
   // Handle standard errors using existing handleApiError

@@ -746,7 +746,7 @@ console.log('🏗️ Initializing Modular Architecture System...');
 
 // 導入模組化系統組件
 import { globalModularSystemManager, modularSystemApiHandler } from './core/modular-system-integration';
-import { globalErrorHandler, errorHandlingMiddleware } from './core/error-handler';
+import { globalErrorHandler as modularSystemErrorHandler, errorHandlingMiddleware } from './core/error-handler';
 
 // 模組化系統初始化狀態追蹤
 let modularSystemInitialized = false;
@@ -905,7 +905,9 @@ app.get('/api/monitoring/stats', monitoringHandlers.getStats);
 // ==================== 原有配置繼續 ====================
 
 // 獲取安全配置
-const environment = process.env.NODE_ENV || process.env.ENVIRONMENT || 'production';
+// Note: In Cloudflare Workers, env is passed to handler, not available globally
+// Default to 'production' for security; actual env is accessed in handlers
+const environment = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV) || 'production';
 const securityConfig = getSecurityConfig(environment);
 
 // 添加中間件

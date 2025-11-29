@@ -23,6 +23,5 @@ export { useFileUpload } from './useFileUpload'
 export { useAccountStatusMonitor } from './useAccountStatusMonitor'
 export { usePrefetch } from './usePrefetch'
 
-// 🆕 P1-2: New composables extracted from ConversationDetail.vue
-export { useConversationActions } from './useConversationActions'
-export { useMessageEventHandlers } from './useMessageEventHandlers'
+// P1-2 composables removed - require proper integration with existing types
+// TODO: Re-add useConversationActions and useMessageEventHandlers after type alignment

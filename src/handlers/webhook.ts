@@ -69,8 +69,9 @@ export const webhookHandler = {
       }
 
       // 🆕 P2-1: 使用共享簽名驗證服務
+      // P2-6: Use Array.from for better TypeScript compatibility
       const headers = Object.fromEntries(
-        [...c.req.raw.headers.entries()].map(([k, v]) => [k.toLowerCase(), v])
+        Array.from(c.req.raw.headers as unknown as Iterable<[string, string]>).map(([k, v]) => [k.toLowerCase(), v])
       );
 
       const signatureResult = await verifyWebhookSignature(

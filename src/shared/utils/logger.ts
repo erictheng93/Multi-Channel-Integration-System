@@ -2,10 +2,9 @@
  * Re-export from main utils to avoid code duplication
  * @deprecated Import directly from '@/utils/logger' for new code
  */
-export {
-  logger,
-  createContextLogger
-} from '../../utils/logger';
+import { logger as mainLogger, createContextLogger } from '../../utils/logger';
+
+export { mainLogger as logger, createContextLogger };
 
 export type {
   LogLevel,
@@ -13,4 +12,5 @@ export type {
   LoggerConfig
 } from '../../utils/logger';
 
-export default logger;
+// P2-6: Fixed default export to reference imported variable
+export default mainLogger;
