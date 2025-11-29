@@ -144,21 +144,19 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
-// NOTE: Database uses mixed column naming:
-//   - camelCase: mimeType, fileSize, fileUrl, r2Key, uploadStatus
-//   - snake_case: message_id, conversation_id, uploaded_by, created_at, updated_at
+// NOTE: All columns now use consistent snake_case naming (Migration 0025)
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),
-  conversationId: text('conversation_id').references(() => conversations.id), // Added: exists in DB
+  conversationId: text('conversation_id').references(() => conversations.id),
   filename: text('filename').notNull(),
-  mimeType: text('mimeType').notNull(), // Database column is camelCase
-  fileSize: integer('fileSize').notNull(), // Database column is camelCase
-  fileUrl: text('fileUrl'), // 公開訪問URL（主要使用此欄位）
-  r2Key: text('r2Key').notNull(), // Database column is camelCase
+  mimeType: text('mime_type').notNull(), // Standardized to snake_case (Migration 0025)
+  fileSize: integer('file_size').notNull(), // Standardized to snake_case (Migration 0025)
+  fileUrl: text('file_url'), // 公開訪問URL - Standardized to snake_case (Migration 0025)
+  r2Key: text('r2_key').notNull(), // Standardized to snake_case (Migration 0025)
   url: text('url'), // Legacy column - exists in DB
-  uploadStatus: text('uploadStatus').default('completed'), // 'pending', 'completed', 'failed'
-  uploadedBy: text('uploaded_by'), // Fixed: DB column is snake_case (uploaded_by)
+  uploadStatus: text('upload_status').default('completed'), // Standardized to snake_case (Migration 0025)
+  uploadedBy: text('uploaded_by'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at'),
 });

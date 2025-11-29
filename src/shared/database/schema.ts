@@ -267,16 +267,21 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
+// NOTE: All columns use consistent snake_case naming (Migration 0025)
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),
+  conversationId: text('conversation_id').references(() => conversations.id),
   filename: text('filename').notNull(),
   mimeType: text('mime_type').notNull(),
   fileSize: integer('file_size').notNull(),
   fileUrl: text('file_url'),
   r2Key: text('r2_key').notNull(),
   url: text('url'),
+  uploadStatus: text('upload_status').default('completed'),
+  uploadedBy: text('uploaded_by'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
 });
 
 // Conversation sessions table - 對話會話管理
