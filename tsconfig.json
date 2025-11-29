@@ -4,9 +4,10 @@
     "downlevelIteration": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    
-    // Strict Type Checking (temporarily relaxed for build success)
-    "strict": false,
+
+    // Strict Type Checking (P2-6: Progressive enablement)
+    // Phase 1: Enable strict base with safe options
+    "strict": true,
     "noImplicitAny": false,
     "strictNullChecks": false,
     "strictFunctionTypes": true,
@@ -15,8 +16,8 @@
     "noImplicitThis": true,
     "useUnknownInCatchVariables": true,
     "alwaysStrict": true,
-    
-    // Additional Checks
+
+    // Additional Checks (P2-6: Enabled safe checks)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "exactOptionalPropertyTypes": false,
@@ -26,7 +27,7 @@
     "noImplicitOverride": false,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
-    
+
     // Module Resolution
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
@@ -60,8 +61,7 @@
       "WebWorker"
     ],
     "types": [
-      "./worker-configuration.d.ts",
-      "node"
+      "./worker-configuration.d.ts"
     ],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"

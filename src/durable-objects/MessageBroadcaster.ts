@@ -48,7 +48,8 @@ export class MessageBroadcaster implements DurableObject {
     lastProcessed: Date.now(),
     eventsPerSecond: 0,
     averageLatency: 0,
-    queueDepth: 0
+    queueDepth: 0,
+    evictedEvents: 0  // P2-6: Added missing property for queue overflow tracking
   };
 
   // Configuration
