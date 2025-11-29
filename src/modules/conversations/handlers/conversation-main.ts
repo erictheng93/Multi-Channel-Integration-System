@@ -15,6 +15,7 @@ import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-
 import { successResponse, errorResponse, validationErrorResponse } from '@shared/utils/api-response';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { getSSECorsHeaders } from '@/config/cors';
+import { WebSocketAuthService } from '@/services/websocket-auth-service';
 
 const conversationHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -266,12 +267,19 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
     const conversationIdsArray = conversationIds as string[];
 
     switch (operation) {
-      case 'assign':
+      case 'assign': {
         if (!data?.userId && !data?.teamId) {
           return validationErrorResponse(c, [
             { field: 'data', message: 'User ID or Team ID is required for assignment' }
           ]);
         }
+
+        // 🆕 P1-4: Get old assignments for cache invalidation
+        const oldAssignments = await drizzleDb
+          .select({ id: conversations.id, assignedUserId: conversations.assignedUserId })
+          .from(conversations)
+          .where(inArray(conversations.id, conversationIdsArray));
+
         await drizzleDb.update(conversations)
           .set({
             assignedUserId: data.userId || null,
@@ -280,7 +288,30 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
             updatedAt: sql`datetime('now')`
           })
           .where(inArray(conversations.id, conversationIdsArray));
+
+        // 🆕 P1-4: Invalidate conversation cache for affected agents
+        const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+        const affectedAgentIds = new Set<string>();
+
+        // Collect old assigned agents
+        for (const conv of oldAssignments) {
+          if (conv.assignedUserId) {
+            affectedAgentIds.add(conv.assignedUserId);
+          }
+        }
+
+        // Add new assigned agent
+        if (data.userId) {
+          affectedAgentIds.add(data.userId);
+        }
+
+        // Invalidate cache for all affected agents
+        for (const agentId of affectedAgentIds) {
+          await authService.invalidateAgentConversationCache(agentId);
+        }
+        console.log(`🗑️  [Bulk Assign] Invalidated cache for ${affectedAgentIds.size} agent(s)`);
         break;
+      }
 
       case 'close':
         await drizzleDb.update(conversations)
@@ -644,6 +675,14 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
+    // 🆕 P1-4: Get old conversation to track previous assignment for cache invalidation
+    const oldConversation = await drizzleDb
+      .select({ assignedUserId: conversations.assignedUserId })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+    const oldAssignedUserId = oldConversation?.assignedUserId;
+
     console.log('🔧 [Assign API] Updating conversation:', {
       conversationId,
       teamId,
@@ -662,6 +701,21 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       .where(eq(conversations.id, conversationId));
 
     console.log('✅ [Assign API] Database UPDATE completed');
+
+    // 🆕 P1-4: Invalidate conversation cache for affected agents
+    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+
+    // Invalidate cache for previously assigned agent (if exists)
+    if (oldAssignedUserId && oldAssignedUserId !== userId) {
+      await authService.invalidateAgentConversationCache(oldAssignedUserId);
+      console.log(`🗑️  [Assign API] Invalidated conversation cache for old agent: ${oldAssignedUserId}`);
+    }
+
+    // Invalidate cache for newly assigned agent (if exists)
+    if (userId) {
+      await authService.invalidateAgentConversationCache(userId);
+      console.log(`🗑️  [Assign API] Invalidated conversation cache for new agent: ${userId}`);
+    }
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
     if (reason) {
@@ -851,6 +905,13 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       throw dbError;
     }
 
+    // 🆕 P1-4: Invalidate conversation cache for previously assigned agent
+    if (previousAssignment.userId) {
+      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+      await authService.invalidateAgentConversationCache(previousAssignment.userId);
+      console.log(`🗑️  [Unassign API] Invalidated conversation cache for agent: ${previousAssignment.userId}`);
+    }
+
     // 記錄取消指派歷史
     if (reason) {
       const transferRecord: NewConversationTransfer = {
@@ -957,6 +1018,13 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
+    // 🆕 P1-4: Get old conversation to track previous assignment for cache invalidation
+    const oldConversation = await drizzleDb
+      .select({ assignedUserId: conversations.assignedUserId })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
     await drizzleDb
       .update(conversations)
       .set({
@@ -966,6 +1034,22 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
         updatedAt: timestamp
       })
       .where(eq(conversations.id, conversationId));
+
+    // 🆕 P1-4: Invalidate conversation cache for affected agents
+    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+
+    // Invalidate cache for source agent (fromUserId or previous assignedUserId)
+    const sourceAgentId = fromUserId || oldConversation?.assignedUserId;
+    if (sourceAgentId) {
+      await authService.invalidateAgentConversationCache(sourceAgentId);
+      console.log(`🗑️  [Transfer API] Invalidated conversation cache for source agent: ${sourceAgentId}`);
+    }
+
+    // Invalidate cache for destination agent (toUserId)
+    if (toUserId && toUserId !== sourceAgentId) {
+      await authService.invalidateAgentConversationCache(toUserId);
+      console.log(`🗑️  [Transfer API] Invalidated conversation cache for destination agent: ${toUserId}`);
+    }
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
     const transferRecord: NewConversationTransfer = {
