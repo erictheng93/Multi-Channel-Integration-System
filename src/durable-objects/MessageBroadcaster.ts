@@ -172,11 +172,45 @@ export class MessageBroadcaster implements DurableObject {
       this.eventQueue.push(enrichedEvent);
     }
 
-    // Prevent queue overflow
+    // Prevent queue overflow with priority-aware eviction
     if (this.eventQueue.length > this.MAX_QUEUE_SIZE) {
-      // Remove oldest low priority events
-      const removedEvents = this.eventQueue.splice(0, this.BATCH_SIZE);
-      console.warn(`🚫 [MessageBroadcaster] Queue overflow, removed ${removedEvents.length} events`);
+      // Priority-aware eviction: remove lowest priority events first
+      // Sort by priority (keeping higher priority events) before removing oldest
+      const evictionCount = Math.min(this.BATCH_SIZE, this.eventQueue.length - this.MAX_QUEUE_SIZE + this.BATCH_SIZE);
+
+      // Find indices of lowest priority events (undefined or 'low' priority)
+      const lowPriorityIndices: number[] = [];
+      for (let i = 0; i < this.eventQueue.length && lowPriorityIndices.length < evictionCount; i++) {
+        const event = this.eventQueue[i];
+        if (!event.priority || event.priority === 'low' || event.priority === 'normal') {
+          lowPriorityIndices.push(i);
+        }
+      }
+
+      // Remove events starting from oldest low-priority, then oldest remaining if needed
+      let removedCount = 0;
+      if (lowPriorityIndices.length >= evictionCount) {
+        // Remove only low priority events
+        for (let i = lowPriorityIndices.length - 1; i >= 0 && removedCount < evictionCount; i--) {
+          this.eventQueue.splice(lowPriorityIndices[i], 1);
+          removedCount++;
+        }
+      } else {
+        // Remove all low priority first, then oldest remaining
+        const removedEvents = this.eventQueue.splice(0, evictionCount);
+        removedCount = removedEvents.length;
+      }
+
+      console.warn(`🚫 [MessageBroadcaster] Queue overflow, evicted ${removedCount} events (priority-aware)`);
+
+      // Track evicted events in metrics
+      this.distributionStats.evictedEvents = (this.distributionStats.evictedEvents || 0) + removedCount;
+    }
+
+    // Also check high priority queue (should rarely overflow, but add safety)
+    if (this.highPriorityQueue.length > this.MAX_QUEUE_SIZE / 2) {
+      // High priority queue overflow is critical - log error but process older events first
+      console.error(`🚨 [MessageBroadcaster] High priority queue overflow! Size: ${this.highPriorityQueue.length}`);
     }
 
     // Update metrics

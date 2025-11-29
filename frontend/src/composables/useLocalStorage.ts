@@ -1,5 +1,5 @@
 // 現代化 LocalStorage Composable
-import { ref, watch, type Ref } from 'vue'
+import { ref, watch, onScopeDispose, type Ref } from 'vue'
 
 export interface UseLocalStorageOptions<T> {
   defaultValue?: T
@@ -93,17 +93,11 @@ export function useLocalStorage<T>(
 
     window.addEventListener('storage', handleStorageChange)
 
-    // 清理監聽器
-    if (typeof window !== 'undefined') {
-      const cleanup = () => {
-        window.removeEventListener('storage', handleStorageChange)
-      }
-      
-      // 在組件卸載時清理
-      if (typeof window !== 'undefined') {
-        window.addEventListener('beforeunload', cleanup)
-      }
-    }
+    // Cleanup listener when composable scope is disposed (component unmounts)
+    // This prevents memory leaks from storage listeners accumulating
+    onScopeDispose(() => {
+      window.removeEventListener('storage', handleStorageChange)
+    })
   }
 
   // 設置值的方法
