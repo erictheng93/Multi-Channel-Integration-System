@@ -24,7 +24,7 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
+    "noImplicitOverride": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
 

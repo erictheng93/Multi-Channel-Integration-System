@@ -402,7 +402,8 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
   /**
    * Handle incoming HTTP requests
    */
-  async fetch(request: Request): Promise<Response> {
+  // P2-6: Added override modifier for strict mode compliance
+  override async fetch(request: Request): Promise<Response> {
     return this.app.fetch(request, this.env);
   }
 }
