@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { ReportsService } from '@modules/reports/services/reports-service';
-import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation } from '@modules/reports/types/report-types';
+import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation, ReportType } from '@modules/reports/types/report-types';
 
 // 中間件導入
 import {
@@ -396,10 +396,12 @@ reportsHandler.get(
   checkReportsViewPermission,
   async (c) => {
     try {
-      const reportType = c.req.param('type') as any;
+      const reportType = c.req.param('type');
       const reportsService = new ReportsService(c.env);
 
-      if (!reportType || !REPORT_TYPE_CONFIG[reportType]) {
+      // Type-safe check for valid report type
+      const isValidReportType = reportType && (reportType in REPORT_TYPE_CONFIG);
+      if (!isValidReportType) {
         return c.json({
           success: false,
           error: 'Invalid report type',
@@ -407,7 +409,7 @@ reportsHandler.get(
         }, 400);
       }
 
-      const templates = await reportsService.getAvailableTemplates(reportType);
+      const templates = await reportsService.getAvailableTemplates(reportType as ReportType);
 
       return c.json({
         success: true,
