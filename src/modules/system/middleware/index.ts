@@ -254,7 +254,7 @@ export function createSystemOperationMiddleware(
             'integrations' | 'metrics' | 'backup-create' | 'backup-restore' |
             'cache-manage' | 'system-restart' | 'advanced' | 'conversation',
   config: Partial<SystemMiddlewareConfig> = {}
-) {
+): Array<(c: unknown, next: () => Promise<void>) => Promise<void | Response>> {
   const finalConfig = { ...DEFAULT_SYSTEM_MIDDLEWARE_CONFIG, ...config };
 
   // 避免 unused variable 警告

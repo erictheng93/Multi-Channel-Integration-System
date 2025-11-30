@@ -310,10 +310,10 @@ export class StagedDeploymentService {
       stages: plan.stages.map(stage => ({
         name: stage.name,
         status: 'pending' as const,
-        startedAt: null,
-        completedAt: null,
+        startedAt: undefined,
+        completedAt: undefined,
         autoAdvance: stage.autoAdvance || false,
-        validation: { passed: false, results: [] }
+        validation: { passed: false, results: [] as Array<{ criterion: string; passed: boolean; value: number; threshold: number }> }
       })),
       metrics: [],
       issues: [],

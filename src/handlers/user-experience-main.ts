@@ -339,7 +339,7 @@ userExperienceHandler.get('/personal-dashboard', jwtAuth, async (c) => {
         'Consider using a wired connection for better stability',
         'Close unnecessary browser tabs to improve performance'
       ],
-      lastSurveyDate: null,
+      lastSurveyDate: null as string | null,
       nextSurveyEligible: true
     };
 

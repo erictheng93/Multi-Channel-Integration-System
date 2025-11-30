@@ -221,20 +221,20 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           id: messageId,
           conversationId: conversationId,
           senderType: 'agent' as const,
-          customerSenderId: null,
+          customerSenderId: null as string | null,
           agentSenderId: agentId,
           content: content || '',
           messageType: effectiveMessageType as 'text' | 'file',
-          platformMessageId: null,
+          platformMessageId: null as string | null,
           isRecalled: false,
-          recallDeadline: null,
-          recalledAt: null,
+          recallDeadline: null as string | null,
+          recalledAt: null as string | null,
           isSent: true,
-          sentAt: null,
+          sentAt: null as string | null,
           deliveryStatus: 'delivered' as const,
-          replyToMessageId: null,
-          threadId: null,
-          sessionId: null,
+          replyToMessageId: null as string | null,
+          threadId: null as string | null,
+          sessionId: null as string | null,
           sessionSequence: 1,
           metadata: metadata,
           createdAt: createdAt
@@ -242,7 +242,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // Store message in D1 database
         const db = createDbClient(this.env.DB);
-        await db.insert(messages).values(messageData);
+        await db.insert(messages).values(messageData as any);
 
         // 🔧 FIX: Link attachments to the message
         if (hasAttachments) {

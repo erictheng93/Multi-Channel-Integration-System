@@ -430,7 +430,7 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
       'DELAYED_MESSAGE_SCHEDULER'
     ];
 
-    const missingBindings = requiredBindings.filter(binding => !env[binding]);
+    const missingBindings = requiredBindings.filter(binding => !(env as unknown as Record<string, unknown>)[binding]);
 
     if (missingBindings.length > 0) {
       return {
@@ -641,7 +641,7 @@ async function checkDurableObjectDetailed(
   const startTime = Date.now();
 
   try {
-    const binding = env[bindingName];
+    const binding = (env as unknown as Record<string, unknown>)[bindingName];
     if (!binding) {
       return {
         healthy: false,
@@ -652,8 +652,9 @@ async function checkDurableObjectDetailed(
     }
 
     // Try to get an instance and ping it
-    const doId = binding.idFromName(testId);
-    const doInstance = binding.get(doId);
+    const doBinding = binding as DurableObjectNamespace;
+    const doId = doBinding.idFromName(testId);
+    const doInstance = doBinding.get(doId);
 
     const response = await doInstance.fetch(new Request('http://internal/metrics'));
     const responseTime = Date.now() - startTime;
