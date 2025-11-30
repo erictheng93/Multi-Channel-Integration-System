@@ -153,12 +153,15 @@ export const DEFAULT_SESSION_MIDDLEWARE_CONFIG: SessionMiddlewareConfig = {
   enableSizeLimit: true
 };
 
+// Middleware function type for session operations
+type MiddlewareFunction = (c: unknown, next: () => Promise<void>) => Promise<void | Response>;
+
 /**
  * 根據配置動態組合中間件
  */
-export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig> = {}) {
+export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig> = {}): MiddlewareFunction[] {
   const finalConfig = { ...DEFAULT_SESSION_MIDDLEWARE_CONFIG, ...config };
-  const middleware = [];
+  const middleware: MiddlewareFunction[] = [];
 
   if (finalConfig.enableSizeLimit) {
     // TODO: Implement validateRequestSize middleware
@@ -188,7 +191,7 @@ export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig>
 export function createSessionOperationMiddleware(
   operation: 'view' | 'create' | 'update' | 'delete' | 'stats' | 'batch' | 'list' | 'search',
   config: Partial<SessionMiddlewareConfig> = {}
-) {
+): MiddlewareFunction[] {
   const finalConfig = { ...DEFAULT_SESSION_MIDDLEWARE_CONFIG, ...config };
 
   switch (operation) {

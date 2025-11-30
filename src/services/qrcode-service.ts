@@ -195,7 +195,7 @@ export class QRCodeService {
       totalScans: 0,
       newCustomers: 0,
       conversionRate: 0,
-      topPerformingCodes: []
+      topPerformingCodes: [] as Array<{ id: string; name: string; scans: number }>
     };
   }
 

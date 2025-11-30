@@ -279,7 +279,7 @@ export class ModuleDiscovery {
         }
       };
 
-      const mockExports = {
+      const mockExports: Record<string, unknown> = {
         default: null // 實際的處理器會在這裡
       };
 

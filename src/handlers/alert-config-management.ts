@@ -358,16 +358,16 @@ alertConfigHandler.get('/channels/status', jwtAuth, async (c) => {
     const channelStatus = {
       slack: {
         configured: !!slackUrl,
-        configuredAt: null
+        configuredAt: null as string | null
       },
       email: {
         configured: !!emailConfigParsed,
-        configuredAt: emailConfigParsed?.configuredAt || null,
+        configuredAt: (emailConfigParsed?.configuredAt || null) as string | null,
         recipientCount: emailConfigParsed?.recipients?.length || 0
       },
       webhook: {
         configured: !!webhookUrl,
-        configuredAt: null
+        configuredAt: null as string | null
       }
     };
 

@@ -436,7 +436,7 @@ async function testLineIntegration(config: any, env: Bindings) {
       }
     }
 
-    const botInfo = await botInfoResponse.json().catch(e => {
+    const botInfo = await botInfoResponse.json().catch((e: Error): null => {
       console.error('Failed to parse bot info JSON:', e)
       return null
     })

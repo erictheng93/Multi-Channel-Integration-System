@@ -121,8 +121,8 @@ export class UploadHandler {
       const conversationId = formData.get('conversationId') as string;
       const messageId = formData.get('messageId') as string;
 
-      const results = [];
-      const errors = [];
+      const results: Array<Record<string, unknown>> = [];
+      const errors: Array<{ filename: string; error: string }> = [];
 
       // 並行上傳檔案
       const uploadPromises = files.map(async (file, index) => {

@@ -1340,7 +1340,7 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
       deliveryStatus: 'pending',
       isSent: false,
-      platformMessageId: null,
+      platformMessageId: null as string | null,
       metadata: parsedMetadata
     };
 
