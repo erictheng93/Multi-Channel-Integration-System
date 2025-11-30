@@ -196,7 +196,8 @@ export abstract class BaseServiceModule extends BaseModule {
   protected abstract configureService(): Promise<void>;
 
   // 獲取服務實例
-  getService(): any {
+  // P2-6: Added override modifier for strict mode compliance
+  override getService(): any {
     return this.service;
   }
 }

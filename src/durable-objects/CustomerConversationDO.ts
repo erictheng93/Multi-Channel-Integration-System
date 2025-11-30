@@ -36,7 +36,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * - /ws - WebSocket upgrade endpoint
    * - /notify-message - Notify about new message (for broadcasting)
    */
-  async fetch(request: Request): Promise<Response> {
+  // P2-6: Added override modifier for strict mode compliance
+  override async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
     // WebSocket upgrade endpoint
@@ -137,7 +138,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Handle incoming WebSocket messages
    * Currently not used - messages sent via HTTP API then broadcasted
    */
-  async webSocketMessage(ws: WebSocket, message: any) {
+  // P2-6: Added override modifier for strict mode compliance
+  override async webSocketMessage(ws: WebSocket, message: any) {
     console.log('[CustomerConversationDO] Received WebSocket message:', message);
     // Future: Handle client-side events (typing indicators, read receipts, etc.)
   }
