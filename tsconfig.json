@@ -6,9 +6,9 @@
     "moduleResolution": "Bundler",
 
     // Strict Type Checking (P2-6: Progressive enablement)
-    // Phase 1: Enable strict base with safe options
+    // Phase 2: Enable noImplicitAny for production code
     "strict": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "strictNullChecks": false,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
@@ -71,6 +71,9 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }
