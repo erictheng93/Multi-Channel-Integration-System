@@ -2,6 +2,59 @@
 import type { Context } from 'hono';
 import type { Bindings } from '../types';
 
+// ======================== 通用類型定義 ========================
+
+/**
+ * 配置值類型 (支持嵌套配置)
+ */
+export type ConfigValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ConfigValue[]
+  | { [key: string]: ConfigValue };
+
+/**
+ * 配置對象類型
+ */
+export type ConfigObject = Record<string, ConfigValue>;
+
+/**
+ * 日誌數據類型
+ */
+export type LogData = unknown;
+
+/**
+ * 事件載荷類型
+ */
+export type EventPayload = unknown;
+
+/**
+ * 服務類型 (泛型服務容器)
+ */
+export type ServiceInstance = unknown;
+
+/**
+ * 模組導出類型
+ */
+export type ModuleExports = Record<string, unknown>;
+
+/**
+ * 健康檢查詳情類型
+ */
+export type HealthCheckDetails = Record<string, string | number | boolean | null>;
+
+/**
+ * 模組統計信息類型
+ */
+export interface ModuleStats {
+  total: number;
+  byState: Record<string, number>;
+}
+
+// ======================== 模組接口定義 ========================
+
 // 模組元數據接口
 export interface ModuleMetadata {
   name: string;
@@ -11,7 +64,7 @@ export interface ModuleMetadata {
   dependencies: string[];
   optionalDependencies?: string[];
   exports: string[];
-  config?: Record<string, any>;
+  config?: ConfigObject;
   healthCheck?: string;
   apiPrefix?: string;
 }
@@ -28,9 +81,9 @@ export interface ModuleLifecycle {
 // 模組上下文
 export interface ModuleContext {
   module: ModuleMetadata;
-  dependencies: Map<string, any>;
+  dependencies: Map<string, ModuleExports>;
   services: ServiceRegistry;
-  config: Record<string, any>;
+  config: ConfigObject;
   logger: ModuleLogger;
   events: ModuleEventEmitter;
 }
@@ -39,7 +92,7 @@ export interface ModuleContext {
 export interface HealthStatus {
   status: 'healthy' | 'warning' | 'critical';
   message: string;
-  details?: Record<string, any>;
+  details?: HealthCheckDetails;
 }
 
 // 模組狀態
@@ -62,23 +115,23 @@ export interface ServiceRegistry {
   get<T>(name: string): T | undefined;
   has(name: string): boolean;
   remove(name: string): boolean;
-  getAll(): Map<string, any>;
+  getAll(): Map<string, ServiceInstance>;
 }
 
 // 模組日誌接口
 export interface ModuleLogger {
-  info(message: string, data?: any): void;
-  warn(message: string, data?: any): void;
-  error(message: string, error?: any): void;
-  debug(message: string, data?: any): void;
+  info(message: string, data?: LogData): void;
+  warn(message: string, data?: LogData): void;
+  error(message: string, error?: LogData): void;
+  debug(message: string, data?: LogData): void;
 }
 
 // 模組事件發送器
 export interface ModuleEventEmitter {
-  emit(event: string, data?: any): void;
-  on(event: string, listener: (data?: any) => void): void;
-  off(event: string, listener: (data?: any) => void): void;
-  once(event: string, listener: (data?: any) => void): void;
+  emit(event: string, data?: EventPayload): void;
+  on(event: string, listener: (data?: EventPayload) => void): void;
+  off(event: string, listener: (data?: EventPayload) => void): void;
+  once(event: string, listener: (data?: EventPayload) => void): void;
 }
 
 // 模組實例接口
@@ -87,7 +140,7 @@ export interface ModuleInstance {
   lifecycle: ModuleLifecycle;
   context: ModuleContext;
   state: ModuleState;
-  exports: Record<string, any>;
+  exports: ModuleExports;
   health: HealthStatus;
   lastHealthCheck: Date;
 }
@@ -170,13 +223,13 @@ export class DependencyResolver {
 
 // 服務註冊器實現
 export class ServiceRegistryImpl implements ServiceRegistry {
-  private services = new Map<string, any>();
+  private services = new Map<string, ServiceInstance>();
 
   register<T>(name: string, service: T): void {
     if (this.services.has(name)) {
       throw new Error(`Service '${name}' already registered`);
     }
-    this.services.set(name, service);
+    this.services.set(name, service as ServiceInstance);
   }
 
   get<T>(name: string): T | undefined {
@@ -191,7 +244,7 @@ export class ServiceRegistryImpl implements ServiceRegistry {
     return this.services.delete(name);
   }
 
-  getAll(): Map<string, any> {
+  getAll(): Map<string, ServiceInstance> {
     return new Map(this.services);
   }
 }
@@ -200,28 +253,31 @@ export class ServiceRegistryImpl implements ServiceRegistry {
 export class ModuleLoggerImpl implements ModuleLogger {
   constructor(private moduleName: string) {}
 
-  info(message: string, data?: any): void {
+  info(message: string, data?: LogData): void {
     console.log(`[${this.moduleName}] ℹ️ ${message}`, data || '');
   }
 
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: LogData): void {
     console.warn(`[${this.moduleName}] ⚠️ ${message}`, data || '');
   }
 
-  error(message: string, error?: any): void {
+  error(message: string, error?: LogData): void {
     console.error(`[${this.moduleName}] ❌ ${message}`, error || '');
   }
 
-  debug(message: string, data?: any): void {
+  debug(message: string, data?: LogData): void {
     console.debug(`[${this.moduleName}] 🐛 ${message}`, data || '');
   }
 }
 
+// 事件監聽器類型
+type EventListener = (data?: EventPayload) => void;
+
 // 模組事件發送器實現
 export class ModuleEventEmitterImpl implements ModuleEventEmitter {
-  private listeners = new Map<string, Array<(data?: any) => void>>();
+  private listeners = new Map<string, EventListener[]>();
 
-  emit(event: string, data?: any): void {
+  emit(event: string, data?: EventPayload): void {
     const eventListeners = this.listeners.get(event) || [];
     for (const listener of eventListeners) {
       try {
@@ -232,14 +288,14 @@ export class ModuleEventEmitterImpl implements ModuleEventEmitter {
     }
   }
 
-  on(event: string, listener: (data?: any) => void): void {
+  on(event: string, listener: EventListener): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
     this.listeners.get(event)!.push(listener);
   }
 
-  off(event: string, listener: (data?: any) => void): void {
+  off(event: string, listener: EventListener): void {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
       const index = eventListeners.indexOf(listener);
@@ -249,8 +305,8 @@ export class ModuleEventEmitterImpl implements ModuleEventEmitter {
     }
   }
 
-  once(event: string, listener: (data?: any) => void): void {
-    const onceListener = (data?: any) => {
+  once(event: string, listener: EventListener): void {
+    const onceListener: EventListener = (data?: EventPayload) => {
       listener(data);
       this.off(event, onceListener);
     };
@@ -288,7 +344,7 @@ export class ModuleLoader {
   async registerModule(
     metadata: ModuleMetadata,
     lifecycle: ModuleLifecycle,
-    exports: Record<string, any> = {}
+    exports: ModuleExports = {}
   ): Promise<void> {
     const moduleName = metadata.name;
 
@@ -484,10 +540,10 @@ export class ModuleLoader {
   /**
    * 獲取模組狀態統計
    */
-  getModuleStats(): Record<string, any> {
-    const stats = {
+  getModuleStats(): ModuleStats {
+    const stats: ModuleStats = {
       total: this.modules.size,
-      byState: {} as Record<string, number>
+      byState: {}
     };
 
     for (const instance of this.modules.values()) {
@@ -503,7 +559,7 @@ export class ModuleLoader {
   private startHealthMonitoring(): void {
     this.healthCheckTimer = setInterval(async () => {
       await this.performHealthChecks();
-    }, this.config.healthCheckInterval) as any;
+    }, this.config.healthCheckInterval) as unknown as number;
   }
 
   /**

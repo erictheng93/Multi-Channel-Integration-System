@@ -1,5 +1,5 @@
 // 模組模板和標準系統 - 標準化新模組開發
-import type { ModuleMetadata, ModuleLifecycle, ModuleContext, HealthStatus } from './module-architecture';
+import type { ModuleMetadata, ModuleLifecycle, ModuleContext, HealthStatus, HealthCheckDetails, ConfigValue } from './module-architecture';
 import type { Hono } from 'hono';
 import type { Bindings } from '../types';
 
@@ -72,7 +72,7 @@ export abstract class BaseModule implements ModuleLifecycle {
       return {
         status: 'critical',
         message: `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.stack : error }
+        details: { error: error instanceof Error ? (error.stack || error.message) : String(error) }
       };
     }
   }
@@ -83,7 +83,7 @@ export abstract class BaseModule implements ModuleLifecycle {
   protected abstract stopModule(): Promise<void>;
   protected abstract destroyModule(): Promise<void>;
   protected abstract performHealthCheck(): Promise<boolean>;
-  protected abstract getHealthDetails(): Promise<Record<string, any>>;
+  protected abstract getHealthDetails(): Promise<HealthCheckDetails>;
 
   // 便利方法
   protected getService<T>(name: string): T | undefined {
@@ -94,8 +94,9 @@ export abstract class BaseModule implements ModuleLifecycle {
     return this.context?.dependencies.get(name) as T | undefined;
   }
 
-  protected getConfig<T>(key: string, defaultValue?: T): T {
-    return this.context?.config[key] ?? defaultValue;
+  protected getConfig<T extends ConfigValue>(key: string, defaultValue?: T): T | undefined {
+    const value = this.context?.config[key];
+    return (value !== undefined ? value : defaultValue) as T | undefined;
   }
 }
 
