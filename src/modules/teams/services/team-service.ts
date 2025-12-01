@@ -278,8 +278,8 @@ export class TeamService implements TeamServiceInterface {
       role: agent.role,
       status: agent.isActive ? 'active' : 'inactive', // ✅ Add status
       isActive: agent.isActive,
-      lastActive: agent.lastActive ?? undefined,
-      joinedAt: agent.updatedAt ?? undefined,
+      lastActive: agent.lastActive,
+      joinedAt: agent.updatedAt,
       createdAt: agent.createdAt ?? undefined,
       updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     };
@@ -337,8 +337,8 @@ export class TeamService implements TeamServiceInterface {
       role: agent.role,
       status: agent.isActive ? 'active' : 'inactive', // ✅ Add status
       isActive: agent.isActive,
-      lastActive: agent.lastActive ?? undefined,
-      joinedAt: agent.createdAt ?? undefined,
+      lastActive: agent.lastActive,
+      joinedAt: agent.createdAt,
       createdAt: agent.createdAt ?? undefined,
       updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     };
@@ -361,8 +361,8 @@ export class TeamService implements TeamServiceInterface {
       role: agent.role,
       status: agent.isActive ? 'active' : 'inactive', // ✅ Add status field for frontend
       isActive: agent.isActive,
-      lastActive: agent.lastActive ?? undefined,
-      joinedAt: agent.createdAt ?? undefined,
+      lastActive: agent.lastActive,
+      joinedAt: agent.createdAt,
       createdAt: agent.createdAt ?? undefined,
       updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     }));
