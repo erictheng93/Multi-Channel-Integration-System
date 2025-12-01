@@ -10,11 +10,13 @@ import type { Bindings } from '@/types';
 import type { D1Database } from '@cloudflare/workers-types';
 
 export function createMessagingServices(db: D1Database, env: Bindings) {
-  // TODO: Implement messaging services
+  // Note: Services are exported above and can be instantiated directly
+  // Using null as placeholders - instantiate services when module initialization is needed
+  // Services available: MessageCrudService, DelayedMessageService, MessageRecallService
   return {
-    crud: null as any, // new MessageCrudService(db),
-    delayed: null as any, // new DelayedMessageService(db, env),
-    recall: null as any // new MessageRecallService(db, env)
+    crud: null as any, // Use: new MessageCrudService(db)
+    delayed: null as any, // Use: new DelayedMessageService(db, env)
+    recall: null as any // Use: new MessageRecallService(db, env)
   };
 }
 

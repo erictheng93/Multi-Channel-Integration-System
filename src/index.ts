@@ -1140,7 +1140,8 @@ console.log('✅ [Startup] WebSocket routes managed by Unified Route Registry');
 // ✅ SSE Monitoring, Realtime, Queue Monitor
 // 這些模組現在通過 RouteRegistry 自動註冊
 
-// 細粒度 Real-time 路由 - 保留以支援特定端點 (TODO: 考慮整合到 realtime handler)
+// 細粒度 Real-time 路由 - 保留以支援特定端點
+// Note: These routes are kept separate for explicit endpoint control
 import { realtime } from '@modules/realtime';
 // REMOVED: SSE routes (Phase 3 cleanup - SSE removed, WebSocket only)
 // app.get('/api/realtime/sse', realtime.handlers.sse.connect);
