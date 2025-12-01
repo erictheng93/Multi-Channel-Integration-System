@@ -72,7 +72,7 @@ conversationHandler.get('/stream', async (c) => {
     // 手動設置用戶到context
     c.set('user', user);
 
-    console.log('🔄 [SSE Stream] Starting SSE connection for user:', user.id);
+    log.info('SSE Stream starting connection', { userId: user.id });
 
     // 設定SSE headers（使用統一 CORS 配置）
     const sseCorsHeaders1 = getSSECorsHeaders(c.req.header('Origin'));
@@ -85,7 +85,7 @@ conversationHandler.get('/stream', async (c) => {
     // 創建可讀流
     const stream = new ReadableStream({
       start(controller) {
-        console.log('📡 [SSE Stream] Stream started');
+        log.debug('SSE Stream started');
 
         // 發送心跳
         const sendHeartbeat = () => {
@@ -109,7 +109,7 @@ conversationHandler.get('/stream', async (c) => {
           if (!isConnected) return;
 
           try {
-            console.log('📤 [SSE Stream] Sending conversation update');
+            log.debug('SSE Stream sending conversation update');
 
             // 獲取用戶可見的對話
             const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
@@ -213,7 +213,7 @@ conversationHandler.get('/stream', async (c) => {
           clearInterval(updateInterval);
           clearInterval(heartbeatInterval);
           controller.close();
-          console.log('🔌 [SSE Stream] Connection closed and cleaned up');
+          log.info('SSE Stream connection closed and cleaned up');
         };
 
         // 設定清理定時器 (5分鐘後自動斷開)
@@ -227,7 +227,7 @@ conversationHandler.get('/stream', async (c) => {
       },
 
       cancel() {
-        console.log('🚫 [SSE Stream] Stream cancelled');
+        log.info('SSE Stream cancelled');
         isConnected = false;
       }
     });
@@ -313,7 +313,7 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
         for (const agentId of affectedAgentIds) {
           await authService.invalidateAgentConversationCache(agentId);
         }
-        console.log(`🗑️  [Bulk Assign] Invalidated cache for ${affectedAgentIds.size} agent(s)`);
+        log.debug('Bulk Assign cache invalidated', { agentCount: affectedAgentIds.size });
         break;
       }
 
@@ -399,7 +399,7 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
         ]);
     }
 
-    console.log(`📦 [Conversations] Bulk ${operation} completed for ${conversationIdsArray.length} conversations`);
+    log.info('Conversations bulk operation completed', { operation, count: conversationIdsArray.length });
     return successResponse(c, {
       operation,
       affectedCount: conversationIdsArray.length,
@@ -417,14 +417,13 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
 // 🎯 新的專用訊息流 SSE 端點
 conversationHandler.get('/:conversationId/messages/stream', async (c) => {
   try {
-    console.log('🔍 [SSE Debug] Starting SSE endpoint handler');
+    log.debug('SSE endpoint handler starting');
 
     // 手動驗證token（EventSource 無法設置自定義 headers）
     const authHeader = c.req.header('Authorization');
     const token = c.req.query('token'); // 從 query 參數獲取 token
 
-    console.log('🔍 [SSE Debug] Auth header:', authHeader ? 'Present' : 'Missing');
-    console.log('🔍 [SSE Debug] Token query:', token ? 'Present' : 'Missing');
+    log.debug('SSE auth check', { authHeader: !!authHeader, tokenQuery: !!token });
 
     let authToken: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
@@ -441,7 +440,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       }, 401);
     }
 
-    console.log('🔍 [SSE Debug] Verifying JWT...');
+    log.debug('SSE verifying JWT');
 
     // 檢查環境變量
     if (!c.env.JWT_SECRET) {
@@ -456,22 +455,22 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
     // 驗證 JWT
     const payload = await verifyJWT(authToken, c.env.JWT_SECRET);
-    console.log('✅ [SSE Debug] JWT verified, userId:', payload.userId);
+    log.debug('SSE JWT verified', { userId: payload.userId });
 
     const user = await getUserById(c.env.DB, payload.userId);
-    console.log('✅ [SSE Debug] User fetched:', user.id, user.displayName);
+    log.debug('SSE user fetched', { userId: user.id, displayName: user.displayName });
 
     if (!user || !user.isActive) {
       return c.json({ error: 'Invalid or inactive user account' }, 401);
     }
 
     const conversationId = c.req.param('conversationId');
-    console.log(`📡 [SSE] Starting message stream for conversation: ${conversationId}, user: ${user.id}`);
+    log.info('SSE starting message stream', { conversationId, userId: user.id });
 
     // 🔒 權限檢查：用戶是否可以訪問這個對話
-    console.log('🔍 [SSE Debug] Checking permissions...');
+    log.debug('SSE checking permissions');
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
-    console.log(`✅ [SSE Debug] Visible conversations: ${visibleConversationIds.length} total`);
+    log.debug('SSE visible conversations', { count: visibleConversationIds.length });
 
     if (!visibleConversationIds.includes(conversationId)) {
       log.error('SSE Debug: Access denied to conversation', { conversationId });
@@ -481,7 +480,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       }, 403);
     }
 
-    console.log('✅ [SSE Debug] Permission check passed, creating SSE stream...');
+    log.debug('SSE permission check passed, creating stream');
 
     // 設置 SSE headers（使用統一 CORS 配置）
     const sseCorsHeaders3 = getSSECorsHeaders(c.req.header('Origin'));
@@ -496,7 +495,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     // 創建流
     const stream = new ReadableStream({
       start(controller) {
-        console.log(`🔌 [SSE] Stream established for conversation: ${conversationId}`);
+        log.info('SSE stream established', { conversationId });
 
         // 發送連接確認
         const connectionMessage = `data: ${JSON.stringify({
@@ -530,7 +529,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               })}\n\n`;
 
               controller.enqueue(new TextEncoder().encode(data));
-              console.log(`📤 [SSE] Sent ${initialMessages.length} initial messages for ${conversationId}`);
+              log.debug('SSE sent initial messages', { conversationId, count: initialMessages.length });
             } else {
               // 沒有訊息時也發送確認
               const data = `data: ${JSON.stringify({
@@ -542,7 +541,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               })}\n\n`;
 
               controller.enqueue(new TextEncoder().encode(data));
-              console.log(`📤 [SSE] No messages found for conversation ${conversationId}`);
+              log.debug('SSE no messages found', { conversationId });
             }
           } catch (error) {
             log.error('SSE: Error sending initial messages', { error: error instanceof Error ? error.message : String(error) });
@@ -571,7 +570,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               })}\n\n`;
 
               controller.enqueue(new TextEncoder().encode(data));
-              console.log(`📤 [SSE] Sent ${newMessages.length} new messages for ${conversationId}`);
+              log.debug('SSE sent new messages', { conversationId, count: newMessages.length });
             }
           } catch (error) {
             log.error('SSE: Error checking new messages', { error: error instanceof Error ? error.message : String(error) });
@@ -613,7 +612,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
           clearInterval(messageCheckInterval);
           clearInterval(heartbeatInterval);
           controller.close();
-          console.log(`🔌 [SSE] Stream closed for conversation: ${conversationId}`);
+          log.info('SSE stream closed', { conversationId });
         };
 
         // 5分鐘後自動斷開連接（防止資源洩漏）
@@ -627,7 +626,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       },
 
       cancel() {
-        console.log(`🚫 [SSE] Stream cancelled by client for conversation: ${conversationId}`);
+        log.info('SSE stream cancelled by client', { conversationId });
         isConnected = false;
       }
     });
@@ -684,7 +683,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       .get();
     const oldAssignedUserId = oldConversation?.assignedUserId;
 
-    console.log('🔧 [Assign API] Updating conversation:', {
+    log.info('Assign API updating conversation', {
       conversationId,
       teamId,
       userId,
@@ -701,7 +700,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       })
       .where(eq(conversations.id, conversationId));
 
-    console.log('✅ [Assign API] Database UPDATE completed');
+    log.debug('Assign API database UPDATE completed');
 
     // 🆕 P1-4: Invalidate conversation cache for affected agents
     const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
@@ -709,13 +708,13 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     // Invalidate cache for previously assigned agent (if exists)
     if (oldAssignedUserId && oldAssignedUserId !== userId) {
       await authService.invalidateAgentConversationCache(oldAssignedUserId);
-      console.log(`🗑️  [Assign API] Invalidated conversation cache for old agent: ${oldAssignedUserId}`);
+      log.debug('Assign API invalidated cache for old agent', { oldAssignedUserId });
     }
 
     // Invalidate cache for newly assigned agent (if exists)
     if (userId) {
       await authService.invalidateAgentConversationCache(userId);
-      console.log(`🗑️  [Assign API] Invalidated conversation cache for new agent: ${userId}`);
+      log.debug('Assign API invalidated cache for new agent', { userId });
     }
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
@@ -752,13 +751,13 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
         },
         priority: 'normal'
       });
-      console.log('✅ [WebSocket] Conversation assignment broadcasted');
+      log.debug('WebSocket conversation assignment broadcasted');
     } catch (broadcastError) {
       log.warn('WebSocket: Assignment broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 🔧 FIX: 获取并返回完整的对话对象
-    console.log('🔍 [Assign API] Fetching updated conversation with JOIN:', {
+    log.debug('Assign API fetching updated conversation with JOIN', {
       conversationId,
       expectedTeamId: teamId
     });
@@ -771,7 +770,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    console.log('📊 [Assign API] JOIN query result:', {
+    log.debug('Assign API JOIN query result', {
       hasResult: !!updatedConversation,
       hasConversation: !!updatedConversation?.conversations,
       hasTeam: !!updatedConversation?.teams,
@@ -802,7 +801,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       } : undefined
     };
 
-    console.log('✅ [Assign API] Conversation assigned successfully:', {
+    log.info('Assign API conversation assigned successfully', {
       id: conversationId,
       status: conversationData.status,
       assignedTeamId: conversationData.assignedTeamId,
@@ -876,7 +875,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       userId: conv.assignedUserId
     };
 
-    console.log('🗑️ [Unassign API] Unassigning conversation:', {
+    log.info('Unassign API unassigning conversation', {
       conversationId,
       previousAssignment,
       unassignedBy: user.displayName || user.id
@@ -896,7 +895,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
          WHERE id = ?`
       ).bind('active', timestamp, conversationId).run();
 
-      console.log('✅ [Unassign API] Database UPDATE completed (raw SQL)');
+      log.debug('Unassign API database UPDATE completed');
     } catch (dbError) {
       log.error('Unassign API: Database UPDATE failed', {
         error: dbError instanceof Error ? dbError.message : String(dbError),
@@ -909,7 +908,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
     if (previousAssignment.userId) {
       const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
       await authService.invalidateAgentConversationCache(previousAssignment.userId);
-      console.log(`🗑️  [Unassign API] Invalidated conversation cache for agent: ${previousAssignment.userId}`);
+      log.debug('Unassign API invalidated conversation cache', { agentId: previousAssignment.userId });
     }
 
     // 記錄取消指派歷史
@@ -949,7 +948,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
         },
         priority: 'high'
       });
-      console.log('✅ [WebSocket] Conversation unassignment broadcasted');
+      log.debug('WebSocket conversation unassignment broadcasted');
     } catch (broadcastError) {
       log.warn('WebSocket: Unassignment broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
@@ -977,7 +976,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       } : undefined
     };
 
-    console.log('✅ [Unassign API] Conversation unassigned successfully');
+    log.info('Unassign API conversation unassigned successfully');
 
     return c.json({
       success: true,
@@ -1042,13 +1041,13 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     const sourceAgentId = fromUserId || oldConversation?.assignedUserId;
     if (sourceAgentId) {
       await authService.invalidateAgentConversationCache(sourceAgentId);
-      console.log(`🗑️  [Transfer API] Invalidated conversation cache for source agent: ${sourceAgentId}`);
+      log.debug('Transfer API invalidated cache for source agent', { sourceAgentId });
     }
 
     // Invalidate cache for destination agent (toUserId)
     if (toUserId && toUserId !== sourceAgentId) {
       await authService.invalidateAgentConversationCache(toUserId);
-      console.log(`🗑️  [Transfer API] Invalidated conversation cache for destination agent: ${toUserId}`);
+      log.debug('Transfer API invalidated cache for destination agent', { toUserId });
     }
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
@@ -1091,7 +1090,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
         },
         priority: 'high'
       });
-      console.log('✅ [WebSocket] Conversation transfer broadcasted');
+      log.debug('WebSocket conversation transfer broadcasted');
     } catch (broadcastError) {
       log.warn('WebSocket: Transfer broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
@@ -1189,7 +1188,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
     const requestUrl = new URL(c.req.url);
     const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
     const fileUrl = `${baseUrl}/api/files/public/${r2Key}`;
-    console.log(`[Upload] Generated proxy URL: ${fileUrl}`);
+    log.debug('Upload generated proxy URL', { fileUrl });
 
     // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
     const attachmentId = `att_${timestamp}_${randomStr}`;
@@ -1229,28 +1228,25 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
 // 發送訊息 - Simplified with extracted services
 conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
   // 🔵 Phase 1 Emergency Debug Logging
-  console.log('🔵 [ENTRY] ========== MESSAGE HANDLER REACHED ==========');
-  console.log('🔵 [ENTRY] Timestamp:', new Date().toISOString());
-  console.log('🔵 [ENTRY] Conversation ID:', c.req.param('id'));
-  console.log('🔵 [ENTRY] Method:', c.req.method);
-  console.log('🔵 [ENTRY] Path:', c.req.path);
+  log.debug('MESSAGE HANDLER entry', {
+    timestamp: new Date().toISOString(),
+    conversationId: c.req.param('id'),
+    method: c.req.method,
+    path: c.req.path
+  });
 
   try {
-    console.log('🔵 [AUTH] Checking user context...');
+    log.debug('AUTH checking user context');
     const user = c.get('user');
-    console.log('🔵 [AUTH] User ID:', user?.id);
-    console.log('🔵 [AUTH] User Role:', user?.role);
-    console.log('🔵 [AUTH] User Name:', user?.displayName);
+    log.debug('AUTH user info', { userId: user?.id, role: user?.role, displayName: user?.displayName });
 
     // 1. Validate and parse request
-    console.log('🔵 [PARSE] Starting request validation...');
+    log.debug('PARSE starting request validation');
     const request = await MessageRequestService.validateAndParse(c);
-    console.log('🔵 [PARSE] Request validated successfully');
-    console.log('🔵 [PARSE] Content length:', request.content?.length);
-    console.log('🔵 [PARSE] Sender ID:', request.senderId);
+    log.debug('PARSE request validated', { contentLength: request.content?.length, senderId: request.senderId });
 
     // 2. Check permissions
-    console.log('🔵 [PERMISSION] Checking permissions...');
+    log.debug('PERMISSION checking permissions');
     const hasPermission = await PermissionService.checkPermission(
       user.id,
       'message',
@@ -1263,20 +1259,20 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       c.env.DB
     );
 
-    console.log('🔵 [PERMISSION] Permission check result:', hasPermission);
+    log.debug('PERMISSION check result', { hasPermission });
 
     if (!hasPermission) {
-      console.log('🔴 [PERMISSION] Permission denied for user:', user.id);
+      log.warn('PERMISSION denied', { userId: user.id });
       return errorResponse(c, user.role === 'agent'
         ? '權限不足，您無權對此訊息進行任何操作。只有指派給您的對話或團隊負責人能夠回覆未指派的對話。'
         : 'Permission denied', 403);
     }
 
     // 3. Send message (Async Pattern)
-    console.log('🔵 [SERVICE] Creating MessageService instance...');
+    log.debug('SERVICE creating MessageService instance');
     const messageService = new MessageService(c.env);
     
-    console.log('🔵 [SERVICE] Creating pending message...');
+    log.debug('SERVICE creating pending message');
     const result = await messageService.createPendingMessage(request);
 
     // 確保訊息已成功創建
@@ -1284,7 +1280,7 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       throw new Error('Failed to create pending message: missing messageId or message data');
     }
 
-    console.log('🔵 [SERVICE] Pending message created, ID:', result.messageId);
+    log.debug('SERVICE pending message created', { messageId: result.messageId });
 
     // 3.1 Broadcast Pending Message
     try {
@@ -1312,13 +1308,13 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
     }
 
     // 4. Trigger background sending
-    console.log('🔵 [BACKGROUND] Scheduling background delivery...');
+    log.debug('BACKGROUND scheduling background delivery');
     c.executionCtx.waitUntil(
       messageService.processBackgroundSending(result.messageId, request, user)
     );
 
     // 5. Return response immediately
-    console.log('🔵 [RESPONSE] Returning early success response...');
+    log.debug('RESPONSE returning early success response');
     
     // Transform to frontend format (Pending status)
     // ✅ Safe metadata parsing with error handling
@@ -1372,7 +1368,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
     const pageSize = Math.min(100, Math.max(1, parseInt(c.req.query('pageSize') || '30', 10)));
     const offset = (page - 1) * pageSize;
 
-    console.log(`📄 [Messages API] Getting messages for conversation ${conversationId}, page=${page}, pageSize=${pageSize}, offset=${offset}`);
+    log.debug('Messages API getting messages', { conversationId, page, pageSize, offset });
 
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(
@@ -1419,7 +1415,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       .get();
 
     const total = totalResult?.count || 0;
-    console.log(`📊 [Messages API] Total messages in conversation: ${total}`);
+    log.debug('Messages API total messages', { total });
 
     // 獲取分頁訊息（包含發送者資訊）
     const messageList = await drizzleDb
@@ -1464,7 +1460,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       .limit(pageSize)
       .offset(offset);
 
-    console.log(`📄 [Messages API] Retrieved ${messageList.length} messages for page ${page}`);
+    log.debug('Messages API retrieved messages', { count: messageList.length, page });
 
     // ✅ 轉換為前端期望的 Message 格式
     const formattedMessages = messageList.map(row => ({
@@ -1502,7 +1498,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       hasMore: page < totalPages
     };
 
-    console.log(`📊 [Messages API] Returning page ${page}/${totalPages}, ${formattedMessages.length} items, hasMore: ${paginatedResponse.hasMore}`);
+    log.debug('Messages API returning page', { page, totalPages, itemCount: formattedMessages.length, hasMore: paginatedResponse.hasMore });
 
     return c.json({
       success: true,
@@ -1608,18 +1604,15 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
 conversationHandler.get('/', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    console.log('🔍 [Conversation Handler] GET / - User authenticated:', user);
-    console.log('🔍 [Conversation Handler] User ID type:', typeof user.id, 'Value:', user.id);
-    console.log('🔍 [Conversation Handler] Calling PermissionService.getVisibleConversations...');
+    log.debug('Conversation Handler GET / - User authenticated', { userId: user.id, userIdType: typeof user.id });
 
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
 
-    console.log('📋 [Conversation Handler] Visible conversation IDs returned:', visibleConversationIds);
-    console.log('📊 [Conversation Handler] Total visible conversations:', visibleConversationIds.length);
+    log.debug('Conversation Handler visible conversations', { count: visibleConversationIds.length });
 
     // 如果沒有可見對話，返回空列表
     if (visibleConversationIds.length === 0) {
-      console.log('❌ [Conversation Handler] No visible conversations found, returning empty array');
+      log.debug('Conversation Handler no visible conversations found');
       return c.json({
         success: true,
         data: [],
@@ -1628,7 +1621,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 🔧 FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
-    console.log('🔍 [Conversation Handler] Querying conversation data with IDs:', visibleConversationIds);
+    log.debug('Conversation Handler querying conversation data');
     const drizzleDb = createDbClient(c.env.DB);
     const conversationResults = await drizzleDb
       .select()
@@ -1663,13 +1656,13 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       platformUserId: result.customers?.platformUserId
     }));
 
-    console.log('📊 [Conversation Handler] Retrieved conversation data:', conversationData);
+    log.debug('Conversation Handler retrieved conversation data', { count: conversationData.length });
 
     // ⚡ Enterprise Cache: Get latest messages using background job + cache system
     const { LatestMessageCache } = await import('../../../services/latest-message-cache');
     const latestMessageCache = new LatestMessageCache(c.env);
 
-    console.log('🚀 [Conversation Handler] Using enterprise cache for latest messages');
+    log.debug('Conversation Handler using enterprise cache for latest messages');
     const conversationIds = conversationData.map(c => c.id);
 
     const latestMessagesMap = await latestMessageCache.getLatestMessages(conversationIds);
