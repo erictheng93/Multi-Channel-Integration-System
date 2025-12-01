@@ -102,6 +102,7 @@ export class AgentService implements AgentServiceInterface {
           lastLoginAt: agents.lastLoginAt,
           createdAt: agents.createdAt,
           updatedAt: agents.updatedAt,
+          deletedAt: agents.deletedAt,
           teamName: teams.name,
         })
         .from(agents)
@@ -252,6 +253,7 @@ export class AgentService implements AgentServiceInterface {
           lastLoginAt: agents.lastLoginAt,
           createdAt: agents.createdAt,
           updatedAt: agents.updatedAt,
+          deletedAt: agents.deletedAt,
           teamName: teams.name,
         })
         .from(agents)
@@ -337,6 +339,7 @@ export class AgentService implements AgentServiceInterface {
           lastLoginAt: agents.lastLoginAt,
           createdAt: agents.createdAt,
           updatedAt: agents.updatedAt,
+          deletedAt: agents.deletedAt,
           teamName: teams.name,
         })
         .from(agents)
