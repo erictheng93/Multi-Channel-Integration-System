@@ -454,9 +454,48 @@ export interface TrendDataRow {
   count: number | null;
 }
 
+/**
+ * Conversation trend query result row
+ */
+export interface ConversationTrendRow {
+  timePeriod: string | null;
+  count: number | null;
+  activeCount: number | null;
+  closedCount: number | null;
+}
+
+/**
+ * Message volume trend query result row
+ */
+export interface MessageVolumeTrendRow {
+  timePeriod: string | null;
+  totalMessages: number | null;
+  customerMessages: number | null;
+  agentMessages: number | null;
+}
+
+/**
+ * User activity trend query result row
+ */
+export interface UserActivityTrendRow {
+  timePeriod: string | null;
+  totalActivities: number | null;
+  uniqueUsers: number | null;
+  messageActions: number | null;
+  conversationActions: number | null;
+}
+
 export interface DistributionRow {
   category: string | null;
   count: number | null;
+}
+
+/**
+ * Team distribution query result row (numeric category)
+ */
+export interface TeamDistributionRow {
+  category: number | null;
+  count: number;
 }
 
 export interface ConversationSummaryRow {
