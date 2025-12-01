@@ -3,6 +3,115 @@
 import type { TimeSeriesData, DistributionData, ComparisonData } from '@modules/analytics/types/analytics-types';
 import type { Metric, AggregatedMetric } from '@modules/analytics/types/metrics-types';
 
+// ======================== 基礎數據類型 ========================
+
+/**
+ * 圖表數據集項目
+ */
+export interface DatasetItem {
+  label: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string;
+  borderWidth?: number;
+  fill?: boolean;
+  tension?: number;
+}
+
+/**
+ * 基礎列定義 (用於簡單場景)
+ */
+export interface BaseColumn {
+  key: string;
+  label?: string;
+  title?: string;
+  id?: string;
+  dataIndex?: string;
+  type?: string;
+  sortable?: boolean;
+  filterable?: boolean;
+  width?: string | number;
+  align?: 'left' | 'center' | 'right';
+  format?: string;
+}
+
+/**
+ * 表格行數據
+ */
+export interface TableRow {
+  id: string | number;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+/**
+ * 閾值配置 (兼容 GaugeThreshold)
+ */
+export interface ThresholdConfig {
+  value: number;
+  status?: 'success' | 'warning' | 'danger' | 'info';
+  label?: string;
+  color?: string;
+}
+
+/**
+ * 分頁狀態 (用於數據響應)
+ */
+export interface PaginationState {
+  page?: number;
+  current?: number;
+  pageSize: number;
+  total: number;
+  totalPages?: number;
+}
+
+/**
+ * 趨勢數據
+ */
+export interface TrendData {
+  direction: 'up' | 'down' | 'stable';
+  value: number;
+  percentage?: number;
+  period?: string;
+}
+
+/**
+ * 狀態消息 (結構化格式)
+ */
+export interface StatusMessage {
+  type: 'success' | 'warning' | 'error' | 'info';
+  text: string;
+  timestamp?: string;
+}
+
+/**
+ * 狀態消息映射 (簡化格式：status -> message)
+ */
+export type StatusMessages = Record<string, StatusMessage | string>;
+
+/**
+ * 圖表選項
+ */
+export interface ChartOptions {
+  responsive?: boolean;
+  maintainAspectRatio?: boolean;
+  plugins?: Record<string, unknown>;
+  scales?: Record<string, unknown>;
+  animation?: boolean | Record<string, unknown>;
+}
+
+/**
+ * 小部件查詢配置
+ */
+export interface WidgetQuery {
+  type: string;
+  metrics?: string[];
+  filters?: Record<string, string | number | boolean>;
+  groupBy?: string[];
+  orderBy?: string;
+  limit?: number;
+  timeRange?: string;
+}
+
 /**
  * 儀表板配置
  */
@@ -76,15 +185,15 @@ export interface DashboardWidget {
   defaultTimeRange?: TimeRange;
   metric?: string;
   metrics?: string[];
-  filters?: Record<string, any>;
+  filters?: Record<string, string | number | boolean>;
   unit?: string;
   format?: string;
   chartConfig?: ChartConfig;
   tableConfig?: TableConfig;
   gaugeConfig?: GaugeConfig;
   progressConfig?: { target?: number; thresholds?: Array<{ value: number; status: string }> };
-  statusConfig?: { thresholds?: Array<{ min?: number; max?: number; status: string }>; messages?: any };
-  query?: any;
+  statusConfig?: { thresholds?: Array<{ min?: number; max?: number; status: string }>; messages?: StatusMessages };
+  query?: WidgetQuery;
 }
 
 /**
@@ -161,10 +270,10 @@ export interface WidgetConfig {
   // 額外的 widget 屬性
   metric?: string;
   metrics?: string[];
-  filters?: Record<string, any>;
+  filters?: Record<string, string | number | boolean>;
   unit?: string;
   format?: string;
-  query?: any;
+  query?: WidgetQuery;
 }
 
 /**
@@ -180,7 +289,7 @@ export interface ChartConfig {
   zoom?: ZoomConfig;
   brush?: BrushConfig;
   groupBy?: string[];
-  options?: any;
+  options?: ChartOptions;
 }
 
 /**
@@ -293,14 +402,16 @@ export interface TableConfig {
  * 表格列配置
  */
 export interface TableColumn {
-  id: string;
-  title: string;
-  dataIndex: string;
-  width?: number;
+  key?: string;
+  id?: string;
+  title?: string;
+  dataIndex?: string;
+  width?: number | string;
   align?: 'left' | 'center' | 'right';
   sortable?: boolean;
   filterable?: boolean;
   format?: string;
+  type?: string;
   render?: string; // 自定義渲染函數
 }
 
@@ -391,11 +502,16 @@ export interface AlertConfig {
 /**
  * 小部件數據源
  */
+/**
+ * 參數值類型
+ */
+export type ParameterValue = string | number | boolean | null | string[] | number[];
+
 export interface WidgetDataSource {
   type: DataSourceType;
   config: DataSourceConfig;
   query: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, ParameterValue>;
   cache?: CacheConfig;
 }
 
@@ -497,7 +613,7 @@ export type WidgetActionType =
  */
 export interface WidgetActionConfig {
   target?: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, ParameterValue>;
   script?: string;
   confirmation?: boolean;
   confirmationMessage?: string;
@@ -518,35 +634,35 @@ export interface DashboardData {
 export interface WidgetData {
   widgetId: string;
   type: string;
-  data: any;
+  data: TimeSeriesData[] | DistributionData[] | ComparisonData[] | Record<string, unknown>;
   error?: string;
   loading: boolean;
   lastUpdate: string;
   metadata: WidgetMetadata;
 
   // 數據字段
-  value?: any;
+  value?: number | string;
   labels?: string[];
-  datasets?: any[];
-  columns?: any[];
-  rows?: any[];
-  options?: any;
+  datasets?: DatasetItem[];
+  columns?: TableColumn[];
+  rows?: TableRow[];
+  options?: ChartOptions;
 
   // 特定類型的數據字段
-  previousValue?: any;
+  previousValue?: number | string;
   unit?: string;
   format?: string;
-  trend?: any;
+  trend?: TrendData;
   chartType?: string;
-  pagination?: any;
+  pagination?: PaginationState;
   current?: number;
   target?: number;
   percentage?: number;
   status?: string;
   min?: number;
   max?: number;
-  thresholds?: any[];
-  message?: any;
+  thresholds?: ThresholdConfig[];
+  message?: StatusMessages;
 }
 
 /**
@@ -561,7 +677,7 @@ export interface WidgetMetadata {
   refreshedAt: string;
   lastUpdated?: string;
   refreshInterval?: number;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -581,7 +697,7 @@ export interface DashboardMetadata {
  */
 export interface RealtimeUpdate {
   widgetId: string;
-  data: any;
+  data: TimeSeriesData[] | DistributionData[] | Record<string, unknown>;
   timestamp: string;
   type: 'full' | 'partial' | 'append' | 'prepend';
 }
@@ -630,7 +746,7 @@ export interface WidgetValidation {
     field: string;
     type: 'string' | 'number' | 'boolean' | 'array' | 'object';
     required: boolean;
-    allowedValues?: any[];
+    allowedValues?: (string | number | boolean)[];
     min?: number;
     max?: number;
   }>;

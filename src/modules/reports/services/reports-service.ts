@@ -296,7 +296,7 @@ export class ReportsService implements ReportsServiceInterface {
       endDate.setHours(23, 59, 59, 999);
     } else {
       // 預設時間範圍 - 支持簡化格式 (7d, 30d) 和完整格式 (last_7_days, last_30_days)
-      const days = {
+      const timeRangeMap: Record<string, number> = {
         // 簡化格式
         '24h': 1,
         '7d': 7,
@@ -308,8 +308,16 @@ export class ReportsService implements ReportsServiceInterface {
         'last_7_days': 7,
         'last_30_days': 30,
         'last_90_days': 90,
-        'last_year': 365
-      }[timeRange || '30d'] || 30;
+        'last_year': 365,
+        // 其他格式
+        'current_month': 30,
+        'last_month': 30,
+        'current_quarter': 90,
+        'last_quarter': 90,
+        'current_year': 365,
+        'custom': 30
+      };
+      const days = timeRangeMap[timeRange || '30d'] || 30;
 
       startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     }
@@ -428,7 +436,7 @@ export class ReportsService implements ReportsServiceInterface {
           conversationsHandled: stat.conversationCount,
           messagesSent: messageCount[0]?.total || 0,
           avgResponseTime: 0, // 簡化實作
-          satisfactionScore: null // 簡化實作
+          satisfactionScore: null as number | null // 簡化實作
         };
       })
     );
@@ -569,7 +577,7 @@ export class ReportsService implements ReportsServiceInterface {
         format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
         status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
         createdBy: report.createdBy,
-        createdAt: report.createdAt,
+        createdAt: report.createdAt || new Date().toISOString(),
         updatedAt: report.updatedAt || undefined,
         startedAt: report.generationStartedAt || undefined,
         completedAt: report.completedAt || undefined,
@@ -690,7 +698,7 @@ export class ReportsService implements ReportsServiceInterface {
         format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
         status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
         createdBy: report.createdBy,
-        createdAt: report.createdAt,
+        createdAt: report.createdAt || new Date().toISOString(),
         updatedAt: report.updatedAt || undefined,
         startedAt: report.generationStartedAt || undefined,
         completedAt: report.completedAt || undefined,
@@ -1210,7 +1218,9 @@ export class ReportsService implements ReportsServiceInterface {
       ]
     };
 
-    return templates[type] || [];
+    // Type-safe template lookup with fallback to empty array
+    const templateKey = type as keyof typeof templates;
+    return (templateKey in templates ? templates[templateKey] : []) as Array<{ name: string; description: string; options: any }>;
   }
 
   /**

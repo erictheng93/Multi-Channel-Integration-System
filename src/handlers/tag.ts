@@ -107,10 +107,10 @@ export const tagHandler = {
         color: row.color,
         description: row.description,
         teamId: row.teamId,
-        teamName: null, // Simplified without join
+        teamName: null as string | null, // Simplified without join
         isActive: Boolean(row.isActive),
         createdBy: row.createdBy,
-        createdByName: null, // Simplified without join
+        createdByName: null as string | null, // Simplified without join
         customerCount: 0, // Simplified without subquery
         conversationCount: 0, // Simplified without subquery
         createdAt: row.createdAt,

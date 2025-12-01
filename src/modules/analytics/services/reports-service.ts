@@ -16,7 +16,7 @@ import type {
   ReportQuery,
   ReportExportOptions
 } from '../types/reports-types';
-import { ReportStatus, GenerationStatus, ReportFormat, DataSourceType } from '@modules/analytics/types/reports-types';
+import { ReportStatus, GenerationStatus, ReportFormat, DataSourceType, BatchStatus } from '@modules/analytics/types/reports-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
 
 /**
@@ -378,7 +378,7 @@ export class ReportsService {
       const reportBatch: ReportBatch = {
         ...batch,
         id: batchId,
-        status: 'active' as any, // TODO: 修復類型定義
+        status: BatchStatus.Active,
         createdAt: now
       };
 

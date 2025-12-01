@@ -234,6 +234,9 @@ export class EventQueueService extends QueueBaseService {
       // ✅ 新架構: 直接通過 ConversationRoom DO 廣播
       if (conversationId) {
         // 對話級事件 → ConversationRoom DO
+        if (!this.env.CONVERSATION_ROOM) {
+          throw new Error('CONVERSATION_ROOM binding not configured');
+        }
         const roomKey = String(conversationId); // Ensure string type for idFromName
         const roomId = this.env.CONVERSATION_ROOM.idFromName(roomKey);
         const room = this.env.CONVERSATION_ROOM.get(roomId);
@@ -257,6 +260,9 @@ export class EventQueueService extends QueueBaseService {
         return 1;
       } else {
         // 全局事件 → MessageBroadcaster DO
+        if (!this.env.MESSAGE_BROADCASTER) {
+          throw new Error('MESSAGE_BROADCASTER binding not configured');
+        }
         const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
         const broadcaster = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
@@ -318,6 +324,9 @@ export class EventQueueService extends QueueBaseService {
         const { event, targets } = queueMessage;
 
         // ✅ 新架構: 使用 MessageBroadcaster DO 處理延遲事件
+        if (!this.env.MESSAGE_BROADCASTER) {
+          throw new Error('MESSAGE_BROADCASTER binding not configured');
+        }
         const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
         const broadcaster = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
@@ -364,6 +373,9 @@ export class EventQueueService extends QueueBaseService {
 
     try {
       // ✅ 新架構: 使用 MessageBroadcaster DO 批處理
+      if (!this.env.MESSAGE_BROADCASTER) {
+        throw new Error('MESSAGE_BROADCASTER binding not configured');
+      }
       const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
       const broadcaster = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 

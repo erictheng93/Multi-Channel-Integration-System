@@ -110,9 +110,13 @@ export class NotificationRepository {
     const whereConditions = [eq(notifications.userId, query.userId.toString())];
 
     // 排除過期通知
-    const expiredCondition1 = sql`expires_at IS NULL`;
-    const expiredCondition2 = sql`expires_at > datetime('now')`;
-    whereConditions.push(or(expiredCondition1, expiredCondition2));
+    const expiredCondition = or(
+      sql`expires_at IS NULL`,
+      sql`expires_at > datetime('now')`
+    );
+    if (expiredCondition) {
+      whereConditions.push(expiredCondition);
+    }
 
     // 通知類型篩選
     if (query.type) {
@@ -230,9 +234,13 @@ export class NotificationRepository {
     ];
 
     // 排除過期通知
-    const expiredCondition1 = sql`expires_at IS NULL`;
-    const expiredCondition2 = sql`expires_at > datetime('now')`;
-    whereConditions.push(or(expiredCondition1, expiredCondition2));
+    const expiredCondition = or(
+      sql`expires_at IS NULL`,
+      sql`expires_at > datetime('now')`
+    );
+    if (expiredCondition) {
+      whereConditions.push(expiredCondition);
+    }
 
     if (type) {
       whereConditions.push(eq(notifications.type, type));

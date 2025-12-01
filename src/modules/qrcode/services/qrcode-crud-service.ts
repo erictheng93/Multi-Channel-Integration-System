@@ -170,9 +170,9 @@ export class QRCodeCrudService implements IQRCodeService {
       const detailResponse: QRCodeDetailResponse = {
         id: qrCode.id,
         name: qrCode.campaignName || 'Unnamed QR Code',
-        description: qrCode.description,
+        description: qrCode.description ?? undefined,
         type: 'url' as const, // Default to URL type for LINE QR codes
-        content: qrCode.lineUrl,
+        content: qrCode.lineUrl || '',
         status: qrCode.isActive ? 'active' : 'disabled',
 
         // Generation settings with defaults
@@ -187,14 +187,14 @@ export class QRCodeCrudService implements IQRCodeService {
         borderWidth: 0,
 
         // Metadata
-        teamId: qrCode.teamId,
+        teamId: qrCode.teamId ?? undefined,
         createdBy: 0, // Not available in current schema
-        createdAt: qrCode.createdAt,
-        updatedAt: qrCode.updatedAt,
-        expiresAt: qrCode.expiresAt,
+        createdAt: qrCode.createdAt || new Date().toISOString(),
+        updatedAt: qrCode.updatedAt || new Date().toISOString(),
+        expiresAt: qrCode.expiresAt ?? undefined,
 
         // Statistics
-        scanCount: qrCode.usageCount,
+        scanCount: qrCode.usageCount || 0,
         lastScannedAt: undefined, // Not available in current schema
 
         // Additional settings
@@ -595,7 +595,6 @@ export class QRCodeCrudService implements IQRCodeService {
         dateFormat = '%Y-W%W';
       } else if (groupBy === 'month') {
         dateFormat = '%Y-%m';
-      // @ts-ignore - TypeScript 比較警告是誤報，這個 else if 鏈是有效的
       } else if (groupBy === 'year') {
         dateFormat = '%Y';
       }
@@ -834,7 +833,7 @@ export class QRCodeCrudService implements IQRCodeService {
       // For now, generate a simple URL QR code using the LINE URL from the schema
       const qrCodeImageData = await QRCodeGenerationService.generate(
         'url', // Default to URL type
-        qrCode.lineUrl, // Use the lineUrl from the schema
+        qrCode.lineUrl || '', // Use the lineUrl from the schema, fallback to empty string
         options
       );
 

@@ -342,3 +342,107 @@ export interface PerformanceBaseline {
   confidence: number; // 0-1
   sampleSize: number;
 }
+
+// =================== Internal Types for Performance Validation ===================
+
+/**
+ * Performance score breakdown
+ */
+export interface PerformanceScore {
+  overall: number;
+  latency: number;
+  throughput: number;
+  reliability: number;
+  efficiency: number;
+}
+
+/**
+ * Detailed analysis of WebSocket vs SSE comparison
+ */
+export interface PerformanceDetailedAnalysis {
+  websocketAdvantages: string[];
+  websocketDisadvantages: string[];
+  sseAdvantages: string[];
+  sseDisadvantages: string[];
+}
+
+/**
+ * Single validation result for a metric against SLA target
+ */
+export interface SLAValidationItem {
+  metric: string;
+  target: number;
+  actual: number;
+  passed: boolean;
+  score: number;
+}
+
+/**
+ * Validation results for a connection type
+ */
+export interface ConnectionValidationResult {
+  connectionType: string;
+  validations: SLAValidationItem[];
+  passed: boolean;
+  score: number;
+  passingCount: number;
+  totalCount: number;
+}
+
+/**
+ * Load test configuration
+ */
+export interface LoadTestConfig {
+  connectionType: 'websocket' | 'sse' | 'both';
+  duration: number;
+  concurrentUsers: number;
+  messagesPerUser: number;
+  rampUpTime: number;
+  includeStressTest: boolean;
+}
+
+/**
+ * Connection type load test result
+ */
+export interface ConnectionTypeLoadTestResult {
+  connectionType: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  averageLatency: number;
+  p95Latency: number;
+  p99Latency: number;
+  throughput: number;
+  peakConcurrentConnections: number;
+  errorRate: number;
+  resourceUtilization: {
+    cpu: number;
+    memory: number;
+  };
+}
+
+/**
+ * Load test summary aggregated across connection types
+ */
+export interface LoadTestSummary {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  averageLatency: number;
+  p95Latency: number;
+  p99Latency: number;
+  throughput: number;
+  errorRate: number;
+  peakConcurrentConnections: number;
+}
+
+/**
+ * Validation history entry
+ */
+export interface ValidationHistoryEntry {
+  timestamp: number;
+  connectionType: 'websocket' | 'sse' | 'both';
+  passed: boolean;
+  score: number;
+  metrics: PerformanceMetrics;
+}

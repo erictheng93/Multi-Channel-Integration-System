@@ -223,7 +223,7 @@ export class QRCodeGenerationEngine {
         size,
         foregroundColor,
         backgroundColor,
-        borderWidth,
+        borderWidth: borderWidth ?? 0,
         includeMargin
       });
 

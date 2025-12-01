@@ -68,7 +68,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
 
         // 從查詢參數獲取 token（主要用於 SSE）
         if (!token && authConfig.allowQueryToken) {
-          token = c.req.query('token');
+          token = c.req.query('token') ?? null;
         }
 
         // 驗證 token

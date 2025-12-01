@@ -344,7 +344,7 @@ channelHandler.get('/', async (c: Context) => {
     }
 
     // Admin users without teamId can access all channels or filter by teamId query param
-    let teamId: number | undefined = user.teamId;
+    let teamId: number | undefined = user.teamId ?? undefined;
 
     if (!teamId && user.role === 'admin') {
       const teamIdParam = c.req.query('teamId');
@@ -404,7 +404,7 @@ channelHandler.post('/', async (c: Context) => {
 
     // Admin users can create channels for any team
     // Use user.teamId or require teamId in request body
-    let teamId: number | undefined = user.teamId;
+    let teamId: number | undefined = user.teamId ?? undefined;
 
     if (!teamId) {
       // Admin without teamId must provide teamId in request

@@ -113,8 +113,8 @@ systemRouter.get(
         recent_activities: {
           failed_login_attempts: 0,
           suspicious_requests: 0,
-          blocked_ips: [],
-          security_alerts: []
+          blocked_ips: [] as string[],
+          security_alerts: [] as string[]
         },
         recommendations: [
           'All security measures are properly configured',
@@ -283,7 +283,7 @@ systemRouter.get(
       const logs = {
         level,
         total: 0,
-        logs: [],
+        logs: [] as Array<{ timestamp: string; level: string; message: string }>,
         pagination: {
           limit,
           offset,
@@ -325,9 +325,9 @@ systemRouter.post(
       console.log('Validating config:', config);  // 暫時使用
       const validation = {
         valid: true,
-        errors: [],
-        warnings: [],
-        suggestions: [],
+        errors: [] as string[],
+        warnings: [] as string[],
+        suggestions: [] as string[],
         timestamp: new Date().toISOString()
       };
 
@@ -374,7 +374,7 @@ systemRouter.get(
           disk_io: 'low',
           network_io: 'medium'
         },
-        recent_errors: [],
+        recent_errors: [] as Array<{ timestamp: string; error: string; severity: string }>,
         recommendations: [
           'System is operating within normal parameters'
         ]

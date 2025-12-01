@@ -48,6 +48,9 @@ export class ConversationSyncService {
   private onDataUpdate: ((conversations: Conversation[]) => void) | null = null
   private onStatusChange: ((status: SyncStatus) => void) | null = null
 
+  // Store visibility listener reference for cleanup
+  private visibilityChangeHandler: (() => void) | null = null
+
   constructor(config?: Partial<SyncConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config }
     this.setupVisibilityListener()
@@ -87,9 +90,18 @@ export class ConversationSyncService {
     this.closeWebSocket()
     this.stopPollbackup()
     this.stopReconnect()
+    this.removeVisibilityListener()
 
     this.setStatus('disconnected')
     this.errorMessage.value = null
+  }
+
+  // Remove visibility listener to prevent memory leaks
+  private removeVisibilityListener() {
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler)
+      this.visibilityChangeHandler = null
+    }
   }
 
   // 手動刷新
@@ -317,14 +329,20 @@ export class ConversationSyncService {
 
   // 監聽頁面可見性
   private setupVisibilityListener() {
-    document.addEventListener('visibilitychange', () => {
+    // Remove existing listener first to prevent duplicates
+    this.removeVisibilityListener()
+
+    // Create and store the handler for later cleanup
+    this.visibilityChangeHandler = () => {
       if (document.hidden) {
         console.log('👁️ [Sync Service] Page hidden, maintaining connection')
       } else {
         console.log('👁️ [Sync Service] Page visible, refreshing data')
         this.refresh()
       }
-    })
+    }
+
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler)
   }
 }
 

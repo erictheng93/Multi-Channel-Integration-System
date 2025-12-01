@@ -6,6 +6,7 @@ import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { QRCodeCrudService } from '@modules/qrcode/services/qrcode-crud-service';
 import { QRCodeGenerationService } from '@modules/qrcode/services/qrcode-generation-service';
+import { createContextLogger } from '@/utils/logger';
 import {
   SYSTEM_TEMPLATES,
   getTemplateById,
@@ -35,6 +36,9 @@ try {
 } catch {
   ERROR_MESSAGES = QR_ERROR_MESSAGES;
 }
+
+// Context logger for QRCode handler
+const log = createContextLogger('QRCodeHandler');
 
 // Helper functions for consistent API responses
 const successResponse = (c: Context, data: any, message = 'Success', status: number = 200) => {
@@ -93,7 +97,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR codes retrieved successfully');
     } catch (error) {
-      console.error('Error listing QR codes:', error);
+      log.error('Error listing QR codes:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -120,7 +124,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code created successfully', 201);
     } catch (error) {
-      console.error('Error creating QR code:', error);
+      log.error('Error creating QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -159,7 +163,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code retrieved successfully');
     } catch (error) {
-      console.error('Error getting QR code:', error);
+      log.error('Error getting QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -190,7 +194,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code updated successfully');
     } catch (error) {
-      console.error('Error updating QR code:', error);
+      log.error('Error updating QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -224,7 +228,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, null, 'QR code deleted successfully');
     } catch (error) {
-      console.error('Error deleting QR code:', error);
+      log.error('Error deleting QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -248,7 +252,7 @@ export class QRCodeMainHandler {
 
       return new Response(null, { status: qrCode ? 200 : 404 });
     } catch (error) {
-      console.error('Error checking QR code existence:', error);
+      log.error('Error checking QR code existence:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(null, { status: 500 });
     }
   }
@@ -274,7 +278,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code regenerated successfully');
     } catch (error) {
-      console.error('Error regenerating QR code:', error);
+      log.error('Error regenerating QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -319,7 +323,7 @@ export class QRCodeMainHandler {
         }
       });
     } catch (error) {
-      console.error('Error getting QR code image:', error);
+      log.error('Error getting QR code image:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -348,7 +352,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code statistics retrieved successfully');
     } catch (error) {
-      console.error('Error getting QR code statistics:', error);
+      log.error('Error getting QR code statistics:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -376,7 +380,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, null, 'Scan recorded successfully');
     } catch (error) {
-      console.error('Error recording scan:', error);
+      log.error('Error recording scan:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -403,7 +407,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'Search completed successfully');
     } catch (error) {
-      console.error('Error searching QR codes:', error);
+      log.error('Error searching QR codes:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -423,7 +427,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'Advanced search completed successfully');
     } catch (error) {
-      console.error('Error in advanced search:', error);
+      log.error('Error in advanced search:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -450,7 +454,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'Batch creation completed successfully');
     } catch (error) {
-      console.error('Error in batch create:', error);
+      log.error('Error in batch create:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -486,7 +490,7 @@ export class QRCodeMainHandler {
       // 重導向到內容
       return c.redirect(qrCode.content);
     } catch (error) {
-      console.error('Error in scan and redirect:', error);
+      log.error('Error in scan and redirect:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -544,7 +548,7 @@ export class QRCodeMainHandler {
         filename: `qrcode-${id}.${format}`
       }, 'Download link generated');
     } catch (error) {
-      console.error('Error downloading QR code:', error);
+      log.error('Error downloading QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -569,7 +573,7 @@ export class QRCodeMainHandler {
         previewMode: true
       }, 'QR code preview retrieved');
     } catch (error) {
-      console.error('Error previewing QR code:', error);
+      log.error('Error previewing QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -590,7 +594,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code enabled successfully');
     } catch (error) {
-      console.error('Error enabling QR code:', error);
+      log.error('Error enabling QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -609,7 +613,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'QR code disabled successfully');
     } catch (error) {
-      console.error('Error disabling QR code:', error);
+      log.error('Error disabling QR code:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -633,7 +637,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'Expiry date updated successfully');
     } catch (error) {
-      console.error('Error setting expiry:', error);
+      log.error('Error setting expiry:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -656,7 +660,7 @@ export class QRCodeMainHandler {
         pagination: { page, limit, total: 0 }
       }, 'Scan history retrieved');
     } catch (error) {
-      console.error('Error getting scan history:', error);
+      log.error('Error getting scan history:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -675,7 +679,7 @@ export class QRCodeMainHandler {
         ]
       }, 'Type distribution retrieved');
     } catch (error) {
-      console.error('Error getting type distribution:', error);
+      log.error('Error getting type distribution:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -690,7 +694,7 @@ export class QRCodeMainHandler {
         trends: []
       }, 'Scan trends retrieved');
     } catch (error) {
-      console.error('Error getting scan trends:', error);
+      log.error('Error getting scan trends:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -712,7 +716,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, `QR codes of type ${type} retrieved`);
     } catch (error) {
-      console.error('Error getting QR codes by type:', error);
+      log.error('Error getting QR codes by type:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -732,7 +736,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, `QR codes with tag ${tag} retrieved`);
     } catch (error) {
-      console.error('Error getting QR codes by tag:', error);
+      log.error('Error getting QR codes by tag:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -766,7 +770,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, { results, total: ids.length }, 'Batch update completed');
     } catch (error) {
-      console.error('Error in batch update:', error);
+      log.error('Error in batch update:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -798,7 +802,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, { results, total: ids.length }, 'Batch delete completed');
     } catch (error) {
-      console.error('Error in batch delete:', error);
+      log.error('Error in batch delete:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -834,7 +838,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, { results, total: ids.length }, 'Batch status update completed');
     } catch (error) {
-      console.error('Error in batch status update:', error);
+      log.error('Error in batch status update:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -888,7 +892,7 @@ export class QRCodeMainHandler {
         categories: getAllCategories()
       }, 'Templates retrieved successfully');
     } catch (error) {
-      console.error('Error getting templates:', error);
+      log.error('Error getting templates:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -952,7 +956,7 @@ export class QRCodeMainHandler {
         templateName: template.name
       }, 'QR code created from template successfully', 201);
     } catch (error) {
-      console.error('Error creating from template:', error);
+      log.error('Error creating from template:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -965,7 +969,7 @@ export class QRCodeMainHandler {
     try {
       return errorResponse(c, 'Template feature not implemented', 501);
     } catch (error) {
-      console.error('Error saving as template:', error);
+      log.error('Error saving as template:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -982,7 +986,7 @@ export class QRCodeMainHandler {
         tags: []
       }, 'Available tags retrieved');
     } catch (error) {
-      console.error('Error getting available tags:', error);
+      log.error('Error getting available tags:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1015,7 +1019,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'Tags added successfully');
     } catch (error) {
-      console.error('Error adding tags:', error);
+      log.error('Error adding tags:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1048,7 +1052,7 @@ export class QRCodeMainHandler {
 
       return successResponse(c, result, 'Tags removed successfully');
     } catch (error) {
-      console.error('Error removing tags:', error);
+      log.error('Error removing tags:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1063,7 +1067,7 @@ export class QRCodeMainHandler {
         stats: []
       }, 'Tag stats retrieved');
     } catch (error) {
-      console.error('Error getting tag stats:', error);
+      log.error('Error getting tag stats:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1218,7 +1222,7 @@ export class QRCodeMainHandler {
       }
 
     } catch (error) {
-      console.error('Error exporting data:', error);
+      log.error('Error exporting data:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1330,7 +1334,7 @@ export class QRCodeMainHandler {
       }
 
     } catch (error) {
-      console.error('Error exporting images:', error);
+      log.error('Error exporting images:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1343,7 +1347,7 @@ export class QRCodeMainHandler {
     try {
       return errorResponse(c, 'Export report feature not implemented', 501);
     } catch (error) {
-      console.error('Error exporting report:', error);
+      log.error('Error exporting report:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1374,7 +1378,7 @@ export class QRCodeMainHandler {
         createdAt: qrCode.createdAt
       }, 'Public info retrieved');
     } catch (error) {
-      console.error('Error getting public info:', error);
+      log.error('Error getting public info:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1400,7 +1404,7 @@ export class QRCodeMainHandler {
         systemHealth: 'good'
       }, 'System stats retrieved');
     } catch (error) {
-      console.error('Error getting system stats:', error);
+      log.error('Error getting system stats:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1421,7 +1425,7 @@ export class QRCodeMainHandler {
         cleanedCount: 0
       }, 'Cleanup completed');
     } catch (error) {
-      console.error('Error cleaning up:', error);
+      log.error('Error cleaning up:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }
@@ -1442,7 +1446,7 @@ export class QRCodeMainHandler {
         rebuilt: true
       }, 'Cache rebuilt successfully');
     } catch (error) {
-      console.error('Error rebuilding cache:', error);
+      log.error('Error rebuilding cache:', { error: error instanceof Error ? error.message : String(error) });
       return errorResponse(c, ERROR_MESSAGES.SERVER_ERROR, 500);
     }
   }

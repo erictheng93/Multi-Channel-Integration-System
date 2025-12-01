@@ -22,3 +22,6 @@ export { useDelayedMessages } from './useDelayedMessages'
 export { useFileUpload } from './useFileUpload'
 export { useAccountStatusMonitor } from './useAccountStatusMonitor'
 export { usePrefetch } from './usePrefetch'
+
+// Note: P1-2 composables (useConversationActions, useMessageEventHandlers) removed
+// These can be re-added when integration with existing types is completed

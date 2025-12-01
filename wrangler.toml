@@ -9,6 +9,14 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+# Logging Configuration (P2-6)
+# Options: "debug" | "info" | "warn" | "error" | "fatal" | "silent"
+# - debug: All logs (development only)
+# - info: General info + warnings + errors (default for production)
+# - warn: Warnings + errors only
+# - error: Errors only
+# - silent: No console output
+LOG_LEVEL = "info"
 
 # 🆕 Presigned URL Configuration (Direct Upload to R2)
 # R2_ACCOUNT_ID and R2_BUCKET_NAME are stored as secrets (wrangler secret put)

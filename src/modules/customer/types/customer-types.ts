@@ -12,8 +12,8 @@ export interface Customer {
   phone: string | null;
   sourceTeamId: number | null;
   metadata: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 // 客戶詳細信息 (包含關聯數據)
@@ -149,7 +149,7 @@ export interface CustomerRecentMessage {
   senderType: 'customer' | 'agent';
   content: string;
   messageType: 'text' | 'image' | 'file' | 'sticker';
-  createdAt: string;
+  createdAt: string | null;
 }
 
 // ======================== API 響應類型 ========================

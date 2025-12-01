@@ -2,13 +2,26 @@
 // 整合來自 session、activities、enterprise 模組的分析功能
 
 import { createDbClient, type Database } from '@/db/drizzle-factory';
-import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte, type SQL } from 'drizzle-orm';
 import type { Bindings } from '@/types';
 import type { ServiceResponse } from '@/types/services';
+
+/**
+ * Type alias for SQL WHERE conditions
+ * Represents an array of conditions that can be passed to drizzle's and() function
+ */
+type SQLConditions = ReturnType<typeof and>[];
+
+/**
+ * Type for SQL time group expressions
+ */
+type SQLTimeGroup = SQL<string>;
 
 import type {
   AnalyticsServiceInterface,
   AnalyticsResult,
+  AnalyticsQuery,
+  AnalyticsFilters,
   ConversationAnalyticsQuery,
   ConversationAnalytics,
   MessageAnalyticsQuery,
@@ -23,7 +36,14 @@ import type {
   AnalyticsServiceConfig,
   TimeSeriesData,
   DistributionData,
-  ComparisonData
+  ComparisonData,
+  WhereConditionContext,
+  TrendDataRow,
+  DistributionRow,
+  TeamDistributionRow,
+  ConversationTrendRow,
+  MessageVolumeTrendRow,
+  UserActivityTrendRow
 } from '../types/analytics-types';
 
 import {
@@ -52,7 +72,7 @@ import type { Period, ComparisonData as PeriodComparisonData } from '@modules/an
 export class AnalyticsService implements AnalyticsServiceInterface {
   private db: Database;
   private kv?: Bindings['KV'];
-  private env: any;
+  private env?: Bindings;
   private config: AnalyticsServiceConfig;
   private cacheService?: AnalyticsCacheService;
   private comparisonService: PeriodComparisonService;
@@ -65,6 +85,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
     // 初始化快取服務（如果有 KV）
     if (this.kv) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- KVNamespace type compatibility between different @cloudflare/workers-types versions
       this.cacheService = new AnalyticsCacheService(this.kv as any, {
         defaultTTL: 300,    // 5 minutes
         shortTTL: 60,       // 1 minute
@@ -161,10 +182,17 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
 
         // 將 ServiceResponse 轉換為 AnalyticsResult 進行緩存
+        const meta = serviceResponse.metadata;
         const analyticsResult: AnalyticsResult<ConversationAnalytics> = {
           success: serviceResponse.success,
           data: serviceResponse.data!,
-          metadata: serviceResponse.metadata as any
+          metadata: {
+            totalRecords: typeof meta?.totalRecords === 'number' ? meta.totalRecords : 0,
+            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : new Date().toISOString(),
+            queryTime: typeof meta?.queryTime === 'number' ? meta.queryTime : 0,
+            cacheHit: typeof meta?.cacheHit === 'boolean' ? meta.cacheHit : undefined,
+            aggregationLevel: meta?.aggregationLevel as AnalyticsResult<ConversationAnalytics>['metadata']['aggregationLevel']
+          }
         };
 
         const ttl = this.cacheService.getTTLForQueryType('conversation', query.timeRange);
@@ -272,10 +300,17 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
 
         // 將 ServiceResponse 轉換為 AnalyticsResult 進行緩存
+        const meta = serviceResponse.metadata;
         const analyticsResult: AnalyticsResult<MessageAnalytics> = {
           success: serviceResponse.success,
           data: serviceResponse.data!,
-          metadata: serviceResponse.metadata as any
+          metadata: {
+            totalRecords: typeof meta?.totalRecords === 'number' ? meta.totalRecords : 0,
+            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : new Date().toISOString(),
+            queryTime: typeof meta?.queryTime === 'number' ? meta.queryTime : 0,
+            cacheHit: typeof meta?.cacheHit === 'boolean' ? meta.cacheHit : undefined,
+            aggregationLevel: meta?.aggregationLevel as AnalyticsResult<MessageAnalytics>['metadata']['aggregationLevel']
+          }
         };
 
         const ttl = this.cacheService.getTTLForQueryType('message', query.timeRange);
@@ -509,7 +544,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
   async exportAnalytics(query: ExportQuery): Promise<ServiceResponse<ExportResult>> {
     try {
       // 根據查詢類型獲取數據
-      let data: any;
+      let data: ServiceResponse<ConversationAnalytics> | ServiceResponse<MessageAnalytics> | ServiceResponse<UserAnalytics>;
       const metrics = query.metrics || [];
 
       // 檢查是否包含對話相關指標
@@ -567,7 +602,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
   // 私有方法實現 ...
 
-  private validateQuery(query: any): void {
+  private validateQuery(query: AnalyticsQuery): void {
     if (!query.timeRange && !query.startDate) {
       throw new QueryValidationError('Either timeRange or startDate must be provided');
     }
@@ -622,8 +657,8 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private buildWhereConditions(filters: any, context: any): any[] {
-    const conditions = [];
+  private buildWhereConditions(filters: AnalyticsFilters | undefined, context: WhereConditionContext): ReturnType<typeof and>[] {
+    const conditions: ReturnType<typeof and>[] = [];
 
     // 時間範圍條件
     if (context.startDate) {
@@ -679,7 +714,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     return conditions;
   }
 
-  private async getConversationSummary(whereConditions: any[], metrics: string[]): Promise<any> {
+  private async getConversationSummary(whereConditions: SQLConditions, metrics: string[]): Promise<ConversationAnalytics['summary']> {
     // 實現對話摘要統計
     const results = await this.db
       .select({
@@ -705,14 +740,14 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private async getConversationTrends(whereConditions: any[], timeRange: string): Promise<TimeSeriesData[]> {
+  private async getConversationTrends(whereConditions: SQLConditions, timeRange: string): Promise<TimeSeriesData[]> {
     try {
       // 根據時間範圍決定聚合級別
       const aggregation = this.getAggregationInterval(timeRange);
       const { startDate, endDate } = this.buildTimeRange(timeRange);
 
       // 使用 SQL 進行時間聚合
-      let timeGroupSQL: any;
+      let timeGroupSQL: SQLTimeGroup;
       switch (aggregation) {
         case 'hourly':
           timeGroupSQL = sql`strftime('%Y-%m-%d %H:00:00', ${conversations.createdAt})`;
@@ -744,10 +779,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         .orderBy(asc(timeGroupSQL));
 
       // 轉換為 TimeSeriesData 格式
-      return trendData.map((row: any) => ({
-        timestamp: row.timePeriod,
+      return trendData.map((row: ConversationTrendRow) => ({
+        timestamp: row.timePeriod || '',
         value: row.count || 0,
-        label: this.formatTimeLabel(row.timePeriod, aggregation),
+        label: this.formatTimeLabel(row.timePeriod || '', aggregation),
         metadata: {
           activeConversations: row.activeCount || 0,
           closedConversations: row.closedCount || 0,
@@ -794,7 +829,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     }
   }
 
-  private async getConversationDistributions(whereConditions: any[]): Promise<DistributionData[]> {
+  private async getConversationDistributions(whereConditions: SQLConditions): Promise<DistributionData[]> {
     try {
       const distributions: DistributionData[] = [];
 
@@ -817,13 +852,14 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         .where(and(...whereConditions))
         .groupBy(conversations.status);
 
-      statusDist.forEach((row: any) => {
+      statusDist.forEach((row: DistributionRow) => {
+        const countValue = row.count || 0;
         distributions.push({
           category: 'status',
-          value: row.count || 0,
-          percentage: Math.round((row.count / total) * 10000) / 100,
-          label: this.getStatusLabel(row.category),
-          color: this.getStatusColor(row.category)
+          value: countValue,
+          percentage: Math.round((countValue / total) * 10000) / 100,
+          label: this.getStatusLabel(row.category || ''),
+          color: this.getStatusColor(row.category || '')
         });
       });
 
@@ -837,13 +873,14 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         .where(and(...whereConditions))
         .groupBy(conversations.priority);
 
-      priorityDist.forEach((row: any) => {
+      priorityDist.forEach((row: DistributionRow) => {
+        const countValue = row.count || 0;
         distributions.push({
           category: 'priority',
-          value: row.count || 0,
-          percentage: Math.round((row.count / total) * 10000) / 100,
-          label: this.getPriorityLabel(row.category),
-          color: this.getPriorityColor(row.category)
+          value: countValue,
+          percentage: Math.round((countValue / total) * 10000) / 100,
+          label: this.getPriorityLabel(row.category || ''),
+          color: this.getPriorityColor(row.category || '')
         });
       });
 
@@ -857,14 +894,14 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         .where(and(...whereConditions))
         .groupBy(conversations.assignedTeamId);
 
-      teamDist.forEach((row: any) => {
+      teamDist.forEach((row: TeamDistributionRow) => {
         const teamId = row.category;
         distributions.push({
           category: 'team',
           value: row.count || 0,
           percentage: Math.round((row.count / total) * 10000) / 100,
           label: teamId ? `Team ${teamId}` : 'Unassigned',
-          color: this.getTeamColor(teamId)
+          color: this.getTeamColor(teamId ?? 0)
         });
       });
 
@@ -919,7 +956,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     return colors[teamId % colors.length];
   }
 
-  private async getConversationComparisons(whereConditions: any[], timeRange: string): Promise<ComparisonData[]> {
+  private async getConversationComparisons(whereConditions: SQLConditions, timeRange: string): Promise<ComparisonData[]> {
     try {
       // 使用 Period Comparison Service 進行比較
       const { currentPeriod, previousPeriod } = this.calculatePreviousPeriod(timeRange);
@@ -1057,7 +1094,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private async getMessageSummary(whereConditions: any[], metrics: string[]): Promise<any> {
+  private async getMessageSummary(whereConditions: SQLConditions, metrics: string[]): Promise<MessageAnalytics['summary']> {
     // 實現消息摘要統計
     return {
       totalMessages: 0,
@@ -1069,13 +1106,13 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private async getMessageVolumeTrends(whereConditions: any[], timeRange: string): Promise<TimeSeriesData[]> {
+  private async getMessageVolumeTrends(whereConditions: SQLConditions, timeRange: string): Promise<TimeSeriesData[]> {
     try {
       // 根據時間範圍決定聚合級別
       const aggregation = this.getAggregationInterval(timeRange);
 
       // 使用 SQL 進行時間聚合
-      let timeGroupSQL: any;
+      let timeGroupSQL: SQLTimeGroup;
       switch (aggregation) {
         case 'hourly':
           timeGroupSQL = sql`strftime('%Y-%m-%d %H:00:00', ${messages.createdAt})`;
@@ -1107,10 +1144,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         .orderBy(asc(timeGroupSQL));
 
       // 轉換為 TimeSeriesData 格式
-      return volumeData.map((row: any) => ({
-        timestamp: row.timePeriod,
+      return volumeData.map((row: MessageVolumeTrendRow) => ({
+        timestamp: row.timePeriod || '',
         value: row.totalMessages || 0,
-        label: this.formatTimeLabel(row.timePeriod, aggregation),
+        label: this.formatTimeLabel(row.timePeriod || '', aggregation),
         metadata: {
           customerMessages: row.customerMessages || 0,
           agentMessages: row.agentMessages || 0,
@@ -1123,19 +1160,19 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     }
   }
 
-  private async getMessageTypeDistribution(whereConditions: any[]): Promise<DistributionData[]> {
+  private async getMessageTypeDistribution(whereConditions: SQLConditions): Promise<DistributionData[]> {
     return [];
   }
 
-  private async getMessageChannelDistribution(whereConditions: any[]): Promise<DistributionData[]> {
+  private async getMessageChannelDistribution(whereConditions: SQLConditions): Promise<DistributionData[]> {
     return [];
   }
 
-  private async getMessageSentimentDistribution(whereConditions: any[]): Promise<DistributionData[]> {
+  private async getMessageSentimentDistribution(whereConditions: SQLConditions): Promise<DistributionData[]> {
     return [];
   }
 
-  private async getUserSummary(whereConditions: any[], metrics: string[], userType?: string): Promise<any> {
+  private async getUserSummary(whereConditions: SQLConditions, metrics: string[], userType?: string): Promise<UserAnalytics['summary']> {
     return {
       totalUsers: 0,
       activeUsers: 0,
@@ -1145,13 +1182,13 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private async getUserActivityTrends(whereConditions: any[], timeRange: string): Promise<TimeSeriesData[]> {
+  private async getUserActivityTrends(whereConditions: SQLConditions, timeRange: string): Promise<TimeSeriesData[]> {
     try {
       // 根據時間範圍決定聚合級別
       const aggregation = this.getAggregationInterval(timeRange);
 
       // 使用 SQL 進行時間聚合
-      let timeGroupSQL: any;
+      let timeGroupSQL: SQLTimeGroup;
       switch (aggregation) {
         case 'hourly':
           timeGroupSQL = sql`strftime('%Y-%m-%d %H:00:00', ${activities.createdAt})`;
@@ -1184,12 +1221,12 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         .orderBy(asc(timeGroupSQL));
 
       // 轉換為 TimeSeriesData 格式
-      return activityData.map((row: any) => ({
-        timestamp: row.timePeriod,
+      return activityData.map((row) => ({
+        timestamp: (row.timePeriod as string) || '',
         value: row.totalActivities || 0,
-        label: this.formatTimeLabel(row.timePeriod, aggregation),
+        label: this.formatTimeLabel((row.timePeriod as string) || '', aggregation),
         metadata: {
-          uniqueUsers: row.uniqueUsers || 0,
+          uniqueUsers: Number(row.uniqueUsers) || 0,
           messageActions: row.messageActions || 0,
           conversationActions: row.conversationActions || 0,
           aggregation
@@ -1201,15 +1238,15 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     }
   }
 
-  private async getUserPerformanceData(whereConditions: any[], userType?: string): Promise<any[]> {
+  private async getUserPerformanceData(whereConditions: SQLConditions, userType?: string): Promise<UserAnalytics['performance']> {
     return [];
   }
 
-  private async getUserWorkloadData(whereConditions: any[], userType?: string): Promise<any[]> {
+  private async getUserWorkloadData(whereConditions: SQLConditions, userType?: string): Promise<UserAnalytics['workload']> {
     return [];
   }
 
-  private async getPerformanceSummary(startDate: string, endDate: string, metrics: string[]): Promise<any> {
+  private async getPerformanceSummary(startDate: string, endDate: string, metrics: string[]): Promise<PerformanceAnalytics['summary']> {
     return {
       averageResponseTime: 0,
       throughput: 0,
@@ -1223,11 +1260,11 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     return [];
   }
 
-  private async identifyBottlenecks(startDate: string, endDate: string): Promise<any[]> {
+  private async identifyBottlenecks(startDate: string, endDate: string): Promise<PerformanceAnalytics['bottlenecks']> {
     return [];
   }
 
-  private async generateRecommendations(summary: any, bottlenecks: any[]): Promise<any[]> {
+  private async generateRecommendations(summary: PerformanceAnalytics['summary'], bottlenecks: PerformanceAnalytics['bottlenecks']): Promise<PerformanceAnalytics['recommendations']> {
     return [];
   }
 

@@ -201,27 +201,35 @@ messageRouter.get(
 );
 
 // ======================== 延遲訊息路由 ========================
+// NOTE: Full delayed message implementation exists in:
+// - src/handlers/delayed-message-drizzle.ts (main handler)
+// - src/modules/delayed-message/ (service layer)
+// - src/durable-objects/DelayedMessageScheduler.ts (scheduler)
+// These stubs are for modular routing integration
 
 /**
  * 發送延遲訊息
  * POST /api/messages/delayed
+ * @see src/handlers/delayed-message-drizzle.ts for full implementation
  */
 messageRouter.post(
   '/delayed',
   ...delayedSendAccess,
   async (c) => {
-    // TODO: 實現延遲訊息處理器
+    // STUB: Modular routing placeholder - actual implementation in delayed-message-drizzle.ts
     return c.json({
-      success: true,
-      message: 'Delayed message endpoint - coming soon',
+      success: false,
+      error: 'Use /api/delayed-messages endpoint for delayed message operations',
+      redirectTo: '/api/delayed-messages',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 獲取延遲訊息列表
  * GET /api/messages/delayed
+ * @see src/handlers/delayed-message-drizzle.ts for full implementation
  */
 messageRouter.get(
   '/delayed',
@@ -229,18 +237,20 @@ messageRouter.get(
   checkMessageAccess,
   checkDelayedSendPermission,
   async (c) => {
-    // TODO: 實現延遲訊息列表處理器
+    // STUB: Modular routing placeholder - actual implementation in delayed-message-drizzle.ts
     return c.json({
-      success: true,
-      message: 'Delayed messages list endpoint - coming soon',
+      success: false,
+      error: 'Use /api/delayed-messages endpoint for delayed message operations',
+      redirectTo: '/api/delayed-messages',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 獲取延遲訊息詳情
  * GET /api/messages/delayed/:id
+ * @see src/handlers/delayed-message-drizzle.ts for full implementation
  */
 messageRouter.get(
   '/delayed/:id',
@@ -248,18 +258,21 @@ messageRouter.get(
   checkMessageAccess,
   checkDelayedSendPermission,
   async (c) => {
-    // TODO: 實現延遲訊息詳情處理器
+    const id = c.req.param('id');
+    // STUB: Modular routing placeholder - actual implementation in delayed-message-drizzle.ts
     return c.json({
-      success: true,
-      message: 'Delayed message details endpoint - coming soon',
+      success: false,
+      error: 'Use /api/delayed-messages/:id endpoint for delayed message operations',
+      redirectTo: `/api/delayed-messages/${id}`,
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 更新延遲訊息
  * PUT /api/messages/delayed/:id
+ * @see src/handlers/delayed-message-drizzle.ts for full implementation
  */
 messageRouter.put(
   '/delayed/:id',
@@ -267,18 +280,21 @@ messageRouter.put(
   checkMessageAccess,
   checkDelayedSendPermission,
   async (c) => {
-    // TODO: 實現延遲訊息更新處理器
+    const id = c.req.param('id');
+    // STUB: Modular routing placeholder - actual implementation in delayed-message-drizzle.ts
     return c.json({
-      success: true,
-      message: 'Update delayed message endpoint - coming soon',
+      success: false,
+      error: 'Use /api/delayed-messages/:id endpoint for delayed message operations',
+      redirectTo: `/api/delayed-messages/${id}`,
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 取消延遲訊息
  * DELETE /api/messages/delayed/:id
+ * @see src/handlers/delayed-message-drizzle.ts for full implementation
  */
 messageRouter.delete(
   '/delayed/:id',
@@ -286,37 +302,48 @@ messageRouter.delete(
   checkMessageAccess,
   checkDelayedSendPermission,
   async (c) => {
-    // TODO: 實現延遲訊息取消處理器
+    const id = c.req.param('id');
+    // STUB: Modular routing placeholder - actual implementation in delayed-message-drizzle.ts
     return c.json({
-      success: true,
-      message: 'Cancel delayed message endpoint - coming soon',
+      success: false,
+      error: 'Use /api/delayed-messages/:id endpoint for delayed message operations',
+      redirectTo: `/api/delayed-messages/${id}`,
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 // ======================== 訊息召回路由 ========================
+// NOTE: Full recall implementation exists in:
+// - src/services/message-recall-service.ts (main service)
+// - src/modules/messaging/services/message-recall-service.ts (module service)
+// - src/handlers/delayed-message.ts (recall endpoint)
+// These stubs are for modular routing integration
 
 /**
  * 召回訊息
  * POST /api/messages/:id/recall
+ * @see src/services/message-recall-service.ts for full implementation
  */
 messageRouter.post(
   '/:id/recall',
   ...messageRecallAccess,
   async (c) => {
-    // TODO: 實現訊息召回處理器
+    const id = c.req.param('id');
+    // STUB: Modular routing placeholder - actual implementation in message-recall-service.ts
     return c.json({
-      success: true,
-      message: 'Message recall endpoint - coming soon',
+      success: false,
+      error: 'Use /api/conversations/:conversationId/messages/:id/recall endpoint',
+      redirectTo: `/api/conversations/*/messages/${id}/recall`,
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 獲取召回詳情
  * GET /api/messages/recall/:id
+ * @see src/services/message-recall-service.ts for full implementation
  */
 messageRouter.get(
   '/recall/:id',
@@ -324,18 +351,21 @@ messageRouter.get(
   checkMessageAccess,
   checkMessageRecallPermission,
   async (c) => {
-    // TODO: 實現召回詳情處理器
+    const id = c.req.param('id');
+    // STUB: Modular routing placeholder - recall details available via message service
     return c.json({
-      success: true,
-      message: 'Recall details endpoint - coming soon',
+      success: false,
+      error: 'Recall details available through message metadata',
+      suggestion: `GET /api/messages/${id} includes recall status`,
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 獲取召回歷史
  * GET /api/messages/recalls
+ * @see src/services/message-recall-service.ts for full implementation
  */
 messageRouter.get(
   '/recalls',
@@ -343,76 +373,91 @@ messageRouter.get(
   checkMessageAccess,
   checkMessageRecallPermission,
   async (c) => {
-    // TODO: 實現召回歷史處理器
+    // STUB: Modular routing placeholder - recall history available via audit logs
     return c.json({
-      success: true,
-      message: 'Recall history endpoint - coming soon',
+      success: false,
+      error: 'Recall history available through audit logs or message filtering',
+      suggestion: 'Use /api/messages/search with status=recalled filter',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 // ======================== 批量操作路由 ========================
+// NOTE: Batch operations implementation exists in:
+// - src/handlers/messaging-main.ts (bulk create/delete endpoints)
+// These stubs are for modular routing integration
 
 /**
  * 批量發送訊息
  * POST /api/messages/batch/send
+ * @see src/handlers/messaging-main.ts for bulk create implementation
  */
 messageRouter.post(
   '/batch/send',
   ...batchOperationAccess,
   validateMessageSender,
   async (c) => {
-    // TODO: 實現批量發送處理器
+    // STUB: Modular routing placeholder - actual implementation in messaging-main.ts
     return c.json({
-      success: true,
-      message: 'Batch send endpoint - coming soon',
+      success: false,
+      error: 'Use /api/messaging/bulk-create endpoint for batch operations',
+      redirectTo: '/api/messaging/bulk-create',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 獲取批量操作狀態
  * GET /api/messages/batch/:operationId
+ * PLANNED: Async batch operation tracking (not yet implemented)
  */
 messageRouter.get(
   '/batch/:operationId',
   checkMessageAccess,
   checkBatchOperationPermission,
   async (c) => {
-    // TODO: 實現批量操作狀態處理器
+    // PLANNED: Async batch tracking - current bulk operations are synchronous
     return c.json({
-      success: true,
-      message: 'Batch operation status endpoint - coming soon',
+      success: false,
+      error: 'Async batch tracking not yet implemented',
+      note: 'Current bulk operations (/api/messaging/bulk-create) are synchronous',
       timestamp: new Date().toISOString()
-    });
+    }, 501);
   }
 );
 
 /**
  * 取消批量操作
  * DELETE /api/messages/batch/:operationId
+ * PLANNED: Async batch cancellation (not yet implemented)
  */
 messageRouter.delete(
   '/batch/:operationId',
   checkMessageAccess,
   checkBatchOperationPermission,
   async (c) => {
-    // TODO: 實現批量操作取消處理器
+    // PLANNED: Async batch cancellation - current bulk operations are synchronous
     return c.json({
-      success: true,
-      message: 'Cancel batch operation endpoint - coming soon',
+      success: false,
+      error: 'Async batch cancellation not yet implemented',
+      note: 'Current bulk operations are synchronous and complete immediately',
       timestamp: new Date().toISOString()
-    });
+    }, 501);
   }
 );
 
 // ======================== 附件路由 ========================
+// NOTE: Attachment operations implementation exists in:
+// - src/handlers/messaging-main.ts (attachment endpoints)
+// - src/modules/file-management/ (R2 storage service)
+// These stubs are for modular routing integration
 
 /**
  * 添加訊息附件
  * POST /api/messages/:id/attachments
+ * @see src/handlers/messaging-main.ts for full implementation
  */
 messageRouter.post(
   '/:id/attachments',
@@ -421,35 +466,39 @@ messageRouter.post(
   checkSpecificMessageAccess,
   checkMessageSendPermission,
   async (c) => {
-    // TODO: 實現附件上傳處理器
+    // STUB: Modular routing placeholder - actual implementation in messaging-main.ts
     return c.json({
-      success: true,
-      message: 'Add attachment endpoint - coming soon',
+      success: false,
+      error: 'Use /api/messaging/:conversationId/messages/:id/attachments endpoint',
+      redirectTo: '/api/messaging/*/messages/*/attachments',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 獲取訊息附件
  * GET /api/messages/:id/attachments
+ * @see src/handlers/messaging-main.ts for full implementation
  */
 messageRouter.get(
   '/:id/attachments',
   ...specificMessageAccess,
   async (c) => {
-    // TODO: 實現附件列表處理器
+    // STUB: Modular routing placeholder - attachments included in message response
     return c.json({
-      success: true,
-      message: 'Get attachments endpoint - coming soon',
+      success: false,
+      error: 'Attachments are included in message response',
+      suggestion: 'GET /api/messages/:id returns attachments in response body',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 /**
  * 移除訊息附件
  * DELETE /api/messages/:id/attachments/:attachmentId
+ * @see src/modules/file-management/ for file deletion
  */
 messageRouter.delete(
   '/:id/attachments/:attachmentId',
@@ -458,20 +507,24 @@ messageRouter.delete(
   checkSpecificMessageAccess,
   checkMessageSendPermission,
   async (c) => {
-    // TODO: 實現附件移除處理器
+    // STUB: Modular routing placeholder - use file management endpoints
     return c.json({
-      success: true,
-      message: 'Remove attachment endpoint - coming soon',
+      success: false,
+      error: 'Use /api/files/:attachmentId endpoint for file deletion',
+      redirectTo: '/api/files/*',
       timestamp: new Date().toISOString()
-    });
+    }, 308);
   }
 );
 
 // ======================== 反應和互動路由 ========================
+// PLANNED: Reaction and interaction features
+// These are planned features for future implementation
 
 /**
  * 添加反應
  * POST /api/messages/:id/reactions
+ * PLANNED: Message reactions feature (emoji reactions, likes, etc.)
  */
 messageRouter.post(
   '/:id/reactions',
@@ -479,18 +532,21 @@ messageRouter.post(
   checkMessageAccess,
   checkSpecificMessageAccess,
   async (c) => {
-    // TODO: 實現反應添加處理器
+    // PLANNED: Reaction system - not yet implemented
+    // Requirements: reactions table, emoji support, user tracking
     return c.json({
-      success: true,
-      message: 'Add reaction endpoint - coming soon',
+      success: false,
+      error: 'Message reactions feature not yet implemented',
+      plannedFeature: 'Add emoji reactions to messages',
       timestamp: new Date().toISOString()
-    });
+    }, 501);
   }
 );
 
 /**
  * 移除反應
  * DELETE /api/messages/:id/reactions
+ * PLANNED: Remove reaction feature
  */
 messageRouter.delete(
   '/:id/reactions',
@@ -498,18 +554,20 @@ messageRouter.delete(
   checkMessageAccess,
   checkSpecificMessageAccess,
   async (c) => {
-    // TODO: 實現反應移除處理器
+    // PLANNED: Reaction removal - not yet implemented
     return c.json({
-      success: true,
-      message: 'Remove reaction endpoint - coming soon',
+      success: false,
+      error: 'Message reactions feature not yet implemented',
+      plannedFeature: 'Remove reactions from messages',
       timestamp: new Date().toISOString()
-    });
+    }, 501);
   }
 );
 
 /**
  * 標記為已讀
  * POST /api/messages/:id/read
+ * PLANNED: Read receipt tracking
  */
 messageRouter.post(
   '/:id/read',
@@ -517,12 +575,14 @@ messageRouter.post(
   checkMessageAccess,
   checkSpecificMessageAccess,
   async (c) => {
-    // TODO: 實現已讀標記處理器
+    // PLANNED: Read receipts - not yet implemented
+    // Requirements: read_receipts table, WebSocket broadcasting
     return c.json({
-      success: true,
-      message: 'Mark as read endpoint - coming soon',
+      success: false,
+      error: 'Read receipts feature not yet implemented',
+      plannedFeature: 'Track message read status per user',
       timestamp: new Date().toISOString()
-    });
+    }, 501);
   }
 );
 
@@ -541,15 +601,38 @@ export const MESSAGE_ROUTER_INFO = {
   basePath: '/api/messages',
   totalEndpoints: 25,
   implementedEndpoints: 8,
-  pendingEndpoints: 17,
+  stubEndpoints: 11, // Redirect to actual implementations elsewhere
+  plannedEndpoints: 6, // Future features (reactions, read receipts, async batch)
   categories: {
+    // Fully implemented in this router
     crud: ['POST /', 'GET /:id', 'PUT /:id', 'HEAD /:id'],
     search: ['GET /search', 'POST /advanced-search'],
     stats: ['GET /stats'],
-    delayed: ['POST /delayed', 'GET /delayed', 'GET /delayed/:id', 'PUT /delayed/:id', 'DELETE /delayed/:id'],
-    recall: ['POST /:id/recall', 'GET /recall/:id', 'GET /recalls'],
-    batch: ['POST /batch/send', 'GET /batch/:operationId', 'DELETE /batch/:operationId'],
-    attachments: ['POST /:id/attachments', 'GET /:id/attachments', 'DELETE /:id/attachments/:attachmentId'],
-    interactions: ['POST /:id/reactions', 'DELETE /:id/reactions', 'POST /:id/read']
+    // Stubs - redirect to actual implementations
+    delayed: {
+      endpoints: ['POST /delayed', 'GET /delayed', 'GET /delayed/:id', 'PUT /delayed/:id', 'DELETE /delayed/:id'],
+      actualImplementation: '/api/delayed-messages (see src/handlers/delayed-message-drizzle.ts)'
+    },
+    recall: {
+      endpoints: ['POST /:id/recall', 'GET /recall/:id', 'GET /recalls'],
+      actualImplementation: '/api/conversations/:id/messages/:id/recall (see src/services/message-recall-service.ts)'
+    },
+    batch: {
+      endpoints: ['POST /batch/send'],
+      actualImplementation: '/api/messaging/bulk-create (see src/handlers/messaging-main.ts)'
+    },
+    attachments: {
+      endpoints: ['POST /:id/attachments', 'GET /:id/attachments', 'DELETE /:id/attachments/:attachmentId'],
+      actualImplementation: '/api/messaging/* (see src/handlers/messaging-main.ts)'
+    },
+    // Planned features
+    interactions: {
+      endpoints: ['POST /:id/reactions', 'DELETE /:id/reactions', 'POST /:id/read'],
+      status: 'PLANNED - not yet implemented'
+    },
+    asyncBatch: {
+      endpoints: ['GET /batch/:operationId', 'DELETE /batch/:operationId'],
+      status: 'PLANNED - current bulk ops are synchronous'
+    }
   }
 } as const;

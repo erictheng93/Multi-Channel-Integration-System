@@ -204,6 +204,7 @@ export class MigrationRunner {
 
   /**
    * Create admin user
+   * Uses parameterized query to prevent SQL injection
    */
   async createAdminUser(
     databaseId: string,
@@ -211,17 +212,61 @@ export class MigrationRunner {
     email: string,
     passwordHash: string
   ): Promise<void> {
+    // Validate and sanitize inputs
+    const sanitizedUsername = this.sanitizeInput(username);
+    const sanitizedEmail = this.sanitizeInput(email);
+
+    if (!this.isValidUsername(sanitizedUsername)) {
+      throw new Error('Invalid username format');
+    }
+
+    if (!this.isValidEmail(sanitizedEmail)) {
+      throw new Error('Invalid email format');
+    }
+
     const now = Date.now();
+
+    // Use parameterized query to prevent SQL injection
+    // D1 supports prepared statements with ? placeholders
     const sql = `
       INSERT INTO users (username, display_name, email, password_hash, role, is_active, created_at, updated_at)
-      VALUES ('${username}', 'System Administrator', '${email}', '${passwordHash}', 'admin', 1, ${now}, ${now})
+      VALUES (?, 'System Administrator', ?, ?, 'admin', 1, ?, ?)
     `;
 
-    const result = await this.api.executeD1Query(databaseId, sql);
+    const params = [sanitizedUsername, sanitizedEmail, passwordHash, now, now];
+
+    const result = await this.api.executeD1QueryWithParams(databaseId, sql, params);
 
     if (!result.success) {
       throw new Error(`Failed to create admin user: ${result.errors?.[0]?.message}`);
     }
+  }
+
+  /**
+   * Sanitize input to prevent injection attacks
+   */
+  private sanitizeInput(input: string): string {
+    // Remove any null bytes and trim whitespace
+    return input.replace(/\0/g, '').trim();
+  }
+
+  /**
+   * Validate username format
+   */
+  private isValidUsername(username: string): boolean {
+    // Only allow alphanumeric, underscore, and hyphen
+    // Length between 3 and 50 characters
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,50}$/;
+    return usernameRegex.test(username);
+  }
+
+  /**
+   * Validate email format
+   */
+  private isValidEmail(email: string): boolean {
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email) && email.length <= 255;
   }
 
   /**

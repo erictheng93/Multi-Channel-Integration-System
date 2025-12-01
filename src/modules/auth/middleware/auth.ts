@@ -1,58 +1,16 @@
 import { Context, Next } from 'hono';
-import type { Bindings, DbUser, JWTPayload } from '@/types';
+import type { Bindings, DbUser } from '@/types';
 import { verifyJWT, getUserById, getSession } from '@modules/auth/services/auth';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { createContextLogger } from '@/utils/logger';
 
-// 擴展 Context 類型以包含用戶信息
-declare module 'hono' {
-  interface ContextVariableMap {
-    user: DbUser;
-    session: Record<string, unknown>;
-    jwtPayload: JWTPayload;
-    systemPermissions: import('../../system/middleware/system-auth').SystemPermissions;
-    systemAccessScope: import('../../system/middleware/system-auth').SystemAccessScope;
-    customerPermissions: import('../../customer/types/customer-types').CustomerPermissions;
-    customerAccessScope: import('../../customer/types/customer-types').CustomerAccessScope;
-    sessionSearchQuery: Record<string, unknown>;
-    batchOperation: Record<string, unknown>;
-    // Reports module variables
-    reportId: string;
-    scheduledReportId: string;
-    reportParams: Record<string, unknown>;
-    reportQuery: Record<string, unknown>;
-    scheduledReportData: Record<string, unknown>;
-    previewParams: Record<string, unknown>;
-    // Customer module variables
-    paginationParams: { page: number; pageSize: number };
-    customerId: string;
-    createCustomerData: any;
-    updateCustomerData: any;
-    tagOperation: any;
-    searchQuery: any;
-    customerFilters: any;
-    // Session module variables
-    sessionId: string;
-    createSessionData: any;
-    updateSessionData: any;
-    sessionQuery: any;
-    // QRCode module variables
-    qrCode: any;
-    canAccess: boolean;
-    canModify: boolean;
-    validatedData: any;
-    validatedQuery: any;
-    // Realtime module variables
-    realtimeAuth: any;
-    connectionValidation: any;
-    // File management variables
-    fileValidation: any;
-    validatedFile: any;
-    filesValidation: any;
-    validatedFiles: any;
-  }
-}
+// Context logger for module auth middleware
+const log = createContextLogger('ModuleAuth');
+
+// Note: ContextVariableMap is declared in src/middleware/auth.ts
+// This module uses the same context variables without redeclaring them
 
 /**
  * JWT 認證中間件
@@ -97,8 +55,8 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     
     await next();
   } catch (error) {
-    console.error('JWT authentication error:', error);
-    return c.json({ 
+    log.error('JWT authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
       error: 'Invalid or expired token',
       message: error instanceof Error ? error.message : 'Authentication failed'
     }, 401);
@@ -136,8 +94,8 @@ export async function sessionAuth(c: Context<{ Bindings: Bindings }>, next: Next
     
     await next();
   } catch (error) {
-    console.error('Session authentication error:', error);
-    return c.json({ 
+    log.error('Session authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
       error: 'Session authentication failed',
       message: error instanceof Error ? error.message : 'Authentication failed'
     }, 401);
@@ -270,7 +228,7 @@ export async function optionalAuth(c: Context<{ Bindings: Bindings }>, next: Nex
         }
       } catch (error) {
         // 忽略認證錯誤，繼續處理請求
-        console.warn('Optional auth failed:', error);
+        log.debug('Optional auth failed (non-blocking)', { error: error instanceof Error ? error.message : String(error) });
       }
     }
     
@@ -301,8 +259,8 @@ export async function apiKeyAuth(c: Context<{ Bindings: Bindings }>, next: Next)
 
     await next();
   } catch (error) {
-    console.error('API key authentication error:', error);
-    return c.json({ 
+    log.error('API key authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
       error: 'API key authentication failed',
       message: error instanceof Error ? error.message : 'Authentication failed'
     }, 401);
@@ -347,7 +305,7 @@ export function rateLimit(maxRequests: number = 100, windowMs: number = 60 * 100
       
       await next();
     } catch (error) {
-      console.error('Rate limit error:', error);
+      log.warn('Rate limit check failed (non-blocking)', { error: error instanceof Error ? error.message : String(error) });
       // 如果速率限制失敗，繼續處理請求
       await next();
     }

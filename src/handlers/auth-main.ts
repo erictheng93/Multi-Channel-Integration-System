@@ -19,6 +19,14 @@ import { agents } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '../utils/logger';
 import { isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
+// 🆕 P2-5: Import standard response utilities
+import {
+  successResponse,
+  errorResponse,
+  unauthorizedResponse,
+  badRequestResponse,
+  validationErrorResponse
+} from '../utils/api-response';
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
@@ -36,7 +44,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     const cleanPassword = password?.trim();
     
     if (!cleanEmail || !cleanPassword) {
-      return c.json({ error: 'Email and password are required' }, 400);
+      return badRequestResponse(c, 'Email and password are required');
     }
 
     // ✅ 優化：使用單次查詢進行完整認證
@@ -59,11 +67,11 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         default:
           errorMessage = 'Authentication failed';
       }
-      return c.json({ error: errorMessage }, 401);
+      return unauthorizedResponse(c, errorMessage);
     }
 
     if (!user) {
-      return c.json({ error: 'Authentication failed' }, 401);
+      return unauthorizedResponse(c, 'Authentication failed');
     }
 
     // ✅ 優化：使用統一獲取的密碼政策

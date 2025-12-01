@@ -12,8 +12,8 @@ import { logger } from './logger';
 const isTestEnvironment = (): boolean => {
   return process.env.NODE_ENV === 'test' ||
          process.env.VITEST === 'true' ||
-         typeof global.it === 'function' ||
-         typeof global.describe === 'function';
+         typeof (globalThis as Record<string, unknown>).it === 'function' ||
+         typeof (globalThis as Record<string, unknown>).describe === 'function';
 };
 
 /**

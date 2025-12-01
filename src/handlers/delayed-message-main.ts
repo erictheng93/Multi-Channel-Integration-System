@@ -73,6 +73,14 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       }, 403);
     }
 
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
+    }
+
     // 🎯 使用 Durable Objects 方案
     const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
     const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
@@ -192,6 +200,14 @@ delayedMessageHandler.post('/recall/:messageId', jwtAuth, async (c) => {
       }, 400);
     }
 
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
+    }
+
     // 🎯 使用 Durable Objects 方案
     const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
     const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
@@ -301,6 +317,14 @@ delayedMessageHandler.get('/pending', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation ID is required'
       }, 400);
+    }
+
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
     }
 
     // 🎯 使用 Durable Objects 方案

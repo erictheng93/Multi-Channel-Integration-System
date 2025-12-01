@@ -394,7 +394,7 @@ export class UserExperienceMonitoringService {
         totalErrors: 0,
         totalReconnections: 0,
         averageScore: 0,
-        lastSurveyDate: null,
+        lastSurveyDate: null as string | null,
         errorRate: 0,
         lastUpdated: Date.now()
       };

@@ -1,13 +1,32 @@
 /**
- * Centralized Logging System
+ * Centralized Logging System for Cloudflare Workers
  * Replaces all console.log statements with structured logging
+ *
+ * @module utils/logger
+ * @description
+ * Enterprise-grade logging system that:
+ * - Supports environment-based log level configuration
+ * - Works with Cloudflare Workers (no process.env dependency)
+ * - Provides structured JSON logging
+ * - Includes performance tracking capabilities
+ *
+ * Usage:
+ * ```ts
+ * import { logger, configureLogger } from '@/utils/logger';
+ *
+ * // Configure with Cloudflare Worker bindings
+ * configureLogger({ logLevel: c.env.LOG_LEVEL, environment: c.env.ENVIRONMENT });
+ *
+ * // Use the logger
+ * logger.info('Operation completed', 'MyContext', { userId: 123 });
+ * ```
  */
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
 
 export interface LogEntry {
   timestamp: string;
-  level: LogLevel;
+  level: Exclude<LogLevel, 'silent'>;
   message: string;
   context?: string;
   metadata?: Record<string, unknown>;
@@ -24,21 +43,31 @@ export interface LoggerConfig {
   maxLogEntries: number;
 }
 
+/**
+ * Runtime configuration options for the logger
+ * Can be set from Cloudflare Worker environment bindings
+ */
+export interface LoggerRuntimeConfig {
+  logLevel?: LogLevel;
+  environment?: string;
+}
+
 class Logger {
   private config: LoggerConfig;
   private logBuffer: LogEntry[] = [];
-  private readonly levels = {
+  private static readonly levels: Record<LogLevel, number> = {
     debug: 0,
     info: 1,
     warn: 2,
     error: 3,
-    fatal: 4
+    fatal: 4,
+    silent: 99 // Silent level - nothing gets logged
   };
 
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
       level: 'info',
-      enableConsole: false, // Disabled in production
+      enableConsole: false, // Disabled in production by default
       enableStructuredLogs: true,
       enablePerformanceTracking: true,
       maxLogEntries: 1000,
@@ -46,8 +75,33 @@ class Logger {
     };
   }
 
+  /**
+   * Configure the logger at runtime with Cloudflare Worker environment bindings
+   * This method allows dynamic configuration based on environment variables
+   *
+   * @param options - Runtime configuration options
+   */
+  configure(options: LoggerRuntimeConfig): void {
+    if (options.logLevel) {
+      this.config.level = options.logLevel;
+    }
+
+    // Automatically enable console for non-production environments
+    const isDevelopment = options.environment === 'development' || options.environment === 'dev';
+    this.config.enableConsole = isDevelopment || this.config.level === 'debug';
+  }
+
+  /**
+   * Get current configuration (for debugging/monitoring)
+   */
+  getConfig(): Readonly<LoggerConfig> {
+    return { ...this.config };
+  }
+
   private shouldLog(level: LogLevel): boolean {
-    return this.levels[level] >= this.levels[this.config.level];
+    if (this.config.level === 'silent') return false;
+    if (level === 'silent') return false;
+    return Logger.levels[level] >= Logger.levels[this.config.level];
   }
 
   // Reserved for future structured log formatting
@@ -66,7 +120,7 @@ class Logger {
     }
   }
 
-  private log(level: LogLevel, message: string, context?: string, metadata?: Record<string, unknown>): void {
+  private log(level: Exclude<LogLevel, 'silent'>, message: string, context?: string, metadata?: Record<string, unknown>): void {
     if (!this.shouldLog(level)) return;
 
     const entry: LogEntry = {
@@ -170,18 +224,50 @@ class Logger {
   }
 }
 
-// Create singleton logger instance
-const environment = process.env.NODE_ENV || process.env.ENVIRONMENT || 'production';
-const isDevelopment = environment === 'development';
-
+// Create singleton logger instance with safe defaults
+// In Cloudflare Workers, we cannot rely on process.env
+// Use configureLogger() to set runtime configuration from env bindings
 export const logger = new Logger({
-  level: isDevelopment ? 'debug' : 'info',
-  enableConsole: isDevelopment,
+  level: 'info', // Default to info level (safest for production)
+  enableConsole: false, // Disabled by default, enable via configureLogger
   enableStructuredLogs: true,
   enablePerformanceTracking: true
 });
 
-// Convenience functions for different contexts
+/**
+ * Configure the global logger instance with Cloudflare Worker environment bindings
+ *
+ * Call this early in your request handler to set the log level based on environment
+ *
+ * @example
+ * ```ts
+ * // In your Hono app or Worker fetch handler
+ * app.use('*', async (c, next) => {
+ *   configureLogger({
+ *     logLevel: c.env.LOG_LEVEL,
+ *     environment: c.env.ENVIRONMENT
+ *   });
+ *   await next();
+ * });
+ * ```
+ */
+export function configureLogger(options: LoggerRuntimeConfig): void {
+  logger.configure(options);
+}
+
+/**
+ * Create a context-specific logger that automatically includes the context in all log entries
+ *
+ * @param context - The context string (e.g., module name, handler name)
+ * @returns An object with logging methods bound to the specified context
+ *
+ * @example
+ * ```ts
+ * const log = createContextLogger('AuthHandler');
+ * log.info('User logged in', { userId: 123 });
+ * // Output: { timestamp: '...', level: 'info', context: 'AuthHandler', message: 'User logged in', metadata: { userId: 123 } }
+ * ```
+ */
 export const createContextLogger = (context: string) => ({
   debug: (message: string, metadata?: Record<string, unknown>) =>
     logger.debug(message, context, metadata),
@@ -195,5 +281,10 @@ export const createContextLogger = (context: string) => ({
     logger.fatal(message, context, metadata, error),
   timer: () => logger.startTimer(context)
 });
+
+/**
+ * Type-safe context logger type for use in handler definitions
+ */
+export type ContextLogger = ReturnType<typeof createContextLogger>;
 
 export default logger;

@@ -100,6 +100,26 @@ export class CloudflareAPI {
     return response.result;
   }
 
+  /**
+   * Execute D1 Query with parameterized values (prevents SQL injection)
+   */
+  async executeD1QueryWithParams(
+    databaseId: string,
+    sql: string,
+    params: (string | number | boolean | null)[]
+  ): Promise<D1QueryResult> {
+    const response = await this.request<D1QueryResult>({
+      method: 'POST',
+      path: `/accounts/${this.accountId}/d1/database/${databaseId}/query`,
+      body: {
+        sql,
+        params
+      }
+    });
+
+    return response.result;
+  }
+
   async deleteD1Database(databaseId: string): Promise<void> {
     await this.request({
       method: 'DELETE',
