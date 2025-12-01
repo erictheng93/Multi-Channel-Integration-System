@@ -137,6 +137,9 @@ export interface Bindings {
   ALERT_WEBHOOK_URL?: string;
   ALERT_WEBHOOK_HEADERS?: string;
   ALERT_WEBHOOK_METHOD?: string;
+
+  // Logging Configuration (P2-6)
+  LOG_LEVEL?: 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
 }
 
 // Extended context with database and KV services
