@@ -329,7 +329,7 @@ class IntegrationMainHandler {
         status: body.status || integration.status,
         config: { ...integration.config, ...body.config },
         features: { ...integration.features, ...body.features },
-        webhookConfig: body.webhookConfig ? { ...integration.webhookConfig, ...body.webhookConfig } : integration.webhookConfig,
+        webhookConfig: body.webhookConfig ? { ...integration.webhookConfig, ...body.webhookConfig } as typeof integration.webhookConfig : integration.webhookConfig,
         updatedAt: new Date().toISOString()
       };
 
