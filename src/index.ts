@@ -52,8 +52,8 @@ import { handleLineMessageQueue } from './handlers/line-message-queue';
 import type { LineMessageQueuePayload } from './types/bindings';
 
 // Debug: Log messaging handler
-console.log('🔍 [DEBUG] messagingMainHandler imported:', typeof messagingMainHandler);
-console.log('🔍 [DEBUG] messagingMainHandler object:', messagingMainHandler);
+log.debug('messagingMainHandler imported', { type: typeof messagingMainHandler });
+log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defined' : 'undefined' });
 
 // Import additional handlers
 import { activityHandler } from './handlers/activity';
@@ -101,22 +101,22 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // ==================== 🔥 CORS 中間件 - 必須在所有路由之前註冊 ====================
 // 統一的 CORS 配置，使用 @/config/cors.ts 中的配置
-console.log('🛡️ Registering global CORS middleware...');
+log.info('Registering global CORS middleware');
 
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
-  console.log(`[CORS Middleware] Method: ${c.req.method}, Origin: ${origin}, Path: ${c.req.path}`);
+  log.debug('CORS Middleware request', { method: c.req.method, origin, path: c.req.path });
 
   // 檢查是否允許該 origin
   const allowed = origin && isOriginAllowed(origin);
-  console.log(`[CORS Middleware] Origin allowed: ${allowed}`);
+  log.debug('CORS Middleware origin check', { origin, allowed });
 
   // 處理 OPTIONS preflight 請求
   if (c.req.method === 'OPTIONS') {
-    console.log(`[CORS Middleware] Handling OPTIONS request`);
+    log.debug('CORS Middleware handling OPTIONS request');
 
     if (allowed) {
-      console.log(`✅ CORS OPTIONS: Allowed origin: ${origin}`);
+      log.debug('CORS OPTIONS allowed', { origin });
       return createCorsPreflightResponse(origin);
     } else {
       log.warn('CORS OPTIONS: Blocked origin', { origin });
@@ -131,16 +131,16 @@ app.use('*', async (c, next) => {
   if (allowed) {
     c.header('Access-Control-Allow-Origin', origin!);
     c.header('Access-Control-Allow-Credentials', 'true');
-    console.log(`✅ CORS: Allowed origin: ${origin}`);
+    log.debug('CORS allowed origin', { origin });
   } else if (origin) {
     log.warn('CORS: Blocked origin', { origin });
   }
 });
 
-console.log('✅ Global CORS middleware registered successfully');
+log.info('Global CORS middleware registered successfully');
 
 // ==================== 統一路由管理系統初始化 ====================
-console.log('🚀 Initializing Unified Route Management System...');
+log.info('Initializing Unified Route Management System');
 
 // 驗證路由配置
 const routeValidation = validateRouteConfig();
@@ -156,18 +156,24 @@ import websocketDashboardApp from './handlers/websocket-dashboard';
 
 // Register health endpoints
 app.route('/api/websocket', websocketHealthApp);
-console.log('✅ Public WebSocket health endpoints registered:');
-console.log('   • GET /api/websocket/health');
-console.log('   • GET /api/websocket/migration-status');
-console.log('   • GET /api/websocket/readiness');
-console.log('   • GET /api/websocket/liveness');
+log.info('Public WebSocket health endpoints registered', {
+  endpoints: [
+    'GET /api/websocket/health',
+    'GET /api/websocket/migration-status',
+    'GET /api/websocket/readiness',
+    'GET /api/websocket/liveness'
+  ]
+});
 
 // ⚠️  CRITICAL: Register WebSocket main handler AFTER health app to avoid route conflicts
 // websocketMainHandler provides /connect endpoint with websocketAuth middleware
 app.route('/api/websocket', websocketMainHandler);
-console.log('✅ WebSocket connection endpoints registered:');
-console.log('   • GET /api/websocket/connect (with websocketAuth)');
-console.log('   • POST /api/websocket/disconnect (with websocketAuth)');
+log.info('WebSocket connection endpoints registered', {
+  endpoints: [
+    'GET /api/websocket/connect (with websocketAuth)',
+    'POST /api/websocket/disconnect (with websocketAuth)'
+  ]
+});
 
 // 🔧 Pre-register DelayedMessageScheduler health endpoint BEFORE unified route system
 // This ensures /health endpoint is public (no auth required)
@@ -184,8 +190,9 @@ app.get('/api/delayed-messages-v2/health', async (c) => {
     timestamp: new Date().toISOString()
   });
 });
-console.log('✅ DelayedMessageScheduler public endpoint registered:');
-console.log('   • GET /api/delayed-messages-v2/health (public, no auth)');
+log.info('DelayedMessageScheduler public endpoint registered', {
+  endpoint: 'GET /api/delayed-messages-v2/health (public, no auth)'
+});
 
 // 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
 // This prevents auth middleware from being applied (SSE uses query token)
@@ -229,8 +236,9 @@ app.options('/api/activities/stream', (c) => {
 // 🔧 Pre-register Analytics Comparison API BEFORE unified route system
 // This prevents the /api/analytics/* catch-all from intercepting these routes
 app.route('/api/analytics/comparison', comparisonAPI);
-console.log('✅ Analytics Comparison API registered:');
-console.log('   • /api/analytics/comparison/* (with internal OPTIONS handler)');
+log.info('Analytics Comparison API registered', {
+  endpoints: ['/api/analytics/comparison/* (with internal OPTIONS handler)']
+});
 
 // ==================== 🔧 CRITICAL: PRE-REGISTER CORS 監控端點 ====================
 //
@@ -273,29 +281,38 @@ import securityDashboardHandler from './handlers/security-dashboard';
 
 // Register CORS handler BEFORE unified route system
 app.route('/api/cors', corsMonitoringHandler);
-console.log('✅ CORS monitoring endpoints PRE-REGISTERED (before unified route system):');
-console.log('   • GET /api/cors/stats (Admin only - internal auth check)');
-console.log('   • GET /api/cors/events (Admin only - internal auth check)');
-console.log('   • GET /api/cors/rejected-origins (Admin only - internal auth check)');
+log.info('CORS monitoring endpoints PRE-REGISTERED (before unified route system)', {
+  endpoints: [
+    'GET /api/cors/stats (Admin only)',
+    'GET /api/cors/events (Admin only)',
+    'GET /api/cors/rejected-origins (Admin only)'
+  ]
+});
 
 // Register Security Monitoring handler (P2-4)
 app.route('/api/security', securityMonitoringHandler);
-console.log('✅ Security monitoring endpoints registered (P2-4):');
-console.log('   • GET /api/security/health (Public)');
-console.log('   • GET /api/security/events/stats (Admin only - requires JWT)');
-console.log('   • GET /api/security/events (Admin only - requires JWT)');
-console.log('   • POST /api/cors/cleanup (Admin only - internal auth check)');
-console.log('   • GET /api/cors/health (Public - no auth required)');
-console.log('   • GET /api/cors/config (Public - no auth required)');
+log.info('Security monitoring endpoints registered (P2-4)', {
+  endpoints: [
+    'GET /api/security/health (Public)',
+    'GET /api/security/events/stats (Admin only)',
+    'GET /api/security/events (Admin only)',
+    'POST /api/cors/cleanup (Admin only)',
+    'GET /api/cors/health (Public)',
+    'GET /api/cors/config (Public)'
+  ]
+});
 
 // 🆕 Register Security Dashboard handler (P2-7) - Real-time Analytics
 app.route('/api/security/dashboard', securityDashboardHandler);
-console.log('✅ Security dashboard endpoints registered (P2-7):');
-console.log('   • GET /api/security/dashboard/health (Public)');
-console.log('   • GET /api/security/dashboard/metrics (Admin only - requires JWT)');
-console.log('   • GET /api/security/dashboard/events/stream (Admin only - SSE stream)');
-console.log('   • GET /api/security/dashboard/events/recent (Admin only - requires JWT)');
-console.log('   • GET /api/security/dashboard/summary (Admin only - requires JWT)');
+log.info('Security dashboard endpoints registered (P2-7)', {
+  endpoints: [
+    'GET /api/security/dashboard/health (Public)',
+    'GET /api/security/dashboard/metrics (Admin only)',
+    'GET /api/security/dashboard/events/stream (SSE)',
+    'GET /api/security/dashboard/events/recent (Admin only)',
+    'GET /api/security/dashboard/summary (Admin only)'
+  ]
+});
 
 // =================================================================================
 // 🆕 PUBLIC FILE PROXY - R2 文件代理下載 (無需認證)
@@ -307,9 +324,12 @@ console.log('   • GET /api/security/dashboard/summary (Admin only - requires J
 import fileProxyHandler from './handlers/file-proxy';
 
 app.route('/api/files', fileProxyHandler);
-console.log('✅ File proxy endpoints PRE-REGISTERED (public access):');
-console.log('   • GET /api/files/public/* (Public - R2 path proxy)');
-console.log('   • GET /api/files/download/:attachmentId (Public - attachment ID proxy)');
+log.info('File proxy endpoints PRE-REGISTERED (public access)', {
+  endpoints: [
+    'GET /api/files/public/* (R2 path proxy)',
+    'GET /api/files/download/:attachmentId (attachment ID proxy)'
+  ]
+});
 
 // =================================================================================
 // ⚠️  CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
@@ -335,8 +355,9 @@ import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from './handler
 // Supports per-team channel configurations
 app.post('/api/webhooks/line/:teamId/:token', handleLineWebhookMultiTenant);
 
-console.log('✅ Multi-Tenant LINE Webhook endpoint PRE-REGISTERED (before unified route system):');
-console.log('   • POST /api/webhooks/line/:teamId/:token (Team-specific webhook)');
+log.info('Multi-Tenant LINE Webhook endpoint PRE-REGISTERED', {
+  endpoint: 'POST /api/webhooks/line/:teamId/:token (Team-specific webhook)'
+});
 
 // ==================== Legacy LINE Webhook (Backward Compatibility) ====================
 // Route: POST /api/webhooks/line (no parameters)
@@ -365,18 +386,22 @@ app.get('/api/webhooks/line', (c) => {
   });
 });
 
-console.log('⚠️  Legacy LINE Webhook endpoints PRE-REGISTERED (backward compatibility):');
-console.log('   • POST /api/webhook (message processing)');
-console.log('   • GET /api/webhook (verification)');
-console.log('   • POST /api/webhooks/line (message processing)');
-console.log('   • GET /api/webhooks/line (verification)');
-console.log('   Note: These use global credentials. Consider migrating to multi-tenant webhook.');
+log.warn('Legacy LINE Webhook endpoints PRE-REGISTERED (backward compatibility)', {
+  endpoints: [
+    'POST /api/webhook (message processing)',
+    'GET /api/webhook (verification)',
+    'POST /api/webhooks/line (message processing)',
+    'GET /api/webhooks/line (verification)'
+  ],
+  note: 'These use global credentials. Consider migrating to multi-tenant webhook.'
+});
 
 // Facebook Webhook 路由
 app.all('/api/webhooks/facebook', webhookHandler.facebook);
 
-console.log('✅ Facebook Webhook endpoint PRE-REGISTERED:');
-console.log('   • GET/POST /api/webhooks/facebook');
+log.info('Facebook Webhook endpoint PRE-REGISTERED', {
+  endpoint: 'GET/POST /api/webhooks/facebook'
+});
 
 // Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
 
@@ -384,13 +409,16 @@ console.log('   • GET/POST /api/webhooks/facebook');
 // 🔒 添加 JWT 認證中間件保護所有 Dashboard 端點
 app.use('/api/websocket/dashboard/*', jwtAuth);
 app.route('/api/websocket/dashboard', websocketDashboardApp);
-console.log('✅ WebSocket Dashboard endpoints registered:');
-console.log('   • GET /api/websocket/dashboard/metrics (Admin/Team)');
-console.log('   • GET /api/websocket/dashboard/connections (Admin/Team)');
-console.log('   • GET /api/websocket/dashboard/history (Admin/Team)');
-console.log('   • GET /api/websocket/dashboard/trends (Admin/Team)');
-console.log('   • GET /api/websocket/dashboard/durable-objects (Admin)');
-console.log('   • GET /api/websocket/dashboard/alerts (Admin/Team)');
+log.info('WebSocket Dashboard endpoints registered', {
+  endpoints: [
+    'GET /api/websocket/dashboard/metrics (Admin/Team)',
+    'GET /api/websocket/dashboard/connections (Admin/Team)',
+    'GET /api/websocket/dashboard/history (Admin/Team)',
+    'GET /api/websocket/dashboard/trends (Admin/Team)',
+    'GET /api/websocket/dashboard/durable-objects (Admin)',
+    'GET /api/websocket/dashboard/alerts (Admin/Team)'
+  ]
+});
 
 // ==================== 🔧 CUSTOMER CONVERSATION SYSTEM (Chat-Style) ====================
 //
@@ -454,7 +482,7 @@ app.get('/api/customer-ws', async (c) => {
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 
-    console.log('🔌 [Customer WebSocket] Authenticated connection:', {
+    log.info('Customer WebSocket authenticated connection', {
       conversationId,
       userId: payload.userId,
       role: payload.role
@@ -684,11 +712,14 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
   }
 });
 
-console.log('✅ Customer Conversation System (Chat-Style) endpoints registered:');
-console.log('   • GET /api/customer-ws (WebSocket upgrade, query: conversationId, sessionId)');
-console.log('   • GET /api/customer-conversations/:id/messages (Fetch messages with pagination)');
-console.log('   • POST /api/customer-conversations/:id/messages (Create new message)');
-console.log('   • POST /api/customer-conversations/:id/upload (Upload file to R2)');
+log.info('Customer Conversation System (Chat-Style) endpoints registered', {
+  endpoints: [
+    'GET /api/customer-ws (WebSocket upgrade)',
+    'GET /api/customer-conversations/:id/messages',
+    'POST /api/customer-conversations/:id/messages',
+    'POST /api/customer-conversations/:id/upload'
+  ]
+});
 
 // ==================== 🔧 CHANNEL INTEGRATION MANAGEMENT ====================
 //
@@ -710,15 +741,18 @@ app.use('/api/channels/*', jwtAuth);
 // Register channel management routes
 app.route('/api/channels', channelHandler);
 
-console.log('✅ Channel Integration Management endpoints registered:');
-console.log('   • GET    /api/channels           (List all channels for team)');
-console.log('   • POST   /api/channels           (Create new channel - Admin only)');
-console.log('   • GET    /api/channels/:id       (Get channel details)');
-console.log('   • PUT    /api/channels/:id       (Update channel - Admin only)');
-console.log('   • DELETE /api/channels/:id       (Deactivate channel - Admin only)');
-console.log('   • POST   /api/channels/:id/verify (Verify channel configuration)');
-console.log('   • GET    /api/channels/:id/stats (Get channel statistics)');
-console.log('   • GET    /api/channels/:id/health (Check channel health)');
+log.info('Channel Integration Management endpoints registered', {
+  endpoints: [
+    'GET    /api/channels',
+    'POST   /api/channels (Admin only)',
+    'GET    /api/channels/:id',
+    'PUT    /api/channels/:id (Admin only)',
+    'DELETE /api/channels/:id (Admin only)',
+    'POST   /api/channels/:id/verify',
+    'GET    /api/channels/:id/stats',
+    'GET    /api/channels/:id/health'
+  ]
+});
 
 // ❌ LEGACY PRE-REGISTRATION REMOVED
 // GET /api/teams/members is now handled by the new modular team handler
@@ -737,7 +771,7 @@ routeRegistry.registerHealthEndpoint();
 
 // 顯示路由註冊統計
 const stats = routeRegistry.getStats();
-console.log(`✅ Route system initialized successfully:
+log.info(`Route system initialized successfully:
   📊 Groups: ${stats.groups}
   📈 Modules: ${stats.registeredModules}/${stats.totalModules}
   ✅ Enabled: ${stats.enabledModules}
@@ -745,7 +779,7 @@ console.log(`✅ Route system initialized successfully:
   📋 Registration Rate: ${stats.registrationRate}%`);
 
 // ==================== 模組化架構系統初始化 ====================
-console.log('🏗️ Initializing Modular Architecture System...');
+log.info('Initializing Modular Architecture System');
 
 // 導入模組化系統組件
 import { globalModularSystemManager, modularSystemApiHandler } from './core/modular-system-integration';
@@ -771,7 +805,7 @@ async function initializeModularSystem() {
   modularSystemInitPromise = (async () => {
     try {
       const initResult = await globalModularSystemManager.initialize();
-      console.log(`🎉 Modular Architecture System initialized successfully:
+      log.info(`Modular Architecture System initialized successfully:
   📦 Modules: ${initResult.modules.discovered} discovered, ${initResult.modules.registered} registered
   🚀 Routes: ${initResult.routes.groups} groups, ${initResult.routes.modules} modules
   🏥 Health: ${initResult.health.status} (monitoring: ${initResult.health.monitoring})
@@ -879,7 +913,7 @@ app.get('/api/modular/health', modularSystemApiHandler.getModuleHealth.bind(modu
 // 添加全域錯誤處理中間件
 
 // ==================== 自動化健康監控系統啟動 ====================
-console.log('🏥 Initializing Automated Health Monitoring...');
+log.info('Initializing Automated Health Monitoring');
 
 // 創建監控處理器
 const monitoringHandlers = createMonitoringHandlerMethods();
@@ -1132,7 +1166,7 @@ app.get('/join', async (c) => {
 // This prevents duplicate mounting and ensures consistent auth handling
 // Public endpoints: /api/websocket/health, /api/websocket/migration-status
 // Auth required: /api/websocket/connect, /api/websocket/disconnect
-console.log('✅ [Startup] WebSocket routes managed by Unified Route Registry');
+log.info('WebSocket routes managed by Unified Route Registry');
 
 // ==================== 以下路由已遷移到統一路由系統 (src/core/route-config.ts) ====================
 // ✅ Sessions, Notifications, Health, Analytics, Reports, Activities
@@ -1331,7 +1365,7 @@ export default {
     batch: MessageBatch<LineMessageQueuePayload>,
     env: Bindings
   ): Promise<void> {
-    console.log(`📨 [LINE Queue] Received batch of ${batch.messages.length} messages`);
+    log.info('LINE Queue received batch', { messageCount: batch.messages.length });
     await handleLineMessageQueue(batch, env);
   }
 };
