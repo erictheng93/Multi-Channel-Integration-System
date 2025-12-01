@@ -16,6 +16,10 @@ import { successResponse, errorResponse, validationErrorResponse } from '@shared
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { getSSECorsHeaders } from '@/config/cors';
 import { WebSocketAuthService } from '@/services/websocket-auth-service';
+import { createContextLogger } from '@/utils/logger';
+
+// Context logger for conversation handler
+const log = createContextLogger('ConversationHandler');
 
 const conversationHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -94,7 +98,7 @@ conversationHandler.get('/stream', async (c) => {
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(heartbeat));
           } catch (error) {
-            console.warn('❌ [SSE Stream] Heartbeat failed:', error);
+            log.warn('SSE Stream: Heartbeat failed', { error: error instanceof Error ? error.message : String(error) });
             isConnected = false;
             controller.close();
           }
@@ -190,7 +194,7 @@ conversationHandler.get('/stream', async (c) => {
             controller.enqueue(new TextEncoder().encode(updateData));
 
           } catch (error) {
-            console.error('❌ [SSE Stream] Failed to send conversation update:', error);
+            log.error('SSE Stream: Failed to send conversation update', { error: error instanceof Error ? error.message : String(error) });
           }
         };
 
@@ -233,7 +237,7 @@ conversationHandler.get('/stream', async (c) => {
     return new Response(stream, { headers: sseCorsHeaders });
 
   } catch (error) {
-    console.error('❌ [SSE Stream] Error setting up SSE:', error);
+    log.error('SSE Stream: Error setting up SSE', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: 'Failed to establish SSE connection',
@@ -403,7 +407,7 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
     }, `Bulk ${operation} completed successfully`);
 
   } catch (error) {
-    console.error('❌ [Conversations] Bulk operation error:', error);
+    log.error('Conversations: Bulk operation error', { error: error instanceof Error ? error.message : String(error) });
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to perform bulk operation', 500);
   }
 });
@@ -430,7 +434,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     }
 
     if (!authToken) {
-      console.error('❌ [SSE Debug] No auth token found');
+      log.error('SSE Debug: No auth token found');
       return c.json({
         error: 'Missing authentication token',
         message: 'Please provide token via Authorization header or query parameter'
@@ -441,12 +445,12 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
     // 檢查環境變量
     if (!c.env.JWT_SECRET) {
-      console.error('❌ [SSE Debug] JWT_SECRET is undefined');
+      log.error('SSE Debug: JWT_SECRET is undefined');
       throw new Error('JWT_SECRET environment variable is not configured');
     }
 
     if (!c.env.DB) {
-      console.error('❌ [SSE Debug] DB is undefined');
+      log.error('SSE Debug: DB is undefined');
       throw new Error('DB environment variable is not configured');
     }
 
@@ -470,7 +474,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     console.log(`✅ [SSE Debug] Visible conversations: ${visibleConversationIds.length} total`);
 
     if (!visibleConversationIds.includes(conversationId)) {
-      console.error(`❌ [SSE Debug] Access denied to conversation ${conversationId}`);
+      log.error('SSE Debug: Access denied to conversation', { conversationId });
       return c.json({
         error: 'Access denied to conversation',
         conversationId: conversationId
@@ -541,7 +545,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               console.log(`📤 [SSE] No messages found for conversation ${conversationId}`);
             }
           } catch (error) {
-            console.error('❌ [SSE] Error sending initial messages:', error);
+            log.error('SSE: Error sending initial messages', { error: error instanceof Error ? error.message : String(error) });
           }
         };
 
@@ -570,7 +574,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               console.log(`📤 [SSE] Sent ${newMessages.length} new messages for ${conversationId}`);
             }
           } catch (error) {
-            console.error('❌ [SSE] Error checking new messages:', error);
+            log.error('SSE: Error checking new messages', { error: error instanceof Error ? error.message : String(error) });
           }
         };
 
@@ -588,7 +592,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
             controller.enqueue(new TextEncoder().encode(heartbeat));
           } catch (error) {
-            console.warn('❌ [SSE] Heartbeat failed:', error);
+            log.warn('SSE: Heartbeat failed', { error: error instanceof Error ? error.message : String(error) });
             isConnected = false;
             controller.close();
           }
@@ -633,12 +637,9 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     return new Response(stream, { headers: sseResponseHeaders });
 
   } catch (error) {
-    console.error('❌ [SSE] Error setting up message stream:', error);
-    console.error('❌ [SSE Debug] Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : 'No stack trace',
-      name: error instanceof Error ? error.name : 'Unknown',
-      type: typeof error
+    log.error('SSE: Error setting up message stream', {
+      error: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : 'Unknown'
     });
     return c.json({
       success: false,
@@ -753,7 +754,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       });
       console.log('✅ [WebSocket] Conversation assignment broadcasted');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Assignment broadcast failed, continuing with fallback:', broadcastError);
+      log.warn('WebSocket: Assignment broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 🔧 FIX: 获取并返回完整的对话对象
@@ -784,7 +785,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     });
 
     if (!updatedConversation) {
-      console.error('❌ [Assign API] Failed to retrieve updated conversation');
+      log.error('Assign API: Failed to retrieve updated conversation');
       return c.json({
         success: false,
         error: 'Failed to retrieve updated conversation'
@@ -819,7 +820,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Assign conversation error:', error);
+    log.error('Assign conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
@@ -897,9 +898,8 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
 
       console.log('✅ [Unassign API] Database UPDATE completed (raw SQL)');
     } catch (dbError) {
-      console.error('❌ [Unassign API] Database UPDATE failed:', {
-        error: dbError,
-        errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+      log.error('Unassign API: Database UPDATE failed', {
+        error: dbError instanceof Error ? dbError.message : String(dbError),
         conversationId
       });
       throw dbError;
@@ -951,7 +951,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       });
       console.log('✅ [WebSocket] Conversation unassignment broadcasted');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Unassignment broadcast failed, continuing:', broadcastError);
+      log.warn('WebSocket: Unassignment broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 獲取並返回更新後的完整對話對象
@@ -987,7 +987,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Unassign conversation error:', error);
+    log.error('Unassign conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to unassign conversation',
@@ -1093,7 +1093,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       });
       console.log('✅ [WebSocket] Conversation transfer broadcasted');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Transfer broadcast failed, continuing with fallback:', broadcastError);
+      log.warn('WebSocket: Transfer broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     return c.json({
@@ -1103,7 +1103,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Transfer conversation error:', error);
+    log.error('Transfer conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
@@ -1178,7 +1178,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
         }
       });
     } catch (error) {
-      console.error('R2 upload error:', error);
+      log.error('R2 upload error', { error: error instanceof Error ? error.message : String(error) });
       return c.json({
         success: false,
         error: 'Failed to upload file to storage'
@@ -1218,7 +1218,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       }
     });
   } catch (error) {
-    console.error('Upload attachment error:', error);
+    log.error('Upload attachment error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
@@ -1308,7 +1308,7 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
         priority: 'normal'
       });
     } catch (broadcastError) {
-      console.warn('⚠️ [WEBSOCKET] Pending message broadcast failed:', broadcastError);
+      log.warn('WEBSOCKET: Pending message broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 4. Trigger background sending
@@ -1327,7 +1327,7 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       try {
         parsedMetadata = JSON.parse(result.message.metadata as string);
       } catch (parseError) {
-        console.warn('⚠️ Failed to parse message metadata:', parseError);
+        log.warn('Failed to parse message metadata', { error: parseError instanceof Error ? parseError.message : String(parseError) });
         parsedMetadata = {};
       }
     }
@@ -1353,10 +1353,10 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
     return successResponse(c, formattedMessage, 'Message queued for delivery');
 
   } catch (error) {
-    console.error('🔴 [ERROR] ========== EXCEPTION CAUGHT ==========');
-    console.error('🔴 [ERROR] Error type:', error instanceof Error ? error.constructor.name : typeof error);
-    console.error('🔴 [ERROR] Error message:', error instanceof Error ? error.message : String(error));
-    console.error('🔴 [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack');
+    log.error('Message handler exception', {
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to send message', 500);
   }
 });
@@ -1511,7 +1511,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get messages error:', error);
+    log.error('Get messages error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get messages',
@@ -1593,7 +1593,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversation error:', error);
+    log.error('Get conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversation',
@@ -1701,7 +1701,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversations error:', error);
+    log.error('Get conversations error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversations',
@@ -1750,7 +1750,7 @@ async function getRecentMessages(conversationId: string, limit: number, db: D1Da
     // 反轉結果以獲得時間升序（最舊在前，最新在後）
     return recentMessages.reverse();
   } catch (error) {
-    console.error('❌ [SSE] Error fetching recent messages:', error);
+    log.error('SSE: Error fetching recent messages', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -1792,7 +1792,7 @@ async function getMessagesAfterTimestamp(conversationId: string, afterTimestamp:
 
     return newMessages;
   } catch (error) {
-    console.error('❌ [SSE] Error fetching messages after timestamp:', error);
+    log.error('SSE: Error fetching messages after timestamp', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -1821,7 +1821,7 @@ async function getMessagesAfter(conversationId: string, lastMessageId: string | 
       .limit(1);
 
     if (lastMessage.length === 0) {
-      console.warn(`⚠️ [SSE] Last message ${lastMessageId} not found, returning recent messages`);
+      log.warn('SSE: Last message not found, returning recent messages', { lastMessageId });
       return getRecentMessages(conversationId, 50, db);
     }
 
@@ -1829,7 +1829,7 @@ async function getMessagesAfter(conversationId: string, lastMessageId: string | 
     const createdAt = lastMessage[0]?.createdAt || new Date().toISOString();
     return getMessagesAfterTimestamp(conversationId, createdAt, db);
   } catch (error) {
-    console.error('❌ [SSE] Error fetching messages after last message:', error);
+    log.error('SSE: Error fetching messages after last message', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
