@@ -1,4 +1,8 @@
 import type { LineReplyRequest, LineReplyMessage, LineFlexBubble } from '../types';
+import { createContextLogger } from './logger';
+
+// Context logger for LINE utils
+const log = createContextLogger('LineUtils');
 
 /**
  * 發送回覆訊息到 LINE
@@ -26,14 +30,14 @@ export async function sendLineReply(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('LINE API error:', response.status, errorText);
+      log.error('LINE API error', { status: response.status, errorText });
       return false;
     }
 
-    console.log('Message sent successfully to LINE');
+    log.info('Message sent successfully to LINE');
     return true;
   } catch (error) {
-    console.error('Failed to send LINE message:', error);
+    log.error('Failed to send LINE message', { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
@@ -64,14 +68,14 @@ export async function pushLineMessage(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('LINE Push API error:', response.status, errorText);
+      log.error('LINE Push API error', { status: response.status, errorText });
       return false;
     }
 
-    console.log('Push message sent successfully to LINE');
+    log.info('Push message sent successfully to LINE');
     return true;
   } catch (error) {
-    console.error('Failed to push LINE message:', error);
+    log.error('Failed to push LINE message', { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
@@ -201,10 +205,10 @@ export async function multicastLineMessage(
         if (response.ok) {
           successCount += batch.length;
           batchSuccess = true;
-          console.log(`✅ [LINE Multicast] Batch ${batchIndex + 1}/${batches.length} sent successfully (${batch.length} users)`);
+          log.info('LINE Multicast batch sent successfully', { batchIndex: batchIndex + 1, totalBatches: batches.length, userCount: batch.length });
         } else {
           const errorText = await response.text();
-          console.error(`❌ [LINE Multicast] Batch ${batchIndex + 1} failed:`, response.status, errorText);
+          log.error('LINE Multicast batch failed', { batchIndex: batchIndex + 1, status: response.status, errorText });
 
           // 如果是 400 錯誤，可能是部分用戶 ID 無效
           if (response.status === 400) {
@@ -212,7 +216,7 @@ export async function multicastLineMessage(
             try {
               const errorJson = JSON.parse(errorText);
               if (errorJson.details) {
-                console.error('[LINE Multicast] Error details:', errorJson.details);
+                log.error('LINE Multicast error details', { details: errorJson.details });
               }
             } catch {
               // 忽略 JSON 解析錯誤
@@ -223,12 +227,12 @@ export async function multicastLineMessage(
           if (retryCount <= maxRetries && retryOnFail) {
             // 指數退避
             const delay = Math.pow(2, retryCount) * 1000;
-            console.log(`🔄 [LINE Multicast] Retrying batch ${batchIndex + 1} in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+            log.info('LINE Multicast retrying batch', { batchIndex: batchIndex + 1, delay, attempt: retryCount, maxRetries });
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
       } catch (error) {
-        console.error(`❌ [LINE Multicast] Batch ${batchIndex + 1} exception:`, error);
+        log.error('LINE Multicast batch exception', { batchIndex: batchIndex + 1, error: error instanceof Error ? error.message : String(error) });
         retryCount++;
         if (retryCount <= maxRetries && retryOnFail) {
           const delay = Math.pow(2, retryCount) * 1000;
@@ -253,7 +257,7 @@ export async function multicastLineMessage(
     ...(failedUserIds.length > 0 && { failedUserIds })
   };
 
-  console.log(`📊 [LINE Multicast] Complete: ${successCount}/${totalUsers} users, ${apiCalls} API calls`);
+  log.info('LINE Multicast complete', { successCount, totalUsers, apiCalls });
 
   return result;
 }
@@ -288,7 +292,7 @@ export async function broadcastLineMessage(
       notificationDisabled
     };
 
-    console.log(`📢 [LINE Broadcast] Broadcasting message to all followers`);
+    log.info('LINE Broadcast broadcasting message to all followers');
 
     const response = await fetch('https://api.line.me/v2/bot/message/broadcast', {
       method: 'POST',
@@ -301,14 +305,14 @@ export async function broadcastLineMessage(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ [LINE Broadcast] API error:', response.status, errorText);
+      log.error('LINE Broadcast API error', { status: response.status, errorText });
       return { success: false, error: `LINE API error: ${response.status}` };
     }
 
-    console.log('✅ [LINE Broadcast] Message broadcast successfully');
+    log.info('LINE Broadcast message broadcast successfully');
     return { success: true };
   } catch (error) {
-    console.error('❌ [LINE Broadcast] Failed:', error);
+    log.error('LINE Broadcast failed', { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -333,11 +337,11 @@ export async function smartBatchSendLineMessages(
 ): Promise<MulticastResult> {
   const uniqueUserIds = [...new Set(userIds)];
 
-  console.log(`🧠 [LINE Smart Batch] Processing ${uniqueUserIds.length} users`);
+  log.info('LINE Smart Batch processing users', { userCount: uniqueUserIds.length });
 
   // 單一用戶：使用 Push API
   if (uniqueUserIds.length === 1) {
-    console.log(`📤 [LINE Smart Batch] Using Push API for single user`);
+    log.info('LINE Smart Batch using Push API for single user');
     const success = await pushLineMessage(accessToken, uniqueUserIds[0], messages);
     return {
       success,
@@ -376,19 +380,19 @@ export async function getLineMessageQuota(accessToken: string): Promise<{
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('LINE Quota API error:', response.status, errorText);
+      log.error('LINE Quota API error', { status: response.status, errorText });
       return { success: false, error: `API error: ${response.status}` };
     }
 
     const data = await response.json() as { type: 'none' | 'limited' | 'unlimited'; value?: number };
-    console.log(`📊 [LINE Quota] Type: ${data.type}, Value: ${data.value || 'unlimited'}`);
+    log.info('LINE Quota retrieved', { type: data.type, value: data.value || 'unlimited' });
     return {
       success: true,
       type: data.type,
       value: data.value
     };
   } catch (error) {
-    console.error('Failed to get LINE message quota:', error);
+    log.error('Failed to get LINE message quota', { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -415,18 +419,18 @@ export async function getLineMessageUsage(accessToken: string): Promise<{
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('LINE Usage API error:', response.status, errorText);
+      log.error('LINE Usage API error', { status: response.status, errorText });
       return { success: false, error: `API error: ${response.status}` };
     }
 
     const data = await response.json() as { totalUsage: number };
-    console.log(`📊 [LINE Usage] Total usage this month: ${data.totalUsage}`);
+    log.info('LINE Usage retrieved', { totalUsage: data.totalUsage });
     return {
       success: true,
       totalUsage: data.totalUsage
     };
   } catch (error) {
-    console.error('Failed to get LINE message usage:', error);
+    log.error('Failed to get LINE message usage', { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -468,7 +472,7 @@ export async function verifyLineSignature(
     
     return computedSignature === receivedSignature;
   } catch (error) {
-    console.error('Signature verification error:', error);
+    log.error('Signature verification error', { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
@@ -1013,15 +1017,15 @@ export async function getLineUserProfile(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('LINE Profile API error:', response.status, errorText);
+      log.error('LINE Profile API error', { status: response.status, errorText });
       return null;
     }
 
     const profile = await response.json();
-    console.log(`📋 獲取用戶資訊成功 - ${(profile as any).displayName} (${userId})`);
+    log.info('LINE user profile retrieved successfully', { displayName: (profile as { displayName: string }).displayName, userId });
     return profile as { userId: string; displayName: string; pictureUrl?: string; statusMessage?: string; };
   } catch (error) {
-    console.error('Failed to get LINE user profile:', error);
+    log.error('Failed to get LINE user profile', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -1048,15 +1052,15 @@ export async function getLineGroupMemberProfile(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('LINE Group Member API error:', response.status, errorText);
+      log.error('LINE Group Member API error', { status: response.status, errorText });
       return null;
     }
 
     const profile = await response.json();
-    console.log(`📋 獲取群組成員資訊成功 - ${(profile as any).displayName} (${userId})`);
+    log.info('LINE group member profile retrieved successfully', { displayName: (profile as { displayName: string }).displayName, userId });
     return profile as { userId: string; displayName: string; pictureUrl?: string; statusMessage?: string; };
   } catch (error) {
-    console.error('Failed to get LINE group member profile:', error);
+    log.error('Failed to get LINE group member profile', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
