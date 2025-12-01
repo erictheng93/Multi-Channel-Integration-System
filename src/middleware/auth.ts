@@ -5,8 +5,20 @@ import { verifyJWT, getUserById, getSession } from '../utils/auth';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { createContextLogger } from '../utils/logger';
 import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
-import type { CustomerPermissions, CustomerAccessScope } from '@modules/customer/types/customer-types';
+import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, UpdateCustomerData, CustomerFilters, CustomerTagOperation, CustomerSearchQuery } from '@modules/customer/types/customer-types';
+import type { CreateSessionData, UpdateSessionData, SessionListQuery, SessionSearchQuery } from '@modules/session/types/session-types';
+import type { QRCodeRecord } from '@modules/qrcode/types/qrcode-types';
+import type { RealtimeAuthPayload } from '@modules/realtime/middleware/realtime-auth';
+import type { FileValidationResult } from '@modules/file-management/types/validation-types';
+
+// Context logger for auth middleware
+const log = createContextLogger('AuthMiddleware');
+
+// ======================== Context 變數類型定義 ========================
+// P2-6: Improved type safety while maintaining backward compatibility
+// Using union types to allow flexibility for different use cases
 
 // 擴展 Context 類型以包含用戶信息和其他變數
 declare module 'hono' {
@@ -15,25 +27,25 @@ declare module 'hono' {
     agent: DbUser; // Added for database.ts authMiddleware compatibility
     session: Record<string, unknown>;
     jwtPayload: JWTPayload;
-    // 客戶模組變數
-    createCustomerData: any;
+    // 客戶模組變數 (P2-6: Type-safe customer data)
+    createCustomerData: CreateCustomerData;
     customerId: string;
-    updateCustomerData: any;
-    // 會話模組變數
+    updateCustomerData: UpdateCustomerData;
+    // 會話模組變數 (P2-6: Type-safe session data)
     sessionId: string;
-    createSessionData: any;
-    updateSessionData: any;
-    sessionQuery: any;
-    sessionSearchQuery: Record<string, unknown>;
-    batchOperation: Record<string, unknown>;
+    createSessionData: CreateSessionData;
+    updateSessionData: UpdateSessionData;
+    sessionQuery: SessionListQuery;
+    sessionSearchQuery: SessionSearchQuery | Record<string, unknown>;
+    batchOperation: Record<string, unknown>; // Flexible for different batch operations
     // 系統變數
     requestId: string;
     userId: string;
-    // 其他常用變數
-    customerFilters: any;
+    // 其他常用變數 (P2-6: Improved type hints with union types)
+    customerFilters: CustomerFilters;
     paginationParams: { page: number; pageSize: number };
-    searchQuery: any;
-    tagOperation: any;
+    searchQuery: CustomerSearchQuery | Record<string, unknown>; // Union for various search types
+    tagOperation: CustomerTagOperation;
     // Reports module variables
     reportId: string;
     scheduledReportId: string;
@@ -41,20 +53,20 @@ declare module 'hono' {
     reportQuery: Record<string, unknown>;
     scheduledReportData: Record<string, unknown>;
     previewParams: Record<string, unknown>;
-    // QRCode module variables
-    qrCode: any;
+    // QRCode module variables (P2-6: Type-safe QR code, nullable)
+    qrCode: QRCodeRecord | null;
     canAccess: boolean;
     canModify: boolean;
-    validatedData: any;
-    validatedQuery: any;
-    // Realtime module variables
-    realtimeAuth: any;
-    connectionValidation: any;
-    // File management variables
-    fileValidation: any;
-    validatedFile: any;
-    filesValidation: any;
-    validatedFiles: any;
+    validatedData: Record<string, unknown>; // Flexible validated data
+    validatedQuery: Record<string, unknown>; // Flexible query params
+    // Realtime module variables (P2-6: Type-safe realtime auth)
+    realtimeAuth: RealtimeAuthPayload;
+    connectionValidation: Record<string, unknown>; // Flexible connection data
+    // File management variables (P2-6: Union types for file validation)
+    fileValidation: FileValidationResult | Record<string, unknown>;
+    validatedFile: File | FileValidationResult;
+    filesValidation: Array<FileValidationResult | Record<string, unknown>>;
+    validatedFiles: Array<File | FileValidationResult>;
     // System permissions
     systemPermissions: SystemPermissions;
     systemAccessScope: SystemAccessScope;
@@ -93,7 +105,7 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
 
     // Fallback: use JWT payload teamId if database teamId is null (for admin users)
     if (!user.teamId && payload.teamId) {
-      console.log('[jwtAuth] Using JWT payload teamId as fallback:', payload.teamId);
+      log.debug('Using JWT payload teamId as fallback', { teamId: payload.teamId });
       user.teamId = payload.teamId;
     }
 
@@ -117,8 +129,8 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     
     await next();
   } catch (error) {
-    console.error('JWT authentication error:', error);
-    return c.json({ 
+    log.error('JWT authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
       error: 'Invalid or expired token',
       message: error instanceof Error ? error.message : 'Authentication failed'
     }, 401);
@@ -156,8 +168,8 @@ export async function sessionAuth(c: Context<{ Bindings: Bindings }>, next: Next
     
     await next();
   } catch (error) {
-    console.error('Session authentication error:', error);
-    return c.json({ 
+    log.error('Session authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
       error: 'Session authentication failed',
       message: error instanceof Error ? error.message : 'Authentication failed'
     }, 401);
@@ -206,7 +218,7 @@ export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
     const agent = c.get('agent');
     const actualUser = user || agent;
 
-    console.log('[requireRoleLevel] Debug:', {
+    log.debug('Role level check', {
       hasUser: !!user,
       hasAgent: !!agent,
       actualUser: actualUser ? { id: actualUser.id, role: actualUser.role, email: actualUser.email } : null,
@@ -214,7 +226,7 @@ export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
     });
 
     if (!actualUser) {
-      console.log('[requireRoleLevel] No user found in context');
+      log.warn('No user found in context');
       return c.json({
         error: 'Authentication required',
         debug: {
@@ -229,7 +241,7 @@ export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
     const { PermissionService } = await import('../services/permission-service');
 
     const hasAuthority = PermissionService.hasRoleAuthority(actualUser.role, requiredRole);
-    console.log('[requireRoleLevel] Authority check:', {
+    log.debug('Authority check result', {
       userRole: actualUser.role,
       requiredRole,
       hasAuthority
@@ -325,7 +337,7 @@ export async function optionalAuth(c: Context<{ Bindings: Bindings }>, next: Nex
         }
       } catch (error) {
         // 忽略認證錯誤，繼續處理請求
-        console.warn('Optional auth failed:', error);
+        log.debug('Optional auth failed (non-blocking)', { error: error instanceof Error ? error.message : String(error) });
       }
     }
     
@@ -356,8 +368,8 @@ export async function apiKeyAuth(c: Context<{ Bindings: Bindings }>, next: Next)
 
     await next();
   } catch (error) {
-    console.error('API key authentication error:', error);
-    return c.json({ 
+    log.error('API key authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
       error: 'API key authentication failed',
       message: error instanceof Error ? error.message : 'Authentication failed'
     }, 401);
@@ -402,7 +414,7 @@ export function rateLimit(maxRequests: number = 100, windowMs: number = 60 * 100
       
       await next();
     } catch (error) {
-      console.error('Rate limit error:', error);
+      log.warn('Rate limit check failed (non-blocking)', { error: error instanceof Error ? error.message : String(error) });
       // 如果速率限制失敗，繼續處理請求
       await next();
     }
