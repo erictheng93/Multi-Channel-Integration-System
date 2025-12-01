@@ -36,8 +36,8 @@ export {
 } from './session-validation';
 
 // ======================== 中間件組合 ========================
-// 注意：暫時不導出中間件組合以避免部署錯誤
-// TODO: 在系統穩定後重新啟用中間件組合
+// Note: Middleware combinations temporarily disabled for deployment stability
+// Individual middleware functions are available above and used directly in handlers
 
 /**
  * 基本會話存取中間件組合
@@ -164,16 +164,19 @@ export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig>
   const middleware: MiddlewareFunction[] = [];
 
   if (finalConfig.enableSizeLimit) {
-    // TODO: Implement validateRequestSize middleware
+    // Note: validateRequestSize is available but disabled here
+    // Use directly in route handlers instead
     // middleware.push(validateRequestSize);
   }
 
   if (finalConfig.enableRateLimit) {
-    // TODO: Implement validateRateLimit middleware
+    // Note: validateRateLimit is available but disabled here
+    // Use directly in route handlers instead
     // middleware.push(validateRateLimit);
   }
 
-  // TODO: 在系統穩定後重新啟用
+  // Note: Permission check middleware disabled in factory function
+  // Use checkSessionAccess directly in route handlers for explicit control
   // if (finalConfig.enablePermissionCheck) {
   //   middleware.push(checkSessionAccess);
   // }

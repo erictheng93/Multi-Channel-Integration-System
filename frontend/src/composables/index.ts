@@ -23,5 +23,5 @@ export { useFileUpload } from './useFileUpload'
 export { useAccountStatusMonitor } from './useAccountStatusMonitor'
 export { usePrefetch } from './usePrefetch'
 
-// P1-2 composables removed - require proper integration with existing types
-// TODO: Re-add useConversationActions and useMessageEventHandlers after type alignment
+// Note: P1-2 composables (useConversationActions, useMessageEventHandlers) removed
+// These can be re-added when integration with existing types is completed

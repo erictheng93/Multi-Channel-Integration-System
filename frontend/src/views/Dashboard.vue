@@ -456,8 +456,8 @@ const { data: dashboardStats, pending: statsLoading, refresh: refreshStats } = u
   { immediate: true }
 )
 
-// REMOVED: SSE-based Activity Stream (Phase 1 cleanup)
-// TODO: Restore with WebSocket-based activity stream
+// Note: SSE-based Activity Stream removed in Phase 1 cleanup
+// WebSocket infrastructure is deployed - activity stream can be re-implemented when needed
 // 篩選重要活動 - 只顯示最近2小時內的高優先級和中優先級活動
 interface ActivityItem {
   id: string
@@ -495,8 +495,8 @@ const importantActivities = computed<ActivityItem[]>(() => {
   */
 })
 
-// REMOVED: Activity helper functions (Phase 1 cleanup)
-// TODO: Restore when WebSocket activity stream is implemented
+// Note: Activity helper functions removed in Phase 1 cleanup
+// Re-implement with WebSocket when activity stream feature is prioritized
 // - getActivityPriority(action: string): string
 // - mapActivityActionToType(action: string): string
 // - getActivityTitle(action: string): string

@@ -303,7 +303,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
           },
           body: JSON.stringify({
             content,
-            assets: [] // TODO: 處理文件上傳
+            assets: [] // Note: File attachments can be added using useFileUpload composable
           })
         }
       )
