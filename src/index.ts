@@ -4,8 +4,11 @@ import { cors } from 'hono/cors';
 import { ALLOWED_ORIGINS, isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
 import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
-import { logger, createContextLogger } from './utils/logger';
+import { logger, createContextLogger, configureLogger } from './utils/logger';
 import { templateService } from './services/template-service';
+
+// Context logger for main entry point
+const log = createContextLogger('Main');
 
 // 統一路由管理系統
 import { RouteRegistry } from './core/route-registry';
@@ -116,7 +119,7 @@ app.use('*', async (c, next) => {
       console.log(`✅ CORS OPTIONS: Allowed origin: ${origin}`);
       return createCorsPreflightResponse(origin);
     } else {
-      console.warn(`❌ CORS OPTIONS: Blocked origin: ${origin}`);
+      log.warn('CORS OPTIONS: Blocked origin', { origin });
       return c.json({ error: 'CORS policy violation' }, 403);
     }
   }
@@ -130,7 +133,7 @@ app.use('*', async (c, next) => {
     c.header('Access-Control-Allow-Credentials', 'true');
     console.log(`✅ CORS: Allowed origin: ${origin}`);
   } else if (origin) {
-    console.warn(`❌ CORS: Blocked origin: ${origin}`);
+    log.warn('CORS: Blocked origin', { origin });
   }
 });
 
@@ -142,7 +145,7 @@ console.log('🚀 Initializing Unified Route Management System...');
 // 驗證路由配置
 const routeValidation = validateRouteConfig();
 if (!routeValidation.valid) {
-  console.error('❌ Route configuration validation failed:', routeValidation.issues);
+  log.error('Route configuration validation failed', { issues: routeValidation.issues });
   throw new Error('Invalid route configuration');
 }
 
@@ -415,7 +418,7 @@ app.get('/api/customer-ws', async (c) => {
 
   // SECURITY: Validate the session token
   if (!c.env.JWT_SECRET) {
-    console.error('❌ [Customer WebSocket] JWT_SECRET not configured');
+    log.error('Customer WebSocket: JWT_SECRET not configured');
     return c.json({ success: false, error: 'Server configuration error' }, 500);
   }
 
@@ -447,7 +450,7 @@ app.get('/api/customer-ws', async (c) => {
     const isCustomer = String(conversation.customerId) === String(payload.userId);
 
     if (!isAdmin && !isAssigned && !isCustomer) {
-      console.warn(`❌ [Customer WebSocket] Access denied: user ${payload.userId} to conversation ${conversationId}`);
+      log.warn('Customer WebSocket: Access denied', { userId: payload.userId, conversationId });
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 
@@ -457,7 +460,7 @@ app.get('/api/customer-ws', async (c) => {
       role: payload.role
     });
   } catch (authError) {
-    console.error('❌ [Customer WebSocket] Authentication failed:', authError);
+    log.error('Customer WebSocket: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
     return c.json({ success: false, error: 'Invalid or expired session' }, 401);
   }
 
@@ -473,7 +476,7 @@ app.get('/api/customer-ws', async (c) => {
 
     return doStub.fetch(modifiedRequest);
   } catch (error) {
-    console.error('❌ [Customer WebSocket] Connection error:', error);
+    log.error('Customer WebSocket: Connection error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: 'Failed to establish WebSocket connection'
@@ -505,7 +508,7 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
   }
 
   if (!c.env.JWT_SECRET) {
-    console.error('❌ [Customer Messages] JWT_SECRET not configured');
+    log.error('Customer Messages: JWT_SECRET not configured');
     return c.json({ success: false, error: 'Server configuration error' }, 500);
   }
 
@@ -537,13 +540,13 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
     const isCustomer = String(conversation.customerId) === String(payload.userId);
 
     if (!isAdmin && !isAssigned && !isCustomer) {
-      console.warn(`❌ [Customer Messages] Access denied: user ${payload.userId} to conversation ${conversationId}`);
+      log.warn('Customer Messages: Access denied', { userId: payload.userId, conversationId });
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 
-    console.log(`📨 [Customer Messages] Authenticated ${requestMethod} for conversation: ${conversationId} by user ${payload.userId}`);
+    log.debug('Customer Messages: Authenticated request', { method: requestMethod, conversationId, userId: payload.userId });
   } catch (authError) {
-    console.error('❌ [Customer Messages] Authentication failed:', authError);
+    log.error('Customer Messages: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
     return c.json({ success: false, error: 'Invalid or expired session' }, 401);
   }
 
@@ -572,10 +575,10 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
       body: bodyText
     });
 
-    console.log(`📤 [Proxy] Forwarding to CustomerMessageDO: ${requestMethod} ${conversationId}`);
+    log.debug('Proxy: Forwarding to CustomerMessageDO', { method: requestMethod, conversationId });
     return doStub.fetch(doRequest);
   } catch (error) {
-    console.error('❌ [Customer Messages] Operation error:', error);
+    log.error('Customer Messages: Operation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: 'Failed to process message operation'
@@ -602,7 +605,7 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
   }
 
   if (!c.env.JWT_SECRET) {
-    console.error('❌ [Customer Upload] JWT_SECRET not configured');
+    log.error('Customer Upload: JWT_SECRET not configured');
     return c.json({ success: false, error: 'Server configuration error' }, 500);
   }
 
@@ -634,13 +637,13 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
     const isCustomer = String(conversation.customerId) === String(payload.userId);
 
     if (!isAdmin && !isAssigned && !isCustomer) {
-      console.warn(`❌ [Customer Upload] Access denied: user ${payload.userId} to conversation ${conversationId}`);
+      log.warn('Customer Upload: Access denied', { userId: payload.userId, conversationId });
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 
-    console.log(`📤 [Customer Upload] Authenticated upload for conversation: ${conversationId} by user ${payload.userId}`);
+    log.debug('Customer Upload: Authenticated', { conversationId, userId: payload.userId });
   } catch (authError) {
-    console.error('❌ [Customer Upload] Authentication failed:', authError);
+    log.error('Customer Upload: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
     return c.json({ success: false, error: 'Invalid or expired session' }, 401);
   }
 
@@ -673,7 +676,7 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
 
     return doStub.fetch(new Request(url.toString(), modifiedRequest));
   } catch (error) {
-    console.error('❌ [Customer Upload] Upload error:', error);
+    log.error('Customer Upload: Upload error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: 'Failed to upload file'
@@ -775,15 +778,15 @@ async function initializeModularSystem() {
   ⚡ System: ${initResult.success ? 'Ready' : 'Partial'}`);
 
       if (initResult.warnings.length > 0) {
-        console.warn('⚠️ Modular system warnings:', initResult.warnings);
+        log.warn('Modular system warnings', { warnings: initResult.warnings });
       }
       if (initResult.errors.length > 0) {
-        console.error('❌ Modular system errors:', initResult.errors);
+        log.error('Modular system errors', { errors: initResult.errors });
       }
 
       modularSystemInitialized = true;
     } catch (error) {
-      console.error('❌ Failed to initialize modular architecture system:', error);
+      log.error('Failed to initialize modular architecture system', { error: error instanceof Error ? error.message : String(error) });
       // 重置 promise 以允許重試
       modularSystemInitPromise = null;
       throw error;
@@ -796,12 +799,12 @@ async function initializeModularSystem() {
 // 延遲初始化 P1 Optimizations（在第一個請求時執行）
 async function initializeP1Optimizations(env: Bindings) {
   try {
-    console.log('🚀 Initializing P1 Optimizations...');
+    log.debug('Initializing P1 Optimizations');
     const { initializeP1Optimizations: init } = await import('./services/p1-optimizations');
     await init(env);
-    console.log('✅ P1 Optimizations initialized successfully');
+    log.debug('P1 Optimizations initialized successfully');
   } catch (error) {
-    console.error('❌ Failed to initialize P1 Optimizations:', error);
+    log.error('Failed to initialize P1 Optimizations', { error: error instanceof Error ? error.message : String(error) });
     // P1 優化失敗不應阻塞系統啟動
   }
 }
@@ -813,7 +816,7 @@ async function initializeCollaboration(env: Bindings) {
   }
 
   try {
-    console.log('🤝 Initializing Collaboration Module...');
+    log.debug('Initializing Collaboration Module');
 
     // 先初始化 P1 優化
     await initializeP1Optimizations(env);
@@ -842,14 +845,12 @@ async function initializeCollaboration(env: Bindings) {
       ? `WebSocket (primary) + SSE (fallback)`
       : `SSE only`;
 
-    console.log(`✅ Collaboration Module initialized successfully`);
-    console.log(`   Protocol: ${protocolStatus}`);
-    console.log(`   Environment: ${env.ENVIRONMENT || 'unknown'}`);
+    log.info('Collaboration Module initialized', { protocol: protocolStatus, environment: env.ENVIRONMENT || 'unknown' });
   } catch (error) {
-    console.error('❌ Failed to initialize Collaboration Module:', error);
+    log.error('Failed to initialize Collaboration Module', { error: error instanceof Error ? error.message : String(error) });
     // 降級到僅 SSE 模式
     try {
-      console.log('⚠️ Attempting fallback to SSE-only mode...');
+      log.warn('Attempting fallback to SSE-only mode');
       const { Collaboration } = await import('@modules/collaboration');
       await Collaboration.initialize(env, {
         defaultProtocol: 'sse',
@@ -861,9 +862,9 @@ async function initializeCollaboration(env: Bindings) {
         persistEvents: false
       });
       collaborationInitialized = true;
-      console.log('✅ Collaboration Module initialized in SSE fallback mode');
+      log.info('Collaboration Module initialized in SSE fallback mode');
     } catch (fallbackError) {
-      console.error('❌ Fallback initialization also failed:', fallbackError);
+      log.error('Fallback initialization also failed', { error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) });
       throw fallbackError;
     }
   }
@@ -919,7 +920,7 @@ app.use('*', async (c, next) => {
     try {
       await initializeModularSystem();
     } catch (error) {
-      console.error('⚠️ Modular system initialization failed (continuing anyway):', error);
+      log.error('Modular system initialization failed (continuing anyway)', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -928,7 +929,7 @@ app.use('*', async (c, next) => {
     try {
       await initializeCollaboration(c.env);
     } catch (error) {
-      console.error('⚠️ Collaboration module initialization failed (continuing anyway):', error);
+      log.error('Collaboration module initialization failed (continuing anyway)', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -946,9 +947,9 @@ app.use('*', async (c, next) => {
       const { LatestMessageJobQueue } = await import('./workers/latest-message-worker');
       const jobQueue = new LatestMessageJobQueue(c.env);
       await jobQueue.warmupCache();
-      console.log('🔥 [Startup] Latest message cache warmup initiated');
+      log.debug('Startup: Latest message cache warmup initiated');
     } catch (error) {
-      console.warn('⚠️ [Startup] Cache warmup failed (non-critical):', error);
+      log.warn('Startup: Cache warmup failed (non-critical)', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -1109,7 +1110,7 @@ app.get('/join', async (c) => {
     `);
 
   } catch (error) {
-    console.error('Join team page error:', error);
+    log.error('Join team page error', { error: error instanceof Error ? error.message : String(error) });
     return c.html(`
       <html>
         <head><title>錯誤</title></head>

@@ -26,6 +26,10 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { ActivityService } from '../services/activity-service';
+import { createContextLogger } from '../utils/logger';
+
+// Context logger for webhook handler
+const log = createContextLogger('Webhook');
 
 // 🆕 P2-1: Import shared webhook services
 import {
@@ -64,7 +68,7 @@ export const webhookHandler = {
       // 🆕 P2-1: 使用共享服務驗證 payload 大小
       const sizeValidation = validatePayloadSize(body, 1024 * 1024); // 1MB limit
       if (!sizeValidation.valid) {
-        console.error('❌ [LINE Webhook] Payload too large:', sizeValidation.size);
+        log.error('LINE Webhook: Payload too large', { size: sizeValidation.size });
         return errorResponse(c, 'Payload too large', 413);
       }
 
@@ -82,7 +86,7 @@ export const webhookHandler = {
       );
 
       if (!signatureResult.valid) {
-        console.error('❌ [LINE Webhook] Signature verification failed:', signatureResult.error);
+        log.error('LINE Webhook: Signature verification failed', { error: signatureResult.error });
         return unauthorizedResponse(c, signatureResult.error || 'Invalid signature');
       }
 
@@ -98,7 +102,7 @@ export const webhookHandler = {
       // 🆕 P2-1: 使用共享驗證服務
       const validationResult = validateLinePayload(data);
       if (!validationResult.valid) {
-        console.error('❌ [LINE Webhook] Invalid webhook payload:', validationResult.errors);
+        log.error('LINE Webhook: Invalid webhook payload', { errors: validationResult.errors });
         return errorResponse(c, validationResult.errors.join(', ') || 'Invalid webhook payload');
       }
 
@@ -229,7 +233,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
   console.log('💬 [LINE Message] Processing message from user:', userId.substring(0, 10) + '...');
   
   if (!message) {
-    console.warn('⚠️ [LINE Message] No message in LINE event');
+    log.warn('LINE Message: No message in LINE event');
     return;
   }
   
@@ -319,7 +323,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           avatarUrl = profile.pictureUrl;
         }
       } catch (profileError) {
-        console.warn('Failed to sync LINE user profile:', profileError);
+        log.warn('Failed to sync LINE user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
       }
 
       // 建立新使用者
@@ -347,8 +351,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
     } 
     
     if (!user) {
-      console.error('❌ [LINE Webhook] Failed to find or create user after insert');
-      console.error('❌ [LINE Webhook] User ID:', userId.substring(0, 10) + '...');
+      log.error('LINE Webhook: Failed to find or create user after insert', { userIdPrefix: userId.substring(0, 10) });
       return;
     }
     
@@ -368,11 +371,11 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         if (needsUpdate) {
           // 異步更新用戶資料（不等待完成）
           userSyncService.syncLineUser(userId, event.source.groupId).catch(error => {
-            console.warn('Background LINE user sync failed:', error);
+            log.warn('Background LINE user sync failed', { error: error instanceof Error ? error.message : String(error) });
           });
         }
       } catch (syncError) {
-        console.warn('Error checking LINE user sync status:', syncError);
+        log.warn('Error checking LINE user sync status', { error: syncError instanceof Error ? syncError.message : String(syncError) });
       }
     }
 
@@ -430,23 +433,24 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           .get();
         
         if (!newConversation) {
-          console.error('❌ [LINE Webhook] Failed to retrieve created conversation with ID:', conversationId);
-          console.error('❌ [LINE Webhook] Customer ID:', user.id);
-          console.error('❌ [LINE Webhook] Timestamp:', timestamp);
-          
           // 嘗試查詢是否有任何該用戶的對話
           const anyUserConversations = await drizzleDb
             .select()
             .from(conversations)
             .where(eq(conversations.customerId, user.id))
             .all();
-            
-          console.error('❌ [LINE Webhook] All conversations for customer:', anyUserConversations);
-          
+
           // 檢查數據庫連接狀態
           const dbTest = await drizzleDb.select().from(customers).where(eq(customers.id, user.id)).get();
-          console.error('❌ [LINE Webhook] Database connection test (customer query):', dbTest ? 'OK' : 'FAILED');
-          
+
+          log.error('LINE Webhook: Failed to retrieve created conversation', {
+            conversationId,
+            customerId: user.id,
+            timestamp,
+            allConversationsCount: anyUserConversations?.length || 0,
+            dbConnectionTest: dbTest ? 'OK' : 'FAILED'
+          });
+
           throw new Error('Failed to retrieve created conversation after successful insert');
         }
         
@@ -457,12 +461,11 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           status: conversation?.status
         });
       } catch (convError) {
-        console.error('❌ [LINE Webhook] Failed to create conversation:', {
+        log.error('LINE Webhook: Failed to create conversation', {
           error: convError instanceof Error ? convError.message : 'Unknown error',
           conversationId,
           customerId: user.id,
-          timestamp,
-          stack: convError instanceof Error ? convError.stack : undefined
+          timestamp
         });
         throw new Error(`Failed to create conversation: ${convError}`);
       }
@@ -536,9 +539,9 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         const { LatestMessageJobQueue } = await import('../workers/latest-message-worker');
         const jobQueue = new LatestMessageJobQueue(env);
         await jobQueue.updateLatestMessage(conversation!.id, messageId, 'high');
-        console.log(`📤 [Webhook] Triggered cache update for LINE message in conversation ${conversation!.id}`);
+        log.debug('Triggered cache update for LINE message', { conversationId: conversation!.id });
       } catch (error) {
-        console.warn(`⚠️ [Webhook] Failed to trigger cache update:`, error);
+        log.warn('Failed to trigger cache update', { error: error instanceof Error ? error.message : String(error) });
         // Don't fail the webhook for cache update failures
       }
         
@@ -550,13 +553,12 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         });
         
       } catch (messageError) {
-        console.error('❌ [LINE Webhook] Failed to create message:', {
+        log.error('LINE Webhook: Failed to create message', {
           error: messageError instanceof Error ? messageError.message : 'Unknown error',
           messageId,
           conversationId: conversation!.id,
           customerId: user.id,
-          platformMessageId: message.id,
-          stack: messageError instanceof Error ? messageError.stack : undefined
+          platformMessageId: message.id
         });
         throw new Error(`Failed to create message: ${messageError}`);
       }
@@ -602,7 +604,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           console.log(`✅ [LINE Webhook] Media processed and stored BEFORE broadcast: ${mediaFile.filename}`);
         }
       } catch (storageError) {
-        console.error('⚠️ [LINE Webhook] Error processing media before broadcast:', storageError);
+        log.error('LINE Webhook: Error processing media before broadcast', { error: storageError instanceof Error ? storageError.message : String(storageError) });
         // Continue with broadcast even if media processing fails
       }
     }
@@ -656,13 +658,13 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       const response = await conversationDO.fetch(notifyRequest);
 
       if (response.ok) {
-        console.log(`✅ [LINE Webhook] Notified CustomerConversationDO for WebSocket broadcast`);
+        log.debug('LINE Webhook: Notified CustomerConversationDO for WebSocket broadcast');
       } else {
         const errorText = await response.text();
-        console.error(`⚠️ [LINE Webhook] CustomerConversationDO returned error:`, errorText);
+        log.error('LINE Webhook: CustomerConversationDO returned error', { error: errorText });
       }
     } catch (broadcastError) {
-      console.error('❌ [LINE Webhook] Failed to broadcast via WebSocket:', broadcastError);
+      log.error('LINE Webhook: Failed to broadcast via WebSocket', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
       // Don't fail webhook processing - message is saved to database
     }
 
@@ -695,10 +697,10 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
 
         // Note: WebSocket real-time events are now handled by websocket-broadcast-service
       } else {
-        console.warn('⚠️ [LINE Webhook] Failed to create activity');
+        log.warn('LINE Webhook: Failed to create activity');
       }
     } catch (activityError) {
-      console.warn('❌ [LINE Webhook] Failed to record activity:', activityError);
+      log.warn('LINE Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2
@@ -756,22 +758,21 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
 
           await drizzleDb.insert(fileAttachments).values(newFileAttachment);
 
-          console.log(`✅ [LINE Webhook] Media stored: ${mediaFile.filename}, URL: ${mediaFile.url}`);
+          log.debug('LINE Webhook: Media stored', { filename: mediaFile.filename, url: mediaFile.url });
         } else {
-          console.warn(`Failed to store LINE ${message.type} for message ${message.id}`);
+          log.warn('Failed to store LINE media', { messageType: message.type, messageId: message.id });
         }
       } catch (storageError) {
-        console.error('Error storing LINE media:', storageError);
+        log.error('Error storing LINE media', { error: storageError instanceof Error ? storageError.message : String(storageError) });
       }
     }
 
     logSecurely('LINE', userId, messageContent.length);
   } catch (error) {
-    console.error('Error processing LINE message:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      userId: userId.slice(0, 8) + '...',
-      messageType: event.message?.type,
-      timestamp: new Date().toISOString()
+    log.error('Error processing LINE message', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userIdPrefix: userId.slice(0, 8),
+      messageType: event.message?.type
     });
     throw error;
   }
@@ -783,7 +784,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
   const message = messaging.message;
   
   if (!message) {
-    console.warn('No message in Facebook messaging event');
+    log.warn('Facebook Message: No message in messaging event');
     return;
   }
   
@@ -882,7 +883,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
           avatarUrl = profile.pictureUrl;
         }
       } catch (profileError) {
-        console.warn('Failed to sync Facebook user profile:', profileError);
+        log.warn('Failed to sync Facebook user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
       }
 
       // 建立新使用者
@@ -917,17 +918,17 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         if (needsUpdate) {
           // 異步更新用戶資料（不等待完成）
           userSyncService.syncFacebookUser(userId).catch(error => {
-            console.warn('Background Facebook user sync failed:', error);
+            log.warn('Background Facebook user sync failed', { error: error instanceof Error ? error.message : String(error) });
           });
         }
       } catch (syncError) {
-        console.warn('Error checking Facebook user sync status:', syncError);
+        log.warn('Error checking Facebook user sync status', { error: syncError instanceof Error ? syncError.message : String(syncError) });
       }
     }
     
     // 確保用戶存在才繼續
     if (!user) {
-      console.error('No user available for Facebook conversation');
+      log.error('Facebook Webhook: No user available for conversation');
       return;
     }
 
@@ -975,9 +976,9 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         }
         
         conversation = convertConversation(newConversation) as any;
-        console.log(`✅ Created new conversation: ${conversationId}`);
+        log.debug('Created new Facebook conversation', { conversationId });
       } catch (convError) {
-        console.error('❌ Failed to create conversation:', convError);
+        log.error('Facebook Webhook: Failed to create conversation', { error: convError instanceof Error ? convError.message : String(convError) });
         throw new Error(`Failed to create conversation: ${convError}`);
       }
     } else {
@@ -1030,9 +1031,9 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       const { LatestMessageJobQueue } = await import('../workers/latest-message-worker');
       const jobQueue = new LatestMessageJobQueue(env);
       await jobQueue.updateLatestMessage(conversation!.id, messageId, 'high');
-      console.log(`📤 [Webhook] Triggered cache update for Facebook message in conversation ${conversation!.id}`);
+      log.debug('Triggered cache update for Facebook message', { conversationId: conversation!.id });
     } catch (error) {
-      console.warn(`⚠️ [Webhook] Failed to trigger cache update:`, error);
+      log.warn('Failed to trigger cache update', { error: error instanceof Error ? error.message : String(error) });
       // Don't fail the webhook for cache update failures
     }
 
@@ -1065,10 +1066,10 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
 
         // Note: WebSocket real-time events are now handled by websocket-broadcast-service
       } else {
-        console.warn('⚠️ [Facebook Webhook] Failed to create activity');
+        log.warn('Facebook Webhook: Failed to create activity');
       }
     } catch (activityError) {
-      console.warn('❌ [Facebook Webhook] Failed to record activity:', activityError);
+      log.warn('Facebook Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2
@@ -1099,22 +1100,21 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
           
           await drizzleDb.insert(fileAttachments).values(newFileAttachment);
           
-          console.log(`Facebook ${messageType} stored: ${mediaFile.filename}`);
+          log.debug('Facebook media stored', { messageType, filename: mediaFile.filename });
         } else {
-          console.warn(`Failed to store Facebook ${messageType} for message ${message.mid}`);
+          log.warn('Failed to store Facebook media', { messageType, messageId: message.mid });
         }
       } catch (storageError) {
-        console.error('Error storing Facebook media:', storageError);
+        log.error('Error storing Facebook media', { error: storageError instanceof Error ? storageError.message : String(storageError) });
       }
     }
 
     logSecurely('Facebook', userId, messageContent.length);
   } catch (error) {
-    console.error('Error processing Facebook message:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      userId: userId.slice(0, 8) + '...',
-      messageType: messaging.message?.attachments?.[0]?.type || 'text',
-      timestamp: new Date().toISOString()
+    log.error('Error processing Facebook message', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userIdPrefix: userId.slice(0, 8),
+      messageType: messaging.message?.attachments?.[0]?.type || 'text'
     });
     throw error;
   }
