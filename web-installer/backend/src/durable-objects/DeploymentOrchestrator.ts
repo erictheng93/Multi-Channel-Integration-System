@@ -588,8 +588,8 @@ export class DeploymentOrchestrator implements DurableObject {
       email: this.deploymentState.config.adminEmail
     };
 
-    // Hash password (in production, use bcrypt)
-    const passwordHash = btoa(password); // Simple encoding for demo
+    // Hash password using PBKDF2 (secure alternative to bcrypt for Cloudflare Workers)
+    const passwordHash = await this.hashPassword(password);
 
     await this.migrationRunner.createAdminUser(
       this.deploymentState.resources.d1DatabaseId,
@@ -600,6 +600,62 @@ export class DeploymentOrchestrator implements DurableObject {
 
     (this.deploymentState as any).adminCredentials = credentials;
     this.log('success', 'Created admin user');
+  }
+
+  /**
+   * Hash password using PBKDF2 with Web Crypto API
+   * This is a secure alternative to bcrypt for Cloudflare Workers environment
+   */
+  private async hashPassword(password: string): Promise<string> {
+    // Generate a random salt
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+
+    // Encode password as bytes
+    const encoder = new TextEncoder();
+    const passwordBytes = encoder.encode(password);
+
+    // Import password as key
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      passwordBytes,
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    );
+
+    // Derive key using PBKDF2
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt,
+        iterations: 100000, // OWASP recommended minimum
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      256 // 32 bytes
+    );
+
+    // Convert to Uint8Array
+    const derivedKey = new Uint8Array(derivedBits);
+
+    // Combine salt and derived key, encode as base64
+    const combined = new Uint8Array(salt.length + derivedKey.length);
+    combined.set(salt);
+    combined.set(derivedKey, salt.length);
+
+    // Return as base64 with algorithm prefix for verification
+    return `pbkdf2:100000:${this.arrayBufferToBase64(combined)}`;
+  }
+
+  /**
+   * Convert ArrayBuffer to base64 string
+   */
+  private arrayBufferToBase64(buffer: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < buffer.length; i++) {
+      binary += String.fromCharCode(buffer[i]);
+    }
+    return btoa(binary);
   }
 
   private async stepSendEmail(): Promise<void> {

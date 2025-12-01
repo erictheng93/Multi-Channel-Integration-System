@@ -59,7 +59,7 @@ export class SessionService implements SessionServiceInterface {
       sessionType: data.sessionType || 'continuous',
       topic: topic,
       startTime: now,
-      endTime: null,
+      endTime: null as string | null,
       lastActivity: now,
       messageCount: 0,
       isActive: true,

@@ -398,6 +398,7 @@ export async function getMessageStats(
       metadata: messages.metadata,
       sentAt: messages.sentAt,
       createdAt: messages.createdAt,
+      deletedAt: messages.deletedAt,
       customer_name: customers.displayName,
       platform: customers.platform
     })

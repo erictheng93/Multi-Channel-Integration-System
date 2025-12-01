@@ -168,7 +168,7 @@ sessionRouter.post(
         shouldCreateNew: false,
         reason: 'continuous_conversation' as const,
         confidence: 0.85,
-        suggestedTopic: null,
+        suggestedTopic: null as string | null,
         analysis: {
           timeGapAnalysis: {
             lastMessageTime: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
@@ -177,7 +177,7 @@ sessionRouter.post(
           },
           topicAnalysis: {
             currentTopic: 'general_inquiry',
-            suggestedTopic: null,
+            suggestedTopic: null as string | null,
             topicChangeDetected: false
           },
           messageCountAnalysis: {
@@ -320,7 +320,7 @@ sessionRouter.post(
           totalMessages: includeMessages ? 0 : undefined,
           exportedAt: new Date().toISOString()
         },
-        downloadUrl: null, // TODO: Generate actual download URL
+        downloadUrl: null as string | null, // TODO: Generate actual download URL
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
       };
 

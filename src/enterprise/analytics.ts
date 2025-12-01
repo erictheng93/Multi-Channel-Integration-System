@@ -515,7 +515,7 @@ export class EnterpriseAnalyticsEngine {
     return {
       queryCount: Number(result?.queryCount) || 0,
       averageQueryTime: Number(result?.avgQueryTime) || 0,
-      slowQueries: [] // 需要實現慢查詢追蹤
+      slowQueries: [] as Array<{ query: string; executionTime: number; frequency: number }> // 需要實現慢查詢追蹤
     };
   }
 

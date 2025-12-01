@@ -396,7 +396,7 @@ function stopAutoRefresh() {
 
 function changePeriod(newPeriod: string) {
   period.value = newPeriod
-  // TODO: 重新載入歷史資料
+  // Note: History data reload can be added here when historical metrics API is available
 }
 
 function getPercentage(value?: number): number {

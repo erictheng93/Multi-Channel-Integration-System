@@ -139,7 +139,7 @@ export class SecurityAnalyticsService {
         slack: 0,
         webhook: 0
       },
-      recentAlerts: []
+      recentAlerts: [] as Array<{ id: string; message: string; timestamp: string; severity: string }>
     };
 
     return {

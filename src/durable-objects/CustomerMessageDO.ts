@@ -11,6 +11,25 @@ import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments } from '../db/schema';
 
 /**
+ * Session data structure for validation
+ */
+interface SessionData {
+  userId: string;
+  displayName: string;
+  role?: 'admin' | 'agent' | 'customer';
+  expiresAt: number;
+}
+
+/**
+ * Session validation result
+ */
+interface SessionValidationResult {
+  valid: boolean;
+  session?: SessionData;
+  error?: string;
+}
+
+/**
  * CustomerMessageDO
  *
  * Purpose: Handle message operations for customer conversations
@@ -33,6 +52,37 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
     super(ctx, env);
     this.setupRoutes();
     console.log('🏗️ [CustomerMessageDO] Initialized');
+  }
+
+  /**
+   * Validate session against KV store
+   * Uses the same session key format as KVSessionService
+   */
+  private async validateSession(sessionId: string): Promise<SessionValidationResult> {
+    if (!sessionId) {
+      return { valid: false, error: 'Session ID is required' };
+    }
+
+    try {
+      const sessionKey = `session:${sessionId}`;
+      const sessionData = await this.env.SESSIONS.get(sessionKey, 'text');
+
+      if (!sessionData) {
+        return { valid: false, error: 'Session not found' };
+      }
+
+      const session: SessionData = JSON.parse(sessionData);
+
+      // Check expiration
+      if (session.expiresAt < Date.now()) {
+        return { valid: false, error: 'Session expired' };
+      }
+
+      return { valid: true, session };
+    } catch (error) {
+      console.error('[CustomerMessageDO] Session validation error:', error);
+      return { valid: false, error: 'Invalid session format' };
+    }
   }
 
   /**
@@ -80,15 +130,26 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
           if (beforeMessage.length > 0) {
             const beforeTimestamp = beforeMessage[0].createdAt;
-            fetchedMessages = await db
-              .select()
-              .from(messages)
-              .where(and(
-                eq(messages.conversationId, conversationId),
-                lt(messages.createdAt, beforeTimestamp)
-              ))
-              .orderBy(desc(messages.createdAt))
-              .limit(limit);
+            // Only fetch if we have a valid timestamp
+            if (beforeTimestamp) {
+              fetchedMessages = await db
+                .select()
+                .from(messages)
+                .where(and(
+                  eq(messages.conversationId, conversationId),
+                  lt(messages.createdAt, beforeTimestamp)
+                ))
+                .orderBy(desc(messages.createdAt))
+                .limit(limit);
+            } else {
+              // Fallback if timestamp is null
+              fetchedMessages = await db
+                .select()
+                .from(messages)
+                .where(eq(messages.conversationId, conversationId))
+                .orderBy(desc(messages.createdAt))
+                .limit(limit);
+            }
           } else {
             // If 'before' message not found, just fetch latest
             fetchedMessages = await db
@@ -122,10 +183,13 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
           // Group attachments by messageId
           for (const attachment of allAttachments) {
-            if (!attachmentsByMessageId[attachment.messageId]) {
-              attachmentsByMessageId[attachment.messageId] = [];
+            const msgId = attachment.messageId;
+            if (msgId) {
+              if (!attachmentsByMessageId[msgId]) {
+                attachmentsByMessageId[msgId] = [];
+              }
+              attachmentsByMessageId[msgId].push(attachment);
             }
-            attachmentsByMessageId[attachment.messageId].push(attachment);
           }
         }
 
@@ -221,20 +285,20 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           id: messageId,
           conversationId: conversationId,
           senderType: 'agent' as const,
-          customerSenderId: null,
+          customerSenderId: null as string | null,
           agentSenderId: agentId,
           content: content || '',
           messageType: effectiveMessageType as 'text' | 'file',
-          platformMessageId: null,
+          platformMessageId: null as string | null,
           isRecalled: false,
-          recallDeadline: null,
-          recalledAt: null,
+          recallDeadline: null as string | null,
+          recalledAt: null as string | null,
           isSent: true,
-          sentAt: null,
+          sentAt: null as string | null,
           deliveryStatus: 'delivered' as const,
-          replyToMessageId: null,
-          threadId: null,
-          sessionId: null,
+          replyToMessageId: null as string | null,
+          threadId: null as string | null,
+          sessionId: null as string | null,
           sessionSequence: 1,
           metadata: metadata,
           createdAt: createdAt
@@ -242,7 +306,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // Store message in D1 database
         const db = createDbClient(this.env.DB);
-        await db.insert(messages).values(messageData);
+        await db.insert(messages).values(messageData as any);
 
         // 🔧 FIX: Link attachments to the message
         if (hasAttachments) {
@@ -345,8 +409,12 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       }
 
       try {
-        // TODO: Validate session
-        const userId = sessionId;
+        // Validate session against KV store
+        const validation = await this.validateSession(sessionId);
+        if (!validation.valid || !validation.session) {
+          return c.json({ success: false, error: validation.error || 'Invalid session' }, 401);
+        }
+        const userId = validation.session.userId;
 
         // Get the file from the request
         const formData = await c.req.formData();
@@ -402,7 +470,8 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
   /**
    * Handle incoming HTTP requests
    */
-  async fetch(request: Request): Promise<Response> {
+  // P2-6: Added override modifier for strict mode compliance
+  override async fetch(request: Request): Promise<Response> {
     return this.app.fetch(request, this.env);
   }
 }

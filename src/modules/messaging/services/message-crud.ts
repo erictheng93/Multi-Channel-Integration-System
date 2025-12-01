@@ -22,7 +22,10 @@ import {
   MessageMetadata,
   SenderType,
   MessageType,
-  DeliveryStatus
+  DeliveryStatus,
+  MessageAttachment,
+  MessageReaction,
+  MessageReadReceipt
 } from '../types/message-types';
 import type { Bindings } from '@/types';
 
@@ -236,9 +239,9 @@ export class MessageCrudService {
                      'Unknown',
           senderAvatar: result.customerSender?.avatarUrl ||
                        undefined,
-          attachments: [],
-          reactions: [],
-          readReceipts: []
+          attachments: [] as MessageAttachment[],
+          reactions: [] as MessageReaction[],
+          readReceipts: [] as MessageReadReceipt[]
         };
       });
 
@@ -284,19 +287,19 @@ export class MessageCrudService {
         id: messageId,
         conversationId: messageData.conversationId,
         senderType: messageData.senderType,
-        customerSenderId: messageData.customerSenderId || null,
-        agentSenderId: messageData.agentSenderId || null,
+        customerSenderId: messageData.customerSenderId || (null as number | null),
+        agentSenderId: messageData.agentSenderId || (null as string | null),
         content: messageData.content,
         messageType: messageData.messageType,
-        platformMessageId: messageData.platformMessageId || null,
+        platformMessageId: messageData.platformMessageId || (null as string | null),
         isRecalled: false,
         recallDeadline,
-        recalledAt: null,
+        recalledAt: null as string | null,
         isSent: true,
         sentAt: now,
         deliveryStatus: 'sent' as DeliveryStatus,
-        replyToMessageId: messageData.replyToMessageId || null,
-        metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : null,
+        replyToMessageId: messageData.replyToMessageId || (null as string | null),
+        metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : (null as string | null),
         createdAt: now,
       };
 

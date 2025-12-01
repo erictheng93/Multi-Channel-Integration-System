@@ -237,6 +237,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
       lastActive: null,
       createdAt: agent.created_at,
       updatedAt: agent.updated_at,
+      deletedAt: null,
       passwordHash: '', // Not needed for return
       passwordPolicy: 'changeable',
       lastLoginAt: null
@@ -294,6 +295,7 @@ export async function authenticateUser(
     lastActive: null,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
+    deletedAt: null,
     passwordHash: '', // Not needed for return
     passwordPolicy: user.password_policy || 'changeable',
     lastLoginAt: null

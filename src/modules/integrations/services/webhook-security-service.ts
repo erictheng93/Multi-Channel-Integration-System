@@ -288,10 +288,16 @@ export class WebhookSecurityService {
 
       switch (platform) {
         case 'line':
+          if (!credentials.channelSecret) {
+            return { valid: false, error: 'LINE channel secret not configured' };
+          }
           return await this.verifyLineSignature(headers, bodyString, credentials.channelSecret);
 
         case 'facebook':
         case 'instagram':
+          if (!credentials.appSecret) {
+            return { valid: false, error: 'Facebook app secret not configured' };
+          }
           return await this.verifyFacebookSignature(headers, bodyString, credentials.appSecret);
 
         default:

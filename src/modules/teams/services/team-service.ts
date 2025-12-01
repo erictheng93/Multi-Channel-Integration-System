@@ -280,8 +280,8 @@ export class TeamService implements TeamServiceInterface {
       isActive: agent.isActive,
       lastActive: agent.lastActive,
       joinedAt: agent.updatedAt,
-      createdAt: agent.createdAt,
-      updatedAt: agent.updatedAt || agent.createdAt
+      createdAt: agent.createdAt ?? undefined,
+      updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     };
   }
 
@@ -339,8 +339,8 @@ export class TeamService implements TeamServiceInterface {
       isActive: agent.isActive,
       lastActive: agent.lastActive,
       joinedAt: agent.createdAt,
-      createdAt: agent.createdAt,
-      updatedAt: agent.updatedAt || agent.createdAt
+      createdAt: agent.createdAt ?? undefined,
+      updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     };
   }
 
@@ -363,8 +363,8 @@ export class TeamService implements TeamServiceInterface {
       isActive: agent.isActive,
       lastActive: agent.lastActive,
       joinedAt: agent.createdAt,
-      createdAt: agent.createdAt,
-      updatedAt: agent.updatedAt || agent.createdAt
+      createdAt: agent.createdAt ?? undefined,
+      updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     }));
   }
 

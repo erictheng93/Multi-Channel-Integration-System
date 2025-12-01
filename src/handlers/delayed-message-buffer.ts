@@ -75,6 +75,14 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
       }, 403);
     }
 
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
+    }
+
     // 獲取 DelayedMessageBuffer DO 實例
     // 使用 conversationId 作為 DO 的名稱，確保同一對話的訊息在同一個 DO 中
     const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
@@ -170,6 +178,14 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
       }, 400);
     }
 
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
+    }
+
     // 獲取對應的 DO 實例
     const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
     const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
@@ -234,6 +250,14 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
       }, 400);
     }
 
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
+    }
+
     // 獲取對應的 DO 實例
     const doId = c.env.DELAYED_MESSAGE_SCHEDULER.idFromName(conversationId);
     const doStub = c.env.DELAYED_MESSAGE_SCHEDULER.get(doId);
@@ -276,6 +300,14 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation ID is required'
       }, 400);
+    }
+
+    // 檢查 Durable Object 綁定
+    if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
+      return c.json({
+        success: false,
+        error: 'Delayed message service is not configured'
+      }, 503);
     }
 
     // 獲取對應的 DO 實例

@@ -432,11 +432,11 @@ export class MessageRecallService {
         messageId: result.messageId,
         conversationId: '', // Not available in current schema
         requestedBy: result.userId,
-        reason: undefined, // Not available in current schema
+        reason: undefined as string | undefined, // Not available in current schema
         status: result.action as 'successful' | 'failed',
-        failureReason: undefined, // Not available in current schema
-        recalledAt: undefined, // Not available in current schema
-        createdAt: result.createdAt,
+        failureReason: undefined as string | undefined, // Not available in current schema
+        recalledAt: undefined as string | undefined, // Not available in current schema
+        createdAt: result.createdAt || new Date().toISOString(),
       }));
 
       return { recalls, total };

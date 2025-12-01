@@ -221,7 +221,7 @@ export class FileService {
 
         return {
           success: true,
-          url,
+          url: url ?? undefined,
           metadata: options.includeMetadata
             ? {
                 filename: fileRecord.filename,

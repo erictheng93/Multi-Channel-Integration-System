@@ -179,7 +179,8 @@ export class ConversationShardingService {
 
       const response = await stub.fetch('https://shard/capacity-check', {
         method: 'GET',
-        signal: controller.signal
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AbortSignal type mismatch between DOM and Cloudflare Workers environments
+        signal: controller.signal as any
       });
 
       clearTimeout(timeoutId);

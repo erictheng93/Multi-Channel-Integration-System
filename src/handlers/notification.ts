@@ -138,7 +138,7 @@ export const notificationHandler = {
       // 檢查通知是否存在且屬於當前用戶
       const notification = await drizzleDb.get(sql`
         SELECT * FROM notifications WHERE id = ${notificationId} AND user_id = ${payload?.userId}
-      `).catch(() => null);
+      `).catch((): null => null);
 
       if (!notification) {
         return notFoundResponse(c, 'Notification');
@@ -204,7 +204,7 @@ export const notificationHandler = {
       // 檢查通知是否存在且屬於當前用戶
       const notification = await drizzleDb.get(sql`
         SELECT * FROM notifications WHERE id = ${notificationId} AND user_id = ${payload?.userId}
-      `).catch(() => null);
+      `).catch((): null => null);
 
       if (!notification) {
         return notFoundResponse(c, 'Notification');

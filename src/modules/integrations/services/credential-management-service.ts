@@ -15,7 +15,7 @@ import type { Bindings } from '@/types';
  * 憑證資料結構
  */
 interface CredentialData {
-  [key: string]: string | number | boolean;
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -426,7 +426,7 @@ export class CredentialManagementService {
           const data = await response.json();
           return {
             ...credentials,
-            pageAccessToken: (data as any).access_token,
+            pageAccessToken: String((data as any).access_token || ''),
             tokenExpiresAt: (data as any).expires_in ?
               new Date(Date.now() + (data as any).expires_in * 1000).toISOString() : undefined
           };

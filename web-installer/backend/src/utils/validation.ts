@@ -17,6 +17,15 @@ export interface ValidationError {
   message: string;
 }
 
+/**
+ * Validation result type for route handlers
+ * This is the format expected by deployment.ts routes
+ */
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
 export const ValidationRules: ValidationRules = {
   projectName: {
     required: true,
@@ -107,11 +116,38 @@ export function validateAll(
   return errors;
 }
 
-// Specific validation helper functions
-export function validateProjectName(projectName: string): ValidationError | null {
-  return validateField('projectName', projectName, ValidationRules);
+// Specific validation helper functions that return ValidationResult format
+// This is the format expected by deployment.ts route validators
+
+/**
+ * Validate project name and return result in route-compatible format
+ */
+export function validateProjectName(projectName: string): ValidationResult {
+  const error = validateField('projectName', projectName, ValidationRules);
+  return {
+    valid: error === null,
+    error: error?.message
+  };
 }
 
-export function validateEmail(email: string): ValidationError | null {
-  return validateField('adminEmail', email, ValidationRules);
+/**
+ * Validate email and return result in route-compatible format
+ */
+export function validateEmail(email: string): ValidationResult {
+  const error = validateField('adminEmail', email, ValidationRules);
+  return {
+    valid: error === null,
+    error: error?.message
+  };
+}
+
+/**
+ * Validate custom domain and return result in route-compatible format
+ */
+export function validateCustomDomain(domain: string): ValidationResult {
+  const error = validateField('customDomain', domain, ValidationRules);
+  return {
+    valid: error === null,
+    error: error?.message
+  };
 }

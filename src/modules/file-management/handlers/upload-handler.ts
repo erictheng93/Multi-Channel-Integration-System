@@ -121,8 +121,8 @@ export class UploadHandler {
       const conversationId = formData.get('conversationId') as string;
       const messageId = formData.get('messageId') as string;
 
-      const results = [];
-      const errors = [];
+      const results: Array<Record<string, unknown>> = [];
+      const errors: Array<{ filename: string; error: string }> = [];
 
       // 並行上傳檔案
       const uploadPromises = files.map(async (file, index) => {
@@ -177,12 +177,12 @@ export class UploadHandler {
 
       // 分離成功和失敗的結果
       uploadResults.forEach(result => {
-        if (result.success) {
+        if (result.success && result.data) {
           results.push(result.data);
         } else {
           errors.push({
-            filename: result.filename,
-            error: result.error
+            filename: result.filename || 'unknown',
+            error: result.error || 'Upload failed'
           });
         }
       });

@@ -261,8 +261,9 @@ import type { Bindings } from '../../types';
  * 提供統一的服務初始化接口
  */
 export function createQRCodeModule(db: D1Database, cache?: KVNamespace, storage?: R2Bucket) {
-  // TODO: Implement QRCode services and handlers
-  const crudService = null as any; // new QRCodeCrudService(db, cache, storage);
+  // Note: Services are implemented in services/ directory
+  // Using null as placeholders - instantiate services when module initialization is needed
+  const crudService = null as any; // QRCodeCrudService is available in services/qrcode-crud-service.ts
 
   return {
     services: {

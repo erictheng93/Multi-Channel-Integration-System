@@ -495,7 +495,7 @@ async function getDurableObjectsHealth(env: Bindings) {
     ];
 
     for (const binding of bindings) {
-      if (env[binding]) {
+      if ((env as unknown as Record<string, unknown>)[binding]) {
         health.bindings.push({
           name: binding,
           status: 'available',

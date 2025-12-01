@@ -15,6 +15,11 @@ import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-
 import { successResponse, errorResponse, validationErrorResponse } from '@shared/utils/api-response';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { getSSECorsHeaders } from '@/config/cors';
+import { WebSocketAuthService } from '@/services/websocket-auth-service';
+import { createContextLogger } from '@/utils/logger';
+
+// Context logger for conversation handler
+const log = createContextLogger('ConversationHandler');
 
 const conversationHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -67,7 +72,7 @@ conversationHandler.get('/stream', async (c) => {
     // 手動設置用戶到context
     c.set('user', user);
 
-    console.log('🔄 [SSE Stream] Starting SSE connection for user:', user.id);
+    log.info('SSE Stream starting connection', { userId: user.id });
 
     // 設定SSE headers（使用統一 CORS 配置）
     const sseCorsHeaders1 = getSSECorsHeaders(c.req.header('Origin'));
@@ -80,7 +85,7 @@ conversationHandler.get('/stream', async (c) => {
     // 創建可讀流
     const stream = new ReadableStream({
       start(controller) {
-        console.log('📡 [SSE Stream] Stream started');
+        log.debug('SSE Stream started');
 
         // 發送心跳
         const sendHeartbeat = () => {
@@ -93,7 +98,7 @@ conversationHandler.get('/stream', async (c) => {
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(heartbeat));
           } catch (error) {
-            console.warn('❌ [SSE Stream] Heartbeat failed:', error);
+            log.warn('SSE Stream: Heartbeat failed', { error: error instanceof Error ? error.message : String(error) });
             isConnected = false;
             controller.close();
           }
@@ -104,7 +109,7 @@ conversationHandler.get('/stream', async (c) => {
           if (!isConnected) return;
 
           try {
-            console.log('📤 [SSE Stream] Sending conversation update');
+            log.debug('SSE Stream sending conversation update');
 
             // 獲取用戶可見的對話
             const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
@@ -189,7 +194,7 @@ conversationHandler.get('/stream', async (c) => {
             controller.enqueue(new TextEncoder().encode(updateData));
 
           } catch (error) {
-            console.error('❌ [SSE Stream] Failed to send conversation update:', error);
+            log.error('SSE Stream: Failed to send conversation update', { error: error instanceof Error ? error.message : String(error) });
           }
         };
 
@@ -208,7 +213,7 @@ conversationHandler.get('/stream', async (c) => {
           clearInterval(updateInterval);
           clearInterval(heartbeatInterval);
           controller.close();
-          console.log('🔌 [SSE Stream] Connection closed and cleaned up');
+          log.info('SSE Stream connection closed and cleaned up');
         };
 
         // 設定清理定時器 (5分鐘後自動斷開)
@@ -222,7 +227,7 @@ conversationHandler.get('/stream', async (c) => {
       },
 
       cancel() {
-        console.log('🚫 [SSE Stream] Stream cancelled');
+        log.info('SSE Stream cancelled');
         isConnected = false;
       }
     });
@@ -232,7 +237,7 @@ conversationHandler.get('/stream', async (c) => {
     return new Response(stream, { headers: sseCorsHeaders });
 
   } catch (error) {
-    console.error('❌ [SSE Stream] Error setting up SSE:', error);
+    log.error('SSE Stream: Error setting up SSE', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: 'Failed to establish SSE connection',
@@ -281,12 +286,19 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
     let affectedTagIds: number[] = [];
 
     switch (operation) {
-      case 'assign':
+      case 'assign': {
         if (!data?.userId && !data?.teamId) {
           return validationErrorResponse(c, [
             { field: 'data', message: 'User ID or Team ID is required for assignment' }
           ]);
         }
+
+        // 🆕 P1-4: Get old assignments for cache invalidation
+        const oldAssignments = await drizzleDb
+          .select({ id: conversations.id, assignedUserId: conversations.assignedUserId })
+          .from(conversations)
+          .where(inArray(conversations.id, conversationIdsArray));
+
         await drizzleDb.update(conversations)
           .set({
             assignedUserId: data.userId || null,
@@ -295,7 +307,30 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
             updatedAt: sql`datetime('now')`
           })
           .where(inArray(conversations.id, conversationIdsArray));
+
+        // 🆕 P1-4: Invalidate conversation cache for affected agents
+        const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+        const affectedAgentIds = new Set<string>();
+
+        // Collect old assigned agents
+        for (const conv of oldAssignments) {
+          if (conv.assignedUserId) {
+            affectedAgentIds.add(conv.assignedUserId);
+          }
+        }
+
+        // Add new assigned agent
+        if (data.userId) {
+          affectedAgentIds.add(data.userId);
+        }
+
+        // Invalidate cache for all affected agents
+        for (const agentId of affectedAgentIds) {
+          await authService.invalidateAgentConversationCache(agentId);
+        }
+        log.debug('Bulk Assign cache invalidated', { agentCount: affectedAgentIds.size });
         break;
+      }
 
       case 'close':
         await drizzleDb.update(conversations)
@@ -428,14 +463,14 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
         );
 
         await Promise.allSettled(broadcastPromises);
-        console.log(`✅ [WebSocket] Bulk tag ${tagOperation} broadcasted for ${conversationIdsArray.length} conversations`);
+        log.debug('WebSocket bulk tag broadcast completed', { tagOperation, conversationCount: conversationIdsArray.length });
       } catch (broadcastError) {
-        console.warn('⚠️ [WebSocket] Bulk tag broadcast failed, continuing:', broadcastError);
+        log.warn('WebSocket: Bulk tag broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
         // 不中斷主流程，廣播失敗不影響操作結果
       }
     }
 
-    console.log(`📦 [Conversations] Bulk ${operation} completed for ${conversationIdsArray.length} conversations`);
+    log.info('Conversations bulk operation completed', { operation, count: conversationIdsArray.length });
     return successResponse(c, {
       operation,
       affectedCount: conversationIdsArray.length,
@@ -443,7 +478,7 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
     }, `Bulk ${operation} completed successfully`);
 
   } catch (error) {
-    console.error('❌ [Conversations] Bulk operation error:', error);
+    log.error('Conversations: Bulk operation error', { error: error instanceof Error ? error.message : String(error) });
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to perform bulk operation', 500);
   }
 });
@@ -453,14 +488,13 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
 // 🎯 新的專用訊息流 SSE 端點
 conversationHandler.get('/:conversationId/messages/stream', async (c) => {
   try {
-    console.log('🔍 [SSE Debug] Starting SSE endpoint handler');
+    log.debug('SSE endpoint handler starting');
 
     // 手動驗證token（EventSource 無法設置自定義 headers）
     const authHeader = c.req.header('Authorization');
     const token = c.req.query('token'); // 從 query 參數獲取 token
 
-    console.log('🔍 [SSE Debug] Auth header:', authHeader ? 'Present' : 'Missing');
-    console.log('🔍 [SSE Debug] Token query:', token ? 'Present' : 'Missing');
+    log.debug('SSE auth check', { authHeader: !!authHeader, tokenQuery: !!token });
 
     let authToken: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
@@ -470,54 +504,54 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     }
 
     if (!authToken) {
-      console.error('❌ [SSE Debug] No auth token found');
+      log.error('SSE Debug: No auth token found');
       return c.json({
         error: 'Missing authentication token',
         message: 'Please provide token via Authorization header or query parameter'
       }, 401);
     }
 
-    console.log('🔍 [SSE Debug] Verifying JWT...');
+    log.debug('SSE verifying JWT');
 
     // 檢查環境變量
     if (!c.env.JWT_SECRET) {
-      console.error('❌ [SSE Debug] JWT_SECRET is undefined');
+      log.error('SSE Debug: JWT_SECRET is undefined');
       throw new Error('JWT_SECRET environment variable is not configured');
     }
 
     if (!c.env.DB) {
-      console.error('❌ [SSE Debug] DB is undefined');
+      log.error('SSE Debug: DB is undefined');
       throw new Error('DB environment variable is not configured');
     }
 
     // 驗證 JWT
     const payload = await verifyJWT(authToken, c.env.JWT_SECRET);
-    console.log('✅ [SSE Debug] JWT verified, userId:', payload.userId);
+    log.debug('SSE JWT verified', { userId: payload.userId });
 
     const user = await getUserById(c.env.DB, payload.userId);
-    console.log('✅ [SSE Debug] User fetched:', user.id, user.displayName);
+    log.debug('SSE user fetched', { userId: user.id, displayName: user.displayName });
 
     if (!user || !user.isActive) {
       return c.json({ error: 'Invalid or inactive user account' }, 401);
     }
 
     const conversationId = c.req.param('conversationId');
-    console.log(`📡 [SSE] Starting message stream for conversation: ${conversationId}, user: ${user.id}`);
+    log.info('SSE starting message stream', { conversationId, userId: user.id });
 
     // 🔒 權限檢查：用戶是否可以訪問這個對話
-    console.log('🔍 [SSE Debug] Checking permissions...');
+    log.debug('SSE checking permissions');
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
-    console.log(`✅ [SSE Debug] Visible conversations: ${visibleConversationIds.length} total`);
+    log.debug('SSE visible conversations', { count: visibleConversationIds.length });
 
     if (!visibleConversationIds.includes(conversationId)) {
-      console.error(`❌ [SSE Debug] Access denied to conversation ${conversationId}`);
+      log.error('SSE Debug: Access denied to conversation', { conversationId });
       return c.json({
         error: 'Access denied to conversation',
         conversationId: conversationId
       }, 403);
     }
 
-    console.log('✅ [SSE Debug] Permission check passed, creating SSE stream...');
+    log.debug('SSE permission check passed, creating stream');
 
     // 設置 SSE headers（使用統一 CORS 配置）
     const sseCorsHeaders3 = getSSECorsHeaders(c.req.header('Origin'));
@@ -532,7 +566,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     // 創建流
     const stream = new ReadableStream({
       start(controller) {
-        console.log(`🔌 [SSE] Stream established for conversation: ${conversationId}`);
+        log.info('SSE stream established', { conversationId });
 
         // 發送連接確認
         const connectionMessage = `data: ${JSON.stringify({
@@ -566,7 +600,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               })}\n\n`;
 
               controller.enqueue(new TextEncoder().encode(data));
-              console.log(`📤 [SSE] Sent ${initialMessages.length} initial messages for ${conversationId}`);
+              log.debug('SSE sent initial messages', { conversationId, count: initialMessages.length });
             } else {
               // 沒有訊息時也發送確認
               const data = `data: ${JSON.stringify({
@@ -578,10 +612,10 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               })}\n\n`;
 
               controller.enqueue(new TextEncoder().encode(data));
-              console.log(`📤 [SSE] No messages found for conversation ${conversationId}`);
+              log.debug('SSE no messages found', { conversationId });
             }
           } catch (error) {
-            console.error('❌ [SSE] Error sending initial messages:', error);
+            log.error('SSE: Error sending initial messages', { error: error instanceof Error ? error.message : String(error) });
           }
         };
 
@@ -607,10 +641,10 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
               })}\n\n`;
 
               controller.enqueue(new TextEncoder().encode(data));
-              console.log(`📤 [SSE] Sent ${newMessages.length} new messages for ${conversationId}`);
+              log.debug('SSE sent new messages', { conversationId, count: newMessages.length });
             }
           } catch (error) {
-            console.error('❌ [SSE] Error checking new messages:', error);
+            log.error('SSE: Error checking new messages', { error: error instanceof Error ? error.message : String(error) });
           }
         };
 
@@ -628,7 +662,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
             controller.enqueue(new TextEncoder().encode(heartbeat));
           } catch (error) {
-            console.warn('❌ [SSE] Heartbeat failed:', error);
+            log.warn('SSE: Heartbeat failed', { error: error instanceof Error ? error.message : String(error) });
             isConnected = false;
             controller.close();
           }
@@ -649,7 +683,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
           clearInterval(messageCheckInterval);
           clearInterval(heartbeatInterval);
           controller.close();
-          console.log(`🔌 [SSE] Stream closed for conversation: ${conversationId}`);
+          log.info('SSE stream closed', { conversationId });
         };
 
         // 5分鐘後自動斷開連接（防止資源洩漏）
@@ -663,7 +697,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       },
 
       cancel() {
-        console.log(`🚫 [SSE] Stream cancelled by client for conversation: ${conversationId}`);
+        log.info('SSE stream cancelled by client', { conversationId });
         isConnected = false;
       }
     });
@@ -673,12 +707,9 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     return new Response(stream, { headers: sseResponseHeaders });
 
   } catch (error) {
-    console.error('❌ [SSE] Error setting up message stream:', error);
-    console.error('❌ [SSE Debug] Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : 'No stack trace',
-      name: error instanceof Error ? error.name : 'Unknown',
-      type: typeof error
+    log.error('SSE: Error setting up message stream', {
+      error: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : 'Unknown'
     });
     return c.json({
       success: false,
@@ -715,7 +746,15 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
-    console.log('🔧 [Assign API] Updating conversation:', {
+    // 🆕 P1-4: Get old conversation to track previous assignment for cache invalidation
+    const oldConversation = await drizzleDb
+      .select({ assignedUserId: conversations.assignedUserId })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+    const oldAssignedUserId = oldConversation?.assignedUserId;
+
+    log.info('Assign API updating conversation', {
       conversationId,
       teamId,
       userId,
@@ -732,7 +771,22 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       })
       .where(eq(conversations.id, conversationId));
 
-    console.log('✅ [Assign API] Database UPDATE completed');
+    log.debug('Assign API database UPDATE completed');
+
+    // 🆕 P1-4: Invalidate conversation cache for affected agents
+    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+
+    // Invalidate cache for previously assigned agent (if exists)
+    if (oldAssignedUserId && oldAssignedUserId !== userId) {
+      await authService.invalidateAgentConversationCache(oldAssignedUserId);
+      log.debug('Assign API invalidated cache for old agent', { oldAssignedUserId });
+    }
+
+    // Invalidate cache for newly assigned agent (if exists)
+    if (userId) {
+      await authService.invalidateAgentConversationCache(userId);
+      log.debug('Assign API invalidated cache for new agent', { userId });
+    }
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
     if (reason) {
@@ -768,13 +822,13 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
         },
         priority: 'normal'
       });
-      console.log('✅ [WebSocket] Conversation assignment broadcasted');
+      log.debug('WebSocket conversation assignment broadcasted');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Assignment broadcast failed, continuing with fallback:', broadcastError);
+      log.warn('WebSocket: Assignment broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 🔧 FIX: 获取并返回完整的对话对象
-    console.log('🔍 [Assign API] Fetching updated conversation with JOIN:', {
+    log.debug('Assign API fetching updated conversation with JOIN', {
       conversationId,
       expectedTeamId: teamId
     });
@@ -787,7 +841,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    console.log('📊 [Assign API] JOIN query result:', {
+    log.debug('Assign API JOIN query result', {
       hasResult: !!updatedConversation,
       hasConversation: !!updatedConversation?.conversations,
       hasTeam: !!updatedConversation?.teams,
@@ -801,7 +855,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     });
 
     if (!updatedConversation) {
-      console.error('❌ [Assign API] Failed to retrieve updated conversation');
+      log.error('Assign API: Failed to retrieve updated conversation');
       return c.json({
         success: false,
         error: 'Failed to retrieve updated conversation'
@@ -818,7 +872,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       } : undefined
     };
 
-    console.log('✅ [Assign API] Conversation assigned successfully:', {
+    log.info('Assign API conversation assigned successfully', {
       id: conversationId,
       status: conversationData.status,
       assignedTeamId: conversationData.assignedTeamId,
@@ -836,7 +890,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Assign conversation error:', error);
+    log.error('Assign conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
@@ -892,7 +946,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       userId: conv.assignedUserId
     };
 
-    console.log('🗑️ [Unassign API] Unassigning conversation:', {
+    log.info('Unassign API unassigning conversation', {
       conversationId,
       previousAssignment,
       unassignedBy: user.displayName || user.id
@@ -912,14 +966,20 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
          WHERE id = ?`
       ).bind('active', timestamp, conversationId).run();
 
-      console.log('✅ [Unassign API] Database UPDATE completed (raw SQL)');
+      log.debug('Unassign API database UPDATE completed');
     } catch (dbError) {
-      console.error('❌ [Unassign API] Database UPDATE failed:', {
-        error: dbError,
-        errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+      log.error('Unassign API: Database UPDATE failed', {
+        error: dbError instanceof Error ? dbError.message : String(dbError),
         conversationId
       });
       throw dbError;
+    }
+
+    // 🆕 P1-4: Invalidate conversation cache for previously assigned agent
+    if (previousAssignment.userId) {
+      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+      await authService.invalidateAgentConversationCache(previousAssignment.userId);
+      log.debug('Unassign API invalidated conversation cache', { agentId: previousAssignment.userId });
     }
 
     // 記錄取消指派歷史
@@ -959,9 +1019,9 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
         },
         priority: 'high'
       });
-      console.log('✅ [WebSocket] Conversation unassignment broadcasted');
+      log.debug('WebSocket conversation unassignment broadcasted');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Unassignment broadcast failed, continuing:', broadcastError);
+      log.warn('WebSocket: Unassignment broadcast failed, continuing', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 獲取並返回更新後的完整對話對象
@@ -987,7 +1047,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       } : undefined
     };
 
-    console.log('✅ [Unassign API] Conversation unassigned successfully');
+    log.info('Unassign API conversation unassigned successfully');
 
     return c.json({
       success: true,
@@ -997,7 +1057,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Unassign conversation error:', error);
+    log.error('Unassign conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to unassign conversation',
@@ -1028,6 +1088,13 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
+    // 🆕 P1-4: Get old conversation to track previous assignment for cache invalidation
+    const oldConversation = await drizzleDb
+      .select({ assignedUserId: conversations.assignedUserId })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
     await drizzleDb
       .update(conversations)
       .set({
@@ -1037,6 +1104,22 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
         updatedAt: timestamp
       })
       .where(eq(conversations.id, conversationId));
+
+    // 🆕 P1-4: Invalidate conversation cache for affected agents
+    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+
+    // Invalidate cache for source agent (fromUserId or previous assignedUserId)
+    const sourceAgentId = fromUserId || oldConversation?.assignedUserId;
+    if (sourceAgentId) {
+      await authService.invalidateAgentConversationCache(sourceAgentId);
+      log.debug('Transfer API invalidated cache for source agent', { sourceAgentId });
+    }
+
+    // Invalidate cache for destination agent (toUserId)
+    if (toUserId && toUserId !== sourceAgentId) {
+      await authService.invalidateAgentConversationCache(toUserId);
+      log.debug('Transfer API invalidated cache for destination agent', { toUserId });
+    }
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
     const transferRecord: NewConversationTransfer = {
@@ -1078,9 +1161,9 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
         },
         priority: 'high'
       });
-      console.log('✅ [WebSocket] Conversation transfer broadcasted');
+      log.debug('WebSocket conversation transfer broadcasted');
     } catch (broadcastError) {
-      console.warn('⚠️ [WebSocket] Transfer broadcast failed, continuing with fallback:', broadcastError);
+      log.warn('WebSocket: Transfer broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     return c.json({
@@ -1090,7 +1173,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Transfer conversation error:', error);
+    log.error('Transfer conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
@@ -1165,7 +1248,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
         }
       });
     } catch (error) {
-      console.error('R2 upload error:', error);
+      log.error('R2 upload error', { error: error instanceof Error ? error.message : String(error) });
       return c.json({
         success: false,
         error: 'Failed to upload file to storage'
@@ -1176,7 +1259,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
     const requestUrl = new URL(c.req.url);
     const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
     const fileUrl = `${baseUrl}/api/files/public/${r2Key}`;
-    console.log(`[Upload] Generated proxy URL: ${fileUrl}`);
+    log.debug('Upload generated proxy URL', { fileUrl });
 
     // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
     const attachmentId = `att_${timestamp}_${randomStr}`;
@@ -1205,7 +1288,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       }
     });
   } catch (error) {
-    console.error('Upload attachment error:', error);
+    log.error('Upload attachment error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
@@ -1216,28 +1299,25 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
 // 發送訊息 - Simplified with extracted services
 conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
   // 🔵 Phase 1 Emergency Debug Logging
-  console.log('🔵 [ENTRY] ========== MESSAGE HANDLER REACHED ==========');
-  console.log('🔵 [ENTRY] Timestamp:', new Date().toISOString());
-  console.log('🔵 [ENTRY] Conversation ID:', c.req.param('id'));
-  console.log('🔵 [ENTRY] Method:', c.req.method);
-  console.log('🔵 [ENTRY] Path:', c.req.path);
+  log.debug('MESSAGE HANDLER entry', {
+    timestamp: new Date().toISOString(),
+    conversationId: c.req.param('id'),
+    method: c.req.method,
+    path: c.req.path
+  });
 
   try {
-    console.log('🔵 [AUTH] Checking user context...');
+    log.debug('AUTH checking user context');
     const user = c.get('user');
-    console.log('🔵 [AUTH] User ID:', user?.id);
-    console.log('🔵 [AUTH] User Role:', user?.role);
-    console.log('🔵 [AUTH] User Name:', user?.displayName);
+    log.debug('AUTH user info', { userId: user?.id, role: user?.role, displayName: user?.displayName });
 
     // 1. Validate and parse request
-    console.log('🔵 [PARSE] Starting request validation...');
+    log.debug('PARSE starting request validation');
     const request = await MessageRequestService.validateAndParse(c);
-    console.log('🔵 [PARSE] Request validated successfully');
-    console.log('🔵 [PARSE] Content length:', request.content?.length);
-    console.log('🔵 [PARSE] Sender ID:', request.senderId);
+    log.debug('PARSE request validated', { contentLength: request.content?.length, senderId: request.senderId });
 
     // 2. Check permissions
-    console.log('🔵 [PERMISSION] Checking permissions...');
+    log.debug('PERMISSION checking permissions');
     const hasPermission = await PermissionService.checkPermission(
       user.id,
       'message',
@@ -1250,22 +1330,28 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       c.env.DB
     );
 
-    console.log('🔵 [PERMISSION] Permission check result:', hasPermission);
+    log.debug('PERMISSION check result', { hasPermission });
 
     if (!hasPermission) {
-      console.log('🔴 [PERMISSION] Permission denied for user:', user.id);
+      log.warn('PERMISSION denied', { userId: user.id });
       return errorResponse(c, user.role === 'agent'
         ? '權限不足，您無權對此訊息進行任何操作。只有指派給您的對話或團隊負責人能夠回覆未指派的對話。'
         : 'Permission denied', 403);
     }
 
     // 3. Send message (Async Pattern)
-    console.log('🔵 [SERVICE] Creating MessageService instance...');
+    log.debug('SERVICE creating MessageService instance');
     const messageService = new MessageService(c.env);
     
-    console.log('🔵 [SERVICE] Creating pending message...');
+    log.debug('SERVICE creating pending message');
     const result = await messageService.createPendingMessage(request);
-    console.log('🔵 [SERVICE] Pending message created, ID:', result.messageId);
+
+    // 確保訊息已成功創建
+    if (!result.messageId || !result.message) {
+      throw new Error('Failed to create pending message: missing messageId or message data');
+    }
+
+    log.debug('SERVICE pending message created', { messageId: result.messageId });
 
     // 3.1 Broadcast Pending Message
     try {
@@ -1289,17 +1375,17 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
         priority: 'normal'
       });
     } catch (broadcastError) {
-      console.warn('⚠️ [WEBSOCKET] Pending message broadcast failed:', broadcastError);
+      log.warn('WEBSOCKET: Pending message broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
     // 4. Trigger background sending
-    console.log('🔵 [BACKGROUND] Scheduling background delivery...');
+    log.debug('BACKGROUND scheduling background delivery');
     c.executionCtx.waitUntil(
       messageService.processBackgroundSending(result.messageId, request, user)
     );
 
     // 5. Return response immediately
-    console.log('🔵 [RESPONSE] Returning early success response...');
+    log.debug('RESPONSE returning early success response');
     
     // Transform to frontend format (Pending status)
     // ✅ Safe metadata parsing with error handling
@@ -1308,7 +1394,7 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       try {
         parsedMetadata = JSON.parse(result.message.metadata as string);
       } catch (parseError) {
-        console.warn('⚠️ Failed to parse message metadata:', parseError);
+        log.warn('Failed to parse message metadata', { error: parseError instanceof Error ? parseError.message : String(parseError) });
         parsedMetadata = {};
       }
     }
@@ -1327,17 +1413,17 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
       deliveryStatus: 'pending',
       isSent: false,
-      platformMessageId: null,
+      platformMessageId: null as string | null,
       metadata: parsedMetadata
     };
 
     return successResponse(c, formattedMessage, 'Message queued for delivery');
 
   } catch (error) {
-    console.error('🔴 [ERROR] ========== EXCEPTION CAUGHT ==========');
-    console.error('🔴 [ERROR] Error type:', error instanceof Error ? error.constructor.name : typeof error);
-    console.error('🔴 [ERROR] Error message:', error instanceof Error ? error.message : String(error));
-    console.error('🔴 [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack');
+    log.error('Message handler exception', {
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to send message', 500);
   }
 });
@@ -1353,7 +1439,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
     const pageSize = Math.min(100, Math.max(1, parseInt(c.req.query('pageSize') || '30', 10)));
     const offset = (page - 1) * pageSize;
 
-    console.log(`📄 [Messages API] Getting messages for conversation ${conversationId}, page=${page}, pageSize=${pageSize}, offset=${offset}`);
+    log.debug('Messages API getting messages', { conversationId, page, pageSize, offset });
 
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(
@@ -1400,7 +1486,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       .get();
 
     const total = totalResult?.count || 0;
-    console.log(`📊 [Messages API] Total messages in conversation: ${total}`);
+    log.debug('Messages API total messages', { total });
 
     // 獲取分頁訊息（包含發送者資訊）
     const messageList = await drizzleDb
@@ -1445,7 +1531,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       .limit(pageSize)
       .offset(offset);
 
-    console.log(`📄 [Messages API] Retrieved ${messageList.length} messages for page ${page}`);
+    log.debug('Messages API retrieved messages', { count: messageList.length, page });
 
     // ✅ 轉換為前端期望的 Message 格式
     const formattedMessages = messageList.map(row => ({
@@ -1483,7 +1569,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       hasMore: page < totalPages
     };
 
-    console.log(`📊 [Messages API] Returning page ${page}/${totalPages}, ${formattedMessages.length} items, hasMore: ${paginatedResponse.hasMore}`);
+    log.debug('Messages API returning page', { page, totalPages, itemCount: formattedMessages.length, hasMore: paginatedResponse.hasMore });
 
     return c.json({
       success: true,
@@ -1492,7 +1578,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get messages error:', error);
+    log.error('Get messages error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get messages',
@@ -1574,7 +1660,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversation error:', error);
+    log.error('Get conversation error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversation',
@@ -1589,18 +1675,15 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
 conversationHandler.get('/', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    console.log('🔍 [Conversation Handler] GET / - User authenticated:', user);
-    console.log('🔍 [Conversation Handler] User ID type:', typeof user.id, 'Value:', user.id);
-    console.log('🔍 [Conversation Handler] Calling PermissionService.getVisibleConversations...');
+    log.debug('Conversation Handler GET / - User authenticated', { userId: user.id, userIdType: typeof user.id });
 
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
 
-    console.log('📋 [Conversation Handler] Visible conversation IDs returned:', visibleConversationIds);
-    console.log('📊 [Conversation Handler] Total visible conversations:', visibleConversationIds.length);
+    log.debug('Conversation Handler visible conversations', { count: visibleConversationIds.length });
 
     // 如果沒有可見對話，返回空列表
     if (visibleConversationIds.length === 0) {
-      console.log('❌ [Conversation Handler] No visible conversations found, returning empty array');
+      log.debug('Conversation Handler no visible conversations found');
       return c.json({
         success: true,
         data: [],
@@ -1609,7 +1692,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 🔧 FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
-    console.log('🔍 [Conversation Handler] Querying conversation data with IDs:', visibleConversationIds);
+    log.debug('Conversation Handler querying conversation data');
     const drizzleDb = createDbClient(c.env.DB);
     const conversationResults = await drizzleDb
       .select()
@@ -1644,13 +1727,13 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       platformUserId: result.customers?.platformUserId
     }));
 
-    console.log('📊 [Conversation Handler] Retrieved conversation data:', conversationData);
+    log.debug('Conversation Handler retrieved conversation data', { count: conversationData.length });
 
     // ⚡ Enterprise Cache: Get latest messages using background job + cache system
     const { LatestMessageCache } = await import('../../../services/latest-message-cache');
     const latestMessageCache = new LatestMessageCache(c.env);
 
-    console.log('🚀 [Conversation Handler] Using enterprise cache for latest messages');
+    log.debug('Conversation Handler using enterprise cache for latest messages');
     const conversationIds = conversationData.map(c => c.id);
 
     const latestMessagesMap = await latestMessageCache.getLatestMessages(conversationIds);
@@ -1682,7 +1765,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversations error:', error);
+    log.error('Get conversations error', { error: error instanceof Error ? error.message : String(error) });
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversations',
@@ -1731,7 +1814,7 @@ async function getRecentMessages(conversationId: string, limit: number, db: D1Da
     // 反轉結果以獲得時間升序（最舊在前，最新在後）
     return recentMessages.reverse();
   } catch (error) {
-    console.error('❌ [SSE] Error fetching recent messages:', error);
+    log.error('SSE: Error fetching recent messages', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -1773,7 +1856,7 @@ async function getMessagesAfterTimestamp(conversationId: string, afterTimestamp:
 
     return newMessages;
   } catch (error) {
-    console.error('❌ [SSE] Error fetching messages after timestamp:', error);
+    log.error('SSE: Error fetching messages after timestamp', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -1802,7 +1885,7 @@ async function getMessagesAfter(conversationId: string, lastMessageId: string | 
       .limit(1);
 
     if (lastMessage.length === 0) {
-      console.warn(`⚠️ [SSE] Last message ${lastMessageId} not found, returning recent messages`);
+      log.warn('SSE: Last message not found, returning recent messages', { lastMessageId });
       return getRecentMessages(conversationId, 50, db);
     }
 
@@ -1810,7 +1893,7 @@ async function getMessagesAfter(conversationId: string, lastMessageId: string | 
     const createdAt = lastMessage[0]?.createdAt || new Date().toISOString();
     return getMessagesAfterTimestamp(conversationId, createdAt, db);
   } catch (error) {
-    console.error('❌ [SSE] Error fetching messages after last message:', error);
+    log.error('SSE: Error fetching messages after last message', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }

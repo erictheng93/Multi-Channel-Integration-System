@@ -1300,7 +1300,7 @@ export class ConversationRoom implements DurableObject {
             body: JSON.stringify(payload),
             headers: { 'Content-Type': 'application/json' }
           }))
-            .then(async (response) => {
+            .then(async (response: Response) => {
               if (response.ok) {
                 const result = await response.json() as { success: boolean; delivered: number };
                 if (result.delivered > 0) {
@@ -1308,7 +1308,7 @@ export class ConversationRoom implements DurableObject {
                 }
               }
             })
-            .catch((error) => {
+            .catch((error: Error) => {
               testSafeLog(`${getEmojiPrefix('WARNING')}[ConversationRoom] Failed to notify peer shard-${shardIndex}:`, error);
             })
         );
