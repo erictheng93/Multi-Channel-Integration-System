@@ -255,7 +255,7 @@ function getUserPermissions(payload: JWTPayload): CustomerPermissions {
  */
 function getAccessScope(payload: JWTPayload): CustomerAccessScope {
   return {
-    teamIds: payload.role === 'admin' ? undefined : [payload.teamId].filter(Boolean),
+    teamIds: payload.role === 'admin' ? undefined : [payload.teamId].filter((id): id is number => id !== undefined && id !== null),
     platforms: undefined, // 暫時不限制平台，未來可擴展
     isGlobalAccess: payload.role === 'admin'
   };

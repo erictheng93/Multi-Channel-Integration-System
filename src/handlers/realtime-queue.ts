@@ -348,6 +348,11 @@ export const realtimeQueueHandler = {
     } as RealtimeEvent;
 
     try {
+      // 檢查 Durable Object 綁定
+      if (!env.MESSAGE_BROADCASTER) {
+        throw new Error('MESSAGE_BROADCASTER service is not configured');
+      }
+
       // ✅ 新架構: 使用 MessageBroadcaster DO 替代 Queue
       const broadcasterId = env.MESSAGE_BROADCASTER.idFromName('global');
       const broadcaster = env.MESSAGE_BROADCASTER.get(broadcasterId);

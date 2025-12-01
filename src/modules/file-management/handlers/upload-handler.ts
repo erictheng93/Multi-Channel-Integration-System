@@ -177,12 +177,12 @@ export class UploadHandler {
 
       // 分離成功和失敗的結果
       uploadResults.forEach(result => {
-        if (result.success) {
+        if (result.success && result.data) {
           results.push(result.data);
         } else {
           errors.push({
-            filename: result.filename,
-            error: result.error
+            filename: result.filename || 'unknown',
+            error: result.error || 'Upload failed'
           });
         }
       });

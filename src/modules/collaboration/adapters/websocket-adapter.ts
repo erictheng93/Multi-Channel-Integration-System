@@ -45,12 +45,12 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 獲取對話的查看者列表
    */
   async getConversationViewers(conversationId: number): Promise<Viewer[]> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
       // 獲取 ConversationRoom Durable Object
-      const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${conversationId}`);
-      const room = this.env!.CONVERSATION_ROOM.get(roomId);
+      const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${conversationId}`);
+      const room = env.CONVERSATION_ROOM.get(roomId);
 
       // 調用 DO 的 participants 端點
       const response = await room.fetch(new Request('http://internal/participants'));
@@ -82,11 +82,11 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 獲取對話房間完整狀態
    */
   async getConversationState(conversationId: number): Promise<ConversationRoomState> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
-      const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${conversationId}`);
-      const room = this.env!.CONVERSATION_ROOM.get(roomId);
+      const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${conversationId}`);
+      const room = env.CONVERSATION_ROOM.get(roomId);
 
       // 調用 DO 的 state 端點
       const response = await room.fetch(new Request('http://internal/metrics'));
@@ -145,11 +145,11 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 用戶加入對話
    */
   async joinConversation(request: JoinConversationRequest): Promise<void> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
-      const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
-      const room = this.env!.CONVERSATION_ROOM.get(roomId);
+      const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
+      const room = env.CONVERSATION_ROOM.get(roomId);
 
       // 調用 DO 的 connect 端點
       await room.fetch(new Request('http://internal/connect', {
@@ -170,11 +170,11 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 用戶離開對話
    */
   async leaveConversation(request: LeaveConversationRequest): Promise<void> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
-      const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
-      const room = this.env!.CONVERSATION_ROOM.get(roomId);
+      const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
+      const room = env.CONVERSATION_ROOM.get(roomId);
 
       // 調用 DO 的 disconnect 端點
       await room.fetch(new Request('http://internal/disconnect', {
@@ -194,11 +194,11 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 發送輸入狀態
    */
   async sendTyping(request: SendTypingRequest): Promise<void> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
-      const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
-      const room = this.env!.CONVERSATION_ROOM.get(roomId);
+      const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
+      const room = env.CONVERSATION_ROOM.get(roomId);
 
       // 調用 DO 的 broadcast 端點發送 typing 事件
       await room.fetch(new Request('http://internal/broadcast', {
@@ -221,12 +221,12 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 更新用戶在線狀態
    */
   async updatePresence(request: UpdatePresenceRequest): Promise<void> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
       // 使用 USER_CONNECTION Durable Object 管理用戶狀態
-      const userId = this.env!.USER_CONNECTION.idFromName(`user-${request.userId}`);
-      const userConn = this.env!.USER_CONNECTION.get(userId);
+      const userId = env.USER_CONNECTION.idFromName(`user-${request.userId}`);
+      const userConn = env.USER_CONNECTION.get(userId);
 
       await userConn.fetch(new Request('http://internal/presence', {
         method: 'POST',
@@ -240,8 +240,8 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
 
       // 如果有當前對話,廣播 presence 更新
       if (request.currentConversation) {
-        const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${request.currentConversation}`);
-        const room = this.env!.CONVERSATION_ROOM.get(roomId);
+        const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${request.currentConversation}`);
+        const room = env.CONVERSATION_ROOM.get(roomId);
 
         await room.fetch(new Request('http://internal/broadcast', {
           method: 'POST',
@@ -265,11 +265,11 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 廣播事件到對話
    */
   async broadcastEvent(request: BroadcastEventRequest): Promise<void> {
-    this.ensureInitialized();
+    const env = this.getEnv();
 
     try {
-      const roomId = this.env!.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
-      const room = this.env!.CONVERSATION_ROOM.get(roomId);
+      const roomId = env.CONVERSATION_ROOM.idFromName(`conv-${request.conversationId}`);
+      const room = env.CONVERSATION_ROOM.get(roomId);
 
       await room.fetch(new Request('http://internal/broadcast', {
         method: 'POST',
@@ -290,7 +290,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
    * 獲取適配器統計信息
    */
   async getStats(): Promise<CollaborationStats> {
-    this.ensureInitialized();
+    this.getEnv(); // Validate initialization
 
     // WebSocket 統計需要從多個 DO 聚合
     // 這裡返回基本統計,實際應該實現更完整的統計收集
@@ -318,9 +318,19 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
 
   // =================== 私有輔助方法 ===================
 
-  private ensureInitialized(): void {
+  /**
+   * 獲取已初始化的環境（用於類型安全訪問）
+   */
+  private getEnv(): Bindings & { CONVERSATION_ROOM: DurableObjectNamespace; USER_CONNECTION: DurableObjectNamespace } {
     if (!this.env) {
       throw new Error('WebSocketCollaborationAdapter not initialized');
     }
+    if (!this.env.CONVERSATION_ROOM) {
+      throw new Error('CONVERSATION_ROOM Durable Object binding not found');
+    }
+    if (!this.env.USER_CONNECTION) {
+      throw new Error('USER_CONNECTION Durable Object binding not found');
+    }
+    return this.env as Bindings & { CONVERSATION_ROOM: DurableObjectNamespace; USER_CONNECTION: DurableObjectNamespace };
   }
 }
