@@ -7,7 +7,14 @@ import type {
   ValidationResult,
   OptimizationRecommendation,
   LoadTestResult,
-  PerformanceMetrics
+  PerformanceMetrics,
+  PerformanceScore,
+  PerformanceDetailedAnalysis,
+  ConnectionValidationResult,
+  LoadTestConfig,
+  ConnectionTypeLoadTestResult,
+  LoadTestSummary,
+  ValidationHistoryEntry
 } from '../types/performance-types';
 import type { Bindings } from '../types/bindings';
 // import { DeploymentMonitorService } from '../monitoring/deployment-monitor';
@@ -283,7 +290,7 @@ export class PerformanceValidationService {
   async generateOptimizationRecommendations(
     websocketMetrics: PerformanceMetrics,
     sseMetrics: PerformanceMetrics,
-    _analysis: any
+    _analysis: PerformanceDetailedAnalysis
   ): Promise<OptimizationRecommendation[]> {
     console.log('💡 [PerformanceValidation] Generating optimization recommendations');
 
@@ -490,7 +497,7 @@ export class PerformanceValidationService {
     };
   }
 
-  private calculateLatencyScore(latency: any): number {
+  private calculateLatencyScore(latency: PerformanceMetrics['latency']): number {
     // Score based on how well latency meets SLA targets
     let score = 100;
 
@@ -515,7 +522,7 @@ export class PerformanceValidationService {
     return Math.max(0, score);
   }
 
-  private calculateThroughputScore(throughput: any): number {
+  private calculateThroughputScore(throughput: PerformanceMetrics['throughput']): number {
     let score = 100;
 
     // Messages per second (60% weight)
@@ -539,7 +546,7 @@ export class PerformanceValidationService {
     return Math.max(0, score);
   }
 
-  private calculateReliabilityScore(reliability: any): number {
+  private calculateReliabilityScore(reliability: PerformanceMetrics['reliability']): number {
     let score = 100;
 
     // Uptime (40% weight)
@@ -563,7 +570,7 @@ export class PerformanceValidationService {
     return Math.max(0, score);
   }
 
-  private calculateEfficiencyScore(efficiency: any): number {
+  private calculateEfficiencyScore(efficiency: PerformanceMetrics['efficiency']): number {
     let score = 100;
 
     // CPU utilization (40% weight)
@@ -590,7 +597,7 @@ export class PerformanceValidationService {
   private generateDetailedAnalysis(
     websocketMetrics: PerformanceMetrics,
     sseMetrics: PerformanceMetrics
-  ): any {
+  ): PerformanceDetailedAnalysis {
     const websocketAdvantages: string[] = [];
     const websocketDisadvantages: string[] = [];
     const sseAdvantages: string[] = [];
@@ -650,9 +657,9 @@ export class PerformanceValidationService {
   }
 
   private determineWinner(
-    websocketScore: any,
-    sseScore: any,
-    analysis: any
+    websocketScore: PerformanceScore,
+    sseScore: PerformanceScore,
+    analysis: PerformanceDetailedAnalysis
   ): { type: 'websocket' | 'sse' | 'tie'; score: number; confidence: number; reasons: string[] } {
     const scoreDifference = Math.abs(websocketScore.overall - sseScore.overall);
     const threshold = 5; // Minimum score difference to declare a winner
@@ -686,7 +693,7 @@ export class PerformanceValidationService {
   private validateConnectionTypeAgainstSLA(
     metrics: PerformanceMetrics,
     connectionType: string
-  ): any {
+  ): ConnectionValidationResult {
     const validations: Array<{ metric: string; target: number; actual: number; passed: boolean; score: number }> = [];
 
     // Validate latency targets
@@ -737,7 +744,7 @@ export class PerformanceValidationService {
     };
   }
 
-  private async executeConnectionTypeLoadTest(connectionType: string, config: any): Promise<any> {
+  private async executeConnectionTypeLoadTest(connectionType: string, config: LoadTestConfig): Promise<ConnectionTypeLoadTestResult> {
     // This would execute real load testing
     // For now, return mock load test results
 
@@ -762,7 +769,7 @@ export class PerformanceValidationService {
     };
   }
 
-  private async executeStressTest(_config: any): Promise<any> {
+  private async executeStressTest(_config: LoadTestConfig): Promise<LoadTestResult['stressTestResults']> {
     // This would execute stress testing beyond normal capacity
     // For now, return mock stress test results
 
@@ -782,20 +789,32 @@ export class PerformanceValidationService {
     };
   }
 
-  private calculateLoadTestSummary(results: any): any {
-    const allResults = Object.values(results) as any[];
-    if (allResults.length === 0) return {};
+  private calculateLoadTestSummary(results: Record<string, ConnectionTypeLoadTestResult | undefined>): LoadTestSummary {
+    const allResults = Object.values(results).filter((r): r is ConnectionTypeLoadTestResult => r !== undefined);
+    if (allResults.length === 0) {
+      return {
+        totalRequests: 0,
+        successfulRequests: 0,
+        failedRequests: 0,
+        averageLatency: 0,
+        p95Latency: 0,
+        p99Latency: 0,
+        throughput: 0,
+        errorRate: 0,
+        peakConcurrentConnections: 0
+      };
+    }
 
     return {
-      totalRequests: allResults.reduce((sum: number, r: any) => sum + r.totalRequests, 0),
-      successfulRequests: allResults.reduce((sum: number, r: any) => sum + r.successfulRequests, 0),
-      failedRequests: allResults.reduce((sum: number, r: any) => sum + r.failedRequests, 0),
-      averageLatency: allResults.reduce((sum: number, r: any) => sum + r.averageLatency, 0) / allResults.length,
-      p95Latency: Math.max(...allResults.map((r: any) => r.p95Latency)),
-      p99Latency: Math.max(...allResults.map((r: any) => r.p99Latency)),
-      throughput: allResults.reduce((sum: number, r: any) => sum + r.throughput, 0),
-      errorRate: allResults.reduce((sum: number, r: any) => sum + r.errorRate, 0) / allResults.length,
-      peakConcurrentConnections: Math.max(...allResults.map((r: any) => r.peakConcurrentConnections))
+      totalRequests: allResults.reduce((sum: number, r: ConnectionTypeLoadTestResult) => sum + r.totalRequests, 0),
+      successfulRequests: allResults.reduce((sum: number, r: ConnectionTypeLoadTestResult) => sum + r.successfulRequests, 0),
+      failedRequests: allResults.reduce((sum: number, r: ConnectionTypeLoadTestResult) => sum + r.failedRequests, 0),
+      averageLatency: allResults.reduce((sum: number, r: ConnectionTypeLoadTestResult) => sum + r.averageLatency, 0) / allResults.length,
+      p95Latency: Math.max(...allResults.map((r: ConnectionTypeLoadTestResult) => r.p95Latency)),
+      p99Latency: Math.max(...allResults.map((r: ConnectionTypeLoadTestResult) => r.p99Latency)),
+      throughput: allResults.reduce((sum: number, r: ConnectionTypeLoadTestResult) => sum + r.throughput, 0),
+      errorRate: allResults.reduce((sum: number, r: ConnectionTypeLoadTestResult) => sum + r.errorRate, 0) / allResults.length,
+      peakConcurrentConnections: Math.max(...allResults.map((r: ConnectionTypeLoadTestResult) => r.peakConcurrentConnections))
     };
   }
 
@@ -906,7 +925,7 @@ export class PerformanceValidationService {
     lastValidation: number | null;
     currentStatus: 'passing' | 'failing' | 'unknown';
     nextValidation: number | null;
-    validationHistory: any[];
+    validationHistory: ValidationHistoryEntry[];
   }> {
     try {
       // This would get real validation status
