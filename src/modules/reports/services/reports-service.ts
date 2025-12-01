@@ -577,7 +577,7 @@ export class ReportsService implements ReportsServiceInterface {
         format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
         status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
         createdBy: report.createdBy,
-        createdAt: report.createdAt,
+        createdAt: report.createdAt || new Date().toISOString(),
         updatedAt: report.updatedAt || undefined,
         startedAt: report.generationStartedAt || undefined,
         completedAt: report.completedAt || undefined,
