@@ -6,6 +6,25 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 
 /**
+ * Session data structure for validation
+ */
+interface SessionData {
+  userId: string;
+  displayName: string;
+  role?: 'admin' | 'agent' | 'customer';
+  expiresAt: number;
+}
+
+/**
+ * Session validation result
+ */
+interface SessionValidationResult {
+  valid: boolean;
+  session?: SessionData;
+  error?: string;
+}
+
+/**
  * CustomerConversationDO
  *
  * Purpose: Manage WebSocket connections for a single customer conversation
@@ -28,6 +47,37 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
     console.log('🏗️ [CustomerConversationDO] Initialized');
+  }
+
+  /**
+   * Validate session against KV store
+   * Uses the same session key format as KVSessionService
+   */
+  private async validateSession(sessionId: string): Promise<SessionValidationResult> {
+    if (!sessionId) {
+      return { valid: false, error: 'Session ID is required' };
+    }
+
+    try {
+      const sessionKey = `session:${sessionId}`;
+      const sessionData = await this.env.SESSIONS.get(sessionKey, 'text');
+
+      if (!sessionData) {
+        return { valid: false, error: 'Session not found' };
+      }
+
+      const session: SessionData = JSON.parse(sessionData);
+
+      // Check expiration
+      if (session.expiresAt < Date.now()) {
+        return { valid: false, error: 'Session expired' };
+      }
+
+      return { valid: true, session };
+    } catch (error) {
+      console.error('[CustomerConversationDO] Session validation error:', error);
+      return { valid: false, error: 'Invalid session format' };
+    }
   }
 
   /**
@@ -93,13 +143,23 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       return new Response('Session ID is required', { status: 400 });
     }
 
-    // TODO: Validate session with existing auth system
-    // For now, extract userId from session (simplified)
-    const userId = sessionId; // In production, validate against KV sessions
+    // Validate session against KV store
+    const validation = await this.validateSession(sessionId);
+    if (!validation.valid || !validation.session) {
+      const errorMessage = validation.error || 'Invalid session';
+      server.close(1008, errorMessage);
+      return new Response(JSON.stringify({ success: false, error: errorMessage }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const userId = validation.session.userId;
 
     console.log(`🔌 [CustomerConversationDO] Client connecting:`, {
       conversationId,
-      userId
+      userId,
+      role: validation.session.role
     });
 
     // Accept the WebSocket FIRST before any operations

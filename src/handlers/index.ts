@@ -15,7 +15,6 @@ export { default as authMainHandler } from './auth-main'
 export { default as teamMainHandler } from '../modules/teams/handlers/index' // Updated to use fully modular team handler (includes members, invitations, password)
 export { default as delayedMessageMainHandler } from './delayed-message-modular' // Updated to use modular implementation
 export { conversationsMainHandler as conversationMainHandler } from '../modules/conversations/handlers'
-// TEMP FIX: Direct export fix
 export { default as messagingMainHandler } from './messaging-main'
 export { default as systemMainHandler } from './system-main'
 export { default as customerMainHandler } from './customer-main'

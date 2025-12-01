@@ -297,16 +297,8 @@ const realtimeGroup = createRouteGroup({
       dependencies: ['auth'],
       healthCheck: '/health'
     }),
-    // TEMPORARILY DISABLED: realtime module needs Hono router wrapper
-    // createRouteModule({
-    //   name: 'realtime',
-    //   path: '/realtime',
-    //   handler: realtime as any,
-    //   description: '統�??��??��?模�?',
-    //   version: '1.0.0',
-    //   dependencies: ['auth'],
-    //   healthCheck: '/health'
-    // }),
+    // Note: Realtime routes are registered directly in src/index.ts (lines 1143-1154)
+    // for explicit endpoint control. This module is intentionally not included here.
     // REMOVED: SSE Monitoring route (Phase 5 cleanup - SSE removed, WebSocket monitoring in place)
     // createRouteModule({
     //   name: 'sse-monitoring',
@@ -373,16 +365,8 @@ const advancedFeaturesGroup = createRouteGroup({
       dependencies: ['auth'],
       healthCheck: '/health'
     })
-    // TEMPORARILY DISABLED: queue-monitor needs Hono router wrapper
-    // createRouteModule({
-    //   name: 'queue-monitor',
-    //   path: '/queues',
-    //   handler: queueMonitorHandler as any,
-    //   description: '?��?統�???��?��?',
-    //   version: '1.0.0',
-    //   dependencies: ['auth'],
-    //   healthCheck: '/health'
-    // })
+    // Note: Queue monitor routes are registered directly in src/index.ts (lines 1172-1176)
+    // for explicit endpoint control. This module is intentionally not included here.
   ]
 });
 
