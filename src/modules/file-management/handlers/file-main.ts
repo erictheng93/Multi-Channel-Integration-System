@@ -59,6 +59,27 @@ fileMainHandler.get('/info', jwtAuth, async (c) => {
   }
 });
 
+// 📊 檔案統計 (IMPORTANT: 必須在 /:fileId 之前註冊，避免路由攔截)
+fileMainHandler.get('/stats/summary', jwtAuth, async (c) => {
+  try {
+    const payload = c.get('jwtPayload');
+    if (!payload) {
+      return unauthorizedResponse(c, 'Authentication required');
+    }
+
+    const fileService = new FileService(c.env);
+    // Note: Current implementation doesn't support user filtering
+    // TODO: Extend getFileStatistics to support user-specific stats
+    const stats = await fileService.getFileStatistics('30d');
+
+    return successResponse(c, stats);
+
+  } catch (error) {
+    console.error('File statistics error:', error);
+    return handleApiError(error, c);
+  }
+});
+
 // 📤 檔案上傳
 fileMainHandler.post('/', jwtAuth, async (c) => {
   try {
@@ -248,27 +269,6 @@ fileMainHandler.delete('/:fileId', jwtAuth, async (c) => {
 
   } catch (error) {
     console.error('File deletion error:', error);
-    return handleApiError(error, c);
-  }
-});
-
-// 📊 檔案統計
-fileMainHandler.get('/stats/summary', jwtAuth, async (c) => {
-  try {
-    const payload = c.get('jwtPayload');
-    if (!payload) {
-      return unauthorizedResponse(c, 'Authentication required');
-    }
-
-    const fileService = new FileService(c.env);
-    // Note: Current implementation doesn't support user filtering
-    // TODO: Extend getFileStatistics to support user-specific stats
-    const stats = await fileService.getFileStatistics('30d');
-
-    return successResponse(c, stats);
-
-  } catch (error) {
-    console.error('File statistics error:', error);
     return handleApiError(error, c);
   }
 });
