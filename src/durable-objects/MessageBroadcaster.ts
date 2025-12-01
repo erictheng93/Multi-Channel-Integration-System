@@ -9,6 +9,10 @@ import type {
   DistributedLock,
   LockAcquisitionOptions
 } from '../types/websocket-types';
+import { createContextLogger } from '../utils/logger';
+
+// Context logger for MessageBroadcaster
+const log = createContextLogger('MessageBroadcaster');
 
 /**
  * Architecture Overview:
@@ -122,7 +126,7 @@ export class MessageBroadcaster implements DurableObject {
           return new Response('Not Found', { status: 404 });
       }
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Request handling error:', error);
+      log.error('❌ [MessageBroadcaster] Request handling error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -151,7 +155,7 @@ export class MessageBroadcaster implements DurableObject {
       }));
 
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Broadcast error:', error);
+      log.error('❌ [MessageBroadcaster] Broadcast error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
     }
   }
@@ -202,7 +206,7 @@ export class MessageBroadcaster implements DurableObject {
         removedCount = removedEvents.length;
       }
 
-      console.warn(`🚫 [MessageBroadcaster] Queue overflow, evicted ${removedCount} events (priority-aware)`);
+      log.warn('Queue overflow, evicted events (priority-aware)', { removedCount });
 
       // Track evicted events in metrics
       this.distributionStats.evictedEvents = (this.distributionStats.evictedEvents || 0) + removedCount;
@@ -211,7 +215,7 @@ export class MessageBroadcaster implements DurableObject {
     // Also check high priority queue (should rarely overflow, but add safety)
     if (this.highPriorityQueue.length > this.MAX_QUEUE_SIZE / 2) {
       // High priority queue overflow is critical - log error but process older events first
-      console.error(`🚨 [MessageBroadcaster] High priority queue overflow! Size: ${this.highPriorityQueue.length}`);
+      log.error('High priority queue overflow', { size: this.highPriorityQueue.length });
     }
 
     // Update metrics
@@ -290,7 +294,7 @@ export class MessageBroadcaster implements DurableObject {
         const deliveryCount = await this.deliverToTarget(target, targetEvents);
         successCount += deliveryCount;
       } catch (error) {
-        console.error(`❌ [MessageBroadcaster] Failed to deliver to target ${target}:`, error);
+        log.error('Failed to deliver to target', { target, error: error instanceof Error ? error.message : String(error) });
         failureCount += targetEvents.length;
 
         // Retry mechanism for failed events
@@ -352,7 +356,7 @@ export class MessageBroadcaster implements DurableObject {
     let deliveredCount = 0;
 
     if (!targetId && targetType !== 'global') {
-      console.warn(`⚠️ [MessageBroadcaster] Invalid target format: ${target}`);
+      log.warn('Invalid target format', { target });
       return 0;
     }
 
@@ -370,7 +374,7 @@ export class MessageBroadcaster implements DurableObject {
         deliveredCount = await this.deliverGlobalBroadcast(events);
         break;
       default:
-        console.warn(`⚠️ [MessageBroadcaster] Unknown target type: ${targetType}`);
+        log.warn('Unknown target type', { targetType });
     }
 
     return deliveredCount;
@@ -408,7 +412,7 @@ export class MessageBroadcaster implements DurableObject {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (error) {
-      console.error(`❌ [MessageBroadcaster] Conversation delivery error (${conversationId}):`, error);
+      log.error('Conversation delivery error', { conversationId, error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -443,7 +447,7 @@ export class MessageBroadcaster implements DurableObject {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (error) {
-      console.error(`❌ [MessageBroadcaster] User delivery error (${userId}):`, error);
+      log.error('User delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -460,7 +464,7 @@ export class MessageBroadcaster implements DurableObject {
           const delivered = await this.deliverToUser(userId, events);
           return delivered;
         } catch (error) {
-          console.error(`❌ [MessageBroadcaster] Team member delivery error (${userId}):`, error);
+          log.error('Team member delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
           return 0;
         }
       });
@@ -474,7 +478,7 @@ export class MessageBroadcaster implements DurableObject {
 
       return totalDelivered;
     } catch (error) {
-      console.error(`❌ [MessageBroadcaster] Team delivery error (${teamId}):`, error);
+      log.error('Team delivery error', { teamId, error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -488,7 +492,7 @@ export class MessageBroadcaster implements DurableObject {
         try {
           return await this.deliverToConversation(conversationId, events);
         } catch (error) {
-          console.error(`❌ [MessageBroadcaster] Global conversation delivery error (${conversationId}):`, error);
+          log.error('Global conversation delivery error', { conversationId, error: error instanceof Error ? error.message : String(error) });
           return 0;
         }
       });
@@ -498,7 +502,7 @@ export class MessageBroadcaster implements DurableObject {
         try {
           return await this.deliverToUser(userId, events);
         } catch (error) {
-          console.error(`❌ [MessageBroadcaster] Global user delivery error (${userId}):`, error);
+          log.error('Global user delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
           return 0;
         }
       });
@@ -512,7 +516,7 @@ export class MessageBroadcaster implements DurableObject {
 
       return totalDelivered;
     } catch (error) {
-      console.error(`❌ [MessageBroadcaster] Global broadcast error:`, error);
+      log.error('Global broadcast error', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -548,7 +552,7 @@ export class MessageBroadcaster implements DurableObject {
         activeConnections: this.activeConnections
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Connection registration error:', error);
+      log.error('❌ [MessageBroadcaster] Connection registration error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Registration failed' }), { status: 500 });
     }
   }
@@ -572,7 +576,7 @@ export class MessageBroadcaster implements DurableObject {
         activeConnections: this.activeConnections
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Connection unregistration error:', error);
+      log.error('❌ [MessageBroadcaster] Connection unregistration error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Unregistration failed' }), { status: 500 });
     }
   }
@@ -608,7 +612,7 @@ export class MessageBroadcaster implements DurableObject {
     // This would query the agents table for team members
     try {
       if (!this.env.DB) {
-        console.warn('⚠️ [MessageBroadcaster] Database not available');
+        log.warn('⚠️ [MessageBroadcaster] Database not available');
         return [];
       }
 
@@ -620,7 +624,7 @@ export class MessageBroadcaster implements DurableObject {
 
       return result.map((member: any) => member.id || member.userId);
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Error getting team members:', error);
+      log.error('❌ [MessageBroadcaster] Error getting team members:', { error: error instanceof Error ? error.message : String(error) });
       return [];
     }
   }
@@ -642,7 +646,7 @@ export class MessageBroadcaster implements DurableObject {
       await this.state.storage.put('highPriorityQueue', this.highPriorityQueue);
       await this.state.storage.put('distributionStats', this.distributionStats);
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Error persisting queue state:', error);
+      log.error('❌ [MessageBroadcaster] Error persisting queue state:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -659,7 +663,7 @@ export class MessageBroadcaster implements DurableObject {
 
       console.log(`📂 [MessageBroadcaster] State restored: ${this.eventQueue.length} events in queue`);
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] State restoration error:', error);
+      log.error('❌ [MessageBroadcaster] State restoration error:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -713,7 +717,7 @@ export class MessageBroadcaster implements DurableObject {
 
         await this.sleep(retryInterval);
       } catch (error) {
-        console.error(`❌ [MessageBroadcaster] Lock acquisition error:`, error);
+        log.error('Lock acquisition error', { error: error instanceof Error ? error.message : String(error) });
         throw error;
       }
     }
@@ -729,7 +733,7 @@ export class MessageBroadcaster implements DurableObject {
       await this.state.storage.delete(`lock:${lock.resource}`);
       this.locks.delete(lockId);
     } catch (error) {
-      console.error(`❌ [MessageBroadcaster] Lock release error:`, error);
+      log.error('Lock release error', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -812,7 +816,7 @@ export class MessageBroadcaster implements DurableObject {
           ]);
           return { success: true };
         } catch (error) {
-          console.error(`❌ Failed to deliver to conversation ${conversationId}:`, error);
+          log.error('Failed to deliver to conversation', { conversationId, error: error instanceof Error ? error.message : String(error) });
           return { success: false };
         }
       });
@@ -865,7 +869,7 @@ export class MessageBroadcaster implements DurableObject {
           ]);
           return { success: true };
         } catch (error) {
-          console.error(`❌ Failed to deliver to user ${userId}:`, error);
+          log.error('Failed to deliver to user', { userId, error: error instanceof Error ? error.message : String(error) });
           return { success: false };
         }
       });
@@ -918,7 +922,7 @@ export class MessageBroadcaster implements DurableObject {
           ]);
           return { success: true };
         } catch (error) {
-          console.error(`❌ Failed to deliver to team ${teamId}:`, error);
+          log.error('Failed to deliver to team', { teamId, error: error instanceof Error ? error.message : String(error) });
           return { success: false };
         }
       });
@@ -970,7 +974,7 @@ export class MessageBroadcaster implements DurableObject {
         processingTime // Week 3-4: Added for performance monitoring
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Broadcast to conversations error:', error);
+      log.error('❌ [MessageBroadcaster] Broadcast to conversations error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -1006,7 +1010,7 @@ export class MessageBroadcaster implements DurableObject {
         processingTime // Week 3-4: Added for performance monitoring
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Broadcast to users error:', error);
+      log.error('❌ [MessageBroadcaster] Broadcast to users error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -1042,7 +1046,7 @@ export class MessageBroadcaster implements DurableObject {
         processingTime // Week 3-4: Added for performance monitoring
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Broadcast to teams error:', error);
+      log.error('❌ [MessageBroadcaster] Broadcast to teams error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -1066,7 +1070,7 @@ export class MessageBroadcaster implements DurableObject {
         const deliveredCount = await this.deliverGlobalBroadcast([{ ...event, targets: [target || { type: 'global', targets: ['all'] }] }]);
         successful = deliveredCount;
       } catch (error) {
-        console.error(`❌ Failed global broadcast:`, error);
+        log.error('Failed global broadcast', { error: error instanceof Error ? error.message : String(error) });
         failed = 1;
       }
 
@@ -1082,7 +1086,7 @@ export class MessageBroadcaster implements DurableObject {
         failed
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Global broadcast error:', error);
+      log.error('❌ [MessageBroadcaster] Global broadcast error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -1156,7 +1160,7 @@ export class MessageBroadcaster implements DurableObject {
             return { success: targetEvents.length, failed: 0 };
           }
         } catch (error) {
-          console.error(`❌ Failed to deliver to ${targetKey}:`, error);
+          log.error('Failed to deliver to target', { targetKey, error: error instanceof Error ? error.message : String(error) });
           return { success: 0, failed: targetEvents.length };
         }
       });
@@ -1185,7 +1189,7 @@ export class MessageBroadcaster implements DurableObject {
         failed
       }));
     } catch (error) {
-      console.error('❌ [MessageBroadcaster] Batch broadcast error:', error);
+      log.error('❌ [MessageBroadcaster] Batch broadcast error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
