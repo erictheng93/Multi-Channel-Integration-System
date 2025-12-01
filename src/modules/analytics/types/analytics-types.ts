@@ -438,12 +438,51 @@ export interface ExportResult {
 }
 
 /**
+ * 內部查詢上下文類型 - 用於 buildWhereConditions
+ */
+export interface WhereConditionContext {
+  table: 'conversations' | 'messages' | 'activities' | 'agents' | 'users';
+  startDate?: string;
+  endDate?: string;
+}
+
+/**
+ * SQL 查詢結果行類型 - 用於趨勢和分佈數據
+ */
+export interface TrendDataRow {
+  period: string | null;
+  count: number | null;
+}
+
+export interface DistributionRow {
+  category: string | null;
+  count: number | null;
+}
+
+export interface ConversationSummaryRow {
+  total_conversations?: number | null;
+  active_conversations?: number | null;
+  closed_conversations?: number | null;
+  avg_duration?: number | null;
+  avg_messages?: number | null;
+  avg_first_response?: number | null;
+  avg_resolution?: number | null;
+  satisfaction_score?: number | null;
+}
+
+export interface MessageSummaryRow {
+  total_messages?: number | null;
+  messages_per_hour?: number | null;
+  avg_response_time?: number | null;
+}
+
+/**
  * 分析服務配置
  */
 export interface AnalyticsServiceConfig {
   database: Database;
   kv?: Bindings['KV'];
-  env: any;
+  env?: Bindings;
   cache?: {
     enabled: boolean;
     ttl: number; // seconds

@@ -56,7 +56,8 @@ export class DashboardService {
     private kv: Bindings['KV'],
     options: DashboardServiceOptions = {}
   ) {
-    this.analyticsCore = new AnalyticsCore({ database: db as any, kv, env: {} });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Database type compatibility
+    this.analyticsCore = new AnalyticsCore({ database: db as any, kv });
     this.metricsCollector = new MetricsCollector(db, kv);
     this.options = { ...DEFAULT_OPTIONS, ...options };
   }

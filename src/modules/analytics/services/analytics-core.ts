@@ -9,6 +9,8 @@ import type { ServiceResponse } from '@/types/services';
 import type {
   AnalyticsServiceInterface,
   AnalyticsResult,
+  AnalyticsQuery,
+  AnalyticsFilters,
   ConversationAnalyticsQuery,
   ConversationAnalytics,
   MessageAnalyticsQuery,
@@ -23,7 +25,10 @@ import type {
   AnalyticsServiceConfig,
   TimeSeriesData,
   DistributionData,
-  ComparisonData
+  ComparisonData,
+  WhereConditionContext,
+  TrendDataRow,
+  DistributionRow
 } from '../types/analytics-types';
 
 import {
@@ -52,7 +57,7 @@ import type { Period, ComparisonData as PeriodComparisonData } from '@modules/an
 export class AnalyticsService implements AnalyticsServiceInterface {
   private db: Database;
   private kv?: Bindings['KV'];
-  private env: any;
+  private env?: Bindings;
   private config: AnalyticsServiceConfig;
   private cacheService?: AnalyticsCacheService;
   private comparisonService: PeriodComparisonService;
@@ -65,6 +70,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
     // 初始化快取服務（如果有 KV）
     if (this.kv) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- KVNamespace type compatibility between different @cloudflare/workers-types versions
       this.cacheService = new AnalyticsCacheService(this.kv as any, {
         defaultTTL: 300,    // 5 minutes
         shortTTL: 60,       // 1 minute
@@ -161,10 +167,17 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
 
         // 將 ServiceResponse 轉換為 AnalyticsResult 進行緩存
+        const meta = serviceResponse.metadata;
         const analyticsResult: AnalyticsResult<ConversationAnalytics> = {
           success: serviceResponse.success,
           data: serviceResponse.data!,
-          metadata: serviceResponse.metadata as any
+          metadata: {
+            totalRecords: typeof meta?.totalRecords === 'number' ? meta.totalRecords : 0,
+            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : new Date().toISOString(),
+            queryTime: typeof meta?.queryTime === 'number' ? meta.queryTime : 0,
+            cacheHit: typeof meta?.cacheHit === 'boolean' ? meta.cacheHit : undefined,
+            aggregationLevel: meta?.aggregationLevel as AnalyticsResult<ConversationAnalytics>['metadata']['aggregationLevel']
+          }
         };
 
         const ttl = this.cacheService.getTTLForQueryType('conversation', query.timeRange);
@@ -272,10 +285,17 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
 
         // 將 ServiceResponse 轉換為 AnalyticsResult 進行緩存
+        const meta = serviceResponse.metadata;
         const analyticsResult: AnalyticsResult<MessageAnalytics> = {
           success: serviceResponse.success,
           data: serviceResponse.data!,
-          metadata: serviceResponse.metadata as any
+          metadata: {
+            totalRecords: typeof meta?.totalRecords === 'number' ? meta.totalRecords : 0,
+            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : new Date().toISOString(),
+            queryTime: typeof meta?.queryTime === 'number' ? meta.queryTime : 0,
+            cacheHit: typeof meta?.cacheHit === 'boolean' ? meta.cacheHit : undefined,
+            aggregationLevel: meta?.aggregationLevel as AnalyticsResult<MessageAnalytics>['metadata']['aggregationLevel']
+          }
         };
 
         const ttl = this.cacheService.getTTLForQueryType('message', query.timeRange);
@@ -567,7 +587,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
   // 私有方法實現 ...
 
-  private validateQuery(query: any): void {
+  private validateQuery(query: AnalyticsQuery): void {
     if (!query.timeRange && !query.startDate) {
       throw new QueryValidationError('Either timeRange or startDate must be provided');
     }
@@ -622,8 +642,8 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private buildWhereConditions(filters: any, context: any): any[] {
-    const conditions = [];
+  private buildWhereConditions(filters: AnalyticsFilters | undefined, context: WhereConditionContext): ReturnType<typeof and>[] {
+    const conditions: ReturnType<typeof and>[] = [];
 
     // 時間範圍條件
     if (context.startDate) {
