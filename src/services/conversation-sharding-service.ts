@@ -179,7 +179,8 @@ export class ConversationShardingService {
 
       const response = await stub.fetch('https://shard/capacity-check', {
         method: 'GET',
-        signal: controller.signal
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        signal: controller.signal as any
       });
 
       clearTimeout(timeoutId);

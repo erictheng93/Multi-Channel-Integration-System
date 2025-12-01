@@ -80,15 +80,26 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
           if (beforeMessage.length > 0) {
             const beforeTimestamp = beforeMessage[0].createdAt;
-            fetchedMessages = await db
-              .select()
-              .from(messages)
-              .where(and(
-                eq(messages.conversationId, conversationId),
-                lt(messages.createdAt, beforeTimestamp)
-              ))
-              .orderBy(desc(messages.createdAt))
-              .limit(limit);
+            // Only fetch if we have a valid timestamp
+            if (beforeTimestamp) {
+              fetchedMessages = await db
+                .select()
+                .from(messages)
+                .where(and(
+                  eq(messages.conversationId, conversationId),
+                  lt(messages.createdAt, beforeTimestamp)
+                ))
+                .orderBy(desc(messages.createdAt))
+                .limit(limit);
+            } else {
+              // Fallback if timestamp is null
+              fetchedMessages = await db
+                .select()
+                .from(messages)
+                .where(eq(messages.conversationId, conversationId))
+                .orderBy(desc(messages.createdAt))
+                .limit(limit);
+            }
           } else {
             // If 'before' message not found, just fetch latest
             fetchedMessages = await db
@@ -122,10 +133,13 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
           // Group attachments by messageId
           for (const attachment of allAttachments) {
-            if (!attachmentsByMessageId[attachment.messageId]) {
-              attachmentsByMessageId[attachment.messageId] = [];
+            const msgId = attachment.messageId;
+            if (msgId) {
+              if (!attachmentsByMessageId[msgId]) {
+                attachmentsByMessageId[msgId] = [];
+              }
+              attachmentsByMessageId[msgId].push(attachment);
             }
-            attachmentsByMessageId[attachment.messageId].push(attachment);
           }
         }
 

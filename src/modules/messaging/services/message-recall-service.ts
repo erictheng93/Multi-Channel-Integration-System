@@ -436,7 +436,7 @@ export class MessageRecallService {
         status: result.action as 'successful' | 'failed',
         failureReason: undefined as string | undefined, // Not available in current schema
         recalledAt: undefined as string | undefined, // Not available in current schema
-        createdAt: result.createdAt,
+        createdAt: result.createdAt || new Date().toISOString(),
       }));
 
       return { recalls, total };

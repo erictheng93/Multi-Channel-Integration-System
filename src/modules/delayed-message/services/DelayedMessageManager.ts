@@ -391,7 +391,7 @@ export class DelayedMessageManager {
         'send',
         {
           userId: user.id, // ✅ 保持字符串類型，與修正一致
-          role: user.role,
+          role: user.role || 'agent',
           resourceId: request.conversationId || ''
         }
       );

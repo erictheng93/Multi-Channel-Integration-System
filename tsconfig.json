@@ -6,10 +6,10 @@
     "moduleResolution": "Bundler",
 
     // Strict Type Checking (P2-6: Progressive enablement)
-    // Phase 2: Enable noImplicitAny for production code
+    // Phase 3: Enable strictNullChecks for production code
     "strict": true,
     "noImplicitAny": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
     "strictPropertyInitialization": false,
