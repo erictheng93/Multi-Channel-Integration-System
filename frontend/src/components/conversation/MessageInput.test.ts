@@ -255,7 +255,8 @@ describe('MessageInput Component', () => {
       expect(wrapper.emitted('message-sent')?.[0]).toEqual([{
         content: 'Test message',
         attachments: [],
-        fileAttachments: []
+        // eslint-disable-next-line camelcase
+        file_attachments: []
       }])
     })
 
