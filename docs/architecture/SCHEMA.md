@@ -1,10 +1,11 @@
 # D1 Database Schema
 
-> **Version:** v2.5
-> **Last Updated:** 2025-11-05
+> **Version:** v2.6
+> **Last Updated:** 2025-01-29
 > **Status:** Production-Ready
 > **Database Engine:** Cloudflare D1 (SQLite)
 > **Total Tables:** 30 张表
+> **Recent Updates:** Migration 0024-0027 (索引優化、命名統一、JSON 配置、軟刪除)
 
 ---
 
@@ -323,17 +324,23 @@ active → assigned → pending → closed
 
 **用途**: 文件附件管理，集成 Cloudflare R2 存储
 
+> **Migration 0025 更新**: 列名统一为 snake_case
+
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | id | TEXT | PRIMARY KEY | - | 附件 ID (UUID) |
 | message_id | TEXT | FOREIGN KEY | - | 消息 ID |
+| conversation_id | TEXT | FOREIGN KEY | - | 对话 ID |
 | filename | TEXT | NOT NULL | - | 原始文件名 |
-| mime_type | TEXT | NOT NULL | - | MIME 类型 |
-| file_size | INTEGER | NOT NULL | - | 文件大小 (bytes) |
-| file_url | TEXT | - | - | 临时文件 URL |
-| r2_key | TEXT | NOT NULL | - | R2 存储键 |
+| mime_type | TEXT | NOT NULL | - | MIME 类型 (✅ 已统一命名) |
+| file_size | INTEGER | NOT NULL | - | 文件大小 (bytes) (✅ 已统一命名) |
+| file_url | TEXT | - | - | 临时文件 URL (✅ 已统一命名) |
+| r2_key | TEXT | NOT NULL | - | R2 存储键 (✅ 已统一命名) |
 | url | TEXT | - | - | CDN 访问 URL |
+| upload_status | TEXT | - | 'completed' | 上传状态 (✅ 已统一命名) |
+| uploaded_by | TEXT | - | - | 上传者 ID |
 | created_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TEXT | - | - | 更新时间 |
 
 **外键**:
 - `message_id` → `messages.id`
@@ -693,36 +700,76 @@ active → assigned → pending → closed
 
 #### 20. channel_integrations - 渠道集成配置
 
-**用途**: 多租户渠道配置，每个团队独立配置 LINE/Facebook/WhatsApp
+**用途**: 多租户渠道配置，每个团队独立配置 LINE/Facebook/WhatsApp/Telegram 等
+
+> **Migration 0026 更新**: 新增 JSON 配置列，支持零 Schema 变更添加新平台
 
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | id | INTEGER | PRIMARY KEY | - | 集成 ID |
 | team_id | INTEGER | NOT NULL FOREIGN KEY | - | 团队 ID |
-| platform | TEXT | NOT NULL | - | 平台 ('line', 'facebook', 'whatsapp') |
-| line_channel_id | TEXT | - | - | LINE 频道 ID |
-| line_channel_access_token | TEXT | - | - | LINE 访问令牌 (加密) |
-| line_channel_secret | TEXT | - | - | LINE 频道密钥 (加密) |
-| line_webhook_url | TEXT | - | - | LINE Webhook URL |
-| line_webhook_token | TEXT | - | - | LINE Webhook 验证令牌 |
-| facebook_page_id | TEXT | - | - | Facebook 页面 ID |
-| facebook_access_token | TEXT | - | - | Facebook 访问令牌 |
-| facebook_app_secret | TEXT | - | - | Facebook 应用密钥 |
-| whatsapp_phone_number | TEXT | - | - | WhatsApp 电话号码 |
-| whatsapp_business_account_id | TEXT | - | - | WhatsApp 商业账号 ID |
-| whatsapp_access_token | TEXT | - | - | WhatsApp 访问令牌 |
+| platform | TEXT | NOT NULL | - | 平台 ('line', 'facebook', 'whatsapp', 'telegram'...) |
+| **config** | TEXT | - | - | **🆕 平台配置 (JSON)** - 非敏感信息 |
+| **credentials** | TEXT | - | - | **🆕 加密凭证 (JSON)** - 使用 AES-256-GCM |
+| **webhook_config** | TEXT | - | - | **🆕 Webhook 配置 (JSON)** |
+| **stats** | TEXT | - | - | **🆕 使用统计 (JSON)** |
+| ~~line_channel_id~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.channelId` |
+| ~~line_channel_access_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.accessToken` |
+| ~~line_channel_secret~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.secret` |
+| ~~line_webhook_url~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `webhook_config.url` |
+| ~~line_webhook_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `webhook_config.token` |
+| ~~facebook_page_id~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.pageId` |
+| ~~facebook_access_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.accessToken` |
+| ~~facebook_app_secret~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.appSecret` |
+| ~~whatsapp_phone_number~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.phoneNumber` |
+| ~~whatsapp_business_account_id~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.businessAccountId` |
+| ~~whatsapp_access_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.accessToken` |
+| ~~total_messages_sent~~ | INTEGER | - | 0 | ⚠️ 已废弃 → 使用 `stats.totalSent` |
+| ~~total_messages_received~~ | INTEGER | - | 0 | ⚠️ 已废弃 → 使用 `stats.totalReceived` |
+| ~~last_message_at~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `stats.lastMessageAt` |
 | is_active | BOOLEAN | - | TRUE | 是否启用 |
 | is_verified | BOOLEAN | - | FALSE | 是否已验证 |
 | last_verified_at | TEXT | - | - | 最后验证时间 |
-| total_messages_sent | INTEGER | - | 0 | 总发送消息数 |
-| total_messages_received | INTEGER | - | 0 | 总接收消息数 |
-| last_message_at | TEXT | - | - | 最后消息时间 |
 | configured_by | TEXT | FOREIGN KEY | - | 配置者 ID |
 | config_metadata | TEXT | - | - | 配置元数据 (JSON) |
 | last_error | TEXT | - | - | 最后错误 (JSON) |
 | error_count | INTEGER | - | 0 | 错误计数 |
 | created_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 更新时间 |
+
+**🆕 JSON 配置结构 (Migration 0026)**:
+
+```typescript
+// config - 平台配置 (非敏感)
+interface ChannelConfig {
+  channelId?: string;     // LINE
+  pageId?: string;        // Facebook
+  phoneNumber?: string;   // WhatsApp
+  businessAccountId?: string; // WhatsApp
+  botUsername?: string;   // Telegram
+}
+
+// credentials - 加密凭证 (使用 AES-256-GCM)
+interface ChannelCredentials {
+  accessToken?: string;   // 所有平台
+  secret?: string;        // LINE
+  appSecret?: string;     // Facebook
+}
+
+// webhook_config - Webhook 配置
+interface ChannelWebhookConfig {
+  url?: string;
+  token?: string;
+  verifyToken?: string;
+}
+
+// stats - 使用统计
+interface ChannelStats {
+  totalSent: number;
+  totalReceived: number;
+  lastMessageAt?: string;
+}
+```
 
 **外键**:
 - `team_id` → `teams.id` (ON DELETE CASCADE)
@@ -1078,7 +1125,40 @@ CREATE INDEX idx_activities_created ON activities(created_at);
 
 ## 📜 迁移历史
 
-### v2.5 (2025-11-05) - 当前版本
+### v2.6 (2025-01-29) - 当前版本
+
+**Phase 1 - 索引优化** (Migration 0024):
+- ✅ `idx_agents_team_id` - 团队成员查询优化
+- ✅ `idx_agents_role` - 角色筛选优化
+- ✅ `idx_agents_team_id_active` - 活跃团队成员查询
+- ✅ `idx_agents_role_active` - 活跃角色查询
+
+**Phase 2 - 命名规范化** (Migration 0025):
+- ✅ `file_attachments` 表列名统一为 snake_case:
+  - `mimeType` → `mime_type`
+  - `fileSize` → `file_size`
+  - `fileUrl` → `file_url`
+  - `r2Key` → `r2_key`
+  - `uploadStatus` → `upload_status`
+
+**Phase 3 - 渠道配置重构** (Migration 0026):
+- ✅ 新增 JSON 配置列:
+  - `config` - 平台配置 (非敏感)
+  - `credentials` - 加密凭证
+  - `webhook_config` - Webhook 配置
+  - `stats` - 使用统计
+- ✅ 支持新增平台零 Schema 变更
+- ✅ 旧列保留兼容 (标记废弃)
+
+**Schema 优化** (Migration 0027):
+- ✅ **软删除支持**: 6 个核心表新增 `deleted_at` 列
+  - `teams`, `agents`, `customers`, `conversations`, `messages`, `tags`
+- ✅ **10+ 新复合索引**: 优化常见查询模式
+- ✅ **加密策略文档**: 敏感字段标记和最佳实践
+
+---
+
+### v2.5 (2025-11-05)
 
 **新增功能**:
 - ✅ **渠道集成** (Migration 0018): 多租户渠道配置，支持每个团队独立配置 LINE/Facebook/WhatsApp
@@ -1299,12 +1379,30 @@ YYYY-MM-DD HH:MM:SS
 - `config_metadata` - 配置元数据
 - `scan_metadata` - 扫描元数据
 
-### 3. **软删除支持**
+### 3. **软删除支持** (Migration 0027 扩展)
 
-关键表支持软删除 (添加 `deleted_at` 字段):
-- `reports`
-- `scheduled_reports`
-- `report_templates`
+核心表支持软删除 (添加 `deleted_at` 字段):
+- `teams` - 团队软删除 (保留历史记录)
+- `agents` - 客服人员软删除 (保留对话归属)
+- `customers` - 客户软删除 (GDPR 合规)
+- `conversations` - 对话软删除 (审计追踪)
+- `messages` - 消息软删除 (区别于撤回)
+- `tags` - 标签软删除 (保留关联)
+- `reports` - 报告软删除
+- `scheduled_reports` - 排程报告软删除
+- `report_templates` - 报告模板软删除
+
+**使用方式**:
+```sql
+-- 软删除
+UPDATE table SET deleted_at = datetime('now') WHERE id = ?
+
+-- 查询未删除记录
+SELECT * FROM table WHERE deleted_at IS NULL
+
+-- 恢复
+UPDATE table SET deleted_at = NULL WHERE id = ?
+```
 
 ### 4. **审计追踪**
 

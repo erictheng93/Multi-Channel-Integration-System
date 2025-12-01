@@ -164,23 +164,33 @@ new_classes = [
 
 # =================== DEPLOYMENT ENVIRONMENT POLICY ===================
 #
-# ⚠️ THIS PROJECT USES PRODUCTION ENVIRONMENT ONLY
+# ⚠️ THIS PROJECT USES PRODUCTION ENVIRONMENT ONLY (REMOTE RESOURCES)
 #
-# This project does NOT use a separate development environment.
-# All configuration above is for PRODUCTION deployment only.
+# This project does NOT use local development resources.
+# All development and deployment connects to REMOTE production resources.
 #
-# Local Development:
-#   - Use `wrangler dev` for local testing (uses temporary resources)
-#   - Local dev automatically creates temporary D1, KV, and R2 bindings
-#   - No separate dev environment configuration needed
+# Development:
+#   - Use `npm run dev` or `wrangler dev --remote`
+#   - Connects to REMOTE D1, KV, R2, and Durable Objects
+#   - All changes affect production data - use with caution
 #
 # Production Deployment:
 #   - Use `wrangler deploy` or `npm run deploy`
 #   - Deploys to production resources defined above
 #   - Domain: multi-channel.imfinethankyouandyou.com
 #
+# Database Operations:
+#   - `npm run db:migrate` - Apply migrations to REMOTE D1
+#   - `npm run db:query` - Query REMOTE D1 database
+#   - `npm run db:studio` - Open Drizzle Studio for REMOTE DB
+#
+# Health Checks:
+#   - `npm run health:check:all` - Check system and WebSocket health
+#   - `npm run health:check:detail` - Detailed WebSocket health
+#   - `npm run monitor:deployment` - Continuous health monitoring
+#
 # DO NOT add [env.development] or [env.staging] sections.
-# All deployments go to production after testing locally with `wrangler dev`.
+# This project operates directly on production resources.
 #
 # ======================================================================
 
