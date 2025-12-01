@@ -173,7 +173,7 @@ export interface QRCodeStatsQuery {
   teamId?: number;
   startDate?: string;
   endDate?: string;
-  groupBy?: 'day' | 'week' | 'month';
+  groupBy?: 'day' | 'week' | 'month' | 'year';
 }
 
 // ======================== 響應類型 ========================
