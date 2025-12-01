@@ -595,7 +595,6 @@ export class QRCodeCrudService implements IQRCodeService {
         dateFormat = '%Y-W%W';
       } else if (groupBy === 'month') {
         dateFormat = '%Y-%m';
-      // @ts-ignore - TypeScript 比較警告是誤報，這個 else if 鏈是有效的
       } else if (groupBy === 'year') {
         dateFormat = '%Y';
       }
