@@ -11,6 +11,25 @@ import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments } from '../db/schema';
 
 /**
+ * Session data structure for validation
+ */
+interface SessionData {
+  userId: string;
+  displayName: string;
+  role?: 'admin' | 'agent' | 'customer';
+  expiresAt: number;
+}
+
+/**
+ * Session validation result
+ */
+interface SessionValidationResult {
+  valid: boolean;
+  session?: SessionData;
+  error?: string;
+}
+
+/**
  * CustomerMessageDO
  *
  * Purpose: Handle message operations for customer conversations
@@ -33,6 +52,37 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
     super(ctx, env);
     this.setupRoutes();
     console.log('🏗️ [CustomerMessageDO] Initialized');
+  }
+
+  /**
+   * Validate session against KV store
+   * Uses the same session key format as KVSessionService
+   */
+  private async validateSession(sessionId: string): Promise<SessionValidationResult> {
+    if (!sessionId) {
+      return { valid: false, error: 'Session ID is required' };
+    }
+
+    try {
+      const sessionKey = `session:${sessionId}`;
+      const sessionData = await this.env.SESSIONS.get(sessionKey, 'text');
+
+      if (!sessionData) {
+        return { valid: false, error: 'Session not found' };
+      }
+
+      const session: SessionData = JSON.parse(sessionData);
+
+      // Check expiration
+      if (session.expiresAt < Date.now()) {
+        return { valid: false, error: 'Session expired' };
+      }
+
+      return { valid: true, session };
+    } catch (error) {
+      console.error('[CustomerMessageDO] Session validation error:', error);
+      return { valid: false, error: 'Invalid session format' };
+    }
   }
 
   /**
@@ -359,8 +409,12 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       }
 
       try {
-        // TODO: Validate session
-        const userId = sessionId;
+        // Validate session against KV store
+        const validation = await this.validateSession(sessionId);
+        if (!validation.valid || !validation.session) {
+          return c.json({ success: false, error: validation.error || 'Invalid session' }, 401);
+        }
+        const userId = validation.session.userId;
 
         // Get the file from the request
         const formData = await c.req.formData();
