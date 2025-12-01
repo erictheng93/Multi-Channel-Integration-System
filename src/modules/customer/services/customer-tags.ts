@@ -143,10 +143,11 @@ export class CustomerTagService {
       // 只添加新的標籤關聯
       if (newTagIds.length > 0) {
         const timestamp = new Date().toISOString();
+        const assignedBy = userPayload?.userId ? String(userPayload.userId) : 'system';
         const insertData = newTagIds.map(tagId => ({
           customerId,
           tagId,
-          assignedBy: userPayload?.userId ? String(userPayload.userId) : null,
+          assignedBy,
           assignedAt: timestamp
         }));
 

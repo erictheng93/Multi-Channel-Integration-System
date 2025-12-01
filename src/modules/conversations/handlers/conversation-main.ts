@@ -1278,6 +1278,12 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
     
     console.log('🔵 [SERVICE] Creating pending message...');
     const result = await messageService.createPendingMessage(request);
+
+    // 確保訊息已成功創建
+    if (!result.messageId || !result.message) {
+      throw new Error('Failed to create pending message: missing messageId or message data');
+    }
+
     console.log('🔵 [SERVICE] Pending message created, ID:', result.messageId);
 
     // 3.1 Broadcast Pending Message

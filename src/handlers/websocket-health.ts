@@ -441,6 +441,13 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
     }
 
     // 嘗試獲取一個 Durable Object 實例 (輕量級測試)
+    if (!env.CONVERSATION_ROOM) {
+      return {
+        status: 'unhealthy',
+        message: 'CONVERSATION_ROOM binding not available',
+        lastCheck: new Date().toISOString()
+      };
+    }
     const testRoomId = env.CONVERSATION_ROOM.idFromName('health-check-test');
     const testRoom = env.CONVERSATION_ROOM.get(testRoomId);
 
