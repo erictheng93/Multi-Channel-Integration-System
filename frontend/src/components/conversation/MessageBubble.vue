@@ -1214,13 +1214,13 @@ const handleAttachmentPreview = (attachment: FileAttachment) => {
 // 🆕 判斷附件是否處於 pending 狀態（正在傳送中）
 const isAttachmentPending = (attachment: { id?: string; isPending?: boolean }): boolean => {
   // 如果附件明確標記為 pending
-  if (attachment.isPending) return true
+  if (attachment.isPending) {return true}
 
   // 如果附件 ID 以 'pending-' 開頭
-  if (attachment.id?.startsWith('pending-')) return true
+  if (attachment.id?.startsWith('pending-')) {return true}
 
   // 如果消息狀態為 sending 或 pending
-  if (messageStatus.value === 'sending' || messageStatus.value === 'pending') return true
+  if (messageStatus.value === 'sending' || messageStatus.value === 'pending') {return true}
 
   return false
 }

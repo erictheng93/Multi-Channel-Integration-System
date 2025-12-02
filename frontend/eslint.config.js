@@ -61,6 +61,11 @@ export default [
         FocusEvent: 'readonly',
         WheelEvent: 'readonly',
         UIEvent: 'readonly',
+        DragEvent: 'readonly',
+        // File API
+        File: 'readonly',
+        FileList: 'readonly',
+        FileReader: 'readonly',
         EventTarget: 'readonly',
         HTMLElement: 'readonly',
         HTMLInputElement: 'readonly',
