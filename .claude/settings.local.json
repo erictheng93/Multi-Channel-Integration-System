@@ -62,7 +62,12 @@
       "Bash(npx wrangler:*)",
       "Bash(ConvertTo-Json -Depth 10)",
       "Bash(npm audit:*)",
-      "Bash(Select-String -Pattern \"file_attach\" -SimpleMatch)"
+      "Bash(Select-String -Pattern \"file_attach\" -SimpleMatch)",
+      "Bash(Select-String -Pattern \"(error|Error|TS\\d{4})\")",
+      "Skill(frontend-design)",
+      "Bash(Select-String -Pattern \"(useCustomerMessages|error TS)\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(Select-String \"wrangler\")"
     ],
     "deny": [],
     "ask": [],

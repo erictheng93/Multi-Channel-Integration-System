@@ -153,18 +153,19 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
-// NOTE: All columns now use consistent snake_case naming (Migration 0025)
+// NOTE: Database columns use camelCase (mimeType, fileSize, fileUrl, r2Key, uploadStatus)
+// Schema must match actual database column names for Drizzle ORM to work correctly
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),
   conversationId: text('conversation_id').references(() => conversations.id),
   filename: text('filename').notNull(),
-  mimeType: text('mime_type').notNull(), // Standardized to snake_case (Migration 0025)
-  fileSize: integer('file_size').notNull(), // Standardized to snake_case (Migration 0025)
-  fileUrl: text('file_url'), // 公開訪問URL - Standardized to snake_case (Migration 0025)
-  r2Key: text('r2_key').notNull(), // Standardized to snake_case (Migration 0025)
+  mimeType: text('mimeType').notNull(), // 🔧 FIX: Match actual DB column (camelCase)
+  fileSize: integer('fileSize').notNull(), // 🔧 FIX: Match actual DB column (camelCase)
+  fileUrl: text('fileUrl'), // 🔧 FIX: Match actual DB column (camelCase) - 公開訪問URL
+  r2Key: text('r2Key').notNull(), // 🔧 FIX: Match actual DB column (camelCase)
   url: text('url'), // Legacy column - exists in DB
-  uploadStatus: text('upload_status').default('completed'), // Standardized to snake_case (Migration 0025)
+  uploadStatus: text('uploadStatus').default('completed'), // 🔧 FIX: Match actual DB column (camelCase)
   uploadedBy: text('uploaded_by'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at'),

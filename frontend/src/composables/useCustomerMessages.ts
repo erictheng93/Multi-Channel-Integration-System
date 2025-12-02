@@ -33,13 +33,31 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   const isHistoryPrepending = ref(false) // 🔧 FIX: 標記歷史消息正在前插（用於滾動位置保持）
   const historyPrependCount = ref(0) // 🔧 FIX: 前插的歷史消息數量
 
-  // API Base URL - 永遠使用遠端後端
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 FIX: API URL Helper - 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
+  // 這樣可以確保開發和生產環境的行為一致
+  // ═══════════════════════════════════════════════════════════════════════════
+  const getApiUrl = (endpoint: string): string => {
+    const isDev = import.meta.env.DEV
 
-  // 獲取認證 token
+    if (isDev) {
+      // 開發環境: 使用相對路徑，讓 Vite Proxy 處理
+      console.log(`[useCustomerMessages] Dev mode - using relative path: ${endpoint}`)
+      return endpoint
+    } else {
+      // 生產環境: 使用絕對路徑
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+      const fullUrl = `${baseUrl}${endpoint}`
+      console.log(`[useCustomerMessages] Production mode - using absolute URL: ${fullUrl}`)
+      return fullUrl
+    }
+  }
+
+  // 獲取認證 token - 🔧 FIX: 同時支援兩種認證方式
   const getAuthHeaders = () => {
-    const token = authStore.token || localStorage.getItem('token')
+    const token = authStore.token || localStorage.getItem('token') || localStorage.getItem('authToken')
     return {
+      'Authorization': token ? `Bearer ${token}` : '',
       'X-Session-Id': token || '',
       'X-Conversation-Id': conversationId
     }
@@ -69,7 +87,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       const initialLimit = 10
 
       const initialResponse = await fetch(
-        `${apiUrl}/api/customer-conversations/${conversationId}/messages?limit=${initialLimit}`,
+        getApiUrl(`/api/customer-conversations/${conversationId}/messages?limit=${initialLimit}`),
         {
           headers: getAuthHeaders()
         }
@@ -140,7 +158,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       }
 
       const response = await fetch(
-        `${apiUrl}/api/customer-conversations/${conversationId}/messages?before=${oldestMessage.id}&limit=${remainingLimit}`,
+        getApiUrl(`/api/customer-conversations/${conversationId}/messages?before=${oldestMessage.id}&limit=${remainingLimit}`),
         {
           headers: getAuthHeaders()
         }
@@ -190,7 +208,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
     try {
       const response = await fetch(
-        `${apiUrl}/api/customer-conversations/${conversationId}/messages?limit=${pageSize}`,
+        getApiUrl(`/api/customer-conversations/${conversationId}/messages?limit=${pageSize}`),
         {
           headers: getAuthHeaders()
         }
@@ -247,7 +265,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       )
 
       const response = await fetch(
-        `${apiUrl}/api/customer-conversations/${conversationId}/messages?before=${oldestMessage.id}&limit=${pageSize}`,
+        getApiUrl(`/api/customer-conversations/${conversationId}/messages?before=${oldestMessage.id}&limit=${pageSize}`),
         {
           headers: getAuthHeaders()
         }
@@ -294,7 +312,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
     try {
       const response = await fetch(
-        `${apiUrl}/api/customer-conversations/${conversationId}/messages`,
+        getApiUrl(`/api/customer-conversations/${conversationId}/messages`),
         {
           method: 'POST',
           headers: {
@@ -371,11 +389,17 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       const tempMessage = messages.value[tempMessageIndex]
       if (tempMessage) {
         console.log(`🔄 [useCustomerMessages] Replacing temp message ${tempMessage.id} with real message ${message.id}`)
-        messages.value[tempMessageIndex] = message
+        // 🔧 FIX: 創建新陣列以觸發 Vue 響應式更新
+        // 直接修改陣列索引 (messages.value[index] = x) 不會觸發 computed 的重新計算
+        const newMessages = [...messages.value]
+        newMessages[tempMessageIndex] = message
+        messages.value = newMessages
       }
     } else {
       // 沒有找到臨時消息，正常添加
-      messages.value.push(message)
+      // 🔧 FIX: 使用 spread 創建新陣列而不是 push()
+      // push() 只會修改現有陣列，不會觸發 computed(() => messages.value) 的響應式更新
+      messages.value = [...messages.value, message]
       console.log('✅ [useCustomerMessages] Added new message via WebSocket:', message.id)
     }
   }

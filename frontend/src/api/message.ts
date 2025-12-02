@@ -73,13 +73,17 @@ export const messageApi = {
       return { success: false, error: '對話 ID 不能為空' };
     }
 
-    if (!data.content?.trim()) {
-      return { success: false, error: '訊息內容不能為空' };
+    // 🔧 FIX: 允許發送純附件訊息（沒有文字內容）
+    const hasAttachments = data.attachmentIds && data.attachmentIds.length > 0;
+    const hasContent = data.content?.trim();
+
+    if (!hasContent && !hasAttachments) {
+      return { success: false, error: '訊息內容或附件不能為空' };
     }
 
     const payload = {
-      content: data.content.trim(),
-      messageType: data.messageType || 'text',
+      content: data.content?.trim() || '',  // 🔧 FIX: 允許空字串
+      messageType: data.messageType || (hasAttachments ? 'file' : 'text'),
       platform: data.platform,
       senderId: data.senderId,
       replyToId: data.replyToId,

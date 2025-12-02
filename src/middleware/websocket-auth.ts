@@ -94,9 +94,12 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       });
     }
 
-    // 檢查 4: 令牌即將過期預警 (提前 5 分鐘)
+    // 檢查 4: 令牌過期檢查
+    // 🔧 FIX: Reduced expiry buffer from 5 minutes to 30 seconds
+    // Rationale: 5-minute buffer was too aggressive and blocked valid connections
+    // The client has auto-reconnection and token refresh logic to handle expiring tokens
     const currentTime = Math.floor(Date.now() / 1000);
-    const expiryBuffer = 300; // 5 minutes in seconds
+    const expiryBuffer = 30; // 30 seconds - only block if token expires very soon
 
     if (payload.exp && payload.exp <= currentTime) {
       console.log(`❌ [WebSocket Auth] Token already expired from ${clientIP}. Expired at: ${new Date(payload.exp * 1000).toISOString()}, Current: ${new Date().toISOString()}`);
@@ -118,12 +121,15 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       });
     }
 
+    // 🔧 FIX: Changed from blocking to warning for tokens expiring soon
+    // Only block if token expires in less than 30 seconds (to prevent immediate disconnection)
+    // Log warning for tokens expiring in 1-5 minutes but allow connection
     if (payload.exp && payload.exp <= (currentTime + expiryBuffer)) {
-      console.log(`⚠️ [WebSocket Auth] Token will expire soon from ${clientIP}. Expires at: ${new Date(payload.exp * 1000).toISOString()}, Time remaining: ${payload.exp - currentTime} seconds`);
+      console.log(`❌ [WebSocket Auth] Token expires too soon from ${clientIP}. Expires at: ${new Date(payload.exp * 1000).toISOString()}, Time remaining: ${payload.exp - currentTime} seconds`);
       return new Response(JSON.stringify({
-        error: 'Token expiring soon',
+        error: 'Token expiring too soon',
         code: 4405,
-        message: 'Please refresh your token before connecting',
+        message: 'Token expires in less than 30 seconds, please refresh first',
         expiresAt: payload.exp,
         currentTime: currentTime,
         timeRemaining: payload.exp - currentTime,
@@ -137,6 +143,13 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
           'X-WebSocket-Close-Code': '4405'
         }
       });
+    }
+
+    // Log warning for tokens expiring in 1-5 minutes but ALLOW connection
+    const warningBuffer = 300; // 5 minutes
+    if (payload.exp && payload.exp <= (currentTime + warningBuffer)) {
+      const timeRemaining = payload.exp - currentTime;
+      console.log(`⚠️ [WebSocket Auth] Token will expire in ${timeRemaining} seconds from ${clientIP}. Connection allowed but client should refresh token soon.`);
     }
 
     // 檢查 5: 使用者資料提取和驗證

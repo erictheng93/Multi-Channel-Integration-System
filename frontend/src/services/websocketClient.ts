@@ -233,23 +233,53 @@ export class WebSocketClient {
         checks.push('Token not expired')
 
         // 檢查 5: 令牌即將過期檢查與自動刷新
-        const expiryBuffer = 300 // 5 minutes
-        if (payload.exp && payload.exp <= (currentTime + expiryBuffer)) {
-          this.log(`Token expires soon (${payload.exp - currentTime} seconds), attempting refresh...`)
+        // 🔧 FIX: Changed from blocking at 5 minutes to proactive refresh at 2 minutes
+        // Backend now allows tokens with >30 seconds remaining, so we refresh proactively
+        const proactiveRefreshBuffer = 120 // 2 minutes - refresh proactively if close to expiry
+        const minimumTokenLife = 30 // 30 seconds - matches backend expiryBuffer
+        const timeRemaining = payload.exp - currentTime
+
+        this.log(`Token time remaining: ${timeRemaining} seconds (${Math.floor(timeRemaining / 60)} minutes)`)
+
+        if (payload.exp && timeRemaining <= minimumTokenLife) {
+          // Token expires too soon - must refresh before connecting
+          this.log(`Token expires in ${timeRemaining} seconds, must refresh before connecting`)
 
           if (authStore.refreshToken) {
             const refreshResult = await authStore.refreshAuthToken()
             if (refreshResult.success) {
-              this.log('Token refreshed successfully during pre-check')
-              checks.push('Token refreshed')
+              this.log('Token refreshed successfully (required refresh)')
+              checks.push('Token refreshed (required)')
             } else {
-              return { success: false, error: `Token refresh failed: ${refreshResult.error}` }
+              return { success: false, error: `Token expires in ${timeRemaining}s and refresh failed: ${refreshResult.error}` }
             }
           } else {
-            return { success: false, error: 'Token expiring soon and no refresh token available' }
+            return { success: false, error: `Token expires in ${timeRemaining}s and no refresh token available` }
+          }
+        } else if (payload.exp && timeRemaining <= proactiveRefreshBuffer) {
+          // Token expires soon - try to refresh proactively but don't block if it fails
+          this.log(`Token expires in ${timeRemaining} seconds, attempting proactive refresh...`)
+
+          if (authStore.refreshToken) {
+            try {
+              const refreshResult = await authStore.refreshAuthToken()
+              if (refreshResult.success) {
+                this.log('Token refreshed successfully (proactive refresh)')
+                checks.push('Token refreshed (proactive)')
+              } else {
+                this.log(`Proactive refresh failed: ${refreshResult.error}, but connection will proceed with existing token`)
+                checks.push(`Token valid for ${timeRemaining}s (proactive refresh failed)`)
+              }
+            } catch (refreshError) {
+              this.log(`Proactive refresh error: ${refreshError}, proceeding with existing token`)
+              checks.push(`Token valid for ${timeRemaining}s (proactive refresh error)`)
+            }
+          } else {
+            this.log(`No refresh token available, proceeding with existing token (${timeRemaining}s remaining)`)
+            checks.push(`Token valid for ${timeRemaining}s (no refresh token)`)
           }
         } else {
-          checks.push('Token has sufficient time remaining')
+          checks.push(`Token has ${Math.floor(timeRemaining / 60)} minutes remaining`)
         }
 
       } catch (parseError) {
