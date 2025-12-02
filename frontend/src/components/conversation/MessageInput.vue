@@ -930,12 +930,50 @@
     cleanupBlobUrls()
   })
 
+  // 外部調用的添加檔案方法（用於拖拽上傳）
+  const addFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+
+    for (const file of fileArray) {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        error.value = `檔案 ${file.name} 超過 10MB 限制`
+        continue
+      }
+
+      // 獲取檔案類型資訊
+      const typeInfo = getFileTypeInfo(file)
+
+      // 為圖片生成 blob URL 預覽
+      const blobUrl = typeInfo.isImage ? URL.createObjectURL(file) : undefined
+
+      const attachment: Attachment = {
+        name: file.name,
+        size: file.size,
+        file,
+        blobUrl,
+        isImage: typeInfo.isImage,
+        fileType: typeInfo.fileType,
+        typeColor: typeInfo.typeColor,
+      }
+
+      attachments.value.push(attachment)
+      emit('attachment-upload', attachment)
+    }
+
+    // 聚焦到輸入框
+    nextTick(() => {
+      textareaRef.value?.focus()
+    })
+  }
+
   // 暴露方法給父組件調用
   defineExpose({
     sendQuickMessage,
     setMessageText,
     setReplyTo,
     clearReply,
+    addFiles,  // 新增：供拖拽上傳使用
     focus: () => textareaRef.value?.focus(),
   })
 </script>

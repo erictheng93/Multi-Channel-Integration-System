@@ -1,6 +1,40 @@
 <template>
   <AppLayout>
-    <div class="conversation-detail">
+    <div
+      class="conversation-detail"
+      @dragenter="handleDragEnter"
+      @dragleave="handleDragLeave"
+      @dragover="handleDragOver"
+      @drop="handleDrop"
+    >
+      <!-- 📎 Drag-and-Drop Overlay -->
+      <Transition name="fade-overlay">
+        <div
+          v-if="isDraggingFile && conversation?.status !== 'closed'"
+          class="drag-drop-overlay"
+        >
+          <div class="drag-drop-content">
+            <div class="drag-drop-icon">
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49" />
+              </svg>
+            </div>
+            <div class="drag-drop-text">
+              <span class="drag-drop-title">放開以上傳檔案</span>
+              <span class="drag-drop-hint">支援圖片、PDF、Word 等格式（單檔最大 10MB）</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
       <!-- Simplified Header Component -->
       <ConversationHeader
         :conversation="conversation"
@@ -405,6 +439,10 @@ const unifiedConnection = ref<RealtimeConnection | null>(null)
 const unifiedConnectionType = ref<ConnectionType>('websocket')
 const unifiedConnectionState = ref<ConnectionState>('disconnected')
 const unifiedIsConnected = ref(false)
+
+// 📎 Drag-and-Drop File Upload State
+const isDraggingFile = ref(false)
+const dragCounter = ref(0) // 追蹤拖拽事件計數（處理子元素事件冒泡）
 
 // 🧩 Unified State Management with new composables
 const connectionState = useConnectionState({
@@ -1229,6 +1267,65 @@ const handleAttachmentUpload = (attachment: unknown) => {
   console.log('Attachment uploaded:', attachment)
 }
 
+// 📎 Drag-and-Drop File Upload Handlers
+const handleDragEnter = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  // 檢查是否為檔案拖拽
+  if (event.dataTransfer?.types.includes('Files')) {
+    dragCounter.value++
+    isDraggingFile.value = true
+  }
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  dragCounter.value--
+  // 只有當計數器歸零時才隱藏覆蓋層（處理子元素事件）
+  if (dragCounter.value <= 0) {
+    dragCounter.value = 0
+    isDraggingFile.value = false
+  }
+}
+
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  // 設置拖放效果
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+const handleDrop = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  // 重置拖拽狀態
+  isDraggingFile.value = false
+  dragCounter.value = 0
+
+  // 獲取拖放的檔案
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) {
+    console.log('📎 [Drag-Drop] No files detected')
+    return
+  }
+
+  console.log(`📎 [Drag-Drop] ${files.length} file(s) dropped`)
+
+  // 傳遞檔案給 MessageInput
+  if (messageInputRef.value && messageInputRef.value.addFiles) {
+    messageInputRef.value.addFiles(files)
+  } else {
+    console.warn('📎 [Drag-Drop] MessageInput ref not available')
+  }
+}
+
 // Load more messages function
 const loadMoreMessages = async () => {
   try {
@@ -1788,6 +1885,7 @@ if (import.meta.env.DEV) {
 <style scoped>
 /* ====== Minimal, Spacious Design System ====== */
 .conversation-detail {
+  position: relative; /* 📎 Required for drag-drop overlay positioning */
   height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
@@ -2659,6 +2757,140 @@ if (import.meta.env.DEV) {
     bottom: -1.25rem;
     font-size: 0.6875rem;
     padding: 0.2rem 0.625rem;
+  }
+}
+
+/* ====== 📎 Drag-and-Drop Upload Overlay Styles ====== */
+.drag-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(99, 102, 241, 0.08);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px dashed #6366f1;
+  border-radius: 12px;
+  margin: 8px;
+  pointer-events: none; /* 允許拖放事件穿透到父元素 */
+}
+
+.drag-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+  background: white;
+  border-radius: 20px;
+  box-shadow:
+    0 20px 60px rgba(99, 102, 241, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow:
+      0 20px 60px rgba(99, 102, 241, 0.15),
+      0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 20px 60px rgba(99, 102, 241, 0.25),
+      0 8px 24px rgba(0, 0, 0, 0.12),
+      0 0 0 4px rgba(99, 102, 241, 0.1);
+  }
+}
+
+.drag-drop-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border-radius: 50%;
+  color: #6366f1;
+  animation: bounce-gentle 1.5s ease-in-out infinite;
+}
+
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.drag-drop-icon svg {
+  filter: drop-shadow(0 2px 4px rgba(99, 102, 241, 0.3));
+}
+
+.drag-drop-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.drag-drop-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e1b4b;
+  letter-spacing: -0.02em;
+}
+
+.drag-drop-hint {
+  font-size: 0.875rem;
+  color: #64748b;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* Fade overlay transition */
+.fade-overlay-enter-active,
+.fade-overlay-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-overlay-enter-from,
+.fade-overlay-leave-to {
+  opacity: 0;
+}
+
+.fade-overlay-enter-from .drag-drop-content,
+.fade-overlay-leave-to .drag-drop-content {
+  transform: scale(0.9);
+  opacity: 0;
+}
+
+/* Responsive adjustments for drag-drop overlay */
+@media (max-width: 768px) {
+  .drag-drop-content {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .drag-drop-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .drag-drop-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .drag-drop-title {
+    font-size: 1.25rem;
+  }
+
+  .drag-drop-hint {
+    font-size: 0.75rem;
   }
 }
 </style>
