@@ -453,7 +453,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (response.data.refreshToken) {
           refreshToken.value = response.data.refreshToken;
         }
-        
+
         // 更新 localStorage 中的 token 資料
         if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.setItem('token', response.data.token);
@@ -461,8 +461,28 @@ export const useAuthStore = defineStore('auth', () => {
             localStorage.setItem('refreshToken', response.data.refreshToken);
           }
         }
-        
+
         authApi.setAuthHeader(response.data.token, response.data.refreshToken);
+
+        // 🔌 FIX: Reconnect WebSocket with new token
+        // The WebSocket connection uses the token from the URL, so we need to reconnect
+        // after token refresh to ensure the new token is used
+        try {
+          const { reconnectGlobalWebSocket } = await import('@/services/globalWebSocket');
+          console.log('[Auth] Token refreshed, reconnecting WebSocket with new token...');
+          reconnectGlobalWebSocket().then(connected => {
+            if (connected) {
+              console.log('[Auth] WebSocket reconnected successfully after token refresh');
+            } else {
+              console.warn('[Auth] WebSocket reconnection deferred after token refresh');
+            }
+          }).catch(err => {
+            console.warn('[Auth] WebSocket reconnection failed after token refresh:', err);
+          });
+        } catch (wsError) {
+          console.warn('[Auth] Could not reconnect WebSocket after token refresh:', wsError);
+        }
+
         return { success: true };
       } else {
         await logout(false);

@@ -314,11 +314,43 @@ export const messageHandler = {
                         }
 
                         if (messages.length > 0) {
-                            sendResult = await pushLineMessage(
-                                c.env.LINE_CHANNEL_ACCESS_TOKEN,
-                                conversationWithCustomer.platformUserId,
-                                messages
-                            );
+                            // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+                            const LINE_MESSAGE_LIMIT = 5;
+                            const totalMessages = messages.length;
+
+                            if (totalMessages <= LINE_MESSAGE_LIMIT) {
+                                // 5 則以下直接發送
+                                sendResult = await pushLineMessage(
+                                    c.env.LINE_CHANNEL_ACCESS_TOKEN,
+                                    conversationWithCustomer.platformUserId,
+                                    messages
+                                );
+                            } else {
+                                // 超過 5 則需要分批發送
+                                console.log(`[Message Handler] 📦 Sending ${totalMessages} messages in batches`);
+                                let allBatchesSuccessful = true;
+
+                                for (let i = 0; i < totalMessages; i += LINE_MESSAGE_LIMIT) {
+                                    const batch = messages.slice(i, i + LINE_MESSAGE_LIMIT);
+                                    const batchSuccess = await pushLineMessage(
+                                        c.env.LINE_CHANNEL_ACCESS_TOKEN,
+                                        conversationWithCustomer.platformUserId,
+                                        batch
+                                    );
+
+                                    if (!batchSuccess) {
+                                        allBatchesSuccessful = false;
+                                        console.error(`[Message Handler] ❌ Batch ${Math.floor(i / LINE_MESSAGE_LIMIT) + 1} failed`);
+                                    }
+
+                                    // 批次間延遲
+                                    if (i + LINE_MESSAGE_LIMIT < totalMessages) {
+                                        await new Promise(resolve => setTimeout(resolve, 100));
+                                    }
+                                }
+
+                                sendResult = allBatchesSuccessful;
+                            }
                         }
                     }
                 } else if (conversationWithCustomer.platform === 'facebook') {

@@ -141,7 +141,7 @@ export class MessageService implements MessageServiceInterface {
       const { customer } = conversationData;
 
       let isSent = false;
-      let deliveryStatus: 'sent' | 'failed' = 'failed';
+      let deliveryStatus: 'sent' | 'failed' | 'partial' = 'failed';
       let platformMessageId: string | null = null;
       let errorMessage: string | undefined;
 
@@ -155,8 +155,18 @@ export class MessageService implements MessageServiceInterface {
           const isFileOnlyContent = request.content && (
             /^Sent a file:\s*.+$/i.test(request.content) ||
             /^Sent \d+ files$/i.test(request.content) ||
-            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content)
+            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content) ||
+            /^📎\s*.+$/.test(request.content)  // 匹配 "📎 filename" 格式
           );
+
+          // 📝 詳細日誌：追蹤附件處理
+          console.log(`[MessageService] 📎 Attachment check:`, {
+            hasAttachments,
+            attachmentIds: request.attachmentIds,
+            attachmentCount: request.attachmentIds?.length || 0,
+            content: request.content?.substring(0, 50),
+            isFileOnlyContent
+          });
 
           if (request.content && request.content.trim() && !isFileOnlyContent) {
             lineMessages.push(createTextMessage(request.content));
@@ -164,18 +174,52 @@ export class MessageService implements MessageServiceInterface {
             lineMessages.push(createTextMessage(request.content));
           }
 
+          // 🔧 FIX: 改進附件處理邏輯，添加驗證和詳細錯誤報告
           if (request.attachmentIds && request.attachmentIds.length > 0) {
+            console.log(`[MessageService] 📎 Querying ${request.attachmentIds.length} attachment(s):`, request.attachmentIds);
+
             const attachmentsData = await this.db
               .select()
               .from(fileAttachments)
               .where(inArray(fileAttachments.id, request.attachmentIds));
 
+            console.log(`[MessageService] 📎 Query result: found ${attachmentsData.length} attachment(s)`);
+
+            // ⚠️ 關鍵驗證：檢查是否找到所有附件
+            if (attachmentsData.length === 0) {
+              console.error(`[MessageService] ❌ CRITICAL: No attachments found in database!`, {
+                requestedIds: request.attachmentIds,
+                conversationId: request.conversationId,
+                messageId
+              });
+              errorMessage = `附件未找到: 請求了 ${request.attachmentIds.length} 個附件但資料庫中未找到任何記錄`;
+            } else if (attachmentsData.length < request.attachmentIds.length) {
+              console.warn(`[MessageService] ⚠️ Partial attachments found:`, {
+                requested: request.attachmentIds.length,
+                found: attachmentsData.length,
+                foundIds: attachmentsData.map(a => a.id),
+                missingIds: request.attachmentIds.filter(id => !attachmentsData.some(a => a.id === id))
+              });
+            }
+
+            let processedCount = 0;
+            let skippedCount = 0;
+
             for (const attachment of attachmentsData) {
               const fileUrl = attachment.fileUrl;
+              console.log(`[MessageService] 📎 Processing attachment:`, {
+                id: attachment.id,
+                filename: attachment.filename,
+                mimeType: attachment.mimeType,
+                fileUrl: fileUrl ? fileUrl.substring(0, 80) + '...' : 'NULL',
+                hasFileUrl: !!fileUrl
+              });
+
               if (fileUrl) {
                 if (attachment.mimeType?.startsWith('image/')) {
                   // Use native LINE image message (直接顯示圖片，可儲存/分享)
                   lineMessages.push(createImageMessage(fileUrl));
+                  console.log(`[MessageService] ✅ Added image message for: ${attachment.filename}`);
                 } else {
                   // Use Flex Message card for files (PDF, Word, Excel, etc.)
                   const flexMessage = createFileFlexMessage(
@@ -185,27 +229,97 @@ export class MessageService implements MessageServiceInterface {
                     attachment.fileSize || 0
                   );
                   lineMessages.push(flexMessage);
+                  console.log(`[MessageService] ✅ Added file flex message for: ${attachment.filename}`);
                 }
+                processedCount++;
+              } else {
+                console.error(`[MessageService] ❌ Skipping attachment with NULL fileUrl:`, {
+                  id: attachment.id,
+                  filename: attachment.filename,
+                  r2Key: attachment.r2Key
+                });
+                skippedCount++;
               }
+            }
+
+            console.log(`[MessageService] 📎 Attachment processing summary:`, {
+              total: attachmentsData.length,
+              processed: processedCount,
+              skipped: skippedCount,
+              lineMessagesCount: lineMessages.length
+            });
+
+            // ⚠️ 如果有附件但都沒有有效的 fileUrl，記錄錯誤
+            if (attachmentsData.length > 0 && processedCount === 0) {
+              errorMessage = `所有附件都缺少有效的 fileUrl (${skippedCount} 個附件被跳過)`;
+              console.error(`[MessageService] ❌ All attachments skipped due to missing fileUrl`);
             }
           }
 
-          if (lineMessages.length > 0) {
-            const sendSuccess = await pushLineMessage(
-              this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
-              customer.platformUserId,
-              lineMessages
-            );
+          console.log(`[MessageService] 📤 Final lineMessages count: ${lineMessages.length}`);
 
-            if (sendSuccess) {
+          if (lineMessages.length > 0) {
+            // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+            const LINE_MESSAGE_LIMIT = 5;
+            const totalMessages = lineMessages.length;
+            const batches = Math.ceil(totalMessages / LINE_MESSAGE_LIMIT);
+
+            console.log(`[MessageService] 📦 Sending ${totalMessages} messages in ${batches} batch(es)`);
+
+            let allBatchesSuccessful = true;
+            let successfulBatches = 0;
+            let failedBatches = 0;
+
+            for (let i = 0; i < totalMessages; i += LINE_MESSAGE_LIMIT) {
+              const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
+              const batchNumber = Math.floor(i / LINE_MESSAGE_LIMIT) + 1;
+
+              console.log(`[MessageService] 📤 Sending batch ${batchNumber}/${batches} (${batch.length} messages)`);
+
+              const sendSuccess = await pushLineMessage(
+                this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
+                customer.platformUserId,
+                batch
+              );
+
+              if (sendSuccess) {
+                successfulBatches++;
+                console.log(`[MessageService] ✅ Batch ${batchNumber}/${batches} sent successfully`);
+              } else {
+                allBatchesSuccessful = false;
+                failedBatches++;
+                console.error(`[MessageService] ❌ Batch ${batchNumber}/${batches} failed`);
+              }
+
+              // 如果有多個批次，稍微延遲以避免 LINE API rate limiting
+              if (i + LINE_MESSAGE_LIMIT < totalMessages) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            }
+
+            if (allBatchesSuccessful) {
               platformMessageId = `line_${Date.now()}`;
               isSent = true;
               deliveryStatus = 'sent';
-              console.log(`[MessageService] ✅ LINE message sent successfully`);
+              console.log(`[MessageService] ✅ All ${batches} batch(es) sent successfully (${totalMessages} messages total)`);
+            } else if (successfulBatches > 0) {
+              // 部分成功
+              platformMessageId = `line_${Date.now()}_partial`;
+              isSent = true;
+              deliveryStatus = 'partial';
+              errorMessage = `部分發送成功: ${successfulBatches}/${batches} 批次成功`;
+              console.warn(`[MessageService] ⚠️ Partial success: ${successfulBatches}/${batches} batches sent`);
             } else {
-              errorMessage = 'LINE API returned failure';
-              console.error(`[MessageService] ❌ LINE API failed`);
+              errorMessage = 'LINE API returned failure for all batches';
+              console.error(`[MessageService] ❌ All ${batches} batch(es) failed`);
             }
+          } else if (hasAttachments) {
+            // ⚠️ 有附件但最終沒有消息要發送 - 這是一個問題
+            errorMessage = errorMessage || '有附件但無法生成 LINE 消息（可能是附件查詢或 fileUrl 問題）';
+            console.error(`[MessageService] ❌ Has attachments but no LINE messages generated!`, {
+              attachmentIds: request.attachmentIds,
+              errorMessage
+            });
           }
         } catch (lineError) {
           errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
@@ -282,7 +396,7 @@ export class MessageService implements MessageServiceInterface {
       const { customer } = conversationData;
       let platformMessageId: string | null = null;
       let isSent = false;
-      let deliveryStatus: 'sent' | 'failed' | 'pending' = 'pending';
+      let deliveryStatus: 'sent' | 'failed' | 'pending' | 'partial' = 'pending';
       let errorMessage: string | undefined;
 
       // Step 2: Send message via LINE API (only for LINE platform)
@@ -333,18 +447,50 @@ export class MessageService implements MessageServiceInterface {
           }
 
           if (lineMessages.length > 0) {
-            const sendSuccess = await pushLineMessage(
-              this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
-              customer.platformUserId,
-              lineMessages
-            );
+            // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+            const LINE_MESSAGE_LIMIT = 5;
+            const totalMessages = lineMessages.length;
+            const batches = Math.ceil(totalMessages / LINE_MESSAGE_LIMIT);
 
-            if (sendSuccess) {
+            console.log(`[MessageService:sendMessage] 📦 Sending ${totalMessages} messages in ${batches} batch(es)`);
+
+            let allBatchesSuccessful = true;
+            let successfulBatches = 0;
+
+            for (let i = 0; i < totalMessages; i += LINE_MESSAGE_LIMIT) {
+              const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
+              const batchNumber = Math.floor(i / LINE_MESSAGE_LIMIT) + 1;
+
+              const sendSuccess = await pushLineMessage(
+                this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
+                customer.platformUserId,
+                batch
+              );
+
+              if (sendSuccess) {
+                successfulBatches++;
+              } else {
+                allBatchesSuccessful = false;
+                console.error(`[MessageService:sendMessage] ❌ Batch ${batchNumber}/${batches} failed`);
+              }
+
+              // 批次間延遲
+              if (i + LINE_MESSAGE_LIMIT < totalMessages) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            }
+
+            if (allBatchesSuccessful) {
               platformMessageId = `line_${Date.now()}`;
               isSent = true;
               deliveryStatus = 'sent';
+            } else if (successfulBatches > 0) {
+              platformMessageId = `line_${Date.now()}_partial`;
+              isSent = true;
+              deliveryStatus = 'partial';
+              errorMessage = `部分發送成功: ${successfulBatches}/${batches} 批次`;
             } else {
-              errorMessage = 'LINE API returned failure';
+              errorMessage = 'LINE API returned failure for all batches';
               deliveryStatus = 'failed';
             }
           } else {

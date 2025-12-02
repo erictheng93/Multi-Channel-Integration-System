@@ -93,12 +93,41 @@ export class LineMessageQueueConsumer {
         };
       }
 
-      // Send to LINE
-      const sendResult = await pushLineMessage(
-        this.env.LINE_CHANNEL_ACCESS_TOKEN,
-        payload.recipientPlatformId,
-        lineMessages
-      );
+      // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+      const LINE_MESSAGE_LIMIT = 5;
+      const totalMessages = lineMessages.length;
+      let sendResult = true;
+
+      if (totalMessages <= LINE_MESSAGE_LIMIT) {
+        // 5 則以下直接發送
+        sendResult = await pushLineMessage(
+          this.env.LINE_CHANNEL_ACCESS_TOKEN,
+          payload.recipientPlatformId,
+          lineMessages
+        );
+      } else {
+        // 超過 5 則需要分批發送
+        console.log(`[LINE Queue] 📦 Sending ${totalMessages} messages in batches`);
+
+        for (let i = 0; i < totalMessages; i += LINE_MESSAGE_LIMIT) {
+          const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
+          const batchSuccess = await pushLineMessage(
+            this.env.LINE_CHANNEL_ACCESS_TOKEN,
+            payload.recipientPlatformId,
+            batch
+          );
+
+          if (!batchSuccess) {
+            sendResult = false;
+            console.error(`[LINE Queue] ❌ Batch ${Math.floor(i / LINE_MESSAGE_LIMIT) + 1} failed`);
+          }
+
+          // 批次間延遲
+          if (i + LINE_MESSAGE_LIMIT < totalMessages) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+      }
 
       if (sendResult) {
         // Update message status in database

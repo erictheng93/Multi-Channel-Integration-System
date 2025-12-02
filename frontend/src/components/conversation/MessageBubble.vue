@@ -122,24 +122,117 @@
         </div>
       </div>
 
-      <!-- 🔧 FIX: Multiple File Attachments with Flex Message Card Style -->
+      <!-- 🔧 FIX: Image Attachments - Simple display without Flex Message Card -->
       <div
-        v-else-if="fileAttachments.length > 0"
-        class="message-file-attachments"
+        v-else-if="imageAttachments.length > 0 || nonImageAttachments.length > 0"
+        class="message-attachments-container"
       >
-        <FileAttachmentCard
-          v-for="attachment in fileAttachments"
+        <!-- 圖片附件：簡單顯示，不使用 Flex Message Card -->
+        <div
+          v-for="attachment in imageAttachments"
           :key="attachment.id"
-          :attachment="{
-            id: attachment.id,
-            filename: attachment.filename,
-            mimeType: attachment.mimeType || '',
-            fileSize: attachment.fileSize || 0,
-            fileUrl: attachment.fileUrl
-          }"
-          :compact="fileAttachments.length > 1"
-          @preview="handleAttachmentPreview"
-        />
+          class="message-media attachment-image"
+        >
+          <div
+            class="image-container"
+            @click="handleAttachmentPreview(attachment)"
+          >
+            <div
+              class="image-placeholder"
+              style="width: 300px; height: 200px; aspect-ratio: 3/2;"
+            >
+              <img
+                :src="attachment.fileUrl"
+                :alt="attachment.filename"
+                class="message-image-content"
+                width="300"
+                height="200"
+                style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                loading="lazy"
+                @load="onImageLoad"
+                @error="onImageError"
+              >
+            </div>
+            <div class="image-overlay">
+              <div class="image-actions">
+                <button
+                  class="image-action-btn"
+                  title="檢視大圖"
+                >
+                  <SearchIcon />
+                </button>
+                <button
+                  class="image-action-btn"
+                  title="下載"
+                  @click.stop="downloadAttachment(attachment)"
+                >
+                  <DownloadIcon />
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- 🆕 圖片附件發送狀態指示器 -->
+          <div
+            class="attachment-status-indicator image-status"
+            :class="getAttachmentStatusClass(attachment)"
+          >
+            <template v-if="isAttachmentPending(attachment)">
+              <span class="status-spinner" />
+              <span class="status-text">傳送中...</span>
+            </template>
+            <template v-else-if="messageStatus === 'failed'">
+              <span class="status-icon failed">✕</span>
+              <span class="status-text failed">發送失敗</span>
+            </template>
+            <template v-else>
+              <span class="status-icon success">✓</span>
+              <span class="status-text success">已發送</span>
+            </template>
+          </div>
+        </div>
+
+        <!-- 非圖片附件：使用 Flex Message Card 顯示 -->
+        <div
+          v-if="nonImageAttachments.length > 0"
+          class="message-file-attachments"
+        >
+          <div
+            v-for="attachment in nonImageAttachments"
+            :key="attachment.id"
+            class="attachment-wrapper"
+          >
+            <FileAttachmentCard
+              :attachment="{
+                id: attachment.id,
+                filename: attachment.filename,
+                mimeType: attachment.mimeType || '',
+                fileSize: attachment.fileSize || 0,
+                fileUrl: attachment.fileUrl
+              }"
+              :compact="nonImageAttachments.length > 1"
+              @preview="handleAttachmentPreview"
+            />
+            <!-- 🆕 附件發送狀態指示器 -->
+            <div
+              class="attachment-status-indicator"
+              :class="getAttachmentStatusClass(attachment)"
+            >
+              <template v-if="isAttachmentPending(attachment)">
+                <span class="status-spinner" />
+                <span class="status-text">傳送中...</span>
+              </template>
+              <template v-else-if="messageStatus === 'failed'">
+                <span class="status-icon failed">✕</span>
+                <span class="status-text failed">發送失敗</span>
+              </template>
+              <template v-else>
+                <span class="status-icon success">✓</span>
+                <span class="status-text success">已發送</span>
+              </template>
+            </div>
+          </div>
+        </div>
+
         <div
           v-if="message.content && !isFileOnlyContent"
           class="media-caption"
@@ -577,8 +670,56 @@ const attachmentSize = computed(() => {
 })
 
 // 處理 file_attachments 陣列 - 用於 Flex Message Card 顯示
+// 🔧 FIX: 同時支援 file_attachments 和 metadata.pendingAttachments (optimistic UI)
 const fileAttachments = computed(() => {
-  return props.message.file_attachments || []
+  // Priority 1: Use confirmed file_attachments
+  if (props.message.file_attachments && props.message.file_attachments.length > 0) {
+    return props.message.file_attachments
+  }
+
+  // Priority 2: Use pending attachments from optimistic UI (during upload)
+  const pendingAttachments = (props.message.metadata as Record<string, unknown>)?.pendingAttachments as Array<{
+    name: string
+    size: number
+    blobUrl?: string
+    isImage: boolean
+    fileType: string
+    typeColor: string
+  }> | undefined
+
+  if (pendingAttachments && pendingAttachments.length > 0) {
+    // Normalize pending attachments to match file_attachments structure
+    return pendingAttachments.map((pending, index) => ({
+      id: `pending-${index}`,
+      filename: pending.name,
+      mimeType: pending.isImage ? 'image/*' : pending.fileType,
+      fileSize: pending.size,
+      fileUrl: pending.blobUrl || '', // Use blob URL for preview during upload
+      isPending: true // Mark as pending for UI differentiation
+    }))
+  }
+
+  return []
+})
+
+// 🔧 FIX: 分離圖片附件 - 圖片不使用 Flex Message Card 效果
+const isImageFile = (attachment: { mimeType?: string; filename?: string }) => {
+  const mimeType = (attachment.mimeType || '').toLowerCase()
+  const filename = (attachment.filename || '').toLowerCase()
+  return mimeType.startsWith('image/') ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].some(ext =>
+      filename.endsWith(`.${ext}`)
+    )
+}
+
+// 圖片附件 - 使用簡單圖片顯示
+const imageAttachments = computed(() => {
+  return fileAttachments.value.filter(isImageFile)
+})
+
+// 非圖片附件 - 使用 Flex Message Card 顯示
+const nonImageAttachments = computed(() => {
+  return fileAttachments.value.filter(attachment => !isImageFile(attachment))
 })
 
 const hasMultipleAttachments = computed(() => {
@@ -988,6 +1129,19 @@ const downloadFile = () => {
   }
 }
 
+// 🔧 FIX: Download attachment from file_attachments array
+const downloadAttachment = (attachment: { fileUrl?: string; filename?: string }) => {
+  if (attachment.fileUrl) {
+    const link = document.createElement('a')
+    link.href = attachment.fileUrl
+    link.download = attachment.filename || 'download'
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+}
+
 // Message Actions
 const handleRightClick = (event: MouseEvent) => {
   event.preventDefault()
@@ -1055,6 +1209,31 @@ const handleAttachmentPreview = (attachment: FileAttachment) => {
   // For image attachments, we could open a preview modal
   // For now, just log and potentially emit an event
   emit('preview', props.message)
+}
+
+// 🆕 判斷附件是否處於 pending 狀態（正在傳送中）
+const isAttachmentPending = (attachment: { id?: string; isPending?: boolean }): boolean => {
+  // 如果附件明確標記為 pending
+  if (attachment.isPending) return true
+
+  // 如果附件 ID 以 'pending-' 開頭
+  if (attachment.id?.startsWith('pending-')) return true
+
+  // 如果消息狀態為 sending 或 pending
+  if (messageStatus.value === 'sending' || messageStatus.value === 'pending') return true
+
+  return false
+}
+
+// 🆕 獲取附件狀態對應的 CSS 類名
+const getAttachmentStatusClass = (attachment: { id?: string; isPending?: boolean }): string => {
+  if (isAttachmentPending(attachment)) {
+    return 'status-pending'
+  }
+  if (messageStatus.value === 'failed') {
+    return 'status-failed'
+  }
+  return 'status-success'
 }
 </script>
 
@@ -1449,7 +1628,19 @@ const handleAttachmentPreview = (attachment: FileAttachment) => {
   margin-top: var(--space-1);
 }
 
-/* 🔧 FIX: Multiple File Attachments Styles - Flex Message Card Style */
+/* 🔧 FIX: Attachments Container - Mixed images and files */
+.message-attachments-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 🔧 FIX: Image attachments - Simple display without card effect */
+.message-attachments-container .attachment-image {
+  margin: 0;
+}
+
+/* 🔧 FIX: Multiple File Attachments Styles - Flex Message Card Style (non-image files only) */
 .message-file-attachments {
   display: flex;
   flex-direction: column;
@@ -1457,6 +1648,11 @@ const handleAttachmentPreview = (attachment: FileAttachment) => {
   /* Remove background/padding from message-content to show card style */
   margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1);
   margin-bottom: var(--space-2);
+}
+
+/* When inside attachments container, reset the negative margin */
+.message-attachments-container .message-file-attachments {
+  margin: 0;
 }
 
 .message-file-attachments :deep(.file-attachment-card) {
@@ -1471,26 +1667,30 @@ const handleAttachmentPreview = (attachment: FileAttachment) => {
 }
 
 /* Remove the blue background for file attachment messages */
-.message-outgoing .message-content:has(.message-file-attachments) {
+.message-outgoing .message-content:has(.message-file-attachments),
+.message-outgoing .message-content:has(.message-attachments-container) {
   background: transparent;
   border: none;
   padding: 0;
   box-shadow: none;
 }
 
-.message-outgoing .message-content:has(.message-file-attachments)::before {
+.message-outgoing .message-content:has(.message-file-attachments)::before,
+.message-outgoing .message-content:has(.message-attachments-container)::before {
   display: none;
 }
 
 /* For incoming messages with file attachments */
-.message-incoming .message-content:has(.message-file-attachments) {
+.message-incoming .message-content:has(.message-file-attachments),
+.message-incoming .message-content:has(.message-attachments-container) {
   background: transparent;
   border: none;
   padding: 0;
   box-shadow: none;
 }
 
-.message-incoming .message-content:has(.message-file-attachments)::before {
+.message-incoming .message-content:has(.message-file-attachments)::before,
+.message-incoming .message-content:has(.message-attachments-container)::before {
   display: none;
 }
 
@@ -2223,5 +2423,345 @@ const handleAttachmentPreview = (attachment: FileAttachment) => {
   border-radius: var(--radius-sm);
   font-size: 0.8em;
   font-family: monospace;
+}
+
+/* 🎨 附件發送狀態指示器 - Neon Alert 設計風格 */
+.attachment-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;  /* 🔧 FIX: 整個容器內容靠右 */
+  gap: var(--space-1);
+}
+
+/* 讓 FileAttachmentCard 保持全寬，只有狀態指示器靠右 */
+.attachment-wrapper > :first-child {
+  width: 100%;
+  align-self: stretch;  /* 🔧 FIX: FileAttachmentCard 保持全寬 */
+}
+
+/* 🔧 FIX: 圖片附件容器也需要設置 flex 以便狀態指示器靠右 */
+.message-media.attachment-image {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;  /* 🔧 FIX: 狀態指示器靠右 */
+}
+
+/* 🔧 FIX: 圖片容器保持原有寬度 */
+.message-media.attachment-image .image-container {
+  align-self: flex-start;  /* 圖片本身靠左 */
+}
+
+.attachment-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  margin-left: auto;  /* 🔧 FIX: 確保靠右 */
+  align-self: flex-end;  /* 🔧 FIX: 在 flex 容器中靠右 */
+}
+
+/* 圖片附件的狀態指示器 */
+.attachment-status-indicator.image-status {
+  margin-top: 6px;
+  backdrop-filter: blur(8px);
+  align-self: flex-end;  /* 🔧 FIX: 圖片附件狀態也靠右 */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🟡 傳送中狀態 - 活力琥珀色 + 呼吸光暈
+   ═══════════════════════════════════════════════════════════════ */
+.attachment-status-indicator.status-pending {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  box-shadow:
+    0 2px 8px rgba(251, 191, 36, 0.4),
+    0 0 20px rgba(251, 191, 36, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: pending-pulse 2s ease-in-out infinite;
+}
+
+.attachment-status-indicator.status-pending::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+
+.attachment-status-indicator.status-pending .status-text {
+  color: #1a1a1a;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+@keyframes pending-pulse {
+  0%, 100% {
+    box-shadow:
+      0 2px 8px rgba(251, 191, 36, 0.4),
+      0 0 20px rgba(251, 191, 36, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 4px 16px rgba(251, 191, 36, 0.6),
+      0 0 30px rgba(251, 191, 36, 0.4);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🟢 發送成功狀態 - 電光青綠 + 閃爍確認
+   ═══════════════════════════════════════════════════════════════ */
+.attachment-status-indicator.status-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow:
+    0 2px 8px rgba(16, 185, 129, 0.4),
+    0 0 20px rgba(16, 185, 129, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation: success-glow 0.6s ease-out;
+}
+
+.attachment-status-indicator.status-success .status-text {
+  color: white;
+  font-weight: 600;
+}
+
+.attachment-status-indicator.status-success .status-icon.success {
+  color: white;
+  font-weight: bold;
+  animation: checkmark-pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes success-glow {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(16, 185, 129, 0.6),
+      0 0 60px rgba(16, 185, 129, 0.3);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 2px 8px rgba(16, 185, 129, 0.4),
+      0 0 20px rgba(16, 185, 129, 0.15);
+  }
+}
+
+@keyframes checkmark-pop {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  50% { transform: scale(1.3) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🔴 發送失敗狀態 - 熾熱珊瑚紅 + 脈動警示光暈
+   ═══════════════════════════════════════════════════════════════ */
+.attachment-status-indicator.status-failed {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 50%, #dc2626 100%);
+  color: white;
+  box-shadow:
+    0 4px 15px rgba(239, 68, 68, 0.5),
+    0 0 30px rgba(255, 107, 107, 0.3),
+    0 0 60px rgba(239, 68, 68, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  animation: failed-alert 1.5s ease-in-out infinite;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.attachment-status-indicator.status-failed::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #ff6b6b, #fbbf24, #ff6b6b, #dc2626);
+  background-size: 400% 400%;
+  border-radius: 22px;
+  z-index: -1;
+  animation: gradient-border 3s ease infinite;
+  opacity: 0.7;
+}
+
+.attachment-status-indicator.status-failed::after {
+  content: '點擊重試';
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  font-size: 0.65rem;
+  color: #dc2626;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+}
+
+.attachment-status-indicator.status-failed:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  bottom: -24px;
+}
+
+.attachment-status-indicator.status-failed:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 6px 25px rgba(239, 68, 68, 0.6),
+    0 0 40px rgba(255, 107, 107, 0.4),
+    0 0 80px rgba(239, 68, 68, 0.2);
+}
+
+.attachment-status-indicator.status-failed:active {
+  transform: scale(0.98);
+}
+
+.attachment-status-indicator.status-failed .status-text.failed {
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.attachment-status-indicator.status-failed .status-icon.failed {
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  animation: shake-icon 0.5s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes failed-alert {
+  0%, 100% {
+    box-shadow:
+      0 4px 15px rgba(239, 68, 68, 0.5),
+      0 0 30px rgba(255, 107, 107, 0.3),
+      0 0 60px rgba(239, 68, 68, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 6px 25px rgba(239, 68, 68, 0.7),
+      0 0 50px rgba(255, 107, 107, 0.5),
+      0 0 100px rgba(239, 68, 68, 0.25);
+  }
+}
+
+@keyframes gradient-border {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shake-icon {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px) rotate(-5deg); }
+  75% { transform: translateX(2px) rotate(5deg); }
+}
+
+/* 狀態指示器的 spinner 動畫 */
+.status-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid rgba(26, 26, 26, 0.2);
+  border-top-color: #1a1a1a;
+  border-radius: 50%;
+  animation: attachment-spin 0.7s linear infinite;
+}
+
+@keyframes attachment-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 狀態圖標 */
+.status-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-text {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Outgoing 消息的狀態指示器 (深色背景適配)
+   ═══════════════════════════════════════════════════════════════ */
+.message-outgoing .attachment-status-indicator.status-success {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  box-shadow:
+    0 2px 12px rgba(52, 211, 153, 0.5),
+    0 0 25px rgba(16, 185, 129, 0.3);
+}
+
+.message-outgoing .attachment-status-indicator.status-pending {
+  background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+  box-shadow:
+    0 2px 12px rgba(252, 211, 77, 0.5),
+    0 0 25px rgba(251, 191, 36, 0.3);
+}
+
+.message-outgoing .attachment-status-indicator.status-pending .status-spinner {
+  border-color: rgba(26, 26, 26, 0.15);
+  border-top-color: #1a1a1a;
+}
+
+.message-outgoing .attachment-status-indicator.status-failed {
+  background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 50%, #f5222d 100%);
+  box-shadow:
+    0 4px 20px rgba(255, 77, 79, 0.6),
+    0 0 40px rgba(255, 120, 117, 0.4),
+    0 0 80px rgba(245, 34, 45, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   響應式調整
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .attachment-status-indicator {
+    font-size: 0.68rem;
+    padding: 5px 10px;
+    gap: 4px;
+  }
+
+  .status-spinner {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+  }
+
+  .status-icon {
+    font-size: 0.8rem;
+  }
+
+  .attachment-status-indicator.status-failed::after {
+    display: none; /* 移動端隱藏提示 */
+  }
 }
 </style>

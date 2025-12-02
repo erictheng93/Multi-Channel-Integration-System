@@ -24,12 +24,13 @@
 
     <div class="input-container">
       <div class="input-wrapper">
+        <!-- 🔧 FIX: 移除 sending 條件，讓輸入框在文件發送時保持可用 -->
         <textarea
           ref="textareaRef"
           v-model="messageText"
           placeholder="輸入訊息..."
           class="message-textarea"
-          :disabled="disabled || sending"
+          :disabled="disabled"
           rows="1"
           @keydown="handleKeydown"
           @input="handleInput"
@@ -355,6 +356,7 @@
   const messageText = ref('')
   const attachments = ref<Attachment[]>([])
   const sending = ref(false)
+  const uploadingFiles = ref(false)  // 🔧 FIX: 獨立追蹤文件上傳狀態
   const error = ref('')
   const successMessage = ref('')
   const showEmojiPicker = ref(false)
@@ -433,33 +435,33 @@
   }
 
   // Phase 3B: 樂觀更新版本的發送訊息
+  // 🔧 FIX: 文件上傳和文字發送獨立運作，客服可以在文件上傳時繼續發送文字
   const sendMessage = async () => {
-    if (sending.value) {
-      return
-    }
-
     const content = messageText.value.trim()
     const currentAttachments = [...attachments.value]
+    const hasAttachments = currentAttachments.length > 0
 
-    if (!content && currentAttachments.length === 0) {
+    // 如果沒有內容也沒有附件，不發送
+    if (!content && !hasAttachments) {
       return
     }
 
-    // 如果有附件但沒有內容，設置默認內容
-    let finalContent = content
-    if (!finalContent && currentAttachments.length > 0) {
-      if (currentAttachments.length === 1 && currentAttachments[0]) {
-        finalContent = `📎 ${currentAttachments[0].name}`
-      } else {
-        finalContent = `📎 ${currentAttachments.length} 個檔案`
-      }
-    }
+    // 🔧 FIX: 允許併發上傳 - 不阻擋任何發送操作
+    // 每次發送都是獨立的，可以同時上傳多組文件
+
+    // 🔧 FIX: 移除檔案數量文字提示
+    // 如果有附件但沒有內容，使用空字串而不是生成 "📎 X 個檔案" 文字
+    // 這樣發送檔案時不會出現多餘的文字訊息
+    const finalContent = content
 
     // Phase 3B: 生成臨時 ID
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const hasAttachments = currentAttachments.length > 0
 
-    sending.value = true
+    // 🔧 FIX: 根據是否有附件設置不同的狀態
+    if (hasAttachments) {
+      uploadingFiles.value = true  // 文件上傳狀態
+    }
+    sending.value = true  // 通用發送狀態（用於按鈕動畫）
     error.value = ''
     successMessage.value = ''
 
@@ -487,58 +489,92 @@
       const attachmentIds: string[] = []
       const fileAttachmentsData: FileAttachmentEmitData[] = []
 
-      // Phase 3B: 背景上傳檔案，發送進度更新
+      // 🚀 Phase 3B 優化: 並行上傳檔案，大幅提升多文件上傳速度
       if (hasAttachments) {
         const totalFiles = savedAttachments.length
-        let completedFiles = 0
 
-        for (const attachment of savedAttachments) {
-          try {
-            // 使用帶進度的上傳
-            const uploadResponse = await uploadAttachmentWithProgress(
-              attachment,
-              (fileProgress) => {
-                // 計算總進度: 已完成檔案 + 當前檔案進度
-                const overallProgress = Math.round(
-                  ((completedFiles + fileProgress / 100) / totalFiles) * 100
-                )
-                emit('upload-progress', {
-                  tempId,
-                  progress: overallProgress,
-                  status: 'uploading'
-                })
-              }
-            )
+        // 追蹤每個文件的上傳進度
+        const fileProgresses = new Map<number, number>()
 
-            if (uploadResponse.success && uploadResponse.data) {
-              attachmentIds.push(uploadResponse.data.attachmentId)
-              fileAttachmentsData.push({
-                id: uploadResponse.data.attachmentId,
-                filename: uploadResponse.data.filename || attachment.file.name,
-                mimeType: attachment.file.type,
-                fileSize: attachment.file.size,
-                fileUrl: uploadResponse.data.url
-              })
-              completedFiles++
-            } else {
-              throw new Error(uploadResponse.error || 'File upload failed')
+        // 計算並發送總進度
+        const updateOverallProgress = () => {
+          let totalProgress = 0
+          fileProgresses.forEach(p => { totalProgress += p })
+          const overallProgress = Math.round(totalProgress / totalFiles)
+          emit('upload-progress', {
+            tempId,
+            progress: Math.min(overallProgress, 99), // 保留 1% 給最終確認
+            status: 'uploading'
+          })
+        }
+
+        // 🚀 並行上傳所有文件
+        const uploadPromises = savedAttachments.map((attachment, index) =>
+          uploadAttachmentWithProgress(
+            attachment,
+            (fileProgress) => {
+              fileProgresses.set(index, fileProgress)
+              updateOverallProgress()
             }
-          } catch (uploadError) {
-            console.error('Attachment upload error:', uploadError)
-            // Phase 3C: 上傳失敗，發送失敗事件（含重試資料）
-            emit('message-failed', {
-              tempId,
-              error: `檔案 ${attachment.name} 上傳失敗`,
-              retryData: {
-                content: savedContent,
-                attachments: savedAttachments  // 保留原始檔案供重試
+          ).then(uploadResponse => {
+            if (uploadResponse.success && uploadResponse.data) {
+              return {
+                success: true as const,
+                attachmentId: uploadResponse.data.attachmentId,
+                data: {
+                  id: uploadResponse.data.attachmentId,
+                  filename: uploadResponse.data.filename || attachment.file.name,
+                  mimeType: attachment.file.type,
+                  fileSize: attachment.file.size,
+                  fileUrl: uploadResponse.data.url
+                }
               }
-            })
-            error.value = `檔案 ${attachment.name} 上傳失敗`
-            sending.value = false
-            return
+            } else {
+              return {
+                success: false as const,
+                error: uploadResponse.error || 'File upload failed',
+                filename: attachment.name
+              }
+            }
+          }).catch(err => ({
+            success: false as const,
+            error: err instanceof Error ? err.message : 'Upload failed',
+            filename: attachment.name
+          }))
+        )
+
+        // 等待所有上傳完成
+        const uploadResults = await Promise.all(uploadPromises)
+
+        // 檢查失敗的上傳
+        const failedUploads = uploadResults.filter(r => !r.success)
+        if (failedUploads.length > 0) {
+          const failedNames = failedUploads.map(f => 'filename' in f ? f.filename : 'unknown').join(', ')
+          console.error('Attachment upload errors:', failedUploads)
+
+          emit('message-failed', {
+            tempId,
+            error: `檔案上傳失敗: ${failedNames}`,
+            retryData: {
+              content: savedContent,
+              attachments: savedAttachments
+            }
+          })
+          error.value = `檔案 ${failedNames} 上傳失敗`
+          sending.value = false
+          uploadingFiles.value = false
+          return
+        }
+
+        // 收集成功的結果
+        for (const result of uploadResults) {
+          if (result.success && 'attachmentId' in result) {
+            attachmentIds.push(result.attachmentId)
+            fileAttachmentsData.push(result.data)
           }
         }
+
+        console.log(`🚀 [並行上傳] ${totalFiles} 個文件全部上傳完成`)
 
         // 上傳完成，更新狀態為發送中
         emit('upload-progress', {
@@ -613,6 +649,10 @@
       error.value = errorMsg
     } finally {
       sending.value = false
+      // 🔧 FIX: 重置文件上傳狀態
+      if (hasAttachments) {
+        uploadingFiles.value = false
+      }
     }
   }
 
@@ -627,7 +667,8 @@
       // 獲取 API URL - 開發環境使用相對路徑 (Vite Proxy)，生產環境使用絕對路徑
       const url = getApiUrl(`/api/conversations/${props.conversationId}/attachments`)
 
-      const token = localStorage.getItem('authToken')
+      // 🔧 FIX: 使用正確的 localStorage key，與 auth store 一致
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken')
 
       // 真實上傳進度追蹤
       xhr.upload.onprogress = (event) => {
@@ -675,8 +716,10 @@
       xhr.open('POST', url, true)
       xhr.timeout = 120000 // 2 分鐘超時
 
+      // 🔧 FIX: 同時設置兩種認證方式，確保與後端兼容
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+        xhr.setRequestHeader('X-Session-Id', token)
       }
 
       const formData = new globalThis.FormData()
