@@ -20,6 +20,8 @@ import type {
 import { createDbClient } from '../db/drizzle-factory';
 import { delayedMessages, messageRecallLogs, conversations, messages, customers } from '../db/schema';
 import { eq, and, count, sql } from 'drizzle-orm';
+import { KVKeyBuilder } from './kv-management-service';
+import { KV_TTL } from '../config/kv-config';
 // 使用表的推斷類型而不是New*類型
 
 export interface DelayedMessageRequest {
@@ -87,8 +89,8 @@ export class MessageRecallService {
       
       await drizzleDb.insert(delayedMessages).values(newDelayedMessage);
 
-      // 2. KV 標記可撤回 (快速查詢)
-      const kvKey = `recallable:${messageId}`;
+      // 2. KV 標記可撤回 (快速查詢) - 使用統一的 Key 命名
+      const kvKey = KVKeyBuilder.msgRecall(messageId);
       await this.env.SESSIONS.put(kvKey, JSON.stringify({
         recallable: true,
         expiresAt: recallDeadline.toISOString(),
@@ -125,8 +127,8 @@ export class MessageRecallService {
    */
   async recallMessage(messageId: string, userId: string): Promise<RecallResult> {
     try {
-      // 1. 快速檢查 KV 中的撤回狀態
-      const recallableKey = `recallable:${messageId}`;
+      // 1. 快速檢查 KV 中的撤回狀態 - 使用統一的 Key 命名
+      const recallableKey = KVKeyBuilder.msgRecall(messageId);
       const recallableData = await this.env.SESSIONS.get(recallableKey);
 
       if (!recallableData) {
@@ -157,14 +159,14 @@ export class MessageRecallService {
         };
       }
 
-      // 2. 立即在 KV 標記為已撤回 (毫秒級響應)
-      const cancelledKey = `cancelled:${messageId}`;
+      // 2. 立即在 KV 標記為已撤回 (毫秒級響應) - 使用統一的 Key 命名
+      const cancelledKey = KVKeyBuilder.msgCancel(messageId);
       await this.env.SESSIONS.put(cancelledKey, JSON.stringify({
         cancelled: true,
         cancelledAt: now.toISOString(),
         cancelledBy: userId
       }), {
-        expirationTtl: 300 // 5 分鐘後清理
+        expirationTtl: KV_TTL.MESSAGE_CANCEL // 5 分鐘後清理
       });
 
       // 3. 異步更新 D1 狀態 (不阻塞響應)
@@ -190,8 +192,8 @@ export class MessageRecallService {
    */
   async processQueueMessage(messageId: string): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
     try {
-      // 1. 檢查是否已被撤回 (KV 快速查詢)
-      const cancelledKey = `cancelled:${messageId}`;
+      // 1. 檢查是否已被撤回 (KV 快速查詢) - 使用統一的 Key 命名
+      const cancelledKey = KVKeyBuilder.msgCancel(messageId);
       const isCancelled = await this.env.SESSIONS.get(cancelledKey);
 
       if (isCancelled) {
@@ -242,7 +244,7 @@ export class MessageRecallService {
    * 檢查訊息是否可撤回
    */
   async canRecallMessage(messageId: string, userId: string): Promise<boolean> {
-    const recallableKey = `recallable:${messageId}`;
+    const recallableKey = KVKeyBuilder.msgRecall(messageId);
     const recallableData = await this.env.SESSIONS.get(recallableKey);
 
     if (!recallableData) {
@@ -407,8 +409,8 @@ export class MessageRecallService {
   private async cleanupKVMarkers(messageId: string) {
     try {
       await Promise.all([
-        this.env.SESSIONS.delete(`recallable:${messageId}`),
-        this.env.SESSIONS.delete(`cancelled:${messageId}`)
+        this.env.SESSIONS.delete(KVKeyBuilder.msgRecall(messageId)),
+        this.env.SESSIONS.delete(KVKeyBuilder.msgCancel(messageId))
       ]);
     } catch (error) {
       console.error(`Failed to cleanup KV markers for ${messageId}:`, error);

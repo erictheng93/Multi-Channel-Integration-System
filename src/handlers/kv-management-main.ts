@@ -6,6 +6,8 @@
  * - GET /api/kv/health - KV health check
  * - POST /api/kv/cleanup - Clean up legacy keys (dry-run by default)
  * - POST /api/kv/cleanup?execute=true - Execute cleanup
+ * - POST /api/kv/migrate - Migrate specific key patterns
+ * - GET /api/kv/config - Get KV configuration (TTL, batch, compression)
  *
  * All endpoints require admin authentication.
  */
@@ -14,6 +16,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types/bindings';
 import { jwtAuth } from '../middleware/auth';
 import { KVManagementService, KV_KEY_PATTERNS, LEGACY_KEY_PATTERNS } from '../services/kv-management-service';
+import { KV_TTL, KV_BATCH_CONFIG, KV_COMPRESSION_CONFIG, KEY_MIGRATION_MAP } from '../config/kv-config';
 
 const kvManagementHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -151,6 +154,100 @@ kvManagementHandler.post('/cleanup', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: 'Failed to clean up KV keys',
+    }, 500);
+  }
+});
+
+// =================== Configuration Endpoint ===================
+
+/**
+ * GET /api/kv/config
+ * Get KV configuration including TTL, batch, and compression settings
+ */
+kvManagementHandler.get('/config', jwtAuth, async (c) => {
+  try {
+    // Check admin role
+    const agent = c.get('agent' as never) as { role?: string } | undefined;
+    if (!agent || agent.role !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403);
+    }
+
+    return c.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      config: {
+        ttl: KV_TTL,
+        batch: KV_BATCH_CONFIG,
+        compression: KV_COMPRESSION_CONFIG,
+        migrationMap: KEY_MIGRATION_MAP,
+      },
+    });
+  } catch (error) {
+    console.error('[KV Management] Config error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to get KV configuration',
+    }, 500);
+  }
+});
+
+// =================== Migration Endpoint ===================
+
+/**
+ * POST /api/kv/migrate
+ * Migrate keys from old pattern to new pattern
+ *
+ * Body:
+ * - oldPattern: string (required)
+ * - newPattern: string (required)
+ * - namespace: 'SESSIONS' | 'CACHE' (required)
+ * - deleteOld: boolean (default: false)
+ */
+kvManagementHandler.post('/migrate', jwtAuth, async (c) => {
+  try {
+    // Check admin role
+    const agent = c.get('agent' as never) as { role?: string } | undefined;
+    if (!agent || agent.role !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403);
+    }
+
+    const body = await c.req.json();
+    const { oldPattern, newPattern, namespace, deleteOld = false } = body;
+
+    if (!oldPattern || !newPattern || !namespace) {
+      return c.json({
+        success: false,
+        error: 'Missing required fields: oldPattern, newPattern, namespace',
+      }, 400);
+    }
+
+    if (namespace !== 'SESSIONS' && namespace !== 'CACHE') {
+      return c.json({
+        success: false,
+        error: 'Invalid namespace. Must be SESSIONS or CACHE',
+      }, 400);
+    }
+
+    const kvService = new KVManagementService(c.env);
+    const kv = namespace === 'SESSIONS' ? c.env.SESSIONS : c.env.CACHE;
+    const result = await kvService.batchMigrateKeys(kv, oldPattern, newPattern, deleteOld);
+
+    return c.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      migration: {
+        oldPattern,
+        newPattern,
+        namespace,
+        deleteOld,
+        ...result,
+      },
+    });
+  } catch (error) {
+    console.error('[KV Management] Migration error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to migrate keys',
     }, 500);
   }
 });
