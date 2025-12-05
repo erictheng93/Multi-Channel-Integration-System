@@ -1,5 +1,6 @@
 // QR Code Service for Teams
 // 團隊 QR Code 服務
+// Phase 1 優化：KV 快取支援
 
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
@@ -9,12 +10,17 @@ import type { QRCodeMetadata } from '@/types/services';
 
 export class TeamQRService {
   private db: DrizzleD1Database;
+  private kv?: KVNamespace;
 
-  constructor(database: D1Database) {
+  constructor(database: D1Database, kv?: KVNamespace) {
     this.db = drizzle(database);
+    this.kv = kv;
   }
 
-  // Generate team QR code
+  /**
+   * 生成團隊 QR 碼
+   * 優化：自動存入 KV 快取
+   */
   async generateTeamQRCode(params: {
     teamId: number;
     campaignName?: string;
@@ -23,17 +29,21 @@ export class TeamQRService {
     maxUses?: number;
     metadata?: QRCodeMetadata;
   }) {
-    const qrCodeInfo = await QRCodeServiceImpl.generateTeamQRCode(this.db, {
-      teamId: params.teamId,
-      ...(params.campaignName && { campaignName: params.campaignName }),
-      ...(params.expiresAt && { expiresAt: params.expiresAt }),
-      ...(params.maxUses && { maxUses: params.maxUses }),
-      metadata: params.metadata || ({
-        description: params.description || '',
+    const qrCodeInfo = await QRCodeServiceImpl.generateTeamQRCode(
+      this.db,
+      {
         teamId: params.teamId,
-        createdBy: 0
-      } as QRCodeMetadata)
-    });
+        ...(params.campaignName && { campaignName: params.campaignName }),
+        ...(params.expiresAt && { expiresAt: params.expiresAt }),
+        ...(params.maxUses && { maxUses: params.maxUses }),
+        metadata: params.metadata || ({
+          description: params.description || '',
+          teamId: params.teamId,
+          createdBy: 0
+        } as QRCodeMetadata)
+      },
+      this.kv // 傳遞 KV 命名空間
+    );
 
     return {
       id: qrCodeInfo.id,
@@ -47,7 +57,17 @@ export class TeamQRService {
     };
   }
 
-  // Get team QR codes
+  /**
+   * 快速獲取團隊最新 QR 碼 (優先從快取讀取)
+   * 用於前端懸停預載
+   */
+  async getLatestQRCodeFast(teamId: number) {
+    return await QRCodeServiceImpl.getLatestQRCodeFast(this.db, teamId, this.kv);
+  }
+
+  /**
+   * 獲取團隊所有 QR 碼
+   */
   async getTeamQRCodes(teamId: number) {
     const qrCodes = await QRCodeServiceImpl.getTeamQRCodes(this.db, teamId);
 
@@ -65,7 +85,10 @@ export class TeamQRService {
     }));
   }
 
-  // Deactivate QR code
+  /**
+   * 停用 QR 碼
+   * 優化：同時清除 KV 快取
+   */
   async deactivateQRCode(teamId: number, qrCodeId: string): Promise<void> {
     // First, get the QR code to verify ownership and get token
     const qrCodes = await QRCodeServiceImpl.getTeamQRCodes(this.db, teamId);
@@ -75,11 +98,13 @@ export class TeamQRService {
       throw new Error('QR code not found or does not belong to this team');
     }
 
-    // Deactivate using the token
-    await QRCodeServiceImpl.deactivateQRCode(this.db, qrCode.token);
+    // Deactivate using the token and invalidate cache
+    await QRCodeServiceImpl.deactivateQRCode(this.db, qrCode.token, teamId, this.kv);
   }
 
-  // Generate test QR code (for testing purposes)
+  /**
+   * 生成測試 QR 碼 (僅供測試用途)
+   */
   async generateTestQRCode() {
     return {
       id: 'test-123',

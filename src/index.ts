@@ -487,28 +487,35 @@ app.get('/api/customer-ws', async (c) => {
       userId: payload.userId,
       role: payload.role
     });
+
+    // Forward to Durable Object with validated user info
+    // This eliminates redundant KV session validation in the DO
+    try {
+      const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+      const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
+
+      // Build URL with validated user info (DO will trust this since index.ts validated)
+      const url = new URL(c.req.url);
+      url.pathname = '/ws';
+      // Pass validated user info to DO - this skips redundant KV validation
+      url.searchParams.set('validatedUserId', String(payload.userId));
+      url.searchParams.set('validatedRole', payload.role || 'agent');
+      url.searchParams.set('validatedDisplayName', payload.displayName || 'User');
+      url.searchParams.set('validated', 'true');
+
+      const modifiedRequest = new Request(url.toString(), c.req.raw);
+
+      return doStub.fetch(modifiedRequest);
+    } catch (error) {
+      log.error('Customer WebSocket: Connection error', { error: error instanceof Error ? error.message : String(error) });
+      return c.json({
+        success: false,
+        error: 'Failed to establish WebSocket connection'
+      }, 500);
+    }
   } catch (authError) {
     log.error('Customer WebSocket: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
     return c.json({ success: false, error: 'Invalid or expired session' }, 401);
-  }
-
-  try {
-    // Get CustomerConversationDO instance by conversationId
-    const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
-    const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
-
-    // Forward the request to the Durable Object
-    const url = new URL(c.req.url);
-    url.pathname = '/ws';
-    const modifiedRequest = new Request(url.toString(), c.req.raw);
-
-    return doStub.fetch(modifiedRequest);
-  } catch (error) {
-    log.error('Customer WebSocket: Connection error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: 'Failed to establish WebSocket connection'
-    }, 500);
   }
 });
 
@@ -712,12 +719,46 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
   }
 });
 
+// 🔧 DEBUG: Endpoint to check CustomerConversationDO connection status
+app.get('/api/customer-conversations/:id/debug/connections', async (c) => {
+  const conversationId = c.req.param('id');
+
+  if (!conversationId) {
+    return c.json({ success: false, error: 'Conversation ID is required' }, 400);
+  }
+
+  try {
+    // Get the same DO instance that handles WebSocket connections
+    const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+    const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
+
+    // Forward request to DO's debug endpoint
+    const debugRequest = new Request('https://fake-host/debug/connections', {
+      method: 'GET'
+    });
+
+    const response = await doStub.fetch(debugRequest);
+    const data = await response.json() as Record<string, unknown>;
+
+    return c.json({
+      success: true,
+      requestedConversationId: conversationId,
+      doIdString: doId.toString(),
+      ...data
+    });
+  } catch (error) {
+    log.error('Debug connections error', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({ success: false, error: 'Failed to get connection info' }, 500);
+  }
+});
+
 log.info('Customer Conversation System (Chat-Style) endpoints registered', {
   endpoints: [
     'GET /api/customer-ws (WebSocket upgrade)',
     'GET /api/customer-conversations/:id/messages',
     'POST /api/customer-conversations/:id/messages',
-    'POST /api/customer-conversations/:id/upload'
+    'POST /api/customer-conversations/:id/upload',
+    'GET /api/customer-conversations/:id/debug/connections (DEBUG)'
   ]
 });
 

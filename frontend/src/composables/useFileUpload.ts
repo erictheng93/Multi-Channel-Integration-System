@@ -5,6 +5,22 @@ import { useError } from './useError'
 import type { MediaFileInfo, FileStatsResponse } from '@/api/files'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Presigned URL Service Status Cache (Module-level singleton)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface PresignedServiceStatus {
+  configured: boolean
+  maxFileSize: number
+  allowedMimeTypes: string[]
+  checkedAt: number
+}
+
+// 模組級別的緩存（跨組件共享）
+let _presignedServiceStatus: PresignedServiceStatus | null = null
+let _statusCheckPromise: Promise<PresignedServiceStatus | null> | null = null
+const STATUS_CACHE_TTL = 5 * 60 * 1000 // 5 分鐘緩存
+
+// ═══════════════════════════════════════════════════════════════════════════
 // API URL Helper - 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -697,32 +713,208 @@ export function useFileUpload() {
   }
 
   /**
-   * 檢查 Presigned URL 服務狀態
+   * 檢查 Presigned URL 服務狀態（使用模組級緩存）
    */
-  const checkPresignedUrlServiceStatus = async (): Promise<{
-    configured: boolean
-    maxFileSize: number
-    allowedMimeTypes: string[]
-  } | null> => {
-    try {
-      // 獲取 API URL - 開發環境使用相對路徑 (Vite Proxy)，生產環境使用絕對路徑
-      const url = getApiUrl('/api/files/presigned-url/status')
-      const token = localStorage.getItem('authToken')
+  const checkPresignedUrlServiceStatus = async (): Promise<PresignedServiceStatus | null> => {
+    // 檢查緩存是否有效
+    if (_presignedServiceStatus && (Date.now() - _presignedServiceStatus.checkedAt < STATUS_CACHE_TTL)) {
+      console.log('[PresignedStatus] Using cached status:', _presignedServiceStatus.configured)
+      return _presignedServiceStatus
+    }
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+    // 如果已有正在進行的請求，等待它完成
+    if (_statusCheckPromise) {
+      console.log('[PresignedStatus] Waiting for pending status check...')
+      return _statusCheckPromise
+    }
+
+    // 發起新的狀態檢查
+    _statusCheckPromise = (async () => {
+      try {
+        console.log('[PresignedStatus] Fetching service status...')
+        const response = await filesApi.getPresignedUrlStatus()
+
+        if (response.success && response.data) {
+          _presignedServiceStatus = {
+            ...response.data,
+            checkedAt: Date.now()
+          }
+          console.log('[PresignedStatus] Service configured:', _presignedServiceStatus.configured)
+          return _presignedServiceStatus
         }
+        return null
+      } catch (err) {
+        console.error('[PresignedStatus] Failed to check service status:', err)
+        return null
+      } finally {
+        _statusCheckPromise = null
+      }
+    })()
+
+    return _statusCheckPromise
+  }
+
+  /**
+   * 清除 Presigned URL 服務狀態緩存
+   * 當需要強制重新檢查時使用
+   */
+  const clearPresignedStatusCache = () => {
+    _presignedServiceStatus = null
+    _statusCheckPromise = null
+    console.log('[PresignedStatus] Cache cleared')
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 Smart Upload - 自動 Fallback 機制
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * 智能上傳單個檔案（自動選擇最佳上傳方式）
+   *
+   * 上傳策略：
+   * 1. 首先檢查 Presigned URL 服務是否可用（帶緩存）
+   * 2. 如果可用 → 使用直傳 R2（更快、無 Worker 限制）
+   * 3. 如果不可用 → Fallback 到 Worker Binding 上傳
+   *
+   * @param file - 要上傳的檔案
+   * @param options - 上傳選項
+   * @param onProgress - 進度回調
+   * @returns 上傳結果
+   */
+  const smartUploadSingleFile = async (
+    file: globalThis.File,
+    options: UploadOptions = {},
+    onProgress?: (_progress: number) => void
+  ): Promise<UploadResult> => {
+    const mergedOptions = { ...defaultOptions, ...options }
+
+    // 1. 驗證檔案
+    const validationError = validateFile(file, mergedOptions)
+    if (validationError) {
+      return {
+        fileName: file.name,
+        success: false,
+        error: validationError
+      }
+    }
+
+    // 2. 檢查 Presigned URL 服務狀態
+    const serviceStatus = await checkPresignedUrlServiceStatus()
+
+    // 3. 根據服務狀態選擇上傳方式
+    if (serviceStatus?.configured) {
+      console.log(`[SmartUpload] Using Presigned URL (direct to R2) for: ${file.name}`)
+
+      // 使用 Presigned URL 直傳
+      const result = await uploadWithPresignedUrl(file, undefined, (progress) => {
+        uploadProgress.value = progress
+        onProgress?.(progress)
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        return data.data
+      if (result.success) {
+        return {
+          fileName: file.name,
+          success: true,
+          url: result.url,
+          fileId: result.fileId
+        }
       }
-      return null
+
+      // Presigned 上傳失敗，嘗試 Fallback
+      console.warn(`[SmartUpload] Presigned upload failed for ${file.name}, falling back to Worker...`)
+    } else {
+      console.log(`[SmartUpload] Presigned URL not configured, using Worker binding for: ${file.name}`)
+    }
+
+    // 4. Fallback: 使用 Worker Binding 上傳
+    return uploadSingleFile(file, options, onProgress)
+  }
+
+  /**
+   * 智能上傳多個檔案（自動選擇最佳上傳方式）
+   *
+   * @param fileList - 要上傳的檔案列表
+   * @param options - 上傳選項
+   * @param onProgress - 進度回調
+   * @returns 所有檔案的上傳結果
+   */
+  const smartUploadMultipleFiles = async (
+    fileList: globalThis.File[],
+    options: UploadOptions = {},
+    onProgress?: (_progress: number) => void
+  ): Promise<UploadResult[]> => {
+    uploading.value = true
+    uploadProgress.value = 0
+    clearError()
+
+    const results: UploadResult[] = []
+    let completedCount = 0
+
+    try {
+      // 預先檢查服務狀態（只檢查一次）
+      const serviceStatus = await checkPresignedUrlServiceStatus()
+      const usePresigned = serviceStatus?.configured ?? false
+
+      console.log(`[SmartUpload] Uploading ${fileList.length} files, usePresigned: ${usePresigned}`)
+
+      // 並行上傳檔案
+      const uploadPromises = fileList.map(async (file) => {
+        const result = await smartUploadSingleFile(file, options, (fileProgress) => {
+          // 計算總體進度
+          const totalProgress = Math.round(
+            (completedCount + fileProgress / 100) / fileList.length * 100
+          )
+          uploadProgress.value = totalProgress
+          onProgress?.(totalProgress)
+        })
+
+        completedCount++
+        return result
+      })
+
+      const uploadResults = await Promise.all(uploadPromises)
+      results.push(...uploadResults)
+
+      // 統計結果
+      const successCount = results.filter(r => r.success).length
+      console.log(`[SmartUpload] Completed: ${successCount}/${fileList.length} files uploaded successfully`)
+
+      // 刷新檔案列表
+      await loadFiles()
+
+      return results
     } catch (err) {
-      console.error('Failed to check presigned URL service status:', err)
-      return null
+      handleError(err)
+      return results
+    } finally {
+      uploading.value = false
+      uploadProgress.value = 100
+    }
+  }
+
+  /**
+   * 獲取當前上傳模式資訊
+   * 用於 UI 顯示當前使用的上傳策略
+   */
+  const getUploadModeInfo = async (): Promise<{
+    mode: 'presigned' | 'worker' | 'unknown'
+    description: string
+    maxFileSize: number
+  }> => {
+    const status = await checkPresignedUrlServiceStatus()
+
+    if (status?.configured) {
+      return {
+        mode: 'presigned',
+        description: '直傳 R2（高效能模式）',
+        maxFileSize: status.maxFileSize || 10 * 1024 * 1024
+      }
+    }
+
+    return {
+      mode: 'worker',
+      description: 'Worker 代理上傳',
+      maxFileSize: 10 * 1024 * 1024 // Worker 預設限制
     }
   }
 
@@ -737,11 +929,17 @@ export function useFileUpload() {
     totalCount,
     fileStats,
 
+    // 🎯 智能上傳方法 (自動 Fallback) - 推薦使用
+    smartUploadSingleFile,
+    smartUploadMultipleFiles,
+    getUploadModeInfo,
+    clearPresignedStatusCache,
+
     // 傳統上傳方法 (通過 Worker)
     uploadSingleFile,
     uploadMultipleFiles,
 
-    // 🆕 Presigned URL 上傳方法 (直接到 R2)
+    // Presigned URL 上傳方法 (直接到 R2)
     uploadSingleFilePresigned,
     uploadMultipleFilesPresigned,
     checkPresignedUrlServiceStatus,

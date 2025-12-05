@@ -184,6 +184,7 @@
               :loading="loading"
               @toggle-status="toggleTeamStatus"
               @generate-qr="generateTeamQR"
+              @prefetch-qr="prefetchTeamQR"
               @remove-team="confirmRemoveTeam"
               @member-updated="handleMemberUpdated"
               @team-updated="handleMemberUpdated"
@@ -771,23 +772,41 @@
           </div>
           <div class="modal-body qr-content">
             <div class="qr-display">
+              <!-- 骨架屏 + 載入動畫 -->
+              <div
+                v-if="qrGenerating || (currentQRCode && qrImageLoading)"
+                class="qr-skeleton"
+              >
+                <div class="qr-skeleton-inner">
+                  <div class="qr-pulse" />
+                  <span class="qr-loading-text">
+                    {{ qrGenerating ? '生成中...' : '載入中...' }}
+                  </span>
+                </div>
+              </div>
+              <!-- QR 碼圖片 (帶淡入動畫) -->
               <img
                 v-if="currentQRCode"
+                v-show="!qrImageLoading"
                 :src="currentQRCode"
                 alt="Team QR Code"
-                class="qr-image"
-                style="width: 100%; height: 100%; object-fit: contain;"
-                loading="lazy"
+                class="qr-image qr-fade-in"
+                @load="onQRImageLoad"
+                @error="onQRImageError"
               >
-              <HamsterLoader
-                v-else
-                message="生成 QR 碼中..."
-              />
             </div>
             <p class="qr-description">
               掃描此 QR 碼可快速加入團隊 {{ currentTeam?.name }}
             </p>
             <div class="modal-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                :disabled="qrGenerating"
+                @click="downloadQRCode"
+              >
+                📥 下載
+              </button>
               <button
                 type="button"
                 class="btn btn-primary"
@@ -871,6 +890,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables'
 import { useTeamStore } from '@/stores/team'
+import { useQRCodeStore } from '@/stores/qrcode'
 import { useToast } from '@/composables/useToast'
 import { teamApi } from '@/api/team'
 
@@ -912,6 +932,7 @@ interface Team {
   name: string
   description?: string
   qrCode?: string
+  lineUrl?: string  // 🆕 Phase 3: LINE 連結 URL
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -927,6 +948,11 @@ const showEditTeamModal = ref(false)
 const showQRModal = ref(false)
 const currentQRCode = ref('')
 const currentTeam = ref<Team | null>(null)
+const qrImageLoading = ref(true)  // 追蹤 QR 圖片載入狀態
+const qrGenerating = ref(false)   // 追蹤 QR 碼生成狀態
+
+// 🆕 使用集中式 QR Code Store (取代本地快取)
+const qrCodeStore = useQRCodeStore()
 
 // 從 store 獲取數據
 const teamStore = useTeamStore()
@@ -1358,6 +1384,14 @@ const submitAddTeam = async () => {
       // ③ 樂觀更新：直接將新團隊添加到列表（避免 loadTeams）
       teams.value = [...teams.value, response.data]
 
+      // 🆕 Phase 3: 團隊創建時已預生成 QR 碼，觸發 Store 預載
+      // 這樣其他元件也能共享這個 QR 碼
+      if (response.data.qrCode) {
+        // 觸發 Store 載入，讓 Store 快取這個 QR
+        await qrCodeStore.loadQRCode(newTeamId, true)
+        console.log(`🚀 [Phase 3] QR 碼已存入 Store: team ${newTeamId}`)
+      }
+
       // ④ 如果有選擇成員，將他們加入團隊
       if (selectedMemberIds.length > 0) {
         // 並行處理成員更新（提高效率）
@@ -1598,33 +1632,95 @@ const handleMemberUpdated = async () => {
   }
 }
 
-// 生成團隊 QR 碼
+// 🆕 Phase 1: 懸停預載 QR 碼 (在用戶點擊前就開始載入)
+// 使用 Pinia Store 統一管理 QR 碼狀態
+const prefetchTeamQR = async (team: Team) => {
+  await qrCodeStore.prefetchQRCode(team.id)
+}
+
+// 顯示團隊 QR 碼（優先讀取現有 QR，無現有才生成新的）
+// 使用 Pinia Store 統一管理 QR 碼狀態
 const generateTeamQR = async (team: Team) => {
+  // 立即顯示 Modal
   currentTeam.value = team
-  currentQRCode.value = ''
   showQRModal.value = true
-  
+
+  // Step 1: 優先使用 Store 快取
+  const cachedQR = qrCodeStore.getQRCode(team.id)
+  if (cachedQR) {
+    console.log(`⚡ [Step 1] Store 快取命中: team ${team.id}`)
+    currentQRCode.value = cachedQR.qrCode
+    qrGenerating.value = false
+    qrImageLoading.value = true  // 圖片仍需載入
+    return
+  }
+
+  // 無快取，開始載入
+  currentQRCode.value = ''
+  qrGenerating.value = true
+  qrImageLoading.value = true
+
   try {
-    console.log(`正在為團隊 ${team.id} 生成 QR 碼...`);
-    const response = await teamApi.generateTeamQR(team.id, {
-      campaignName: `${team.name} 專用 QR 碼`,
-      description: `團隊 ${team.name} 的客服 QR 碼`,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    });
-    
-    console.log('API 回應:', response);
-    
-    if (response.success && response.data) {
-      currentQRCode.value = response.data.qrCode
-      console.log('QR 碼生成成功:', response.data)
+    // Step 2-3: 使用 Store 的 generateQRCode 方法
+    // 該方法會先檢查現有 QR，無現有才生成新的
+    const qrCode = await qrCodeStore.generateQRCode(team.id, team.name, false)
+
+    if (qrCode) {
+      console.log(`✅ QR 碼載入/生成成功: team ${team.id}`)
+      currentQRCode.value = qrCode.qrCode
+      qrGenerating.value = false
     } else {
-      console.error('QR 碼生成失敗 - API 回應:', response)
-      showError('QR 碼生成失敗', response.error || '未知錯誤')
+      console.error('QR 碼生成失敗 - Store 回應為 null')
+      showError('QR 碼生成失敗', qrCodeStore.error || '未知錯誤')
+      qrGenerating.value = false
+      qrImageLoading.value = false
     }
   } catch (error) {
-    console.error('生成 QR 碼失敗:', error)
-    showError('生成 QR 碼失敗', '請稍後重試')
+    console.error('讀取/生成 QR 碼失敗:', error)
+    showError('QR 碼載入失敗', '請稍後重試')
     closeQRModal()
+  }
+}
+
+// QR 碼圖片載入完成
+const onQRImageLoad = () => {
+  console.log('✅ QR 碼圖片載入完成')
+  qrImageLoading.value = false
+}
+
+// QR 碼圖片載入失敗
+const onQRImageError = () => {
+  console.error('❌ QR 碼圖片載入失敗')
+  qrImageLoading.value = false
+  showError('圖片載入失敗', '請嘗試重新生成')
+}
+
+// 下載 QR 碼
+const downloadQRCode = async () => {
+  if (!currentQRCode.value || !currentTeam.value) {return}
+
+  try {
+    // 如果是 base64 格式，直接下載
+    if (currentQRCode.value.startsWith('data:')) {
+      const link = document.createElement('a')
+      link.href = currentQRCode.value
+      link.download = `qr-code-${currentTeam.value.name}-${Date.now()}.png`
+      link.click()
+    } else {
+      // 如果是 URL，需要先獲取圖片
+      const response = await fetch(currentQRCode.value)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `qr-code-${currentTeam.value.name}-${Date.now()}.png`
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+    showSuccess('下載成功', 'QR 碼已下載')
+  } catch (error) {
+    console.error('下載 QR 碼失敗:', error)
+    showError('下載失敗', '無法下載 QR 碼')
   }
 }
 
@@ -1633,6 +1729,8 @@ const closeQRModal = () => {
   showQRModal.value = false
   currentQRCode.value = ''
   currentTeam.value = null
+  qrGenerating.value = false
+  qrImageLoading.value = true
 }
 
 // 確認刪除團隊
@@ -2698,6 +2796,98 @@ onMounted(() => {
   max-width: 100%;
   max-height: 100%;
   border-radius: var(--radius-md);
+}
+
+/* QR 碼淡入動畫 */
+.qr-fade-in {
+  animation: qrFadeIn 0.3s ease-out forwards;
+}
+
+@keyframes qrFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* QR 碼骨架屏樣式 */
+.qr-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: var(--radius-xl);
+}
+
+.qr-skeleton-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qr-pulse {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  animation: qrPulse 1.5s ease-in-out infinite;
+  position: relative;
+}
+
+.qr-pulse::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  background: white;
+  border-radius: 4px;
+  transform: translate(-50%, -50%);
+}
+
+.qr-pulse::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+}
+
+@keyframes qrPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+.qr-loading-text {
+  color: #667eea;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* 確保 qr-display 是相對定位 */
+.qr-display {
+  position: relative;
 }
 
 .qr-description {

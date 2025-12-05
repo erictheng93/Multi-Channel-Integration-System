@@ -1,35 +1,150 @@
 // QR Code 服務實現 - 完整資料庫整合版本
+// 優化：使用本地 QR 碼生成，消除第三方 API 依賴
+// Phase 1 優化：KV 快取層支援
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { qrCodes, qrCodeScans, teams, customers, conversations } from '../db/schema';
 import type { QRCodeConfig, QRCodeInfo } from './qrcode-service';
 import type {
   QRFollowEvent
 } from '../types/services';
+import QRCode from 'qrcode';
 
 // 自定義類型
 type D1Database = any;
 
+// KV 快取相關常量
+const QR_CACHE_PREFIX = 'qr:team:';
+const QR_CACHE_TTL = 24 * 60 * 60; // 24 小時 (秒)
+
+// QR 碼快取資料結構
+interface QRCodeCacheData {
+  qrCodeImageUrl: string;
+  lineUrl: string;
+  token: string;
+  cachedAt: number;
+}
+
 export class QRCodeServiceImpl {
   private static readonly LINE_BOT_ID = process.env.LINE_BOT_ID || '@your_bot_id';
+  // 保留作為備用方案
   private static readonly QR_API_BASE = 'https://api.qrserver.com/v1/create-qr-code/';
 
-  // 為團隊生成 QR Code
+  // ==================== KV 快取工具方法 ====================
+
+  /**
+   * 從 KV 快取獲取 QR 碼資料
+   * @param kv KV 命名空間
+   * @param teamId 團隊 ID
+   * @param qrCodeId 可選的特定 QR 碼 ID
+   */
+  static async getFromCache(
+    kv: KVNamespace | undefined,
+    teamId: number,
+    qrCodeId?: string
+  ): Promise<QRCodeCacheData | null> {
+    if (!kv) return null;
+
+    const cacheKey = qrCodeId
+      ? `${QR_CACHE_PREFIX}${teamId}:${qrCodeId}`
+      : `${QR_CACHE_PREFIX}${teamId}:latest`;
+
+    try {
+      const startTime = performance.now();
+      const cached = await kv.get<QRCodeCacheData>(cacheKey, 'json');
+      const duration = performance.now() - startTime;
+
+      if (cached) {
+        console.log(`✅ KV 快取命中: ${cacheKey} (${duration.toFixed(0)}ms)`);
+        return cached;
+      }
+      console.log(`❌ KV 快取未命中: ${cacheKey} (${duration.toFixed(0)}ms)`);
+      return null;
+    } catch (error) {
+      console.error('KV 快取讀取錯誤:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 將 QR 碼資料存入 KV 快取
+   */
+  static async saveToCache(
+    kv: KVNamespace | undefined,
+    teamId: number,
+    qrCodeId: string,
+    data: QRCodeCacheData
+  ): Promise<void> {
+    if (!kv) return;
+
+    const cacheKeySpecific = `${QR_CACHE_PREFIX}${teamId}:${qrCodeId}`;
+    const cacheKeyLatest = `${QR_CACHE_PREFIX}${teamId}:latest`;
+
+    try {
+      const startTime = performance.now();
+      // 同時存入特定 ID 和 latest 鍵
+      await Promise.all([
+        kv.put(cacheKeySpecific, JSON.stringify(data), { expirationTtl: QR_CACHE_TTL }),
+        kv.put(cacheKeyLatest, JSON.stringify(data), { expirationTtl: QR_CACHE_TTL })
+      ]);
+      const duration = performance.now() - startTime;
+      console.log(`💾 KV 快取寫入成功: ${cacheKeySpecific} (${duration.toFixed(0)}ms)`);
+    } catch (error) {
+      console.error('KV 快取寫入錯誤:', error);
+    }
+  }
+
+  /**
+   * 從 KV 快取刪除 QR 碼資料
+   */
+  static async invalidateCache(
+    kv: KVNamespace | undefined,
+    teamId: number,
+    qrCodeId?: string
+  ): Promise<void> {
+    if (!kv) return;
+
+    try {
+      if (qrCodeId) {
+        await kv.delete(`${QR_CACHE_PREFIX}${teamId}:${qrCodeId}`);
+      }
+      // 同時清除 latest 快取
+      await kv.delete(`${QR_CACHE_PREFIX}${teamId}:latest`);
+      console.log(`🗑️ KV 快取已清除: team ${teamId}`);
+    } catch (error) {
+      console.error('KV 快取刪除錯誤:', error);
+    }
+  }
+
+  // ==================== 主要業務方法 ====================
+
+  /**
+   * 為團隊生成 QR Code (優化版本：本地生成 + 並行資料庫操作 + KV 快取)
+   * @param db 資料庫實例
+   * @param config QR 碼配置
+   * @param kv 可選的 KV 命名空間，用於快取
+   */
   static async generateTeamQRCode(
-    db: D1Database, 
-    config: QRCodeConfig
+    db: D1Database,
+    config: QRCodeConfig,
+    kv?: KVNamespace
   ): Promise<QRCodeInfo> {
+    const startTime = performance.now();
+
     // 生成唯一的追蹤 token
     const token = this.generateTrackingToken(config.teamId);
-    
+
     // 構建 Line 加好友連結
     const lineUrl = `https://line.me/R/ti/p/${this.LINE_BOT_ID}?ref=${token}`;
-    
-    // 生成 QR Code 圖片 URL
+
+    // 生成 QR Code 圖片 (本地生成，約 10-50ms)
     const qrCodeImageUrl = await this.generateQRCodeImage(lineUrl);
-    
+    const qrGenTime = performance.now() - startTime;
+
     // 準備 QR Code 資料
+    const now = new Date().toISOString();
+    const qrCodeId = crypto.randomUUID();
     const qrCodeData = {
-      id: crypto.randomUUID(),
+      id: qrCodeId,
       teamId: config.teamId,
       token,
       lineUrl,
@@ -40,28 +155,98 @@ export class QRCodeServiceImpl {
       maxUses: config.maxUses || null,
       isActive: true,
       expiresAt: config.expiresAt ? config.expiresAt.toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: now,
+      updatedAt: now
     };
 
-    // 儲存到資料庫
-    await db.insert(qrCodes).values(qrCodeData).run();
-    
-    // 更新團隊的 QR Code 資訊
-    await db.update(teams)
-      .set({ 
-        qrCode: qrCodeImageUrl,
-        updatedAt: new Date().toISOString()
+    // 並行執行資料庫操作 + KV 快取寫入
+    const dbStartTime = performance.now();
+    await Promise.all([
+      // 儲存 QR Code 到資料庫 (必須同步完成 - 確保 LINE 掃描時能找到)
+      db.insert(qrCodes).values(qrCodeData).run(),
+      // 更新團隊的 QR Code 資訊
+      db.update(teams)
+        .set({
+          qrCode: qrCodeImageUrl,
+          updatedAt: now
+        })
+        .where(eq(teams.id, config.teamId))
+        .run(),
+      // 寫入 KV 快取 (非阻塞，失敗不影響主流程)
+      this.saveToCache(kv, config.teamId, qrCodeId, {
+        qrCodeImageUrl,
+        lineUrl,
+        token,
+        cachedAt: Date.now()
       })
-      .where(eq(teams.id, config.teamId))
-      .run();
-    
+    ]);
+    const dbTime = performance.now() - dbStartTime;
+
+    const totalTime = performance.now() - startTime;
+    console.log(`📊 QR Code 生成統計: QR生成=${qrGenTime.toFixed(0)}ms, DB+快取=${dbTime.toFixed(0)}ms, 總計=${totalTime.toFixed(0)}ms`);
+
     return {
       ...qrCodeData,
       campaignName: qrCodeData.campaignName || '',
       maxUses: qrCodeData.maxUses || undefined,
       expiresAt: qrCodeData.expiresAt ? new Date(qrCodeData.expiresAt) : undefined,
       createdAt: new Date(qrCodeData.createdAt)
+    };
+  }
+
+  /**
+   * 快速獲取團隊最新 QR 碼 (優先從快取讀取)
+   * 用於前端懸停預載
+   */
+  static async getLatestQRCodeFast(
+    db: D1Database,
+    teamId: number,
+    kv?: KVNamespace
+  ): Promise<{ qrCodeImageUrl: string; lineUrl: string; fromCache: boolean } | null> {
+    const startTime = performance.now();
+
+    // 1. 嘗試從 KV 快取讀取
+    const cached = await this.getFromCache(kv, teamId);
+    if (cached) {
+      const duration = performance.now() - startTime;
+      console.log(`⚡ 快速獲取 QR 碼 (快取): team ${teamId} (${duration.toFixed(0)}ms)`);
+      return {
+        qrCodeImageUrl: cached.qrCodeImageUrl,
+        lineUrl: cached.lineUrl,
+        fromCache: true
+      };
+    }
+
+    // 2. 快取未命中，從資料庫讀取最新的
+    const latestQR = await db.select()
+      .from(qrCodes)
+      .where(and(
+        eq(qrCodes.teamId, teamId),
+        eq(qrCodes.isActive, true)
+      ))
+      .orderBy(desc(qrCodes.createdAt))
+      .limit(1)
+      .get();
+
+    if (!latestQR) {
+      return null;
+    }
+
+    // 3. 回填快取
+    await this.saveToCache(kv, teamId, latestQR.id, {
+      qrCodeImageUrl: latestQR.qrCodeImageUrl,
+      lineUrl: latestQR.lineUrl,
+      token: latestQR.token,
+      cachedAt: Date.now()
+    });
+
+    const duration = performance.now() - startTime;
+    console.log(`📦 快速獲取 QR 碼 (資料庫): team ${teamId} (${duration.toFixed(0)}ms)`);
+
+    return {
+      qrCodeImageUrl: latestQR.qrCodeImageUrl,
+      lineUrl: latestQR.lineUrl,
+      fromCache: false
     };
   }
 
@@ -139,18 +324,27 @@ export class QRCodeServiceImpl {
     }));
   }
 
-  // 停用 QR Code
+  /**
+   * 停用 QR Code 並清除快取
+   */
   static async deactivateQRCode(
-    db: D1Database, 
-    token: string
+    db: D1Database,
+    token: string,
+    teamId?: number,
+    kv?: KVNamespace
   ): Promise<void> {
     await db.update(qrCodes)
-      .set({ 
+      .set({
         isActive: false,
         updatedAt: new Date().toISOString()
       })
       .where(eq(qrCodes.token, token))
       .run();
+
+    // 清除快取
+    if (teamId && kv) {
+      await this.invalidateCache(kv, teamId);
+    }
   }
 
   // 獲取 QR Code 使用統計
@@ -206,18 +400,46 @@ export class QRCodeServiceImpl {
     return `team${teamId}_${timestamp}_${random}`;
   }
 
-  // 生成 QR Code 圖片
+  // 生成 QR Code 圖片 (本地生成 SVG + Base64)
   private static async generateQRCodeImage(url: string): Promise<string> {
-    const qrParams = new URLSearchParams({
-      size: '300x300',
-      data: url,
-      format: 'png',
-      margin: '10',
-      color: '000000',
-      bgcolor: 'ffffff'
-    });
-    
-    return `${this.QR_API_BASE}?${qrParams.toString()}`;
+    const startTime = performance.now();
+
+    try {
+      // 使用 qrcode 庫生成 SVG (純 JavaScript，無需 Canvas)
+      const svgString = await QRCode.toString(url, {
+        type: 'svg',
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'M'
+      });
+
+      // 轉換為 Base64 Data URL
+      const base64Svg = btoa(unescape(encodeURIComponent(svgString)));
+      const dataUrl = `data:image/svg+xml;base64,${base64Svg}`;
+
+      const duration = performance.now() - startTime;
+      console.log(`✅ QR Code 本地生成成功 (${duration.toFixed(0)}ms)`);
+
+      return dataUrl;
+    } catch (error) {
+      console.error('❌ QR Code 本地生成失敗，回退到第三方 API:', error);
+
+      // 回退到第三方 API
+      const qrParams = new URLSearchParams({
+        size: '300x300',
+        data: url,
+        format: 'png',
+        margin: '10',
+        color: '000000',
+        bgcolor: 'ffffff'
+      });
+
+      return `${this.QR_API_BASE}?${qrParams.toString()}`;
+    }
   }
 
   // 增加使用次數

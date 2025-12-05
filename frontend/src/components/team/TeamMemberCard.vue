@@ -88,6 +88,7 @@
         class="modal-overlay"
         tabindex="-1"
         @keydown.esc="closeEditModal"
+        @click="closeEditModal"
       >
         <div
           class="modal"

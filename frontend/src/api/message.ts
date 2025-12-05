@@ -68,6 +68,8 @@ export const messageApi = {
   },
 
   // 發送訊息
+  // 🔧 FIX: 使用 /api/conversations/ 端點 (發送到 LINE + WebSocket 廣播)
+  // 後端 message.ts 已加入 CustomerConversationDO 通知，實現即時同步
   send: async (conversationId: string, data: SendMessageRequest): Promise<ApiResponse<Message>> => {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
@@ -91,6 +93,9 @@ export const messageApi = {
       attachmentIds: data.attachmentIds
     };
 
+    // 使用 /api/conversations/ 端點：
+    // 1. 發送訊息到 LINE (via Queue)
+    // 2. 通知 CustomerConversationDO 進行 WebSocket 廣播
     return apiClient.post(`/conversations/${conversationId}/messages`, payload);
   },
 

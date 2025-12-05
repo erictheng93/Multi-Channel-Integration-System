@@ -221,6 +221,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
+    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -231,6 +232,7 @@ export const teamApi = {
   },
 
   // 創建團隊
+  // 🆕 Phase 3: 團隊創建時會並行生成 QR 碼，回應中包含 qrCode 和 lineUrl
   createTeam: async (data: {
     name: string;
     description?: string;
@@ -239,6 +241,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
+    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -256,6 +259,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
+    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -274,6 +278,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
+    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -320,7 +325,19 @@ export const teamApi = {
   getTeamQRCodes: async (teamId: number): Promise<ApiResponse<QRCode[]>> => {
     return apiClient.get(`/teams/${teamId}/qr-codes`)
   },
-  
+
+  /**
+   * 🆕 Phase 1: 快速獲取團隊最新 QR 碼 (用於懸停預載)
+   * 優先從 KV 快取讀取，響應更快
+   */
+  getLatestQRCodeFast: async (teamId: number): Promise<ApiResponse<{
+    qrCode: string;
+    lineUrl: string;
+    fromCache: boolean;
+  }>> => {
+    return apiClient.get(`/teams/${teamId}/qr-code/latest`)
+  },
+
   // 停用 QR 碼
   deactivateQRCode: async (teamId: number, qrCodeId: string): Promise<ApiResponse<void>> => {
     return apiClient.put(`/teams/${teamId}/qr-codes/${qrCodeId}/deactivate`)

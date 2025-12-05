@@ -102,6 +102,15 @@ export interface LineEvent {
     data: string;
     params?: LinePostbackParams;
   };
+  // 🆕 Follow event with QR code referral tracking
+  follow?: {
+    isUnblocked?: boolean;  // true if user unblocked the account
+  };
+  // 🆕 Link token for account linking (used for QR code tracking via liff.getContext())
+  link?: {
+    result: 'ok' | 'failed';
+    nonce?: string;
+  };
 }
 
 export interface LineWebhookBody {

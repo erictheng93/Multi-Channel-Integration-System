@@ -121,16 +121,29 @@ export class UserConnection implements DurableObject {
       const token = url.searchParams.get('token');
       const role = url.searchParams.get('role') as 'admin' | 'agent';
       const deviceId = url.searchParams.get('deviceId') || 'unknown';
+      // 🔧 FIX: 從 URL 參數獲取 userId，而不是使用 this.userId (永遠是 'unknown')
+      // websocket-main.ts 在轉發請求時已經將 userId 添加到 URL 參數中
+      const userId = url.searchParams.get('userId');
 
       if (!token || !role) {
         return new Response('Missing required parameters', { status: 400 });
       }
 
+      // 🔧 FIX: 驗證 userId 參數存在
+      if (!userId) {
+        console.error('❌ [UserConnection] Missing userId parameter in WebSocket upgrade request');
+        return new Response('Missing userId parameter', { status: 400 });
+      }
+
       // Verify authentication
-      const isAuthenticated = await this.verifyAuthToken(token, this.userId);
+      // 🔧 FIX: 使用從 URL 參數獲取的 userId，而不是 this.userId
+      const isAuthenticated = await this.verifyAuthToken(token, userId);
       if (!isAuthenticated) {
         return new Response('Unauthorized', { status: 401 });
       }
+
+      // 🔧 FIX: 更新 this.userId 為實際的用戶 ID
+      this.userId = userId;
 
       // Check connection limits
       if (this.connections.size >= this.MAX_CONNECTIONS_PER_USER) {

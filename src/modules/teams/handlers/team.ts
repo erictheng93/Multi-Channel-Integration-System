@@ -214,6 +214,7 @@ app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) 
 });
 
 // Deactivate QR code
+// Phase 1 優化：同時清除 KV 快取
 app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -226,7 +227,7 @@ app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), 
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
     await qrService.deactivateQRCode(teamId, qrCodeId);
 
     return c.json({
@@ -308,6 +309,7 @@ app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
 });
 
 // Generate QR Code for team
+// Phase 1 優化：傳遞 KV 命名空間用於快取
 app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -320,7 +322,8 @@ app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB);
+    // 傳遞 CACHE KV 命名空間
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
     const qrCodeParams: any = {
       teamId,
       campaignName,
@@ -365,7 +368,7 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
     const qrCodes = await qrService.getTeamQRCodes(teamId);
 
     return c.json({
@@ -378,6 +381,47 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_QR_CODES,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 🆕 Phase 1: 快速獲取最新 QR 碼 (用於懸停預載)
+app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+    const result = await qrService.getLatestQRCodeFast(teamId);
+
+    if (!result) {
+      return c.json({
+        success: false,
+        error: 'No QR code found for this team'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        qrCode: result.qrCodeImageUrl,
+        lineUrl: result.lineUrl,
+        fromCache: result.fromCache
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Get latest QR code error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to get QR code',
       timestamp: new Date().toISOString()
     }, 500);
   }
@@ -647,21 +691,45 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     const teamService = new TeamService(c.env.DB);
     const team = await teamService.createTeam(body);
 
-    // Log activity
+    // Phase 3 優化：並行執行活動日誌和 QR 碼生成
+    // QR code generation runs in parallel with activity logging (~30-50ms overhead)
     const user = c.get('user');
     const activityService = new TeamActivityService(c.env.DB);
-    await activityService.logTeamCreate({
-      userId: user.id.toString(),
-      userName: user.displayName || user.email,
-      userRole: user.role,
-      teamId: team.id,
-      teamName: team.name,
-      ...(team.description && { description: team.description })
-    });
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+
+    // Run activity logging and QR generation in parallel
+    const [, qrResult] = await Promise.all([
+      // Task 1: Log activity (existing)
+      activityService.logTeamCreate({
+        userId: user.id.toString(),
+        userName: user.displayName || user.email,
+        userRole: user.role,
+        teamId: team.id,
+        teamName: team.name,
+        ...(team.description && { description: team.description })
+      }),
+      // Task 2: Pre-generate QR code (new - Phase 3)
+      qrService.generateTeamQRCode({
+        teamId: team.id,
+        campaignName: `${team.name} - 預設 QR 碼`,
+        description: `團隊 ${team.name} 的預設 QR 碼`
+      }).catch(err => {
+        // QR generation failure should not fail team creation
+        console.error(`[Phase 3] QR generation failed for team ${team.id}:`, err);
+        return null;
+      })
+    ]);
+
+    // Attach QR code to team response if generated successfully
+    const teamWithQR = qrResult ? {
+      ...team,
+      qrCode: qrResult.qrCode,
+      lineUrl: qrResult.lineUrl
+    } : team;
 
     return c.json({
       success: true,
-      data: team,
+      data: teamWithQR,
       timestamp: new Date().toISOString()
     }, 201);
   } catch (error) {

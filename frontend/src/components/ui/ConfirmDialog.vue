@@ -249,8 +249,10 @@ const handleConfirm = async () => {
 .dialog-message {
   font-size: 0.95rem;
   color: var(--gray-600, #6b7280);
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
+  white-space: pre-line;
+  text-align: left;
 }
 
 .dialog-actions {
