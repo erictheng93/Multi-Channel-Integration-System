@@ -181,7 +181,8 @@
 
 <script setup lang="ts">
   import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
-  import { messageApi } from '@/api/message'
+  // 🔧 FIX: 不再使用 messageApi (走錯誤的 /api/conversations/ 端點)
+  // import { messageApi } from '@/api/message'
   import { useAuthStore } from '@/stores/auth'
   import {
     SendIcon,
@@ -584,20 +585,37 @@
         })
       }
 
-      // 發送訊息到後端
-      const response = await messageApi.send(props.conversationId, {
-        content: savedContent,
-        messageType: hasAttachments ? 'file' : 'text',
-        platform: 'line',
-        attachmentIds,
-        senderId: authStore.currentAgent?.id,
-      })
+      // 🔧 FIX: 使用 /api/customer-conversations/ 端點
+      // 這會觸發 CustomerMessageDO -> CustomerConversationDO 的 WebSocket 廣播
+      // 舊的 /api/conversations/ 端點使用 ConversationRoom DO，與新的 WebSocket 連接不兼容
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken')
+      const sendResponse = await fetch(
+        getApiUrl(`/api/customer-conversations/${props.conversationId}/messages`),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({
+            content: savedContent,
+            messageType: hasAttachments ? 'file' : 'text',
+            platform: 'line',
+            attachmentIds,
+            senderId: authStore.currentAgent?.id
+          })
+        }
+      )
+      const response = await sendResponse.json()
 
-      if (response.success && response.data) {
+      // CustomerMessageDO 回傳 { success, message }
+      const messageData = response.message
+
+      if (response.success && messageData) {
         // ⚡ Phase 3B: 發送成功，確認訊息
         emit('message-confirmed', {
           tempId,
-          realId: response.data.id || tempId,
+          realId: messageData.id || tempId,
           // eslint-disable-next-line camelcase
           file_attachments: fileAttachmentsData
         })
@@ -610,10 +628,11 @@
           file_attachments: fileAttachmentsData
         })
 
-        successMessage.value = '訊息發送成功'
-        setTimeout(() => {
-          successMessage.value = ''
-        }, 3000)
+        // 🔧 FIX: 移除成功提示，保持 UI 簡潔
+        // successMessage.value = '訊息發送成功'
+        // setTimeout(() => {
+        //   successMessage.value = ''
+        // }, 3000)
       } else {
         const errorMsg = (response.error as { message?: string })?.message || '發送失敗'
         // Phase 3C: 發送失敗（含重試資料）

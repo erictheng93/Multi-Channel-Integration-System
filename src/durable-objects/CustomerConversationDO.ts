@@ -25,6 +25,18 @@ interface SessionValidationResult {
 }
 
 /**
+ * Connection info - stores WebSocket and associated user data
+ * 🔧 FIX: Now using connectionId as key to support multiple connections per user
+ */
+interface ConnectionInfo {
+  socket: WebSocket;
+  userId: string;
+  displayName: string;
+  role: string;
+  connectedAt: number;
+}
+
+/**
  * CustomerConversationDO
  *
  * Purpose: Manage WebSocket connections for a single customer conversation
@@ -36,17 +48,27 @@ interface SessionValidationResult {
  *
  * Architecture Pattern (from Chat Project):
  * - One DO instance per conversation (identified by conversationId)
- * - Map<userId, WebSocket> for connection tracking
+ * - 🔧 FIX: Map<connectionId, ConnectionInfo> for connection tracking
+ *   - Supports multiple connections from the same user (different tabs/browsers)
  * - Direct broadcasting (no intermediate hops)
  * - Auto-cleanup on disconnect
  */
 export class CustomerConversationDO extends DurableObject<Bindings> {
-  private connections = new Map<string, WebSocket>();
+  // 🔧 FIX: Changed from Map<userId, WebSocket> to Map<connectionId, ConnectionInfo>
+  // This allows multiple connections from the same user (e.g., multiple browser tabs)
+  private connections = new Map<string, ConnectionInfo>();
   private conversationId: string = '';
 
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
     console.log('🏗️ [CustomerConversationDO] Initialized');
+  }
+
+  /**
+   * Generate a unique connection ID
+   */
+  private generateConnectionId(): string {
+    return crypto.randomUUID();
   }
 
   /**
@@ -96,8 +118,25 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         const sessionId = url.searchParams.get('sessionId') ?? '';
         const conversationId = url.searchParams.get('conversationId') ?? '';
 
+        // Check if user was already validated by index.ts (preferred path)
+        const validated = url.searchParams.get('validated') === 'true';
+        const validatedUserId = url.searchParams.get('validatedUserId');
+        const validatedRole = url.searchParams.get('validatedRole');
+        const validatedDisplayName = url.searchParams.get('validatedDisplayName');
+
         this.conversationId = conversationId;
 
+        // If already validated by index.ts, skip redundant KV validation
+        if (validated && validatedUserId) {
+          return this.clientConnectedValidated(
+            validatedUserId,
+            validatedRole || 'agent',
+            validatedDisplayName || 'User',
+            conversationId
+          );
+        }
+
+        // Fallback: validate session if not pre-validated (for direct DO access)
         return this.clientConnected(sessionId, conversationId);
       }
       return new Response('Expected WebSocket', { status: 400 });
@@ -108,14 +147,27 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       try {
         const { conversationId, message } = await request.json() as { conversationId: string; message: any };
 
+        // 🔧 DEBUG: Log detailed connection info
+        const connectionDetails = this.getConnectionDetails();
         console.log(`📬 [CustomerConversationDO] Received notify-message request:`, {
           conversationId,
-          messageId: message?.id
+          messageId: message?.id,
+          doConversationId: this.conversationId,
+          totalConnections: this.connections.size,
+          connectionDetails: connectionDetails
         });
 
         await this.notifyNewMessage(conversationId, message);
 
-        return new Response(JSON.stringify({ success: true }), {
+        // 🔧 DEBUG: Return connection info in response
+        return new Response(JSON.stringify({
+          success: true,
+          debug: {
+            totalConnections: this.connections.size,
+            connectedUsers: this.getConnectedUsers(),
+            doConversationId: this.conversationId
+          }
+        }), {
           headers: { 'Content-Type': 'application/json' }
         });
       } catch (error) {
@@ -125,6 +177,19 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
           headers: { 'Content-Type': 'application/json' }
         });
       }
+    }
+
+    // 🔧 DEBUG: Endpoint to check connection status
+    if (url.pathname === '/debug/connections') {
+      return new Response(JSON.stringify({
+        success: true,
+        conversationId: this.conversationId,
+        totalConnections: this.connections.size,
+        connectedUsers: this.getConnectedUsers(),
+        connectionDetails: this.getConnectionDetails()
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     return new Response('Not Found', { status: 404 });
@@ -155,40 +220,133 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     }
 
     const userId = validation.session.userId;
+    const displayName = validation.session.displayName;
+    const role = validation.session.role || 'agent';
+
+    // 🔧 FIX: Generate unique connectionId to support multiple connections per user
+    const connectionId = this.generateConnectionId();
 
     console.log(`🔌 [CustomerConversationDO] Client connecting:`, {
+      connectionId,
       conversationId,
       userId,
-      role: validation.session.role
+      role
     });
 
     // Accept the WebSocket FIRST before any operations
     server.accept();
 
-    // Store the server-side socket with the user ID as the key
-    this.connections.set(userId, server);
+    // 🔧 FIX: Store with connectionId as key, allowing multiple connections per user
+    this.connections.set(connectionId, {
+      socket: server,
+      userId,
+      displayName,
+      role,
+      connectedAt: Date.now()
+    });
 
-    console.log(`✅ [CustomerConversationDO] Client connected. Total connections: ${this.connections.size}`);
+    console.log(`✅ [CustomerConversationDO] Client connected. Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
 
     // Notify other clients about the new connection (agent presence)
-    await this.broadcastUserPresence(userId, true);
+    await this.broadcastUserPresence(userId, true, connectionId);
 
     // Set up event listeners
     server.addEventListener('message', async (msg) => {
       await this.webSocketMessage(server, msg.data);
     });
 
+    // 🔧 FIX: Use connectionId for cleanup
     server.addEventListener('close', async () => {
-      console.log(`🔌 [CustomerConversationDO] Client disconnected: ${userId}`);
-      this.connections.delete(userId);
-      await this.broadcastUserPresence(userId, false);
+      console.log(`🔌 [CustomerConversationDO] Connection closed: ${connectionId} (user: ${userId})`);
+      this.connections.delete(connectionId);
+
+      // Only broadcast offline if user has no more connections
+      if (!this.isUserConnected(userId)) {
+        await this.broadcastUserPresence(userId, false, connectionId);
+      }
       console.log(`📊 [CustomerConversationDO] Remaining connections: ${this.connections.size}`);
     });
 
     server.addEventListener('error', async (err) => {
-      console.error(`❌ [CustomerConversationDO] WebSocket error for user ${userId}:`, err);
-      this.connections.delete(userId);
-      await this.broadcastUserPresence(userId, false);
+      console.error(`❌ [CustomerConversationDO] WebSocket error for connection ${connectionId}:`, err);
+      this.connections.delete(connectionId);
+
+      // Only broadcast offline if user has no more connections
+      if (!this.isUserConnected(userId)) {
+        await this.broadcastUserPresence(userId, false, connectionId);
+      }
+    });
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /**
+   * Handle WebSocket connection with pre-validated user info
+   * Called when index.ts has already validated the JWT token
+   * This skips redundant KV session validation for better performance
+   */
+  async clientConnectedValidated(
+    userId: string,
+    role: string,
+    displayName: string,
+    conversationId: string
+  ): Promise<Response> {
+    const webSocketPair = new WebSocketPair();
+    const [client, server] = Object.values(webSocketPair);
+
+    // 🔧 FIX: Generate unique connectionId to support multiple connections per user
+    const connectionId = this.generateConnectionId();
+
+    console.log(`🔌 [CustomerConversationDO] Client connecting (pre-validated):`, {
+      connectionId,
+      conversationId,
+      userId,
+      role,
+      displayName
+    });
+
+    // Accept the WebSocket FIRST before any operations
+    server.accept();
+
+    // 🔧 FIX: Store with connectionId as key, allowing multiple connections per user
+    this.connections.set(connectionId, {
+      socket: server,
+      userId,
+      displayName,
+      role,
+      connectedAt: Date.now()
+    });
+
+    console.log(`✅ [CustomerConversationDO] Client connected (pre-validated). Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
+
+    // Notify other clients about the new connection (agent presence)
+    await this.broadcastUserPresence(userId, true, connectionId);
+
+    // Set up event listeners
+    server.addEventListener('message', async (msg) => {
+      await this.webSocketMessage(server, msg.data);
+    });
+
+    // 🔧 FIX: Use connectionId for cleanup
+    server.addEventListener('close', async () => {
+      console.log(`🔌 [CustomerConversationDO] Connection closed: ${connectionId} (user: ${userId})`);
+      this.connections.delete(connectionId);
+
+      // Only broadcast offline if user has no more connections
+      if (!this.isUserConnected(userId)) {
+        await this.broadcastUserPresence(userId, false, connectionId);
+      }
+      console.log(`📊 [CustomerConversationDO] Remaining connections: ${this.connections.size}`);
+    });
+
+    server.addEventListener('error', async (err) => {
+      console.error(`❌ [CustomerConversationDO] WebSocket error for connection ${connectionId}:`, err);
+      this.connections.delete(connectionId);
+
+      // Only broadcast offline if user has no more connections
+      if (!this.isUserConnected(userId)) {
+        await this.broadcastUserPresence(userId, false, connectionId);
+      }
     });
 
     return new Response(null, { status: 101, webSocket: client });
@@ -205,10 +363,36 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
   }
 
   /**
+   * Check if a user has any active connections
+   */
+  private isUserConnected(userId: string): boolean {
+    for (const conn of this.connections.values()) {
+      if (conn.userId === userId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get count of unique connected users
+   */
+  private getUniqueUserCount(): number {
+    const userIds = new Set<string>();
+    for (const conn of this.connections.values()) {
+      userIds.add(conn.userId);
+    }
+    return userIds.size;
+  }
+
+  /**
    * Broadcast user presence changes to all connected clients
    * Adapted from Chat Project's AuthorizationDO.broadcastUserPresence()
+   *
+   * 🔧 FIX: Now broadcasts to ALL connections, not just other users
+   * This ensures all tabs/windows of the same user receive updates
    */
-  private async broadcastUserPresence(userId: string, isOnline: boolean) {
+  private async broadcastUserPresence(userId: string, isOnline: boolean, excludeConnectionId?: string) {
     const notification = JSON.stringify({
       type: isOnline ? 'USER_CONNECTED' : 'USER_DISCONNECTED',
       userId,
@@ -218,18 +402,24 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     console.log(`📡 [CustomerConversationDO] Broadcasting presence:`, {
       userId,
       isOnline,
-      totalConnections: this.connections.size
+      totalConnections: this.connections.size,
+      uniqueUsers: this.getUniqueUserCount()
     });
 
-    // Broadcast to all connected clients except the user who triggered the event
-    for (const [connectedUserId, socket] of this.connections.entries()) {
-      if (connectedUserId !== userId && socket.readyState === WebSocket.OPEN) {
+    // 🔧 FIX: Broadcast to ALL connections except the one that triggered the event
+    for (const [connId, conn] of this.connections.entries()) {
+      // Skip the connection that triggered this event
+      if (connId === excludeConnectionId) {
+        continue;
+      }
+
+      if (conn.socket.readyState === WebSocket.OPEN) {
         try {
-          socket.send(notification);
-          console.log(`✉️  [CustomerConversationDO] Sent presence to: ${connectedUserId}`);
+          conn.socket.send(notification);
+          console.log(`✉️  [CustomerConversationDO] Sent presence to connection: ${connId} (user: ${conn.userId})`);
         } catch (error) {
-          console.error(`❌ [CustomerConversationDO] Failed to send presence to ${connectedUserId}:`, error);
-          this.connections.delete(connectedUserId);
+          console.error(`❌ [CustomerConversationDO] Failed to send presence to ${connId}:`, error);
+          this.connections.delete(connId);
         }
       }
     }
@@ -239,6 +429,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Broadcast a new message to all connected clients
    * Called by CustomerMessageDO after message creation
    * Adapted from Chat Project's AuthorizationDO.notifyChannelUpdate()
+   *
+   * 🔧 FIX: Now broadcasts to ALL connections, including multiple tabs from same user
    */
   public async notifyNewMessage(conversationId: string, message: any): Promise<void> {
     const notification = JSON.stringify({
@@ -248,45 +440,52 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       timestamp: Date.now()
     });
 
+    // Get unique user IDs for logging
+    const uniqueUserIds = new Set<string>();
+    for (const conn of this.connections.values()) {
+      uniqueUserIds.add(conn.userId);
+    }
+
     console.log(`📡 [CustomerConversationDO] Broadcasting new message:`, {
       conversationId,
       messageId: message.id,
       totalConnections: this.connections.size,
-      connectedUsers: Array.from(this.connections.keys())
+      uniqueUsers: uniqueUserIds.size,
+      connectedUserIds: Array.from(uniqueUserIds)
     });
 
     let successCount = 0;
     let failureCount = 0;
 
-    // Broadcast to all connected clients
-    for (const [userId, socket] of this.connections.entries()) {
-      console.log(`🔍 [CustomerConversationDO] Checking socket for user ${userId}:`, {
-        socketState: socket.readyState,
-        isOpen: socket.readyState === WebSocket.OPEN
+    // 🔧 FIX: Broadcast to ALL connections (including multiple tabs from same user)
+    for (const [connId, conn] of this.connections.entries()) {
+      console.log(`🔍 [CustomerConversationDO] Checking connection ${connId} (user: ${conn.userId}):`, {
+        socketState: conn.socket.readyState,
+        isOpen: conn.socket.readyState === WebSocket.OPEN
       });
 
-      if (socket.readyState === WebSocket.OPEN) {
+      if (conn.socket.readyState === WebSocket.OPEN) {
         try {
-          socket.send(notification);
+          conn.socket.send(notification);
           successCount++;
-          console.log(`✅ [CustomerConversationDO] Message sent to user ${userId}`);
+          console.log(`✅ [CustomerConversationDO] Message sent to connection ${connId} (user: ${conn.userId})`);
         } catch (error) {
           failureCount++;
-          console.error(`❌ [CustomerConversationDO] Failed to send message to ${userId}:`, error);
+          console.error(`❌ [CustomerConversationDO] Failed to send message to ${connId}:`, error);
           // Remove stale connection
-          this.connections.delete(userId);
+          this.connections.delete(connId);
         }
       } else {
         failureCount++;
-        console.warn(`⚠️  [CustomerConversationDO] Removing stale connection for user ${userId}`);
-        this.connections.delete(userId);
+        console.warn(`⚠️  [CustomerConversationDO] Removing stale connection: ${connId}`);
+        this.connections.delete(connId);
       }
     }
 
     console.log(`📊 [CustomerConversationDO] Broadcast complete:`, {
       successCount,
       failureCount,
-      totalAttempted: this.connections.size + failureCount
+      remainingConnections: this.connections.size
     });
   }
 
@@ -299,10 +498,29 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
   }
 
   /**
-   * Get list of connected user IDs
+   * Get list of connected user IDs (unique)
    * Useful for debugging
    */
   public getConnectedUsers(): string[] {
-    return Array.from(this.connections.keys());
+    const userIds = new Set<string>();
+    for (const conn of this.connections.values()) {
+      userIds.add(conn.userId);
+    }
+    return Array.from(userIds);
+  }
+
+  /**
+   * Get detailed connection info for debugging
+   */
+  public getConnectionDetails(): Array<{ connectionId: string; userId: string; connectedAt: number }> {
+    const details: Array<{ connectionId: string; userId: string; connectedAt: number }> = [];
+    for (const [connId, conn] of this.connections.entries()) {
+      details.push({
+        connectionId: connId,
+        userId: conn.userId,
+        connectedAt: conn.connectedAt
+      });
+    }
+    return details;
   }
 }

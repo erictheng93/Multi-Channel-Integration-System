@@ -486,6 +486,59 @@ export const messageHandler = {
                 console.warn('⚠️ [WebSocket] Message broadcast failed, continuing with fallback:', broadcastError);
             }
 
+            // 🔧 FIX: 通知 CustomerConversationDO 進行即時 WebSocket 廣播
+            // 這讓所有查看同一對話的客服都能即時收到訊息更新
+            try {
+                if (c.env.CUSTOMER_CONVERSATION_DO) {
+                    const conversationDOId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+                    const conversationDO = c.env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
+
+                    // 🔧 FIX: 構建完整的訊息物件，格式必須與前端 Message 介面完全一致
+                    // 參考: shared/types/entities.ts - Message interface
+                    const timestamp = new Date(sentAt).getTime();
+                    const broadcastMessage = {
+                        // 必填欄位
+                        id: messageId,
+                        conversationId: conversationId,
+                        senderType: 'agent' as const,
+                        senderId: agent.id,
+                        content: content || '',
+                        messageType: mediaType || 'text',  // 保持 messageType (不是 mediaType)
+                        platform: conversationWithCustomer.platform,
+                        timestamp: timestamp,  // Unix timestamp for sorting
+                        createdAt: sentAt,     // ISO string for display
+
+                        // 可選欄位
+                        mediaUrl: mediaUrl || undefined,
+                        deliveryStatus: isAsyncLineMessage ? 'sending' : (sendResult ? 'sent' : 'failed'),
+                        updatedAt: sentAt,
+                        senderName: agent.displayName || undefined,
+
+                        // 附件相關
+                        metadata: hasAttachments ? { attachmentIds: attachmentIds } : undefined,
+                        file_attachments: [] // 前端會單獨獲取
+                    };
+
+                    const notifyRequest = new Request('https://fake-host/notify-message', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            conversationId,
+                            message: broadcastMessage
+                        })
+                    });
+
+                    const response = await conversationDO.fetch(notifyRequest);
+                    if (response.ok) {
+                        console.log(`✅ [CustomerConversationDO] Real-time broadcast sent for message ${messageId}`);
+                    } else {
+                        console.warn(`⚠️ [CustomerConversationDO] Broadcast returned error:`, await response.text());
+                    }
+                }
+            } catch (customerDOError) {
+                console.warn('⚠️ [CustomerConversationDO] Failed to notify, continuing:', customerDOError);
+            }
+
             // ✅ 記錄活動以觸發 SSE 更新 (為了向後相容性保留)
             try {
                 const { ActivityService } = await import('../services/activity-service');

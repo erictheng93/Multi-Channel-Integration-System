@@ -167,7 +167,7 @@ export const filesApi = {
       page: (filters?.page || 1).toString(),
       pageSize: (filters?.pageSize || 20).toString()
     })
-    
+
     if (filters?.platform) {
       params.append('platform', filters.platform)
     }
@@ -180,8 +180,17 @@ export const filesApi = {
     if (filters?.dateTo) {
       params.append('dateTo', filters.dateTo)
     }
-    
+
     return apiClient.get(`/files/search?${params.toString()}`)
+  },
+
+  // 檢查 Presigned URL 服務狀態
+  getPresignedUrlStatus: async (): Promise<ApiResponse<{
+    configured: boolean
+    maxFileSize: number
+    allowedMimeTypes: string[]
+  }>> => {
+    return apiClient.get('/files/presigned-url/status')
   }
 }
 

@@ -69,14 +69,22 @@
       "Bash(Select-Object -First 20)",
       "Bash(Select-String \"wrangler\")",
       "Bash(Select-String -Pattern \"(error TS|Error:|warning)\")",
-      "Bash(pushd \"D:\\Code\\Multi_Channel_Integration_System\\frontend\")"
+      "Bash(pushd \"D:\\Code\\Multi_Channel_Integration_System\\frontend\")",
+      "Bash(Select-String -Pattern \"(TeamCard|error TS)\")",
+      "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" show HEAD:frontend/src/components/team/TeamCard.vue)",
+      "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" status frontend/src/components/team/TeamCard.vue)",
+      "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" checkout HEAD -- frontend/src/components/team/TeamCard.vue)",
+      "Bash(Select-String -Pattern \"(useFileUpload|files\\.ts|error TS)\")",
+      "mcp__chrome-devtools__select_page",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__close_page",
+      "Bash(Select-String -Pattern \"(error|Error|TS\\d{4}|✓|built)\")",
+      "Bash(Select-String -Pattern \"(CustomerMessageDO|LINE|line|📱|✅|⚠️|ℹ️)\")"
     ],
     "deny": [],
     "ask": [],
     "defaultMode": "acceptEdits",
-    "additionalDirectories": [
-      "D:\\d D:\\Code\\Multi_Channel_Integration_System"
-    ]
+    "additionalDirectories": []
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

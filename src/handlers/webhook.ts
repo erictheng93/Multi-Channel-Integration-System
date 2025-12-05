@@ -4,9 +4,9 @@
 // Created by: Webhook Handler Developer
 
 import { Context } from 'hono';
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, sql, desc } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { customers, conversations, messages, fileAttachments } from '../db/schema';
+import { customers, conversations, messages, fileAttachments, qrCodes } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
 import type { 
@@ -119,11 +119,17 @@ export const webhookHandler = {
           userId: event.source?.userId?.substring(0, 10) + '...',
           messageType: event.message?.type
         });
-        
+
         if (event.type === 'message' && event.message) {
           await processLineMessage(c.env, event);
+        } else if (event.type === 'follow') {
+          // 🆕 處理 QR Code 加好友事件
+          await processLineFollowEvent(c.env, event);
+        } else if (event.type === 'unfollow') {
+          // 記錄取消關注事件
+          console.log('👋 [LINE Webhook] User unfollowed:', event.source?.userId?.substring(0, 10) + '...');
         } else {
-          console.log('🔄 [LINE Webhook] Skipping non-message event:', event.type);
+          console.log('🔄 [LINE Webhook] Skipping event:', event.type);
         }
       }
 
@@ -773,6 +779,295 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       error: error instanceof Error ? error.message : 'Unknown error',
       userIdPrefix: userId.slice(0, 8),
       messageType: event.message?.type
+    });
+    throw error;
+  }
+}
+
+/**
+ * 🆕 處理 LINE Follow 事件 (QR Code 加好友)
+ * 當用戶通過 QR Code 掃描加入時，自動指派到對應團隊
+ */
+export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
+  const userId = event.source.userId;
+
+  console.log('👤 [LINE Follow] Processing follow event:', {
+    userId: userId?.substring(0, 10) + '...',
+    timestamp: event.timestamp,
+    replyToken: event.replyToken ? 'Present' : 'None'
+  });
+
+  if (!userId) {
+    log.warn('LINE Follow: No userId in follow event');
+    return;
+  }
+
+  try {
+    const drizzleDb = createDbClient(env.DB);
+
+    // Step 1: 檢查用戶是否已存在
+    let existingCustomer = await drizzleDb
+      .select()
+      .from(customers)
+      .where(and(
+        eq(customers.platformUserId, userId),
+        eq(customers.platform, 'line')
+      ))
+      .get();
+
+    // Step 2: 獲取用戶資料
+    let displayName = 'LINE User';
+    let avatarUrl: string | null = null;
+
+    try {
+      const { createUserSyncService } = await import('../services/user-sync');
+      const userSyncService = createUserSyncService(env);
+      const profile = await userSyncService.syncLineUser(userId, event.source.groupId);
+      if (profile) {
+        displayName = profile.displayName;
+        avatarUrl = profile.pictureUrl || null;
+      }
+    } catch (profileError) {
+      log.warn('LINE Follow: Failed to sync user profile', {
+        error: profileError instanceof Error ? profileError.message : String(profileError)
+      });
+    }
+
+    // Step 3: 嘗試從 QR Code 追蹤參數獲取團隊 ID
+    let assignedTeamId: number | null = null;
+    let qrCodeToken: string | null = null;
+
+    // 嘗試從多種來源獲取追蹤參數
+    // 方式 1: LINE 標準的 follow.param (如果可用)
+    const followParam = (event as any).follow?.param;
+
+    // 方式 2: 從 replyToken 相關的 context 獲取 (部分 LINE 版本支援)
+    const linkNonce = (event as any).link?.nonce;
+
+    // 方式 3: 從 liff context 獲取 (如果使用 LIFF)
+    const liffParam = (event as any).liff?.context?.utouId;
+
+    qrCodeToken = followParam || linkNonce || liffParam || null;
+
+    console.log('🔍 [LINE Follow] Checking for QR code tracking:', {
+      followParam: followParam ? 'Present' : 'None',
+      linkNonce: linkNonce ? 'Present' : 'None',
+      liffParam: liffParam ? 'Present' : 'None',
+      qrCodeToken: qrCodeToken ? qrCodeToken.substring(0, 10) + '...' : 'None'
+    });
+
+    // Step 4: 如果有追蹤參數，查詢對應的 QR Code 並獲取團隊 ID
+    if (qrCodeToken) {
+      try {
+        const { QRCodeServiceImpl } = await import('../services/qrcode-service-impl');
+        const result = await QRCodeServiceImpl.handleQRCodeFollow(env.DB, {
+          type: 'follow',
+          source: { userId, type: 'user' },
+          follow: { param: qrCodeToken }
+        } as any);
+
+        if (result.autoAssigned && result.teamId) {
+          assignedTeamId = result.teamId;
+          console.log(`✅ [LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
+        }
+      } catch (qrError) {
+        log.warn('LINE Follow: QR code tracking failed', {
+          error: qrError instanceof Error ? qrError.message : String(qrError)
+        });
+      }
+    }
+
+    // Step 5: 如果沒有追蹤參數，嘗試匹配最近建立的 QR Code
+    if (!assignedTeamId) {
+      try {
+        // 查找過去 5 分鐘內建立的活躍 QR Code (用於測試/示範)
+        // 實際環境中可能需要更精確的匹配邏輯
+        const recentQRCodes = await drizzleDb
+          .select()
+          .from(qrCodes)
+          .where(eq(qrCodes.isActive, true))
+          .orderBy(desc(qrCodes.createdAt))
+          .limit(1)
+          .all();
+
+        if (recentQRCodes.length > 0 && recentQRCodes[0]) {
+          const recentQR = recentQRCodes[0];
+          // 只有在 QR Code 是最近 5 分鐘內建立的才使用
+          const qrCreatedAt = recentQR.createdAt ? new Date(recentQR.createdAt).getTime() : 0;
+          const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+
+          if (qrCreatedAt > fiveMinutesAgo && recentQR.teamId) {
+            assignedTeamId = recentQR.teamId;
+            console.log(`📋 [LINE Follow] 匹配到最近的 QR Code，指派到團隊: ${assignedTeamId}`);
+
+            // 增加 QR Code 使用次數
+            await drizzleDb
+              .update(qrCodes)
+              .set({
+                usageCount: sql`${qrCodes.usageCount} + 1`,
+                updatedAt: new Date().toISOString()
+              })
+              .where(eq(qrCodes.id, recentQR.id));
+          }
+        }
+      } catch (matchError) {
+        log.warn('LINE Follow: Recent QR code matching failed', {
+          error: matchError instanceof Error ? matchError.message : String(matchError)
+        });
+      }
+    }
+
+    const timestamp = new Date().toISOString();
+
+    // Step 6: 創建或更新客戶記錄
+    if (!existingCustomer) {
+      console.log('🆕 [LINE Follow] Creating new customer...');
+      await drizzleDb
+        .insert(customers)
+        .values({
+          platform: 'line',
+          platformUserId: userId,
+          displayName,
+          avatarUrl,
+          metadata: assignedTeamId ? JSON.stringify({
+            followedAt: timestamp,
+            assignedViaQR: true,
+            teamId: assignedTeamId
+          }) : JSON.stringify({ followedAt: timestamp }),
+          createdAt: timestamp,
+          updatedAt: timestamp
+        });
+
+      // 重新查詢客戶
+      existingCustomer = await drizzleDb
+        .select()
+        .from(customers)
+        .where(and(
+          eq(customers.platformUserId, userId),
+          eq(customers.platform, 'line')
+        ))
+        .get();
+
+      console.log('✅ [LINE Follow] Customer created:', {
+        customerId: existingCustomer?.id,
+        displayName,
+        teamId: assignedTeamId
+      });
+    } else {
+      // 更新現有客戶的 metadata
+      console.log('📝 [LINE Follow] Updating existing customer...');
+      const existingMetadata = existingCustomer.metadata
+        ? JSON.parse(existingCustomer.metadata as string)
+        : {};
+
+      await drizzleDb
+        .update(customers)
+        .set({
+          displayName,
+          avatarUrl,
+          metadata: JSON.stringify({
+            ...existingMetadata,
+            lastFollowedAt: timestamp,
+            ...(assignedTeamId && { assignedViaQR: true, teamId: assignedTeamId })
+          }),
+          updatedAt: timestamp
+        })
+        .where(eq(customers.id, existingCustomer.id));
+    }
+
+    // Step 7: 如果有團隊指派，創建預設對話
+    if (assignedTeamId && existingCustomer) {
+      // 檢查是否已有活躍對話
+      const existingConversation = await drizzleDb
+        .select()
+        .from(conversations)
+        .where(and(
+          eq(conversations.customerId, existingCustomer.id),
+          ne(conversations.status, 'closed')
+        ))
+        .get();
+
+      if (!existingConversation) {
+        // 創建新對話並指派團隊
+        const conversationId = uuidv4();
+        await drizzleDb
+          .insert(conversations)
+          .values({
+            id: conversationId,
+            customerId: existingCustomer.id,
+            assignedTeamId: assignedTeamId,
+            assignedUserId: null,
+            status: 'active',
+            priority: 'normal',
+            internalNotes: JSON.stringify({
+              autoAssigned: true,
+              source: 'qr_code_follow',
+              followedAt: timestamp
+            }),
+            lastMessageAt: timestamp,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          });
+
+        console.log('✅ [LINE Follow] Conversation created with team assignment:', {
+          conversationId,
+          customerId: existingCustomer.id,
+          teamId: assignedTeamId
+        });
+      } else if (!existingConversation.assignedTeamId) {
+        // 更新現有對話的團隊指派
+        await drizzleDb
+          .update(conversations)
+          .set({
+            assignedTeamId: assignedTeamId,
+            updatedAt: timestamp
+          })
+          .where(eq(conversations.id, existingConversation.id));
+
+        console.log('✅ [LINE Follow] Updated existing conversation with team:', {
+          conversationId: existingConversation.id,
+          teamId: assignedTeamId
+        });
+      }
+    }
+
+    // Step 8: 記錄活動
+    try {
+      const activityService = new ActivityService(env.DB);
+      await activityService.logActivity({
+        userId: 'system',
+        userName: 'Webhook Handler',
+        userRole: 'system',
+        action: 'customer_followed',
+        resourceType: 'customer',
+        resourceId: String(existingCustomer?.id || userId),
+        details: {
+          platform: 'line',
+          platformUserId: userId,
+          displayName,
+          assignedTeamId,
+          source: qrCodeToken ? 'qr_code' : 'direct',
+          timestamp
+        }
+      });
+      console.log('✅ [LINE Follow] Activity logged');
+    } catch (activityError) {
+      log.warn('LINE Follow: Failed to log activity', {
+        error: activityError instanceof Error ? activityError.message : String(activityError)
+      });
+    }
+
+    console.log('✅ [LINE Follow] Follow event processed successfully:', {
+      userId: userId.substring(0, 10) + '...',
+      customerId: existingCustomer?.id,
+      teamId: assignedTeamId,
+      source: qrCodeToken ? 'qr_code' : 'direct'
+    });
+
+  } catch (error) {
+    log.error('LINE Follow: Error processing follow event', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userIdPrefix: userId.slice(0, 8)
     });
     throw error;
   }

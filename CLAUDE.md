@@ -835,3 +835,4 @@ When a customer deploys through the Web Installer, it automatically creates:
 - Always think hard.
 - localremote
 - Always check chrome-devtools docs to make sure it is up-to-date when needed for implementing new libraries or frameworks, or adding features using them.
+- If you find file content exceeds maximum allowed tokens (25000), please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.

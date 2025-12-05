@@ -343,65 +343,134 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   }
 
   /**
+   * 發送帶附件的消息（使用正確的 customer-conversations 端點以支持 WebSocket 廣播）
+   * 🔧 FIX: 確保帶附件的訊息也使用 CustomerMessageDO，觸發 WebSocket 廣播
+   */
+  const sendMessageWithAttachments = async (
+    content: string,
+    attachmentIds: string[],
+    options?: {
+      messageType?: 'text' | 'file'
+      platform?: string
+    }
+  ): Promise<{ success: boolean; message?: unknown; error?: string }> => {
+    // 允許純附件訊息（沒有文字內容）
+    if (!content?.trim() && (!attachmentIds || attachmentIds.length === 0)) {
+      return { success: false, error: '訊息內容或附件不能為空' }
+    }
+
+    try {
+      const response = await fetch(
+        getApiUrl(`/api/customer-conversations/${conversationId}/messages`),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({
+            content: content?.trim() || '',
+            attachmentIds,
+            messageType: options?.messageType || (attachmentIds.length > 0 ? 'file' : 'text'),
+            platform: options?.platform || 'system'
+          })
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.success) {
+        console.log('✅ [useCustomerMessages] Message with attachments sent successfully')
+        // 注意：新消息會通過 WebSocket 實時推送給所有連接的客服
+        return { success: true, message: data.message }
+      } else {
+        console.error('❌ [useCustomerMessages] Failed to send message with attachments:', data.error)
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error('❌ [useCustomerMessages] Error sending message with attachments:', error)
+      return { success: false, error: error instanceof Error ? error.message : '發送失敗' }
+    }
+  }
+
+  /**
    * 添加新消息到列表（用於 WebSocket 實時推送）
-   * 🔧 智能去重：會識別並替換臨時消息（optimistic UI）
+   * 🔧 FIX: 合併式去重機制 - 解決競態條件導致的重複問題
+   *
+   * 競態條件場景：
+   * 1. 用戶發送訊息 → 創建 temp-xxx 臨時訊息
+   * 2. HTTP POST 發送到後端
+   * 3. 後端創建訊息 (realId) → 廣播 WebSocket → 返回 HTTP 響應
+   * 4. WebSocket 比 HTTP 響應先到達
+   * 5. 如果只做 ID 去重，會添加重複訊息（因為 temp-xxx ≠ realId）
+   *
+   * 解決方案：當 WebSocket 訊息到達時，如果發現有相同內容的 pending 訊息，
+   * 則「合併」（更新 ID）而非「添加」
    */
   const addMessage = (message: Message) => {
-    // 第一步：檢查是否已存在相同ID的消息
+    // 1. 基本 ID 去重：防止完全相同的訊息被添加多次
     const existsById = messages.value.some(m => m.id === message.id)
     if (existsById) {
-      console.log('⚠️ [useCustomerMessages] Message already exists, skipping:', message.id)
+      console.log('⚠️ [useCustomerMessages] Message already exists by ID, skipping:', message.id)
       return
     }
 
-    // 第二步：檢查是否存在需要替換的臨時消息（optimistic UI）
-    // 匹配條件：
-    // 1. ID以"temp-"開頭（臨時消息）
-    // 2. 內容完全相同
-    // 3. 發送者相同
-    // 4. 時間戳接近（10秒內）
-    const tempMessageIndex = messages.value.findIndex(m => {
-      const isTempMessage = m.id.startsWith('temp-')
-      const sameContent = m.content === message.content
-      const sameSender = m.senderId === message.senderId
+    // 2. 🔧 FIX: 合併式去重 - 檢查是否有 pending (temp-xxx) 訊息可以合併
+    // 這解決了 WebSocket 比 HTTP 響應先到達的競態條件
+    const pendingMessage = messages.value.find(m => {
+      // 只檢查 temp- 開頭的訊息（pending 訊息）
+      if (!m.id.startsWith('temp-')) {return false}
 
-      // 計算時間差（允許10秒誤差）
-      const msgTime = new Date(message.createdAt).getTime()
-      const tempTime = new Date(m.createdAt).getTime()
-      const timeDiff = Math.abs(msgTime - tempTime)
-      const withinTimeWindow = timeDiff < 10000 // 10秒內
+      // 內容必須相同
+      if (m.content !== message.content) {return false}
 
-      // 🔍 調試日誌：檢查匹配條件
-      if (isTempMessage) {
-        console.log('🔍 [Dedupe Debug] Checking temp message:', m.id)
-        console.log('  - Content match:', sameContent, `("${m.content}" === "${message.content}")`)
-        console.log('  - Sender match:', sameSender, `(${m.senderId} === ${message.senderId})`)
-        console.log('  - Time diff:', timeDiff, 'ms, within window:', withinTimeWindow)
-        console.log('  - All match:', isTempMessage && sameContent && sameSender && withinTimeWindow)
-      }
+      // 發送者類型必須相同
+      if (m.senderType !== message.senderType) {return false}
 
-      return isTempMessage && sameContent && sameSender && withinTimeWindow
+      // 時間戳必須在合理範圍內（5秒內）
+      const timeDiff = Math.abs(
+        new Date(m.createdAt).getTime() - new Date(message.createdAt).getTime()
+      )
+      if (timeDiff > 5000) {return false}
+
+      return true
     })
 
+    if (pendingMessage) {
+      // 找到匹配的 pending 訊息 → 合併（更新 ID 而非添加）
+      console.log(`🔀 [useCustomerMessages] Merging WebSocket message with pending: ${pendingMessage.id} → ${message.id}`)
 
-    if (tempMessageIndex !== -1) {
-      // 找到匹配的臨時消息，替換它
-      const tempMessage = messages.value[tempMessageIndex]
-      if (tempMessage) {
-        console.log(`🔄 [useCustomerMessages] Replacing temp message ${tempMessage.id} with real message ${message.id}`)
-        // 🔧 FIX: 創建新陣列以觸發 Vue 響應式更新
-        // 直接修改陣列索引 (messages.value[index] = x) 不會觸發 computed 的重新計算
-        const newMessages = [...messages.value]
-        newMessages[tempMessageIndex] = message
-        messages.value = newMessages
+      // 更新 pending 訊息的關鍵字段
+      pendingMessage.id = message.id
+      pendingMessage.deliveryStatus = message.deliveryStatus || 'delivered'
+      // 🔧 FIX: 同時更新 status 為 'sent'，解決旋轉圖標不消失的問題
+      // 當 WebSocket 比 HTTP 響應先到達時，handleMessageConfirmed 無法找到訊息
+      // 因為 ID 已從 temp-xxx 變為 realId，所以需要在這裡設置 status
+      pendingMessage.status = 'sent' as const
+
+      // 如果 WebSocket 訊息有附件，也更新
+      /* eslint-disable camelcase -- API response uses snake_case */
+      if (message.file_attachments && message.file_attachments.length > 0) {
+        pendingMessage.file_attachments = message.file_attachments
       }
-    } else {
-      // 沒有找到臨時消息，正常添加
-      // 🔧 FIX: 使用 spread 創建新陣列而不是 push()
-      // push() 只會修改現有陣列，不會觸發 computed(() => messages.value) 的響應式更新
-      messages.value = [...messages.value, message]
-      console.log('✅ [useCustomerMessages] Added new message via WebSocket:', message.id)
+      /* eslint-enable camelcase */
+
+      console.log('✅ [useCustomerMessages] Pending message merged successfully with status=sent')
+      return
     }
+
+    // 3. 沒有匹配的 pending 訊息 → 正常添加並排序
+    const newMessages = [...messages.value, message]
+
+    // 按 createdAt 排序（升序，最舊的在前）
+    newMessages.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime()
+      const timeB = new Date(b.createdAt).getTime()
+      return timeA - timeB
+    })
+
+    messages.value = newMessages
+    console.log('✅ [useCustomerMessages] Added new message via WebSocket:', message.id)
   }
 
   return {
@@ -420,6 +489,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     refreshMessages,
     loadMoreMessages,
     sendMessage,
+    sendMessageWithAttachments, // 🔧 FIX: 新增帶附件訊息發送方法（支持 WebSocket 廣播）
     addMessage
   }
 }

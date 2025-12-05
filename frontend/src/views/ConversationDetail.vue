@@ -343,9 +343,10 @@ import { useLoadingState } from '@/composables/useLoadingState'
 import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler'
 import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
 import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
-import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Prevent duplicate sending
+// import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Unused - handleMessageSent no longer uses it
 import { useFileUpload } from '@/composables/useFileUpload' // ⚡ Phase 3C: For retry file uploads
-import { messageApi } from '@/api/message' // ⚡ Phase 3C: For retry message send
+// 🔧 FIX: messageApi 已不再使用 - 改用 httpMessages.sendMessageWithAttachments()
+// import { messageApi } from '@/api/message' // ⚡ Phase 3C: For retry message send
 import { useAuthStore } from '@/stores/auth' // ⚡ For optimistic message creation
 import type { Message, FileAttachmentData } from '@/types'
 // ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
@@ -444,6 +445,10 @@ const unifiedIsConnected = ref(false)
 const isDraggingFile = ref(false)
 const dragCounter = ref(0) // 追蹤拖拽事件計數（處理子元素事件冒泡）
 
+// 🔧 FIX: 追蹤本標籤發送的訊息 ID，用於跨瀏覽器同步時避免發送端重複
+// 當 WebSocket 廣播先於 handleMessageConfirmed 到達時，使用此 Set 判斷是否應跳過
+const sentMessageIds = new Set<string>()
+
 // 🧩 Unified State Management with new composables
 const connectionState = useConnectionState({
   sseIsConnected: unifiedIsConnected,
@@ -482,10 +487,12 @@ const errorHandler = useErrorHandler({
 })
 
 // 🚫 Message Debounce - Prevent duplicate sending
-const messageDebounce = useMessageDebounce({
-  delay: 500, // 500ms 防抖延迟
-  enabled: true // 启用防抖保护
-})
+// 🔧 NOTE: Currently unused since handleMessageSent no longer adds messages
+// Keeping for potential future use - commented out to avoid TS6133 error
+// const messageDebounce = useMessageDebounce({
+//   delay: 500, // 500ms 防抖延迟
+//   enabled: true // 启用防抖保护
+// })
 
 // 🧠 Unified Message Source Strategy (Unified Connection + HTTP)
 // Unified Connection handles both WebSocket and SSE automatically
@@ -808,70 +815,27 @@ const lastUserActivity = ref(Date.now())
 // ⚡ Enhanced message handlers with Optimistic UI Update
 // 📤 Optimistic Message Sending - Instant UI feedback with background API sync
 const handleMessageSent = async (data: { content: string; attachments: unknown[]; file_attachments?: FileAttachmentData[] }) => {
-  console.log('📤 [Message] Sending via:', currentProtocol.value)
+  console.log('📤 [Message] handleMessageSent called (backward compatibility event)')
   trackUserActivity()
 
-  // 🚫 STEP 1: Debounce Check - Prevent duplicate sending
-  if (!messageDebounce.canSend()) {
-    console.warn('⚠️ [Debounce] Message sending blocked - too fast or already sending')
-    console.warn('⚠️ [Debounce Stats]:', messageDebounce.getStats())
-    return // Exit early - request blocked
-  }
+  // 🔧 FIX: 這個事件只用於向後相容和日誌記錄
+  // 訊息已經在 handleMessagePending 中添加到 UI
+  // 不要再次添加訊息，避免重複！
 
   // Stop typing indicators
   stopTyping()
 
-  if (!data.content?.trim()) {
-    console.warn('Empty message content, skipping send')
+  if (!data.content?.trim() && (!data.file_attachments || data.file_attachments.length === 0)) {
+    console.warn('Empty message content and no attachments, skipping')
     return
   }
 
-  // 🚫 STEP 2: Mark as sending (start debounce timer)
-  messageDebounce.markSending()
-  console.log('🔒 [Debounce] Marked as sending, other requests will be blocked')
-
-  const authStore = useAuthStore()
-
-  // ⚡ STEP 3: Create Optimistic Message - Instant UI Update
-  // 🔧 FIX: Determine messageType based on attachments
-  const hasFileAttachments = data.file_attachments && data.file_attachments.length > 0
-  const optimisticMessage: Message = {
-    id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    conversationId: conversationId.value,
-    senderId: authStore.currentAgent?.id || 'unknown',
-    senderType: 'agent' as const,
-    content: data.content.trim(),
-    messageType: hasFileAttachments ? 'file' as const : 'text' as const,
-    platform: conversation.value?.platform || 'line',
-    timestamp: Date.now(),
-    createdAt: Date.now(),
-    status: 'sending' as const,
-    deliveryStatus: 'sending' as const,
-    senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    attachments: data.attachments as any[], // Legacy attachments format
-    // eslint-disable-next-line camelcase
-    file_attachments: data.file_attachments || [] // 檔案附件資料，用於 Flex Message Card 顯示
-  }
-
-  // ⚡ STEP 4: Add message to UI immediately
-  httpMessages.addMessage(optimisticMessage)
-  console.log('⚡ [Optimistic] Message added to UI instantly:', optimisticMessage.id)
-
-  // Scroll to show the new message
-  setTimeout(() => scrollToNewest(), 50)
-
-  // ⚡ STEP 6: Update optimistic message status to 'sent'
-  updateOptimisticMessageStatus(optimisticMessage.id, 'sent')
-
-  migration.reportMetric('message_sent_http', { content: data.content.substring(0, 50) })
-
-  // 🚫 Mark complete
-  messageDebounce.markComplete()
-  console.log('🔓 [Debounce] Marked as complete, ready for next message')
+  migration.reportMetric('message_sent_http', { content: data.content?.substring(0, 50) || '[file only]' })
 
   // Reset polling
   resetPollingDelay()
+
+  console.log('✅ [Message] handleMessageSent completed - message already in UI via handleMessagePending')
 }
 
 // ⚡ Phase 3B: 處理訊息開始發送（樂觀更新）
@@ -974,10 +938,27 @@ interface MessageConfirmedData {
 const handleMessageConfirmed = (data: MessageConfirmedData) => {
   console.log('✅ [Phase 3B] Message confirmed:', data.tempId, '->', data.realId)
 
+  // 🔧 FIX: 立即將 realId 加入已發送集合
+  // 這樣即使 WebSocket 廣播先到達，handleUnifiedMessage 也能正確跳過
+  sentMessageIds.add(data.realId)
+  console.log(`📝 [Phase 3B] Added to sentMessageIds: ${data.realId}`)
+
+  // 定時清理（5分鐘後移除，避免記憶體洩漏）
+  setTimeout(() => {
+    sentMessageIds.delete(data.realId)
+    console.log(`🧹 [Phase 3B] Cleaned up sentMessageIds: ${data.realId}`)
+  }, 5 * 60 * 1000)
+
   const messageList = httpMessages.messages.value
   const message = messageList.find(m => m.id === data.tempId)
 
   if (message) {
+    // 🔧 FIX: 更新訊息 ID 從 tempId 到 realId
+    // 這樣當 WebSocket 廣播到達時，addMessage 的 ID 去重會正確跳過這個訊息
+    // 同時其他瀏覽器標籤可以正確接收訊息（因為它們沒有這個 realId）
+    message.id = data.realId
+    console.log(`📝 [Phase 3B] Updated message ID: ${data.tempId} -> ${data.realId}`)
+
     // 更新訊息狀態為已發送
     message.status = 'sent' as const
     message.deliveryStatus = 'sent' as const
@@ -994,7 +975,7 @@ const handleMessageConfirmed = (data: MessageConfirmedData) => {
       delete (message.metadata as Record<string, unknown>).pendingAttachments
     }
 
-    console.log('✅ [Phase 3B] Message status updated to sent')
+    console.log('✅ [Phase 3B] Message status updated to sent with realId')
   }
 }
 
@@ -1148,18 +1129,20 @@ const retryFailedMessage = async (messageId: string) => {
     // Phase 3C: 發送訊息
     updateOptimisticMessageStatus(messageId, 'sending')
 
-    // 根據是否有附件選擇發送方式
+    // 🔧 FIX: 統一使用 httpMessages（customer-conversations API）以支持 WebSocket 廣播
+    // 之前使用 messageApi.send() 會走錯誤的端點，導致其他客服收不到即時更新
     let success: boolean
     if (attachmentIds.length > 0) {
-      // 使用 messageApi.send() 發送帶附件的訊息
-      const authStore = useAuthStore()
-      const response = await messageApi.send(conversationId.value as string, {
-        content: retryContent,
-        messageType: 'file',
-        platform: 'line',
+      // 使用 httpMessages.sendMessageWithAttachments() 發送帶附件的訊息
+      // 這會使用 /api/customer-conversations/ 端點，觸發 WebSocket 廣播給所有客服
+      const response = await httpMessages.sendMessageWithAttachments(
+        retryContent,
         attachmentIds,
-        senderId: authStore.currentAgent?.id,
-      })
+        {
+          messageType: 'file',
+          platform: 'line'
+        }
+      )
       success = response.success
     } else {
       success = await httpMessages.sendMessage(retryContent)
@@ -1723,7 +1706,18 @@ function handleUnifiedMessage(message: unknown) {
 
   // ✅ CUSTOMER API: Handle NEW_MESSAGE events
   if (msg.type === 'NEW_MESSAGE' && msg.message) {
+    const messageId = msg.message.id
+
+    // 🔧 FIX: 檢查是否是本標籤發送的訊息（解決競態條件導致的重複問題）
+    // 當 WebSocket 廣播先於 handleMessageConfirmed 更新 message.id 時，
+    // 使用 sentMessageIds 來判斷是否應跳過
+    if (sentMessageIds.has(messageId)) {
+      console.log(`⏭️ [CUSTOMER API] Skipping own message (sentMessageIds): ${messageId}`)
+      return
+    }
+
     // Add message to httpMessages using the addMessage method
+    // addMessage 也有 ID 去重，這是雙重保護
     httpMessages.addMessage(msg.message)
     console.log('📨 [CUSTOMER API] New message added to conversation')
   }

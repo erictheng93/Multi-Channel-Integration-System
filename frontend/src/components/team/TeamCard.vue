@@ -40,6 +40,7 @@
         class="btn btn-sm btn-secondary"
         :disabled="loading"
         @click="$emit('generate-qr', team)"
+        @mouseenter="$emit('prefetch-qr', team)"
       >
         QR 碼
       </button>
@@ -57,9 +58,11 @@
   <div
     v-if="showModal"
     class="modal-overlay"
+    @click="closeModal"
   >
     <div
       class="modal-content"
+      @click.stop
     >
       <!-- Modal Header -->
       <div class="modal-header">
@@ -166,7 +169,9 @@
         <!-- 成員列表 -->
         <div class="team-members-section">
           <div class="section-header">
-            <h3>團隊成員</h3>
+            <div class="section-title-group">
+              <h3>團隊成員</h3>
+            </div>
             <button
               class="btn btn-sm btn-primary"
               :disabled="loadingMembers || addingMember"
@@ -217,6 +222,331 @@
               >
                 {{ removingMemberId === member.id ? '移除中...' : '✕' }}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Code 資訊區塊 -->
+        <div class="qr-code-section">
+          <div class="section-header">
+            <div class="section-title-group">
+              <h3>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="section-icon"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="7"
+                    height="7"
+                  />
+                  <rect
+                    x="14"
+                    y="3"
+                    width="7"
+                    height="7"
+                  />
+                  <rect
+                    x="3"
+                    y="14"
+                    width="7"
+                    height="7"
+                  />
+                  <rect
+                    x="14"
+                    y="14"
+                    width="3"
+                    height="3"
+                  />
+                  <rect
+                    x="18"
+                    y="14"
+                    width="3"
+                    height="3"
+                  />
+                  <rect
+                    x="14"
+                    y="18"
+                    width="3"
+                    height="3"
+                  />
+                  <rect
+                    x="18"
+                    y="18"
+                    width="3"
+                    height="3"
+                  />
+                </svg>
+                QR Code 資訊
+              </h3>
+            </div>
+            <button
+              v-if="!currentQRCode && !loadingQRCode"
+              class="btn btn-sm btn-primary"
+              :disabled="generatingQR"
+              @click="handleGenerateQR"
+            >
+              {{ generatingQR ? '生成中...' : '+ 生成 QR Code' }}
+            </button>
+          </div>
+
+          <!-- Loading State -->
+          <div
+            v-if="loadingQRCode"
+            class="qr-loading"
+          >
+            <HamsterLoader message="載入 QR Code 中..." />
+          </div>
+
+          <!-- No QR Code State -->
+          <div
+            v-else-if="!currentQRCode"
+            class="qr-empty-state"
+          >
+            <div class="empty-qr-icon">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <rect
+                  x="3"
+                  y="3"
+                  width="7"
+                  height="7"
+                />
+                <rect
+                  x="14"
+                  y="3"
+                  width="7"
+                  height="7"
+                />
+                <rect
+                  x="3"
+                  y="14"
+                  width="7"
+                  height="7"
+                />
+                <rect
+                  x="14"
+                  y="14"
+                  width="3"
+                  height="3"
+                />
+                <rect
+                  x="18"
+                  y="14"
+                  width="3"
+                  height="3"
+                />
+                <rect
+                  x="14"
+                  y="18"
+                  width="3"
+                  height="3"
+                />
+                <rect
+                  x="18"
+                  y="18"
+                  width="3"
+                  height="3"
+                />
+              </svg>
+            </div>
+            <p>此團隊尚未生成 QR Code</p>
+            <span class="empty-hint">點擊上方按鈕生成專屬 QR Code，讓客戶輕鬆加入 LINE 官方帳號</span>
+          </div>
+
+          <!-- QR Code Display -->
+          <div
+            v-else
+            class="qr-display"
+          >
+            <div class="qr-card">
+              <!-- QR Code Image -->
+              <div class="qr-image-wrapper">
+                <div class="qr-image-container">
+                  <img
+                    :src="currentQRCode.qrCode"
+                    alt="LINE QR Code"
+                    class="qr-image"
+                    @error="handleQRImageError"
+                  >
+                  <div class="qr-overlay">
+                    <button
+                      class="qr-action-btn"
+                      title="下載 QR Code"
+                      @click="downloadQRCode"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line
+                          x1="12"
+                          y1="15"
+                          x2="12"
+                          y2="3"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="qr-badge"
+                  :class="getQRStatusClass(currentQRCode)"
+                >
+                  {{ getQRStatusText(currentQRCode) }}
+                </div>
+              </div>
+
+              <!-- QR Code Info -->
+              <div class="qr-info-panel">
+                <div class="qr-info-header">
+                  <h4>LINE 官方帳號連結</h4>
+                  <div class="qr-actions">
+                    <button
+                      class="btn-icon-sm"
+                      title="下載 QR Code"
+                      @click="downloadQRCode"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line
+                          x1="12"
+                          y1="15"
+                          x2="12"
+                          y2="3"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn-icon-sm"
+                      title="重新生成 QR Code"
+                      :disabled="generatingQR"
+                      @click="handleGenerateQR"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M21 2v6h-6" />
+                        <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                        <path d="M3 22v-6h6" />
+                        <path d="M21 12a9 9 0 01-15 6.7L3 16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- LINE URL -->
+                <div class="url-display">
+                  <div class="url-text">
+                    <span class="url-label">連結</span>
+                    <code class="url-value">{{ currentQRCode.lineUrl }}</code>
+                  </div>
+                  <button
+                    class="btn-copy"
+                    :class="{ 'copied': urlCopied }"
+                    @click="copyLineUrl"
+                  >
+                    <svg
+                      v-if="!urlCopied"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <rect
+                        x="9"
+                        y="9"
+                        width="13"
+                        height="13"
+                        rx="2"
+                        ry="2"
+                      />
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                    </svg>
+                    <svg
+                      v-else
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {{ urlCopied ? '已複製' : '複製' }}
+                  </button>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="qr-stats-mini">
+                  <div class="qr-stat-item">
+                    <span class="qr-stat-label">使用次數</span>
+                    <span class="qr-stat-value">
+                      {{ currentQRCode.usageCount || 0 }}
+                      <span
+                        v-if="currentQRCode.maxUses"
+                        class="qr-stat-max"
+                      >/ {{ currentQRCode.maxUses }}</span>
+                      <span
+                        v-else
+                        class="qr-stat-max"
+                      >/ ∞</span>
+                    </span>
+                  </div>
+                  <div class="qr-stat-item">
+                    <span class="qr-stat-label">建立時間</span>
+                    <span class="qr-stat-value">{{ formatDate(currentQRCode.createdAt) }}</span>
+                  </div>
+                  <div
+                    v-if="currentQRCode.campaignName"
+                    class="qr-stat-item"
+                  >
+                    <span class="qr-stat-label">活動名稱</span>
+                    <span class="qr-stat-value">{{ currentQRCode.campaignName }}</span>
+                  </div>
+                  <div
+                    v-if="currentQRCode.expiresAt"
+                    class="qr-stat-item"
+                  >
+                    <span class="qr-stat-label">有效期限</span>
+                    <span class="qr-stat-value">{{ formatDate(currentQRCode.expiresAt) }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -293,18 +623,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive } from 'vue'
+import { ref, watch, reactive, computed } from 'vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import { teamApi } from '@/api/team'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
-import type { TeamMember } from '@/types'
+import { useAuthStore } from '@/stores/auth'
+import { useQRCodeStore } from '@/stores/qrcode'
+import type { TeamMember, QRCode } from '@/types'
 
 interface Team {
   id: number;
   name: string;
   description?: string;
   qrCode?: string;
+  lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -319,14 +652,20 @@ const props = defineProps<{
 const emit = defineEmits<{
   'toggle-status': [team: Team];
   'generate-qr': [team: Team];
+  'prefetch-qr': [team: Team];  // 🆕 Phase 1: 懸停預載事件
   'remove-team': [team: Team];
   'member-updated': [];
   'team-updated': [];
 }>();
 
 // Composables
-const { showDanger, showWarning } = useConfirmDialog()
+const { showDanger, showWarning, showConfirm } = useConfirmDialog()
 const { showSuccess, showError } = useToast()
+const authStore = useAuthStore()
+const qrCodeStore = useQRCodeStore()
+
+// 當前用戶資訊
+const currentUser = computed(() => authStore.currentAgent)
 
 // 組件狀態
 const showModal = ref(false)
@@ -347,6 +686,12 @@ const availableMembers = ref<TeamMember[]>([])
 const loadingAvailableMembers = ref(false)
 const addingMember = ref(false)
 const removingMemberId = ref<string | null>(null)
+
+// QR Code 狀態
+const currentQRCode = ref<QRCode | null>(null)
+const loadingQRCode = ref(false)
+const generatingQR = ref(false)
+const urlCopied = ref(false)
 
 // 圖標組件
 const EmptyIcon = {
@@ -389,8 +734,11 @@ const getRoleDisplayName = (role: string): string => {
   return roleMap[role] || role
 }
 
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('zh-TW', {
+const formatDate = (dateString: string | Date | undefined): string => {
+  if (!dateString) {return '無期限'}
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString
+  if (isNaN(date.getTime())) {return '無效日期'}
+  return date.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -406,6 +754,10 @@ const showTeamDetails = async () => {
   if (members.value.length === 0) {
     await loadTeamMembers()
   }
+
+  // 🆕 修正：每次打開 modal 都重新載入 QR Code，確保與其他元件同步
+  // 移除 if (!currentQRCode.value) 檢查，總是載入最新資料
+  await loadTeamQRCode()
 }
 
 const closeModal = () => {
@@ -582,12 +934,184 @@ const handleRemoveMember = async (member: TeamMember) => {
   }
 }
 
-// 監聽 team 變化，重置 modal 狀態
+// QR Code 相關方法
+// 🆕 使用 Pinia Store 統一管理 QR 碼狀態，與 TeamManagement 共享
+const loadTeamQRCode = async () => {
+  loadingQRCode.value = true
+  try {
+    console.log(`🔍 [TeamCard] 從 Store 載入 QR Code: team ${props.team.id}`)
+    // 使用 Store 的 loadQRCode 方法，統一快取管理
+    const qrCode = await qrCodeStore.loadQRCode(props.team.id)
+    currentQRCode.value = qrCode
+
+    if (qrCode) {
+      console.log(`✅ [TeamCard] QR Code 載入成功`)
+    } else {
+      console.log(`📭 [TeamCard] 團隊尚未有 QR Code: team ${props.team.id}`)
+    }
+  } catch (error) {
+    console.error('載入 QR Code 失敗:', error)
+    currentQRCode.value = null
+  } finally {
+    loadingQRCode.value = false
+  }
+}
+
+// 格式化角色名稱
+const formatRole = (role: string): string => {
+  const roleMap: Record<string, string> = {
+    admin: '管理員',
+    team: '組長',
+    agent: '客服'
+  }
+  return roleMap[role] || role
+}
+
+// 格式化當前時間
+const formatCurrentTime = (): string => {
+  return new Date().toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// 記錄活動日誌（前端記錄，實際活動由後端 API 自動記錄）
+const logQRCodeActivity = (action: 'generate' | 'regenerate', success: boolean) => {
+  const user = currentUser.value
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    action: action === 'regenerate' ? 'QR_CODE_REGENERATE' : 'QR_CODE_GENERATE',
+    teamId: props.team.id,
+    teamName: props.team.name,
+    userId: user?.id || 'unknown',
+    userName: user?.displayName || 'Unknown User',
+    userRole: user?.role || 'unknown',
+    success,
+    previousQRCode: action === 'regenerate' ? currentQRCode.value?.id : null
+  }
+
+  // 輸出到控制台供調試（實際活動由後端 API 自動記錄到資料庫）
+  console.log('📝 [Activity Log] QR Code Operation:', logEntry)
+}
+
+// 🆕 使用 Pinia Store 統一管理 QR 碼狀態
+const handleGenerateQR = async () => {
+  const isRegeneration = !!currentQRCode.value
+
+  // 如果是重新生成，顯示確認對話框
+  if (isRegeneration) {
+    const user = currentUser.value
+    const userName = user?.displayName || 'Unknown User'
+    const userRole = formatRole(user?.role || 'agent')
+    const currentTime = formatCurrentTime()
+
+    const confirmed = await showConfirm({
+      title: '確認重新生成 QR Code',
+      message: `此操作無法復原！重新生成將會：
+
+  • 使舊的 QR Code 立即失效
+  • 已印刷的宣傳品將無法使用
+  • 重置掃描次數統計
+
+操作人員：${userName}（${userRole}）
+操作時間：${currentTime}
+目標團隊：${props.team.name}`,
+      type: 'danger',
+      confirmText: '確認重新生成',
+      cancelText: '取消'
+    })
+
+    if (!confirmed) {
+      return
+    }
+  }
+
+  try {
+    generatingQR.value = true
+
+    // 使用 Store 的 generateQRCode 方法
+    // 該方法會先檢查現有 QR（如不是重新生成），無現有才生成新的
+    console.log(`🔍 [TeamCard] 透過 Store ${isRegeneration ? '重新' : ''}生成 QR: team ${props.team.id}`)
+    const qrCode = await qrCodeStore.generateQRCode(props.team.id, props.team.name, isRegeneration)
+
+    if (qrCode) {
+      // 記錄活動
+      logQRCodeActivity(isRegeneration ? 'regenerate' : 'generate', true)
+
+      // 更新本地狀態（與 Store 同步）
+      currentQRCode.value = qrCode
+
+      showSuccess(isRegeneration ? 'QR Code 已重新生成' : 'QR Code 生成成功')
+    } else {
+      logQRCodeActivity(isRegeneration ? 'regenerate' : 'generate', false)
+      showError(qrCodeStore.error || '生成 QR Code 失敗')
+    }
+  } catch (error) {
+    console.error('生成 QR Code 失敗:', error)
+    logQRCodeActivity(isRegeneration ? 'regenerate' : 'generate', false)
+    showError('生成 QR Code 時發生錯誤')
+  } finally {
+    generatingQR.value = false
+  }
+}
+
+const downloadQRCode = () => {
+  if (!currentQRCode.value?.qrCode) {return}
+
+  const link = document.createElement('a')
+  link.href = currentQRCode.value.qrCode
+  link.download = `${props.team.name}-qrcode-${Date.now()}.png`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  showSuccess('QR Code 已下載')
+}
+
+const copyLineUrl = async () => {
+  if (!currentQRCode.value?.lineUrl) {return}
+
+  try {
+    await navigator.clipboard.writeText(currentQRCode.value.lineUrl)
+    urlCopied.value = true
+    showSuccess('連結已複製到剪貼簿')
+    setTimeout(() => {
+      urlCopied.value = false
+    }, 2000)
+  } catch (error) {
+    console.error('複製失敗:', error)
+    showError('複製連結失敗')
+  }
+}
+
+const handleQRImageError = () => {
+  console.error('QR Code 圖片載入失敗')
+}
+
+const getQRStatusClass = (qrCode: QRCode) => {
+  if (!qrCode.isActive) {return 'inactive'}
+  if (qrCode.expiresAt && new Date(qrCode.expiresAt) < new Date()) {return 'expired'}
+  if (qrCode.maxUses && qrCode.usageCount >= qrCode.maxUses) {return 'limit-reached'}
+  return 'active'
+}
+
+const getQRStatusText = (qrCode: QRCode) => {
+  if (!qrCode.isActive) {return '已停用'}
+  if (qrCode.expiresAt && new Date(qrCode.expiresAt) < new Date()) {return '已過期'}
+  if (qrCode.maxUses && qrCode.usageCount >= qrCode.maxUses) {return '達上限'}
+  return '有效'
+}
+
+// 監聯 team 變化，重置 modal 狀態
 watch(() => props.team.id, () => {
   showModal.value = false
   members.value = []
   showAddMemberSelector.value = false
   availableMembers.value = []
+  currentQRCode.value = null
 })
 </script>
 
@@ -1389,6 +1913,427 @@ watch(() => props.team.id, () => {
   .team-stats h3,
   .team-members-section h3 {
     font-size: 1rem;
+  }
+}
+
+/* QR Code Section Styles */
+.qr-code-section {
+  margin-top: 28px;
+  margin-bottom: 0;
+}
+
+.qr-code-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-title-group {
+  display: flex;
+  align-items: center;
+}
+
+.qr-code-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1e293b;
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.section-icon {
+  color: #667eea;
+}
+
+.qr-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.qr-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.empty-qr-icon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea20, #764ba220);
+  border-radius: 20px;
+  margin-bottom: 16px;
+  color: #667eea;
+}
+
+.qr-empty-state p {
+  color: #475569;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.empty-hint {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+.qr-display {
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qr-card {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.qr-image-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.qr-image-container {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  border: 3px solid transparent;
+  background-image: linear-gradient(white, white), linear-gradient(135deg, #667eea, #764ba2);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+  flex-shrink: 0;
+}
+
+.qr-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.qr-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 75, 162, 0.9));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 9px;
+}
+
+.qr-image-container:hover .qr-overlay {
+  opacity: 1;
+}
+
+.qr-action-btn {
+  width: 44px;
+  height: 44px;
+  border: 2px solid white;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.qr-action-btn:hover {
+  background: white;
+  color: #667eea;
+  transform: scale(1.1);
+}
+
+.qr-badge {
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.qr-badge.active {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.qr-badge.inactive {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.qr-badge.expired {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.qr-badge.limit-reached {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #991b1b;
+  border: 1px solid #f87171;
+}
+
+.qr-info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.qr-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr-info-header h4 {
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qr-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-icon-sm {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.btn-icon-sm:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+  transform: translateY(-1px);
+}
+
+.btn-icon-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.url-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.url-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.url-label {
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.url-value {
+  color: #475569;
+  font-size: 0.8125rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  background: none;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.btn-copy {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border: 1px solid #667eea;
+  background: linear-gradient(135deg, #667eea10, #764ba210);
+  color: #667eea;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-copy:hover {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-copy.copied {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #10b981;
+  color: white;
+}
+
+.qr-stats-mini {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.qr-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.qr-stat-label {
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.qr-stat-value {
+  color: #1e293b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qr-stat-max {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* QR Code Section Responsive */
+@media (max-width: 640px) {
+  .qr-card {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .qr-image-wrapper {
+    justify-self: center;
+  }
+
+  .qr-image-container {
+    width: 140px;
+    height: 140px;
+  }
+
+  .qr-info-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .qr-info-header h4 {
+    text-align: center;
+  }
+
+  .url-display {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn-copy {
+    justify-content: center;
+  }
+
+  .qr-stats-mini {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

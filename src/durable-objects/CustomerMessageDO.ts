@@ -8,7 +8,8 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { eq, lt, desc, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { messages, fileAttachments } from '../db/schema';
+import { messages, fileAttachments, conversations, customers } from '../db/schema';
+import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
 
 /**
  * Session data structure for validation
@@ -344,6 +345,98 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         console.log(`📋 [CustomerMessageDO] Using direct message data for broadcast`);
 
+        // 🔧 FIX: Send message to LINE user if platform is LINE
+        // Query conversation to get customerId, then customer to get platform info
+        try {
+          const conversationData = await db
+            .select({
+              customerId: conversations.customerId
+            })
+            .from(conversations)
+            .where(eq(conversations.id, conversationId))
+            .limit(1);
+
+          if (conversationData.length > 0 && conversationData[0].customerId) {
+            const customerData = await db
+              .select({
+                platform: customers.platform,
+                platformUserId: customers.platformUserId
+              })
+              .from(customers)
+              .where(eq(customers.id, conversationData[0].customerId))
+              .limit(1);
+
+            if (customerData.length > 0 && customerData[0].platform === 'line' && customerData[0].platformUserId) {
+              console.log(`📱 [CustomerMessageDO] Sending message to LINE user: ${customerData[0].platformUserId}`);
+
+              const LINE_MESSAGE_LIMIT = 5;
+              const lineMessages: any[] = [];
+
+              // Build LINE messages
+              // 1. Add text message if content exists
+              if (content?.trim()) {
+                lineMessages.push(createTextMessage(content));
+              }
+
+              // 2. Add attachment messages
+              if (linkedAttachments && linkedAttachments.length > 0) {
+                for (const attachment of linkedAttachments) {
+                  const isImage = attachment.mimeType?.startsWith('image/');
+                  if (isImage) {
+                    // Use createImageMessage for images
+                    lineMessages.push(createImageMessage(attachment.url, attachment.url));
+                  } else {
+                    // Use createFileFlexMessage for other files
+                    lineMessages.push(createFileFlexMessage(
+                      attachment.url,
+                      attachment.filename || 'file',
+                      attachment.mimeType || '',
+                      attachment.size || 0
+                    ));
+                  }
+                }
+              }
+
+              // Send to LINE if there are messages to send
+              if (lineMessages.length > 0) {
+                let sendSuccess = true;
+
+                if (lineMessages.length <= LINE_MESSAGE_LIMIT) {
+                  // 5 messages or less - send in one call
+                  sendSuccess = await pushLineMessage(
+                    this.env.LINE_CHANNEL_ACCESS_TOKEN,
+                    customerData[0].platformUserId,
+                    lineMessages
+                  );
+                } else {
+                  // More than 5 messages - send in batches
+                  for (let i = 0; i < lineMessages.length; i += LINE_MESSAGE_LIMIT) {
+                    const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
+                    const batchSuccess = await pushLineMessage(
+                      this.env.LINE_CHANNEL_ACCESS_TOKEN,
+                      customerData[0].platformUserId,
+                      batch
+                    );
+                    if (!batchSuccess) {
+                      sendSuccess = false;
+                    }
+                  }
+                }
+
+                if (sendSuccess) {
+                  console.log(`✅ [CustomerMessageDO] LINE message sent successfully`);
+                } else {
+                  console.error(`⚠️  [CustomerMessageDO] Failed to send LINE message`);
+                }
+              }
+            } else {
+              console.log(`ℹ️  [CustomerMessageDO] Not a LINE customer or no platformUserId, skipping LINE send`);
+            }
+          }
+        } catch (lineError) {
+          console.error('⚠️  [CustomerMessageDO] Error sending LINE message:', lineError);
+          // Don't fail the request - message is still stored and will be broadcast via WebSocket
+        }
 
         // Notify CustomerConversationDO to broadcast the message
         // This triggers real-time delivery to all connected clients
@@ -367,7 +460,12 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           const response = await conversationDO.fetch(notifyRequest);
 
           if (response.ok) {
-            console.log(`✅ [CustomerMessageDO] Notified CustomerConversationDO for broadcast`);
+            // 🔧 DEBUG: Log response with connection info
+            const responseData = await response.json() as { success: boolean; debug?: { totalConnections: number; connectedUsers: string[]; doConversationId: string } };
+            console.log(`✅ [CustomerMessageDO] Notified CustomerConversationDO for broadcast:`, {
+              conversationId,
+              debug: responseData.debug
+            });
           } else {
             const errorText = await response.text();
             console.error(`⚠️  [CustomerMessageDO] CustomerConversationDO returned error:`, errorText);

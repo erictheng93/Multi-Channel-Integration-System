@@ -17,6 +17,7 @@ export interface Team {
   name: string
   description?: string
   qrCode?: string
+  lineUrl?: string  // 🆕 Phase 3: LINE 連結 URL
   isActive: boolean
   createdAt: string
   updatedAt: string
