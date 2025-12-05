@@ -5,11 +5,13 @@ import type { Context } from 'hono';
 import type { Bindings, QueryParams, DatabaseRow } from '../types';
 import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
+import { KV_TTL } from '../config/kv-config';
+import { KVKeyBuilder } from '../services/kv-management-service';
 
 // 快取管理器
 export class CacheManager {
   private env: Bindings;
-  private defaultTTL: number = 300; // 5 分鐘
+  private defaultTTL: number = KV_TTL.CACHE_QUERY; // 使用集中配置的 TTL
 
   constructor(env: Bindings) {
     this.env = env;
@@ -22,21 +24,18 @@ export class CacheManager {
   }
 
   // 獲取快取
+  // 注意：KV 自動處理 TTL 過期，不需要手動檢查
   async get<T>(prefix: string, identifier: string | number, params?: Record<string, unknown>): Promise<T | null> {
     try {
       const key = this.generateKey(prefix, identifier, params);
       const cached = await this.env.SESSIONS.get(key);
-      
+
       if (cached) {
         const data = JSON.parse(cached);
-        // 檢查是否過期
-        if (data.expiresAt && Date.now() > data.expiresAt) {
-          await this.env.SESSIONS.delete(key);
-          return null;
-        }
+        // KV expirationTtl 已自動處理過期，直接返回值
         return data.value as T;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Cache get error:', error);
@@ -45,10 +44,11 @@ export class CacheManager {
   }
 
   // 設置快取
+  // 使用 KV 原生 expirationTtl，不再存儲冗餘的 expiresAt
   async set<T>(
-    prefix: string, 
-    identifier: string | number, 
-    value: T, 
+    prefix: string,
+    identifier: string | number,
+    value: T,
     ttl: number = this.defaultTTL,
     params?: Record<string, unknown>
   ): Promise<void> {
@@ -57,9 +57,8 @@ export class CacheManager {
       const data = {
         value,
         createdAt: Date.now(),
-        expiresAt: Date.now() + (ttl * 1000)
       };
-      
+
       await this.env.SESSIONS.put(key, JSON.stringify(data), { expirationTtl: ttl });
     } catch (error) {
       console.error('Cache set error:', error);
@@ -360,34 +359,35 @@ export function performanceMiddleware() {
 }
 
 // 中間件：快取
-export function cacheMiddleware(ttl: number = 300) {
+// 使用集中配置的 TTL
+export function cacheMiddleware(ttl: number = KV_TTL.CACHE_HTTP) {
   return async (c: Context<{ Bindings: Bindings }>, next: () => Promise<void>) => {
     const method = c.req.method;
-    
+
     // 只快取 GET 請求
     if (method !== 'GET') {
       return next();
     }
-    
-    const cacheKey = `http:${c.req.url}`;
+
+    const cacheKey = KVKeyBuilder.cacheHttp(c.req.url);
     const cache = new CacheManager(c.env);
-    
+
     // 檢查快取
     const cached = await cache.get('http', cacheKey);
     if (cached) {
       ResponseOptimizer.setCacheHeaders(c, ttl);
       return c.json(cached);
     }
-    
+
     // 執行請求
     await next();
-    
+
     // 如果是成功回應，存入快取
     if (c.res.status === 200) {
       try {
         const responseData = await c.res.clone().json();
         await cache.set('http', cacheKey, responseData, ttl);
-      } catch (error) {
+      } catch {
         // 忽略快取錯誤
       }
     }
