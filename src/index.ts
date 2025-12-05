@@ -314,6 +314,18 @@ log.info('Security dashboard endpoints registered (P2-7)', {
   ]
 });
 
+// 🆕 Register KV Management handler - KV Namespace management and cleanup
+import kvManagementHandler from './handlers/kv-management-main';
+app.route('/api/kv', kvManagementHandler);
+log.info('KV Management endpoints registered', {
+  endpoints: [
+    'GET /api/kv/stats (Admin only)',
+    'GET /api/kv/health (Auth required)',
+    'POST /api/kv/cleanup (Admin only)',
+    'GET /api/kv/naming-convention (Public)'
+  ]
+});
+
 // =================================================================================
 // 🆕 PUBLIC FILE PROXY - R2 文件代理下載 (無需認證)
 // =================================================================================
