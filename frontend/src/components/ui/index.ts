@@ -12,3 +12,8 @@ export { default as Modal } from './Modal.vue'
 export { default as Dropdown } from './Dropdown.vue'
 export { default as DropdownItem } from './DropdownItem.vue'
 export { default as Tooltip } from './Tooltip.vue'
+
+// Notification Components
+export { default as NotificationBadge } from './NotificationBadge.vue'
+export { default as NotificationCenter } from './NotificationCenter.vue'
+export { default as NotificationItem } from './NotificationItem.vue'

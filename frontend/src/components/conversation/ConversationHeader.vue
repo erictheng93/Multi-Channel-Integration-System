@@ -44,6 +44,7 @@
               v-if="customerTags.length > 0"
               class="customer-tags"
             >
+              <span class="tags-label">客戶:</span>
               <div
                 v-for="tag in customerTags.slice(0, 3)"
                 :key="tag.id"
@@ -62,6 +63,33 @@
                 @click="showAllTags = !showAllTags"
               >
                 +{{ customerTags.length - 3 }}
+              </button>
+            </div>
+
+            <!-- 對話標籤顯示區 -->
+            <div
+              v-if="conversationTags.length > 0"
+              class="customer-tags conversation-tags"
+            >
+              <span class="tags-label">對話:</span>
+              <div
+                v-for="tag in conversationTags.slice(0, 3)"
+                :key="'conv-' + tag.id"
+                class="tag-chip conversation-tag"
+                :style="{ backgroundColor: tag.color + '20', borderColor: tag.color }"
+              >
+                <div
+                  class="tag-dot"
+                  :style="{ backgroundColor: tag.color }"
+                />
+                <span class="tag-label">{{ tag.name }}</span>
+              </div>
+              <button
+                v-if="conversationTags.length > 3"
+                class="more-tags-btn"
+                @click="showAllConversationTags = !showAllConversationTags"
+              >
+                +{{ conversationTags.length - 3 }}
               </button>
             </div>
           </div>
@@ -118,7 +146,7 @@
         </div>
       </div>
 
-      <!-- 標籤管理按鈕 -->
+      <!-- 客戶標籤管理按鈕 -->
       <div
         v-if="conversation?.customer?.id && customerIdNumber"
         class="tag-selector-wrapper"
@@ -126,7 +154,21 @@
         <TagSelector
           v-model="selectedTagIds"
           :customer-id="customerIdNumber"
+          button-label="客戶標籤"
           @change="handleTagsChange"
+        />
+      </div>
+
+      <!-- 對話標籤管理按鈕 -->
+      <div
+        v-if="conversation?.id"
+        class="tag-selector-wrapper"
+      >
+        <TagSelector
+          v-model="selectedConversationTagIds"
+          :conversation-id="conversation.id"
+          button-label="對話標籤"
+          @change="handleConversationTagsChange"
         />
       </div>
       <button
@@ -165,6 +207,7 @@ import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
+import { conversationApi } from '@/api/conversations'
 import { useToast } from '@/composables/useToast'
 
 interface Props {
@@ -186,6 +229,11 @@ const customerTags = ref<Tag[]>([])
 const selectedTagIds = ref<number[]>([])
 const showAllTags = ref(false)
 const showAssignPanel = ref(false)
+
+// 對話標籤狀態
+const conversationTags = ref<Tag[]>([])
+const selectedConversationTagIds = ref<number[]>([])
+const showAllConversationTags = ref(false)
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
@@ -219,7 +267,7 @@ const loadCustomerTags = async () => {
   }
 }
 
-// 處理標籤變更
+// 處理客戶標籤變更
 const handleTagsChange = async (tags: Tag[]) => {
   // 計算變化
   const previousTagIds = new Set(customerTags.value.map(t => t.id))
@@ -238,20 +286,90 @@ const handleTagsChange = async (tags: Tag[]) => {
 
       // 顯示成功提示（參考團隊管理的 Toast 風格）
       if (added.length > 0 && removed.length > 0) {
-        showSuccess('標籤更新成功', `已新增 ${added.length} 個標籤，移除 ${removed.length} 個標籤`)
+        showSuccess('客戶標籤更新成功', `已新增 ${added.length} 個標籤，移除 ${removed.length} 個標籤`)
       } else if (added.length > 0) {
         const tagNames = added.map(t => t.name).join('、')
-        showSuccess('標籤新增成功', `已成功新增標籤：${tagNames}`)
+        showSuccess('客戶標籤新增成功', `已成功新增標籤：${tagNames}`)
       } else if (removed.length > 0) {
         const tagNames = removed.map(t => t.name).join('、')
-        showSuccess('標籤移除成功', `已成功移除標籤：${tagNames}`)
+        showSuccess('客戶標籤移除成功', `已成功移除標籤：${tagNames}`)
       } else {
-        showSuccess('標籤更新成功', '客戶標籤已更新')
+        showSuccess('客戶標籤更新成功', '客戶標籤已更新')
       }
     } catch (error) {
       console.error('Failed to update customer tags:', error)
-      showError('標籤更新失敗', '無法更新客戶標籤，請稍後再試')
+      showError('客戶標籤更新失敗', '無法更新客戶標籤，請稍後再試')
     }
+  }
+}
+
+// 載入對話標籤
+const loadConversationTags = async () => {
+  if (!props.conversation?.id) { return }
+
+  try {
+    const response = await conversationApi.getConversationTags(props.conversation.id)
+    if (response.success && response.data) {
+      // 轉換為 Tag 類型
+      conversationTags.value = response.data.map(t => ({
+        id: t.id,
+        name: t.name,
+        color: t.color,
+        description: t.description,
+        teamId: null,
+        isActive: true,
+        createdBy: t.assignedBy,
+        createdAt: t.assignedAt,
+        updatedAt: t.assignedAt
+      }))
+      selectedConversationTagIds.value = response.data.map(t => t.id)
+    }
+  } catch (error) {
+    console.error('Failed to load conversation tags:', error)
+  }
+}
+
+// 處理對話標籤變更
+const handleConversationTagsChange = async (tags: Tag[]) => {
+  if (!props.conversation?.id) { return }
+
+  // 計算變化
+  const previousTagIds = new Set(conversationTags.value.map(t => t.id))
+  const newTagIds = new Set(tags.map(t => t.id))
+
+  const added = tags.filter(t => !previousTagIds.has(t.id))
+  const removed = conversationTags.value.filter(t => !newTagIds.has(t.id))
+
+  conversationTags.value = tags
+
+  try {
+    // 添加新標籤
+    if (added.length > 0) {
+      const addedTagIds = added.map(t => t.id)
+      await conversationApi.addConversationTags(props.conversation.id, addedTagIds)
+    }
+
+    // 移除舊標籤
+    if (removed.length > 0) {
+      const removedTagIds = removed.map(t => t.id)
+      await conversationApi.removeConversationTags(props.conversation.id, removedTagIds)
+    }
+
+    // 顯示成功提示
+    if (added.length > 0 && removed.length > 0) {
+      showSuccess('對話標籤更新成功', `已新增 ${added.length} 個標籤，移除 ${removed.length} 個標籤`)
+    } else if (added.length > 0) {
+      const tagNames = added.map(t => t.name).join('、')
+      showSuccess('對話標籤新增成功', `已成功新增標籤：${tagNames}`)
+    } else if (removed.length > 0) {
+      const tagNames = removed.map(t => t.name).join('、')
+      showSuccess('對話標籤移除成功', `已成功移除標籤：${tagNames}`)
+    }
+  } catch (error) {
+    console.error('Failed to update conversation tags:', error)
+    showError('對話標籤更新失敗', '無法更新對話標籤，請稍後再試')
+    // 回滾本地狀態
+    loadConversationTags()
   }
 }
 
@@ -349,15 +467,23 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// 監聽對話變化
+// 監聽客戶變化
 watch(() => props.conversation?.customer?.id, (newId) => {
   if (newId) {
     loadCustomerTags()
   }
 }, { immediate: true })
 
+// 監聽對話變化
+watch(() => props.conversation?.id, (newId) => {
+  if (newId) {
+    loadConversationTags()
+  }
+}, { immediate: true })
+
 onMounted(() => {
   loadCustomerTags()
+  loadConversationTags()
 })
 </script>
 
@@ -673,6 +799,23 @@ onMounted(() => {
   background: var(--hover-color);
   border-color: var(--primary-color);
   color: var(--primary-color);
+}
+
+/* 標籤分類標籤 */
+.tags-label {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
+/* 對話標籤特定樣式 */
+.conversation-tags {
+  margin-top: 0.25rem;
+}
+
+.conversation-tag {
+  border-style: dashed;
 }
 
 .tag-selector-wrapper {

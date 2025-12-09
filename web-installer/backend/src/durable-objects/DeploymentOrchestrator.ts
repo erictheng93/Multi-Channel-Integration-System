@@ -10,18 +10,27 @@ import { MigrationRunner } from '../services/MigrationRunner';
 import { ConfigGenerator } from '../services/ConfigGenerator';
 import { EmailService } from '../services/EmailService';
 import { RollbackService } from '../services/RollbackService';
-import type {
-  DeploymentConfig,
-  DeploymentState,
-  DeploymentStep,
-  DeploymentStatus,
-  DeploymentLog,
-  DeploymentError,
-  CloudflareResources,
-  AdminCredentials,
-  SSEEvent,
-  DEPLOYMENT_STEPS
+import { WorkerBundleService } from '../services/WorkerBundleService';
+import { FrontendBundleService } from '../services/FrontendBundleService';
+import {
+  DEPLOYMENT_STEPS,
+  type DeploymentConfig,
+  type DeploymentState,
+  type DeploymentStep,
+  type DeploymentStatus,
+  type DeploymentLog,
+  type DeploymentError,
+  type CloudflareResources,
+  type AdminCredentials,
+  type SSEEvent
 } from '../types/deployment';
+
+// Cloudflare Worker environment type
+interface Env {
+  RESEND_API_KEY?: string;
+  FROM_EMAIL?: string;
+  DEPLOYMENT_ORCHESTRATOR: DurableObjectNamespace;
+}
 
 export class DeploymentOrchestrator implements DurableObject {
   private state: DurableObjectState;
@@ -34,6 +43,14 @@ export class DeploymentOrchestrator implements DurableObject {
   private configGenerator!: ConfigGenerator;
   private emailService!: EmailService;
   private rollbackService!: RollbackService;
+  private workerBundleService!: WorkerBundleService;
+  private frontendBundleService!: FrontendBundleService;
+
+  // Generated secrets
+  private generatedSecrets!: { jwtSecret: string; encryptionKey: string };
+
+  // Prepared frontend assets
+  private frontendAssets!: Map<string, string>;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -103,6 +120,11 @@ export class DeploymentOrchestrator implements DurableObject {
       fromEmail: process.env.FROM_EMAIL || 'installer@crm.com'
     });
     this.rollbackService = new RollbackService(this.api);
+    this.workerBundleService = new WorkerBundleService();
+    this.frontendBundleService = new FrontendBundleService();
+
+    // Generate secure secrets for the deployment
+    this.generatedSecrets = this.workerBundleService.generateSecrets();
 
     // Initialize deployment state
     const deploymentId = crypto.randomUUID();
@@ -260,12 +282,11 @@ export class DeploymentOrchestrator implements DurableObject {
   private updateTotalProgress(completedStep: DeploymentStep): void {
     if (!this.deploymentState) return;
 
-    const steps = DEPLOYMENT_STEPS as any;
     let totalProgress = 0;
 
     // Sum up weights of all steps up to and including the completed step
-    for (const [stepName, stepConfig] of Object.entries(steps)) {
-      totalProgress += stepConfig.weight;
+    for (const [stepName, stepConfig] of Object.entries(DEPLOYMENT_STEPS)) {
+      totalProgress += (stepConfig as { weight: number }).weight;
       if (stepName === completedStep) break;
     }
 
@@ -518,8 +539,9 @@ export class DeploymentOrchestrator implements DurableObject {
     if (!this.deploymentState) return;
     const queueName = `${this.deploymentState.config.projectName}-queue`;
     const queue = await this.api.createQueue(queueName);
+    this.deploymentState.resources.queueId = queue.queue_id;
     this.deploymentState.resources.queueName = queue.queue_name;
-    this.log('success', `Created queue: ${queue.queue_name}`);
+    this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
   }
 
   private async stepRunMigrations(): Promise<void> {
@@ -543,36 +565,112 @@ export class DeploymentOrchestrator implements DurableObject {
 
   private async stepDeployWorker(): Promise<void> {
     if (!this.deploymentState) return;
-    // In production, this would bundle and deploy the actual Worker code
-    // For now, we simulate it
+
     const workerName = `${this.deploymentState.config.projectName}-worker`;
+    const projectName = this.deploymentState.config.projectName;
+
+    // Get bundled Worker script
+    const workerScript = this.workerBundleService.getBundledWorkerScript();
+
+    // Generate bindings for the Worker
+    const bindings = this.workerBundleService.generateBindings(
+      this.deploymentState.resources,
+      projectName
+    );
+
+    this.log('info', `Deploying Worker with ${bindings.length} bindings...`);
+
+    // Deploy the Worker using Cloudflare API
+    const worker = await this.api.deployWorker({
+      name: workerName,
+      script: workerScript,
+      bindings,
+      compatibility_date: '2024-01-01',
+      compatibility_flags: ['nodejs_compat']
+    });
+
     this.deploymentState.resources.workerId = workerName;
-    this.deploymentState.resources.workerUrl = `https://${workerName}.workers.dev`;
-    this.log('success', `Deployed Worker: ${workerName}`);
-    await this.sleep(2000); // Simulate deployment time
+    this.deploymentState.resources.workerUrl = `https://${workerName}.${this.deploymentState.config.accountId}.workers.dev`;
+
+    this.log('success', `Deployed Worker: ${workerName} (etag: ${worker.etag})`);
   }
 
   private async stepBuildFrontend(): Promise<void> {
     if (!this.deploymentState) return;
-    this.log('info', 'Building frontend...');
-    await this.sleep(3000); // Simulate build time
-    this.log('success', 'Frontend build completed');
+
+    this.log('info', 'Preparing frontend assets...');
+
+    // Get Worker URL (should be set from stepDeployWorker)
+    const workerUrl = this.deploymentState.resources.workerUrl || '';
+    const projectName = this.deploymentState.config.projectName;
+
+    // Generate frontend assets with correct API configuration
+    this.frontendAssets = this.frontendBundleService.getBundledAssets({
+      apiBaseUrl: workerUrl,
+      wsBaseUrl: workerUrl.replace('https://', 'wss://'),
+      appUrl: `https://${projectName}.pages.dev`, // Will be updated after Pages deployment
+      projectName
+    });
+
+    this.log('success', `Frontend assets prepared: ${this.frontendAssets.size} files`);
   }
 
   private async stepDeployPages(): Promise<void> {
     if (!this.deploymentState) return;
+
     const projectName = this.deploymentState.config.projectName;
+
+    // Create Pages project
+    this.log('info', 'Creating Pages project...');
     const pages = await this.api.createPagesProject(projectName);
+
     this.deploymentState.resources.pagesProjectId = pages.id;
+    this.deploymentState.resources.pagesProjectName = pages.name;
     this.deploymentState.resources.pagesUrl = `https://${pages.subdomain}.pages.dev`;
-    this.log('success', `Deployed Pages: ${pages.subdomain}.pages.dev`);
+
+    this.log('info', `Pages project created: ${pages.name}`);
+
+    // Deploy frontend assets
+    if (this.frontendAssets && this.frontendAssets.size > 0) {
+      this.log('info', 'Uploading frontend assets...');
+
+      const deployment = await this.api.deployPagesDirectUpload(
+        projectName,
+        this.frontendAssets
+      );
+
+      this.log('success', `Deployed to Pages: ${pages.subdomain}.pages.dev (deployment: ${deployment.id})`);
+    } else {
+      this.log('warning', 'No frontend assets to deploy');
+    }
   }
 
   private async stepConfigureDomain(): Promise<void> {
-    if (!this.deploymentState || !this.deploymentState.config.customDomain) return;
-    // In production, this would configure the custom domain
-    this.log('success', `Configured custom domain: ${this.deploymentState.config.customDomain}`);
-    await this.sleep(1000);
+    if (!this.deploymentState) return;
+
+    const customDomain = this.deploymentState.config.customDomain;
+    if (!customDomain) {
+      this.log('info', 'No custom domain configured, skipping...');
+      return;
+    }
+
+    const pagesProjectName = this.deploymentState.resources.pagesProjectName;
+    if (!pagesProjectName) {
+      throw new Error('Pages project not created yet');
+    }
+
+    this.log('info', `Configuring custom domain: ${customDomain}...`);
+
+    try {
+      const domain = await this.api.addCustomDomain(pagesProjectName, customDomain);
+      this.log('success', `Custom domain configured: ${customDomain} (SSL: ${domain.ssl.status})`);
+
+      // Update the Pages URL to use custom domain
+      this.deploymentState.resources.pagesUrl = `https://${customDomain}`;
+    } catch (error) {
+      // Custom domain may require DNS configuration
+      this.log('warning', `Custom domain setup initiated. DNS configuration may be required: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async stepCreateAdmin(): Promise<void> {
@@ -582,80 +680,24 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     const password = this.configGenerator.generateAdminPassword();
-    const credentials: AdminCredentials = {
-      username: 'admin',
+    const adminEmail = this.deploymentState.config.adminEmail;
+
+    // Create admin user using MigrationRunner (handles password hashing internally)
+    const result = await this.migrationRunner.createAdminUser(
+      this.deploymentState.resources.d1DatabaseId,
+      adminEmail,
       password,
-      email: this.deploymentState.config.adminEmail
+      'System Administrator'
+    );
+
+    const credentials: AdminCredentials = {
+      username: result.username,
+      password,
+      email: adminEmail
     };
 
-    // Hash password using PBKDF2 (secure alternative to bcrypt for Cloudflare Workers)
-    const passwordHash = await this.hashPassword(password);
-
-    await this.migrationRunner.createAdminUser(
-      this.deploymentState.resources.d1DatabaseId,
-      credentials.username,
-      credentials.email,
-      passwordHash
-    );
-
     (this.deploymentState as any).adminCredentials = credentials;
-    this.log('success', 'Created admin user');
-  }
-
-  /**
-   * Hash password using PBKDF2 with Web Crypto API
-   * This is a secure alternative to bcrypt for Cloudflare Workers environment
-   */
-  private async hashPassword(password: string): Promise<string> {
-    // Generate a random salt
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-
-    // Encode password as bytes
-    const encoder = new TextEncoder();
-    const passwordBytes = encoder.encode(password);
-
-    // Import password as key
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      passwordBytes,
-      'PBKDF2',
-      false,
-      ['deriveBits']
-    );
-
-    // Derive key using PBKDF2
-    const derivedBits = await crypto.subtle.deriveBits(
-      {
-        name: 'PBKDF2',
-        salt,
-        iterations: 100000, // OWASP recommended minimum
-        hash: 'SHA-256'
-      },
-      keyMaterial,
-      256 // 32 bytes
-    );
-
-    // Convert to Uint8Array
-    const derivedKey = new Uint8Array(derivedBits);
-
-    // Combine salt and derived key, encode as base64
-    const combined = new Uint8Array(salt.length + derivedKey.length);
-    combined.set(salt);
-    combined.set(derivedKey, salt.length);
-
-    // Return as base64 with algorithm prefix for verification
-    return `pbkdf2:100000:${this.arrayBufferToBase64(combined)}`;
-  }
-
-  /**
-   * Convert ArrayBuffer to base64 string
-   */
-  private arrayBufferToBase64(buffer: Uint8Array): string {
-    let binary = '';
-    for (let i = 0; i < buffer.length; i++) {
-      binary += String.fromCharCode(buffer[i]);
-    }
-    return btoa(binary);
+    this.log('success', `Created admin user: ${result.username} (ID: ${result.userId})`);
   }
 
   private async stepSendEmail(): Promise<void> {

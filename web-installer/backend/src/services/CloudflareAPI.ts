@@ -230,8 +230,8 @@ export class CloudflareAPI {
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Failed to deploy worker: ${error.errors[0]?.message || response.statusText}`);
+      const error = await response.json() as CloudflareAPIResponse;
+      throw new Error(`Failed to deploy worker: ${error.errors?.[0]?.message || response.statusText}`);
     }
 
     return response.json();
@@ -295,8 +295,8 @@ export class CloudflareAPI {
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Failed to deploy Pages: ${error.errors[0]?.message || response.statusText}`);
+      const error = await response.json() as CloudflareAPIResponse;
+      throw new Error(`Failed to deploy Pages: ${error.errors?.[0]?.message || response.statusText}`);
     }
 
     const result = await response.json() as CloudflareAPIResponse<PagesDeployment>;

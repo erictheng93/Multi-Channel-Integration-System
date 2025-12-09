@@ -5,6 +5,8 @@
 import { ref, watch } from 'vue'
 import { getWebSocketManager } from './websocketManager'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
+import type { Notification } from '@/api/notifications'
 
 // Singleton state
 const isInitialized = ref(false)
@@ -13,6 +15,60 @@ const connectionError = ref<string | null>(null)
 const retryCount = ref(0)
 const maxRetries = 3
 const retryDelay = 5000 // 5 seconds
+
+/**
+ * Setup notification event handler
+ * Connects WebSocket notification events to the notifications store
+ */
+function setupNotificationEventHandler(manager: ReturnType<typeof getWebSocketManager>): void {
+  try {
+    const notificationsStore = useNotificationsStore()
+
+    manager.setEventCallbacks({
+      onNotification: (notificationData: unknown) => {
+        try {
+          // Handle notification event from WebSocket
+          // The data structure from backend: { notification: {...} }
+          const data = notificationData as { notification?: Partial<Notification> }
+
+          if (data?.notification) {
+            const notification = data.notification
+
+            // Convert to full Notification object
+            const fullNotification: Notification = {
+              id: notification.id || crypto.randomUUID(),
+              userId: notification.userId || 0,
+              type: notification.type || 'system',
+              title: notification.title || '新通知',
+              content: notification.content || '',
+              data: notification.data || {},
+              priority: notification.priority || 'normal',
+              isRead: false,
+              readAt: undefined,
+              expiresAt: notification.expiresAt,
+              createdAt: notification.createdAt || new Date().toISOString()
+            }
+
+            // Add to notifications store for immediate UI update
+            notificationsStore.addNotification(fullNotification)
+
+            console.log('🔔 [GlobalWebSocket] Real-time notification received:', {
+              id: fullNotification.id,
+              type: fullNotification.type,
+              title: fullNotification.title
+            })
+          }
+        } catch (error) {
+          console.error('[GlobalWebSocket] Error processing notification:', error)
+        }
+      }
+    })
+
+    console.log('[GlobalWebSocket] Notification event handler setup complete')
+  } catch (error) {
+    console.error('[GlobalWebSocket] Failed to setup notification handler:', error)
+  }
+}
 
 /**
  * Initialize global WebSocket connection
@@ -50,6 +106,9 @@ export async function initializeGlobalWebSocket(): Promise<boolean> {
     }
 
     await manager.connect()
+
+    // 🔔 Setup notification event handler to push real-time notifications to store
+    setupNotificationEventHandler(manager)
 
     isInitialized.value = true
     retryCount.value = 0

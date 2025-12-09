@@ -526,8 +526,8 @@ defineEmits<{
 }>()
 
 // Feature flag: 對話標籤功能開關
-// TODO: 未來實現對話標籤功能時，將此值改為 true
-const ENABLE_CONVERSATION_TAGS = false
+// 已啟用對話標籤功能
+const ENABLE_CONVERSATION_TAGS = true
 
 interface Props {
   show: boolean

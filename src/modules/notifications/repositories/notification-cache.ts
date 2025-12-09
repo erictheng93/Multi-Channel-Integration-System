@@ -156,7 +156,7 @@ export class NotificationCache {
   ): Promise<void> {
     const key = this.getRecentNotificationsKey(userId, limit);
     await this.kv.put(key, JSON.stringify(notifications), {
-      expirationTtl: ttl || 30 // 最近通知更短的快取時間
+      expirationTtl: Math.max(ttl || 60, 60) // Cloudflare KV 最小 TTL 為 60 秒
     });
   }
 

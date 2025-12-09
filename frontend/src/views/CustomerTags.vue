@@ -139,21 +139,6 @@
         </div>
 
         <div class="toolbar-actions">
-          <select
-            v-model="filterTeam"
-            class="filter-select"
-          >
-            <option value="">
-              所有團隊
-            </option>
-            <option value="global">
-              全局標籤
-            </option>
-            <option value="team">
-              團隊標籤
-            </option>
-          </select>
-
           <button
             v-if="selectedTags.length > 0"
             class="btn btn-secondary"
@@ -344,66 +329,6 @@
                 maxlength="200"
               />
             </div>
-
-            <div class="form-group">
-              <label class="form-label">範圍</label>
-              <div class="scope-options">
-                <label
-                  class="scope-option"
-                  :class="{ selected: !formData.teamId }"
-                >
-                  <input
-                    v-model="formData.teamId"
-                    type="radio"
-                    :value="null"
-                    class="scope-radio"
-                  >
-                  <div class="scope-content">
-                    <svg
-                      class="scope-icon"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>全局標籤</span>
-                  </div>
-                </label>
-                <label
-                  class="scope-option"
-                  :class="{ selected: formData.teamId }"
-                >
-                  <input
-                    v-model="formData.teamId"
-                    type="radio"
-                    :value="1"
-                    class="scope-radio"
-                  >
-                  <div class="scope-content">
-                    <svg
-                      class="scope-icon"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                    <span>團隊專用</span>
-                  </div>
-                </label>
-              </div>
-            </div>
           </div>
 
           <div class="modal-footer">
@@ -524,9 +449,8 @@ import TagStatsModal from '@/components/customer/TagStatsModal.vue'
 // Toast notifications
 const { showSuccess, showError } = useToast()
 
-const loading = ref(false)
+const loading = ref(true)  // 初始為 true，避免首次渲染時閃爍空狀態
 const searchQuery = ref('')
-const filterTeam = ref('')
 const tags = ref<Tag[]>([])
 const selectedTags = ref<number[]>([])
 const showBulkMenu = ref(false)
@@ -541,8 +465,7 @@ const statsTag = ref<Tag | null>(null)
 const formData = ref({
   name: '',
   color: '#3B82F6',
-  description: '',
-  teamId: null as number | null
+  description: ''
 })
 
 const predefinedColors = [
@@ -563,13 +486,6 @@ const filteredTags = computed(() => {
     result = result.filter(
       t => t.name.toLowerCase().includes(query) || t.description?.toLowerCase().includes(query)
     )
-  }
-
-  // Team filter
-  if (filterTeam.value === 'global') {
-    result = result.filter(t => !t.teamId)
-  } else if (filterTeam.value === 'team') {
-    result = result.filter(t => t.teamId)
   }
 
   return result
@@ -653,8 +569,7 @@ const editTag = (tag: Tag) => {
   formData.value = {
     name: tag.name,
     color: tag.color,
-    description: tag.description || '',
-    teamId: tag.teamId || null
+    description: tag.description || ''
   }
   showEditModal.value = true
 }
@@ -667,11 +582,18 @@ const saveTag = async () => {
   try {
     if (isEdit && editingTag.value) {
       // ===== 编辑标签 - 乐观更新 =====
-      const oldTag = optimisticUpdateTag(editingTag.value.id, {
+      // 🔧 FIX: 在 closeModals() 之前保存數據副本，避免競態條件
+      const tagId = editingTag.value.id
+      const updateData = {
         name: formData.value.name,
         color: formData.value.color,
-        description: formData.value.description || null,
-        teamId: formData.value.teamId,
+        description: formData.value.description || undefined
+      }
+
+      const oldTag = optimisticUpdateTag(tagId, {
+        name: updateData.name,
+        color: updateData.color,
+        description: updateData.description || null,
         updatedAt: new Date().toISOString()
       })
 
@@ -683,9 +605,9 @@ const saveTag = async () => {
       )
       closeModals()
 
-      // 🔄 后台验证
+      // 🔄 后台验证 - 使用保存的 updateData 而非 formData.value
       try {
-        await updateTag(editingTag.value.id, formData.value)
+        await updateTag(tagId, updateData)
         console.log('✅ [CustomerTags] Tag updated (verified):', tagName)
       } catch (error) {
         // ❌ 失败 - 回滚UI
@@ -700,12 +622,19 @@ const saveTag = async () => {
       }
     } else {
       // ===== 创建标签 - 乐观更新 =====
-      const newTag: Tag = {
-        id: 0, // 临时ID，稍后替换
+      // 🔧 FIX: 在 closeModals() 之前保存 formData 副本，避免競態條件
+      const createData = {
         name: formData.value.name,
         color: formData.value.color,
-        description: formData.value.description || null,
-        teamId: formData.value.teamId,
+        description: formData.value.description || undefined
+      }
+
+      const newTag: Tag = {
+        id: 0, // 临时ID，稍后替换
+        name: createData.name,
+        color: createData.color,
+        description: createData.description || null,
+        teamId: null, // 簡化模型：所有標籤為全局
         isActive: true,
         createdBy: 'current-user', // TODO: 从认证状态获取
         customerCount: 0,
@@ -724,9 +653,9 @@ const saveTag = async () => {
       )
       closeModals()
 
-      // 🔄 后台验证
+      // 🔄 后台验证 - 使用保存的 createData 而非 formData.value
       try {
-        const response = await createTag(formData.value)
+        const response = await createTag(createData)
         if (response.success && response.data) {
           // 更新临时ID为真实ID
           const index = tags.value.findIndex(t => t.id === tempId)
@@ -818,8 +747,7 @@ const closeModals = () => {
   formData.value = {
     name: '',
     color: '#3B82F6',
-    description: '',
-    teamId: null
+    description: ''
   }
 }
 

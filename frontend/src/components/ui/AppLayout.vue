@@ -248,17 +248,8 @@
           <!-- 統計資訊 Slot (用於對話詳情頁) -->
           <slot name="top-bar-stats" />
 
-          <!-- Notifications -->
-          <button
-            class="notification-btn"
-            @click="showNotifications = !showNotifications"
-          >
-            <BellIcon />
-            <span
-              v-if="unreadCount > 0"
-              class="notification-badge"
-            >{{ unreadCount }}</span>
-          </button>
+          <!-- Notification Center (新版整合組件) -->
+          <NotificationCenter @notification-click="handleNotificationClick" />
 
           <!-- Status Indicator -->
           <div class="status-indicator">
@@ -274,63 +265,20 @@
       </div>
     </main>
 
-    <!-- Notification Panel -->
-    <div
-      v-if="showNotifications"
-      class="notification-panel"
-      @click.self="showNotifications = false"
-    >
-      <div class="notification-content">
-        <div class="notification-header">
-          <h3>通知</h3>
-          <button
-            class="close-btn"
-            @click="showNotifications = false"
-          >
-            ×
-          </button>
-        </div>
-        <div class="notification-list">
-          <div
-            v-if="notifications.length === 0"
-            class="no-notifications"
-          >
-            暫無新通知
-          </div>
-          <div
-            v-for="notification in notifications"
-            :key="notification.id"
-            class="notification-item"
-            :class="{ unread: !notification.read }"
-          >
-            <div class="notification-content">
-              <div class="notification-title">
-                {{ notification.title }}
-              </div>
-              <div class="notification-message">
-                {{ notification.message }}
-              </div>
-              <div class="notification-time">
-                {{ formatTime(notification.createdAt) }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { NotificationCenter } from '@/components/ui'
+import type { Notification } from '@/stores/notifications'
 import DashboardIcon from '@/components/icons/DashboardIcon.vue'
 import ChatIcon from '@/components/icons/ChatIcon.vue'
 import TagIcon from '@/components/icons/TagIcon.vue'
-import BellIcon from '@/components/icons/BellIcon.vue'
 import LogoutIcon from '@/components/icons/LogoutIcon.vue'
 import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
 import UserIcon from '@/components/icons/UserIcon.vue'
@@ -345,6 +293,7 @@ import ChannelIcon from '@/components/icons/ChannelIcon.vue'
 // Icons are now imported from separate .vue files
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const { showError } = useToast()
 const { confirmInfo } = useConfirm()
@@ -352,19 +301,9 @@ const { confirmInfo } = useConfirm()
 const sidebarCollapsed = shallowRef(false)
 const isAutoCollapsed = ref(false)
 const showMobileMenu = shallowRef(false)
-const showNotifications = ref(false)
 const showUserMenu = ref(false)
 const isMobile = shallowRef(false)
 const isReportsExpanded = ref(false)
-const notifications = ref([
-  {
-    id: '1',
-    title: '新訊息',
-    message: '來自 LINE 用戶的新訊息',
-    createdAt: new Date(),
-    read: false
-  }
-])
 
 const baseNavigationItems = [
   { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
@@ -425,9 +364,45 @@ const userInitials = computed(() => {
   return initials || 'U'
 })
 
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
+// 處理通知點擊事件 - 根據通知類型導航到相應頁面
+const handleNotificationClick = (notification: Notification) => {
+  const { type, data } = notification
+
+  switch (type) {
+    case 'new_message':
+    case 'customer_responded':
+      if (data?.conversationId) {
+        router.push(`/conversations/${data.conversationId}`)
+      }
+      break
+    case 'conversation_assigned':
+    case 'conversation_transferred':
+    case 'priority_changed':
+      if (data?.conversationId) {
+        router.push(`/conversations/${data.conversationId}`)
+      }
+      break
+    case 'mention':
+      // 提及通知 - 導航到相關對話或內部討論
+      if (data?.conversationId) {
+        router.push(`/conversations/${data.conversationId}`)
+      }
+      break
+    case 'system':
+      // 系統通知 - 可能導航到設定或公告頁面
+      router.push('/notifications')
+      break
+    case 'task_reminder':
+      // 任務提醒 - 導航到相關任務
+      if (data?.conversationId) {
+        router.push(`/conversations/${data.conversationId}`)
+      }
+      break
+    default:
+      // 預設導航到通知列表
+      router.push('/notifications')
+  }
+}
 
 const toggleSidebar = () => {
   if (isMobile.value) {
@@ -526,23 +501,11 @@ const handleLogout = async () => {
   }
 }
 
-const formatTime = (date: Date) => {
-  return new Intl.DateTimeFormat('zh-TW', {
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date)
-}
-
-// 移除未使用的 handleNavigation 函數
-
 // 點擊外部關閉菜單
 const handleClickOutside = (event: Event) => {
   const target = event.target as globalThis.Element
   if (!target.closest('.user-profile') && !target.closest('.user-menu')) {
     showUserMenu.value = false
-  }
-  if (!target.closest('.notification-btn') && !target.closest('.notification-panel')) {
-    showNotifications.value = false
   }
   if (!target.closest('.sidebar') && !target.closest('.mobile-menu-btn') && isMobile.value) {
     showMobileMenu.value = false
@@ -557,9 +520,8 @@ watch(() => route.path, (newPath) => {
     isReportsExpanded.value = true
   }
 
-  // Close any open menus when route changes
+  // Close user menu when route changes
   showUserMenu.value = false
-  showNotifications.value = false
 }, { flush: 'post' })
 
 onMounted(async () => {

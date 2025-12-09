@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments, conversationTags } from '@/db/schema';
+import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments, conversationTags, tags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   NewConversationTransfer
@@ -17,6 +17,11 @@ import { MessageRequestService, MessageService } from '@modules/conversations/se
 import { getSSECorsHeaders } from '@/config/cors';
 import { WebSocketAuthService } from '@/services/websocket-auth-service';
 import { createContextLogger } from '@/utils/logger';
+import {
+  triggerConversationAssignedNotification,
+  triggerConversationTransferredNotification,
+  triggerPriorityChangedNotification
+} from '@/utils/notification-trigger';
 
 // Context logger for conversation handler
 const log = createContextLogger('ConversationHandler');
@@ -362,6 +367,34 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
             updatedAt: sql`datetime('now')`
           })
           .where(inArray(conversations.id, conversationIdsArray));
+
+        // 🔔 通知觸發：發送優先級變更通知給負責的客服
+        // 獲取所有受影響對話的負責人
+        const assignedAgentsForPriority = await drizzleDb
+          .select({ assignedUserId: conversations.assignedUserId })
+          .from(conversations)
+          .where(inArray(conversations.id, conversationIdsArray));
+
+        const uniqueAgentIdsForPriority = [...new Set(
+          assignedAgentsForPriority
+            .filter(conv => conv.assignedUserId)
+            .map(conv => conv.assignedUserId!)
+        )];
+
+        // 為每個負責人發送通知 (非阻塞)
+        for (const agentId of uniqueAgentIdsForPriority) {
+          triggerPriorityChangedNotification(c.env, {
+            userId: agentId,
+            conversationIds: conversationIdsArray,
+            newPriority: data.priority,
+            changedBy: user.displayName || 'System'
+          }).catch(err => {
+            log.warn('Failed to trigger priority change notification', {
+              error: err instanceof Error ? err.message : String(err),
+              agentId
+            });
+          });
+        }
         break;
 
       case 'add_tags':
@@ -827,6 +860,28 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       log.warn('WebSocket: Assignment broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
+    // 🔔 通知觸發：發送對話指派通知給被指派的客服
+    if (userId) {
+      // 先獲取客戶名稱用於通知
+      const customerInfo = await drizzleDb
+        .select({ displayName: customers.displayName })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(eq(conversations.id, conversationId))
+        .get();
+
+      triggerConversationAssignedNotification(c.env, {
+        assignedUserId: userId,
+        conversationId,
+        customerName: customerInfo?.displayName || '未知客戶',
+        assignedBy: user.displayName || 'System'
+      }).catch(err => {
+        log.warn('Failed to trigger assignment notification', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      });
+    }
+
     // 🔧 FIX: 获取并返回完整的对话对象
     log.debug('Assign API fetching updated conversation with JOIN', {
       conversationId,
@@ -1166,6 +1221,30 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       log.warn('WebSocket: Transfer broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
+    // 🔔 通知觸發：發送對話轉移通知給目標客服
+    if (toUserId) {
+      // 獲取客戶名稱用於通知
+      const customerInfo = await drizzleDb
+        .select({ displayName: customers.displayName })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(eq(conversations.id, conversationId))
+        .get();
+
+      triggerConversationTransferredNotification(c.env, {
+        toUserId,
+        conversationId,
+        customerName: customerInfo?.displayName || '未知客戶',
+        transferredBy: user.displayName || 'System',
+        fromUserId,
+        reason
+      }).catch(err => {
+        log.warn('Failed to trigger transfer notification', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      });
+    }
+
     return c.json({
       success: true,
       message: 'Conversation transferred successfully',
@@ -1178,6 +1257,222 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
       timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// ==================== 對話標籤管理 ====================
+
+// 獲取對話標籤
+conversationHandler.get('/:id/tags', jwtAuth, async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const drizzleDb = createDbClient(c.env.DB);
+
+    // 檢查對話是否存在
+    const conversation = await drizzleDb
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({ success: false, error: 'Conversation not found' }, 404);
+    }
+
+    // 獲取對話的所有標籤
+    const conversationTagsData = await drizzleDb
+      .select({
+        tagId: conversationTags.tagId,
+        assignedBy: conversationTags.assignedBy,
+        assignedAt: conversationTags.assignedAt,
+        tagName: tags.name,
+        tagColor: tags.color,
+        tagDescription: tags.description
+      })
+      .from(conversationTags)
+      .innerJoin(tags, eq(conversationTags.tagId, tags.id))
+      .where(
+        and(
+          eq(conversationTags.conversationId, conversationId),
+          eq(tags.isActive, true)
+        )
+      );
+
+    const formattedTags = conversationTagsData.map(t => ({
+      id: t.tagId,
+      name: t.tagName,
+      color: t.tagColor,
+      description: t.tagDescription,
+      assignedBy: t.assignedBy,
+      assignedAt: t.assignedAt
+    }));
+
+    return c.json({
+      success: true,
+      data: formattedTags,
+      message: 'Conversation tags retrieved successfully'
+    });
+
+  } catch (error) {
+    log.error('Get conversation tags error', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get conversation tags'
+    }, 500);
+  }
+});
+
+// 添加對話標籤
+conversationHandler.post('/:id/tags', jwtAuth, async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const user = c.get('user');
+    const payload = c.get('jwtPayload');
+    const { tagIds } = await c.req.json();
+
+    if (!Array.isArray(tagIds) || tagIds.length === 0) {
+      return validationErrorResponse(c, [
+        { field: 'tagIds', message: 'Tag IDs array is required' }
+      ]);
+    }
+
+    const drizzleDb = createDbClient(c.env.DB);
+
+    // 檢查對話是否存在
+    const conversation = await drizzleDb
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({ success: false, error: 'Conversation not found' }, 404);
+    }
+
+    // 構建批量插入值
+    const assignedBy = payload?.userId ? String(payload.userId) : 'system';
+    const parsedTagIds = tagIds.map((id: string | number) => parseInt(String(id)));
+    const tagInsertValues = parsedTagIds.map(tagId => ({
+      conversationId: conversationId,
+      tagId: tagId,
+      assignedBy: assignedBy
+    }));
+
+    // 批量插入標籤關聯
+    await drizzleDb.insert(conversationTags)
+      .values(tagInsertValues)
+      .onConflictDoNothing();
+
+    log.info('Conversation tags added', { conversationId, tagIds: parsedTagIds, addedBy: assignedBy });
+
+    // WebSocket 廣播標籤變更
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastConversationEvent({
+        type: 'conversation_tags_updated',
+        conversationId,
+        userId: String(user.id),
+        data: {
+          operation: 'add',
+          tagIds: parsedTagIds,
+          updatedBy: {
+            id: user.id,
+            name: user.displayName
+          },
+          timestamp: new Date().toISOString()
+        },
+        priority: 'normal'
+      });
+    } catch (broadcastError) {
+      log.warn('WebSocket: Tags update broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+    }
+
+    return c.json({
+      success: true,
+      message: 'Tags added to conversation successfully'
+    });
+
+  } catch (error) {
+    log.error('Add conversation tags error', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to add tags to conversation'
+    }, 500);
+  }
+});
+
+// 移除對話標籤
+conversationHandler.delete('/:id/tags', jwtAuth, async (c) => {
+  try {
+    const conversationId = c.req.param('id');
+    const user = c.get('user');
+    const { tagIds } = await c.req.json();
+
+    if (!Array.isArray(tagIds) || tagIds.length === 0) {
+      return validationErrorResponse(c, [
+        { field: 'tagIds', message: 'Tag IDs array is required' }
+      ]);
+    }
+
+    const drizzleDb = createDbClient(c.env.DB);
+
+    // 檢查對話是否存在
+    const conversation = await drizzleDb
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .get();
+
+    if (!conversation) {
+      return c.json({ success: false, error: 'Conversation not found' }, 404);
+    }
+
+    const parsedTagIds = tagIds.map((id: string | number) => parseInt(String(id)));
+
+    // 刪除標籤關聯
+    await drizzleDb.delete(conversationTags)
+      .where(
+        and(
+          eq(conversationTags.conversationId, conversationId),
+          inArray(conversationTags.tagId, parsedTagIds)
+        )
+      );
+
+    log.info('Conversation tags removed', { conversationId, tagIds: parsedTagIds, removedBy: user.id });
+
+    // WebSocket 廣播標籤變更
+    try {
+      const broadcastService = new WebSocketBroadcastService(c.env);
+      await broadcastService.broadcastConversationEvent({
+        type: 'conversation_tags_updated',
+        conversationId,
+        userId: String(user.id),
+        data: {
+          operation: 'remove',
+          tagIds: parsedTagIds,
+          updatedBy: {
+            id: user.id,
+            name: user.displayName
+          },
+          timestamp: new Date().toISOString()
+        },
+        priority: 'normal'
+      });
+    } catch (broadcastError) {
+      log.warn('WebSocket: Tags removal broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+    }
+
+    return c.json({
+      success: true,
+      message: 'Tags removed from conversation successfully'
+    });
+
+  } catch (error) {
+    log.error('Remove conversation tags error', { error: error instanceof Error ? error.message : String(error) });
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to remove tags from conversation'
     }, 500);
   }
 });
@@ -1677,6 +1972,12 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     const user = c.get('user');
     log.debug('Conversation Handler GET / - User authenticated', { userId: user.id, userIdType: typeof user.id });
 
+    // 獲取篩選參數
+    const tagIdsParam = c.req.query('tagIds'); // e.g., "1,2,3"
+    const tagIds = tagIdsParam ? tagIdsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+
+    log.debug('Conversation Handler filter params', { tagIds });
+
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
 
     log.debug('Conversation Handler visible conversations', { count: visibleConversationIds.length });
@@ -1694,12 +1995,43 @@ conversationHandler.get('/', jwtAuth, async (c) => {
     // 🔧 FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
     log.debug('Conversation Handler querying conversation data');
     const drizzleDb = createDbClient(c.env.DB);
+
+    // 如果有標籤篩選，先獲取有這些標籤的對話 ID
+    let filteredConversationIds = visibleConversationIds;
+    if (tagIds.length > 0) {
+      const taggedConversations = await drizzleDb
+        .selectDistinct({ conversationId: conversationTags.conversationId })
+        .from(conversationTags)
+        .where(
+          and(
+            inArray(conversationTags.conversationId, visibleConversationIds),
+            inArray(conversationTags.tagId, tagIds)
+          )
+        );
+      filteredConversationIds = taggedConversations.map(tc => tc.conversationId);
+
+      log.debug('Conversation Handler filtered by tags', {
+        originalCount: visibleConversationIds.length,
+        filteredCount: filteredConversationIds.length,
+        tagIds
+      });
+
+      // 如果篩選後沒有對話，返回空列表
+      if (filteredConversationIds.length === 0) {
+        return c.json({
+          success: true,
+          data: [],
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
     const conversationResults = await drizzleDb
       .select()
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
-      .where(inArray(conversations.id, visibleConversationIds))
+      .where(inArray(conversations.id, filteredConversationIds))
       .orderBy(desc(conversations.updatedAt));
 
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
