@@ -34,6 +34,12 @@ export interface DeploymentConfig {
   customDomain?: string;
   accountId: string;
   oauthToken: string;
+  // LINE OA Integration (optional - can configure later)
+  lineChannelAccessToken?: string;
+  lineChannelSecret?: string;
+  // Facebook Integration (optional - future feature)
+  facebookPageAccessToken?: string;
+  facebookAppSecret?: string;
 }
 
 export interface DeploymentState {
@@ -54,9 +60,11 @@ export interface CloudflareResources {
   kvSessionNamespaceId?: string;
   kvCacheNamespaceId?: string;
   r2BucketName?: string;
-  queueName?: string;
-  workerName?: string;
+  queueId?: string;        // Queue ID for deletion
+  queueName?: string;      // Queue name for reference
+  workerId?: string;
   workerUrl?: string;
+  pagesProjectId?: string;
   pagesProjectName?: string;
   pagesUrl?: string;
   customDomain?: string;
@@ -115,6 +123,12 @@ export interface StartDeploymentRequest {
   customDomain?: string;
   accountId: string;
   oauthToken: string;
+  // LINE OA Integration (optional - can configure later)
+  lineChannelAccessToken?: string;
+  lineChannelSecret?: string;
+  // Facebook Integration (optional - future feature)
+  facebookPageAccessToken?: string;
+  facebookAppSecret?: string;
 }
 
 export interface StartDeploymentResponse {
@@ -190,6 +204,12 @@ export interface FormErrors {
   adminEmail?: string;
   customDomain?: string;
   accountId?: string;
+  // LINE OA validation errors
+  lineChannelAccessToken?: string;
+  lineChannelSecret?: string;
+  // Facebook validation errors
+  facebookPageAccessToken?: string;
+  facebookAppSecret?: string;
 }
 
 export interface RouteParams {

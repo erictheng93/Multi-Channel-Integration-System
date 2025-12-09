@@ -94,10 +94,11 @@ export class RollbackService {
    * Rollback Queue
    */
   private async rollbackQueue(resources: CloudflareResources): Promise<void> {
-    if (resources.queueName) {
-      // Note: Queue deletion requires queue ID, not name
-      // In production, you'd store the queue ID in resources
-      this.log('warning', 'Queue deletion skipped - queue ID not available');
+    if (resources.queueId) {
+      await this.api.deleteQueue(resources.queueId);
+    } else if (resources.queueName) {
+      // Fallback warning if only queue name available
+      this.log('warning', `Queue ${resources.queueName} may need manual deletion - ID not stored`);
     }
   }
 
@@ -114,7 +115,12 @@ export class RollbackService {
    * Rollback Pages Project
    */
   private async rollbackPages(resources: CloudflareResources): Promise<void> {
-    if (resources.pagesProjectId) {
+    // Use project name for deletion (API requires name, not ID)
+    if (resources.pagesProjectName) {
+      await this.api.deletePagesProject(resources.pagesProjectName);
+    } else if (resources.pagesProjectId) {
+      // Fallback to ID if name not available
+      this.log('warning', `Pages project deletion may need project name, trying with ID: ${resources.pagesProjectId}`);
       await this.api.deletePagesProject(resources.pagesProjectId);
     }
   }

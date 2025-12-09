@@ -1,0 +1,471 @@
+// src/utils/notification-trigger.ts
+// 通知觸發工具函數 - 簡化業務邏輯與通知服務的整合
+// 整合 Durable Objects WebSocket 廣播實現真正的即時推送
+
+import { NotificationService, NotificationChannelService } from '@modules/notifications';
+import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
+import type { NotificationPriority } from '@modules/notifications/types';
+import type { Bindings } from '../types';
+
+/**
+ * 通知觸發器配置 - 需要完整的 Worker 環境綁定
+ */
+type NotificationTriggerEnv = Bindings;
+
+/**
+ * 創建通知服務實例的工廠函數
+ */
+export function createNotificationService(env: NotificationTriggerEnv): NotificationService {
+  const channelService = new NotificationChannelService();
+  return new NotificationService(env.DB, env.CACHE, channelService);
+}
+
+/**
+ * 安全地解析用戶 ID 為數字
+ */
+function parseUserId(userId: string | number): number {
+  if (typeof userId === 'number') return userId;
+  const parsed = parseInt(userId, 10);
+  if (isNaN(parsed)) {
+    throw new Error(`Invalid user ID: ${userId}`);
+  }
+  return parsed;
+}
+
+/**
+ * 透過 Durable Objects 廣播通知到用戶的 WebSocket 連線
+ * 這是實現即時通知的核心方法
+ */
+async function broadcastNotificationViaWebSocket(
+  env: NotificationTriggerEnv,
+  userId: string | number,
+  notification: {
+    id: string;
+    type: string;
+    title: string;
+    content: string;
+    priority: string;
+    data?: Record<string, unknown>;
+  }
+): Promise<boolean> {
+  try {
+    const broadcastService = new WebSocketBroadcastService(env);
+
+    const success = await broadcastService.broadcastNotificationEvent({
+      type: 'notification',
+      userId: String(userId),
+      notification: {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        content: notification.content,
+        priority: notification.priority,
+        data: notification.data,
+        createdAt: new Date().toISOString()
+      }
+    });
+
+    if (success) {
+      console.log('📡 [Notification] WebSocket broadcast successful:', {
+        userId,
+        notificationId: notification.id,
+        type: notification.type
+      });
+    }
+
+    return success;
+  } catch (error) {
+    console.warn('⚠️ [Notification] WebSocket broadcast failed (notification still saved):', {
+      error: error instanceof Error ? error.message : String(error),
+      userId,
+      notificationId: notification.id
+    });
+    return false;
+  }
+}
+
+/**
+ * 新訊息通知觸發器
+ * 當客戶發送新訊息時，通知負責的客服
+ */
+export async function triggerNewMessageNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    assignedUserId: string | number;
+    conversationId: string | number;
+    senderName: string;
+    messageContent: string;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.assignedUserId);
+    const conversationId = typeof options.conversationId === 'string'
+      ? parseInt(options.conversationId, 10) || 0
+      : options.conversationId;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.notifyNewMessage(
+      userId,
+      conversationId,
+      options.senderName,
+      options.messageContent
+    );
+
+    console.log('✅ [Notification] New message notification created:', {
+      notificationId,
+      userId,
+      conversationId,
+      senderName: options.senderName
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.assignedUserId, {
+      id: notificationId,
+      type: 'new_message',
+      title: '新訊息',
+      content: `${options.senderName}: ${options.messageContent.substring(0, 100)}${options.messageContent.length > 100 ? '...' : ''}`,
+      priority: 'normal',
+      data: { conversationId, senderName: options.senderName }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send new message notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
+ * 對話指派通知觸發器
+ * 當對話被指派給客服時通知該客服
+ */
+export async function triggerConversationAssignedNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    assignedUserId: string | number;
+    conversationId: string | number;
+    customerName: string;
+    assignedBy: string;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.assignedUserId);
+    const conversationId = typeof options.conversationId === 'string'
+      ? parseInt(options.conversationId, 10) || 0
+      : options.conversationId;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.notifyConversationAssigned(
+      userId,
+      conversationId,
+      options.customerName,
+      options.assignedBy
+    );
+
+    console.log('✅ [Notification] Conversation assigned notification created:', {
+      notificationId,
+      userId,
+      conversationId,
+      customerName: options.customerName,
+      assignedBy: options.assignedBy
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.assignedUserId, {
+      id: notificationId,
+      type: 'conversation_assigned',
+      title: '對話已指派',
+      content: `${options.assignedBy} 將與 ${options.customerName} 的對話指派給您`,
+      priority: 'high',
+      data: { conversationId, customerName: options.customerName, assignedBy: options.assignedBy }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send assignment notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
+ * 對話轉移通知觸發器
+ * 當對話被轉移時通知目標客服
+ */
+export async function triggerConversationTransferredNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    toUserId: string | number;
+    conversationId: string | number;
+    customerName: string;
+    transferredBy: string;
+    fromUserId?: string | number;
+    reason?: string;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.toUserId);
+    const conversationId = typeof options.conversationId === 'string'
+      ? parseInt(options.conversationId, 10) || 0
+      : options.conversationId;
+
+    const content = `${options.transferredBy} 將與 ${options.customerName} 的對話轉移給您`;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.create({
+      userId,
+      type: 'conversation_transferred',
+      title: '對話已轉移',
+      content,
+      data: {
+        conversationId,
+        customerName: options.customerName,
+        transferredBy: options.transferredBy,
+        fromUserId: options.fromUserId,
+        reason: options.reason
+      },
+      priority: 'high',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
+    });
+
+    console.log('✅ [Notification] Conversation transferred notification created:', {
+      notificationId,
+      userId,
+      conversationId,
+      transferredBy: options.transferredBy
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.toUserId, {
+      id: notificationId,
+      type: 'conversation_transferred',
+      title: '對話已轉移',
+      content,
+      priority: 'high',
+      data: {
+        conversationId,
+        customerName: options.customerName,
+        transferredBy: options.transferredBy,
+        fromUserId: options.fromUserId,
+        reason: options.reason
+      }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send transfer notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
+ * 優先級變更通知觸發器
+ * 當對話優先級變更時通知負責的客服
+ */
+export async function triggerPriorityChangedNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    userId: string | number;
+    conversationIds: string[];
+    newPriority: string;
+    changedBy: string;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const parsedUserId = parseUserId(options.userId);
+
+    // 確定通知優先級
+    const notificationPriority: NotificationPriority =
+      options.newPriority === 'urgent' ? 'urgent' :
+      options.newPriority === 'high' ? 'high' : 'normal';
+
+    const content = options.conversationIds.length === 1
+      ? `對話優先級已變更為「${getPriorityLabel(options.newPriority)}」`
+      : `${options.conversationIds.length} 個對話的優先級已變更為「${getPriorityLabel(options.newPriority)}」`;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.create({
+      userId: parsedUserId,
+      type: 'priority_changed',
+      title: '對話優先級已變更',
+      content,
+      data: {
+        conversationIds: options.conversationIds,
+        newPriority: options.newPriority,
+        changedBy: options.changedBy
+      },
+      priority: notificationPriority,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
+    });
+
+    console.log('✅ [Notification] Priority changed notification created:', {
+      notificationId,
+      userId: parsedUserId,
+      conversationCount: options.conversationIds.length,
+      newPriority: options.newPriority
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.userId, {
+      id: notificationId,
+      type: 'priority_changed',
+      title: '對話優先級已變更',
+      content,
+      priority: notificationPriority,
+      data: {
+        conversationIds: options.conversationIds,
+        newPriority: options.newPriority,
+        changedBy: options.changedBy
+      }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send priority change notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
+ * 客戶回覆通知觸發器
+ * 當客戶回覆時通知負責的客服 (用於待處理對話)
+ */
+export async function triggerCustomerRespondedNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    assignedUserId: string | number;
+    conversationId: string | number;
+    customerName: string;
+    messagePreview: string;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.assignedUserId);
+    const conversationId = typeof options.conversationId === 'string'
+      ? parseInt(options.conversationId, 10) || 0
+      : options.conversationId;
+
+    const content = `${options.customerName}: ${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.create({
+      userId,
+      type: 'customer_responded',
+      title: '客戶已回覆',
+      content,
+      data: {
+        conversationId,
+        customerName: options.customerName
+      },
+      priority: 'normal',
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24小時後過期
+    });
+
+    console.log('✅ [Notification] Customer responded notification created:', {
+      notificationId,
+      userId,
+      conversationId
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.assignedUserId, {
+      id: notificationId,
+      type: 'customer_responded',
+      title: '客戶已回覆',
+      content,
+      priority: 'normal',
+      data: { conversationId, customerName: options.customerName }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send customer responded notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
+ * 系統通知觸發器
+ * 發送系統公告給多個用戶
+ */
+export async function triggerSystemNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    userIds: (string | number)[];
+    title: string;
+    content: string;
+    data?: Record<string, unknown>;
+  }
+): Promise<string[]> {
+  try {
+    const service = createNotificationService(env);
+    const parsedUserIds = options.userIds.map(id => parseUserId(id));
+
+    // 1. 建立通知記錄到資料庫
+    const notificationIds = await service.notifySystemMessage(
+      parsedUserIds,
+      options.title,
+      options.content,
+      options.data
+    );
+
+    console.log('✅ [Notification] System notifications created:', {
+      notificationIds,
+      userCount: parsedUserIds.length
+    });
+
+    // 2. 透過 WebSocket 即時推送通知給每個用戶
+    const broadcastPromises = options.userIds.map((userId, index) =>
+      broadcastNotificationViaWebSocket(env, userId, {
+        id: notificationIds[index] || crypto.randomUUID(),
+        type: 'system',
+        title: options.title,
+        content: options.content,
+        priority: 'normal',
+        data: options.data
+      })
+    );
+
+    await Promise.allSettled(broadcastPromises);
+
+    return notificationIds;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send system notifications:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return [];
+  }
+}
+
+/**
+ * 輔助函數：獲取優先級的中文標籤
+ */
+function getPriorityLabel(priority: string): string {
+  const labels: Record<string, string> = {
+    low: '低',
+    normal: '一般',
+    high: '高',
+    urgent: '緊急'
+  };
+  return labels[priority] || priority;
+}

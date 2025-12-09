@@ -10,6 +10,12 @@ export interface DeploymentConfig {
   customDomain?: string;
   oauthToken: string;
   accountId: string;
+  // LINE OA Integration (optional - can configure later)
+  lineChannelAccessToken?: string;
+  lineChannelSecret?: string;
+  // Facebook Integration (optional - future feature)
+  facebookPageAccessToken?: string;
+  facebookAppSecret?: string;
 }
 
 export interface CloudflareResources {
@@ -17,10 +23,12 @@ export interface CloudflareResources {
   kvSessionNamespaceId?: string;
   kvCacheNamespaceId?: string;
   r2BucketName?: string;
-  queueName?: string;
+  queueId?: string;        // Queue ID for deletion
+  queueName?: string;      // Queue name for reference
   workerId?: string;
   workerUrl?: string;
   pagesProjectId?: string;
+  pagesProjectName?: string;  // Project name for reference
   pagesUrl?: string;
 }
 

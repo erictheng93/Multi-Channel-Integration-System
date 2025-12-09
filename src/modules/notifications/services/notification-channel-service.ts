@@ -40,11 +40,12 @@ export class NotificationChannelService {
   }
 
   private initializeRouter(): void {
+    // Phase 2 cleanup: Updated from SSE to WebSocket (100% rollout)
     this.routerConfig = {
-      defaultChannels: ['sse'],
+      defaultChannels: ['websocket'],
       rules: [],
       fallbackEnabled: true,
-      fallbackChannels: ['sse']
+      fallbackChannels: ['websocket']
     };
   }
 
@@ -323,8 +324,8 @@ export class NotificationChannelService {
       return channelPreferences.filter(channel => this.adapters.get(channel)?.isEnabled());
     }
 
-    // 檢查全域設定
-    if (settings.sseEnabled) channels.push('sse');
+    // 檢查全域設定 (Phase 2 cleanup: SSE removed)
+    // REMOVED: sseEnabled check (Phase 2 cleanup - 100% WebSocket rollout)
     if (settings.websocketEnabled) channels.push('websocket');
     if (settings.emailEnabled) channels.push('email');
     if (settings.pushEnabled) channels.push('push');

@@ -34,6 +34,7 @@ export interface ConversationFilters {
   status?: 'open' | 'assigned' | 'closed' | '' | undefined;
   assignedTo?: string | undefined;
   platform?: Platform | '' | undefined;
+  tagIds?: number[];  // 標籤篩選
 }
 
 // Extended interface for API calls that allows undefined

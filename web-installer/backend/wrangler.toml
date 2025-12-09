@@ -2,6 +2,9 @@ name = "crm-installer-backend"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
+# ========================================
+# DURABLE OBJECTS CONFIGURATION
+# ========================================
 [durable_objects]
 bindings = [
   { name = "DEPLOYMENT_ORCHESTRATOR", class_name = "DeploymentOrchestrator" }
@@ -10,3 +13,51 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["DeploymentOrchestrator"]
+
+# ========================================
+# ENVIRONMENT VARIABLES
+# ========================================
+# Note: Secrets should be set via `wrangler secret put <SECRET_NAME>`
+# The following are placeholders - actual values set via secrets
+[vars]
+# Frontend URL for CORS
+FRONTEND_URL = "https://install.your-domain.com"
+# Environment identifier
+ENVIRONMENT = "production"
+# Email sender name
+FROM_NAME = "CRM Installer"
+
+# ========================================
+# SECRETS (set via wrangler secret put)
+# ========================================
+# Required secrets that must be configured:
+# - CF_CLIENT_ID: Cloudflare OAuth Client ID
+# - CF_CLIENT_SECRET: Cloudflare OAuth Client Secret
+# - RESEND_API_KEY: Resend.com API key for sending emails
+# - FROM_EMAIL: Sender email address (verified in Resend)
+# - ENCRYPTION_KEY: 32-byte hex string for encrypting sensitive data
+#
+# Run these commands to set secrets:
+# wrangler secret put CF_CLIENT_ID
+# wrangler secret put CF_CLIENT_SECRET
+# wrangler secret put RESEND_API_KEY
+# wrangler secret put FROM_EMAIL
+# wrangler secret put ENCRYPTION_KEY
+
+# ========================================
+# DEVELOPMENT CONFIGURATION
+# ========================================
+[dev]
+port = 8787
+local_protocol = "http"
+
+# ========================================
+# BUILD CONFIGURATION
+# ========================================
+[build]
+command = ""
+
+# Watch configuration for development
+[build.upload]
+format = "modules"
+main = "./src/index.ts"

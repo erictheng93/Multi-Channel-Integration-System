@@ -245,6 +245,66 @@ export class WebSocketBroadcastService {
   }
 
   /**
+   * Broadcast notification events to specific users
+   * This is the primary method for real-time notification delivery
+   */
+  async broadcastNotificationEvent(event: {
+    type: 'notification';
+    userId: string;
+    notification: {
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      priority: string;
+      data?: Record<string, any>;
+      createdAt: string;
+    };
+  }): Promise<boolean> {
+    try {
+      const wsEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: 'notification',
+        source: 'api',
+        timestamp: Date.now(),
+        userId: event.userId,
+        data: {
+          notification: event.notification
+        },
+        priority: event.notification.priority === 'urgent' ? 'urgent' :
+                  event.notification.priority === 'high' ? 'high' : 'normal',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            {
+              type: 'user' as const,
+              targets: [event.userId],
+              priority: event.notification.priority === 'urgent' ? 'urgent' : 'normal'
+            }
+          ],
+          persistent: false,
+          ttl: 300000 // 5 minutes
+        }
+      };
+
+      // Broadcast directly to user's connections via UserConnection DO
+      const success = await this.broadcastToUserConnections(wsEvent, [event.userId]);
+
+      if (success) {
+        console.log(`✅ [WebSocket Broadcast] Notification sent to user ${event.userId}:`, {
+          notificationId: event.notification.id,
+          type: event.notification.type
+        });
+      }
+
+      return success;
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] Notification event error:', error);
+      return false;
+    }
+  }
+
+  /**
    * Broadcast presence events
    */
   async broadcastPresenceEvent(event: {

@@ -2,300 +2,336 @@
  * Migration Runner Service
  *
  * Executes database migrations for the CRM system
- * Runs all migrations from the main project
+ * Uses bundled migrations from the main project
  */
 
 import { CloudflareAPI } from './CloudflareAPI';
+import { BUNDLED_MIGRATIONS, getMigrationCount } from '../migrations/bundled-migrations';
+import type { MigrationFile } from '../migrations/bundled-migrations';
 
-export interface MigrationFile {
-  version: string;
-  filename: string;
-  sql: string;
+export interface MigrationResult {
+  success: boolean;
+  migrationsRun: number;
+  totalMigrations: number;
+  errors: string[];
+  duration: number;
+}
+
+export interface MigrationProgress {
+  currentMigration: number;
+  totalMigrations: number;
+  currentVersion: string;
+  currentDescription: string;
 }
 
 export class MigrationRunner {
   private api: CloudflareAPI;
+  private onProgress?: (progress: MigrationProgress) => void;
 
-  constructor(api: CloudflareAPI) {
+  constructor(api: CloudflareAPI, onProgress?: (progress: MigrationProgress) => void) {
     this.api = api;
-  }
-
-  /**
-   * Get all migration files from the main CRM project
-   * In production, these would be bundled with the installer
-   */
-  private getMigrationFiles(): MigrationFile[] {
-    // These migrations are from the main CRM project
-    // drizzle/0001_*.sql through drizzle/0020_*.sql
-    return [
-      {
-        version: '0001',
-        filename: '0001_initial_schema.sql',
-        sql: `
-          -- Users table
-          CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            display_name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin', 'agent')),
-            team_id INTEGER,
-            is_active INTEGER DEFAULT 1,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            FOREIGN KEY (team_id) REFERENCES teams(id)
-          );
-
-          -- Teams table
-          CREATE TABLE IF NOT EXISTS teams (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            description TEXT,
-            is_active INTEGER DEFAULT 1,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-          );
-
-          -- Customers table
-          CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            platform TEXT NOT NULL,
-            platform_user_id TEXT NOT NULL,
-            display_name TEXT,
-            avatar_url TEXT,
-            email TEXT,
-            phone TEXT,
-            metadata TEXT,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            UNIQUE(platform, platform_user_id)
-          );
-
-          -- Conversations table
-          CREATE TABLE IF NOT EXISTS conversations (
-            id TEXT PRIMARY KEY,
-            customer_id INTEGER NOT NULL,
-            platform TEXT NOT NULL,
-            status TEXT NOT NULL CHECK(status IN ('open', 'assigned', 'resolved', 'closed')),
-            assigned_to INTEGER,
-            assigned_team_id INTEGER,
-            last_message_at INTEGER,
-            metadata TEXT,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            FOREIGN KEY (customer_id) REFERENCES customers(id),
-            FOREIGN KEY (assigned_to) REFERENCES users(id),
-            FOREIGN KEY (assigned_team_id) REFERENCES teams(id)
-          );
-
-          -- Messages table
-          CREATE TABLE IF NOT EXISTS messages (
-            id TEXT PRIMARY KEY,
-            conversation_id TEXT NOT NULL,
-            sender_type TEXT NOT NULL CHECK(sender_type IN ('customer', 'agent', 'system')),
-            sender_id TEXT,
-            content TEXT NOT NULL,
-            content_type TEXT NOT NULL CHECK(content_type IN ('text', 'image', 'file', 'sticker')),
-            metadata TEXT,
-            is_deleted INTEGER DEFAULT 0,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY (conversation_id) REFERENCES conversations(id)
-          );
-
-          -- Create indexes
-          CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-          CREATE INDEX IF NOT EXISTS idx_users_team ON users(team_id);
-          CREATE INDEX IF NOT EXISTS idx_customers_platform ON customers(platform, platform_user_id);
-          CREATE INDEX IF NOT EXISTS idx_conversations_customer ON conversations(customer_id);
-          CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
-          CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
-          CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
-        `
-      },
-      {
-        version: '0002',
-        filename: '0002_add_tags.sql',
-        sql: `
-          -- Tags table
-          CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            color TEXT,
-            description TEXT,
-            tag_type TEXT NOT NULL CHECK(tag_type IN ('customer', 'conversation', 'message')),
-            is_active INTEGER DEFAULT 1,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-          );
-
-          -- Tag associations
-          CREATE TABLE IF NOT EXISTS tag_associations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tag_id INTEGER NOT NULL,
-            entity_type TEXT NOT NULL,
-            entity_id TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY (tag_id) REFERENCES tags(id),
-            UNIQUE(tag_id, entity_type, entity_id)
-          );
-
-          CREATE INDEX IF NOT EXISTS idx_tag_associations_entity ON tag_associations(entity_type, entity_id);
-        `
-      },
-      {
-        version: '0003',
-        filename: '0003_add_channel_integrations.sql',
-        sql: `
-          -- Channel integrations
-          CREATE TABLE IF NOT EXISTS channel_integrations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            channel_type TEXT NOT NULL,
-            channel_name TEXT NOT NULL,
-            credentials TEXT NOT NULL,
-            webhook_url TEXT,
-            is_active INTEGER DEFAULT 1,
-            last_sync_at INTEGER,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            UNIQUE(channel_type, channel_name)
-          );
-        `
-      }
-    ];
+    this.onProgress = onProgress;
   }
 
   /**
    * Run all migrations in order
    */
-  async runAllMigrations(databaseId: string): Promise<void> {
-    const migrations = this.getMigrationFiles();
+  async runAllMigrations(databaseId: string): Promise<MigrationResult> {
+    const startTime = Date.now();
+    const errors: string[] = [];
+    let migrationsRun = 0;
+    const totalMigrations = getMigrationCount();
 
-    for (const migration of migrations) {
-      await this.runMigration(databaseId, migration);
+    // First, create migrations tracking table if not exists
+    await this.createMigrationsTable(databaseId);
+
+    // Get already applied migrations
+    const appliedMigrations = await this.getAppliedMigrations(databaseId);
+
+    for (const migration of BUNDLED_MIGRATIONS) {
+      // Skip if already applied
+      if (appliedMigrations.includes(migration.version)) {
+        migrationsRun++;
+        continue;
+      }
+
+      // Report progress
+      if (this.onProgress) {
+        this.onProgress({
+          currentMigration: migrationsRun + 1,
+          totalMigrations,
+          currentVersion: migration.version,
+          currentDescription: migration.description
+        });
+      }
+
+      try {
+        await this.runMigration(databaseId, migration);
+        await this.recordMigration(databaseId, migration);
+        migrationsRun++;
+      } catch (error) {
+        const errorMessage = `Migration ${migration.version} (${migration.filename}) failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        errors.push(errorMessage);
+        // Stop on first error to prevent cascading failures
+        break;
+      }
     }
+
+    return {
+      success: errors.length === 0,
+      migrationsRun,
+      totalMigrations,
+      errors,
+      duration: Date.now() - startTime
+    };
+  }
+
+  /**
+   * Create migrations tracking table
+   */
+  private async createMigrationsTable(databaseId: string): Promise<void> {
+    const sql = `
+      CREATE TABLE IF NOT EXISTS _migrations (
+        version TEXT PRIMARY KEY,
+        filename TEXT NOT NULL,
+        description TEXT,
+        applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    const result = await this.api.executeD1Query(databaseId, sql);
+    if (!result.success) {
+      throw new Error('Failed to create migrations table');
+    }
+  }
+
+  /**
+   * Get list of already applied migrations
+   */
+  private async getAppliedMigrations(databaseId: string): Promise<string[]> {
+    try {
+      const sql = 'SELECT version FROM _migrations ORDER BY version';
+      const result = await this.api.executeD1Query(databaseId, sql);
+
+      if (!result.success || !result.results) {
+        return [];
+      }
+
+      return (result.results as Array<{ version: string }>).map(row => row.version);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Record a migration as applied
+   */
+  private async recordMigration(databaseId: string, migration: MigrationFile): Promise<void> {
+    const sql = `
+      INSERT INTO _migrations (version, filename, description)
+      VALUES (?, ?, ?)
+    `;
+    const params = [migration.version, migration.filename, migration.description];
+
+    await this.api.executeD1QueryWithParams(databaseId, sql, params);
   }
 
   /**
    * Run a single migration
    */
   private async runMigration(databaseId: string, migration: MigrationFile): Promise<void> {
-    try {
-      // Split SQL into individual statements
-      const statements = migration.sql
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+    // Split SQL into individual statements
+    const statements = this.splitSQLStatements(migration.sql);
 
-      // Execute each statement
-      for (const statement of statements) {
-        const result = await this.api.executeD1Query(databaseId, statement);
+    // Execute each statement
+    for (const statement of statements) {
+      const result = await this.api.executeD1Query(databaseId, statement);
 
-        if (!result.success) {
-          throw new Error(`Migration ${migration.filename} failed: ${result.errors?.[0]?.message}`);
-        }
+      if (!result.success) {
+        const errorMsg = result.errors?.[0]?.message || 'Unknown error';
+        throw new Error(errorMsg);
       }
-    } catch (error) {
-      throw new Error(
-        `Failed to execute migration ${migration.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
     }
   }
 
   /**
-   * Create admin user
-   * Uses parameterized query to prevent SQL injection
+   * Split SQL into individual statements
+   * Handles multi-line statements and comments
+   */
+  private splitSQLStatements(sql: string): string[] {
+    return sql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => {
+        // Filter out empty statements and comments-only statements
+        const withoutComments = s.replace(/--[^\n]*/g, '').trim();
+        return withoutComments.length > 0;
+      });
+  }
+
+  /**
+   * Create admin user with secure password hashing
+   * Uses PBKDF2 for password hashing (Web Crypto API compatible)
    */
   async createAdminUser(
     databaseId: string,
-    username: string,
     email: string,
-    passwordHash: string
-  ): Promise<void> {
-    // Validate and sanitize inputs
-    const sanitizedUsername = this.sanitizeInput(username);
-    const sanitizedEmail = this.sanitizeInput(email);
-
-    if (!this.isValidUsername(sanitizedUsername)) {
-      throw new Error('Invalid username format');
-    }
-
-    if (!this.isValidEmail(sanitizedEmail)) {
+    password: string,
+    displayName?: string
+  ): Promise<{ userId: string; username: string }> {
+    // Validate inputs
+    if (!this.isValidEmail(email)) {
       throw new Error('Invalid email format');
     }
 
-    const now = Date.now();
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters');
+    }
 
-    // Use parameterized query to prevent SQL injection
-    // D1 supports prepared statements with ? placeholders
+    // Generate user ID
+    const userId = this.generateUUID();
+    const username = email.split('@')[0];
+    const adminDisplayName = displayName || 'System Administrator';
+
+    // Hash password using PBKDF2
+    const passwordHash = await this.hashPassword(password);
+
+    // Insert admin user
     const sql = `
-      INSERT INTO users (username, display_name, email, password_hash, role, is_active, created_at, updated_at)
-      VALUES (?, 'System Administrator', ?, ?, 'admin', 1, ?, ?)
+      INSERT INTO agents (id, email, password_hash, display_name, role, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'admin', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `;
-
-    const params = [sanitizedUsername, sanitizedEmail, passwordHash, now, now];
+    const params = [userId, email, passwordHash, adminDisplayName];
 
     const result = await this.api.executeD1QueryWithParams(databaseId, sql, params);
 
     if (!result.success) {
-      throw new Error(`Failed to create admin user: ${result.errors?.[0]?.message}`);
+      const errorMsg = result.errors?.[0]?.message || 'Failed to create admin user';
+      throw new Error(errorMsg);
     }
+
+    return { userId, username };
   }
 
   /**
-   * Sanitize input to prevent injection attacks
+   * Hash password using PBKDF2
+   * Compatible with Web Crypto API (Cloudflare Workers)
    */
-  private sanitizeInput(input: string): string {
-    // Remove any null bytes and trim whitespace
-    return input.replace(/\0/g, '').trim();
+  private async hashPassword(password: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    );
+
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      256
+    );
+
+    // Combine salt and hash for storage
+    const hashArray = new Uint8Array(derivedBits);
+    const combined = new Uint8Array(salt.length + hashArray.length);
+    combined.set(salt);
+    combined.set(hashArray, salt.length);
+
+    // Return as base64 with prefix for identification
+    return 'pbkdf2:' + this.arrayToBase64(combined);
   }
 
   /**
-   * Validate username format
+   * Convert Uint8Array to base64 string
    */
-  private isValidUsername(username: string): boolean {
-    // Only allow alphanumeric, underscore, and hyphen
-    // Length between 3 and 50 characters
-    const usernameRegex = /^[a-zA-Z0-9_-]{3,50}$/;
-    return usernameRegex.test(username);
+  private arrayToBase64(array: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < array.length; i++) {
+      binary += String.fromCharCode(array[i]);
+    }
+    return btoa(binary);
   }
 
   /**
    * Validate email format
    */
   private isValidEmail(email: string): boolean {
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email) && email.length <= 255;
   }
 
   /**
-   * Verify database schema
+   * Generate UUID v4
    */
-  async verifySchema(databaseId: string): Promise<boolean> {
+  private generateUUID(): string {
+    return crypto.randomUUID();
+  }
+
+  /**
+   * Verify database schema is complete
+   */
+  async verifySchema(databaseId: string): Promise<{ valid: boolean; missingTables: string[] }> {
+    const requiredTables = [
+      'teams',
+      'agents',
+      'customers',
+      'conversations',
+      'messages',
+      'delayed_messages',
+      'file_attachments',
+      'tags',
+      'customer_tags',
+      'conversation_tags',
+      'notifications',
+      'activities',
+      'system_settings',
+      'channel_integrations'
+    ];
+
     try {
       const sql = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name";
       const result = await this.api.executeD1Query(databaseId, sql);
 
       if (!result.success || !result.results) {
-        return false;
+        return { valid: false, missingTables: requiredTables };
       }
 
-      const expectedTables = [
-        'users',
-        'teams',
-        'customers',
-        'conversations',
-        'messages',
-        'tags',
-        'tag_associations',
-        'channel_integrations'
-      ];
+      const existingTables = (result.results as Array<{ name: string }>).map(row => row.name);
+      const missingTables = requiredTables.filter(table => !existingTables.includes(table));
 
-      const tables = result.results.map((row: any) => row.name);
-      return expectedTables.every(table => tables.includes(table));
+      return {
+        valid: missingTables.length === 0,
+        missingTables
+      };
     } catch {
-      return false;
+      return { valid: false, missingTables: requiredTables };
     }
+  }
+
+  /**
+   * Get migration status
+   */
+  async getMigrationStatus(databaseId: string): Promise<{
+    applied: number;
+    pending: number;
+    versions: string[];
+  }> {
+    const appliedMigrations = await this.getAppliedMigrations(databaseId);
+    const totalMigrations = getMigrationCount();
+
+    return {
+      applied: appliedMigrations.length,
+      pending: totalMigrations - appliedMigrations.length,
+      versions: appliedMigrations
+    };
   }
 }

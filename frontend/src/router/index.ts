@@ -146,6 +146,16 @@ const router = createRouter({
         title: '標籤管理'
       }
     },
+    // ==================== 通知系統路由 ====================
+    {
+      path: '/notifications',
+      name: 'NotificationList',
+      component: () => import('@/views/NotificationList.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '通知中心'
+      }
+    },
     // ==================== 報表系統路由 (嵌套結構 - 獨層 Sidebar) ====================
     {
       path: '/reports',

@@ -13,7 +13,10 @@ import {
 export class WebSocketAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'websocket';
   private connections = new Map<number, WebSocket[]>();
-  private enabled = false; // 目前停用，等待 WebSocket 實作完成
+  // Phase 2 (100% WebSocket rollout): Enabled by default
+  // NOTE: Real-time delivery is now handled by WebSocketBroadcastService + Durable Objects
+  // This adapter is maintained for NotificationChannelService compatibility
+  private enabled = true;
   private config: ChannelConfig;
 
   constructor(config?: Partial<ChannelConfig>) {

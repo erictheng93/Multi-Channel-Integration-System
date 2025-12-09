@@ -123,7 +123,7 @@ export const DEFAULT_NOTIFICATION_CONFIG = {
   cache: {
     defaultTTL: 300, // 5 minutes
     statsTTL: 60,    // 1 minute
-    recentNotificationsTTL: 30 // 30 seconds
+    recentNotificationsTTL: 60 // 60 seconds (Cloudflare KV 最小 TTL)
   }
 };
 

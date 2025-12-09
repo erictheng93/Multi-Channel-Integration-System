@@ -145,11 +145,12 @@ export type DurableObjectEventType =
   | 'connection_opened' | 'connection_closed' | 'message_sent' | 'message_delivered' | 'message_read'
   | 'user_joined' | 'user_left' | 'typing_start' | 'typing_stop' | 'message_recalled'
   | 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'system_notification'
-  | 'conversation_status_changed' | 'participant_joined' | 'participant_left'
+  | 'conversation_status_changed' | 'conversation_tags_updated' | 'participant_joined' | 'participant_left'
   | 'delayed_message_countdown' | 'delayed_message_sent' | 'delayed_message_recalled'
   | 'delayed_message_failed' | 'user_online' | 'user_offline' | 'user_away'
   | 'agent_available' | 'agent_busy' | 'agent_offline' | 'message_recall_success'
-  | 'message_recall_failed' | 'batch_message' | 'message_updated';
+  | 'message_recall_failed' | 'batch_message' | 'message_updated'
+  | 'notification'; // Real-time notification events (new_message, assigned, transferred, etc.)
 
 export interface DurableObjectEvent {
   id: string;

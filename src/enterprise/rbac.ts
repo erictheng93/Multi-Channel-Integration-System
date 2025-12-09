@@ -65,8 +65,8 @@ export class EnterpriseRBACManager {
         }
       }
 
-      // 快取結果 (30秒)
-      await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 30 });
+      // 快取結果 (60秒 - Cloudflare KV 最小 TTL)
+      await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 });
       
       return result;
     } catch (error) {

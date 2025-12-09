@@ -83,9 +83,10 @@ describe('Message API', () => {
 
     it('should handle empty content validation', async () => {
       const result = await messageApi.send('conv-123', { content: '' })
-      
+
       expect(result.success).toBe(false)
-      expect(result.error).toBe('訊息內容不能為空')
+      // Updated: error message now includes attachments since messages can have attachments without text
+      expect(result.error).toBe('訊息內容或附件不能為空')
       expect(mockPost).not.toHaveBeenCalled()
     })
 

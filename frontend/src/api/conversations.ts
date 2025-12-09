@@ -161,6 +161,7 @@ interface ConversationListParams {
   platform?: Platform;
   assignedTo?: string;
   search?: string;
+  tagIds?: number[];  // 標籤篩選
 }
 
 interface SendMessageRequest {
@@ -209,6 +210,7 @@ export const conversationApi = {
     if (params.platform) {queryParams.append('platform', params.platform);}
     if (params.assignedTo) {queryParams.append('assignedTo', params.assignedTo);}
     if (params.search) {queryParams.append('search', params.search);}
+    if (params.tagIds && params.tagIds.length > 0) {queryParams.append('tagIds', params.tagIds.join(','));}
     
     const queryString = queryParams.toString();
     const response = await apiClient.get<RawConversationData[] | PaginatedResponse<RawConversationData>>(`/conversations${queryString ? `?${queryString}` : ''}`);
@@ -526,5 +528,57 @@ export const conversationApi = {
     conversationIds: string[];
   }>> => {
     return conversationApi.bulkOperation('remove_tags', conversationIds, { tagIds });
+  },
+
+  // ==================== 單一對話標籤操作 ====================
+
+  /**
+   * 獲取對話的標籤列表
+   */
+  getConversationTags: async (conversationId: string): Promise<ApiResponse<{
+    id: number;
+    name: string;
+    color: string;
+    description: string | null;
+    assignedBy: string;
+    assignedAt: string;
+  }[]>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+    return apiClient.get(`/conversations/${conversationId}/tags`);
+  },
+
+  /**
+   * 為對話添加標籤
+   */
+  addConversationTags: async (
+    conversationId: string,
+    tagIds: number[]
+  ): Promise<ApiResponse<void>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+    if (!tagIds || tagIds.length === 0) {
+      return { success: false, error: '標籤 ID 不能為空' };
+    }
+    return apiClient.post(`/conversations/${conversationId}/tags`, { tagIds });
+  },
+
+  /**
+   * 從對話移除標籤
+   */
+  removeConversationTags: async (
+    conversationId: string,
+    tagIds: number[]
+  ): Promise<ApiResponse<void>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+    if (!tagIds || tagIds.length === 0) {
+      return { success: false, error: '標籤 ID 不能為空' };
+    }
+    // 使用 request 方法直接發送 DELETE 請求並帶上 body
+    return apiClient.request('DELETE', `/conversations/${conversationId}/tags`, { tagIds });
   }
 }

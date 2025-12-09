@@ -16,27 +16,48 @@ import {
 } from '../utils/api-response';
 import { tags } from '../db/schema';
 import { createDbClient } from '../db/drizzle-factory';
-import { sql, eq, and, or, asc, like, count, isNull, inArray } from 'drizzle-orm';
+import { sql, eq, and, or, asc, like, count, inArray } from 'drizzle-orm';
 
+// HEX 顏色格式驗證（支援 3 位或 6 位格式）
+const isValidHexColor = (color: string): boolean => {
+  if (!color || typeof color !== 'string') return false;
+  // 支援 #RGB 或 #RRGGBB 格式
+  return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(color);
+};
+
+// 標準化顏色格式（將 3 位格式轉為 6 位）
+const normalizeHexColor = (color: string): string => {
+  if (!color) return '#3B82F6'; // 預設顏色
+
+  // 如果不是有效的 HEX 格式，返回預設顏色
+  if (!isValidHexColor(color)) return '#3B82F6';
+
+  // 將 3 位格式轉為 6 位格式
+  if (color.length === 4) {
+    const r = color[1];
+    const g = color[2];
+    const b = color[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+
+  return color.toUpperCase();
+};
 
 export const tagHandler = {
-  // 獲取標籤列表
+  // 獲取標籤列表（簡化模型：所有標籤對所有客服可見）
   async list(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
-      const payload = c.get('jwtPayload');
-      const { 
-        page = '1', 
+      const {
+        page = '1',
         pageSize = '50',
-        teamId,
-        search,
-        includeGlobal = 'true'
+        search
       } = c.req.query();
 
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      // Build a simplified query without complex joins for now
+      // 簡化查詢：返回所有活躍標籤
       let query = drizzleDb
         .select({
           id: tags.id,
@@ -54,23 +75,7 @@ export const tagHandler = {
       // Build where conditions
       const whereConditions: any[] = [eq(tags.isActive, true)];
 
-      // 團隊篩選
-      if (teamId) {
-        if (includeGlobal === 'true') {
-          whereConditions.push(or(eq(tags.teamId, parseInt(teamId)), isNull(tags.teamId)));
-        } else {
-          whereConditions.push(eq(tags.teamId, parseInt(teamId)));
-        }
-      } else if (payload?.teamId && payload?.role !== 'admin') {
-        // 非管理員只能看到自己團隊的標籤和全局標籤
-        if (includeGlobal === 'true') {
-          whereConditions.push(or(eq(tags.teamId, payload.teamId), isNull(tags.teamId)));
-        } else {
-          whereConditions.push(eq(tags.teamId, payload.teamId));
-        }
-      }
-
-      // 搜索
+      // 搜索（簡化：不再區分團隊）
       if (search) {
         const searchTerm = `%${search}%`;
         whereConditions.push(or(
@@ -140,36 +145,43 @@ export const tagHandler = {
         return badRequestResponse(c, 'Tag name is required');
       }
 
-      // 驗證權限：只有管理員可以創建全局標籤
-      if (!teamId && payload?.role !== 'admin') {
-        return forbiddenResponse(c, 'Only administrators can create global tags');
+      // 驗證顏色格式
+      if (color && !isValidHexColor(color)) {
+        return validationErrorResponse(c, [
+          { field: 'color', message: 'Invalid color format. Use HEX format (e.g., #FF5733 or #F53)' }
+        ]);
       }
 
-      // 檢查標籤名稱是否已存在（同一團隊內）
+      // 標準化顏色格式
+      const normalizedColor = normalizeHexColor(color);
+
+      // 簡化權限模型：所有客服皆可創建標籤（不區分全局/團隊）
+      // 標籤將統一存儲，teamId 保留為 null（全局可見）
+
+      // 檢查標籤名稱是否已存在（全局範圍，不區分團隊）
       const existingTag = await drizzleDb
         .select({ id: tags.id })
         .from(tags)
         .where(
           and(
             eq(tags.name, name),
-            teamId ? eq(tags.teamId, teamId) : isNull(tags.teamId),
             eq(tags.isActive, true)
           )
         )
         .limit(1);
 
       if (existingTag.length > 0) {
-        return errorResponse(c, 'Tag name already exists in this scope', 409);
+        return errorResponse(c, 'Tag name already exists', 409);
       }
 
-      // 創建標籤
+      // 創建標籤（簡化模型：所有標籤為全局可見，teamId = null）
       const result = await drizzleDb
         .insert(tags)
         .values({
           name: name.trim(),
-          color: color,
+          color: normalizedColor,
           description: description || null,
-          teamId: teamId || null,
+          teamId: null, // 簡化：統一為全局標籤
           createdBy: typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || 'system'
         })
         .returning();
@@ -273,12 +285,20 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // 權限檢查：非管理員只能編輯自己團隊的標籤
-      if (payload?.role !== 'admin' && (existingTag as any).teamId !== payload?.teamId) {
-        return unauthorizedResponse(c, 'You can only edit tags from your team');
+      // 簡化權限模型：所有客服皆可編輯任何標籤
+
+      // 驗證顏色格式（如果提供了顏色）
+      let normalizedColor = color;
+      if (color !== undefined && color !== null) {
+        if (!isValidHexColor(color)) {
+          return validationErrorResponse(c, [
+            { field: 'color', message: 'Invalid color format. Use HEX format (e.g., #FF5733 or #F53)' }
+          ]);
+        }
+        normalizedColor = normalizeHexColor(color);
       }
 
-      // 如果更新名稱，檢查是否重複
+      // 如果更新名稱，檢查是否重複（全局範圍）
       if (name && name !== (existingTag as any).name) {
         const duplicateTag = await drizzleDb
           .select({ id: tags.id })
@@ -286,7 +306,6 @@ export const tagHandler = {
           .where(
             and(
               eq(tags.name, name),
-              (existingTag as any).teamId ? eq(tags.teamId, (existingTag as any).teamId) : isNull(tags.teamId),
               sql`${tags.id} != ${tagId}`,
               eq(tags.isActive, true)
             )
@@ -295,7 +314,7 @@ export const tagHandler = {
 
         if (duplicateTag.length > 0) {
           return validationErrorResponse(c, [
-            { field: 'name', message: 'Tag name already exists in this scope' }
+            { field: 'name', message: 'Tag name already exists' }
           ]);
         }
       }
@@ -304,7 +323,7 @@ export const tagHandler = {
       await drizzleDb.run(sql`
         UPDATE tags
         SET name = COALESCE(${name || null}, name),
-            color = COALESCE(${color || null}, color),
+            color = COALESCE(${normalizedColor || null}, color),
             description = COALESCE(${description !== undefined ? description : null}, description),
             is_active = COALESCE(${isActive !== undefined ? isActive : null}, is_active),
             updated_at = datetime('now')
@@ -369,10 +388,7 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // 權限檢查
-      if (payload?.role !== 'admin' && (existingTag as any).teamId !== payload?.teamId) {
-        return unauthorizedResponse(c, 'You can only delete tags from your team');
-      }
+      // 簡化權限模型：所有客服皆可刪除任何標籤
 
       // 軟刪除標籤
       await drizzleDb.run(sql`
