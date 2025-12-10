@@ -65,6 +65,7 @@ export interface Bindings {
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_CHANNEL_SECRET: string;
   LINE_BOT_BASIC_ID: string;
+  LINE_BOT_ID?: string; // LINE OA Basic ID for QR Code generation (e.g., @110xsqef)
   
   // Environment variables - JWT and Auth
   JWT_SECRET: string;

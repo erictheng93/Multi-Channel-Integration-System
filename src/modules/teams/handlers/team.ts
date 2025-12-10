@@ -310,6 +310,7 @@ app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
 
 // Generate QR Code for team
 // Phase 1 優化：傳遞 KV 命名空間用於快取
+// Phase 2 修正：傳遞 LINE_BOT_ID 環境變數
 app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -322,8 +323,8 @@ app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    // 傳遞 CACHE KV 命名空間
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+    // 傳遞 CACHE KV 命名空間 和 LINE_BOT_ID
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
     const qrCodeParams: any = {
       teamId,
       campaignName,
@@ -368,7 +369,7 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
     const qrCodes = await qrService.getTeamQRCodes(teamId);
 
     return c.json({
@@ -398,7 +399,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
     const result = await qrService.getLatestQRCodeFast(teamId);
 
     if (!result) {
@@ -430,7 +431,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
 // Test QR code generation
 app.post('/:id/qr-code-test', async (c) => {
   try {
-    const qrService = new TeamQRService(c.env.DB);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
     const testQR = await qrService.generateTestQRCode();
 
     return c.json({

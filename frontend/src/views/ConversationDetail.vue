@@ -1876,6 +1876,7 @@ if (import.meta.env.DEV) {
 }
 </script>
 
+<!-- 🎨 背景设计系统已在 main.ts 中全局导入，无需在此重复导入 -->
 <style scoped>
 /* ====== Minimal, Spacious Design System ====== */
 .conversation-detail {
@@ -1883,7 +1884,8 @@ if (import.meta.env.DEV) {
   height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  /* 🎨 旧背景已移除 - 现在使用新的多层次背景系统 (conversation-background.css) */
+  /* background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); */
   overflow: hidden;
   margin: -24px;
 }
@@ -2307,13 +2309,13 @@ if (import.meta.env.DEV) {
   position: relative;
   contain: layout style paint;
   will-change: contents; /* 🔧 FIX: Changed from scroll-position to contents */
-  /* 🎨 Spacious feel with subtle background */
-  background: linear-gradient(
+  /* 🎨 旧背景已移除 - 现在使用新的"对话舞台聚光"效果 (conversation-background.css) */
+  /* background: linear-gradient(
     180deg,
     rgba(248, 250, 252, 0.5) 0%,
     rgba(241, 245, 249, 0.3) 50%,
     rgba(248, 250, 252, 0.5) 100%
-  );
+  ); */
   padding: 0 1rem;
   /* 🔧 FIX: Prevent layout shift during transitions */
   display: flex;
@@ -2337,17 +2339,16 @@ if (import.meta.env.DEV) {
 }
 
 .input-section {
-  /* 🎨 Clean, floating input area design */
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-top: none;
+  /* 🎨 旧背景和效果已移除 - 现在使用新的高级毛玻璃效果 (conversation-background.css) */
+  /* background: rgba(255, 255, 255, 0.95); */
+  /* backdrop-filter: blur(20px); */
+  /* border-top: none; */
+  /* box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03); */
   padding: 1rem 1.5rem 1.5rem;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  /* Subtle lift effect */
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .quick-replies {

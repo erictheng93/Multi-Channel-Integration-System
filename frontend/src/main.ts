@@ -4,6 +4,7 @@ import router from './router'
 import App from './App.vue'
 import './styles/variables.css'
 import './style.css'
+import './styles/conversation-background.css' // 🎨 对话视窗背景设计系统
 import { useAuthStore } from '@/stores/auth'
 import { i18n } from './plugins/i18n'
 

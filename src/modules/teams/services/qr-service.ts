@@ -11,10 +11,12 @@ import type { QRCodeMetadata } from '@/types/services';
 export class TeamQRService {
   private db: DrizzleD1Database;
   private kv?: KVNamespace;
+  private lineBotId?: string;
 
-  constructor(database: D1Database, kv?: KVNamespace) {
+  constructor(database: D1Database, kv?: KVNamespace, lineBotId?: string) {
     this.db = drizzle(database);
     this.kv = kv;
+    this.lineBotId = lineBotId;
   }
 
   /**
@@ -42,7 +44,8 @@ export class TeamQRService {
           createdBy: 0
         } as QRCodeMetadata)
       },
-      this.kv // 傳遞 KV 命名空間
+      this.kv, // 傳遞 KV 命名空間
+      this.lineBotId // 傳遞 LINE Bot ID
     );
 
     return {
