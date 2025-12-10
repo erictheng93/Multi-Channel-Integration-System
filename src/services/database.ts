@@ -180,10 +180,33 @@ export class DatabaseService {
       conditions.push(eq(schema.conversations.status, status));
     }
 
-    return await this.db.select().from(schema.conversations)
+    // 🔧 FIX: Add LEFT JOIN with teams and agents to include assignedTeam and assignedAgent
+    const results = await this.db.select()
+      .from(schema.conversations)
+      .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
       .where(and(...conditions))
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
+
+    // Enrich conversations with team and agent data
+    return results.map(result => ({
+      ...result.conversations,
+      assignedTeam: result.teams ? {
+        id: result.teams.id,
+        name: result.teams.name,
+        description: result.teams.description
+      } : null,
+      assignedAgent: result.agents ? {
+        id: result.agents.id,
+        email: result.agents.email,
+        name: result.agents.displayName,
+        displayName: result.agents.displayName,
+        role: result.agents.role,
+        isActive: result.agents.isActive,
+        lastActive: result.agents.lastActive
+      } : null
+    }));
   }
 
   // Team-based conversation queries for role-based access control
@@ -193,25 +216,37 @@ export class DatabaseService {
       conditions.push(eq(schema.conversations.status, status));
     }
 
+    // 🔧 FIX: Add LEFT JOIN with teams to include assignedTeam and assignedAgent
     // Get all conversations where the assigned agent belongs to the specified team
-    return await this.db.select({
-      id: schema.conversations.id,
-      customerId: schema.conversations.customerId,
-      assignedUserId: schema.conversations.assignedUserId,
-      assignedTeamId: schema.conversations.assignedTeamId,
-      status: schema.conversations.status,
-      lastMessageAt: schema.conversations.lastMessageAt,
-      createdAt: schema.conversations.createdAt,
-      updatedAt: schema.conversations.updatedAt,
-    })
-    .from(schema.conversations)
-    .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
-    .where(and(
-      eq(schema.agents.teamId, teamId),
-      ...conditions
-    ))
-    .orderBy(desc(schema.conversations.lastMessageAt))
-    .limit(limit);
+    const results = await this.db.select()
+      .from(schema.conversations)
+      .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
+      .where(and(
+        eq(schema.agents.teamId, teamId),
+        ...conditions
+      ))
+      .orderBy(desc(schema.conversations.lastMessageAt))
+      .limit(limit);
+
+    // Enrich conversations with team and agent data
+    return results.map(result => ({
+      ...result.conversations,
+      assignedTeam: result.teams ? {
+        id: result.teams.id,
+        name: result.teams.name,
+        description: result.teams.description
+      } : null,
+      assignedAgent: result.agents ? {
+        id: result.agents.id,
+        email: result.agents.email,
+        name: result.agents.displayName,
+        displayName: result.agents.displayName,
+        role: result.agents.role,
+        isActive: result.agents.isActive,
+        lastActive: result.agents.lastActive
+      } : null
+    }));
   }
 
   async getAllConversations(status?: string, limit: number = 50) {
@@ -220,10 +255,33 @@ export class DatabaseService {
       conditions.push(eq(schema.conversations.status, status));
     }
 
-    return await this.db.select().from(schema.conversations)
+    // 🔧 FIX: Add LEFT JOIN with teams and agents to include assignedTeam and assignedAgent
+    const results = await this.db.select()
+      .from(schema.conversations)
+      .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
+
+    // Enrich conversations with team and agent data
+    return results.map(result => ({
+      ...result.conversations,
+      assignedTeam: result.teams ? {
+        id: result.teams.id,
+        name: result.teams.name,
+        description: result.teams.description
+      } : null,
+      assignedAgent: result.agents ? {
+        id: result.agents.id,
+        email: result.agents.email,
+        name: result.agents.displayName,
+        displayName: result.agents.displayName,
+        role: result.agents.role,
+        isActive: result.agents.isActive,
+        lastActive: result.agents.lastActive
+      } : null
+    }));
   }
 
   // Role-based conversation access method

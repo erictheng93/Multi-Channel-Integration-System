@@ -17,7 +17,7 @@ import type { LineWebhookBody } from '../types';
 import { validateLineWebhook, verifyLineSignature } from './webhook';
 
 // Import existing message processing (will be modified)
-import { processLineMessage } from './webhook';
+import { processLineMessage, processLineFollowEvent } from './webhook';
 
 /**
  * Multi-tenant LINE Webhook Handler
@@ -146,6 +146,10 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
 
         // Increment message counter for this channel
         await channelService.incrementMessageCounter(channel.id, 'received');
+      } else if (event.type === 'follow') {
+        console.log('👋 [LINE Webhook Multi-Tenant] Processing follow event for team:', teamId);
+        await processLineFollowEvent(c.env, event);
+        processedCount++;
       } else {
         console.log('🔄 [LINE Webhook] Skipping non-message event:', event.type);
       }
@@ -259,6 +263,9 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
 
       if (event.type === 'message' && event.message) {
         await processLineMessage(c.env, event);
+      } else if (event.type === 'follow') {
+        console.log('👋 [LINE Webhook] Processing follow event');
+        await processLineFollowEvent(c.env, event);
       } else {
         console.log('🔄 [LINE Webhook] Skipping non-message event:', event.type);
       }

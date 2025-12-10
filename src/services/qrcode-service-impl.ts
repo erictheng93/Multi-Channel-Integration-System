@@ -25,7 +25,8 @@ interface QRCodeCacheData {
 }
 
 export class QRCodeServiceImpl {
-  private static readonly LINE_BOT_ID = process.env.LINE_BOT_ID || '@your_bot_id';
+  // LINE Bot ID 通過參數傳遞（Cloudflare Workers 不支援 process.env）
+  private static readonly DEFAULT_LINE_BOT_ID = '@your_bot_id';
   // 保留作為備用方案
   private static readonly QR_API_BASE = 'https://api.qrserver.com/v1/create-qr-code/';
 
@@ -122,19 +123,27 @@ export class QRCodeServiceImpl {
    * @param db 資料庫實例
    * @param config QR 碼配置
    * @param kv 可選的 KV 命名空間，用於快取
+   * @param lineBotId LINE Bot ID (從 env.LINE_BOT_ID 傳入)
    */
   static async generateTeamQRCode(
     db: D1Database,
     config: QRCodeConfig,
-    kv?: KVNamespace
+    kv?: KVNamespace,
+    lineBotId?: string
   ): Promise<QRCodeInfo> {
     const startTime = performance.now();
+
+    // 使用傳入的 LINE Bot ID 或預設值
+    const botId = lineBotId || this.DEFAULT_LINE_BOT_ID;
+    if (botId === this.DEFAULT_LINE_BOT_ID) {
+      console.warn('⚠️ 使用預設 LINE Bot ID，請在 wrangler.toml 設定 LINE_BOT_ID');
+    }
 
     // 生成唯一的追蹤 token
     const token = this.generateTrackingToken(config.teamId);
 
     // 構建 Line 加好友連結
-    const lineUrl = `https://line.me/R/ti/p/${this.LINE_BOT_ID}?ref=${token}`;
+    const lineUrl = `https://line.me/R/ti/p/${botId}?ref=${token}`;
 
     // 生成 QR Code 圖片 (本地生成，約 10-50ms)
     const qrCodeImageUrl = await this.generateQRCodeImage(lineUrl);

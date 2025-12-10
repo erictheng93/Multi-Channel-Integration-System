@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>对话视窗背景设计演示 - Refined Professionalism</title>
+  <style>
+    /* 重置样式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f0f0f0;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       导入背景设计系统
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+    /* 核心颜色系统 */
+    :root {
+      --conversation-bg-base: #fafaf9;
+      --conversation-bg-secondary: #f5f5f4;
+      --conversation-bg-tertiary: #fef5f1;
+      --ambient-light-start: #fefefe;
+      --ambient-light-mid: #fafaf9;
+      --ambient-light-end: #f5f5f4;
+      --conversation-stage-light: rgba(255, 255, 255, 0.6);
+      --texture-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    }
+
+    /* 强制覆盖暗色模式 */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --conversation-bg-base: #fafaf9 !important;
+        --conversation-bg-secondary: #f5f5f4 !important;
+        --conversation-bg-tertiary: #fef5f1 !important;
+      }
+    }
+
+    /* 演示容器 */
+    .demo-container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: 100vh;
+    }
+
+    /* 左侧：旧版背景 */
+    .old-design {
+      background: linear-gradient(
+        180deg,
+        rgba(248, 250, 252, 0.5) 0%,
+        rgba(241, 245, 249, 0.3) 50%,
+        rgba(248, 250, 252, 0.5) 100%
+      );
+      background-color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* 右侧：新版背景 */
+    .new-design {
+      background:
+        var(--texture-noise),
+        radial-gradient(
+          ellipse 120% 100% at 50% -20%,
+          var(--ambient-light-start) 0%,
+          var(--ambient-light-mid) 40%,
+          var(--ambient-light-end) 100%
+        ),
+        var(--conversation-bg-base);
+      background-attachment: fixed, fixed, fixed;
+      background-size: 200px 200px, 100% 100%, 100% 100%;
+      background-position: 0 0, center top, center center;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* 标签 */
+    .design-label {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .old-design .design-label {
+      background: rgba(239, 68, 68, 0.9);
+    }
+
+    .new-design .design-label {
+      background: rgba(34, 197, 94, 0.9);
+    }
+
+    /* 对话容器 */
+    .conversation-wrapper {
+      flex: 1;
+      max-width: 800px;
+      margin: 80px auto 20px;
+      width: 100%;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 旧版消息区域 */
+    .old-design .messages-area {
+      flex: 1;
+      background: transparent;
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* 新版消息区域 */
+    .new-design .messages-area {
+      flex: 1;
+      background:
+        radial-gradient(
+          ellipse 80% 100% at 50% 50%,
+          var(--conversation-stage-light) 0%,
+          transparent 70%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(254, 254, 254, 0.3) 0%,
+          rgba(245, 245, 244, 0.2) 50%,
+          rgba(254, 245, 241, 0.3) 100%
+        ),
+        transparent;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 400px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* 新版网格纹理 */
+    .new-design .messages-area::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.01) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.01) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+      opacity: 0.3;
+      border-radius: 12px;
+      z-index: 0;
+    }
+
+    .messages-area > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 消息气泡 */
+    .message {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      animation: messageSlideIn 0.3s ease-out;
+    }
+
+    @keyframes messageSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.customer {
+      align-self: flex-start;
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(254, 254, 254, 0.98) 100%
+      );
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.06),
+        0 1px 2px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      color: #1f2937;
+    }
+
+    .message.agent {
+      align-self: flex-end;
+      background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.92) 0%,
+        rgba(37, 99, 235, 0.95) 100%
+      );
+      box-shadow:
+        0 4px 12px rgba(59, 130, 246, 0.24),
+        0 2px 4px rgba(59, 130, 246, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    /* 输入区域 */
+    .input-area {
+      padding: 16px 20px;
+      border-radius: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .old-design .input-area {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .new-design .input-area {
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(254, 254, 254, 0.98) 100%
+      );
+      backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow:
+        0 -8px 32px rgba(0, 0, 0, 0.04),
+        0 -2px 8px rgba(0, 0, 0, 0.02),
+        0 -1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .input-field {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      color: #1f2937;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .send-button {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .send-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* 说明面板 */
+    .info-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 13px;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+      max-width: 90%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .info-panel strong {
+      color: #60a5fa;
+    }
+
+    /* 切换主题按钮 */
+    .theme-toggle-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-toggle-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 暗色模式测试 */
+    body.dark-mode-test {
+      filter: invert(1) hue-rotate(180deg);
+    }
+
+    body.dark-mode-test .new-design,
+    body.dark-mode-test .old-design {
+      filter: invert(1) hue-rotate(180deg);
+    }
+
+    /* 响应式 */
+    @media (max-width: 1024px) {
+      .demo-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+
+      .info-panel {
+        font-size: 11px;
+        padding: 12px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle-btn" onclick="toggleTheme()">
+    🌓 测试暗色模式影响
+  </button>
+
+  <div class="demo-container">
+    <!-- 左侧：旧版设计 -->
+    <div class="old-design">
+      <div class="design-label">❌ 旧版背景（简单渐变）</div>
+      <div class="conversation-wrapper">
+        <div class="messages-area">
+          <div class="message customer">你好，我想咨询一下产品信息</div>
+          <div class="message agent">您好！很高兴为您服务，请问您想了解哪方面的信息呢？</div>
+          <div class="message customer">我想知道这个产品的价格和规格</div>
+          <div class="message agent">好的，我这边马上为您查询详细信息...</div>
+          <div class="message customer">谢谢！</div>
+          <div class="message agent">
+            查询到了！这款产品有三个版本：<br>
+            • 基础版：NT$ 999<br>
+            • 专业版：NT$ 1,999<br>
+            • 企业版：NT$ 3,999
+          </div>
+        </div>
+        <div class="input-area">
+          <input type="text" class="input-field" placeholder="输入消息...">
+          <button class="send-button">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：新版设计 -->
+    <div class="new-design">
+      <div class="design-label">✅ 新版背景（精致专业主义）</div>
+      <div class="conversation-wrapper">
+        <div class="messages-area">
+          <div class="message customer">你好，我想咨询一下产品信息</div>
+          <div class="message agent">您好！很高兴为您服务，请问您想了解哪方面的信息呢？</div>
+          <div class="message customer">我想知道这个产品的价格和规格</div>
+          <div class="message agent">好的，我这边马上为您查询详细信息...</div>
+          <div class="message customer">谢谢！</div>
+          <div class="message agent">
+            查询到了！这款产品有三个版本：<br>
+            • 基础版：NT$ 999<br>
+            • 专业版：NT$ 1,999<br>
+            • 企业版：NT$ 3,999
+          </div>
+        </div>
+        <div class="input-area">
+          <input type="text" class="input-field" placeholder="输入消息...">
+          <button class="send-button">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <strong>左侧</strong>：简单线性渐变，缺乏深度感 |
+    <strong>右侧</strong>：多层次背景设计（环境光 + 聚光 + 纹理）<br>
+    点击右上角按钮测试暗色模式下的表现 - <strong>新版背景完全不受影响</strong>
+  </div>
+
+  <script>
+    let isDarkMode = false;
+
+    function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      document.body.classList.toggle('dark-mode-test', isDarkMode);
+
+      const btn = document.querySelector('.theme-toggle-btn');
+      btn.textContent = isDarkMode ? '🌞 切换回亮色模式' : '🌓 测试暗色模式影响';
+    }
+
+    // 添加打字动画效果
+    const inputs = document.querySelectorAll('.input-field');
+    inputs.forEach(input => {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'scale(1.01)';
+      });
+      input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'scale(1)';
+      });
+    });
+
+    // 添加发送按钮点击效果
+    const sendButtons = document.querySelectorAll('.send-button');
+    sendButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const input = this.previousElementSibling;
+        if (input.value.trim()) {
+          alert('演示模式：消息发送功能已禁用\n实际应用中会通过 WebSocket 发送消息');
+          input.value = '';
+        }
+      });
+    });
+
+    // 页面加载动画
+    window.addEventListener('load', () => {
+      const messages = document.querySelectorAll('.message');
+      messages.forEach((msg, index) => {
+        msg.style.animationDelay = `${index * 0.1}s`;
+      });
+    });
+
+    console.log('%c🎨 对话视窗背景设计演示', 'font-size: 20px; font-weight: bold; color: #3b82f6;');
+    console.log('%c设计理念：精致专业主义 (Refined Professionalism)', 'font-size: 14px; color: #6b7280;');
+    console.log('\n特点：');
+    console.log('✨ 环境光渐变系统');
+    console.log('🎪 对话舞台聚光效果');
+    console.log('🧩 微妙纹理层次');
+    console.log('🪟 高级毛玻璃效果');
+    console.log('🔒 100% 固定背景（不受主题影响）');
+  </script>
+</body>
+</html>
