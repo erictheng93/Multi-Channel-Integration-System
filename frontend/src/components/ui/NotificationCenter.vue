@@ -35,7 +35,10 @@
           <div class="notification-panel-header">
             <h3 class="notification-panel-title">
               通知
-              <span v-if="unreadCount > 0" class="notification-panel-count">
+              <span
+                v-if="unreadCount > 0"
+                class="notification-panel-count"
+              >
                 {{ unreadCount }}
               </span>
             </h3>
@@ -69,28 +72,43 @@
               @click="activeTab = tab.value"
             >
               {{ tab.label }}
-              <span v-if="tab.count > 0" class="notification-tab-count">
+              <span
+                v-if="tab.count > 0"
+                class="notification-tab-count"
+              >
                 {{ tab.count }}
               </span>
             </button>
           </div>
 
           <!-- 通知列表 -->
-          <div class="notification-panel-content" @scroll="handleScroll">
+          <div
+            class="notification-panel-content"
+            @scroll="handleScroll"
+          >
             <!-- 載入中 -->
-            <div v-if="loading && notifications.length === 0" class="notification-loading">
+            <div
+              v-if="loading && notifications.length === 0"
+              class="notification-loading"
+            >
               <LoadingSpinner size="sm" />
               <span>載入中...</span>
             </div>
 
             <!-- 空狀態 -->
-            <div v-else-if="filteredNotifications.length === 0" class="notification-empty">
+            <div
+              v-else-if="filteredNotifications.length === 0"
+              class="notification-empty"
+            >
               <BellOffIcon class="notification-empty-icon" />
               <p>沒有{{ activeTab === 'unread' ? '未讀' : '' }}通知</p>
             </div>
 
             <!-- 通知項目 -->
-            <div v-else class="notification-list">
+            <div
+              v-else
+              class="notification-list"
+            >
               <NotificationItem
                 v-for="notification in filteredNotifications"
                 :key="notification.id"
@@ -101,7 +119,10 @@
               />
 
               <!-- 載入更多 -->
-              <div v-if="canLoadMore" class="notification-load-more">
+              <div
+                v-if="canLoadMore"
+                class="notification-load-more"
+              >
                 <button
                   class="notification-load-more-btn"
                   :disabled="loadingMore"
@@ -145,7 +166,7 @@ import LoadingSpinner from './LoadingSpinner.vue'
 import { BellIcon, BellOffIcon, CheckAllIcon, RefreshIcon } from '@/components/icons'
 
 const emit = defineEmits<{
-  (e: 'notification-click', notification: Notification): void
+  (_e: 'notification-click', _notification: Notification): void
 }>()
 
 const store = useNotificationsStore()
@@ -214,7 +235,7 @@ const close = () => {
 }
 
 const calculatePosition = () => {
-  if (!triggerRef.value || !panelRef.value) return
+  if (!triggerRef.value || !panelRef.value) {return}
 
   const trigger = triggerRef.value.getBoundingClientRect()
   const panel = panelRef.value.getBoundingClientRect()
@@ -224,7 +245,7 @@ const calculatePosition = () => {
   let top = trigger.bottom + 8
 
   // 防止超出邊界
-  if (left < 8) left = 8
+  if (left < 8) {left = 8}
   if (left + panel.width > viewport.width - 8) {
     left = viewport.width - panel.width - 8
   }
