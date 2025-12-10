@@ -105,7 +105,8 @@
       "Bash(git rev-parse:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2NTMzMTM0NywiZXhwIjoxNzY1MzM4NTQ3fQ.j4b3caHxiZ-R5fuGqgDj6c05mkggiXce4C8k0DDDXt4\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2NTMzODE3NCwiZXhwIjoxNzY1MzQ1Mzc0fQ.KQQg7QBfq9dX4673-5q9tIc4lmsZPbmp7GgBdmqnX3s\")",
-      "Bash(Select-String -Pattern \"(error|warning|✓|√|success)\")"
+      "Bash(Select-String -Pattern \"(error|warning|✓|√|success)\")",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": [],
