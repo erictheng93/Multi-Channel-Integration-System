@@ -91,13 +91,13 @@ export const notificationApi = {
   list: async (params: NotificationListParams = {}): Promise<ApiResponse<PaginatedResponse<Notification>>> => {
     const queryParams = new URLSearchParams()
     
-    if (params.page !== undefined) queryParams.append('page', params.page.toString())
-    if (params.pageSize !== undefined) queryParams.append('pageSize', params.pageSize.toString())
-    if (params.type) queryParams.append('type', params.type)
-    if (params.priority) queryParams.append('priority', params.priority)
-    if (params.isRead !== undefined) queryParams.append('isRead', params.isRead.toString())
-    if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom)
-    if (params.dateTo) queryParams.append('dateTo', params.dateTo)
+    if (params.page !== undefined) {queryParams.append('page', params.page.toString())}
+    if (params.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString())}
+    if (params.type) {queryParams.append('type', params.type)}
+    if (params.priority) {queryParams.append('priority', params.priority)}
+    if (params.isRead !== undefined) {queryParams.append('isRead', params.isRead.toString())}
+    if (params.dateFrom) {queryParams.append('dateFrom', params.dateFrom)}
+    if (params.dateTo) {queryParams.append('dateTo', params.dateTo)}
     
     const queryString = queryParams.toString()
     return apiClient.get(`/notifications${queryString ? `?${queryString}` : ''}`)
