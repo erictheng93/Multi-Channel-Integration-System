@@ -10,7 +10,9 @@
             </span>
             通知中心
           </h1>
-          <p class="page-subtitle">管理您的所有通知和提醒</p>
+          <p class="page-subtitle">
+            管理您的所有通知和提醒
+          </p>
         </div>
 
         <div class="header-actions">
@@ -21,7 +23,10 @@
             @click="handleMarkAllRead"
           >
             <CheckAllIcon v-if="!markingAllRead" />
-            <LoadingSpinner v-else size="sm" />
+            <LoadingSpinner
+              v-else
+              size="sm"
+            />
             <span>全部標記已讀</span>
           </button>
           <button
@@ -53,7 +58,10 @@
             <span class="stat-value">{{ stats?.unread || 0 }}</span>
             <span class="stat-label">未讀通知</span>
           </div>
-          <div v-if="stats?.unread" class="stat-pulse" />
+          <div
+            v-if="stats?.unread"
+            class="stat-pulse"
+          />
         </div>
         <div class="stat-card">
           <div class="stat-icon stat-icon-today">
@@ -82,9 +90,19 @@
         <!-- Type Filter -->
         <div class="filter-group">
           <label class="filter-label">類型</label>
-          <select v-model="selectedType" class="filter-select" @change="applyFilters">
-            <option value="">全部類型</option>
-            <option v-for="type in notificationTypes" :key="type.value" :value="type.value">
+          <select
+            v-model="selectedType"
+            class="filter-select"
+            @change="applyFilters"
+          >
+            <option value="">
+              全部類型
+            </option>
+            <option
+              v-for="type in notificationTypes"
+              :key="type.value"
+              :value="type.value"
+            >
               {{ type.label }}
             </option>
           </select>
@@ -93,9 +111,19 @@
         <!-- Priority Filter -->
         <div class="filter-group">
           <label class="filter-label">優先級</label>
-          <select v-model="selectedPriority" class="filter-select" @change="applyFilters">
-            <option value="">全部優先級</option>
-            <option v-for="priority in priorities" :key="priority.value" :value="priority.value">
+          <select
+            v-model="selectedPriority"
+            class="filter-select"
+            @change="applyFilters"
+          >
+            <option value="">
+              全部優先級
+            </option>
+            <option
+              v-for="priority in priorities"
+              :key="priority.value"
+              :value="priority.value"
+            >
               {{ priority.label }}
             </option>
           </select>
@@ -145,19 +173,30 @@
     <!-- Notifications List -->
     <section class="notifications-section">
       <!-- Loading State -->
-      <div v-if="loading && notifications.length === 0" class="loading-state">
+      <div
+        v-if="loading && notifications.length === 0"
+        class="loading-state"
+      >
         <LoadingSpinner size="lg" />
         <p>載入通知中...</p>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="notifications.length === 0" class="empty-state">
+      <div
+        v-else-if="notifications.length === 0"
+        class="empty-state"
+      >
         <div class="empty-illustration">
           <div class="empty-bell">
             <BellOffIcon />
           </div>
           <div class="empty-particles">
-            <span v-for="i in 5" :key="i" class="particle" :style="{ '--delay': i * 0.2 + 's' }" />
+            <span
+              v-for="i in 5"
+              :key="i"
+              class="particle"
+              :style="{ '--delay': i * 0.2 + 's' }"
+            />
           </div>
         </div>
         <h3 class="empty-title">
@@ -166,13 +205,20 @@
         <p class="empty-description">
           {{ hasActiveFilters ? '請嘗試調整篩選條件' : '新的通知將會顯示在這裡' }}
         </p>
-        <button v-if="hasActiveFilters" class="btn btn-primary" @click="clearFilters">
+        <button
+          v-if="hasActiveFilters"
+          class="btn btn-primary"
+          @click="clearFilters"
+        >
           清除篩選條件
         </button>
       </div>
 
       <!-- Notifications Grid -->
-      <div v-else class="notifications-list">
+      <div
+        v-else
+        class="notifications-list"
+      >
         <TransitionGroup name="notification-list">
           <article
             v-for="notification in notifications"
@@ -193,19 +239,29 @@
             />
 
             <!-- Icon -->
-            <div class="notification-icon" :class="getIconClass(notification.type)">
+            <div
+              class="notification-icon"
+              :class="getIconClass(notification.type)"
+            >
               <component :is="getIcon(notification.type)" />
             </div>
 
             <!-- Content -->
             <div class="notification-content">
               <div class="notification-header">
-                <h3 class="notification-title">{{ notification.title }}</h3>
+                <h3 class="notification-title">
+                  {{ notification.title }}
+                </h3>
                 <time class="notification-time">{{ formatTime(notification.createdAt) }}</time>
               </div>
-              <p class="notification-text">{{ notification.content }}</p>
+              <p class="notification-text">
+                {{ notification.content }}
+              </p>
               <div class="notification-meta">
-                <span class="notification-type-badge" :class="`type-${notification.type}`">
+                <span
+                  class="notification-type-badge"
+                  :class="`type-${notification.type}`"
+                >
                   {{ getTypeLabel(notification.type) }}
                 </span>
                 <span
@@ -219,7 +275,10 @@
             </div>
 
             <!-- Actions -->
-            <div class="notification-actions" @click.stop>
+            <div
+              class="notification-actions"
+              @click.stop
+            >
               <button
                 v-if="!notification.isRead"
                 class="action-btn"
@@ -238,18 +297,27 @@
             </div>
 
             <!-- Unread Indicator -->
-            <div v-if="!notification.isRead" class="unread-dot" />
+            <div
+              v-if="!notification.isRead"
+              class="unread-dot"
+            />
           </article>
         </TransitionGroup>
 
         <!-- Load More -->
-        <div v-if="canLoadMore" class="load-more-section">
+        <div
+          v-if="canLoadMore"
+          class="load-more-section"
+        >
           <button
             class="btn btn-secondary btn-lg"
             :disabled="loadingMore"
             @click="handleLoadMore"
           >
-            <LoadingSpinner v-if="loadingMore" size="sm" />
+            <LoadingSpinner
+              v-if="loadingMore"
+              size="sm"
+            />
             <span v-else>載入更多</span>
           </button>
           <p class="load-more-info">
@@ -262,18 +330,27 @@
     <!-- Settings Modal -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
+        <div
+          v-if="showSettings"
+          class="modal-overlay"
+          @click.self="showSettings = false"
+        >
           <div class="settings-modal">
             <header class="modal-header">
               <h2>通知設定</h2>
-              <button class="modal-close" @click="showSettings = false">
+              <button
+                class="modal-close"
+                @click="showSettings = false"
+              >
                 <XIcon />
               </button>
             </header>
 
             <div class="modal-body">
               <div class="settings-group">
-                <h3 class="settings-group-title">通知偏好</h3>
+                <h3 class="settings-group-title">
+                  通知偏好
+                </h3>
 
                 <label class="settings-toggle">
                   <span class="toggle-label">
@@ -328,7 +405,9 @@
               </div>
 
               <div class="settings-group">
-                <h3 class="settings-group-title">通知類型</h3>
+                <h3 class="settings-group-title">
+                  通知類型
+                </h3>
 
                 <label class="settings-toggle">
                   <span class="toggle-label">
@@ -384,7 +463,10 @@
             </div>
 
             <footer class="modal-footer">
-              <button class="btn btn-secondary" @click="showSettings = false">
+              <button
+                class="btn btn-secondary"
+                @click="showSettings = false"
+              >
                 關閉
               </button>
             </footer>
@@ -586,10 +668,10 @@ const formatTime = (dateStr: string) => {
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
 
-  if (minutes < 1) return '剛剛'
-  if (minutes < 60) return `${minutes} 分鐘前`
-  if (hours < 24) return `${hours} 小時前`
-  if (days < 7) return `${days} 天前`
+  if (minutes < 1) {return '剛剛'}
+  if (minutes < 60) {return `${minutes} 分鐘前`}
+  if (hours < 24) {return `${hours} 小時前`}
+  if (days < 7) {return `${days} 天前`}
 
   return date.toLocaleDateString('zh-TW', {
     year: 'numeric',

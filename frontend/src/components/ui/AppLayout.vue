@@ -264,7 +264,6 @@
         <slot />
       </div>
     </main>
-
   </div>
 </template>
 

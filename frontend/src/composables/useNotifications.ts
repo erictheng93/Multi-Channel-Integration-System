@@ -44,7 +44,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // WebSocket 通知處理
   const handleWebSocketNotification = (data: unknown) => {
-    if (!data || typeof data !== 'object') return
+    if (!data || typeof data !== 'object') {return}
 
     const notification = data as Notification
     console.log('🔔 [useNotifications] WebSocket notification received:', notification)

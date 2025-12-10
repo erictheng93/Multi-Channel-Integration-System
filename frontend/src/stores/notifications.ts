@@ -157,7 +157,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   // 載入更多
   const loadMoreNotifications = async () => {
-    if (!canLoadMore.value) return
+    if (!canLoadMore.value) {return}
     const nextPage = pagination.value.page + 1
     console.log(`📄 [NotificationsStore] Loading page ${nextPage}`)
     await fetchNotifications(undefined, nextPage, true)
@@ -280,7 +280,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const index = notifications.value.findIndex(n => n.id === id)
     const notification = notifications.value[index]
 
-    if (index === -1) return false
+    if (index === -1) {return false}
 
     // 樂觀更新
     notifications.value.splice(index, 1)
