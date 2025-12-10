@@ -72,6 +72,8 @@ export default [
         HTMLFormElement: 'readonly',
         HTMLButtonElement: 'readonly',
         HTMLImageElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
+        Element: 'readonly',
         // Storage and utilities
         localStorage: 'readonly',
         sessionStorage: 'readonly',
@@ -90,6 +92,11 @@ export default [
         EventSource: 'readonly',
         // Performance
         performance: 'readonly',
+        // Notification API
+        Notification: 'readonly',
+        NotificationPermission: 'readonly',
+        NotificationOptions: 'readonly',
+        Audio: 'readonly',
         // Node.js types (for type references)
         NodeJS: 'readonly',
         // Cloudflare Workers
@@ -156,7 +163,14 @@ export default [
           // 允許環境變量使用 SCREAMING_SNAKE_CASE
           '^VITE_',
           'API_BASE_URL',
-          'JWT_SECRET'
+          'JWT_SECRET',
+          // 允許通知類型使用 snake_case (與後端 API 保持一致)
+          'new_message',
+          'conversation_assigned',
+          'conversation_transferred',
+          'priority_changed',
+          'customer_responded',
+          'task_reminder'
         ]
       }]
     },

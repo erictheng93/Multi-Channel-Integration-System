@@ -12,7 +12,10 @@
     @keydown.enter="$emit('click')"
   >
     <!-- 圖標 -->
-    <div class="notification-item-icon" :class="iconClass">
+    <div
+      class="notification-item-icon"
+      :class="iconClass"
+    >
       <component :is="iconComponent" />
     </div>
 
@@ -22,9 +25,17 @@
         <span class="notification-item-title">{{ notification.title }}</span>
         <span class="notification-item-time">{{ formattedTime }}</span>
       </div>
-      <p class="notification-item-text">{{ notification.content }}</p>
-      <div v-if="notification.priority === 'urgent' || notification.priority === 'high'" class="notification-item-priority">
-        <span class="priority-badge" :class="`priority-${notification.priority}`">
+      <p class="notification-item-text">
+        {{ notification.content }}
+      </p>
+      <div
+        v-if="notification.priority === 'urgent' || notification.priority === 'high'"
+        class="notification-item-priority"
+      >
+        <span
+          class="priority-badge"
+          :class="`priority-${notification.priority}`"
+        >
           {{ priorityLabel }}
         </span>
       </div>
@@ -50,7 +61,10 @@
     </div>
 
     <!-- 未讀指示器 -->
-    <div v-if="!notification.isRead" class="notification-item-indicator" />
+    <div
+      v-if="!notification.isRead"
+      class="notification-item-indicator"
+    />
   </div>
 </template>
 
@@ -73,13 +87,13 @@ interface Props {
   notification: Notification
 }
 
-defineEmits<{
-  (e: 'click'): void
-  (e: 'mark-read'): void
-  (e: 'delete'): void
-}>()
-
 const props = defineProps<Props>()
+
+defineEmits<{
+  (_e: 'click'): void
+  (_e: 'mark-read'): void
+  (_e: 'delete'): void
+}>()
 
 // 圖標映射
 const iconMap: Record<NotificationType, typeof MessageIcon> = {
@@ -114,10 +128,10 @@ const formattedTime = computed(() => {
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
 
-  if (minutes < 1) return '剛剛'
-  if (minutes < 60) return `${minutes} 分鐘前`
-  if (hours < 24) return `${hours} 小時前`
-  if (days < 7) return `${days} 天前`
+  if (minutes < 1) {return '剛剛'}
+  if (minutes < 60) {return `${minutes} 分鐘前`}
+  if (hours < 24) {return `${hours} 小時前`}
+  if (days < 7) {return `${days} 天前`}
 
   return date.toLocaleDateString('zh-TW', {
     month: 'short',
