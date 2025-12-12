@@ -41,14 +41,14 @@
           <div class="stat-card active">
             <div class="stat-content">
               <div class="stat-number">
-                {{ stats.activeMembers }}
+                {{ stats.teamCount }}
               </div>
               <div class="stat-label">
-                活躍成員
+                現存團隊數量
               </div>
             </div>
             <div class="stat-icon">
-              <UserCheckIcon />
+              <TeamsIcon />
             </div>
           </div>
 
@@ -60,7 +60,7 @@
                 {{ stats.adminCount }}
               </div>
               <div class="stat-label">
-                管理員
+                管理員人數
               </div>
             </div>
             <div class="stat-icon">
@@ -1040,7 +1040,6 @@ import RefreshButton from '@/components/ui/RefreshButton.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
-import UserCheckIcon from '@/components/icons/UserCheckIcon.vue'
 import ShieldIcon from '@/components/icons/ShieldIcon.vue'
 import TeamsIcon from '@/components/icons/TeamsIcon.vue'
 import CheckIcon from '@/components/icons/CheckIcon.vue'

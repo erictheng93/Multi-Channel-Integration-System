@@ -20,6 +20,11 @@
 
     <!-- 🎨 關鍵 CSS 內聯 - 改善 FCP 和 LCP -->
     <style>
+      /* 🛡️ FOUC 防護：Vue v-cloak 指令 - 在 Vue 完全接管前隱藏內容 */
+      [v-cloak] {
+        display: none !important;
+      }
+
       /* Critical CSS for initial render */
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { height: 100%; width: 100%; }
@@ -66,6 +71,86 @@
       }
       @keyframes spin {
         to { transform: rotate(360deg); }
+      }
+
+      /* 🛡️ FOUC 防護：AppLayout 關鍵佈局樣式 - 防止側邊欄和主內容區閃爍 */
+      .app-layout {
+        display: flex;
+        min-height: 100vh;
+        background-color: #f9fafb;
+      }
+      .sidebar {
+        width: 240px;
+        min-width: 240px;
+        background: white;
+        border-right: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 50;
+        transition: transform 0.3s ease;
+      }
+      .sidebar.collapsed {
+        width: 72px;
+        min-width: 72px;
+      }
+      .main-content {
+        flex: 1;
+        margin-left: 240px;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        background-color: #f9fafb;
+      }
+      .main-content.sidebar-collapsed {
+        margin-left: 72px;
+      }
+      .page-content {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+      }
+
+      /* 🛡️ FOUC 防護：Dashboard 卡片佈局 - 防止統計卡片閃爍 */
+      .dashboard {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-left: 4px solid #e5e7eb;
+      }
+      .stat-card.pending { border-left-color: #f59e0b; }
+      .stat-card.active { border-left-color: #3b82f6; }
+      .stat-card.messages { border-left-color: #10b981; }
+      .stat-card.agents { border-left-color: #8b5cf6; }
+
+      /* 🛡️ FOUC 防護：登入頁面關鍵樣式 */
+      .login-container {
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        background-color: #f9fafb;
+      }
+      .login-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        padding: 32px;
+        width: 100%;
+        max-width: 400px;
       }
     </style>
 

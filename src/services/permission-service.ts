@@ -1,7 +1,7 @@
 // 權限管理服務
-import { eq, and, isNull, or, desc } from 'drizzle-orm';
+import { eq, and, isNull, or, desc, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { agents, conversations } from '../db/schema';
+import { agents, conversations, agentTeams } from '../db/schema';
 import type {
   // PermissionRule,
   PermissionContext,
@@ -270,16 +270,23 @@ export class PermissionService {
 
       // Note: 'team' role has been removed from the system (simplified to 2-tier: admin/agent)
 
-      // Agent 可以看到：1) 搶單池 2) 指派給自己 3) 本團隊對話(如果有團隊)
+      // Agent 可以看到：1) 搶單池 2) 指派給自己 3) 所屬團隊的對話（支援多團隊）
       if (user.role === 'agent') {
         const userIdStr = typeof userId === 'string' ? userId : userId.toString();
-        console.log(`🔍 Agent ${userIdStr} (role: ${user.role}, teamId: ${user.teamId}) searching for conversations`);
-
         const drizzleDb = createDbClient(database);
+
+        // 🆕 從 agent_teams 表獲取用戶所屬的所有團隊 ID
+        const teamMemberships = await drizzleDb
+          .select({ teamId: agentTeams.teamId })
+          .from(agentTeams)
+          .where(eq(agentTeams.agentId, userIdStr));
+
+        const userTeamIds = teamMemberships.map(m => m.teamId);
+        console.log(`🔍 Agent ${userIdStr} belongs to teams: [${userTeamIds.join(', ')}]`);
 
         // 建立查詢條件
         const conditions = [
-          // 條件1: 未指派 (搶單池) - 兩個欄位都必須是 NULL
+          // 條件1: 未指派 (搶單池) - 兩個欄位都必須是 NULL，所有客服都可見
           and(
             isNull(conversations.assignedTeamId),
             isNull(conversations.assignedUserId)
@@ -288,10 +295,10 @@ export class PermissionService {
           eq(conversations.assignedUserId, userIdStr)
         ];
 
-        // 條件3: 如果我有團隊，可以看團隊對話
-        if (user.teamId) {
+        // 條件3: 指派給我所屬的任一團隊（多團隊支援）
+        if (userTeamIds.length > 0) {
           conditions.push(
-            eq(conversations.assignedTeamId, user.teamId)
+            inArray(conversations.assignedTeamId, userTeamIds)
           );
         }
 
@@ -301,7 +308,7 @@ export class PermissionService {
           .where(or(...conditions))
           .orderBy(desc(conversations.updatedAt));
 
-        console.log(`📋 Found ${result.length} conversations for agent ${userIdStr}:`, result.map(r => r.id));
+        console.log(`📋 Found ${result.length} conversations for agent ${userIdStr}`);
         return result.map(row => row.id);
       }
 

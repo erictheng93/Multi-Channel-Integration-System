@@ -150,7 +150,8 @@ export type DurableObjectEventType =
   | 'delayed_message_failed' | 'user_online' | 'user_offline' | 'user_away'
   | 'agent_available' | 'agent_busy' | 'agent_offline' | 'message_recall_success'
   | 'message_recall_failed' | 'batch_message' | 'message_updated'
-  | 'notification'; // Real-time notification events (new_message, assigned, transferred, etc.)
+  | 'notification' // Real-time notification events (new_message, assigned, transferred, etc.)
+  | 'agent_removed_from_team'; // 🆕 Agent removed from team - triggers conversation visibility refresh
 
 export interface DurableObjectEvent {
   id: string;

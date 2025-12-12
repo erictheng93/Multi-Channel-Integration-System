@@ -636,8 +636,14 @@ export const teamApi = {
   /**
    * 獲取團隊成員（包含多團隊資訊）
    * @param teamId 團隊 ID
+   * @returns 後端返回格式：{ id, email, displayName, role, isActive, teams, primaryTeamId }
    */
-  getTeamMembersWithTeams: async (teamId: number): Promise<ApiResponse<Array<TeamMember & {
+  getTeamMembersWithTeams: async (teamId: number): Promise<ApiResponse<Array<{
+    id: string;
+    email: string;
+    displayName: string;
+    role: string;
+    isActive: boolean;
     teams: AgentTeamMembership[];
     primaryTeamId?: number;
   }>>> => {

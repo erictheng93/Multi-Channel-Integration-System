@@ -5,7 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, or, like, sql, inArray } from 'drizzle-orm';
-import { teams, agents, conversations, messages, qrCodes, qrCodeScans, customers } from '@/db/schema';
+import { teams, agents, agentTeams, conversations, messages, qrCodes, qrCodeScans, customers } from '@/db/schema';
 import type {
   Team,
   NewTeam,
@@ -84,18 +84,19 @@ export class TeamService implements TeamServiceInterface {
 
     if (!team) return null;
 
-    // Get member count
+    // 🔧 Fix: Get member count from agent_teams table (supports multi-team architecture)
     const memberCountResult = await this.db
       .select({ memberCount: count() })
-      .from(agents)
-      .where(eq(agents.teamId, id));
+      .from(agentTeams)
+      .where(eq(agentTeams.teamId, id));
     const memberCount = memberCountResult[0]?.memberCount || 0;
 
-    // Get active members count
+    // 🔧 Fix: Get active members count via agent_teams join
     const activeMembersResult = await this.db
       .select({ activeMembers: count() })
-      .from(agents)
-      .where(and(eq(agents.teamId, id), eq(agents.isActive, true)));
+      .from(agentTeams)
+      .innerJoin(agents, eq(agentTeams.agentId, agents.id))
+      .where(and(eq(agentTeams.teamId, id), eq(agents.isActive, true)));
     const activeMembers = activeMembersResult[0]?.activeMembers || 0;
 
     // Get conversation count
@@ -231,15 +232,17 @@ export class TeamService implements TeamServiceInterface {
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     // Optimized: Get teams with all stats in a single query
+    // 🔧 Fix: Use agent_teams table for member count (supports multi-team architecture)
     const teamList = await this.db
       .select({
         team: teams,
-        memberCount: sql<number>`COALESCE(COUNT(DISTINCT ${agents.id}), 0)`,
+        memberCount: sql<number>`COALESCE(COUNT(DISTINCT ${agentTeams.agentId}), 0)`,
         activeMembers: sql<number>`COALESCE(SUM(CASE WHEN ${agents.isActive} = 1 THEN 1 ELSE 0 END), 0)`,
         conversationCount: sql<number>`COALESCE(COUNT(DISTINCT ${conversations.id}), 0)`
       })
       .from(teams)
-      .leftJoin(agents, eq(teams.id, agents.teamId))
+      .leftJoin(agentTeams, eq(teams.id, agentTeams.teamId))
+      .leftJoin(agents, eq(agentTeams.agentId, agents.id))
       .leftJoin(conversations, eq(teams.id, conversations.assignedTeamId))
       .where(whereClause)
       .groupBy(teams.id)
@@ -388,24 +391,31 @@ export class TeamService implements TeamServiceInterface {
   }
 
   // Get team members
+  // 🔧 Fix: Use agent_teams table to get members (supports multi-team architecture)
   async getMembers(teamId: number): Promise<TeamMember[]> {
-    const members = await this.db
-      .select()
-      .from(agents)
-      .where(eq(agents.teamId, teamId))
+    const memberships = await this.db
+      .select({
+        agent: agents,
+        roleInTeam: agentTeams.roleInTeam,
+        joinedAt: agentTeams.joinedAt
+      })
+      .from(agentTeams)
+      .innerJoin(agents, eq(agentTeams.agentId, agents.id))
+      .where(eq(agentTeams.teamId, teamId))
       .orderBy(agents.displayName);
 
-    return members.map(agent => ({
+    return memberships.map(({ agent, roleInTeam, joinedAt }) => ({
       id: agent.id,
       name: agent.displayName, // ✅ Map displayName to name for frontend compatibility
       displayName: agent.displayName, // Keep for backward compatibility
       loginId: agent.email || agent.id, // ✅ Add loginId field (fallback to id if no email)
       email: agent.email,
       role: agent.role,
+      roleInTeam: roleInTeam || 'member', // 🆕 Include team-specific role
       status: agent.isActive ? 'active' : 'inactive', // ✅ Add status field for frontend
       isActive: agent.isActive,
       lastActive: agent.lastActive,
-      joinedAt: agent.createdAt,
+      joinedAt: joinedAt || agent.createdAt,
       createdAt: agent.createdAt ?? undefined,
       updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     }));

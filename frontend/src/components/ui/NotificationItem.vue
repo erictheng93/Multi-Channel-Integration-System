@@ -104,7 +104,8 @@ const iconMap: Record<NotificationType, typeof MessageIcon> = {
   system: BellIcon,
   priority_changed: AlertIcon,
   customer_responded: MessageIcon,
-  task_reminder: ClockIcon
+  task_reminder: ClockIcon,
+  'agent_removed_from_team': AlertIcon  // 🆕 使用 AlertIcon 表示團隊變更警告
 }
 
 const iconComponent = computed(() => iconMap[props.notification.type] || BellIcon)

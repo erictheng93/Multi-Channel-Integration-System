@@ -458,6 +458,78 @@ export async function triggerSystemNotification(
 }
 
 /**
+ * 🆕 Agent 移出團隊通知觸發器
+ * 當 Agent 被移出團隊時，通知該 Agent 並觸發前端刷新對話列表
+ * 如果 Agent 正在查看該團隊的對話，前端應強制關閉對話視窗
+ */
+export async function triggerAgentRemovedFromTeamNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    agentId: string;
+    teamId: number;
+    teamName: string;
+    removedBy: string;
+    affectedConversationIds?: string[]; // 移出後無法再看到的對話 ID 列表
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.agentId);
+
+    const content = `您已被 ${options.removedBy} 移出「${options.teamName}」團隊`;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.create({
+      userId,
+      type: 'agent_removed_from_team',
+      title: '團隊成員變更',
+      content,
+      data: {
+        teamId: options.teamId,
+        teamName: options.teamName,
+        removedBy: options.removedBy,
+        affectedConversationIds: options.affectedConversationIds || []
+      },
+      priority: 'high',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
+    });
+
+    console.log('✅ [Notification] Agent removed from team notification created:', {
+      notificationId,
+      agentId: options.agentId,
+      teamId: options.teamId,
+      teamName: options.teamName,
+      removedBy: options.removedBy,
+      affectedConversationCount: options.affectedConversationIds?.length || 0
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    // 這會觸發前端：1) 顯示 Toast 2) 刷新對話列表 3) 如果正在查看受影響的對話，強制關閉
+    await broadcastNotificationViaWebSocket(env, options.agentId, {
+      id: notificationId,
+      type: 'agent_removed_from_team',
+      title: '團隊成員變更',
+      content,
+      priority: 'high',
+      data: {
+        teamId: options.teamId,
+        teamName: options.teamName,
+        removedBy: options.removedBy,
+        affectedConversationIds: options.affectedConversationIds || []
+      }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send agent removed from team notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
  * 輔助函數：獲取優先級的中文標籤
  */
 function getPriorityLabel(priority: string): string {

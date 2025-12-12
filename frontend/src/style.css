@@ -970,12 +970,93 @@ body,
     --border: 0 0 0;
     --ring: 0 0 255;
   }
-  
+
   .btn {
     border-width: 2px;
   }
-  
+
   .card {
     border-width: 2px;
   }
+}
+
+/* ============================================
+   🛡️ FOUC 防護系統 (Flash of Unstyled Content)
+   ============================================ */
+
+/* Vue v-cloak 指令 - 在 Vue 完全編譯前隱藏內容 */
+[v-cloak] {
+  display: none !important;
+}
+
+/* 頁面過渡動畫 - 平滑的頁面切換效果 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* 內容淡入效果 - 防止內容突然出現 */
+.content-ready {
+  animation: contentFadeIn 0.3s ease-out;
+}
+
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 骨架屏到內容的平滑過渡 */
+.skeleton-to-content-enter-active {
+  transition: opacity 0.3s ease;
+}
+
+.skeleton-to-content-leave-active {
+  transition: opacity 0.2s ease;
+  position: absolute;
+  width: 100%;
+}
+
+.skeleton-to-content-enter-from,
+.skeleton-to-content-leave-to {
+  opacity: 0;
+}
+
+/* 確保載入狀態切換時沒有閃爍 */
+.loading-state-wrapper {
+  position: relative;
+  min-height: 100px;
+}
+
+/* 防止圖片載入時的佈局偏移 */
+img {
+  height: auto;
+}
+
+img[loading="lazy"] {
+  background-color: var(--gray-100);
+}
+
+/* 字體載入防閃爍 */
+.fonts-loading * {
+  visibility: hidden;
+}
+
+.fonts-loaded * {
+  visibility: visible;
 }

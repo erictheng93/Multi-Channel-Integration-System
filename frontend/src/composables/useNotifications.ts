@@ -2,9 +2,12 @@
 // 通知系統 Composable - 整合 WebSocket 即時推送
 
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useNotificationsStore, type Notification } from '@/stores/notifications'
 import { getWebSocketManager } from '@/services/websocketManager'
 import { useAuthStore } from '@/stores/auth'
+import { useConversationsStore } from '@/stores/conversations'
+import { useToast } from '@/composables/useToast'
 
 export interface UseNotificationsOptions {
   autoConnect?: boolean
@@ -49,6 +52,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const notification = data as Notification
     console.log('🔔 [useNotifications] WebSocket notification received:', notification)
 
+    // 🆕 特殊處理：Agent 被移出團隊事件
+    if (notification.type === 'agent_removed_from_team') {
+      handleAgentRemovedFromTeam(notification)
+      return // 跳過普通通知處理流程
+    }
+
     // 添加到 store
     store.addNotification(notification)
 
@@ -61,6 +70,73 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (opts.enableSound) {
       playNotificationSound()
     }
+  }
+
+  /**
+   * 🆕 處理 Agent 被移出團隊事件
+   * 1. 顯示 Toast 通知
+   * 2. 刷新對話列表
+   * 3. 如果正在查看受影響的對話，強制關閉並導航到對話列表
+   */
+  const handleAgentRemovedFromTeam = async (notification: Notification) => {
+    const { showWarning, showInfo } = useToast()
+    const conversationsStore = useConversationsStore()
+
+    // 從通知數據中提取信息
+    const notificationData = notification.data as {
+      teamId?: number
+      teamName?: string
+      removedBy?: string
+      affectedConversationIds?: string[]
+    } || {}
+
+    const teamName = notificationData.teamName || '團隊'
+    const affectedConversationIds = notificationData.affectedConversationIds || []
+
+    console.log('⚠️ [useNotifications] Agent removed from team:', {
+      teamName,
+      affectedConversationIds
+    })
+
+    // 1. 顯示 Toast 警告通知
+    showWarning('團隊成員變更', `您已被移出「${teamName}」團隊`, { duration: 6000 })
+
+    // 2. 刷新對話列表 - 移出團隊後將看不到該團隊的對話
+    try {
+      await conversationsStore.fetchConversations()
+      console.log('✅ [useNotifications] Conversation list refreshed after team removal')
+    } catch (error) {
+      console.error('❌ [useNotifications] Failed to refresh conversations:', error)
+    }
+
+    // 3. 如果正在查看受影響的對話，強制關閉並導航到對話列表
+    try {
+      const router = useRouter()
+      const route = useRoute()
+
+      // 檢查當前是否在對話詳情頁面
+      if (route.name === 'conversation-detail' || route.path.includes('/conversations/')) {
+        const currentConversationId = route.params.id as string
+
+        // 檢查當前對話是否在受影響列表中
+        if (currentConversationId && affectedConversationIds.includes(currentConversationId)) {
+          console.log('🚪 [useNotifications] Force closing affected conversation:', currentConversationId)
+
+          // 顯示額外提示
+          showInfo('對話已關閉', '由於您已被移出團隊，目前查看的對話將被關閉', { duration: 4000 })
+
+          // 導航到對話列表
+          await router.push({ name: 'conversations' })
+        }
+      }
+    } catch (error) {
+      console.error('❌ [useNotifications] Failed to navigate away from conversation:', error)
+      // 如果導航失敗，仍然嘗試刷新頁面
+      window.location.href = '/conversations'
+    }
+
+    // 4. 添加通知到 store (供通知中心顯示)
+    store.addNotification(notification)
   }
 
   // 設置 WebSocket 事件監聽
