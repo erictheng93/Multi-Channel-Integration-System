@@ -268,41 +268,62 @@ export async function apiKeyAuth(c: Context<{ Bindings: Bindings }>, next: Next)
 }
 
 /**
- * 速率限制中間件
+ * 速率限制中間件 (DO-Based Implementation)
+ * 使用 Durable Objects 取代 KV，減少 95%+ 的 KV 寫入操作
  */
 export function rateLimit(maxRequests: number = 100, windowMs: number = 60 * 1000) {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     try {
+      // Check if DO binding is available
+      const rateLimiterNamespace = c.env.RATE_LIMITER;
+      if (!rateLimiterNamespace) {
+        // DO not available - fail open
+        log.warn('RATE_LIMITER DO binding not available, allowing request');
+        await next();
+        return;
+      }
+
       const clientIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
-      const key = `rate_limit:${clientIP}`;
-      const now = Date.now();
-      const windowStart = now - windowMs;
-      
-      // 獲取當前計數
-      const currentData = await c.env.SESSIONS.get(key);
-      let requests: number[] = currentData ? JSON.parse(currentData) : [];
-      
-      // 清理過期的請求記錄
-      requests = requests.filter(timestamp => timestamp > windowStart);
-      
-      // 檢查是否超過限制
-      if (requests.length >= maxRequests && requests[0] !== undefined) {
-        return c.json({ 
+
+      // Extract IP prefix for sharding
+      const ipParts = clientIP.split('.');
+      const ipPrefix = ipParts.length === 4 ? ipParts.slice(0, 3).join('.') : clientIP;
+
+      // Generate DO ID
+      const doId = `ratelimit:auth:${ipPrefix}`;
+      const stub = rateLimiterNamespace.get(
+        rateLimiterNamespace.idFromName(doId)
+      );
+
+      // Call the DO to check rate limit
+      const response = await stub.fetch('https://rate-limiter.internal/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'check',
+          clientId: clientIP,
+          config: { maxRequests, windowMs },
+        }),
+      });
+
+      const result = await response.json() as { allowed: boolean; limit: number; remaining: number; reset: number; retryAfter?: number };
+
+      // Set rate limit headers
+      c.header('X-RateLimit-Limit', result.limit.toString());
+      c.header('X-RateLimit-Remaining', result.remaining.toString());
+      c.header('X-RateLimit-Reset', result.reset.toString());
+
+      if (!result.allowed) {
+        const retryAfter = result.retryAfter || 1;
+        c.header('Retry-After', retryAfter.toString());
+        return c.json({
           error: 'Rate limit exceeded',
           limit: maxRequests,
           window: windowMs,
-          retryAfter: Math.ceil((requests[0] + windowMs - now) / 1000)
+          retryAfter
         }, 429);
       }
-      
-      // 添加當前請求
-      requests.push(now);
-      
-      // 更新 KV 存儲
-      await c.env.SESSIONS.put(key, JSON.stringify(requests), { 
-        expirationTtl: Math.ceil(windowMs / 1000) 
-      });
-      
+
       await next();
     } catch (error) {
       log.warn('Rate limit check failed (non-blocking)', { error: error instanceof Error ? error.message : String(error) });

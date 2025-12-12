@@ -1321,6 +1321,9 @@ const loadTeams = async () => {
 
     if (response.success && response.data) {
       teams.value = response.data
+      // 🔧 修復：同步更新 teamStore.teams 以確保統計數據正確計算
+      // stats.teamCount 依賴 teamStore.teams，不同步會導致顯示 0
+      teamStore.teams.splice(0, teamStore.teams.length, ...response.data)
       console.log('✔️ 團隊數據已更新:', teams.value.length, '個團隊')
     } else {
       console.warn('⚠️ API 調用成功但沒有數據或失敗:', response)

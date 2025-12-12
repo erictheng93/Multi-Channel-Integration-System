@@ -38,6 +38,29 @@ export interface GlobalEvent {
   timestamp: number
 }
 
+// Team member event data structure
+export interface TeamMemberEventData {
+  teamId: number
+  teamName: string
+  agentId: string
+  agentName?: string
+  memberCount: number
+  changedBy: string
+}
+
+// Team update event data structure
+export interface TeamUpdateEventData {
+  teamId: number
+  teamName: string
+  changes: {
+    name?: string
+    description?: string
+    isActive?: boolean
+    memberCount?: number
+  }
+  changedBy: string
+}
+
 // Event handlers
 export interface WebSocketEventCallbacks {
   onConversationMessage?: (_conversationId: string, _message: Message) => void
@@ -46,6 +69,10 @@ export interface WebSocketEventCallbacks {
   onTypingStop?: (_conversationId: string, _userId: string) => void
   onUserPresence?: (_userId: string, _presence: UserPresence) => void
   onNotification?: (_notification: unknown) => void
+  // 🆕 Team event callbacks for real-time memberCount updates
+  onTeamMemberAdded?: (_data: TeamMemberEventData) => void
+  onTeamMemberRemoved?: (_data: TeamMemberEventData) => void
+  onTeamUpdated?: (_data: TeamUpdateEventData) => void
   onConnectionStateChange?: (_state: WebSocketConnectionState) => void
   onError?: (_error: Error) => void
 }
@@ -289,6 +316,19 @@ export class WebSocketManager {
         this.handleSystemUpdate(message)
         break
 
+      // 🆕 Team event handlers for real-time memberCount updates
+      case 'team_member_added':
+        this.handleTeamMemberAdded(message)
+        break
+
+      case 'team_member_removed':
+        this.handleTeamMemberRemoved(message)
+        break
+
+      case 'team_updated':
+        this.handleTeamUpdated(message)
+        break
+
       default:
         console.log(`Unhandled WebSocket message type: ${message.type}`)
     }
@@ -393,6 +433,52 @@ export class WebSocketManager {
   private handleSystemUpdate(message: WebSocketMessage): void {
     // Handle system-wide updates that might affect all conversations
     console.log('System update received:', message.data)
+  }
+
+  // 🆕 Team member added event handler
+  private handleTeamMemberAdded(message: WebSocketMessage): void {
+    const { data } = message
+    if (!data || typeof data !== 'object') {return}
+
+    const eventData = data as TeamMemberEventData
+    console.log('👥 [WebSocket] Team member added:', {
+      teamId: eventData.teamId,
+      teamName: eventData.teamName,
+      agentName: eventData.agentName,
+      memberCount: eventData.memberCount
+    })
+
+    this.eventCallbacks.onTeamMemberAdded?.(eventData)
+  }
+
+  // 🆕 Team member removed event handler
+  private handleTeamMemberRemoved(message: WebSocketMessage): void {
+    const { data } = message
+    if (!data || typeof data !== 'object') {return}
+
+    const eventData = data as TeamMemberEventData
+    console.log('👥 [WebSocket] Team member removed:', {
+      teamId: eventData.teamId,
+      teamName: eventData.teamName,
+      agentName: eventData.agentName,
+      memberCount: eventData.memberCount
+    })
+
+    this.eventCallbacks.onTeamMemberRemoved?.(eventData)
+  }
+
+  // 🆕 Team updated event handler
+  private handleTeamUpdated(message: WebSocketMessage): void {
+    const { data } = message
+    if (!data || typeof data !== 'object') {return}
+
+    const eventData = data as TeamUpdateEventData
+    console.log('🔄 [WebSocket] Team updated:', {
+      teamId: eventData.teamId,
+      changes: eventData.changes
+    })
+
+    this.eventCallbacks.onTeamUpdated?.(eventData)
   }
 
   private handleConnectionChange(state: WebSocketConnectionState): void {

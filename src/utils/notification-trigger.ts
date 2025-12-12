@@ -530,6 +530,100 @@ export async function triggerAgentRemovedFromTeamNotification(
 }
 
 /**
+ * 🆕 團隊成員變更廣播觸發器
+ * 當團隊成員新增或移除時，廣播事件讓所有管理頁面即時更新 memberCount
+ * 這不會創建通知記錄，只是廣播 WebSocket 事件
+ */
+export async function triggerTeamMemberChangeEvent(
+  env: NotificationTriggerEnv,
+  options: {
+    type: 'added' | 'removed';
+    teamId: number;
+    teamName: string;
+    agentId: string;
+    agentName?: string;
+    memberCount: number;
+    changedBy: string;
+  }
+): Promise<boolean> {
+  try {
+    const broadcastService = new WebSocketBroadcastService(env);
+
+    const success = await broadcastService.broadcastTeamMemberEvent({
+      type: options.type === 'added' ? 'team_member_added' : 'team_member_removed',
+      teamId: options.teamId,
+      teamName: options.teamName,
+      agentId: options.agentId,
+      agentName: options.agentName,
+      memberCount: options.memberCount,
+      changedBy: options.changedBy
+    });
+
+    if (success) {
+      console.log('📡 [Team Event] Member change broadcast successful:', {
+        type: options.type,
+        teamId: options.teamId,
+        teamName: options.teamName,
+        memberCount: options.memberCount
+      });
+    }
+
+    return success;
+  } catch (error) {
+    console.warn('⚠️ [Team Event] Member change broadcast failed:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return false;
+  }
+}
+
+/**
+ * 🆕 團隊資訊更新廣播觸發器
+ * 當團隊資訊變更時（名稱、狀態等），廣播事件讓所有管理頁面即時更新
+ */
+export async function triggerTeamUpdateEvent(
+  env: NotificationTriggerEnv,
+  options: {
+    teamId: number;
+    teamName: string;
+    changes: {
+      name?: string;
+      description?: string;
+      isActive?: boolean;
+      memberCount?: number;
+    };
+    changedBy: string;
+  }
+): Promise<boolean> {
+  try {
+    const broadcastService = new WebSocketBroadcastService(env);
+
+    const success = await broadcastService.broadcastTeamUpdateEvent({
+      teamId: options.teamId,
+      teamName: options.teamName,
+      changes: options.changes,
+      changedBy: options.changedBy
+    });
+
+    if (success) {
+      console.log('📡 [Team Event] Update broadcast successful:', {
+        teamId: options.teamId,
+        changes: options.changes
+      });
+    }
+
+    return success;
+  } catch (error) {
+    console.warn('⚠️ [Team Event] Update broadcast failed:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return false;
+  }
+}
+
+/**
  * 輔助函數：獲取優先級的中文標籤
  */
 function getPriorityLabel(priority: string): string {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { teamApi } from '@/api/team'
 import type { TeamMember, Invitation } from '@/types'
+import { getWebSocketManager, type TeamMemberEventData, type TeamUpdateEventData } from '@/services/websocketManager'
 
 // 團隊類型定義
 interface Team {
@@ -380,6 +381,74 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
   }
 
+  // 🆕 WebSocket event handlers for real-time memberCount updates
+  const handleTeamMemberAdded = (data: TeamMemberEventData) => {
+    console.log('👥 [TeamStore] Member added event received:', data)
+
+    // Find and update the team's memberCount
+    const team = teams.value.find(t => t.id === data.teamId)
+    if (team) {
+      team.memberCount = data.memberCount
+      console.log(`✅ [TeamStore] Updated memberCount for team ${data.teamName}: ${data.memberCount}`)
+    } else {
+      // Team not in store, might need to reload
+      console.log(`ℹ️ [TeamStore] Team ${data.teamId} not found in store, consider reloading`)
+    }
+  }
+
+  const handleTeamMemberRemoved = (data: TeamMemberEventData) => {
+    console.log('👥 [TeamStore] Member removed event received:', data)
+
+    // Find and update the team's memberCount
+    const team = teams.value.find(t => t.id === data.teamId)
+    if (team) {
+      team.memberCount = data.memberCount
+      console.log(`✅ [TeamStore] Updated memberCount for team ${data.teamName}: ${data.memberCount}`)
+    } else {
+      console.log(`ℹ️ [TeamStore] Team ${data.teamId} not found in store`)
+    }
+  }
+
+  const handleTeamUpdated = (data: TeamUpdateEventData) => {
+    console.log('🔄 [TeamStore] Team updated event received:', data)
+
+    // Find and update the team
+    const team = teams.value.find(t => t.id === data.teamId)
+    if (team) {
+      if (data.changes.name !== undefined) {team.name = data.changes.name}
+      if (data.changes.description !== undefined) {team.description = data.changes.description}
+      if (data.changes.isActive !== undefined) {team.isActive = data.changes.isActive}
+      if (data.changes.memberCount !== undefined) {team.memberCount = data.changes.memberCount}
+      console.log(`✅ [TeamStore] Updated team ${data.teamId}:`, data.changes)
+    } else {
+      console.log(`ℹ️ [TeamStore] Team ${data.teamId} not found in store`)
+    }
+  }
+
+  // 🆕 Setup WebSocket event listeners
+  let isWebSocketSetup = false
+  const setupWebSocketListeners = () => {
+    if (isWebSocketSetup) {return}
+
+    try {
+      const manager = getWebSocketManager()
+
+      manager.setEventCallbacks({
+        onTeamMemberAdded: handleTeamMemberAdded,
+        onTeamMemberRemoved: handleTeamMemberRemoved,
+        onTeamUpdated: handleTeamUpdated
+      })
+
+      isWebSocketSetup = true
+      console.log('✅ [TeamStore] WebSocket listeners setup complete')
+    } catch (err) {
+      console.warn('⚠️ [TeamStore] Failed to setup WebSocket listeners:', err)
+    }
+  }
+
+  // Auto-setup listeners when store is used
+  setupWebSocketListeners()
+
   return {
     // 狀態
     members,
@@ -405,6 +474,8 @@ export const useTeamStore = defineStore('team', () => {
     resendInvitation,
     cancelInvitation,
     clearError,
-    $reset
+    $reset,
+    // 🆕 WebSocket setup (exposed for manual re-setup if needed)
+    setupWebSocketListeners
   }
 })
