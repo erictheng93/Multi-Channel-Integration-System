@@ -9,8 +9,8 @@ import type { Bindings } from '@/types';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
-import { triggerAgentRemovedFromTeamNotification } from '@/utils/notification-trigger';
-import { teams, conversations } from '@/db/schema';
+import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
+import { teams, conversations, agents } from '@/db/schema';
 
 const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -115,6 +115,26 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       }, 409);
     }
 
+    const db = drizzle(c.env.DB);
+
+    // Get team info for broadcasting
+    const [teamInfo] = await db
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    const teamName = teamInfo?.name || `Team ${teamId}`;
+
+    // Get agent info for broadcasting
+    const [agentInfo] = await db
+      .select({ displayName: agents.displayName })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+
+    const agentName = agentInfo?.displayName || agentId;
+
     // Add to team
     const membership = await service.addAgentToTeam({
       agentId,
@@ -122,6 +142,10 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       roleInTeam: roleInTeam || 'member',
       isPrimary: isPrimary || false
     });
+
+    // Get updated member count for broadcasting
+    const teamMembers = await service.getTeamMembers(teamId);
+    const memberCount = teamMembers.length;
 
     // Log activity
     const activityService = new ActivityService(c.env.DB);
@@ -137,6 +161,24 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
         roleInTeam: membership.roleInTeam,
         isPrimary: membership.isPrimary
       }
+    });
+
+    // 🆕 Broadcast team member added event for real-time UI updates
+    await triggerTeamMemberChangeEvent(c.env, {
+      type: 'added',
+      teamId,
+      teamName,
+      agentId,
+      agentName,
+      memberCount,
+      changedBy: user.displayName || String(user.id)
+    });
+
+    console.log('✅ Agent added to team with broadcast:', {
+      agentId,
+      teamId,
+      teamName,
+      memberCount
     });
 
     return c.json({
@@ -247,9 +289,22 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
 
     const affectedConversationIds = affectedConversations.map(c => c.id);
 
+    // Get agent info for broadcasting
+    const [agentInfo] = await db
+      .select({ displayName: agents.displayName })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+
+    const agentName = agentInfo?.displayName || agentId;
+
     // Step 3: Remove agent from team
     const service = new AgentTeamsService(c.env.DB);
     await service.removeAgentFromTeam(agentId, teamId);
+
+    // Get updated member count for broadcasting
+    const teamMembers = await service.getTeamMembers(teamId);
+    const memberCount = teamMembers.length;
 
     // Step 4: Log activity
     const activityService = new ActivityService(c.env.DB);
@@ -277,10 +332,22 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
       affectedConversationIds
     });
 
-    console.log('✅ Agent removed from team with notification:', {
+    // 🆕 Step 6: Broadcast team member removed event for real-time UI updates
+    await triggerTeamMemberChangeEvent(c.env, {
+      type: 'removed',
+      teamId,
+      teamName,
+      agentId,
+      agentName,
+      memberCount,
+      changedBy: user.displayName || String(user.id)
+    });
+
+    console.log('✅ Agent removed from team with notification and broadcast:', {
       agentId,
       teamId,
       teamName,
+      memberCount,
       removedBy: user.displayName,
       affectedConversationCount: affectedConversationIds.length
     });

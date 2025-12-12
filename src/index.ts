@@ -1382,6 +1382,9 @@ import { LockCoordinator } from './services/distributed-lock-service';
 import { CustomerConversationDO } from './durable-objects/CustomerConversationDO';
 import { CustomerMessageDO } from './durable-objects/CustomerMessageDO';
 
+// Import RateLimiterDO for KV optimization (Phase 1: Rate Limiting Migration)
+import { RateLimiterDO } from './durable-objects/RateLimiterDO';
+
 // Export Durable Objects (must match wrangler.toml class_name exactly)
 export {
   ConversationRoom,
@@ -1391,7 +1394,9 @@ export {
   LockCoordinator,
   // Customer Conversation System (Chat-Style)
   CustomerConversationDO,
-  CustomerMessageDO
+  CustomerMessageDO,
+  // KV Optimization: Rate Limiter (Phase 1)
+  RateLimiterDO
 };
 
 // Export legacy Delayed Message DO names (kept for backward compatibility)

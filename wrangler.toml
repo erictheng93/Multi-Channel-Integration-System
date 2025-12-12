@@ -132,6 +132,13 @@ class_name = "CustomerConversationDO"
 name = "CUSTOMER_MESSAGE_DO"
 class_name = "CustomerMessageDO"
 
+# =================== KV OPTIMIZATION: RATE LIMITER DO ===================
+# RateLimiterDO - Replaces KV-based rate limiting for 95%+ write reduction
+# Uses in-memory sliding window with periodic batch persistence
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiterDO"
+
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
 # Initial migration - Original Durable Objects (v1 - DO NOT MODIFY!)
@@ -163,6 +170,13 @@ new_classes = [
   "CustomerConversationDO",
   "CustomerMessageDO"
 ]
+
+# Migration v5 - Add RateLimiterDO for KV optimization
+# Reduces KV write operations by 95%+ for rate limiting
+# Note: Using new_sqlite_classes for free plan compatibility
+[[migrations]]
+tag = "v5"
+new_sqlite_classes = ["RateLimiterDO"]
 
 # =================== DEPLOYMENT ENVIRONMENT POLICY ===================
 #

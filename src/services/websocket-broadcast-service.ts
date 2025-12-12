@@ -356,6 +356,132 @@ export class WebSocketBroadcastService {
     }
   }
 
+  /**
+   * 🆕 Broadcast team member events (added/removed)
+   * This enables real-time memberCount updates on TeamCard components
+   */
+  async broadcastTeamMemberEvent(event: {
+    type: 'team_member_added' | 'team_member_removed';
+    teamId: number;
+    teamName: string;
+    agentId: string;
+    agentName?: string;
+    memberCount: number;
+    changedBy: string;
+  }): Promise<boolean> {
+    try {
+      const wsEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: event.type,
+        source: 'api',
+        timestamp: Date.now(),
+        data: {
+          teamId: event.teamId,
+          teamName: event.teamName,
+          agentId: event.agentId,
+          agentName: event.agentName,
+          memberCount: event.memberCount,
+          changedBy: event.changedBy
+        },
+        priority: 'normal',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            // Broadcast to all admins for team management pages
+            {
+              type: 'global' as const,
+              targets: ['admin'] as (string | number)[],
+              filters: {
+                roles: ['admin']
+              }
+            },
+            // Also broadcast to all team members
+            {
+              type: 'team' as const,
+              targets: [event.teamId] as (string | number)[]
+            }
+          ],
+          persistent: false,
+          ttl: 300000 // 5 minutes
+        }
+      };
+
+      console.log('📡 [WebSocket Broadcast] Team member event:', {
+        type: event.type,
+        teamId: event.teamId,
+        teamName: event.teamName,
+        memberCount: event.memberCount
+      });
+
+      return await this.broadcastToWebSocket(wsEvent);
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] Team member event error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 🆕 Broadcast team update events (name, status, etc.)
+   * This enables real-time team info updates on TeamCard components
+   */
+  async broadcastTeamUpdateEvent(event: {
+    teamId: number;
+    teamName: string;
+    changes: {
+      name?: string;
+      description?: string;
+      isActive?: boolean;
+      memberCount?: number;
+    };
+    changedBy: string;
+  }): Promise<boolean> {
+    try {
+      const wsEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: 'team_updated',
+        source: 'api',
+        timestamp: Date.now(),
+        data: {
+          teamId: event.teamId,
+          teamName: event.teamName,
+          changes: event.changes,
+          changedBy: event.changedBy
+        },
+        priority: 'normal',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            // Broadcast to all admins
+            {
+              type: 'global' as const,
+              targets: ['admin'] as (string | number)[],
+              filters: {
+                roles: ['admin']
+              }
+            },
+            // Also broadcast to team members
+            {
+              type: 'team' as const,
+              targets: [event.teamId] as (string | number)[]
+            }
+          ],
+          persistent: false,
+          ttl: 300000 // 5 minutes
+        }
+      };
+
+      console.log('📡 [WebSocket Broadcast] Team update event:', {
+        teamId: event.teamId,
+        changes: event.changes
+      });
+
+      return await this.broadcastToWebSocket(wsEvent);
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] Team update event error:', error);
+      return false;
+    }
+  }
+
   // =================== Core WebSocket Broadcasting ===================
 
   /**

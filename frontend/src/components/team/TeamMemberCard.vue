@@ -373,22 +373,32 @@ const loadTeams = async () => {
   }
 }
 
-// 載入成員所屬團隊
+// 載入成員所屬團隊 - 始終從 API 獲取最新數據
 const loadMemberTeams = async () => {
   try {
-    // 優先使用 props.member.teams (如果已有多團隊資訊)
+    // 始終優先從 API 獲取最新數據，確保實時同步
+    const response = await teamApi.getAgentTeams(props.member.id)
+    if (response.success && response.data) {
+      memberTeams.value = response.data
+      return // 成功則直接返回
+    }
+
+    // API 返回失敗但沒有拋出錯誤時，使用本地緩存作為回退
     if (props.member.teams && props.member.teams.length > 0) {
       memberTeams.value = [...props.member.teams]
-    } else {
-      // 從 API 獲取
-      const response = await teamApi.getAgentTeams(props.member.id)
-      if (response.success && response.data) {
-        memberTeams.value = response.data
-      }
+      console.warn('API 返回失敗，使用本地緩存數據')
     }
   } catch (error) {
     console.error('載入成員團隊失敗:', error)
-    // 回退：使用舊的 teamId 作為單一團隊
+
+    // 回退方案 1：使用 props.member.teams
+    if (props.member.teams && props.member.teams.length > 0) {
+      memberTeams.value = [...props.member.teams]
+      console.warn('API 調用失敗，使用本地緩存數據')
+      return
+    }
+
+    // 回退方案 2：使用舊的 teamId 作為單一團隊
     if (props.member.teamId) {
       const team = teams.value.find(t => t.id === props.member.teamId)
       memberTeams.value = [{

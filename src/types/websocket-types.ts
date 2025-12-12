@@ -151,7 +151,10 @@ export type DurableObjectEventType =
   | 'agent_available' | 'agent_busy' | 'agent_offline' | 'message_recall_success'
   | 'message_recall_failed' | 'batch_message' | 'message_updated'
   | 'notification' // Real-time notification events (new_message, assigned, transferred, etc.)
-  | 'agent_removed_from_team'; // 🆕 Agent removed from team - triggers conversation visibility refresh
+  | 'agent_removed_from_team' // 🆕 Agent removed from team - triggers conversation visibility refresh
+  | 'team_member_added' // 🆕 Agent added to team - triggers memberCount update
+  | 'team_member_removed' // 🆕 Agent removed from team - triggers memberCount update
+  | 'team_updated'; // 🆕 Team info updated (name, status, etc.)
 
 export interface DurableObjectEvent {
   id: string;
