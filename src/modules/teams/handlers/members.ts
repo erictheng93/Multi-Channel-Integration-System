@@ -4,6 +4,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { MemberService } from '@modules/teams/services/member-service';
+import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import {
   jwtAuth,
   requireAdmin,
@@ -26,6 +27,7 @@ const membersHandler = new Hono<{ Bindings: Bindings }>();
 /**
  * 獲取所有團隊成員列表 (僅限 Admin)
  * GET /api/teams/members
+ * Now includes multi-team membership information
  */
 membersHandler.get('/', jwtAuth, async (c) => {
   try {
@@ -53,16 +55,36 @@ membersHandler.get('/', jwtAuth, async (c) => {
         status: sql`CASE WHEN ${agents.isActive} = 1 THEN 'active' ELSE 'inactive' END`.as('status'),
         createdAt: agents.createdAt,
         lastActive: agents.lastLoginAt,
-        teamId: agents.teamId
+        teamId: agents.teamId // Legacy: primary team for backward compatibility
       })
       .from(agents)
       .orderBy(desc(agents.lastLoginAt), desc(agents.createdAt));
 
-    const formattedMembers = members.map((member: any) => ({
-      ...member,
-      createdAt: member.createdAt ? new Date(member.createdAt) : new Date(),
-      lastActive: member.lastActive ? new Date(member.lastActive) : undefined
-    }));
+    // Fetch multi-team membership information
+    const agentTeamsService = new AgentTeamsService(c.env.DB);
+    const allAgentTeams = await agentTeamsService.getAllAgentsWithTeams();
+
+    const formattedMembers = members.map((member: any) => {
+      const agentTeamList = allAgentTeams.get(member.id) || [];
+      const primaryTeam = agentTeamList.find(t => t.isPrimary);
+
+      return {
+        ...member,
+        createdAt: member.createdAt ? new Date(member.createdAt) : new Date(),
+        lastActive: member.lastActive ? new Date(member.lastActive) : undefined,
+        // New: multi-team support
+        teams: agentTeamList.map(t => ({
+          teamId: t.teamId,
+          teamName: t.teamName,
+          roleInTeam: t.roleInTeam,
+          isPrimary: t.isPrimary,
+          joinedAt: t.joinedAt
+        })),
+        teamCount: agentTeamList.length,
+        primaryTeamId: primaryTeam?.teamId || member.teamId,
+        primaryTeamName: primaryTeam?.teamName
+      };
+    });
 
     return c.json({
       success: true,

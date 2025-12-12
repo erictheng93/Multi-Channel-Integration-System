@@ -39,7 +39,7 @@
       <button
         class="btn btn-sm btn-secondary"
         :disabled="loading"
-        @click="$emit('generate-qr', team)"
+        @click="$emit('view-qr', team)"
         @mouseenter="$emit('prefetch-qr', team)"
       >
         QR 碼
@@ -174,8 +174,8 @@
             </div>
             <button
               class="btn btn-sm btn-primary"
-              :disabled="loadingMembers || addingMember"
-              @click="showAddMemberDialog"
+              :disabled="loadingMembers"
+              @click="openAddMemberModal"
             >
               + 新增成員
             </button>
@@ -538,76 +538,22 @@
                     <span class="qr-stat-label">活動名稱</span>
                     <span class="qr-stat-value">{{ currentQRCode.campaignName }}</span>
                   </div>
-                  <div
-                    v-if="currentQRCode.expiresAt"
-                    class="qr-stat-item"
-                  >
-                    <span class="qr-stat-label">有效期限</span>
-                    <span class="qr-stat-value">{{ formatDate(currentQRCode.expiresAt) }}</span>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- 新增成員選擇器 -->
-        <div
-          v-if="showAddMemberSelector"
-          class="add-member-section"
-        >
-          <div class="add-member-header">
-            <h4>選擇要新增的成員</h4>
-            <button
-              class="close-selector"
-              @click="showAddMemberSelector = false"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div
-            v-if="loadingAvailableMembers"
-            class="loading-members"
-          >
-            <HamsterLoader message="載入可用成員中..." />
-          </div>
-
-          <div
-            v-else-if="availableMembers.length === 0"
-            class="no-members"
-          >
-            <EmptyIcon />
-            <span>沒有可新增的成員</span>
-          </div>
-
-          <div
-            v-else
-            class="available-members-list"
-          >
-            <div
-              v-for="member in availableMembers"
-              :key="member.id"
-              class="available-member-item"
-              @click="handleAddMember(member)"
-            >
-              <div class="member-avatar-small">
-                {{ getInitials(member) }}
-              </div>
-              <div class="member-info-small">
-                <span class="member-name-small">{{ member.name || member.loginId }}</span>
-                <span class="member-role-small">{{ getRoleDisplayName(member.role) }}</span>
-              </div>
-              <button
-                class="btn-add-small"
-                :disabled="addingMember"
-              >
-                {{ addingMember ? '新增中...' : '+ 新增' }}
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
+
+      <!-- 新增成員 Modal -->
+      <AddMemberModal
+        :is-open="showAddMemberModal"
+        :team-id="team.id"
+        :team-name="team.name"
+        :current-members="members"
+        @close="closeAddMemberModal"
+        @member-added="handleMemberAdded"
+      />
 
       <!-- Modal Footer -->
       <div class="modal-footer">
@@ -625,6 +571,7 @@
 <script setup lang="ts">
 import { ref, watch, reactive, computed } from 'vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
+import AddMemberModal from '@/components/team/AddMemberModal.vue'
 import { teamApi } from '@/api/team'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
@@ -651,7 +598,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'toggle-status': [team: Team];
-  'generate-qr': [team: Team];
+  'view-qr': [team: Team];  // 🔄 改為僅查看 QR Code（不生成）
   'prefetch-qr': [team: Team];  // 🆕 Phase 1: 懸停預載事件
   'remove-team': [team: Team];
   'member-updated': [];
@@ -681,10 +628,7 @@ const editForm = reactive({
 })
 
 // 成員管理狀態
-const showAddMemberSelector = ref(false)
-const availableMembers = ref<TeamMember[]>([])
-const loadingAvailableMembers = ref(false)
-const addingMember = ref(false)
+const showAddMemberModal = ref(false)
 const removingMemberId = ref<string | null>(null)
 
 // QR Code 狀態
@@ -828,72 +772,26 @@ const loadTeamMembers = async () => {
   }
 }
 
-// 載入可用成員（未分配到此團隊的成員）
-const loadAvailableMembers = async () => {
-  loadingAvailableMembers.value = true
-  try {
-    const [allMembersResponse] = await Promise.all([
-      teamApi.getMembers()
-    ])
-
-    if (allMembersResponse.success && allMembersResponse.data) {
-      // 過濾出未分配到當前團隊的成員
-      const currentMemberIds = new Set(members.value.map(m => m.id))
-      availableMembers.value = allMembersResponse.data.filter(
-        member => !currentMemberIds.has(member.id) && member.status === 'active'
-      )
-    } else {
-      console.error('載入可用成員失敗:', allMembersResponse.error)
-      availableMembers.value = []
-    }
-  } catch (error) {
-    console.error('載入可用成員失敗:', error)
-    availableMembers.value = []
-  } finally {
-    loadingAvailableMembers.value = false
-  }
+// 顯示新增成員 Modal
+const openAddMemberModal = () => {
+  showAddMemberModal.value = true
 }
 
-// 顯示新增成員對話框
-const showAddMemberDialog = async () => {
-  showAddMemberSelector.value = true
-  await loadAvailableMembers()
+// 關閉新增成員 Modal
+const closeAddMemberModal = () => {
+  showAddMemberModal.value = false
 }
 
-// 新增成員到團隊
-const handleAddMember = async (member: TeamMember) => {
-  try {
-    const confirmed = await showWarning(
-      '確定要新增此成員？',
-      `將 ${member.name || member.loginId} 新增到 ${props.team.name}`
-    )
+// 當成員被新增時的回調
+const handleMemberAdded = async (member: TeamMember) => {
+  // 將新成員加入到當前列表
+  members.value.push(member)
 
-    if (!confirmed) {return}
+  // 重新載入團隊成員列表以確保數據同步
+  await loadTeamMembers()
 
-    addingMember.value = true
-
-    const response = await teamApi.addMemberToTeam(props.team.id, member.id)
-
-    if (response.success) {
-      showSuccess('成員新增成功')
-
-      // 重新載入團隊成員列表
-      await loadTeamMembers()
-
-      // 重新載入可用成員列表
-      await loadAvailableMembers()
-
-      // 通知父組件更新
-      emit('member-updated')
-    } else {
-      showError(response.error || '新增成員失敗')
-    }
-  } catch (error) {
-    console.error('新增成員失敗:', error)
-    showError('新增成員時發生錯誤')
-  } finally {
-    addingMember.value = false
-  }
+  // 通知父組件更新
+  emit('member-updated')
 }
 
 // 從團隊移除成員
@@ -915,11 +813,6 @@ const handleRemoveMember = async (member: TeamMember) => {
 
       // 重新載入團隊成員列表
       await loadTeamMembers()
-
-      // 如果正在顯示新增成員選擇器，也重新載入可用成員
-      if (showAddMemberSelector.value) {
-        await loadAvailableMembers()
-      }
 
       // 通知父組件更新
       emit('member-updated')
@@ -1059,16 +952,74 @@ const handleGenerateQR = async () => {
   }
 }
 
-const downloadQRCode = () => {
+/**
+ * 下載 QR Code 圖片
+ * 將 SVG 格式的 QR Code 轉換為 PNG 後下載
+ * 解決 SVG Data URL 直接下載後無法正確顯示的問題
+ */
+const downloadQRCode = async () => {
   if (!currentQRCode.value?.qrCode) {return}
 
-  const link = document.createElement('a')
-  link.href = currentQRCode.value.qrCode
-  link.download = `${props.team.name}-qrcode-${Date.now()}.png`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  showSuccess('QR Code 已下載')
+  const qrCodeDataUrl = currentQRCode.value.qrCode
+  const filename = `QRCode_${Date.now()}.png`
+
+  try {
+    // 檢查是否為 SVG 格式 (需要轉換為 PNG)
+    if (qrCodeDataUrl.startsWith('data:image/svg+xml')) {
+      // 使用 Canvas 將 SVG 轉換為 PNG
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        throw new Error('無法創建 Canvas 2D 上下文')
+      }
+      const img = new window.Image()
+
+      // 建立 Promise 處理圖片載入
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          // 設定 Canvas 大小 (高品質輸出)
+          const size = 400 // PNG 輸出大小
+          canvas.width = size
+          canvas.height = size
+
+          // 繪製白色背景
+          ctx.fillStyle = '#FFFFFF'
+          ctx.fillRect(0, 0, size, size)
+
+          // 繪製 QR Code 圖片
+          ctx.drawImage(img, 0, 0, size, size)
+
+          resolve()
+        }
+        img.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
+        img.src = qrCodeDataUrl
+      })
+
+      // 轉換為 PNG Data URL
+      const pngDataUrl = canvas.toDataURL('image/png', 1.0)
+
+      // 觸發下載
+      const link = document.createElement('a')
+      link.href = pngDataUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } else {
+      // 如果已經是 PNG/JPG 格式，直接下載
+      const link = document.createElement('a')
+      link.href = qrCodeDataUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+
+    showSuccess('QR Code 已下載')
+  } catch (error) {
+    console.error('QR Code 下載失敗:', error)
+    showError('QR Code 下載失敗，請稍後再試')
+  }
 }
 
 const copyLineUrl = async () => {
@@ -1093,24 +1044,21 @@ const handleQRImageError = () => {
 
 const getQRStatusClass = (qrCode: QRCode) => {
   if (!qrCode.isActive) {return 'inactive'}
-  if (qrCode.expiresAt && new Date(qrCode.expiresAt) < new Date()) {return 'expired'}
   if (qrCode.maxUses && qrCode.usageCount >= qrCode.maxUses) {return 'limit-reached'}
   return 'active'
 }
 
 const getQRStatusText = (qrCode: QRCode) => {
   if (!qrCode.isActive) {return '已停用'}
-  if (qrCode.expiresAt && new Date(qrCode.expiresAt) < new Date()) {return '已過期'}
   if (qrCode.maxUses && qrCode.usageCount >= qrCode.maxUses) {return '達上限'}
-  return '有效'
+  return '永久有效'
 }
 
 // 監聯 team 變化，重置 modal 狀態
 watch(() => props.team.id, () => {
   showModal.value = false
   members.value = []
-  showAddMemberSelector.value = false
-  availableMembers.value = []
+  showAddMemberModal.value = false
   currentQRCode.value = null
 })
 </script>
@@ -1597,145 +1545,6 @@ watch(() => props.team.id, () => {
   opacity: 0.5;
   cursor: not-allowed;
   font-size: 0.75rem;
-}
-
-.add-member-section {
-  margin-top: 24px;
-  padding: 20px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.add-member-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.add-member-header h4 {
-  color: #1e293b;
-  font-size: 1.125rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.close-selector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  border-radius: 8px;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 1.25rem;
-  font-weight: normal;
-  line-height: 1;
-}
-
-.close-selector:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  color: #475569;
-}
-
-.available-members-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.available-member-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.available-member-item:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-}
-
-.member-avatar-small {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 700;
-  font-size: 0.875rem;
-  flex-shrink: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.member-info-small {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.member-name-small {
-  color: #1e293b;
-  font-size: 1rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.member-role-small {
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.btn-add-small {
-  padding: 8px 16px;
-  border: 1px solid #16a34a;
-  background: #dcfce7;
-  color: #166534;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.btn-add-small:hover:not(:disabled) {
-  background: #bbf7d0;
-  border-color: #15803d;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
-}
-
-.btn-add-small:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .modal-footer {

@@ -21,7 +21,7 @@ export const agents = sqliteTable('agents', {
   passwordHash: text('password_hash').notNull(), // 🔐 Bcrypt hashed
   displayName: text('display_name').notNull(),
   role: text('role').notNull().default('agent'), // 'admin', 'agent' (simplified from 3-tier to 2-tier system)
-  teamId: integer('team_id').references(() => teams.id), // Foreign key to teams table (team functionality preserved)
+  teamId: integer('team_id').references(() => teams.id), // @deprecated Use agent_teams for multi-team support (kept for backward compatibility as primary team)
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   passwordPolicy: text('password_policy').default('changeable'),
   lastActive: text('last_active'),
@@ -30,6 +30,20 @@ export const agents = sqliteTable('agents', {
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
+
+// Agent Teams junction table - 客服人員與團隊的多對多關係 (Migration 0028)
+// Allows agents to belong to unlimited teams simultaneously
+export const agentTeams = sqliteTable('agent_teams', {
+  id: integer('id').primaryKey(),
+  agentId: text('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  roleInTeam: text('role_in_team').default('member'), // 'member', 'lead', 'supervisor'
+  isPrimary: integer('is_primary', { mode: 'boolean' }).default(false), // Is this the agent's primary team?
+  joinedAt: text('joined_at').default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  agentTeamUnique: unique().on(table.agentId, table.teamId), // Prevent duplicate memberships
+}));
 
 // Customers table - 平台客戶資訊表
 // ENCRYPTION NOTE: Consider encrypting email, phone, metadata for PII protection
@@ -600,3 +614,7 @@ export type ReportDownloadHistory = typeof reportDownloadHistory.$inferSelect;
 export type NewReportDownloadHistory = typeof reportDownloadHistory.$inferInsert;
 export type ReportTemplate = typeof reportTemplates.$inferSelect;
 export type NewReportTemplate = typeof reportTemplates.$inferInsert;
+
+// Export types for agent teams (multi-team membership)
+export type AgentTeam = typeof agentTeams.$inferSelect;
+export type NewAgentTeam = typeof agentTeams.$inferInsert;

@@ -66,6 +66,15 @@ export interface PaginatedResponse<T> {
   hasMore?: boolean;
 }
 
+// 客服所屬團隊資訊 (多團隊支援)
+export interface AgentTeamMembership {
+  teamId: number;
+  teamName?: string;
+  roleInTeam: 'member' | 'lead' | 'supervisor';
+  isPrimary: boolean;
+  joinedAt?: string;
+}
+
 // 團隊管理相關型別
 export interface TeamMember {
   id: string;
@@ -75,11 +84,16 @@ export interface TeamMember {
   role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   status: 'active' | 'inactive' | 'pending';
   group?: string;
-  teamId?: number;
+  teamId?: number; // @deprecated - Use teams array for multi-team support
   avatar?: string;
   createdAt: Date | string;
   updatedAt: Date | string;
   lastLoginAt?: Date | string;
+  // Multi-team support (added in migration 0028)
+  teams?: AgentTeamMembership[];
+  teamCount?: number;
+  primaryTeamId?: number;
+  primaryTeamName?: string;
 }
 
 export interface Invitation {

@@ -696,7 +696,8 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     // QR code generation runs in parallel with activity logging (~30-50ms overhead)
     const user = c.get('user');
     const activityService = new TeamActivityService(c.env.DB);
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+    // 🔧 修正：傳遞 LINE_BOT_ID 以生成正確的 LINE URL
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
 
     // Run activity logging and QR generation in parallel
     const [, qrResult] = await Promise.all([

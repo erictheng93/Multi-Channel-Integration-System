@@ -175,23 +175,103 @@
                 </div>
               </div>
             </div>
+            <!-- Multi-Team Selector (支援多團隊) -->
             <div class="form-group">
-              <label for="editGroup">群組</label>
-              <select
-                id="editGroup"
-                v-model="editForm.teamId"
-              >
-                <option :value="null">
-                  未指派群組
-                </option>
-                <option
-                  v-for="team in teams"
-                  :key="team.id"
-                  :value="team.id"
+              <label>所屬群組</label>
+              <div class="multi-team-selector">
+                <!-- 已加入的團隊列表 (Chips) -->
+                <div class="team-chips-container">
+                  <TransitionGroup name="chip">
+                    <div
+                      v-for="membership in memberTeams"
+                      :key="membership.teamId"
+                      class="team-chip"
+                      :class="{ 'is-primary': membership.isPrimary }"
+                    >
+                      <span class="chip-icon">{{ membership.isPrimary ? '⭐' : '👥' }}</span>
+                      <span class="chip-name">{{ membership.teamName || `團隊 #${membership.teamId}` }}</span>
+                      <span
+                        v-if="membership.roleInTeam !== 'member'"
+                        class="chip-role"
+                      >
+                        {{ getRoleInTeamText(membership.roleInTeam) }}
+                      </span>
+                      <button
+                        type="button"
+                        class="chip-remove"
+                        :disabled="teamOperationLoading"
+                        :title="`從「${membership.teamName}」移除`"
+                        @click="removeFromTeam(membership.teamId)"
+                      >
+                        ×
+                      </button>
+                      <button
+                        v-if="!membership.isPrimary && memberTeams.length > 1"
+                        type="button"
+                        class="chip-star"
+                        :disabled="teamOperationLoading"
+                        title="設為主要團隊"
+                        @click="setPrimaryTeam(membership.teamId)"
+                      >
+                        ☆
+                      </button>
+                    </div>
+                  </TransitionGroup>
+
+                  <!-- Empty State -->
+                  <div
+                    v-if="memberTeams.length === 0"
+                    class="no-teams-message"
+                  >
+                    <span class="empty-icon">📭</span>
+                    <span>尚未加入任何群組</span>
+                  </div>
+                </div>
+
+                <!-- 添加團隊下拉選單 -->
+                <div class="add-team-section">
+                  <select
+                    v-model="selectedTeamToAdd"
+                    class="team-add-select"
+                    :disabled="availableTeamsToJoin.length === 0 || teamOperationLoading"
+                  >
+                    <option
+                      :value="null"
+                      disabled
+                    >
+                      {{ availableTeamsToJoin.length === 0 ? '已加入所有可用群組' : '+ 選擇群組加入...' }}
+                    </option>
+                    <option
+                      v-for="team in availableTeamsToJoin"
+                      :key="team.id"
+                      :value="team.id"
+                    >
+                      {{ team.name }}
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    class="btn btn-add-team"
+                    :disabled="!selectedTeamToAdd || teamOperationLoading"
+                    @click="addToTeam"
+                  >
+                    <span
+                      v-if="teamOperationLoading"
+                      class="loading-spinner"
+                    >⏳</span>
+                    <span v-else>加入</span>
+                  </button>
+                </div>
+
+                <!-- Team Operation Status -->
+                <div
+                  v-if="teamOperationStatus"
+                  class="team-operation-status"
+                  :class="teamOperationStatus.type"
                 >
-                  {{ team.name }}
-                </option>
-              </select>
+                  {{ teamOperationStatus.message }}
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label class="checkbox-label">
@@ -227,7 +307,7 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive, watch, nextTick, onUnmounted } from 'vue'
-import type { TeamMember } from '@/types'
+import type { TeamMember, AgentTeamMembership } from '@/types'
 import { teamApi } from '@/api/team'
 import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
@@ -269,6 +349,18 @@ const teams = ref<Array<{
   isActive: boolean;
 }>>([])
 
+// Multi-team management state
+const memberTeams = ref<AgentTeamMembership[]>([])
+const selectedTeamToAdd = ref<number | null>(null)
+const teamOperationLoading = ref(false)
+const teamOperationStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null)
+
+// 計算可加入的團隊 (排除已加入的)
+const availableTeamsToJoin = computed(() => {
+  const joinedTeamIds = new Set(memberTeams.value.map(t => t.teamId))
+  return teams.value.filter(team => !joinedTeamIds.has(team.id))
+})
+
 // 載入團隊列表
 const loadTeams = async () => {
   try {
@@ -279,6 +371,151 @@ const loadTeams = async () => {
   } catch (error) {
     console.error('獲取團隊列表失敗:', error)
   }
+}
+
+// 載入成員所屬團隊
+const loadMemberTeams = async () => {
+  try {
+    // 優先使用 props.member.teams (如果已有多團隊資訊)
+    if (props.member.teams && props.member.teams.length > 0) {
+      memberTeams.value = [...props.member.teams]
+    } else {
+      // 從 API 獲取
+      const response = await teamApi.getAgentTeams(props.member.id)
+      if (response.success && response.data) {
+        memberTeams.value = response.data
+      }
+    }
+  } catch (error) {
+    console.error('載入成員團隊失敗:', error)
+    // 回退：使用舊的 teamId 作為單一團隊
+    if (props.member.teamId) {
+      const team = teams.value.find(t => t.id === props.member.teamId)
+      memberTeams.value = [{
+        teamId: props.member.teamId,
+        teamName: team?.name,
+        roleInTeam: 'member',
+        isPrimary: true
+      }]
+    } else {
+      memberTeams.value = []
+    }
+  }
+}
+
+// 加入團隊
+const addToTeam = async () => {
+  if (!selectedTeamToAdd.value) {return}
+
+  teamOperationLoading.value = true
+  teamOperationStatus.value = null
+
+  try {
+    const response = await teamApi.joinTeam(props.member.id, selectedTeamToAdd.value, {
+      roleInTeam: 'member',
+      isPrimary: memberTeams.value.length === 0
+    })
+
+    if (response.success && response.data) {
+      // 添加到本地列表
+      const teamInfo = teams.value.find(t => t.id === selectedTeamToAdd.value)
+      memberTeams.value.push({
+        teamId: response.data.teamId,
+        teamName: teamInfo?.name || `團隊 #${response.data.teamId}`,
+        roleInTeam: response.data.roleInTeam || 'member',
+        isPrimary: response.data.isPrimary || false,
+        joinedAt: response.data.joinedAt
+      })
+
+      selectedTeamToAdd.value = null
+      teamOperationStatus.value = { type: 'success', message: '成功加入團隊' }
+      showSuccess('加入成功', `已將 ${props.member.name || props.member.loginId} 加入團隊`)
+
+      // 3秒後清除狀態
+      setTimeout(() => { teamOperationStatus.value = null }, 3000)
+    }
+  } catch (error) {
+    console.error('加入團隊失敗:', error)
+    teamOperationStatus.value = { type: 'error', message: error instanceof Error ? error.message : '加入團隊失敗' }
+    showError('加入失敗', error instanceof Error ? error.message : '加入團隊失敗')
+  } finally {
+    teamOperationLoading.value = false
+  }
+}
+
+// 從團隊移除
+const removeFromTeam = async (teamId: number) => {
+  const teamInfo = memberTeams.value.find(t => t.teamId === teamId)
+  const teamName = teamInfo?.teamName || `團隊 #${teamId}`
+
+  const confirmed = await showWarning(
+    '確認移除',
+    `確定要將 ${props.member.name || props.member.loginId} 從「${teamName}」移除嗎？`,
+    { confirmText: '確認移除', cancelText: '取消' }
+  )
+
+  if (!confirmed) {return}
+
+  teamOperationLoading.value = true
+  teamOperationStatus.value = null
+
+  try {
+    const response = await teamApi.leaveTeam(props.member.id, teamId)
+
+    if (response.success) {
+      // 從本地列表移除
+      memberTeams.value = memberTeams.value.filter(t => t.teamId !== teamId)
+      teamOperationStatus.value = { type: 'success', message: '已從團隊移除' }
+      showSuccess('移除成功', `已將 ${props.member.name || props.member.loginId} 從「${teamName}」移除`)
+
+      setTimeout(() => { teamOperationStatus.value = null }, 3000)
+    }
+  } catch (error) {
+    console.error('從團隊移除失敗:', error)
+    teamOperationStatus.value = { type: 'error', message: error instanceof Error ? error.message : '移除失敗' }
+    showError('移除失敗', error instanceof Error ? error.message : '從團隊移除失敗')
+  } finally {
+    teamOperationLoading.value = false
+  }
+}
+
+// 設為主要團隊
+const setPrimaryTeam = async (teamId: number) => {
+  teamOperationLoading.value = true
+  teamOperationStatus.value = null
+
+  try {
+    const response = await teamApi.setPrimaryTeam(props.member.id, teamId)
+
+    if (response.success) {
+      // 更新本地列表
+      memberTeams.value = memberTeams.value.map(t => ({
+        ...t,
+        isPrimary: t.teamId === teamId
+      }))
+
+      teamOperationStatus.value = { type: 'success', message: '已設為主要團隊' }
+      showSuccess('設定成功', '已更新主要團隊')
+
+      setTimeout(() => { teamOperationStatus.value = null }, 3000)
+    }
+  } catch (error) {
+    console.error('設定主要團隊失敗:', error)
+    teamOperationStatus.value = { type: 'error', message: error instanceof Error ? error.message : '設定失敗' }
+    showError('設定失敗', error instanceof Error ? error.message : '設定主要團隊失敗')
+  } finally {
+    teamOperationLoading.value = false
+  }
+}
+
+// 取得團隊內角色顯示文字
+const getRoleInTeamText = (role: string) => {
+  const roleMap: Record<string, string> = {
+    lead: '組長',
+    supervisor: '主管',
+    member: '成員'
+  }
+  return roleMap[role] || role
 }
 
 // Edit form data - Simplified from 3-tier to 2-tier role system
@@ -299,8 +536,15 @@ watch(() => showEditModal.value, async (newVal) => {
     editForm.teamId = props.member.teamId ?? null
     editForm.isActive = props.member.status === 'active'
 
-    // 載入團隊列表
-    await loadTeams()
+    // 重置多團隊狀態
+    selectedTeamToAdd.value = null
+    teamOperationStatus.value = null
+
+    // 載入團隊列表和成員所屬團隊
+    await Promise.all([
+      loadTeams(),
+      loadMemberTeams()
+    ])
   }
 })
 
@@ -957,6 +1201,287 @@ const formatDate = (date: string | Date) => {
     grid-template-columns: 1fr 1fr;
     display: grid;
     gap: var(--space-2);
+  }
+}
+
+/* =====================================================
+   Multi-Team Selector Styles
+   ===================================================== */
+
+.multi-team-selector {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.team-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 44px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+/* Team Chip Styles */
+.team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.2s ease;
+  animation: chipAppear 0.3s ease-out;
+}
+
+@keyframes chipAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.team-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.team-chip.is-primary {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.team-chip.is-primary:hover {
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.chip-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chip-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-role {
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chip-remove,
+.chip-star {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.chip-remove:hover {
+  background: rgba(239, 68, 68, 0.8);
+  transform: scale(1.1);
+}
+
+.chip-star:hover {
+  background: rgba(251, 191, 36, 0.8);
+  transform: scale(1.1);
+}
+
+.chip-remove:disabled,
+.chip-star:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Empty State */
+.no-teams-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  width: 100%;
+}
+
+.empty-icon {
+  font-size: 1.2rem;
+}
+
+/* Add Team Section */
+.add-team-section {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.team-add-select {
+  flex: 1;
+  padding: 10px 12px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  font-size: 0.9rem !important;
+  background: white !important;
+  color: #475569 !important;
+  transition: all 0.2s ease;
+}
+
+.team-add-select:focus {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15) !important;
+}
+
+.team-add-select:disabled {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+}
+
+.btn-add-team {
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-add-team:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-add-team:disabled {
+  background: #94a3b8 !important;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Operation Status */
+.team-operation-status {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: statusAppear 0.3s ease-out;
+}
+
+@keyframes statusAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.team-operation-status.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.team-operation-status.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Chip Transition Animations */
+.chip-enter-active,
+.chip-leave-active {
+  transition: all 0.3s ease;
+}
+
+.chip-enter-from {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.chip-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateX(-10px);
+}
+
+.chip-move {
+  transition: transform 0.3s ease;
+}
+
+/* Responsive adjustments for multi-team selector */
+@media (max-width: 480px) {
+  .multi-team-selector {
+    padding: 12px;
+  }
+
+  .team-chip {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .chip-name {
+    max-width: 100px;
+  }
+
+  .add-team-section {
+    flex-direction: column;
+  }
+
+  .team-add-select {
+    width: 100%;
+  }
+
+  .btn-add-team {
+    width: 100%;
   }
 }
 </style>

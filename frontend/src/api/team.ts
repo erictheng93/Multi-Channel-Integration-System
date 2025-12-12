@@ -1,11 +1,12 @@
 // 團隊管理 API 客戶端
 import { apiClient } from './base'
-import type { 
-  TeamMember, 
-  Invitation, 
+import type {
+  TeamMember,
+  Invitation,
   InvitationRequest,
   ApiResponse,
-  QRCode
+  QRCode,
+  AgentTeamMembership
 } from '@/types'
 
 export const teamApi = {
@@ -302,11 +303,10 @@ export const teamApi = {
     return apiClient.get(`/teams/${teamId}/stats`)
   },
 
-  // 生成團隊 QR 碼
+  // 生成團隊 QR 碼 (永久有效，不設過期時間)
   generateTeamQR: async (teamId: number, data?: {
     campaignName?: string;
     description?: string;
-    expiresAt?: string;
     maxUses?: number;
   }): Promise<ApiResponse<{
     id: string;
@@ -316,7 +316,6 @@ export const teamApi = {
     campaignName?: string;
     usageCount: number;
     maxUses?: number;
-    expiresAt?: Date;
   }>> => {
     return apiClient.post(`/teams/${teamId}/qr-code`, data || {})
   },
@@ -428,7 +427,7 @@ export const teamApi = {
     }
   },
 
-  // 添加成員到團隊
+  // 添加成員到團隊 (使用新的多團隊 API)
   addMemberToTeam: async (teamId: number, agentId: string): Promise<ApiResponse<TeamMember>> => {
     try {
       if (!teamId) {
@@ -438,12 +437,26 @@ export const teamApi = {
         return { success: false, error: '成員 ID 不能為空' }
       }
 
-      const response = await apiClient.post<TeamMember>(`/teams/${teamId}/members`, { agentId })
+      // 使用新的多團隊 API: POST /api/teams/agent-teams/:agentId/join
+      const response = await apiClient.post<AgentTeamMembership>(`/teams/agent-teams/${agentId}/join`, {
+        teamId,
+        roleInTeam: 'member',
+        isPrimary: false
+      })
 
       if (response.success && response.data) {
+        // 返回 TeamMember 格式以保持向後兼容
         return {
           success: true,
-          data: response.data
+          data: {
+            id: agentId,
+            loginId: agentId,
+            role: 'agent',
+            status: 'active',
+            teamId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } as TeamMember
         }
       }
 
@@ -454,7 +467,7 @@ export const teamApi = {
     }
   },
 
-  // 從團隊移除成員
+  // 從團隊移除成員 (使用新的多團隊 API)
   removeMemberFromTeam: async (teamId: number, agentId: string): Promise<ApiResponse<void>> => {
     try {
       if (!teamId) {
@@ -464,7 +477,8 @@ export const teamApi = {
         return { success: false, error: '成員 ID 不能為空' }
       }
 
-      const response = await apiClient.delete<void>(`/teams/${teamId}/members/${agentId}`)
+      // 使用新的多團隊 API: DELETE /api/teams/agent-teams/:agentId/leave/:teamId
+      const response = await apiClient.delete<void>(`/teams/agent-teams/${agentId}/leave/${teamId}`)
 
       if (response.success) {
         return {
@@ -476,6 +490,165 @@ export const teamApi = {
     } catch (error) {
       console.error('Remove member from team failed:', error)
       return { success: false, error: '網路錯誤，無法從團隊移除成員' }
+    }
+  },
+
+  // ============================================================
+  // Multi-Team Membership APIs (Migration 0028)
+  // 多團隊成員關係 API - 支援客服加入無限團隊
+  // ============================================================
+
+  /**
+   * 獲取客服所屬的所有團隊
+   * @param agentId 客服 ID
+   */
+  getAgentTeams: async (agentId: string): Promise<ApiResponse<AgentTeamMembership[]>> => {
+    try {
+      if (!agentId?.trim()) {
+        return { success: false, error: '客服 ID 不能為空' }
+      }
+      return apiClient.get(`/teams/agent-teams/${agentId}`)
+    } catch (error) {
+      console.error('Get agent teams failed:', error)
+      return { success: false, error: '網路錯誤，無法獲取客服團隊' }
+    }
+  },
+
+  /**
+   * 將客服加入團隊
+   * @param agentId 客服 ID
+   * @param teamId 團隊 ID
+   * @param options 可選參數 (角色、是否為主要團隊)
+   */
+  joinTeam: async (agentId: string, teamId: number, options?: {
+    roleInTeam?: 'member' | 'lead' | 'supervisor';
+    isPrimary?: boolean;
+  }): Promise<ApiResponse<AgentTeamMembership>> => {
+    try {
+      if (!agentId?.trim()) {
+        return { success: false, error: '客服 ID 不能為空' }
+      }
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      return apiClient.post(`/teams/agent-teams/${agentId}/join`, {
+        teamId,
+        ...options
+      })
+    } catch (error) {
+      console.error('Join team failed:', error)
+      return { success: false, error: '網路錯誤，無法加入團隊' }
+    }
+  },
+
+  /**
+   * 批量將客服加入多個團隊
+   * @param agentId 客服 ID
+   * @param teamIds 團隊 ID 陣列
+   * @param roleInTeam 團隊內角色
+   */
+  joinMultipleTeams: async (agentId: string, teamIds: number[], roleInTeam?: string): Promise<ApiResponse<{
+    added: number[];
+    skipped: number[];
+    errors: { teamId: number; error: string }[];
+  }>> => {
+    try {
+      if (!agentId?.trim()) {
+        return { success: false, error: '客服 ID 不能為空' }
+      }
+      if (!teamIds?.length) {
+        return { success: false, error: '團隊 ID 列表不能為空' }
+      }
+      return apiClient.post(`/teams/agent-teams/${agentId}/join-multiple`, {
+        teamIds,
+        roleInTeam
+      })
+    } catch (error) {
+      console.error('Join multiple teams failed:', error)
+      return { success: false, error: '網路錯誤，無法批量加入團隊' }
+    }
+  },
+
+  /**
+   * 從團隊離開
+   * @param agentId 客服 ID
+   * @param teamId 團隊 ID
+   */
+  leaveTeam: async (agentId: string, teamId: number): Promise<ApiResponse<void>> => {
+    try {
+      if (!agentId?.trim()) {
+        return { success: false, error: '客服 ID 不能為空' }
+      }
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      return apiClient.delete(`/teams/agent-teams/${agentId}/leave/${teamId}`)
+    } catch (error) {
+      console.error('Leave team failed:', error)
+      return { success: false, error: '網路錯誤，無法離開團隊' }
+    }
+  },
+
+  /**
+   * 更新客服在團隊中的角色
+   * @param agentId 客服 ID
+   * @param teamId 團隊 ID
+   * @param options 更新選項
+   */
+  updateAgentTeamRole: async (agentId: string, teamId: number, options: {
+    roleInTeam?: 'member' | 'lead' | 'supervisor';
+    isPrimary?: boolean;
+  }): Promise<ApiResponse<AgentTeamMembership>> => {
+    try {
+      if (!agentId?.trim()) {
+        return { success: false, error: '客服 ID 不能為空' }
+      }
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      return apiClient.put(`/teams/agent-teams/${agentId}/role/${teamId}`, options)
+    } catch (error) {
+      console.error('Update agent team role failed:', error)
+      return { success: false, error: '網路錯誤，無法更新角色' }
+    }
+  },
+
+  /**
+   * 設定主要團隊
+   * @param agentId 客服 ID
+   * @param teamId 團隊 ID
+   */
+  setPrimaryTeam: async (agentId: string, teamId: number): Promise<ApiResponse<void>> => {
+    try {
+      if (!agentId?.trim()) {
+        return { success: false, error: '客服 ID 不能為空' }
+      }
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      return apiClient.put(`/teams/agent-teams/${agentId}/primary/${teamId}`)
+    } catch (error) {
+      console.error('Set primary team failed:', error)
+      return { success: false, error: '網路錯誤，無法設定主要團隊' }
+    }
+  },
+
+  /**
+   * 獲取團隊成員（包含多團隊資訊）
+   * @param teamId 團隊 ID
+   */
+  getTeamMembersWithTeams: async (teamId: number): Promise<ApiResponse<Array<TeamMember & {
+    teams: AgentTeamMembership[];
+    primaryTeamId?: number;
+  }>>> => {
+    try {
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      return apiClient.get(`/teams/agent-teams/team/${teamId}/members`)
+    } catch (error) {
+      console.error('Get team members with teams failed:', error)
+      return { success: false, error: '網路錯誤，無法獲取團隊成員' }
     }
   }
 }
