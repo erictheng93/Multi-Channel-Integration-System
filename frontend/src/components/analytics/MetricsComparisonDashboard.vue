@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
 
@@ -237,6 +237,49 @@ const customPeriod = ref({
   start: '',
   end: ''
 });
+
+// ⚡ LCP 優化：本地快取機制
+interface LocalCache {
+  data: MultiMetricComparison;
+  timestamp: number;
+  preset: string;
+}
+
+const CACHE_KEY = 'analytics_comparison_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 分鐘快取
+
+function getLocalCache(): LocalCache | null {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) {return null;}
+
+    const parsed = JSON.parse(cached) as LocalCache;
+    const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+    const isSamePreset = parsed.preset === selectedPreset.value;
+
+    if (isExpired || !isSamePreset) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setLocalCache(data: MultiMetricComparison): void {
+  try {
+    const cache: LocalCache = {
+      data,
+      timestamp: Date.now(),
+      preset: selectedPreset.value
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch (err) {
+    console.warn('無法儲存快取:', err);
+  }
+}
 
 // 期間預設選項
 const periodPresets = [
@@ -297,7 +340,24 @@ const currentPeriod = computed(() => {
 
 // 載入數據
 async function loadData() {
-  loading.value = true;
+  // ⚡ LCP 優化：先嘗試從本地快取獲取數據
+  const cachedData = getLocalCache();
+  if (cachedData) {
+    console.log('⚡ [Analytics] 使用本地快取數據');
+    comparisonData.value = cachedData.data;
+    // 在背景更新數據
+    loadDataFromAPI(true);
+    return;
+  }
+
+  await loadDataFromAPI(false);
+}
+
+// 從 API 載入數據
+async function loadDataFromAPI(isBackground: boolean) {
+  if (!isBackground) {
+    loading.value = true;
+  }
   error.value = null;
 
   try {
@@ -336,14 +396,22 @@ async function loadData() {
 
     comparisonData.value = result.data;
 
-    // 載入快取統計
-    await loadCacheStats();
+    // ⚡ LCP 優化：儲存到本地快取
+    setLocalCache(result.data);
+    console.log('⚡ [Analytics] 數據已更新並快取');
+
+    // 載入快取統計（非阻塞）
+    loadCacheStats().catch(err => console.warn('快取統計載入失敗:', err));
 
   } catch (err) {
     console.error('載入比較數據失敗:', err);
-    error.value = err instanceof Error ? err.message : '未知錯誤';
+    if (!isBackground) {
+      error.value = err instanceof Error ? err.message : '未知錯誤';
+    }
   } finally {
-    loading.value = false;
+    if (!isBackground) {
+      loading.value = false;
+    }
   }
 }
 
@@ -417,13 +485,34 @@ function getValueFormatter(metricKey: string): (_value: number) => string {
   return (_value: number) => _value.toLocaleString();
 }
 
-// 生命週期
-onMounted(() => {
-  loadData();
+// ⚡ LCP 優化：延遲加載數據
+let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  // 自動刷新
-  if (props.autoRefresh) {
-    setInterval(loadData, props.refreshInterval);
+onMounted(() => {
+  // ⚡ LCP 優化：使用 requestIdleCallback 延遲加載，避免阻塞首次渲染
+  // 這確保 Dashboard 主要內容先顯示，Analytics 數據在瀏覽器空閒時加載
+  const scheduleDataLoad = () => {
+    loadData();
+
+    // 自動刷新
+    if (props.autoRefresh) {
+      refreshIntervalId = setInterval(loadData, props.refreshInterval);
+    }
+  };
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(scheduleDataLoad, { timeout: 2000 });
+  } else {
+    // Fallback: 延遲 300ms 讓 LCP 優先完成
+    setTimeout(scheduleDataLoad, 300);
+  }
+});
+
+// 清理定時器
+onBeforeUnmount(() => {
+  if (refreshIntervalId) {
+    clearInterval(refreshIntervalId);
+    refreshIntervalId = null;
   }
 });
 </script>

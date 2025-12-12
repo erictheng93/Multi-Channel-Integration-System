@@ -3,10 +3,14 @@
 // Allows agents to belong to unlimited teams
 
 import { Hono } from 'hono';
+import { eq, inArray } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
+import { triggerAgentRemovedFromTeamNotification } from '@/utils/notification-trigger';
+import { teams, conversations } from '@/db/schema';
 
 const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -204,6 +208,11 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
 /**
  * 從團隊移除客服
  * DELETE /api/teams/agent-teams/:agentId/leave/:teamId
+ *
+ * 🆕 移出後會：
+ * 1. 發送 WebSocket 通知給被移出的客服
+ * 2. 前端收到通知後刷新對話列表
+ * 3. 如果客服正在查看該團隊的對話，前端會強制關閉
  */
 agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
@@ -218,10 +227,31 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
       }, 400);
     }
 
+    const db = drizzle(c.env.DB);
+
+    // 🆕 Step 1: Get team name for notification
+    const [teamInfo] = await db
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    const teamName = teamInfo?.name || `Team ${teamId}`;
+
+    // 🆕 Step 2: Get affected conversation IDs (conversations assigned to this team)
+    // These are the conversations the agent will no longer be able to see
+    const affectedConversations = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.assignedTeamId, teamId));
+
+    const affectedConversationIds = affectedConversations.map(c => c.id);
+
+    // Step 3: Remove agent from team
     const service = new AgentTeamsService(c.env.DB);
     await service.removeAgentFromTeam(agentId, teamId);
 
-    // Log activity
+    // Step 4: Log activity
     const activityService = new ActivityService(c.env.DB);
     await activityService.logActivity({
       userId: String(user.id),
@@ -230,12 +260,38 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
       action: ACTIVITY_ACTIONS.MEMBER_REMOVE,
       resourceType: RESOURCE_TYPES.TEAM,
       resourceId: String(teamId),
-      details: { agentId }
+      details: {
+        agentId,
+        teamName,
+        affectedConversationCount: affectedConversationIds.length
+      }
+    });
+
+    // 🆕 Step 5: Send WebSocket notification to the removed agent
+    // This triggers: 1) Toast notification 2) Conversation list refresh 3) Force close if viewing affected conversation
+    await triggerAgentRemovedFromTeamNotification(c.env, {
+      agentId,
+      teamId,
+      teamName,
+      removedBy: user.displayName || String(user.id),
+      affectedConversationIds
+    });
+
+    console.log('✅ Agent removed from team with notification:', {
+      agentId,
+      teamId,
+      teamName,
+      removedBy: user.displayName,
+      affectedConversationCount: affectedConversationIds.length
     });
 
     return c.json({
       success: true,
       message: 'Agent removed from team successfully',
+      data: {
+        teamName,
+        affectedConversationCount: affectedConversationIds.length
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {

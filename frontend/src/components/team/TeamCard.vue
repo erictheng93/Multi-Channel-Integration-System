@@ -366,83 +366,47 @@
             <span class="empty-hint">點擊上方按鈕生成專屬 QR Code，讓客戶輕鬆加入 LINE 官方帳號</span>
           </div>
 
-          <!-- QR Code Display -->
+          <!-- QR Code Display - Flex Bubble Design -->
           <div
             v-else
             class="qr-display"
           >
-            <div class="qr-card">
-              <!-- QR Code Image -->
-              <div class="qr-image-wrapper">
-                <div class="qr-image-container">
-                  <img
-                    :src="currentQRCode.qrCode"
-                    alt="LINE QR Code"
-                    class="qr-image"
-                    @error="handleQRImageError"
-                  >
-                  <div class="qr-overlay">
-                    <button
-                      class="qr-action-btn"
-                      title="下載 QR Code"
-                      @click="downloadQRCode"
+            <div class="qr-flex-layout">
+              <!-- Left: Flex Bubble Card (QRcodeDesign.html Style) -->
+              <div class="flex-bubble">
+                <div class="bubble-body">
+                  <!-- QR Code Image -->
+                  <div class="qr-image-wrapper">
+                    <img
+                      :src="currentQRCode.qrCode"
+                      alt="LINE QR Code"
+                      class="qr-image"
+                      @error="handleQRImageError"
                     >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line
-                          x1="12"
-                          y1="15"
-                          x2="12"
-                          y2="3"
-                        />
-                      </svg>
-                    </button>
                   </div>
+                  <!-- Text Content -->
+                  <h2 class="bubble-title">
+                    {{ team.name }}
+                  </h2>
+                  <p class="bubble-subtitle">
+                    掃描加入 LINE 官方帳號
+                  </p>
                 </div>
-                <div
-                  class="qr-badge"
-                  :class="getQRStatusClass(currentQRCode)"
-                >
-                  {{ getQRStatusText(currentQRCode) }}
+                <div class="bubble-footer">
+                  <button
+                    class="bubble-btn"
+                    @click="downloadQRCode"
+                  >
+                    下載 QR Code
+                  </button>
                 </div>
               </div>
 
-              <!-- QR Code Info -->
+              <!-- Right: Info Panel -->
               <div class="qr-info-panel">
                 <div class="qr-info-header">
                   <h4>LINE 官方帳號連結</h4>
                   <div class="qr-actions">
-                    <button
-                      class="btn-icon-sm"
-                      title="下載 QR Code"
-                      @click="downloadQRCode"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line
-                          x1="12"
-                          y1="15"
-                          x2="12"
-                          y2="3"
-                        />
-                      </svg>
-                    </button>
                     <button
                       class="btn-icon-sm"
                       title="重新生成 QR Code"
@@ -753,13 +717,27 @@ const saveTeamEdit = async () => {
   }
 }
 
-// 載入團隊成員
+// 載入團隊成員 - 使用新的多團隊 API 以確保與 agent_teams 表同步
 const loadTeamMembers = async () => {
   loadingMembers.value = true
   try {
-    const response = await teamApi.getTeamMembersByTeam(props.team.id)
+    // 使用新的多團隊 API: GET /teams/agent-teams/team/:teamId/members
+    // 這個 API 從 agent_teams 表查詢，與 addMemberToTeam 使用的表一致
+    const response = await teamApi.getTeamMembersWithTeams(props.team.id)
     if (response.success && response.data) {
-      members.value = response.data
+      // 轉換數據格式：後端返回 displayName/isActive，前端需要 name/status
+      members.value = response.data.map(member => ({
+        id: member.id,
+        loginId: member.email || member.id,
+        name: member.displayName, // 後端: displayName → 前端: name
+        email: member.email,
+        role: member.role as 'admin' | 'agent',
+        status: member.isActive ? 'active' : 'inactive', // 後端: isActive(bool) → 前端: status(string)
+        teams: member.teams,
+        teamCount: member.teams?.length || 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as TeamMember))
     } else {
       console.error('載入團隊成員失敗:', response.error)
       members.value = []
@@ -783,14 +761,28 @@ const closeAddMemberModal = () => {
 }
 
 // 當成員被新增時的回調
-const handleMemberAdded = async (member: TeamMember) => {
-  // 將新成員加入到當前列表
-  members.value.push(member)
+const handleMemberAdded = (member: TeamMember) => {
+  // 🔧 修復：使用樂觀更新，直接更新本地狀態而非重新載入 API
+  // 這樣可以確保 UI 立即反映變化，避免 API 返回舊數據的問題
 
-  // 重新載入團隊成員列表以確保數據同步
-  await loadTeamMembers()
+  // 將新成員轉換為正確格式並加入列表
+  const newMember: TeamMember = {
+    id: member.id,
+    loginId: member.loginId || member.email || member.id,
+    name: member.name || member.loginId || '未命名',
+    email: member.email,
+    role: member.role as 'admin' | 'agent',
+    status: member.status || 'active',
+    teams: member.teams || [],
+    teamCount: member.teamCount || 1,
+    createdAt: member.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
 
-  // 通知父組件更新
+  // 樂觀更新：直接將新成員加入到當前列表（使用新陣列觸發響應式更新）
+  members.value = [...members.value, newMember]
+
+  // 通知父組件更新（用於更新團隊卡片上的成員數量）
   emit('member-updated')
 }
 
@@ -806,22 +798,29 @@ const handleRemoveMember = async (member: TeamMember) => {
 
     removingMemberId.value = member.id
 
+    // 🔧 修復：使用樂觀更新模式
+    // 先保存原始列表，以便 API 失敗時恢復
+    const originalMembers = [...members.value]
+
+    // 樂觀更新：立即從列表中移除（使用新陣列觸發響應式更新）
+    members.value = members.value.filter(m => m.id !== member.id)
+
     const response = await teamApi.removeMemberFromTeam(props.team.id, member.id)
 
     if (response.success) {
       showSuccess('成員移除成功')
-
-      // 重新載入團隊成員列表
-      await loadTeamMembers()
-
-      // 通知父組件更新
+      // 通知父組件更新（用於更新團隊卡片上的成員數量）
       emit('member-updated')
     } else {
+      // API 失敗：恢復原始列表
+      members.value = originalMembers
       showError(response.error || '移除成員失敗')
     }
   } catch (error) {
     console.error('移除成員失敗:', error)
     showError('移除成員時發生錯誤')
+    // 發生錯誤時重新載入以確保數據一致性
+    await loadTeamMembers()
   } finally {
     removingMemberId.value = null
   }
@@ -953,69 +952,150 @@ const handleGenerateQR = async () => {
 }
 
 /**
- * 下載 QR Code 圖片
- * 將 SVG 格式的 QR Code 轉換為 PNG 後下載
- * 解決 SVG Data URL 直接下載後無法正確顯示的問題
+ * 下載 QR Code 圖片 - Flex Bubble Card 樣式
+ * 生成與畫面上完全一致的 Flex Bubble Card PNG 圖片
+ * 使用 Canvas API 繪製完整卡片樣式
  */
 const downloadQRCode = async () => {
   if (!currentQRCode.value?.qrCode) {return}
 
   const qrCodeDataUrl = currentQRCode.value.qrCode
-  const filename = `QRCode_${Date.now()}.png`
+  const teamName = props.team.name
+  const filename = `DAC_QRCode_${Date.now()}.png`
 
   try {
-    // 檢查是否為 SVG 格式 (需要轉換為 PNG)
-    if (qrCodeDataUrl.startsWith('data:image/svg+xml')) {
-      // 使用 Canvas 將 SVG 轉換為 PNG
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        throw new Error('無法創建 Canvas 2D 上下文')
-      }
-      const img = new window.Image()
+    // 設計參數 (2x 縮放以獲得高清輸出)
+    const scale = 2
+    const cardWidth = 260 * scale
+    const borderRadius = 20 * scale
 
-      // 建立 Promise 處理圖片載入
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => {
-          // 設定 Canvas 大小 (高品質輸出)
-          const size = 400 // PNG 輸出大小
-          canvas.width = size
-          canvas.height = size
+    // Padding 設定 (對應 QRcodeDesign.html)
+    const bodyPaddingTop = 35 * scale
+    const footerPaddingX = 20 * scale
+    const footerPaddingBottom = 20 * scale
 
-          // 繪製白色背景
-          ctx.fillStyle = '#FFFFFF'
-          ctx.fillRect(0, 0, size, size)
+    // QR Code 尺寸
+    const qrSize = 140 * scale
 
-          // 繪製 QR Code 圖片
-          ctx.drawImage(img, 0, 0, size, size)
+    // 文字設定
+    const titleFontSize = 19 * scale
+    const titleMarginTop = 24 * scale
+    const subtitleFontSize = 13 * scale
+    const subtitleMarginTop = 8 * scale
 
-          resolve()
-        }
-        img.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
-        img.src = qrCodeDataUrl
-      })
+    // 按鈕設定
+    const btnHeight = 40 * scale
+    const btnRadius = 10 * scale
+    const btnFontSize = 15 * scale
+    const btnMarginTop = 25 * scale
 
-      // 轉換為 PNG Data URL
-      const pngDataUrl = canvas.toDataURL('image/png', 1.0)
+    // 計算總高度
+    const titleHeight = titleFontSize * 1.2
+    const subtitleHeight = subtitleFontSize * 1.2
+    const cardHeight = bodyPaddingTop + qrSize + titleMarginTop + titleHeight +
+                       subtitleMarginTop + subtitleHeight + btnMarginTop +
+                       btnHeight + footerPaddingBottom
 
-      // 觸發下載
-      const link = document.createElement('a')
-      link.href = pngDataUrl
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } else {
-      // 如果已經是 PNG/JPG 格式，直接下載
-      const link = document.createElement('a')
-      link.href = qrCodeDataUrl
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+    // 建立 Canvas
+    const canvas = document.createElement('canvas')
+    canvas.width = cardWidth
+    canvas.height = cardHeight
+    const ctx = canvas.getContext('2d')
+
+    if (!ctx) {
+      throw new Error('無法創建 Canvas 2D 上下文')
     }
 
-    showSuccess('QR Code 已下載')
+    // 輔助函數：繪製圓角矩形
+    const drawRoundedRect = (
+      x: number, y: number, w: number, h: number, r: number
+    ) => {
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.lineTo(x + w - r, y)
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+      ctx.lineTo(x + w, y + h - r)
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+      ctx.lineTo(x + r, y + h)
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+      ctx.lineTo(x, y + r)
+      ctx.quadraticCurveTo(x, y, x + r, y)
+      ctx.closePath()
+    }
+
+    // 1. 繪製卡片背景 (白色 + 圓角 + 陰影)
+    // 先繪製陰影
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)'
+    ctx.shadowBlur = 12 * scale
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 4 * scale
+
+    ctx.fillStyle = '#FFFFFF'
+    drawRoundedRect(0, 0, cardWidth, cardHeight, borderRadius)
+    ctx.fill()
+
+    // 關閉陰影
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
+
+    // 2. 載入並繪製 QR Code
+    const qrImg = new window.Image()
+    await new Promise<void>((resolve, reject) => {
+      qrImg.onload = () => resolve()
+      qrImg.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
+      qrImg.src = qrCodeDataUrl
+    })
+
+    // QR Code 位置 (置中)
+    const qrX = (cardWidth - qrSize) / 2
+    const qrY = bodyPaddingTop
+    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
+
+    // 3. 繪製標題 (團隊名稱)
+    ctx.fillStyle = '#000000'
+    ctx.font = `600 ${titleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+
+    const titleY = qrY + qrSize + titleMarginTop
+    ctx.fillText(teamName, cardWidth / 2, titleY)
+
+    // 4. 繪製副標題
+    ctx.fillStyle = '#8E8E93'
+    ctx.font = `400 ${subtitleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+
+    const subtitleY = titleY + titleHeight + subtitleMarginTop
+    ctx.fillText('掃描加入 LINE 官方帳號', cardWidth / 2, subtitleY)
+
+    // 5. 繪製按鈕
+    const btnWidth = cardWidth - (footerPaddingX * 2)
+    const btnX = footerPaddingX
+    const btnY = subtitleY + subtitleHeight + btnMarginTop
+
+    // 按鈕背景
+    ctx.fillStyle = '#F2F2F7'
+    drawRoundedRect(btnX, btnY, btnWidth, btnHeight, btnRadius)
+    ctx.fill()
+
+    // 按鈕文字
+    ctx.fillStyle = '#007AFF'
+    ctx.font = `600 ${btnFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('掃描 QR Code 加入', cardWidth / 2, btnY + btnHeight / 2)
+
+    // 轉換為 PNG 並下載
+    const pngDataUrl = canvas.toDataURL('image/png', 1.0)
+    const link = document.createElement('a')
+    link.href = pngDataUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    showSuccess('QR Code 卡片已下載')
   } catch (error) {
     console.error('QR Code 下載失敗:', error)
     showError('QR Code 下載失敗，請稍後再試')
@@ -1040,18 +1120,6 @@ const copyLineUrl = async () => {
 
 const handleQRImageError = () => {
   console.error('QR Code 圖片載入失敗')
-}
-
-const getQRStatusClass = (qrCode: QRCode) => {
-  if (!qrCode.isActive) {return 'inactive'}
-  if (qrCode.maxUses && qrCode.usageCount >= qrCode.maxUses) {return 'limit-reached'}
-  return 'active'
-}
-
-const getQRStatusText = (qrCode: QRCode) => {
-  if (!qrCode.isActive) {return '已停用'}
-  if (qrCode.maxUses && qrCode.usageCount >= qrCode.maxUses) {return '達上限'}
-  return '永久有效'
 }
 
 // 監聯 team 變化，重置 modal 狀態
@@ -1820,119 +1888,92 @@ watch(() => props.team.id, () => {
   }
 }
 
-.qr-card {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.qr-image-wrapper {
-  position: relative;
+/* Flex Layout for QR Display */
+.qr-flex-layout {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* ============================================
+   Flex Bubble Card - QRcodeDesign.html Style
+   ============================================ */
+.flex-bubble {
+  background-color: #FFFFFF;
+  width: 260px;
+  min-width: 260px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
   flex-shrink: 0;
 }
 
-.qr-image-container {
-  position: relative;
-  width: 140px;
-  height: 140px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: white;
-  border: 3px solid transparent;
-  background-image: linear-gradient(white, white), linear-gradient(135deg, #667eea, #764ba2);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
-  flex-shrink: 0;
+.bubble-body {
+  padding: 35px 30px 20px 30px;
+}
+
+.bubble-footer {
+  padding: 0 20px 20px 20px;
+}
+
+/* QR Code Image - The Hero */
+.qr-image-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .qr-image {
-  width: 100%;
-  height: 100%;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+  display: block;
   object-fit: contain;
-  padding: 6px;
 }
 
-.qr-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 75, 162, 0.9));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  border-radius: 9px;
+/* Typography - iOS/Apple Style */
+.bubble-title {
+  color: #000000;
+  font-size: 19px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 0;
+  letter-spacing: -0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.qr-image-container:hover .qr-overlay {
-  opacity: 1;
+.bubble-subtitle {
+  color: #8E8E93;
+  font-size: 13px;
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.qr-action-btn {
-  width: 44px;
-  height: 44px;
-  border: 2px solid white;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Footer Button - iOS Secondary Style */
+.bubble-btn {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+  line-height: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  background-color: #F2F2F7;
+  color: #007AFF;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: white;
+  transition: background-color 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.qr-action-btn:hover {
-  background: white;
-  color: #667eea;
-  transform: scale(1.1);
+.bubble-btn:hover {
+  background-color: #E5E5EA;
 }
 
-.qr-badge {
-  padding: 5px 12px;
-  border-radius: 16px;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.qr-badge.active {
-  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-  color: #166534;
-  border: 1px solid #86efac;
-}
-
-.qr-badge.inactive {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #cbd5e1;
-}
-
-.qr-badge.expired {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
-  border: 1px solid #fbbf24;
-}
-
-.qr-badge.limit-reached {
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
-  color: #991b1b;
-  border: 1px solid #f87171;
+.bubble-btn:active {
+  background-color: #D1D1D6;
 }
 
 .qr-info-panel {
@@ -2104,21 +2145,71 @@ watch(() => props.team.id, () => {
   font-weight: 500;
 }
 
-/* QR Code Section Responsive */
+/* ============================================
+   QR Code Section Responsive - RWD
+   ============================================ */
+
+/* Tablet: Stack vertically */
+@media (max-width: 768px) {
+  .qr-flex-layout {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .flex-bubble {
+    width: 100%;
+    max-width: 300px;
+    min-width: auto;
+  }
+
+  .qr-info-panel {
+    width: 100%;
+  }
+}
+
+/* Mobile */
 @media (max-width: 640px) {
-  .qr-card {
-    grid-template-columns: 1fr;
-    text-align: center;
+  .qr-flex-layout {
     gap: 16px;
   }
 
-  .qr-image-wrapper {
-    justify-self: center;
+  .flex-bubble {
+    width: 100%;
+    max-width: 280px;
+    border-radius: 16px;
   }
 
-  .qr-image-container {
-    width: 140px;
-    height: 140px;
+  .bubble-body {
+    padding: 28px 24px 16px 24px;
+  }
+
+  .bubble-footer {
+    padding: 0 16px 16px 16px;
+  }
+
+  .qr-image {
+    width: 120px;
+    height: 120px;
+  }
+
+  .bubble-title {
+    font-size: 17px;
+    margin-top: 20px;
+  }
+
+  .bubble-subtitle {
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  .bubble-btn {
+    font-size: 14px;
+    line-height: 36px;
+  }
+
+  .qr-info-panel {
+    width: 100%;
   }
 
   .qr-info-header {
@@ -2143,6 +2234,46 @@ watch(() => props.team.id, () => {
 
   .qr-stats-mini {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 375px) {
+  .flex-bubble {
+    max-width: 100%;
+    border-radius: 14px;
+  }
+
+  .bubble-body {
+    padding: 24px 20px 14px 20px;
+  }
+
+  .bubble-footer {
+    padding: 0 14px 14px 14px;
+  }
+
+  .qr-image {
+    width: 110px;
+    height: 110px;
+  }
+
+  .bubble-title {
+    font-size: 16px;
+    margin-top: 18px;
+  }
+
+  .bubble-subtitle {
+    font-size: 11px;
+  }
+
+  .bubble-btn {
+    font-size: 13px;
+    line-height: 34px;
+    border-radius: 8px;
+  }
+
+  .qr-stats-mini {
+    grid-template-columns: 1fr;
   }
 }
 </style>

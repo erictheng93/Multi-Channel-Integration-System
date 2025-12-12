@@ -1,4 +1,4 @@
-import { eq, desc, and, or, like } from 'drizzle-orm';
+import { eq, desc, and, or, like, inArray, isNull } from 'drizzle-orm';
 import { Database, KVService } from '../db';
 import * as schema from '../db/schema';
 import { v4 as uuidv4 } from 'uuid';
@@ -289,14 +289,80 @@ export class DatabaseService {
     if (agent.role === 'admin') {
       // Admin can see all conversations
       return await this.getAllConversations(status, limit);
-    } else if (agent.role === 'team' && agent.teamId) {
-      // Team leaders can see all conversations in their team
-      return await this.getConversationsByTeamId(agent.teamId, status, limit);
     } else {
-      // Agents can only see their own conversations
-      const agentIdAsNumber = parseInt(agent.id) || 0;
-      return await this.getConversationsByAgentId(agentIdAsNumber, status, limit);
+      // 🆕 Agents can see: 1) Public pool 2) Personal assignments 3) Team assignments (multi-team)
+      return await this.getConversationsByAgentTeams(agent.id, status, limit);
     }
+  }
+
+  // 🆕 Get conversations for agent based on multi-team membership
+  async getConversationsByAgentTeams(agentId: string, status?: string, limit: number = 50) {
+    // Step 1: Get all team IDs this agent belongs to via agent_teams table
+    const teamMemberships = await this.db
+      .select({ teamId: schema.agentTeams.teamId })
+      .from(schema.agentTeams)
+      .where(eq(schema.agentTeams.agentId, agentId));
+
+    const userTeamIds = teamMemberships.map(m => m.teamId);
+    console.log(`🔍 [getConversationsByAgentTeams] Agent ${agentId} belongs to teams: [${userTeamIds.join(', ')}]`);
+
+    // Step 2: Build query conditions
+    const visibilityConditions = [
+      // Condition 1: Public pool - unassigned conversations (both fields NULL)
+      and(
+        isNull(schema.conversations.assignedTeamId),
+        isNull(schema.conversations.assignedUserId)
+      ),
+      // Condition 2: Personal assignment
+      eq(schema.conversations.assignedUserId, agentId)
+    ];
+
+    // Condition 3: Team assignments (multi-team support)
+    if (userTeamIds.length > 0) {
+      visibilityConditions.push(
+        inArray(schema.conversations.assignedTeamId, userTeamIds)
+      );
+    }
+
+    // Step 3: Combine visibility with status filter
+    const allConditions = [];
+    if (status) {
+      allConditions.push(eq(schema.conversations.status, status));
+    }
+
+    // Step 4: Execute query with LEFT JOINs for enriched data
+    const results = await this.db.select()
+      .from(schema.conversations)
+      .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
+      .where(
+        allConditions.length > 0
+          ? and(or(...visibilityConditions), ...allConditions)
+          : or(...visibilityConditions)
+      )
+      .orderBy(desc(schema.conversations.lastMessageAt))
+      .limit(limit);
+
+    console.log(`📋 [getConversationsByAgentTeams] Found ${results.length} conversations for agent ${agentId}`);
+
+    // Enrich conversations with team and agent data
+    return results.map(result => ({
+      ...result.conversations,
+      assignedTeam: result.teams ? {
+        id: result.teams.id,
+        name: result.teams.name,
+        description: result.teams.description
+      } : null,
+      assignedAgent: result.agents ? {
+        id: result.agents.id,
+        email: result.agents.email,
+        name: result.agents.displayName,
+        displayName: result.agents.displayName,
+        role: result.agents.role,
+        isActive: result.agents.isActive,
+        lastActive: result.agents.lastActive
+      } : null
+    }));
   }
 
   async updateConversation(id: string, updates: Partial<schema.NewConversation>) {
@@ -604,14 +670,33 @@ export class DatabaseService {
       return true;
     }
 
-    // For unassigned conversations (no assignedTeamId): all users can see them
-    if (!conversation.assignedTeamId) {
+    // For unassigned conversations (no assignedTeamId and no assignedUserId): all agents can see them (public pool)
+    if (!conversation.assignedTeamId && !conversation.assignedUserId) {
       return true;
     }
 
-    // For assigned conversations: only users from the assigned team can access
-    if (agent.teamId && agent.teamId === conversation.assignedTeamId) {
+    // If assigned to this specific user, allow access
+    if (conversation.assignedUserId === agent.id) {
       return true;
+    }
+
+    // For team-assigned conversations: check if agent belongs to that team via agent_teams table
+    if (conversation.assignedTeamId) {
+      // 🆕 Query agent_teams table for multi-team membership check
+      const membership = await this.db
+        .select({ id: schema.agentTeams.id })
+        .from(schema.agentTeams)
+        .where(
+          and(
+            eq(schema.agentTeams.agentId, agent.id),
+            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
+          )
+        )
+        .limit(1);
+
+      if (membership.length > 0) {
+        return true;
+      }
     }
 
     // Default: deny access

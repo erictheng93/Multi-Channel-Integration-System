@@ -29,7 +29,8 @@ export class NotificationValidator {
     'system',
     'priority_changed',
     'customer_responded',
-    'task_reminder'
+    'task_reminder',
+    'agent_removed_from_team'  // 🆕
   ];
 
   private readonly VALID_PRIORITIES: NotificationPriority[] = [

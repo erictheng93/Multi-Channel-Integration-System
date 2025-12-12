@@ -3,17 +3,31 @@ import { ref, computed } from 'vue'
 import { teamApi } from '@/api/team'
 import type { TeamMember, Invitation } from '@/types'
 
+// 團隊類型定義
+interface Team {
+  id: number
+  name: string
+  description?: string
+  qrCode?: string
+  lineUrl?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  memberCount?: number
+}
+
 export const useTeamStore = defineStore('team', () => {
   // 狀態
   const members = ref<TeamMember[]>([])
   const invitations = ref<Invitation[]>([])
+  const teams = ref<Team[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   // 統計數據
   const stats = computed(() => ({
     totalMembers: members.value.length,
-    activeMembers: members.value.filter(m => m.status === 'active').length,
+    teamCount: teams.value.filter(t => t.isActive).length,
     adminCount: members.value.filter(m => m.role === 'admin').length
   }))
 
@@ -54,10 +68,26 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
+  const loadTeams = async () => {
+    try {
+      error.value = null
+      const response = await teamApi.getTeams()
+      if (response.success && response.data) {
+        teams.value = response.data
+      } else {
+        error.value = '載入團隊列表失敗'
+      }
+    } catch (err: unknown) {
+      error.value = (err as Error)?.message || '載入團隊列表失敗'
+      console.error('載入團隊失敗:', err)
+    }
+  }
+
   const loadAll = async () => {
     await Promise.all([
       loadMembers(),
-      loadInvitations()
+      loadInvitations(),
+      loadTeams()
     ])
   }
 
@@ -345,6 +375,7 @@ export const useTeamStore = defineStore('team', () => {
   const $reset = () => {
     members.value = []
     invitations.value = []
+    teams.value = []
     loading.value = false
     error.value = null
   }
@@ -353,13 +384,15 @@ export const useTeamStore = defineStore('team', () => {
     // 狀態
     members,
     invitations,
+    teams,
     loading,
     error,
     stats,
-    
+
     // 動作
     loadMembers,
     loadInvitations,
+    loadTeams,
     loadAll,
     addMember,
     inviteMember,

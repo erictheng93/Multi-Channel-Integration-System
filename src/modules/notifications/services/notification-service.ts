@@ -238,7 +238,8 @@ export class NotificationService {
         conversation_transferred: { total: 0, unread: 0 },
         priority_changed: { total: 0, unread: 0 },
         customer_responded: { total: 0, unread: 0 },
-        task_reminder: { total: 0, unread: 0 }
+        task_reminder: { total: 0, unread: 0 },
+        agent_removed_from_team: { total: 0, unread: 0 }  // 🆕
       },
       byPriority: {
         low: { total: 0, unread: 0 },

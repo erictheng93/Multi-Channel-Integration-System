@@ -24,7 +24,8 @@ export type NotificationType =
   | 'system'
   | 'priority_changed'
   | 'customer_responded'
-  | 'task_reminder';
+  | 'task_reminder'
+  | 'agent_removed_from_team';  // 🆕 Agent 被移出團隊通知
 
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 

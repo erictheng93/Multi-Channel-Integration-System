@@ -351,8 +351,11 @@
         </div>
       </div>
 
-      <!-- Analytics Comparison Section -->
-      <div class="analytics-section">
+      <!-- Analytics Comparison Section - ⚡ LCP 優化：延遲加載 -->
+      <div
+        v-if="showAnalytics"
+        class="analytics-section content-ready"
+      >
         <div class="section-header">
           <h3 class="section-title">
             數據趨勢分析
@@ -367,6 +370,28 @@
           :auto-refresh="true"
           :refresh-interval="60000"
         />
+      </div>
+      <!-- Analytics 加載佔位符 -->
+      <div
+        v-else
+        class="analytics-section analytics-placeholder"
+      >
+        <div class="section-header">
+          <h3 class="section-title">
+            數據趨勢分析
+          </h3>
+          <p class="section-subtitle">
+            正在準備載入...
+          </p>
+        </div>
+        <div class="analytics-skeleton">
+          <div class="skeleton-grid">
+            <div class="skeleton-card" />
+            <div class="skeleton-card" />
+            <div class="skeleton-card" />
+            <div class="skeleton-card" />
+          </div>
+        </div>
       </div>
     </div>
   </AppLayout>
@@ -401,6 +426,9 @@ const { t } = useI18n()
 
 // ⚡ LCP 優化：初始載入狀態 - 用於顯示骨架屏
 const isInitialLoading = ref(true)
+
+// ⚡ LCP 優化：延遲加載 Analytics 組件
+const showAnalytics = ref(false)
 
 // 開發模式檢查
 // const isDev = computed(() => import.meta.env.DEV)
@@ -593,6 +621,21 @@ onMounted(async () => {
       console.log('⚡ [Dashboard] Initial skeleton hidden, showing content')
     }, 150) // 短暫延遲確保數據開始載入
   })
+
+  // ⚡ LCP 優化：延遲加載 Analytics 組件
+  // 等待主要內容渲染完成後，再加載 Analytics
+  // 這可以顯著改善 LCP 指標
+  const scheduleAnalyticsLoad = () => {
+    showAnalytics.value = true
+    console.log('⚡ [Dashboard] Analytics component loaded (deferred)')
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(scheduleAnalyticsLoad, { timeout: 3000 })
+  } else {
+    // Fallback: 延遲 500ms 讓 LCP 優先完成
+    setTimeout(scheduleAnalyticsLoad, 500)
+  }
 
   // 啟動 token 刷新檢查和活動追蹤
   startTokenRefreshCheck()
@@ -968,6 +1011,42 @@ onBeforeUnmount(() => {
 
 .analytics-section {
   margin-top: var(--space-12);
+}
+
+/* ⚡ LCP 優化：Analytics 骨架屏樣式 */
+.analytics-placeholder {
+  opacity: 0.7;
+}
+
+.analytics-skeleton {
+  background: white;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  border: 1px solid var(--gray-100);
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-6);
+}
+
+.skeleton-card {
+  height: 120px;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-xl);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .section-header {
