@@ -106,7 +106,17 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2NTMzMTM0NywiZXhwIjoxNzY1MzM4NTQ3fQ.j4b3caHxiZ-R5fuGqgDj6c05mkggiXce4C8k0DDDXt4\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbi0wMDEiLCJkaXNwbGF5TmFtZSI6IlN5c3RlbSBBZG1pbmlzdHJhdGlvbiIsImVtYWlsIjoiYWRtaW5AZGFjaXQubmV0Iiwicm9sZSI6ImFkbWluIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc2NTMzODE3NCwiZXhwIjoxNzY1MzQ1Mzc0fQ.KQQg7QBfq9dX4673-5q9tIc4lmsZPbmp7GgBdmqnX3s\")",
       "Bash(Select-String -Pattern \"(error|warning|✓|√|success)\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(if not exist \"D:\\Code\\Multi_Channel_Integration_System\\scripts\" mkdir \"D:\\Code\\Multi_Channel_Integration_System\\scripts\")",
+      "Bash(if not exist \"D:\\Code\\Multi_Channel_Integration_System\\web-installer\\backend\\src\\services\\generated\" mkdir \"D:\\Code\\Multi_Channel_Integration_System\\web-installer\\backend\\src\\services\\generated\")",
+      "Bash(wc:*)",
+      "Bash(Select-String -Pattern \"(TeamCard|TeamManagement|error TS)\")",
+      "Bash(Select-String -Pattern \"(TeamCard|TeamQRCodeManager|error TS)\")",
+      "Bash(Select-String -Pattern \"(TeamCard|AddMemberModal|error TS)\")",
+      "Bash(Select-String -Pattern \"(error TS|Error:|TeamQRCodeManager|qrcode|team\\.ts)\")",
+      "Bash(Select-String -Pattern \"(mcis|customer|multi)\" -Context 0,1)",
+      "Bash(Select-String -Pattern \"(error TS|Error:|TeamCard|TeamManagement)\")",
+      "Bash(Select-String -Pattern \"(TeamMemberCard|error TS)\")"
     ],
     "deny": [],
     "ask": [],

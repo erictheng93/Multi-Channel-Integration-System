@@ -183,7 +183,7 @@
               :team="team"
               :loading="loading"
               @toggle-status="toggleTeamStatus"
-              @generate-qr="generateTeamQR"
+              @view-qr="viewTeamQR"
               @prefetch-qr="prefetchTeamQR"
               @remove-team="confirmRemoveTeam"
               @member-updated="handleMemberUpdated"
@@ -542,6 +542,13 @@
                       >
                         {{ getRoleDisplayName(member.role) }}
                       </div>
+                      <!-- 多團隊支援：顯示已加入的團隊數量 -->
+                      <div
+                        v-if="member.teamCount && member.teamCount > 0"
+                        class="member-teams-badge"
+                      >
+                        {{ member.teamCount }} 個團隊
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -716,6 +723,13 @@
                       >
                         {{ getRoleDisplayName(member.role) }}
                       </div>
+                      <!-- 多團隊支援：顯示已加入的團隊數量 -->
+                      <div
+                        v-if="member.teamCount && member.teamCount > 0"
+                        class="member-teams-badge-small"
+                      >
+                        {{ member.teamCount }} 團隊
+                      </div>
                     </div>
                     <div class="selection-indicator-small">
                       <CheckIcon v-if="editTeamForm.membersToAdd.includes(member.id)" />
@@ -727,7 +741,7 @@
                 v-else
                 class="no-available-members-message"
               >
-                沒有可新增的成員（所有成員都已分配到團隊）
+                沒有可新增的成員（所有成員都已在此團隊）
               </div>
             </div>
 
@@ -771,48 +785,169 @@
             </button>
           </div>
           <div class="modal-body qr-content">
-            <div class="qr-display">
-              <!-- 骨架屏 + 載入動畫 -->
-              <div
-                v-if="qrGenerating || (currentQRCode && qrImageLoading)"
-                class="qr-skeleton"
-              >
+            <!-- 載入中狀態 -->
+            <div
+              v-if="qrGenerating"
+              class="qr-display"
+            >
+              <div class="qr-skeleton">
                 <div class="qr-skeleton-inner">
                   <div class="qr-pulse" />
-                  <span class="qr-loading-text">
-                    {{ qrGenerating ? '生成中...' : '載入中...' }}
-                  </span>
+                  <span class="qr-loading-text">載入中...</span>
                 </div>
               </div>
-              <!-- QR 碼圖片 (帶淡入動畫) -->
-              <img
-                v-if="currentQRCode"
-                v-show="!qrImageLoading"
-                :src="currentQRCode"
-                alt="Team QR Code"
-                class="qr-image qr-fade-in"
-                @load="onQRImageLoad"
-                @error="onQRImageError"
-              >
             </div>
-            <p class="qr-description">
-              掃描此 QR 碼可快速加入團隊 {{ currentTeam?.name }}
-            </p>
-            <div class="modal-actions">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                :disabled="qrGenerating"
-                @click="downloadQRCode"
-              >
-                📥 下載
-              </button>
+
+            <!-- 尚未生成 QR Code 警示狀態 -->
+            <div
+              v-else-if="!currentQRCode"
+              class="qr-empty-state"
+            >
+              <div class="empty-icon">
+                <svg
+                  width="64"
+                  height="64"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#f59e0b"
+                  stroke-width="1.5"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="7"
+                    height="7"
+                  />
+                  <rect
+                    x="14"
+                    y="3"
+                    width="7"
+                    height="7"
+                  />
+                  <rect
+                    x="3"
+                    y="14"
+                    width="7"
+                    height="7"
+                  />
+                  <rect
+                    x="14"
+                    y="14"
+                    width="3"
+                    height="3"
+                  />
+                  <rect
+                    x="18"
+                    y="14"
+                    width="3"
+                    height="3"
+                  />
+                  <rect
+                    x="14"
+                    y="18"
+                    width="3"
+                    height="3"
+                  />
+                  <rect
+                    x="18"
+                    y="18"
+                    width="3"
+                    height="3"
+                  />
+                  <line
+                    x1="2"
+                    y1="2"
+                    x2="22"
+                    y2="22"
+                    stroke="#ef4444"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <h3 class="empty-title">
+                尚未生成 QR Code
+              </h3>
+              <p class="empty-description">
+                此團隊尚未建立專屬 QR Code。<br>
+                請點擊團隊卡片進入<strong>團隊詳情</strong>，<br>
+                在「QR Code 資訊」區塊中生成。
+              </p>
+              <div class="empty-hint">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                  />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+                <span>提示：點擊團隊名稱或頭像即可進入詳情頁面</span>
+              </div>
+            </div>
+
+            <!-- QR 碼顯示狀態 -->
+            <template v-else>
+              <div class="qr-display">
+                <!-- 骨架屏（圖片載入中） -->
+                <div
+                  v-if="qrImageLoading"
+                  class="qr-skeleton"
+                >
+                  <div class="qr-skeleton-inner">
+                    <div class="qr-pulse" />
+                    <span class="qr-loading-text">載入中...</span>
+                  </div>
+                </div>
+                <!-- QR 碼圖片 (帶淡入動畫) -->
+                <img
+                  v-show="!qrImageLoading"
+                  :src="currentQRCode"
+                  alt="Team QR Code"
+                  class="qr-image qr-fade-in"
+                  @load="onQRImageLoad"
+                  @error="onQRImageError"
+                >
+              </div>
+              <p class="qr-description">
+                掃描此 QR 碼可快速加入團隊 {{ currentTeam?.name }}
+              </p>
+              <div class="modal-actions">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="downloadQRCode"
+                >
+                  📥 下載
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  @click="closeQRModal"
+                >
+                  關閉
+                </button>
+              </div>
+            </template>
+
+            <!-- 無 QR Code 時的關閉按鈕 -->
+            <div
+              v-if="!currentQRCode && !qrGenerating"
+              class="modal-actions"
+            >
               <button
                 type="button"
                 class="btn btn-primary"
                 @click="closeQRModal"
               >
-                關閉
+                了解
               </button>
             </div>
           </div>
@@ -1043,11 +1178,11 @@ const isPasswordFormValid = computed(() => {
          !passwordMismatch.value
 })
 
-// 可用成員列表 (不包括已有團隊的成員)
+// 可用成員列表 (多團隊支援：不再限制已有團隊的成員)
 const availableMembers = computed(() => {
-  return teamMembers.value.filter(member => 
-    // 不包括管理員和已有團隊的成員
-    member.role !== 'admin' && !member.teamId
+  return teamMembers.value.filter(member =>
+    // 只排除管理員，允許客服加入多個團隊
+    member.role !== 'admin'
   )
 })
 
@@ -1057,13 +1192,12 @@ const isAllMembersSelected = computed(() => {
          addTeamForm.selectedMembers.length === availableMembers.value.length
 })
 
-// 編輯團隊時：可新增的成員列表（未分配團隊 + 不在當前成員中）
+// 編輯團隊時：可新增的成員列表（多團隊支援：只排除已在當前團隊的成員）
 const editTeamAvailableMembers = computed(() => {
   const currentMemberIds = editTeamCurrentMembers.value.map(m => m.id)
   return teamMembers.value.filter(member =>
     member.role !== 'admin' && // 排除管理員
-    !member.teamId && // 沒有團隊
-    !currentMemberIds.includes(member.id) // 不在當前成員中
+    !currentMemberIds.includes(member.id) // 不在當前團隊成員中（但可以在其他團隊）
   )
 })
 
@@ -1638,9 +1772,9 @@ const prefetchTeamQR = async (team: Team) => {
   await qrCodeStore.prefetchQRCode(team.id)
 }
 
-// 顯示團隊 QR 碼（優先讀取現有 QR，無現有才生成新的）
-// 使用 Pinia Store 統一管理 QR 碼狀態
-const generateTeamQR = async (team: Team) => {
+// 🔄 查看團隊 QR 碼（僅查看，不自動生成）
+// 如果沒有 QR Code，顯示警示提示用戶到團隊詳情頁面生成
+const viewTeamQR = async (team: Team) => {
   // 立即顯示 Modal
   currentTeam.value = team
   showQRModal.value = true
@@ -1648,37 +1782,40 @@ const generateTeamQR = async (team: Team) => {
   // Step 1: 優先使用 Store 快取
   const cachedQR = qrCodeStore.getQRCode(team.id)
   if (cachedQR) {
-    console.log(`⚡ [Step 1] Store 快取命中: team ${team.id}`)
+    console.log(`⚡ [viewTeamQR] Store 快取命中: team ${team.id}`)
     currentQRCode.value = cachedQR.qrCode
     qrGenerating.value = false
     qrImageLoading.value = true  // 圖片仍需載入
     return
   }
 
-  // 無快取，開始載入
+  // 無快取，嘗試從 API 載入現有 QR Code（不生成新的）
   currentQRCode.value = ''
   qrGenerating.value = true
   qrImageLoading.value = true
 
   try {
-    // Step 2-3: 使用 Store 的 generateQRCode 方法
-    // 該方法會先檢查現有 QR，無現有才生成新的
-    const qrCode = await qrCodeStore.generateQRCode(team.id, team.name, false)
+    // 使用 Store 的 loadQRCode 方法，僅載入現有 QR Code
+    const qrCode = await qrCodeStore.loadQRCode(team.id)
 
     if (qrCode) {
-      console.log(`✅ QR 碼載入/生成成功: team ${team.id}`)
+      console.log(`✅ [viewTeamQR] QR 碼載入成功: team ${team.id}`)
       currentQRCode.value = qrCode.qrCode
       qrGenerating.value = false
     } else {
-      console.error('QR 碼生成失敗 - Store 回應為 null')
-      showError('QR 碼生成失敗', qrCodeStore.error || '未知錯誤')
+      // 沒有現有 QR Code，顯示警示訊息
+      console.log(`📭 [viewTeamQR] 團隊尚未有 QR Code: team ${team.id}`)
+      currentQRCode.value = ''
       qrGenerating.value = false
       qrImageLoading.value = false
+      // 不關閉 Modal，讓用戶看到「尚未生成」的提示
     }
   } catch (error) {
-    console.error('讀取/生成 QR 碼失敗:', error)
-    showError('QR 碼載入失敗', '請稍後重試')
-    closeQRModal()
+    console.error('載入 QR 碼失敗:', error)
+    currentQRCode.value = ''
+    qrGenerating.value = false
+    qrImageLoading.value = false
+    // 不關閉 Modal，顯示錯誤狀態
   }
 }
 
@@ -1695,17 +1832,70 @@ const onQRImageError = () => {
   showError('圖片載入失敗', '請嘗試重新生成')
 }
 
-// 下載 QR 碼
+/**
+ * 下載 QR 碼
+ * 將 SVG 格式的 QR Code 轉換為 PNG 後下載
+ * 解決 SVG Data URL 直接下載後無法正確顯示的問題
+ */
 const downloadQRCode = async () => {
   if (!currentQRCode.value || !currentTeam.value) {return}
 
+  // 生成檔名：QRCode_{時間戳}.png
+  const filename = `QRCode_${Date.now()}.png`
+
   try {
-    // 如果是 base64 格式，直接下載
+    // 如果是 base64 格式
     if (currentQRCode.value.startsWith('data:')) {
-      const link = document.createElement('a')
-      link.href = currentQRCode.value
-      link.download = `qr-code-${currentTeam.value.name}-${Date.now()}.png`
-      link.click()
+      // 檢查是否為 SVG 格式 (需要轉換為 PNG)
+      if (currentQRCode.value.startsWith('data:image/svg+xml')) {
+        // 使用 Canvas 將 SVG 轉換為 PNG
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          throw new Error('無法創建 Canvas 2D 上下文')
+        }
+        const img = new window.Image()
+
+        // 建立 Promise 處理圖片載入
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // 設定 Canvas 大小 (高品質輸出)
+            const size = 400 // PNG 輸出大小
+            canvas.width = size
+            canvas.height = size
+
+            // 繪製白色背景
+            ctx.fillStyle = '#FFFFFF'
+            ctx.fillRect(0, 0, size, size)
+
+            // 繪製 QR Code 圖片
+            ctx.drawImage(img, 0, 0, size, size)
+
+            resolve()
+          }
+          img.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
+          img.src = currentQRCode.value
+        })
+
+        // 轉換為 PNG Data URL
+        const pngDataUrl = canvas.toDataURL('image/png', 1.0)
+
+        // 觸發下載
+        const link = document.createElement('a')
+        link.href = pngDataUrl
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        // 已經是 PNG/JPG 格式，直接下載
+        const link = document.createElement('a')
+        link.href = currentQRCode.value
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
     } else {
       // 如果是 URL，需要先獲取圖片
       const response = await fetch(currentQRCode.value)
@@ -1713,8 +1903,10 @@ const downloadQRCode = async () => {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `qr-code-${currentTeam.value.name}-${Date.now()}.png`
+      link.download = filename
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
       URL.revokeObjectURL(url)
     }
     showSuccess('下載成功', 'QR 碼已下載')
@@ -2897,6 +3089,61 @@ onMounted(() => {
   margin: 0;
 }
 
+/* QR Code 空狀態樣式 */
+.qr-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.qr-empty-state .empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-2);
+}
+
+.qr-empty-state .empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.qr-empty-state .empty-description {
+  font-size: 0.9375rem;
+  color: var(--gray-600);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.qr-empty-state .empty-description strong {
+  color: var(--primary-600);
+  font-weight: 600;
+}
+
+.qr-empty-state .empty-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--blue-50);
+  border-radius: var(--radius-lg);
+  color: var(--blue-700);
+  font-size: 0.8125rem;
+}
+
+.qr-empty-state .empty-hint svg {
+  flex-shrink: 0;
+}
+
 /* Team section header actions */
 .content-header {
   display: flex;
@@ -3041,6 +3288,31 @@ onMounted(() => {
   background: var(--gray-200);
   color: var(--gray-800);
   border: 1px solid var(--gray-300);
+}
+
+/* 多團隊支援：成員已加入團隊數量標籤 */
+.member-teams-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  margin-top: 4px;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.member-teams-badge-small {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  margin-left: 4px;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  font-weight: 500;
 }
 
 .btn-remove-member {

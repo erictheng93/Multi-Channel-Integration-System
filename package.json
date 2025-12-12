@@ -92,7 +92,10 @@
     "check:routes": "npx tsx scripts/detect-route-conflicts.ts",
     "check:routes:watch": "nodemon --exec npx tsx scripts/detect-route-conflicts.ts --watch src/modules --watch src/handlers",
     "check:routes:ci": "npx tsx scripts/detect-route-conflicts.ts || (echo '⚠️  Route conflict detection failed! See report above.' && exit 1)",
-    "precheck:all": "npm run check:routes && npm run validate:all"
+    "precheck:all": "npm run check:routes && npm run validate:all",
+    "build:worker-bundle": "npx tsx scripts/build-worker-bundle.ts",
+    "build:frontend-bundle": "npx tsx scripts/build-frontend-bundle.ts",
+    "build:installer-bundles": "npm run build:worker-bundle && npm run build:frontend-bundle"
   },
   "overrides": {
     "esbuild": "^0.25.9",

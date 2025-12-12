@@ -1,16 +1,48 @@
+# ========================================
 # Web Installer Backend - Development Variables
-# Copy this file to .dev.vars and fill in your actual values
+# ========================================
+# INSTRUCTIONS:
+# 1. Copy this file: cp .dev.vars.example .dev.vars
+# 2. Fill in your actual values below
+# 3. NEVER commit .dev.vars to version control!
+# ========================================
 
-# Cloudflare OAuth (Get from: https://dash.cloudflare.com/profile/api-tokens)
+# ----------------------------------------
+# Cloudflare OAuth Credentials (REQUIRED)
+# ----------------------------------------
+# How to get:
+# 1. Go to: https://dash.cloudflare.com/
+# 2. Click profile icon > "My Profile"
+# 3. Click "API Tokens" in left menu
+# 4. Scroll to "OAuth Applications"
+# 5. Click "Create Application"
+# 6. Copy Client ID and Client Secret
 CF_CLIENT_ID=your_cloudflare_oauth_client_id_here
 CF_CLIENT_SECRET=your_cloudflare_oauth_client_secret_here
 
-# Resend Email API (Get from: https://resend.com/api-keys)
+# ----------------------------------------
+# Email Service - Resend.com (REQUIRED)
+# ----------------------------------------
+# How to get:
+# 1. Sign up at: https://resend.com
+# 2. Go to: https://resend.com/api-keys
+# 3. Create new API key with "Full Access"
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# Email Configuration
+# Email addresses (sender must be verified in Resend)
 FROM_EMAIL=installer@yourcompany.com
 SUPPORT_EMAIL=support@yourcompany.com
 
-# Environment
+# ----------------------------------------
+# Security (REQUIRED for production)
+# ----------------------------------------
+# Generate with one of these commands:
+#   openssl rand -hex 32
+#   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+
+# ----------------------------------------
+# Environment Settings
+# ----------------------------------------
 ENVIRONMENT=development
+FRONTEND_URL=http://localhost:3000

@@ -212,8 +212,8 @@ export const useQRCodeStore = defineStore('qrcode', () => {
 
       const response = await teamApi.generateTeamQR(teamId, {
         campaignName: `${teamName} QR Code`,
-        description: `團隊 ${teamName} 的客服 QR 碼`,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        description: `團隊 ${teamName} 的客服 QR 碼`
+        // QR Codes are now permanent (no expiration)
       })
 
       if (response.success && response.data) {
@@ -225,7 +225,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
           campaignName: response.data.campaignName || '',
           usageCount: response.data.usageCount || 0,
           maxUses: response.data.maxUses,
-          expiresAt: response.data.expiresAt,
+          // QR Codes are now permanent (no expiresAt)
           isActive: true,
           createdAt: new Date()
         }

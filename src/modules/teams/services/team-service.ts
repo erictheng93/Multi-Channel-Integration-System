@@ -5,7 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, or, like, sql, inArray } from 'drizzle-orm';
-import { teams, agents, conversations, messages } from '@/db/schema';
+import { teams, agents, conversations, messages, qrCodes, qrCodeScans, customers } from '@/db/schema';
 import type {
   Team,
   NewTeam,
@@ -139,18 +139,61 @@ export class TeamService implements TeamServiceInterface {
     return result[0];
   }
 
-  // Delete team (soft delete - marks as inactive)
+  // Delete team (hard delete - permanently removes from database)
   async deleteTeam(id: number): Promise<boolean> {
     try {
-      // Soft delete: mark team as inactive instead of deleting
+      // Step 1: Remove team association from agents (set teamId to null)
       await this.db
-        .update(teams)
+        .update(agents)
         .set({
-          isActive: false,
+          teamId: null,
           updatedAt: new Date().toISOString()
         })
+        .where(eq(agents.teamId, id));
+
+      // Step 2: Delete associated QR codes
+      // Note: qr_code_scans has FK to qr_codes, need to handle carefully
+      const teamQRCodes = await this.db
+        .select({ id: qrCodes.id })
+        .from(qrCodes)
+        .where(eq(qrCodes.teamId, id));
+
+      if (teamQRCodes.length > 0) {
+        const qrCodeIds = teamQRCodes.map(qr => qr.id);
+        // Delete scans first (FK constraint)
+        await this.db
+          .delete(qrCodeScans)
+          .where(inArray(qrCodeScans.qrCodeId, qrCodeIds));
+        // Then delete QR codes
+        await this.db
+          .delete(qrCodes)
+          .where(eq(qrCodes.teamId, id));
+      }
+
+      // Step 3: Update conversations to remove team assignment
+      await this.db
+        .update(conversations)
+        .set({
+          assignedTeamId: null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(conversations.assignedTeamId, id));
+
+      // Step 4: Update customers to remove source team
+      await this.db
+        .update(customers)
+        .set({
+          sourceTeamId: null,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(customers.sourceTeamId, id));
+
+      // Step 5: Hard delete the team (agent_teams will cascade automatically)
+      await this.db
+        .delete(teams)
         .where(eq(teams.id, id));
 
+      console.log(`🗑️ [Team Delete] Team ${id} permanently deleted with all associations cleaned up`);
       return true;
     } catch (error) {
       console.error('Delete team error:', error);
