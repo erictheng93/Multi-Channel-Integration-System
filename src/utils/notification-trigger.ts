@@ -624,6 +624,143 @@ export async function triggerTeamUpdateEvent(
 }
 
 /**
+ * 🆕 任務提醒通知觸發器
+ * 當任務提醒到期時發送通知
+ */
+export async function triggerTaskReminderNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    userId: string | number;
+    reminderId: string;
+    title: string;
+    content: string;
+    conversationId?: string | number;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.userId);
+
+    const notificationContent = options.content
+      ? `${options.title}: ${options.content.substring(0, 50)}${options.content.length > 50 ? '...' : ''}`
+      : options.title;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.create({
+      userId,
+      type: 'task_reminder',
+      title: '⏰ 任務提醒',
+      content: notificationContent,
+      data: {
+        reminderId: options.reminderId,
+        originalTitle: options.title,
+        conversationId: options.conversationId
+      },
+      priority: 'high',
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24小時後過期
+    });
+
+    console.log('✅ [Notification] Task reminder notification created:', {
+      notificationId,
+      userId: options.userId,
+      reminderId: options.reminderId,
+      title: options.title
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.userId, {
+      id: notificationId,
+      type: 'task_reminder',
+      title: '⏰ 任務提醒',
+      content: notificationContent,
+      priority: 'high',
+      data: {
+        reminderId: options.reminderId,
+        originalTitle: options.title,
+        conversationId: options.conversationId
+      }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send task reminder notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
+ * 🆕 @提及通知觸發器
+ * 當訊息中提及其他客服時發送通知
+ */
+export async function triggerMentionNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    mentionedUserId: string | number;
+    mentionerName: string;
+    mentionerId: string | number;
+    conversationId: string | number;
+    messagePreview: string;
+  }
+): Promise<string | null> {
+  try {
+    const service = createNotificationService(env);
+    const userId = parseUserId(options.mentionedUserId);
+    const conversationId = typeof options.conversationId === 'string'
+      ? parseInt(options.conversationId, 10) || 0
+      : options.conversationId;
+
+    const content = `${options.mentionerName} 在對話中提及了您：${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`;
+
+    // 1. 建立通知記錄到資料庫
+    const notificationId = await service.create({
+      userId,
+      type: 'mention',
+      title: '有人提及了您',
+      content,
+      data: {
+        conversationId,
+        mentionerName: options.mentionerName,
+        mentionerId: options.mentionerId
+      },
+      priority: 'high',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
+    });
+
+    console.log('✅ [Notification] Mention notification created:', {
+      notificationId,
+      mentionedUserId: options.mentionedUserId,
+      mentionerId: options.mentionerId,
+      conversationId
+    });
+
+    // 2. 透過 WebSocket 即時推送通知
+    await broadcastNotificationViaWebSocket(env, options.mentionedUserId, {
+      id: notificationId,
+      type: 'mention',
+      title: '有人提及了您',
+      content,
+      priority: 'high',
+      data: {
+        conversationId,
+        mentionerName: options.mentionerName,
+        mentionerId: options.mentionerId
+      }
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send mention notification:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return null;
+  }
+}
+
+/**
  * 輔助函數：獲取優先級的中文標籤
  */
 function getPriorityLabel(priority: string): string {

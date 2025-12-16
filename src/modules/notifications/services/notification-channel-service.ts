@@ -23,7 +23,7 @@ import { PushAdapter } from '@modules/notifications/adapters/push-adapter';
 export class NotificationChannelService {
   private adapters = new Map<ChannelType, ChannelAdapter>();
   private routerConfig: ChannelRouterConfig;
-  private userSettings = new Map<number, NotificationSettings>();
+  private userSettings = new Map<string | number, NotificationSettings>();  // 支援字串和數字格式的 userId
 
   constructor() {
     this.initializeAdapters();
@@ -464,10 +464,10 @@ export class NotificationChannelService {
     return { ...this.routerConfig };
   }
 
-  // 測試功能
+  // 測試功能 - 支援字串和數字格式的 userId
   async testChannel(
     channelType: ChannelType,
-    userId: number,
+    userId: string | number,
     testMessage?: string
   ): Promise<DeliveryResult> {
     const adapter = this.adapters.get(channelType);

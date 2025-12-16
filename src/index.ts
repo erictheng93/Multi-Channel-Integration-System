@@ -794,6 +794,24 @@ app.use('/api/channels/*', jwtAuth);
 // Register channel management routes
 app.route('/api/channels', channelHandler);
 
+// ==================== Task Reminder System (Phase 4: Notification Integration) ====================
+import taskReminderHandler, { handleScheduledEvent } from './handlers/task-reminder-main';
+app.route('/api/reminders', taskReminderHandler);
+
+log.info('Task Reminder System registered', {
+  endpoints: [
+    'GET    /api/reminders',
+    'GET    /api/reminders/upcoming',
+    'GET    /api/reminders/stats',
+    'POST   /api/reminders',
+    'GET    /api/reminders/:id',
+    'PUT    /api/reminders/:id',
+    'PUT    /api/reminders/:id/complete',
+    'DELETE /api/reminders/:id',
+    'POST   /api/reminders/process (Admin)'
+  ]
+});
+
 log.info('Channel Integration Management endpoints registered', {
   endpoints: [
     'GET    /api/channels',
@@ -1425,5 +1443,15 @@ export default {
   ): Promise<void> {
     log.info('LINE Queue received batch', { messageCount: batch.messages.length });
     await handleLineMessageQueue(batch, env);
+  },
+
+  // ⏰ Scheduled Handler for Task Reminders (Phase 4)
+  async scheduled(
+    event: ScheduledEvent,
+    env: Bindings,
+    _ctx: ExecutionContext
+  ): Promise<void> {
+    log.info('Scheduled event triggered', { cron: event.cron, scheduledTime: event.scheduledTime });
+    await handleScheduledEvent(env);
   }
 };

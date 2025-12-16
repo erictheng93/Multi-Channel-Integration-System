@@ -11,36 +11,36 @@ export class NotificationCache {
     this.kv = kvNamespace;
   }
 
-  // 快取鍵生成
-  private getNotificationKey(userId: number, notificationId: string): string {
+  // 快取鍵生成 - 支援字串和數字格式的 userId
+  private getNotificationKey(userId: string | number, notificationId: string): string {
     return `notification:${userId}:${notificationId}`;
   }
 
-  private getNotificationListKey(userId: number, queryHash: string): string {
+  private getNotificationListKey(userId: string | number, queryHash: string): string {
     return `notification_list:${userId}:${queryHash}`;
   }
 
-  private getStatsKey(userId: number): string {
+  private getStatsKey(userId: string | number): string {
     return `notification_stats:${userId}`;
   }
 
-  private getUnreadCountKey(userId: number, type?: string): string {
+  private getUnreadCountKey(userId: string | number, type?: string): string {
     return `unread_count:${userId}${type ? `:${type}` : ''}`;
   }
 
-  private getRecentNotificationsKey(userId: number, limit: number): string {
+  private getRecentNotificationsKey(userId: string | number, limit: number): string {
     return `recent_notifications:${userId}:${limit}`;
   }
 
-  // 單一通知快取
-  async cacheNotification(userId: number, notification: NotificationBase, ttl?: number): Promise<void> {
+  // 單一通知快取 - 支援字串和數字格式的 userId
+  async cacheNotification(userId: string | number, notification: NotificationBase, ttl?: number): Promise<void> {
     const key = this.getNotificationKey(userId, notification.id);
     await this.kv.put(key, JSON.stringify(notification), {
       expirationTtl: ttl || this.defaultTTL
     });
   }
 
-  async getCachedNotification(userId: number, notificationId: string): Promise<NotificationBase | null> {
+  async getCachedNotification(userId: string | number, notificationId: string): Promise<NotificationBase | null> {
     const key = this.getNotificationKey(userId, notificationId);
     const cached = await this.kv.get(key);
 
@@ -57,14 +57,14 @@ export class NotificationCache {
     }
   }
 
-  async deleteCachedNotification(userId: number, notificationId: string): Promise<void> {
+  async deleteCachedNotification(userId: string | number, notificationId: string): Promise<void> {
     const key = this.getNotificationKey(userId, notificationId);
     await this.kv.delete(key);
   }
 
-  // 通知清單快取
+  // 通知清單快取 - 支援字串和數字格式的 userId
   async cacheNotificationList(
-    userId: number,
+    userId: string | number,
     queryHash: string,
     notifications: NotificationBase[],
     total: number,
@@ -78,7 +78,7 @@ export class NotificationCache {
     });
   }
 
-  async getCachedNotificationList(userId: number, queryHash: string): Promise<{
+  async getCachedNotificationList(userId: string | number, queryHash: string): Promise<{
     notifications: NotificationBase[];
     total: number;
   } | null> {
@@ -102,15 +102,15 @@ export class NotificationCache {
     }
   }
 
-  // 統計資料快取
-  async cacheStats(userId: number, stats: NotificationStats, ttl?: number): Promise<void> {
+  // 統計資料快取 - 支援字串和數字格式的 userId
+  async cacheStats(userId: string | number, stats: NotificationStats, ttl?: number): Promise<void> {
     const key = this.getStatsKey(userId);
     await this.kv.put(key, JSON.stringify(stats), {
       expirationTtl: ttl || 60 // 統計資料較短的快取時間
     });
   }
 
-  async getCachedStats(userId: number): Promise<NotificationStats | null> {
+  async getCachedStats(userId: string | number): Promise<NotificationStats | null> {
     const key = this.getStatsKey(userId);
     const cached = await this.kv.get(key);
 
@@ -127,15 +127,15 @@ export class NotificationCache {
     }
   }
 
-  // 未讀數量快取
-  async cacheUnreadCount(userId: number, count: number, type?: string, ttl?: number): Promise<void> {
+  // 未讀數量快取 - 支援字串和數字格式的 userId
+  async cacheUnreadCount(userId: string | number, count: number, type?: string, ttl?: number): Promise<void> {
     const key = this.getUnreadCountKey(userId, type);
     await this.kv.put(key, count.toString(), {
       expirationTtl: ttl || 60
     });
   }
 
-  async getCachedUnreadCount(userId: number, type?: string): Promise<number | null> {
+  async getCachedUnreadCount(userId: string | number, type?: string): Promise<number | null> {
     const key = this.getUnreadCountKey(userId, type);
     const cached = await this.kv.get(key);
 
@@ -147,9 +147,9 @@ export class NotificationCache {
     return isNaN(count) ? null : count;
   }
 
-  // 最近通知快取
+  // 最近通知快取 - 支援字串和數字格式的 userId
   async cacheRecentNotifications(
-    userId: number,
+    userId: string | number,
     limit: number,
     notifications: NotificationBase[],
     ttl?: number
@@ -160,7 +160,7 @@ export class NotificationCache {
     });
   }
 
-  async getCachedRecentNotifications(userId: number, limit: number): Promise<NotificationBase[] | null> {
+  async getCachedRecentNotifications(userId: string | number, limit: number): Promise<NotificationBase[] | null> {
     const key = this.getRecentNotificationsKey(userId, limit);
     const cached = await this.kv.get(key);
 
@@ -177,8 +177,8 @@ export class NotificationCache {
     }
   }
 
-  // 快取失效
-  async invalidateUserCache(userId: number): Promise<void> {
+  // 快取失效 - 支援字串和數字格式的 userId
+  async invalidateUserCache(userId: string | number): Promise<void> {
     const patterns = [
       `notification:${userId}:`,
       `notification_list:${userId}:`,
@@ -193,7 +193,7 @@ export class NotificationCache {
     await Promise.allSettled(promises);
   }
 
-  async invalidateNotificationCache(userId: number, notificationId: string): Promise<void> {
+  async invalidateNotificationCache(userId: string | number, notificationId: string): Promise<void> {
     await Promise.allSettled([
       this.deleteCachedNotification(userId, notificationId),
       this.invalidateListCache(userId),
@@ -202,19 +202,19 @@ export class NotificationCache {
     ]);
   }
 
-  async invalidateListCache(userId: number): Promise<void> {
+  async invalidateListCache(userId: string | number): Promise<void> {
     // 在實際實作中，需要維護查詢雜湊的索引來刪除相關快取
     // 這裡簡化處理，可以考慮使用更複雜的快取管理策略
     const basePattern = `notification_list:${userId}:`;
     await this.deleteByPattern(basePattern);
   }
 
-  async invalidateStatsCache(userId: number): Promise<void> {
+  async invalidateStatsCache(userId: string | number): Promise<void> {
     const key = this.getStatsKey(userId);
     await this.kv.delete(key);
   }
 
-  async invalidateUnreadCountCache(userId: number): Promise<void> {
+  async invalidateUnreadCountCache(userId: string | number): Promise<void> {
     const patterns = [
       `unread_count:${userId}`,
       `unread_count:${userId}:`

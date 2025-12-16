@@ -32,6 +32,12 @@ zone_name = "imfinethankyouandyou.com"
 [observability]
 enabled = true
 
+# =================== CRON TRIGGERS ===================
+# Task Reminder Processing - Runs every 5 minutes to check for due reminders
+# Calls the scheduled() handler in src/index.ts
+[triggers]
+crons = ["*/5 * * * *"]
+
 # 生產環境 D1 資料庫
 [[d1_databases]]
 binding = "DB"

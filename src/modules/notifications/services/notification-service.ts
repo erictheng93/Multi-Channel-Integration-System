@@ -120,7 +120,7 @@ export class NotificationService {
     return results;
   }
 
-  async getById(id: string, userId: number): Promise<NotificationBase | null> {
+  async getById(id: string, userId: string | number): Promise<NotificationBase | null> {
     // 先檢查快取
     const cached = await this.cache.getCachedNotification(userId, id);
     if (cached) {
@@ -168,7 +168,7 @@ export class NotificationService {
     };
   }
 
-  async markAsRead(id: string, userId: number): Promise<boolean> {
+  async markAsRead(id: string, userId: string | number): Promise<boolean> {
     const success = await this.repository.markAsRead(id, userId);
 
     if (success) {
@@ -179,7 +179,7 @@ export class NotificationService {
     return success;
   }
 
-  async markAllAsRead(userId: number, type?: NotificationType): Promise<number> {
+  async markAllAsRead(userId: string | number, type?: NotificationType): Promise<number> {
     const count = await this.repository.markAllAsRead(userId, type);
 
     if (count > 0) {
@@ -190,7 +190,7 @@ export class NotificationService {
     return count;
   }
 
-  async delete(id: string, userId: number): Promise<boolean> {
+  async delete(id: string, userId: string | number): Promise<boolean> {
     const success = await this.repository.delete(id, userId);
 
     if (success) {
@@ -201,7 +201,7 @@ export class NotificationService {
     return success;
   }
 
-  async getUnreadCount(userId: number, type?: NotificationType): Promise<number> {
+  async getUnreadCount(userId: string | number, type?: NotificationType): Promise<number> {
     // 檢查快取
     const cached = await this.cache.getCachedUnreadCount(userId, type);
     if (cached !== null) {
@@ -217,7 +217,7 @@ export class NotificationService {
     return count;
   }
 
-  async getStats(userId: number): Promise<NotificationStats> {
+  async getStats(userId: string | number): Promise<NotificationStats> {
     // 檢查快取
     const cached = await this.cache.getCachedStats(userId);
     if (cached) {
@@ -269,7 +269,7 @@ export class NotificationService {
     return stats;
   }
 
-  async getRecentNotifications(userId: number, limit: number = 10): Promise<NotificationBase[]> {
+  async getRecentNotifications(userId: string | number, limit: number = 10): Promise<NotificationBase[]> {
     // 檢查快取
     const cached = await this.cache.getCachedRecentNotifications(userId, limit);
     if (cached) {
