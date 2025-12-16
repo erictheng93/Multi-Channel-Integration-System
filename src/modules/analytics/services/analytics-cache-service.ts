@@ -1,8 +1,13 @@
 // Analytics Cache Service - KV 快取層實作
 // 提供統一的快取介面，支援多層次快取策略和自動過期管理
+//
+// NOTE: This service now supports Cache API routing for analytics data
+// Keys starting with 'cache:analytics:' will automatically use FREE Cache API
+// instead of paid KV operations.
 
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { AnalyticsResult } from '@modules/analytics/types/analytics-types';
+import { HybridCacheService, CACHE_TTL, shouldUseCacheAPI } from '@/services/cache-api-service';
 
 /**
  * 快取鍵策略配置
@@ -39,23 +44,31 @@ export interface CacheStats {
 
 /**
  * Analytics Cache Service
- * 提供 KV 快取管理，支援：
+ * 提供快取管理，支援：
  * - 統一的快取鍵生成策略
  * - 自動過期機制
  * - 快取命中率追蹤
  * - 批量快取操作
+ * - **Cache API 路由** (cache:analytics:* keys use FREE Cache API)
+ *
+ * Migration Note:
+ * - Old prefix: analytics:cache:* (uses KV)
+ * - New prefix: cache:analytics:* (uses FREE Cache API)
+ * - Set useCacheAPI=true in config to enable automatic routing
  */
 export class AnalyticsCacheService {
   private kv: KVNamespace;
-  private config: CacheConfig;
+  private hybridCache: HybridCacheService | null = null;
+  private config: CacheConfig & { useCacheAPI?: boolean };
   private stats: CacheStats;
 
-  // 快取鍵前綴常量
-  private static readonly CACHE_PREFIX = 'analytics:cache';
+  // 快取鍵前綴常量 - Updated to use Cache API-compatible prefix
+  private static readonly CACHE_PREFIX = 'cache:analytics';  // Changed from 'analytics:cache'
+  private static readonly LEGACY_PREFIX = 'analytics:cache'; // Old prefix for migration
   private static readonly STATS_PREFIX = 'analytics:stats';
   private static readonly VERSION = 'v1';
 
-  constructor(kv: KVNamespace, config?: Partial<CacheConfig>) {
+  constructor(kv: KVNamespace, config?: Partial<CacheConfig & { useCacheAPI?: boolean }>) {
     this.kv = kv;
     this.config = {
       defaultTTL: 300,      // 5 minutes
@@ -63,6 +76,7 @@ export class AnalyticsCacheService {
       longTTL: 1800,        // 30 minutes
       enabled: true,
       compression: false,
+      useCacheAPI: true,    // Enable Cache API by default
       ...config
     };
     this.stats = {
@@ -73,6 +87,19 @@ export class AnalyticsCacheService {
       hitRate: 0,
       totalRequests: 0
     };
+
+    // Initialize HybridCacheService for Cache API routing
+    if (this.config.useCacheAPI) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.hybridCache = new HybridCacheService(kv as any);
+    }
+  }
+
+  /**
+   * Check if key should use Cache API
+   */
+  private shouldUseCacheAPI(key: string): boolean {
+    return this.config.useCacheAPI === true && shouldUseCacheAPI(key);
   }
 
   /**
@@ -119,6 +146,7 @@ export class AnalyticsCacheService {
 
   /**
    * 獲取快取數據
+   * Automatically routes to Cache API for cache:analytics:* keys (FREE)
    */
   async get<T = any>(
     cacheKey: string
@@ -128,7 +156,15 @@ export class AnalyticsCacheService {
     }
 
     try {
-      const cachedData = await this.kv.get(cacheKey, 'json');
+      let cachedData: AnalyticsResult<T> | null = null;
+
+      // Use Cache API for compatible keys
+      if (this.shouldUseCacheAPI(cacheKey) && this.hybridCache) {
+        cachedData = await this.hybridCache.get<AnalyticsResult<T>>(cacheKey);
+      } else {
+        // Fallback to direct KV
+        cachedData = await this.kv.get(cacheKey, 'json') as AnalyticsResult<T> | null;
+      }
 
       this.stats.totalRequests++;
 
@@ -139,6 +175,7 @@ export class AnalyticsCacheService {
         // 更新元數據中的 cacheHit 標記
         if (cachedData && typeof cachedData === 'object' && 'metadata' in cachedData) {
           (cachedData as any).metadata.cacheHit = true;
+          (cachedData as any).metadata.cacheSource = this.shouldUseCacheAPI(cacheKey) ? 'cache-api' : 'kv';
         }
 
         return cachedData as AnalyticsResult<T>;
@@ -155,6 +192,7 @@ export class AnalyticsCacheService {
 
   /**
    * 設置快取數據
+   * Automatically routes to Cache API for cache:analytics:* keys (FREE)
    */
   async set<T = any>(
     cacheKey: string,
@@ -175,10 +213,24 @@ export class AnalyticsCacheService {
           ...data.metadata,
           cacheHit: false,
           cachedAt: new Date().toISOString(),
-          cacheExpiry: new Date(Date.now() + expirationTtl * 1000).toISOString()
+          cacheExpiry: new Date(Date.now() + expirationTtl * 1000).toISOString(),
+          cacheSource: this.shouldUseCacheAPI(cacheKey) ? 'cache-api' : 'kv'
         }
       };
 
+      // Use Cache API for compatible keys (FREE)
+      if (this.shouldUseCacheAPI(cacheKey) && this.hybridCache) {
+        const result = await this.hybridCache.set(cacheKey, dataToCache, {
+          ttl: expirationTtl,
+          tags: ['analytics']
+        });
+        if (result) {
+          this.stats.sets++;
+        }
+        return result;
+      }
+
+      // Fallback to direct KV
       await this.kv.put(
         cacheKey,
         JSON.stringify(dataToCache),
@@ -197,9 +249,20 @@ export class AnalyticsCacheService {
 
   /**
    * 刪除快取數據
+   * Automatically routes to Cache API for cache:analytics:* keys (FREE)
    */
   async delete(cacheKey: string): Promise<boolean> {
     try {
+      // Use Cache API for compatible keys
+      if (this.shouldUseCacheAPI(cacheKey) && this.hybridCache) {
+        const result = await this.hybridCache.delete(cacheKey);
+        if (result) {
+          this.stats.deletes++;
+        }
+        return result;
+      }
+
+      // Fallback to direct KV
       await this.kv.delete(cacheKey);
       this.stats.deletes++;
       return true;
