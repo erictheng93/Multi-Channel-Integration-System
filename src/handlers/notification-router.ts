@@ -106,6 +106,12 @@ app.post('/system', jwtAuth, async (c) => {
   return handlers.notifySystem(c as any);
 });
 
+// 📢 系統公告廣播 (Admin Only)
+app.post('/broadcast', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.broadcast(c as any);
+});
+
 // ==================== Priority 2: SPECIFIC PARAMETERIZED routes ====================
 
 // 測試通道

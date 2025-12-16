@@ -9,6 +9,9 @@ import { messages, conversations, customers, agents, fileAttachments } from '@sh
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '../middleware/auth';
+// 🔔 @提及通知整合
+import { parseMentions, getMentionedUserIds } from '../utils/mention-parser';
+import { triggerMentionNotification } from '../utils/notification-trigger';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -1968,6 +1971,28 @@ app.post('/', jwtAuth, async (c) => {
         .all();
     }
 
+    // 🔔 @提及通知檢測與觸發
+    const mentionedUserIds = getMentionedUserIds(content);
+    if (mentionedUserIds.length > 0) {
+      // 獲取發送者的顯示名稱
+      const senderName = userPayload.displayName || userPayload.username || 'Agent';
+
+      // 為每個被提及的用戶發送通知 (排除自己)
+      for (const mentionedUserId of mentionedUserIds) {
+        if (mentionedUserId !== userPayload.userId.toString()) {
+          triggerMentionNotification(c.env, {
+            mentionedUserId,
+            mentionerName: senderName,
+            mentionerId: userPayload.userId,
+            conversationId,
+            messagePreview: content.substring(0, 100)
+          }).catch(err => {
+            console.warn('Failed to trigger mention notification:', err);
+          });
+        }
+      }
+    }
+
     return c.json({
       success: true,
       data: {
@@ -1979,7 +2004,8 @@ app.post('/', jwtAuth, async (c) => {
         agentSenderId: userPayload.userId.toString(),
         sentAt: messageData.sentAt,
         createdAt: messageData.createdAt,
-        file_attachments: attachments  // 🔧 FIX: 包含附件數據
+        file_attachments: attachments,  // 🔧 FIX: 包含附件數據
+        mentionedUserIds: mentionedUserIds.length > 0 ? mentionedUserIds : undefined  // 🔔 返回被提及的用戶 ID
       },
       message: 'Message created successfully',
       timestamp: new Date().toISOString()

@@ -40,14 +40,35 @@ export class NotificationValidator {
     'urgent'
   ];
 
+  /**
+   * 驗證 userId 是否有效
+   * 支援字串格式（如 "admin-001"）和數字格式
+   */
+  private isValidUserId(userId: string | number | undefined | null): boolean {
+    if (userId === undefined || userId === null) {
+      return false;
+    }
+
+    if (typeof userId === 'string') {
+      return userId.trim().length > 0;
+    }
+
+    if (typeof userId === 'number') {
+      return !isNaN(userId) && userId > 0;
+    }
+
+    return false;
+  }
+
   validateCreateRequest(request: CreateNotificationRequest): void {
     const errors: ValidationError[] = [];
 
-    // 驗證必填欄位
-    if (!request.userId || request.userId <= 0) {
+    // 驗證必填欄位 - 支援字串和數字格式的 userId
+    const userIdValid = this.isValidUserId(request.userId);
+    if (!userIdValid) {
       errors.push({
         field: 'userId',
-        message: 'User ID is required and must be a positive number',
+        message: 'User ID is required and must be a non-empty string or positive number',
         code: 'INVALID_USER_ID'
       });
     }
@@ -216,11 +237,12 @@ export class NotificationValidator {
   validateQuery(query: NotificationQuery): void {
     const errors: ValidationError[] = [];
 
-    // 驗證用戶ID
-    if (!query.userId || query.userId <= 0) {
+    // 驗證用戶ID - 支援字串和數字格式
+    const userIdValid = this.isValidUserId(query.userId);
+    if (!userIdValid) {
       errors.push({
         field: 'userId',
-        message: 'User ID is required and must be a positive number',
+        message: 'User ID is required and must be a non-empty string or positive number',
         code: 'INVALID_USER_ID'
       });
     }

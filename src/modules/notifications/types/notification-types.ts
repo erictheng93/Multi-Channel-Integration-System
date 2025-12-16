@@ -3,7 +3,7 @@
 
 export interface NotificationBase {
   id: string;
-  userId: number;
+  userId: string | number;  // 支援字串和數字格式的 userId
   type: NotificationType;
   title: string;
   content: string;
@@ -34,7 +34,7 @@ export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'failed' | '
 export type NotificationChannel = 'database' | 'sse' | 'email' | 'webhook' | 'push' | 'websocket' | 'sms';
 
 export interface CreateNotificationRequest {
-  userId: number;
+  userId: string | number;  // 支援字串和數字格式的 userId
   type: NotificationType;
   title: string;
   content: string;
@@ -51,7 +51,7 @@ export interface BulkCreateNotificationRequest {
 }
 
 export interface NotificationSettings {
-  userId: number;
+  userId: string | number;  // 支援字串和數字格式的 userId
   emailEnabled: boolean;
   pushEnabled: boolean;
   sseEnabled: boolean;
@@ -94,7 +94,7 @@ export interface NotificationStats {
 }
 
 export interface NotificationQuery {
-  userId: number;
+  userId: string | number;  // 支援字串和數字格式的 userId
   type?: NotificationType;
   priority?: NotificationPriority;
   isRead?: boolean;

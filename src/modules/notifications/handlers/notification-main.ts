@@ -25,6 +25,10 @@ import {
   NotificationType,
   NotificationPriority
 } from '../types';
+import { triggerSystemNotification } from '@/utils/notification-trigger';
+import { createDbClient } from '@/db/drizzle-factory';
+import { agents } from '@/db/schema';
+import { isNull } from 'drizzle-orm';
 
 export class NotificationHandler {
   private notificationService: NotificationService;
@@ -48,7 +52,7 @@ export class NotificationHandler {
 
       const queryParams = c.req.query();
       const query: NotificationQuery = {
-        userId: parseInt(String(payload.userId)),
+        userId: payload.userId,  // 直接使用，支援字串或數字格式
         type: queryParams.type as NotificationType,
         priority: queryParams.priority as NotificationPriority,
         isRead: queryParams.isRead ? queryParams.isRead === 'true' : undefined,
@@ -95,8 +99,8 @@ export class NotificationHandler {
 
       // 如果請求者不是系統管理員，只能為自己創建通知
       const targetUserId = payload.role === 'admin' ?
-        (requestBody.userId || parseInt(String(payload.userId))) :
-        parseInt(String(payload.userId));
+        (requestBody.userId || payload.userId) :
+        payload.userId;
 
       const request: CreateNotificationRequest = {
         userId: targetUserId,
@@ -174,7 +178,7 @@ export class NotificationHandler {
       }
 
       const notificationId = c.req.param('id');
-      const notification = await this.notificationService.getById(notificationId, parseInt(String(payload.userId)));
+      const notification = await this.notificationService.getById(notificationId, payload.userId);
 
       if (!notification) {
         return notFoundResponse(c, 'Notification');
@@ -197,7 +201,7 @@ export class NotificationHandler {
       }
 
       const notificationId = c.req.param('id');
-      const success = await this.notificationService.markAsRead(notificationId, parseInt(String(payload.userId)));
+      const success = await this.notificationService.markAsRead(notificationId, payload.userId);
 
       if (!success) {
         return notFoundResponse(c, 'Notification');
@@ -220,7 +224,7 @@ export class NotificationHandler {
       }
 
       const { type } = await c.req.json().catch(() => ({}));
-      const count = await this.notificationService.markAllAsRead(parseInt(String(payload.userId)), type);
+      const count = await this.notificationService.markAllAsRead(payload.userId, type);
 
       return successResponse(c, {
         updated: count
@@ -241,7 +245,7 @@ export class NotificationHandler {
       }
 
       const notificationId = c.req.param('id');
-      const success = await this.notificationService.delete(notificationId, parseInt(String(payload.userId)));
+      const success = await this.notificationService.delete(notificationId, payload.userId);
 
       if (!success) {
         return notFoundResponse(c, 'Notification');
@@ -263,7 +267,7 @@ export class NotificationHandler {
         return unauthorizedResponse(c, 'Authentication required');
       }
 
-      const stats = await this.notificationService.getStats(parseInt(String(payload.userId)));
+      const stats = await this.notificationService.getStats(payload.userId);
 
       return successResponse(c, stats, 'Notification statistics retrieved successfully');
 
@@ -283,7 +287,7 @@ export class NotificationHandler {
 
       const { type } = c.req.query();
       const count = await this.notificationService.getUnreadCount(
-        parseInt(String(payload.userId)),
+        payload.userId,
         type as NotificationType
       );
 
@@ -310,7 +314,7 @@ export class NotificationHandler {
       const limitNum = Math.min(parseInt(limit), 50); // 最多50個
 
       const notifications = await this.notificationService.getRecentNotifications(
-        parseInt(String(payload.userId)),
+        payload.userId,
         limitNum
       );
 
@@ -379,7 +383,7 @@ export class NotificationHandler {
 
       const result = await this.channelService.testChannel(
         channelType,
-        parseInt(String(payload.userId)),
+        payload.userId,
         message
       );
 
@@ -435,7 +439,7 @@ export class NotificationHandler {
     }
   };
 
-  // 創建系統通知
+  // 創建系統通知（含 WebSocket 即時廣播）
   notifySystem = async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const payload = c.get('jwtPayload');
@@ -444,19 +448,93 @@ export class NotificationHandler {
         return unauthorizedResponse(c, 'Admin privileges required for system notifications');
       }
 
-      const { userIds, title, content, data } = await c.req.json();
+      const { userIds, title, content, data, broadcastToAll } = await c.req.json();
 
-      const notificationIds = await this.notificationService.notifySystemMessage(
-        userIds,
+      if (!title || !content) {
+        return errorResponse(c, 'Title and content are required', 400);
+      }
+
+      const env = c.env;
+      let targetUserIds: string[] = userIds || [];
+
+      // 如果指定廣播給所有用戶，從資料庫獲取所有活躍用戶 ID
+      if (broadcastToAll || (!userIds || userIds.length === 0)) {
+        const db = createDbClient(env.DB);
+        const activeAgents = await db
+          .select({ id: agents.id })
+          .from(agents)
+          .where(isNull(agents.deletedAt));
+
+        targetUserIds = activeAgents.map(agent => agent.id);
+      }
+
+      if (targetUserIds.length === 0) {
+        return errorResponse(c, 'No target users found', 400);
+      }
+
+      // 使用 triggerSystemNotification 觸發通知並廣播至 WebSocket
+      const notificationIds = await triggerSystemNotification(env, {
+        userIds: targetUserIds,
         title,
         content,
         data
-      );
+      });
 
       return successResponse(c, {
         ids: notificationIds,
-        count: notificationIds.length
-      }, `${notificationIds.length} system notifications created`);
+        count: notificationIds.length,
+        broadcastedToAll: broadcastToAll || (!userIds || userIds.length === 0)
+      }, `${notificationIds.length} system notifications created and broadcasted`);
+
+    } catch (error) {
+      return handleApiError(error, c);
+    }
+  };
+
+  // 📢 系統公告廣播端點（簡化版）
+  broadcast = async (c: Context<{ Bindings: Bindings }>) => {
+    try {
+      const payload = c.get('jwtPayload');
+
+      if (!payload?.userId || payload.role !== 'admin') {
+        return unauthorizedResponse(c, 'Admin privileges required for broadcasting');
+      }
+
+      const { title, content, priority, data } = await c.req.json();
+
+      if (!title || !content) {
+        return errorResponse(c, 'Title and content are required', 400);
+      }
+
+      const env = c.env;
+
+      // 獲取所有活躍用戶
+      const db = createDbClient(env.DB);
+      const activeAgents = await db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(isNull(agents.deletedAt));
+
+      const targetUserIds = activeAgents.map(agent => agent.id);
+
+      if (targetUserIds.length === 0) {
+        return errorResponse(c, 'No active users found', 400);
+      }
+
+      // 觸發系統通知並廣播
+      const notificationIds = await triggerSystemNotification(env, {
+        userIds: targetUserIds,
+        title,
+        content,
+        data: { ...data, priority: priority || 'normal', broadcastedBy: payload.userId }
+      });
+
+      return successResponse(c, {
+        ids: notificationIds,
+        recipientCount: targetUserIds.length,
+        broadcastedBy: payload.userId,
+        timestamp: new Date().toISOString()
+      }, `System announcement broadcasted to ${targetUserIds.length} users`);
 
     } catch (error) {
       return handleApiError(error, c);
@@ -489,6 +567,7 @@ export function createNotificationHandlerMethods(database: D1Database, kvNamespa
     testChannel: handler.testChannel,
     notifyNewMessage: handler.notifyNewMessage,
     notifyConversationAssigned: handler.notifyConversationAssigned,
-    notifySystem: handler.notifySystem
+    notifySystem: handler.notifySystem,
+    broadcast: handler.broadcast  // 📢 系統公告廣播
   };
 }

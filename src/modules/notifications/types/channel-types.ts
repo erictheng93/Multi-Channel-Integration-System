@@ -74,7 +74,7 @@ export interface WebSocketMessage {
   type: 'notification' | 'ping' | 'pong' | 'error' | 'subscribe' | 'unsubscribe';
   data?: any;
   timestamp: string;
-  userId?: number;
+  userId?: string | number;  // 支援字串和數字格式的 userId
   messageId?: string;
 }
 

@@ -48,7 +48,7 @@ import {
   parseFacebookMessage as parseFacebookMessageContent,
   hasDownloadableMedia
 } from '../services/platform-message-parser';
-import { triggerNewMessageNotification } from '../utils/notification-trigger';
+import { triggerNewMessageNotification, triggerCustomerRespondedNotification } from '../utils/notification-trigger';
 
 export const webhookHandler = {
   // 處理 Line Webhook
@@ -722,6 +722,20 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           error: err instanceof Error ? err.message : String(err)
         });
       });
+
+      // 🔔 客戶回覆通知：如果客服已回覆過，發送客戶回覆通知
+      if (conversation!.firstResponseAt) {
+        triggerCustomerRespondedNotification(env, {
+          assignedUserId: conversation!.assignedUserId,
+          conversationId: conversation!.id,
+          customerName: user.displayName || '客戶',
+          messagePreview: messageContent.substring(0, 100)
+        }).catch(err => {
+          log.warn('LINE Webhook: Failed to trigger customer responded notification', {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        });
+      }
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2
@@ -1380,6 +1394,34 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       }
     } catch (activityError) {
       log.warn('Facebook Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
+    }
+
+    // 🔔 通知觸發：如果對話已指派給客服，發送新訊息通知
+    if (conversation!.assignedUserId) {
+      triggerNewMessageNotification(env, {
+        assignedUserId: conversation!.assignedUserId,
+        conversationId: conversation!.id,
+        senderName: user.displayName || '客戶',
+        messageContent: messageContent.substring(0, 100)
+      }).catch(err => {
+        log.warn('Facebook Webhook: Failed to trigger notification', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      });
+
+      // 🔔 客戶回覆通知：如果客服已回覆過，發送客戶回覆通知
+      if (conversation!.firstResponseAt) {
+        triggerCustomerRespondedNotification(env, {
+          assignedUserId: conversation!.assignedUserId,
+          conversationId: conversation!.id,
+          customerName: user.displayName || '客戶',
+          messagePreview: messageContent.substring(0, 100)
+        }).catch(err => {
+          log.warn('Facebook Webhook: Failed to trigger customer responded notification', {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        });
+      }
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2

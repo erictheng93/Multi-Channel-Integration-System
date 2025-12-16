@@ -603,6 +603,23 @@ export const reportTemplates = sqliteTable('report_templates', {
   deletedAt: text('deleted_at'),
 });
 
+// Task Reminders table - 任務提醒 (Migration 0029)
+export const taskReminders = sqliteTable('task_reminders', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content'),
+  remindAt: text('remind_at').notNull(),
+  conversationId: text('conversation_id'),
+  repeatType: text('repeat_type').default('none'), // 'none', 'daily', 'weekly', 'monthly'
+  repeatInterval: integer('repeat_interval').default(0),
+  isCompleted: integer('is_completed', { mode: 'boolean' }).default(false),
+  isSent: integer('is_sent', { mode: 'boolean' }).default(false),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  completedAt: text('completed_at'),
+  sentAt: text('sent_at'),
+});
+
 // Export types for reports system
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -614,6 +631,10 @@ export type ReportDownloadHistory = typeof reportDownloadHistory.$inferSelect;
 export type NewReportDownloadHistory = typeof reportDownloadHistory.$inferInsert;
 export type ReportTemplate = typeof reportTemplates.$inferSelect;
 export type NewReportTemplate = typeof reportTemplates.$inferInsert;
+
+// Export types for task reminders (Migration 0029)
+export type TaskReminder = typeof taskReminders.$inferSelect;
+export type NewTaskReminder = typeof taskReminders.$inferInsert;
 
 // Export types for agent teams (multi-team membership)
 export type AgentTeam = typeof agentTeams.$inferSelect;

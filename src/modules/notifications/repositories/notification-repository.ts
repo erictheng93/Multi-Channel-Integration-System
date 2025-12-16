@@ -89,7 +89,7 @@ export class NotificationRepository {
     return notificationIds;
   }
 
-  async findById(id: string, userId: number): Promise<NotificationBase | null> {
+  async findById(id: string, userId: string | number): Promise<NotificationBase | null> {
     const result = await this.db
       .select()
       .from(notifications)
@@ -170,7 +170,7 @@ export class NotificationRepository {
     };
   }
 
-  async markAsRead(id: string, userId: number): Promise<boolean> {
+  async markAsRead(id: string, userId: string | number): Promise<boolean> {
     const result = await this.db
       .update(notifications)
       .set({
@@ -186,7 +186,7 @@ export class NotificationRepository {
     return result.changes > 0;
   }
 
-  async markAllAsRead(userId: number, type?: NotificationType): Promise<number> {
+  async markAllAsRead(userId: string | number, type?: NotificationType): Promise<number> {
     const whereConditions = [
       eq(notifications.userId, userId.toString()),
       eq(notifications.isRead, false)
@@ -208,7 +208,7 @@ export class NotificationRepository {
     return result.changes || 0;
   }
 
-  async delete(id: string, userId: number): Promise<boolean> {
+  async delete(id: string, userId: string | number): Promise<boolean> {
     const result = await this.db
       .delete(notifications)
       .where(and(
@@ -227,7 +227,7 @@ export class NotificationRepository {
     return result.changes || 0;
   }
 
-  async getUnreadCount(userId: number, type?: NotificationType): Promise<number> {
+  async getUnreadCount(userId: string | number, type?: NotificationType): Promise<number> {
     const whereConditions = [
       eq(notifications.userId, userId.toString()),
       eq(notifications.isRead, false)
@@ -254,7 +254,7 @@ export class NotificationRepository {
     return result[0]?.count || 0;
   }
 
-  async getRecentNotifications(userId: number, limit: number = 10): Promise<NotificationBase[]> {
+  async getRecentNotifications(userId: string | number, limit: number = 10): Promise<NotificationBase[]> {
     const result = await this.db
       .select()
       .from(notifications)
@@ -272,7 +272,7 @@ export class NotificationRepository {
     return result.map(this.mapToNotification);
   }
 
-  async getStatsByUserId(userId: number): Promise<any> {
+  async getStatsByUserId(userId: string | number): Promise<any> {
     const result = await this.db.get(sql`
       SELECT
         COUNT(*) as total,
@@ -296,7 +296,7 @@ export class NotificationRepository {
   private mapToNotification(row: any): NotificationBase {
     return {
       id: row.id,
-      userId: parseInt(row.userId || row.user_id),
+      userId: row.userId || row.user_id,  // 保持原始格式，支援字串和數字
       type: row.type,
       title: row.title,
       content: row.content,
