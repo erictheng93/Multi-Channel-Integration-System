@@ -483,20 +483,21 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
 
     if (latestQR) {
       // 異步同步回 teams 表 (不阻塞響應)
-      drizzleDb
-        .update(teams)
-        .set({
-          qrCode: latestQR.qrCodeImageUrl,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(teams.id, teamId))
-        .run()
-        .then(() => {
-          console.log(`✅ [Fast QR Query] 已同步到 teams.qrCode: teamId=${teamId}`);
-        })
-        .catch(err => {
-          console.error(`❌ [Fast QR Query] 同步失敗: teamId=${teamId}`, err);
-        });
+      c.executionCtx.waitUntil(
+        drizzleDb
+          .update(teams)
+          .set({
+            qrCode: latestQR.qrCodeImageUrl,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(teams.id, teamId))
+          .then(() => {
+            console.log(`✅ [Fast QR Query] 已同步到 teams.qrCode: teamId=${teamId}`);
+          })
+          .catch(err => {
+            console.error(`❌ [Fast QR Query] 同步失敗: teamId=${teamId}`, err);
+          })
+      );
 
       return c.json({
         success: true,
