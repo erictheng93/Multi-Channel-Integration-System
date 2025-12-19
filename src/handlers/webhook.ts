@@ -497,6 +497,24 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           customerId: user.id,
           status: conversation?.status
         });
+
+        // 🆕 觸發新對話通知（新創建的對話）
+        try {
+          const { triggerNewConversationNotification } = await import('../utils/notification-trigger');
+          await triggerNewConversationNotification(env, {
+            conversationId: conversationId,
+            customerName: user.displayName || 'LINE User',
+            platform: 'LINE',
+            messagePreview: messageContent,
+            teamId: newConversation.assignedTeamId || undefined
+          });
+          console.log('✅ [LINE Webhook] New conversation notification triggered');
+        } catch (notificationError) {
+          log.warn('LINE Webhook: Failed to trigger new conversation notification', {
+            error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+          });
+          // 不要讓通知失敗影響主流程
+        }
       } catch (convError) {
         log.error('LINE Webhook: Failed to create conversation', {
           error: convError instanceof Error ? convError.message : 'Unknown error',
@@ -895,6 +913,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     // Step 3: 嘗試從 QR Code 追蹤參數獲取團隊 ID
     let assignedTeamId: number | null = null;
     let qrCodeToken: string | null = null;
+    let existingConversation: any = null; // Declare at function scope for later use
 
     // 嘗試從多種來源獲取追蹤參數
     // 方式 1: LINE 標準的 follow.param (如果可用)
@@ -1037,7 +1056,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     // Step 7: 如果有團隊指派，創建預設對話
     if (assignedTeamId && existingCustomer) {
       // 檢查是否已有活躍對話
-      const existingConversation = await drizzleDb
+      existingConversation = await drizzleDb
         .select()
         .from(conversations)
         .where(and(
@@ -1122,6 +1141,44 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       teamId: assignedTeamId,
       source: qrCodeToken ? 'qr_code' : 'direct'
     });
+
+    // 🆕 Step 9: 觸發新客戶加入通知
+    try {
+      const { triggerCustomerFollowedNotification } = await import('../utils/notification-trigger');
+
+      // 獲取團隊名稱（如果有）
+      let teamName: string | undefined;
+      if (assignedTeamId) {
+        try {
+          const { teams } = await import('../db/schema');
+          const team = await drizzleDb
+            .select()
+            .from(teams)
+            .where(eq(teams.id, assignedTeamId))
+            .get();
+          teamName = team?.name;
+        } catch (teamError) {
+          console.warn('Failed to fetch team name:', teamError);
+        }
+      }
+
+      // 觸發通知給管理員或團隊成員
+      await triggerCustomerFollowedNotification(env, {
+        customerName: displayName,
+        platform: 'LINE',
+        source: qrCodeToken ? 'qr_code' : 'direct',
+        teamId: assignedTeamId || undefined,
+        teamName,
+        conversationId: existingConversation?.id
+      });
+
+      console.log('✅ [LINE Follow] Customer followed notification triggered');
+    } catch (notificationError) {
+      log.warn('LINE Follow: Failed to trigger customer followed notification', {
+        error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+      });
+      // 不要讓通知失敗影響主流程
+    }
 
   } catch (error) {
     log.error('LINE Follow: Error processing follow event', {

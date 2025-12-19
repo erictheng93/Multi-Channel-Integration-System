@@ -20,34 +20,7 @@ app.get('/health', (c) => {
 });
 
 // ==================== Task Reminder CRUD ====================
-
-/**
- * 獲取用戶的任務提醒列表
- * GET /api/reminders
- */
-app.get('/', jwtAuth, async (c) => {
-  try {
-    const payload = c.get('jwtPayload') as JWTPayload;
-    const includeCompleted = c.req.query('includeCompleted') === 'true';
-
-    const service = new TaskReminderService(c.env.DB, c.env);
-    const reminders = await service.getByUserId(payload.userId.toString(), includeCompleted);
-
-    return c.json({
-      success: true,
-      data: reminders,
-      count: reminders.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Get reminders error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get reminders',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
+// IMPORTANT: Routes ordered from most specific to most general to avoid conflicts
 
 /**
  * 獲取即將到期的提醒
@@ -105,64 +78,71 @@ app.get('/stats', jwtAuth, async (c) => {
 });
 
 /**
- * 創建新的任務提醒
- * POST /api/reminders
+ * 手動觸發處理到期提醒 (Admin Only)
+ * POST /api/reminders/process
  */
-app.post('/', jwtAuth, async (c) => {
+app.post('/process', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
-    const body = await c.req.json();
 
-    // 驗證必填欄位
-    if (!body.title || !body.remindAt) {
+    // 只有管理員可以手動觸發
+    if (payload.role !== 'admin') {
       return c.json({
         success: false,
-        error: 'Title and remindAt are required',
+        error: 'Admin access required',
         timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    // 驗證提醒時間
-    const remindAt = new Date(body.remindAt);
-    if (isNaN(remindAt.getTime())) {
-      return c.json({
-        success: false,
-        error: 'Invalid remindAt date format',
-        timestamp: new Date().toISOString()
-      }, 400);
-    }
-
-    // 驗證提醒時間不能是過去
-    if (remindAt < new Date()) {
-      return c.json({
-        success: false,
-        error: 'remindAt must be in the future',
-        timestamp: new Date().toISOString()
-      }, 400);
+      }, 403);
     }
 
     const service = new TaskReminderService(c.env.DB, c.env);
-    const reminderId = await service.create({
-      userId: payload.userId.toString(),
-      title: body.title,
-      content: body.content,
-      remindAt,
-      conversationId: body.conversationId,
-      repeatType: body.repeatType,
-      repeatInterval: body.repeatInterval
-    });
+    const processedCount = await service.processDueReminders();
 
     return c.json({
       success: true,
-      data: { id: reminderId },
-      message: 'Reminder created successfully',
+      data: { processedCount },
+      message: `Processed ${processedCount} due reminders`,
       timestamp: new Date().toISOString()
-    }, 201);
+    });
   } catch (error) {
-    console.error('Create reminder error:', error);
+    console.error('Process reminders error:', error);
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create reminder',
+      error: error instanceof Error ? error.message : 'Failed to process reminders',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * 標記任務提醒為已完成
+ * PUT /api/reminders/:id/complete
+ */
+app.put('/:id/complete', jwtAuth, async (c) => {
+  try {
+    const payload = c.get('jwtPayload') as JWTPayload;
+    const id = c.req.param('id');
+
+    const service = new TaskReminderService(c.env.DB, c.env);
+    const success = await service.markComplete(id, payload.userId.toString());
+
+    if (!success) {
+      return c.json({
+        success: false,
+        error: 'Reminder not found',
+        timestamp: new Date().toISOString()
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Reminder marked as complete',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Complete reminder error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to complete reminder',
       timestamp: new Date().toISOString()
     }, 500);
   }
@@ -253,41 +233,6 @@ app.put('/:id', jwtAuth, async (c) => {
 });
 
 /**
- * 標記任務提醒為已完成
- * PUT /api/reminders/:id/complete
- */
-app.put('/:id/complete', jwtAuth, async (c) => {
-  try {
-    const payload = c.get('jwtPayload') as JWTPayload;
-    const id = c.req.param('id');
-
-    const service = new TaskReminderService(c.env.DB, c.env);
-    const success = await service.markComplete(id, payload.userId.toString());
-
-    if (!success) {
-      return c.json({
-        success: false,
-        error: 'Reminder not found',
-        timestamp: new Date().toISOString()
-      }, 404);
-    }
-
-    return c.json({
-      success: true,
-      message: 'Reminder marked as complete',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Complete reminder error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to complete reminder',
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-});
-
-/**
  * 刪除任務提醒
  * DELETE /api/reminders/:id
  */
@@ -322,39 +267,93 @@ app.delete('/:id', jwtAuth, async (c) => {
   }
 });
 
-// ==================== Admin/System Endpoints ====================
-
 /**
- * 手動觸發處理到期提醒 (Admin Only)
- * POST /api/reminders/process
+ * 獲取用戶的任務提醒列表
+ * GET /api/reminders
  */
-app.post('/process', jwtAuth, async (c) => {
+app.get('/', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
-
-    // 只有管理員可以手動觸發
-    if (payload.role !== 'admin') {
-      return c.json({
-        success: false,
-        error: 'Admin access required',
-        timestamp: new Date().toISOString()
-      }, 403);
-    }
+    const includeCompleted = c.req.query('includeCompleted') === 'true';
 
     const service = new TaskReminderService(c.env.DB, c.env);
-    const processedCount = await service.processDueReminders();
+    const reminders = await service.getByUserId(payload.userId.toString(), includeCompleted);
 
     return c.json({
       success: true,
-      data: { processedCount },
-      message: `Processed ${processedCount} due reminders`,
+      data: reminders,
+      count: reminders.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Process reminders error:', error);
+    console.error('Get reminders error:', error);
     return c.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to process reminders',
+      error: error instanceof Error ? error.message : 'Failed to get reminders',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * 創建新的任務提醒
+ * POST /api/reminders
+ */
+app.post('/', jwtAuth, async (c) => {
+  try {
+    const payload = c.get('jwtPayload') as JWTPayload;
+    const body = await c.req.json();
+
+    // 驗證必填欄位
+    if (!body.title || !body.remindAt) {
+      return c.json({
+        success: false,
+        error: 'Title and remindAt are required',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    // 驗證提醒時間
+    const remindAt = new Date(body.remindAt);
+    if (isNaN(remindAt.getTime())) {
+      return c.json({
+        success: false,
+        error: 'Invalid remindAt date format',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    // 驗證提醒時間不能是過去
+    if (remindAt < new Date()) {
+      return c.json({
+        success: false,
+        error: 'remindAt must be in the future',
+        timestamp: new Date().toISOString()
+      }, 400);
+    }
+
+    const service = new TaskReminderService(c.env.DB, c.env);
+    const reminderId = await service.create({
+      userId: payload.userId.toString(),
+      title: body.title,
+      content: body.content,
+      remindAt,
+      conversationId: body.conversationId,
+      repeatType: body.repeatType,
+      repeatInterval: body.repeatInterval
+    });
+
+    return c.json({
+      success: true,
+      data: { id: reminderId },
+      message: 'Reminder created successfully',
+      timestamp: new Date().toISOString()
+    }, 201);
+  } catch (error) {
+    console.error('Create reminder error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create reminder',
       timestamp: new Date().toISOString()
     }, 500);
   }

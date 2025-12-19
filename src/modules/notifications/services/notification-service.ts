@@ -239,7 +239,9 @@ export class NotificationService {
         priority_changed: { total: 0, unread: 0 },
         customer_responded: { total: 0, unread: 0 },
         task_reminder: { total: 0, unread: 0 },
-        agent_removed_from_team: { total: 0, unread: 0 }  // 🆕
+        agent_removed_from_team: { total: 0, unread: 0 },
+        customer_followed: { total: 0, unread: 0 },  // 🆕 新客戶加入通知
+        new_conversation: { total: 0, unread: 0 }    // 🆕 新對話創建通知
       },
       byPriority: {
         low: { total: 0, unread: 0 },

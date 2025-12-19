@@ -761,6 +761,229 @@ export async function triggerMentionNotification(
 }
 
 /**
+ * 🆕 新客戶加入通知觸發器 (LINE follow event)
+ * 當新客戶通過 LINE 加入時通知管理員或團隊成員
+ */
+export async function triggerCustomerFollowedNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    customerName: string;
+    platform: string;
+    source: 'qr_code' | 'direct';
+    teamId?: number;
+    teamName?: string;
+    conversationId?: string;
+  }
+): Promise<string[]> {
+  try {
+    const service = createNotificationService(env);
+
+    // 獲取應該接收通知的用戶列表
+    const targetUserIds = await getNotificationTargetUsers(env, options.teamId);
+
+    if (targetUserIds.length === 0) {
+      console.log('⚠️ [Notification] No target users for customer followed notification');
+      return [];
+    }
+
+    const conversationId = options.conversationId
+      ? (typeof options.conversationId === 'string' ? parseInt(options.conversationId, 10) : options.conversationId)
+      : undefined;
+
+    // 創建批量通知
+    const notificationIds: string[] = [];
+    for (const userId of targetUserIds) {
+      const notificationId = await service.create({
+        userId,
+        type: 'customer_followed',
+        title: '🎉 新客戶加入',
+        content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
+        data: {
+          customerName: options.customerName,
+          platform: options.platform,
+          source: options.source,
+          teamId: options.teamId,
+          teamName: options.teamName,
+          conversationId
+        },
+        priority: 'high',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+
+      if (notificationId) {
+        notificationIds.push(notificationId);
+
+        // 透過 WebSocket 即時推送通知
+        await broadcastNotificationViaWebSocket(env, userId, {
+          id: notificationId,
+          type: 'customer_followed',
+          title: '🎉 新客戶加入',
+          content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
+          priority: 'high',
+          data: {
+            customerName: options.customerName,
+            platform: options.platform,
+            source: options.source,
+            teamId: options.teamId,
+            teamName: options.teamName,
+            conversationId
+          }
+        });
+      }
+    }
+
+    console.log('✅ [Notification] Customer followed notifications created:', {
+      notificationIds,
+      targetUserCount: targetUserIds.length,
+      customerName: options.customerName,
+      source: options.source
+    });
+
+    return notificationIds;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send customer followed notifications:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return [];
+  }
+}
+
+/**
+ * 🆕 新對話創建通知觸發器
+ * 當創建新對話時（無論是否指派）通知管理員或團隊成員
+ */
+export async function triggerNewConversationNotification(
+  env: NotificationTriggerEnv,
+  options: {
+    conversationId: string;
+    customerName: string;
+    platform: string;
+    messagePreview?: string;
+    teamId?: number;
+  }
+): Promise<string[]> {
+  try {
+    const service = createNotificationService(env);
+
+    // 獲取應該接收通知的用戶列表
+    const targetUserIds = await getNotificationTargetUsers(env, options.teamId);
+
+    if (targetUserIds.length === 0) {
+      console.log('⚠️ [Notification] No target users for new conversation notification');
+      return [];
+    }
+
+    const conversationId = typeof options.conversationId === 'string'
+      ? parseInt(options.conversationId, 10) || 0
+      : options.conversationId;
+
+    const preview = options.messagePreview
+      ? `: ${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`
+      : '';
+
+    // 創建批量通知
+    const notificationIds: string[] = [];
+    for (const userId of targetUserIds) {
+      const notificationId = await service.create({
+        userId,
+        type: 'new_conversation',
+        title: '💬 新對話',
+        content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
+        data: {
+          conversationId,
+          customerName: options.customerName,
+          platform: options.platform,
+          messagePreview: options.messagePreview
+        },
+        priority: 'high',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+
+      if (notificationId) {
+        notificationIds.push(notificationId);
+
+        // 透過 WebSocket 即時推送通知
+        await broadcastNotificationViaWebSocket(env, userId, {
+          id: notificationId,
+          type: 'new_conversation',
+          title: '💬 新對話',
+          content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
+          priority: 'high',
+          data: {
+            conversationId,
+            customerName: options.customerName,
+            platform: options.platform,
+            messagePreview: options.messagePreview
+          }
+        });
+      }
+    }
+
+    console.log('✅ [Notification] New conversation notifications created:', {
+      notificationIds,
+      targetUserCount: targetUserIds.length,
+      conversationId: options.conversationId,
+      customerName: options.customerName
+    });
+
+    return notificationIds;
+  } catch (error) {
+    console.warn('⚠️ [Notification] Failed to send new conversation notifications:', {
+      error: error instanceof Error ? error.message : String(error),
+      ...options
+    });
+    return [];
+  }
+}
+
+/**
+ * 🆕 輔助函數：獲取應該接收通知的用戶列表
+ * 根據團隊 ID 獲取所有管理員或團隊成員
+ */
+async function getNotificationTargetUsers(
+  env: NotificationTriggerEnv,
+  teamId?: number
+): Promise<string[]> {
+  try {
+    const { createDbClient } = await import('../db/drizzle-factory');
+    const { agents } = await import('../db/schema');
+    const { eq, and } = await import('drizzle-orm');
+
+    const db = createDbClient(env.DB);
+
+    // 如果有指定團隊，則通知該團隊的所有成員
+    if (teamId) {
+      const { agentTeams } = await import('../db/schema');
+      const teamMembers = await db
+        .select({ agentId: agentTeams.agentId })
+        .from(agentTeams)
+        .where(eq(agentTeams.teamId, teamId))
+        .all();
+
+      if (teamMembers.length > 0) {
+        return teamMembers.map(m => m.agentId);
+      }
+    }
+
+    // 否則通知所有管理員
+    const admins = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(and(
+        eq(agents.role, 'admin'),
+        eq(agents.isActive, true)
+      ))
+      .all();
+
+    return admins.map(a => a.id);
+  } catch (error) {
+    console.error('Error getting notification target users:', error);
+    return [];
+  }
+}
+
+/**
  * 輔助函數：獲取優先級的中文標籤
  */
 function getPriorityLabel(priority: string): string {
