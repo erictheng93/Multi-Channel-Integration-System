@@ -25,15 +25,14 @@
         >
           <div
             class="image-placeholder"
-            style="width: 300px; height: 200px; aspect-ratio: 3/2;"
+            style="width: 300px; max-height: 400px;"
           >
-            <img 
-              :src="attachmentUrl" 
+            <img
+              :src="attachmentUrl"
               :alt="attachmentName"
               class="message-image-content"
               width="300"
-              height="200"
-              style="width: 100%; height: 100%; object-fit: cover; display: block;"
+              style="width: 100%; height: auto; max-height: 400px; object-fit: contain; display: block;"
               loading="lazy"
               @load="onImageLoad"
               @error="onImageError"
@@ -139,15 +138,14 @@
           >
             <div
               class="image-placeholder"
-              style="width: 300px; height: 200px; aspect-ratio: 3/2;"
+              style="width: 300px; max-height: 400px;"
             >
               <img
                 :src="attachment.fileUrl"
                 :alt="attachment.filename"
                 class="message-image-content"
                 width="300"
-                height="200"
-                style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                style="width: 100%; height: auto; max-height: 400px; object-fit: contain; display: block;"
                 loading="lazy"
                 @load="onImageLoad"
                 @error="onImageError"
@@ -762,10 +760,10 @@ const hasMultipleAttachments = computed(() => {
 
 const isFileOnlyContent = computed(() => {
   const content = props.message.content || ''
-  // Match Chinese format: [檔案] filename or [圖片] filename
+  // Match Chinese format: [檔案] [圖片] [影片] [語音] [貼圖] [位置] etc.
   // Match English format: Sent a file: filename
   // Match multi-file format: Sent 2 files, Sent 3 files
-  return /^\[(?:檔案|圖片)\]\s*.+$/.test(content) ||
+  return /^\[(?:檔案|圖片|影片|語音|貼圖|位置)\](?:\s*.+)?$/.test(content) ||
          /^Sent a file:\s*.+$/i.test(content) ||
          /^Sent \d+ files$/i.test(content)
 })

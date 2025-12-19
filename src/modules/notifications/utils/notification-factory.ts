@@ -275,6 +275,69 @@ export class NotificationFactory {
     }
   }
 
+  // 🆕 新客戶加入通知 (LINE follow event)
+  static createCustomerFollowedNotification(
+    targetUserIds: number[],  // 接收通知的用戶 ID 列表（管理員或團隊成員）
+    customerName: string,
+    platform: string,
+    source: 'qr_code' | 'direct',
+    teamName?: string,
+    conversationId?: number
+  ): CreateNotificationRequest[] {
+    const sourceText = source === 'qr_code' ? 'QR Code' : '直接';
+    const teamText = teamName ? ` 並加入「${teamName}」團隊` : '';
+    const content = `新客戶「${customerName}」透過 ${sourceText} 在 ${platform} 加入${teamText}`;
+
+    return targetUserIds.map(userId => ({
+      userId,
+      type: 'customer_followed',
+      title: '🎉 新客戶加入',
+      content,
+      data: {
+        customerName,
+        platform,
+        source,
+        teamName,
+        conversationId,
+        actionType: 'customer_follow'
+      },
+      priority: 'high',
+      channels: ['sse', 'push', 'websocket'],
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
+    }));
+  }
+
+  // 🆕 新對話創建通知 (未指派的新對話)
+  static createNewConversationNotification(
+    targetUserIds: number[],  // 接收通知的用戶 ID 列表（管理員或團隊成員）
+    conversationId: number,
+    customerName: string,
+    platform: string,
+    messagePreview?: string
+  ): CreateNotificationRequest[] {
+    const preview = messagePreview
+      ? `: ${this.truncateContent(messagePreview, 50)}`
+      : '';
+    const content = `新客戶「${customerName}」在 ${platform} 開始了新對話${preview}`;
+
+    return targetUserIds.map(userId => ({
+      userId,
+      type: 'new_conversation',
+      title: '💬 新對話',
+      content,
+      data: {
+        conversationId,
+        customerName,
+        platform,
+        messagePreview,
+        actionType: 'new_conversation'
+      },
+      priority: 'high',
+      channels: ['sse', 'push', 'websocket'],
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
+    }));
+  }
+
   // 驗證和清理工廠參數
   private static validateUserId(userId: number): void {
     if (!userId || userId <= 0) {

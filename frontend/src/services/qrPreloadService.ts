@@ -1,21 +1,20 @@
 /**
  * QR Code Background Preload Service
  *
- * 功能：頁面載入後在背景智能預載 QR Code，提升用戶體驗
+ * 功能：頁面載入後在背景持續性異步預載 QR Code，提升用戶體驗
  *
  * 策略：
- * - Phase 1: 立即載入前 3 個可見團隊 (優先)
- * - Phase 2: 閒置時間載入剩餘團隊 (背景)
- * - Phase 3: Fallback 到 Hover prefetch (備用)
+ * - Phase 1: 立即載入前 3 個團隊 (優先)
+ * - Phase 2: 持續性異步載入剩餘團隊 (requestIdleCallback)
  *
  * 特性：
  * ✅ 使用 requestIdleCallback 避免阻塞主執行緒
- * ✅ 並發控制 (maxConcurrent = 3)
+ * ✅ 並發控制 (自適應 2-5 個，根據設備性能)
  * ✅ 智能優先順序排序
- * ✅ 自適應網路節流
- * ✅ 記憶體監控與保護
+ * ✅ 持續性異步載入，無需用戶互動暫停
+ * ✅ 設備性能自動檢測與調整
  *
- * @version 1.0.0
+ * @version 2.0.0 - 簡化版（移除用戶互動暫停機制）
  * @date 2025-01-28
  */
 
@@ -97,12 +96,7 @@ export class QRPreloadService {
   private abortController: AbortController | null = null
   private idleCallbackId: number | null = null
 
-  // 🆕 用戶互動檢測
-  private userInteractionListeners: Array<{ event: string; handler: () => void }> = []
-  private resumeTimeout: number | null = null
-  private lastInteractionTime = 0
-
-  // 🆕 性能監控
+  // 性能監控
   private devicePerformance: 'high' | 'medium' | 'low' = 'medium'
 
   // 指標收集
@@ -179,13 +173,10 @@ export class QRPreloadService {
 
     this.log('info', `🚀 Starting background preload for ${teams.length} teams`)
 
-    // 🆕 註冊用戶互動監聽器
-    this.registerUserInteractionListeners()
-
     // Phase 1: 立即載入前 3 個團隊
     this.startPhase1(teams)
 
-    // Phase 2: 閒置時間載入剩餘團隊
+    // Phase 2: 閒置時間載入剩餘團隊（持續性異步載入）
     this.schedulePhase2(teams)
   }
 
@@ -205,15 +196,6 @@ export class QRPreloadService {
     if (this.idleCallbackId !== null && typeof cancelIdleCallback !== 'undefined') {
       cancelIdleCallback(this.idleCallbackId)
       this.idleCallbackId = null
-    }
-
-    // 🆕 移除用戶互動監聽器
-    this.unregisterUserInteractionListeners()
-
-    // 🆕 清除恢復計時器
-    if (this.resumeTimeout !== null) {
-      clearTimeout(this.resumeTimeout)
-      this.resumeTimeout = null
     }
 
     this.loadQueue = []
@@ -256,69 +238,6 @@ export class QRPreloadService {
    */
   public getMetrics(): Readonly<PreloadMetrics> {
     return { ...this.metrics }
-  }
-
-  // ==================== 🆕 用戶互動檢測 ====================
-
-  /**
-   * 註冊用戶互動監聽器
-   * 在用戶滾動、點擊、鍵盤輸入時暫停背景載入
-   */
-  private registerUserInteractionListeners(): void {
-    const events = ['scroll', 'click', 'keydown', 'touchstart', 'mousemove']
-
-    events.forEach(event => {
-      const handler = () => this.handleUserInteraction()
-
-      // 使用 passive: true 避免阻塞滾動
-      document.addEventListener(event, handler, { passive: true })
-
-      this.userInteractionListeners.push({ event, handler })
-    })
-
-    this.log('info', '👂 Registered user interaction listeners')
-  }
-
-  /**
-   * 移除用戶互動監聽器
-   */
-  private unregisterUserInteractionListeners(): void {
-    this.userInteractionListeners.forEach(({ event, handler }) => {
-      document.removeEventListener(event, handler)
-    })
-
-    this.userInteractionListeners = []
-    this.log('info', '👋 Unregistered user interaction listeners')
-  }
-
-  /**
-   * 處理用戶互動事件
-   */
-  private handleUserInteraction(): void {
-    const now = Date.now()
-
-    // 防抖：避免頻繁觸發
-    if (now - this.lastInteractionTime < 100) {
-      return
-    }
-
-    this.lastInteractionTime = now
-
-    // 暫停背景載入
-    if (!this.isPaused && this.isRunning) {
-      this.pause()
-    }
-
-    // 清除之前的恢復計時器
-    if (this.resumeTimeout !== null) {
-      clearTimeout(this.resumeTimeout)
-    }
-
-    // 用戶停止互動 2 秒後自動恢復
-    this.resumeTimeout = window.setTimeout(() => {
-      this.log('info', '⏰ User idle for 2s, resuming background preload')
-      this.resume()
-    }, 2000)
   }
 
   // ==================== Phase 1: 立即載入 ====================
@@ -412,11 +331,11 @@ export class QRPreloadService {
   }
 
   /**
-   * 在閒置時間內處理隊列
+   * 在閒置時間內處理隊列（持續性異步載入）
    */
   private async processQueueDuringIdle(deadline: IdleDeadline): Promise<void> {
     while (this.loadQueue.length > 0 && deadline.timeRemaining() > 50) {
-      if (!this.isRunning || this.isPaused) {
+      if (!this.isRunning) {
         break
       }
 
@@ -427,7 +346,7 @@ export class QRPreloadService {
 
       const task = this.loadQueue.shift()
       if (task) {
-        // 🆕 計算進度百分比
+        // 計算進度百分比
         const progress = Math.round(((this.metrics.loadedTeams + this.metrics.failedTeams) / this.metrics.totalTeams) * 100)
         const remaining = this.loadQueue.length
 
@@ -437,20 +356,11 @@ export class QRPreloadService {
       }
     }
 
-    // 如果還有任務，繼續排程
+    // 如果還有任務，繼續排程（持續性載入，不暫停）
     if (this.isRunning && this.loadQueue.length > 0) {
-      // 🆕 記錄暫停原因
-      if (this.isPaused) {
-        this.log('info', '⏸️ Queue paused (user interaction)')
-      } else if (this.currentLoading >= this.config.maxConcurrent) {
-        this.log('info', '⏸️ Queue paused (concurrent limit reached)')
-      } else {
-        this.log('info', `⏸️ Queue paused (browser idle time exhausted, remaining: ${deadline.timeRemaining()}ms)`)
-      }
-
       this.processQueue()
     } else if (this.loadQueue.length === 0) {
-      // 🆕 最終統計
+      // 最終統計
       const finalProgress = Math.round((this.metrics.loadedTeams / this.metrics.totalTeams) * 100)
       this.log('info', `✅ Phase 2 completed - ${this.metrics.loadedTeams}/${this.metrics.totalTeams} teams loaded (${finalProgress}%)`)
       this.stop()
@@ -458,11 +368,11 @@ export class QRPreloadService {
   }
 
   /**
-   * 直接處理隊列（Fallback）
+   * 直接處理隊列（Fallback - 不支援 requestIdleCallback 的瀏覽器）
    */
   private async processQueueDirect(): Promise<void> {
     while (this.loadQueue.length > 0) {
-      if (!this.isRunning || this.isPaused) {
+      if (!this.isRunning) {
         break
       }
 

@@ -1,0 +1,56 @@
+
+> crm-installer-backend@1.0.0 test
+> vitest run --coverage --run
+
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mD:/Code/Multi_Channel_Integration_System/web-installer/backend[39m
+[2m      Coverage enabled with [22m[33mv8[39m
+
+ [32m✓[39m tests/integration/routes/deployment.test.ts [2m ([22m[2m20 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/integration/routes/oauth.test.ts [2m ([22m[2m11 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/utils/errors.test.ts [2m ([22m[2m15 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/utils/validation.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/integration/services/config-generator.test.ts [2m ([22m[2m14 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/integration/services/rollback-service.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[90m 111[2mms[22m[39m
+ [32m✓[39m tests/integration/services/email-service.test.ts [2m ([22m[2m18 tests[22m[2m)[22m[90m 135[2mms[22m[39m
+ [32m✓[39m tests/integration/services/migration-runner.test.ts [2m ([22m[2m22 tests[22m[2m)[22m[90m 195[2mms[22m[39m
+ [32m✓[39m tests/integration/services/cloudflare-api.test.ts [2m ([22m[2m32 tests[22m[2m)[22m[33m 345[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/integration/durable-objects/deployment-orchestrator.test.ts [2m ([22m[2m28 tests[22m [2m|[22m [33m28 skipped[39m[2m)[22m
+
+[2m Test Files [22m [1m[32m9 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (10)[39m
+[2m      Tests [22m [1m[32m162 passed[39m[22m[2m | [22m[33m28 skipped[39m[90m (190)[39m
+[2m   Start at [22m 11:51:47
+[2m   Duration [22m 1.44s[2m (transform 1.73s, setup 2ms, collect 2.64s, tests 813ms, environment 2ms, prepare 1.76s)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    63.9 |     83.5 |   61.86 |    63.9 |                   
+ src               |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 | 1-128             
+ ...urable-objects |    4.76 |        0 |       0 |    4.76 |                   
+  ...chestrator.ts |    4.76 |        0 |       0 |    4.76 | 36-735            
+ src/migrations    |   99.37 |      100 |   33.33 |   99.37 |                   
+  ...migrations.ts |   99.37 |      100 |   33.33 |   99.37 | 630-631,637-638   
+ src/routes        |       0 |        0 |       0 |       0 |                   
+  deployment.ts    |       0 |        0 |       0 |       0 | 1-212             
+  oauth.ts         |       0 |        0 |       0 |       0 | 1-205             
+ src/services      |   70.36 |     87.5 |   67.03 |   70.36 |                   
+  CloudflareAPI.ts |   59.88 |    81.25 |   57.14 |   59.88 | ...32-336,342-353 
+  ...gGenerator.ts |     100 |      100 |     100 |     100 |                   
+  EmailService.ts  |     100 |     92.3 |     100 |     100 | 24                
+  ...dleService.ts |   25.32 |        0 |       0 |   25.32 | ...61-362,368-386 
+  ...tionRunner.ts |   98.21 |    88.46 |     100 |   98.21 | ...22-123,316-317 
+  ...ackService.ts |   76.23 |     92.3 |   83.33 |   76.23 | ...73-184,190-201 
+  ...dleService.ts |   57.24 |        0 |       0 |   57.24 | ...77-181,187-192 
+ ...ices/generated |   96.22 |      100 |       0 |   96.22 |                   
+  ...end-bundle.ts |   64.65 |      100 |       0 |   64.65 | ...7,83-84,90-116 
+  worker-bundle.ts |     100 |      100 |     100 |     100 |                   
+ src/types         |   70.22 |        0 |       0 |   70.22 |                   
+  deployment.ts    |     100 |      100 |     100 |     100 |                   
+  index.ts         |       0 |        0 |       0 |       0 | 1-117             
+ src/utils         |   84.51 |    79.06 |   78.57 |   84.51 |                   
+  errors.ts        |     100 |       95 |     100 |     100 | 53                
+  validation.ts    |   77.12 |    65.21 |      40 |   77.12 | ...37-142,148-153 
+-------------------|---------|----------|---------|---------|-------------------

@@ -1,0 +1,80 @@
+
+> crm-installer-backend@1.0.0 test
+> vitest run --coverage --run
+
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mD:/Code/Multi_Channel_Integration_System/web-installer/backend[39m
+[2m      Coverage enabled with [22m[33mv8[39m
+
+ [32m✓[39m tests/integration/routes/deployment.test.ts [2m ([22m[2m20 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/integration/routes/oauth.test.ts [2m ([22m[2m11 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/utils/errors.test.ts [2m ([22m[2m15 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/utils/validation.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/integration/services/config-generator.test.ts [2m ([22m[2m14 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/integration/services/rollback-service.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[90m 121[2mms[22m[39m
+ [32m✓[39m tests/integration/services/email-service.test.ts [2m ([22m[2m18 tests[22m[2m)[22m[90m 135[2mms[22m[39m
+ [32m✓[39m tests/integration/services/migration-runner.test.ts [2m ([22m[2m22 tests[22m[2m)[22m[90m 206[2mms[22m[39m
+ [32m✓[39m tests/integration/services/cloudflare-api.test.ts [2m ([22m[2m32 tests[22m[2m)[22m[33m 336[2mms[22m[39m
+ [33m❯[39m tests/integration/durable-objects/deployment-orchestrator.test.ts [2m ([22m[2m28 tests[22m [2m|[22m [31m21 failed[39m[2m)[22m[90m 30[2mms[22m[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Initialization[2m > [22mshould initialize deployment with valid configuration[39m
+[31m     → expected 500 to be 200 // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Initialization[2m > [22mshould persist deployment state to storage[39m
+[31m     → expected "spy" to be called with arguments: [ 'deploymentState', …(1) ][90m
+
+Received: 
+
+[31m[90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Initialization[2m > [22mshould generate unique deployment ID[39m
+[31m     → expected undefined to be truthy[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Status Retrieval[2m > [22mshould return deployment status[39m
+[31m     → expected 404 to be 200 // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Status Retrieval[2m > [22mshould return 404 when no deployment exists[39m
+[31m     → expected 404 to be 200 // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Status Retrieval[2m > [22mshould include resources in status[39m
+[31m     → expected undefined not to be undefined[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mSSE Event Streaming[2m > [22mshould establish SSE connection[39m
+[31m     → expected 500 to be 200 // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mSSE Event Streaming[2m > [22mshould send SSE formatted events[39m
+[31m     → expected 'application/json' to be 'text/event-stream' // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Cancellation[2m > [22mshould allow cancelling an in-progress deployment[39m
+[31m     → expected 404 to be 200 // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Cancellation[2m > [22mshould trigger rollback when cancelled[39m
+[31m     → Cannot read properties of undefined (reading 'status')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mState Persistence[2m > [22mshould save state after each step[39m
+[31m     → expected "spy" to be called with arguments: [ 'deploymentState', Any<Object> ][90m
+
+Received: 
+
+[31m[90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Logs[2m > [22mshould maintain deployment logs[39m
+[31m     → Cannot convert undefined or null to object[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mDeployment Logs[2m > [22mshould include timestamps in logs[39m
+[31m     → Cannot read properties of undefined (reading 'logs')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mResource Tracking[2m > [22mshould track created resources[39m
+[31m     → Cannot convert undefined or null to object[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mResource Tracking[2m > [22mshould initialize resources as empty object[39m
+[31m     → Cannot read properties of undefined (reading 'resources')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mProgress Tracking[2m > [22mshould initialize progress to 0[39m
+[31m     → Cannot read properties of undefined (reading 'totalProgress')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mProgress Tracking[2m > [22mshould track current step[39m
+[31m     → Cannot read properties of undefined (reading 'currentStep')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mTimestamps[2m > [22mshould set createdAt timestamp[39m
+[31m     → Cannot read properties of undefined (reading 'createdAt')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mTimestamps[2m > [22mshould set updatedAt timestamp[39m
+[31m     → Cannot read properties of undefined (reading 'updatedAt')[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mConfiguration Validation[2m > [22mshould accept valid project name[39m
+[31m     → expected undefined to be true // Object.is equality[39m
+[31m   [33m❯[31m tests/integration/durable-objects/deployment-orchestrator.test.ts[2m > [22mDeploymentOrchestrator - Integration Tests[2m > [22mConfiguration Validation[2m > [22mshould accept valid email addresses[39m
+[31m     → expected undefined to be true // Object.is equality[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m9 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[31m21 failed[39m[22m[2m | [22m[1m[32m169 passed[39m[22m[90m (190)[39m
+[2m   Start at [22m 11:50:49
+[2m   Duration [22m 1.31s[2m (transform 1.59s, setup 0ms, collect 2.30s, tests 854ms, environment 2ms, prepare 1.61s)[22m
+

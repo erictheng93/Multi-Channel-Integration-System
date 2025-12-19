@@ -30,7 +30,10 @@
 
     <!-- 輸入指示器（顯示對方正在輸入） -->
     <Transition name="fade">
-      <div v-if="isTyping && (typingUsers?.length ?? 0) > 0" class="typing-indicator">
+      <div
+        v-if="isTyping && (typingUsers?.length ?? 0) > 0"
+        class="typing-indicator"
+      >
         <div class="typing-dots">
           <span class="dot" />
           <span class="dot" />

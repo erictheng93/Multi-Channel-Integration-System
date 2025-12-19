@@ -25,7 +25,9 @@ export type NotificationType =
   | 'priority_changed'
   | 'customer_responded'
   | 'task_reminder'
-  | 'agent_removed_from_team';  // 🆕 Agent 被移出團隊通知
+  | 'agent_removed_from_team'  // Agent 被移出團隊通知
+  | 'customer_followed'         // 🆕 新客戶加入通知 (LINE follow event)
+  | 'new_conversation';         // 🆕 新對話創建通知 (未指派的新對話)
 
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
