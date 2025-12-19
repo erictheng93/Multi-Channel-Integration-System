@@ -128,6 +128,7 @@ import { useConfirm } from '@/composables/useConfirm'
 
 // 使用新的 Conversation Controller
 import { useConversationController } from '@/composables/conversation'
+import type { MessageSentData } from '@/composables/conversation/useMessageHandlers'
 import type { QuickReply } from '@/components/conversation/input/QuickReplies.vue'
 import type { Message } from '@/types'
 
@@ -164,7 +165,8 @@ const isDragging = ref(false)
 const showSearchPanel = ref(false)
 const isDevDebugMode = ref(false)
 const messagesSectionRef = ref<InstanceType<typeof ConversationMessagesSection> | null>(null)
-const keyboardShortcutsRef = ref<any>(null)
+// KeyboardShortcuts component exposes showShortcuts method
+const keyboardShortcutsRef = ref<{ showShortcuts: () => void } | null>(null)
 
 // ===== 快速回覆配置 =====
 const quickReplies = ref<QuickReply[]>([
@@ -192,7 +194,7 @@ const initDebugMode = () => {
 /**
  * 處理消息發送（MessageInput 組件的事件）
  */
-function handleMessageSent(data: any) {
+function handleMessageSent(data: MessageSentData) {
   // MessageInput 已經處理了文件上傳和消息發送
   // 這裡只需要通過 controller 發送
   controller.onMessageSent(data)
@@ -228,8 +230,9 @@ async function handleCloseConversation() {
     } else {
       showError('關閉對話失敗')
     }
-  } catch (error: any) {
-    showError(`關閉失敗: ${error.message}`)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : '未知錯誤'
+    showError(`關閉失敗: ${message}`)
   } finally {
     closing.value = false
   }
@@ -246,8 +249,9 @@ async function handleReopenConversation() {
     } else {
       showError('重新打開對話失敗')
     }
-  } catch (error: any) {
-    showError(`操作失敗: ${error.message}`)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : '未知錯誤'
+    showError(`操作失敗: ${message}`)
   }
 }
 
@@ -298,8 +302,9 @@ async function handleMessageRecall(message: Message) {
   try {
     await controller.recallMessage(message.id)
     showSuccess('消息已撤回')
-  } catch (error: any) {
-    showError(`撤回失敗: ${error.message}`)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : '未知錯誤'
+    showError(`撤回失敗: ${message}`)
   }
 }
 

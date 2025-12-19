@@ -761,11 +761,35 @@
       return
     }
 
+    // ✅ FIX: 防止开发环境重复添加文件（Vue Strict Mode 导致事件监听器重复绑定）
+    // 使用 Set 追踪已添加的文件，基于 name + size + lastModified 组合生成唯一键
+    const existingFileKeys = new Set(
+      attachments.value.map(a => `${a.name}-${a.size}-${a.file.lastModified}`)
+    )
+
+    // 调试日志：帮助诊断重复问题
+    if (import.meta.env.DEV) {
+      console.log('🔍 [handleFileSelect] Called', {
+        filesCount: files.length,
+        existingAttachments: attachments.value.length,
+        isDev: import.meta.env.DEV
+      })
+    }
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
 
       if (!file) {
         continue
+      }
+
+      // ✅ 检查文件是否已存在（基于 name + size + lastModified 组合唯一键）
+      const fileKey = `${file.name}-${file.size}-${file.lastModified}`
+      if (existingFileKeys.has(fileKey)) {
+        if (import.meta.env.DEV) {
+          console.log(`⏭️ [handleFileSelect] Skipping duplicate file: ${file.name}`)
+        }
+        continue  // 跳过已存在的文件
       }
 
       // Validate file size (max 10MB)
@@ -791,7 +815,12 @@
       }
 
       attachments.value.push(attachment)
+      existingFileKeys.add(fileKey)  // ✅ 添加到已存在集合
       emit('attachment-upload', attachment)
+
+      if (import.meta.env.DEV) {
+        console.log(`✅ [handleFileSelect] Added file: ${file.name}`)
+      }
     }
 
     // Clear input
@@ -953,7 +982,28 @@
   const addFiles = (files: FileList | File[]) => {
     const fileArray = Array.from(files)
 
+    // ✅ FIX: 防止重复添加文件（与 handleFileSelect 保持一致）
+    const existingFileKeys = new Set(
+      attachments.value.map(a => `${a.name}-${a.size}-${a.file.lastModified}`)
+    )
+
+    if (import.meta.env.DEV) {
+      console.log('🔍 [addFiles] Called (drag & drop)', {
+        filesCount: fileArray.length,
+        existingAttachments: attachments.value.length
+      })
+    }
+
     for (const file of fileArray) {
+      // ✅ 检查文件是否已存在
+      const fileKey = `${file.name}-${file.size}-${file.lastModified}`
+      if (existingFileKeys.has(fileKey)) {
+        if (import.meta.env.DEV) {
+          console.log(`⏭️ [addFiles] Skipping duplicate file: ${file.name}`)
+        }
+        continue
+      }
+
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         error.value = `檔案 ${file.name} 超過 10MB 限制`
@@ -977,7 +1027,12 @@
       }
 
       attachments.value.push(attachment)
+      existingFileKeys.add(fileKey)
       emit('attachment-upload', attachment)
+
+      if (import.meta.env.DEV) {
+        console.log(`✅ [addFiles] Added file: ${file.name}`)
+      }
     }
 
     // 聚焦到輸入框

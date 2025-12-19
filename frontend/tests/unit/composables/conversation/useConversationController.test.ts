@@ -13,6 +13,8 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import type { Message, Conversation } from '@/types'
+// Type-only import for ReturnType inference
+import type { useConversationController } from '@/composables/conversation'
 
 // ===== Mock API Modules =====
 
@@ -104,7 +106,8 @@ vi.mock('@/composables/useFileUpload', () => ({
 
 describe('useConversationController', () => {
   const conversationId = 'conv-test-001'
-  let controller: any
+  // Use ReturnType to infer the correct type from the function
+  let controller: ReturnType<typeof useConversationController>
 
   beforeEach(async () => {
     // Setup Pinia
