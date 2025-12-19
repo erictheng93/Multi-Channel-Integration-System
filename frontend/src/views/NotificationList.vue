@@ -639,7 +639,9 @@ const getIcon = (type: NotificationType) => {
     priority_changed: AlertIcon,
     customer_responded: MessageIcon,
     task_reminder: ClockIcon,
-    'agent_removed_from_team': AlertIcon  // 🆕
+    'agent_removed_from_team': AlertIcon,  // 🆕
+    'customer_followed': UserPlusIcon,     // 🆕 新客戶加入通知
+    'new_conversation': MessageIcon        // 🆕 新對話創建通知
   }
   return icons[type] || BellIcon
 }
@@ -656,7 +658,9 @@ const getTypeLabel = (type: NotificationType) => {
     priority_changed: '優先級變更',
     customer_responded: '客戶回覆',
     task_reminder: '任務提醒',
-    'agent_removed_from_team': '團隊成員變更'  // 🆕
+    'agent_removed_from_team': '團隊成員變更',  // 🆕
+    'customer_followed': '新客戶加入',           // 🆕 新客戶加入通知
+    'new_conversation': '新對話創建'             // 🆕 新對話創建通知
   }
   return labels[type] || type
 }
