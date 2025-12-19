@@ -1,10 +1,12 @@
 // QR Code Service for Teams
 // 團隊 QR Code 服務
-// Phase 1 優化：KV 快取支援
+// Phase 2 優化：雙向同步機制 - teams.qrCode 欄位同步
 
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import { eq } from 'drizzle-orm';
+import { teams } from '@/db/schema';
 import { QRCodeServiceImpl } from '@/services/qrcode-service-impl';
 import type { QRCodeMetadata } from '@/types/services';
 
@@ -21,7 +23,7 @@ export class TeamQRService {
 
   /**
    * 生成團隊 QR 碼
-   * 優化：自動存入 KV 快取
+   * Phase 2 優化：生成後同步到 teams.qrCode 欄位
    */
   async generateTeamQRCode(params: {
     teamId: number;
@@ -31,6 +33,7 @@ export class TeamQRService {
     maxUses?: number;
     metadata?: QRCodeMetadata;
   }) {
+    // 1. 生成 QR Code 並存入 qr_codes 表
     const qrCodeInfo = await QRCodeServiceImpl.generateTeamQRCode(
       this.db,
       {
@@ -47,6 +50,23 @@ export class TeamQRService {
       this.kv, // 傳遞 KV 命名空間
       this.lineBotId // 傳遞 LINE Bot ID
     );
+
+    // 2. 同步更新 teams.qrCode 欄位 (雙向同步機制)
+    try {
+      await this.db
+        .update(teams)
+        .set({
+          qrCode: qrCodeInfo.qrCodeImageUrl,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(teams.id, params.teamId));
+
+      console.log(`✅ [TeamQRService] QR Code 已同步到 teams 表: teamId=${params.teamId}, qrCode=${qrCodeInfo.qrCodeImageUrl}`);
+    } catch (error) {
+      console.error(`❌ [TeamQRService] 同步 QR Code 失敗: teamId=${params.teamId}`, error);
+      // 不拋出錯誤，因為 QR Code 已成功生成並存入 qr_codes 表
+      // 後續可透過資料修復腳本補救
+    }
 
     return {
       id: qrCodeInfo.id,
@@ -90,7 +110,7 @@ export class TeamQRService {
 
   /**
    * 停用 QR 碼
-   * 優化：同時清除 KV 快取
+   * Phase 2 優化：停用後清除 teams.qrCode 欄位並更新到最新活躍的 QR Code
    */
   async deactivateQRCode(teamId: number, qrCodeId: string): Promise<void> {
     // First, get the QR code to verify ownership and get token
@@ -103,6 +123,42 @@ export class TeamQRService {
 
     // Deactivate using the token and invalidate cache
     await QRCodeServiceImpl.deactivateQRCode(this.db, qrCode.token, teamId, this.kv);
+
+    // 同步更新 teams.qrCode 欄位 (雙向同步機制)
+    try {
+      // 查找該團隊其他還活躍的 QR Code
+      const remainingQRCodes = qrCodes.filter(qr => qr.id !== qrCodeId && qr.isActive);
+
+      if (remainingQRCodes.length > 0) {
+        // 如果還有其他活躍的 QR Code，更新為最新的
+        const latestQR = remainingQRCodes.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+
+        await this.db
+          .update(teams)
+          .set({
+            qrCode: latestQR.qrCodeImageUrl,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(teams.id, teamId));
+
+        console.log(`✅ [TeamQRService] 已更新 teams.qrCode 為最新活躍 QR Code: teamId=${teamId}`);
+      } else {
+        // 如果沒有其他活躍的 QR Code，清空欄位
+        await this.db
+          .update(teams)
+          .set({
+            qrCode: null,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(teams.id, teamId));
+
+        console.log(`✅ [TeamQRService] 已清空 teams.qrCode: teamId=${teamId} (無活躍 QR Code)`);
+      }
+    } catch (error) {
+      console.error(`❌ [TeamQRService] 同步停用 QR Code 失敗: teamId=${teamId}`, error);
+    }
   }
 
   /**

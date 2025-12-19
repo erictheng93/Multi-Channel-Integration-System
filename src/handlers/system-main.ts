@@ -4,8 +4,8 @@ import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { jwtAuth } from '../middleware/auth';
 import { createDbClient } from '../db/drizzle-factory';
-import { customers, conversations, messages } from '../db/schema';
-import { count, sql } from 'drizzle-orm';
+import { customers, conversations, messages, teams, qrCodes } from '../db/schema';
+import { count, sql, eq, and, desc } from 'drizzle-orm';
 import { handleApiError } from '../utils/api-response';
 
 const systemHandler = new Hono<{ Bindings: Bindings }>();
@@ -261,6 +261,312 @@ systemHandler.get('/messages/recall-stats', jwtAuth, async (c) => {
 
   } catch (error) {
     console.error('Operation failed:', error);
+    return handleApiError(error, c);
+  }
+});
+
+// ========== Phase 2: QR Code 雙向同步機制 ==========
+
+/**
+ * QR Code 資料同步端點 (管理員專用)
+ * POST /api/system/sync-qr-codes
+ *
+ * 功能：將現有的 qr_codes 資料同步到 teams.qrCode 欄位
+ * 權限：需要管理員權限
+ *
+ * Query Parameters:
+ * - dryRun: boolean (預覽模式，不實際執行)
+ * - teamId: number (可選，只同步特定團隊)
+ */
+systemHandler.post('/sync-qr-codes', jwtAuth, async (c) => {
+  try {
+    // 檢查管理員權限
+    const user = c.get('user');
+    if (user.role !== 'admin') {
+      return c.json({
+        success: false,
+        error: '需要管理員權限才能執行此操作'
+      }, 403);
+    }
+
+    const dryRun = c.req.query('dryRun') === 'true';
+    const teamIdParam = c.req.query('teamId');
+    const targetTeamId = teamIdParam ? parseInt(teamIdParam) : null;
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔄 QR Code 資料同步');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`模式: ${dryRun ? '🔍 預覽模式' : '✍️  執行模式'}`);
+    console.log(`時間: ${new Date().toLocaleString('zh-TW')}`);
+    if (targetTeamId) {
+      console.log(`範圍: 僅團隊 #${targetTeamId}`);
+    }
+
+    const drizzleDb = createDbClient(c.env.DB);
+
+    const stats = {
+      totalTeams: 0,
+      teamsWithQR: 0,
+      teamsWithoutQR: 0,
+      successfulSyncs: 0,
+      failedSyncs: 0,
+      alreadySynced: 0,
+      errors: [] as Array<{ teamId: number; teamName: string; error: string }>
+    };
+
+    // 1. 取得要處理的團隊
+    const allTeams = targetTeamId
+      ? await drizzleDb.select().from(teams).where(eq(teams.id, targetTeamId))
+      : await drizzleDb.select().from(teams);
+
+    stats.totalTeams = allTeams.length;
+    console.log(`\n📋 找到 ${stats.totalTeams} 個團隊`);
+
+    // 2. 為每個團隊同步 QR Code
+    for (const team of allTeams) {
+      try {
+        console.log(`\n🔍 處理團隊 [${team.id}] ${team.name}...`);
+
+        // 2.1 檢查是否已有 QR Code
+        if (team.qrCode && !dryRun) {
+          console.log(`   ℹ️  teams.qrCode 已存在`);
+
+          // 驗證該 QR Code 是否仍然有效
+          const existingQR = await drizzleDb
+            .select()
+            .from(qrCodes)
+            .where(
+              and(
+                eq(qrCodes.teamId, team.id),
+                eq(qrCodes.qrCodeImageUrl, team.qrCode),
+                eq(qrCodes.isActive, true)
+              )
+            )
+            .limit(1);
+
+          if (existingQR.length > 0) {
+            console.log(`   ✅ QR Code 有效，跳過同步`);
+            stats.alreadySynced++;
+            continue;
+          } else {
+            console.log(`   ⚠️  QR Code 已失效，將重新同步`);
+          }
+        }
+
+        // 2.2 查詢該團隊最新的活躍 QR Code
+        const latestQR = await drizzleDb
+          .select()
+          .from(qrCodes)
+          .where(
+            and(
+              eq(qrCodes.teamId, team.id),
+              eq(qrCodes.isActive, true)
+            )
+          )
+          .orderBy(desc(qrCodes.createdAt))
+          .limit(1);
+
+        if (latestQR.length > 0) {
+          const qr = latestQR[0];
+          console.log(`   📍 找到 QR Code: ${qr.id}`);
+          console.log(`   ⏰ 建立時間: ${qr.createdAt}`);
+
+          // 2.3 更新 teams.qrCode
+          if (!dryRun) {
+            await drizzleDb
+              .update(teams)
+              .set({
+                qrCode: qr.qrCodeImageUrl,
+                updatedAt: new Date().toISOString()
+              })
+              .where(eq(teams.id, team.id));
+
+            console.log(`   ✅ 已同步到 teams.qrCode`);
+          } else {
+            console.log(`   🔍 [Dry Run] 將會更新 teams.qrCode`);
+          }
+
+          stats.successfulSyncs++;
+          stats.teamsWithQR++;
+        } else {
+          console.log(`   📭 未找到活躍的 QR Code`);
+          stats.teamsWithoutQR++;
+        }
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+        console.error(`   ❌ 處理失敗: ${errorMessage}`);
+        stats.failedSyncs++;
+        stats.errors.push({
+          teamId: team.id,
+          teamName: team.name,
+          error: errorMessage
+        });
+      }
+    }
+
+    // 3. 輸出統計報告
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 同步完成統計');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`總團隊數:         ${stats.totalTeams}`);
+    console.log(`有 QR Code:       ${stats.teamsWithQR}`);
+    console.log(`無 QR Code:       ${stats.teamsWithoutQR}`);
+    console.log(`成功同步:         ${stats.successfulSyncs}`);
+    console.log(`已存在跳過:       ${stats.alreadySynced}`);
+    console.log(`失敗:             ${stats.failedSyncs}`);
+    console.log(`完成時間: ${new Date().toLocaleString('zh-TW')}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    return c.json({
+      success: true,
+      data: {
+        mode: dryRun ? 'dry-run' : 'execute',
+        stats,
+        message: dryRun
+          ? '預覽完成，使用 dryRun=false 執行實際同步'
+          : '同步完成'
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('同步過程發生嚴重錯誤:', error);
+    return handleApiError(error, c);
+  }
+});
+
+/**
+ * 驗證 QR Code 同步狀態
+ * GET /api/system/sync-qr-codes/validate
+ *
+ * 功能：驗證 teams.qrCode 欄位與 qr_codes 表的一致性
+ */
+systemHandler.get('/sync-qr-codes/validate', jwtAuth, async (c) => {
+  try {
+    // 檢查管理員權限
+    const user = c.get('user');
+    if (user.role !== 'admin') {
+      return c.json({
+        success: false,
+        error: '需要管理員權限'
+      }, 403);
+    }
+
+    const drizzleDb = createDbClient(c.env.DB);
+
+    // 統計數據
+    const validation = {
+      totalTeams: 0,
+      teamsWithQRCode: 0,
+      teamsWithoutQRCode: 0,
+      validSync: 0,
+      invalidSync: 0,
+      missingSync: 0,
+      issues: [] as Array<{
+        teamId: number;
+        teamName: string;
+        issue: string;
+        teamQRCode: string | null;
+        latestQRCode: string | null;
+      }>
+    };
+
+    // 取得所有團隊
+    const allTeams = await drizzleDb.select().from(teams);
+    validation.totalTeams = allTeams.length;
+
+    for (const team of allTeams) {
+      // 檢查 teams.qrCode
+      if (team.qrCode) {
+        validation.teamsWithQRCode++;
+
+        // 驗證 QR Code 是否存在且有效
+        const qrCodeRecord = await drizzleDb
+          .select()
+          .from(qrCodes)
+          .where(
+            and(
+              eq(qrCodes.teamId, team.id),
+              eq(qrCodes.qrCodeImageUrl, team.qrCode),
+              eq(qrCodes.isActive, true)
+            )
+          )
+          .limit(1);
+
+        if (qrCodeRecord.length > 0) {
+          validation.validSync++;
+        } else {
+          validation.invalidSync++;
+
+          // 查找最新的活躍 QR Code
+          const latestQR = await drizzleDb
+            .select()
+            .from(qrCodes)
+            .where(
+              and(
+                eq(qrCodes.teamId, team.id),
+                eq(qrCodes.isActive, true)
+              )
+            )
+            .orderBy(desc(qrCodes.createdAt))
+            .limit(1);
+
+          validation.issues.push({
+            teamId: team.id,
+            teamName: team.name,
+            issue: 'teams.qrCode 指向無效或非活躍的 QR Code',
+            teamQRCode: team.qrCode,
+            latestQRCode: latestQR[0]?.qrCodeImageUrl || null
+          });
+        }
+      } else {
+        validation.teamsWithoutQRCode++;
+
+        // 檢查是否有活躍的 QR Code 但未同步
+        const latestQR = await drizzleDb
+          .select()
+          .from(qrCodes)
+          .where(
+            and(
+              eq(qrCodes.teamId, team.id),
+              eq(qrCodes.isActive, true)
+            )
+          )
+          .orderBy(desc(qrCodes.createdAt))
+          .limit(1);
+
+        if (latestQR.length > 0) {
+          validation.missingSync++;
+          validation.issues.push({
+            teamId: team.id,
+            teamName: team.name,
+            issue: 'teams.qrCode 為空，但有活躍的 QR Code',
+            teamQRCode: null,
+            latestQRCode: latestQR[0].qrCodeImageUrl
+          });
+        }
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        validation,
+        summary: {
+          syncHealth: validation.invalidSync + validation.missingSync === 0
+            ? 'healthy'
+            : 'needs-attention',
+          syncRate: validation.totalTeams > 0
+            ? ((validation.validSync / validation.totalTeams) * 100).toFixed(2) + '%'
+            : '0%'
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('驗證過程發生錯誤:', error);
     return handleApiError(error, c);
   }
 });
