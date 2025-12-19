@@ -490,6 +490,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
           updatedAt: new Date().toISOString()
         })
         .where(eq(teams.id, teamId))
+        .run()
         .then(() => {
           console.log(`✅ [Fast QR Query] 已同步到 teams.qrCode: teamId=${teamId}`);
         })
