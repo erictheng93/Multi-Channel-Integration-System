@@ -230,7 +230,7 @@ app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), 
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     await qrService.deactivateQRCode(teamId, qrCodeId);
 
     return c.json({
@@ -326,8 +326,8 @@ app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    // 傳遞 CACHE KV 命名空間 和 LINE_BOT_ID
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
+    // 傳遞 CACHE KV 命名空間、LINE_BOT_ID 和 FRONTEND_URL（用於 LIFF 方案）
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const qrCodeParams: any = {
       teamId,
       campaignName,
@@ -372,7 +372,7 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const qrCodes = await qrService.getTeamQRCodes(teamId);
 
     return c.json({
@@ -433,7 +433,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
     // 🔄 Step 2: Fallback - 從 qr_codes 表查詢 (兼容舊邏輯)
     console.log(`📋 [QR Latest] Fallback: teams.qrCode 為空，使用 qrService (teamId=${teamId})`);
 
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const result = await qrService.getLatestQRCodeFast(teamId);
 
     if (!result) {
@@ -579,7 +579,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
 // Test QR code generation
 app.post('/:id/qr-code-test', async (c) => {
   try {
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const testQR = await qrService.generateTestQRCode();
 
     return c.json({
@@ -844,8 +844,8 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     // QR code generation runs in parallel with activity logging (~30-50ms overhead)
     const user = c.get('user');
     const activityService = new TeamActivityService(c.env.DB);
-    // 🔧 修正：傳遞 LINE_BOT_ID 以生成正確的 LINE URL
-    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
+    // 🔧 修正：傳遞 LINE_BOT_ID 和 FRONTEND_URL 以生成正確的 LIFF URL
+    const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
 
     // Run activity logging and QR generation in parallel
     const [, qrResult] = await Promise.all([

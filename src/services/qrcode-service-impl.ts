@@ -124,12 +124,14 @@ export class QRCodeServiceImpl {
    * @param config QR 碼配置
    * @param kv 可選的 KV 命名空間，用於快取
    * @param lineBotId LINE Bot ID (從 env.LINE_BOT_ID 傳入)
+   * @param frontendUrl 前端 URL (用於 LIFF 重定向)
    */
   static async generateTeamQRCode(
     db: D1Database,
     config: QRCodeConfig,
     kv?: KVNamespace,
-    lineBotId?: string
+    lineBotId?: string,
+    frontendUrl?: string
   ): Promise<QRCodeInfo> {
     const startTime = performance.now();
 
@@ -142,8 +144,19 @@ export class QRCodeServiceImpl {
     // 生成唯一的追蹤 token
     const token = this.generateTrackingToken(config.teamId);
 
-    // 構建 Line 加好友連結
-    const lineUrl = `https://line.me/R/ti/p/${botId}?ref=${token}`;
+    // 構建 URL - 優先使用 LIFF 頁面（精確團隊綁定），否則使用直接 LINE 連結
+    // LIFF 方案：QR Code -> LIFF 頁面 -> 獲取用戶資訊 -> 精確綁定團隊
+    // 直接連結方案：QR Code -> LINE 加好友 -> 依賴 5 分鐘窗口匹配（不可靠）
+    let lineUrl: string;
+    if (frontendUrl) {
+      // 使用 LIFF 頁面作為中間層，確保 100% 團隊綁定成功率
+      lineUrl = `${frontendUrl}/liff?token=${token}`;
+      console.log(`🔗 [QR Code] 使用 LIFF 方案: ${lineUrl}`);
+    } else {
+      // 回退到直接 LINE 連結（不推薦，團隊綁定不可靠）
+      lineUrl = `https://line.me/R/ti/p/${botId}?ref=${token}`;
+      console.warn('⚠️ [QR Code] 使用直接 LINE 連結，團隊綁定可能不可靠');
+    }
 
     // 生成 QR Code 圖片 (本地生成，約 10-50ms)
     const qrCodeImageUrl = await this.generateQRCodeImage(lineUrl);

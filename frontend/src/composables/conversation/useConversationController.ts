@@ -34,7 +34,7 @@
  * ```
  */
 
-import { watch, unref } from 'vue'
+import { watch } from 'vue'
 import { useConversationState } from './useConversationState'
 import { useMessageHandlers } from './useMessageHandlers'
 import { useWebSocketIntegration } from './useWebSocketIntegration'
@@ -89,8 +89,7 @@ export function useConversationController(
     () => {
       const conn = websocket.unifiedConnection.value
       if (!conn || !conn.messages) {return 0}
-      // messages is Ref<Message[]>, use unref to safely access value
-      return unref(conn.messages)?.length ?? 0
+      return ((conn.messages as any).value?.length ?? 0)
     },
     (newCount, oldCount) => {
       if (newCount !== undefined && newCount !== oldCount) {

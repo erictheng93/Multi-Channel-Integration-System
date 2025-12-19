@@ -127,67 +127,62 @@
       </Transition>
 
       <!-- High Performance Virtual Message List with WebSocket -->
-      <!-- 🔧 FIX: Added Transition wrapper to prevent flicker/shaking during navigation -->
+      <!-- 🔧 FIX Phase 1: Removed Transition to eliminate FOUC (Flash of Unstyled Content) -->
+      <!-- Using v-show instead of v-if to avoid transition animations that cause flickering -->
       <div class="messages-container-wrapper">
-        <Transition
-          name="fade-content"
-          mode="out-in"
+        <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
+        <MessageListSkeleton
+          v-show="isInitialLoading && !hasLoadedInitially"
+          :count="skeletonCount"
+          :loading-text="skeletonLoadingText"
+          class="skeleton-layer"
+        />
+
+        <!-- Empty State -->
+        <div
+          v-show="hasLoadedInitially && displayedMessages.length === 0 && !isInitialLoading"
+          class="empty-state-wrapper empty-layer"
         >
-          <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
-          <MessageListSkeleton
-            v-if="isInitialLoading && !hasLoadedInitially"
-            key="skeleton"
-            :count="skeletonCount"
-            :loading-text="skeletonLoadingText"
-          />
-
-          <!-- Empty State -->
-          <div
-            v-else-if="hasLoadedInitially && displayedMessages.length === 0"
-            key="empty"
-            class="empty-state-wrapper"
+          <EmptyState
+            :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
+            :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
           >
-            <EmptyState
-              :title="isSearchActive ? '未找到匹配的訊息' : '暫無訊息'"
-              :description="isSearchActive ? '嘗試調整搜索條件' : '這個對話還沒有任何訊息'"
-            >
-              <template #icon>
-                <MessageCircleIcon />
-              </template>
-            </EmptyState>
-          </div>
+            <template #icon>
+              <MessageCircleIcon />
+            </template>
+          </EmptyState>
+        </div>
 
-          <!-- Virtual Message List -->
-          <VirtualMessageList
-            v-else
-            key="messages"
-            ref="virtualMessageListRef"
-            :messages="messages"
-            :displayed-messages="displayedMessages"
-            :is-search-active="isSearchActive"
-            :loading="httpMessages.loading.value"
-            :has-more="httpMessages.hasMore.value"
-            :loading-history="loadingHistory"
-            :is-updating="isUpdating"
-            :is-typing="isTyping"
-            :typing-users="typingUsers"
-            :animation-classes="animationClasses"
-            :enable-animations="true"
-            :websocket-enabled="isWebSocketEnabled"
-            :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
-            :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
-            @message-copy="handleMessageCopy"
-            @message-reply="handleMessageReply"
-            @message-forward="handleMessageForward"
-            @message-recall="handleMessageRecall"
-            @message-select="handleMessageSelect"
-            @search-clear="handleSearchClear"
-            @load-more="loadMoreMessages"
-            @scroll="handleVirtualScroll"
-            @new-message-while-scrolled="handleNewMessageWhileScrolled"
-            @retry="retryFailedMessage"
-          />
-        </Transition>
+        <!-- Virtual Message List -->
+        <VirtualMessageList
+          v-show="!isInitialLoading || hasLoadedInitially"
+          ref="virtualMessageListRef"
+          :messages="messages"
+          :displayed-messages="displayedMessages"
+          :is-search-active="isSearchActive"
+          :loading="httpMessages.loading.value"
+          :has-more="httpMessages.hasMore.value"
+          :loading-history="loadingHistory"
+          :is-updating="isUpdating"
+          :is-typing="isTyping"
+          :typing-users="typingUsers"
+          :animation-classes="animationClasses"
+          :enable-animations="true"
+          :websocket-enabled="isWebSocketEnabled"
+          :is-history-prepending="httpMessages.isHistoryPrepending?.value ?? false"
+          :history-prepend-count="httpMessages.historyPrependCount?.value ?? 0"
+          class="messages-layer"
+          @message-copy="handleMessageCopy"
+          @message-reply="handleMessageReply"
+          @message-forward="handleMessageForward"
+          @message-recall="handleMessageRecall"
+          @message-select="handleMessageSelect"
+          @search-clear="handleSearchClear"
+          @load-more="loadMoreMessages"
+          @scroll="handleVirtualScroll"
+          @new-message-while-scrolled="handleNewMessageWhileScrolled"
+          @retry="retryFailedMessage"
+        />
       </div>
 
       <!-- 新消息提醒 with WebSocket enhancements -->
@@ -326,477 +321,76 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted, defineAsyncComponent, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useConversationsStore } from '@/stores/conversations'
-// ✅ CUSTOMER API: 使用新的 Customer Conversation System
-import { useCustomerMessages } from '@/composables/useCustomerMessages' // Customer HTTP API
-import { conversationCache } from '@/utils/conversationCache' // 🚀 Conversation metadata cache
-import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
-import { useWebSocketStatus } from '@/composables/useWebSocketStatus'
-import { usePerformanceMonitor, performanceUtils } from '@/composables/usePerformanceMonitor'
-import { useSmoothLoading } from '@/composables/useSmoothLoading'
-import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
-import { useConnectionState } from '@/composables/useConnectionState'
-import { useLoadingState } from '@/composables/useLoadingState'
-import { useEventHandler, type AnyFunction } from '@/composables/useEventHandler'
-import { usePerformanceOptimization } from '@/composables/usePerformanceOptimization'
-import { useErrorHandler, ErrorType } from '@/composables/useErrorHandler'
-// import { useMessageDebounce } from '@/composables/useMessageDebounce' // 🚫 Unused - handleMessageSent no longer uses it
-import { useFileUpload } from '@/composables/useFileUpload' // ⚡ Phase 3C: For retry file uploads
-// 🔧 FIX: messageApi 已不再使用 - 改用 httpMessages.sendMessageWithAttachments()
-// import { messageApi } from '@/api/message' // ⚡ Phase 3C: For retry message send
-import { useAuthStore } from '@/stores/auth' // ⚡ For optimistic message creation
-import type { Message, FileAttachmentData } from '@/types'
-// ✅ CUSTOMER API: Unified Connection Manager for Customer Conversations
-import { createCustomerRealtimeConnection, type CustomerRealtimeConnection, type ConnectionState } from '@/services/customerWebSocketManager'
-type RealtimeConnection = CustomerRealtimeConnection
-type ConnectionType = 'websocket'
+import { useConfirm } from '@/composables/useConfirm'
+import type { Message } from '@/types'
+
+// 🚀 Refactored Composables
+import { useConversationController } from '@/composables/conversation'
 
 // Core components
 import AppLayout from '@/components/ui/AppLayout.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-// import HamsterLoader from '@/components/ui/HamsterLoader.vue' // 替換為 MessageListSkeleton
 import MessageListSkeleton from '@/components/conversation/MessageListSkeleton.vue'
 import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
 import { MessageCircleIcon, XCircleIcon } from '@/components/icons'
 
-// Lazy load non-critical components for better performance
 const MessageSearch = defineAsyncComponent(() => import('@/components/conversation/MessageSearch.vue'))
 const KeyboardShortcuts = defineAsyncComponent(() => import('@/components/ui/KeyboardShortcuts.vue'))
-// Unused components - commented out to reduce bundle size
-// const AdvancedAssignActions = defineAsyncComponent(() => import('@/components/conversation/AdvancedAssignActions.vue'))
-// const WebSocketStatusIndicator = defineAsyncComponent(() => import('@/components/ui/WebSocketStatusIndicator.vue'))
-// const TypingIndicator = defineAsyncComponent(() => import('@/components/conversation/TypingIndicator.vue'))
-// const PresenceBadge = defineAsyncComponent(() => import('@/components/ui/PresenceBadge.vue'))
 
-// Routes
 const route = useRoute()
 const router = useRouter()
-const conversationsStore = useConversationsStore()
+const { showSuccess, showError } = useToast()
+const { showConfirm } = useConfirm()
+const conversationId = computed(() => route.params.id as string)
 
-// 🔧 Developer Debug Mode - 用於顯示連接狀態等調試資訊
-// 可以通過 URL 參數 ?debug=true 或 localStorage 設置 devDebugMode=true 啟用
 const isDevDebugMode = ref(false)
-
-// 初始化調試模式
 const initDebugMode = () => {
-  // 檢查 URL 參數
   const urlParams = new URLSearchParams(window.location.search)
   if (urlParams.get('debug') === 'true') {
     isDevDebugMode.value = true
     return
   }
-  // 檢查 localStorage
   try {
     isDevDebugMode.value = localStorage.getItem('devDebugMode') === 'true'
   } catch {
     isDevDebugMode.value = false
   }
 }
-
-// 立即初始化
 initDebugMode()
 
-// 🚀 WebSocket-Only Strategy (Backend 100% Support)
-const migration = useWebSocketMigration({
-  strategy: 'websocket_only', // 使用 100% WebSocket (后端已完全支持)
-  fallbackToSSE: false,
-  rolloutPercentage: 100 // 100% WebSocket rollout
-})
-
-// WebSocket Status Monitoring (保留供未來使用)
-const websocketStatus = useWebSocketStatus()
-
-// Performance monitoring
-const {
-  startMonitoring,
-  stopMonitoring,
-  mark,
-  measure,
-  getPerformanceReport,
-  logPerformanceSummary
-} = usePerformanceMonitor()
-
-// Conversation ID
-const conversationId = computed(() => route.params.id as string)
-
-
-
-// ✅ CUSTOMER API: HTTP API System for Customer Conversations
-// 🔧 FIX: Disabled progressive loading to prevent flicker/shaking during navigation
-// Progressive loading (2-phase: 10 recent → 20 history) causes layout shifts
-const httpMessages = useCustomerMessages(conversationId.value, {
+const controller = useConversationController(conversationId.value, {
   enablePagination: true,
   pageSize: 30,
-  enableProgressiveLoading: false // 🔧 FIX: Disabled - causes flicker when message count changes 10→30
+  enableProgressiveLoading: false
 })
 
-// 🚀 Unified Connection Manager (Primary Real-time System)
-const unifiedConnection = ref<RealtimeConnection | null>(null)
-const unifiedConnectionType = ref<ConnectionType>('websocket')
-const unifiedConnectionState = ref<ConnectionState>('disconnected')
-const unifiedIsConnected = ref(false)
-
-// 📎 Drag-and-Drop File Upload State
-const isDraggingFile = ref(false)
-const dragCounter = ref(0) // 追蹤拖拽事件計數（處理子元素事件冒泡）
-
-// 🔧 FIX: 追蹤本標籤發送的訊息 ID，用於跨瀏覽器同步時避免發送端重複
-// 當 WebSocket 廣播先於 handleMessageConfirmed 到達時，使用此 Set 判斷是否應跳過
-const sentMessageIds = new Set<string>()
-
-// 🧩 Unified State Management with new composables
-const connectionState = useConnectionState({
-  sseIsConnected: unifiedIsConnected,
-  sseIsConnecting: computed(() => unifiedConnectionState.value === 'connecting'),
-  sseIsReconnecting: computed(() => unifiedConnectionState.value === 'reconnecting'),
-  sseHasError: computed(() => unifiedConnectionState.value === 'error'),
-  wsIsJoined: computed(() => false), // Not used anymore
-  wsIsConnecting: computed(() => false),
-  shouldUseWebSocket: computed(() => unifiedConnectionType.value === 'websocket')
-})
-
-const loadingState = useLoadingState({
-  sseIsConnected: unifiedIsConnected,
-  wsIsJoined: computed(() => false), // Not used anymore
-  httpMessagesCount: computed(() => httpMessages.messages.value.length),
-  shouldUseWebSocket: computed(() => unifiedConnectionType.value === 'websocket'),
-  isLoading: computed(() => httpMessages.loading.value)
-})
-
-// 🎯 Unified Event Handler for better memory management
-const eventHandler = useEventHandler()
-
-// ⚡ Performance Optimization for computed values
-const performanceOptimizer = usePerformanceOptimization({
-  cacheTimeout: 2 * 60 * 1000, // 2分鐘快取
-  maxCacheSize: 30,
-  enableProfiling: import.meta.env.DEV // 只在開發環境啟用性能分析
-})
-
-// 🚨 Unified Error Handling
-const errorHandler = useErrorHandler({
-  maxErrors: 20,
-  autoRetry: true,
-  showToast: true,
-  logToConsole: import.meta.env.DEV
-})
-
-// 🚫 Message Debounce - Prevent duplicate sending
-// 🔧 NOTE: Currently unused since handleMessageSent no longer adds messages
-// Keeping for potential future use - commented out to avoid TS6133 error
-// const messageDebounce = useMessageDebounce({
-//   delay: 500, // 500ms 防抖延迟
-//   enabled: true // 启用防抖保护
-// })
-
-// 🧠 Unified Message Source Strategy (Unified Connection + HTTP)
-// Unified Connection handles both WebSocket and SSE automatically
-// CRITICAL FIX: Removed all console.log from computed to prevent infinite recursion
-// Computed functions MUST be pure functions without side effects
-const messages = computed((): Message[] => {
-  // 🔧 DIAGNOSTIC: Check if we should force HTTP fallback
-  // Set to false to use normal SSE/HTTP hybrid logic
-  const FORCE_HTTP_FALLBACK = false  // Using normal flow
-
-  // Priority 1: Unified Connection (WebSocket or SSE based on rollout)
-  if (unifiedConnection.value && unifiedIsConnected.value && !FORCE_HTTP_FALLBACK) {
-    // 🎯 混合策略：合併 Unified Connection 實時消息和 HTTP 歷史消息
-    const conn = unifiedConnection.value
-    const unifiedMessages = ((conn.messages as unknown) as Ref<Message[]>).value || []
-
-    const unifiedMessageIds = new Set(unifiedMessages.map((m: Message) => m.id))
-
-    // 過濾出不在 Unified Connection 消息中的 HTTP 歷史消息（避免重複）
-    const httpHistoryMessages = httpMessages.messages.value.filter(
-      m => !unifiedMessageIds.has(m.id)
-    )
-
-    // 合併消息並按時間排序（從舊到新）
-    const mergedMessages = [...httpHistoryMessages, ...unifiedMessages].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
-
-    return mergedMessages
-  }
-
-  // Priority 2: HTTP API Messages (fallback when no connection)
-  return httpMessages.messages.value
-})
-
-// Extract connection and loading state
-const loading = computed(() => {
-  if (unifiedIsConnected.value) {return false}
-  return httpMessages.loading.value
-})
-
-// Message statistics
-const messageCount = computed(() => messages.value.length)
-const hasNewMessages = computed(() => {
-  const conn = unifiedConnection.value
-  return conn ? (((conn.messageCount as unknown) as Ref<number>).value > 0) : false
-})
-const newMessagesCount = computed(() => {
-  const conn = unifiedConnection.value
-  return conn ? ((conn.messageCount as unknown) as Ref<number>).value : 0
-})
-
-// Typing and presence (disabled - will be re-enabled with WebSocket)
-const presence = computed(() => ({ isOnline: false, typingUsers: [] }))
-const typingUsers = computed(() => [])// 🎨 Smooth loading for SSE messages (simplified)
 const {
-  messages: smoothMessages,
-  isUpdating,
-  updateMessages
-  // getAnimationClasses - 未使用，已註釋
-} = useSmoothLoading({
-  animationDuration: 400,
-  enableAnimations: false, // 🔧 RECURSION FIX: Disable animations to test if they cause the loop
-  debounceDelay: 50
-})
+  conversation, messages, displayedMessages, loading, skeletonCount, loadingText,
+  isInitialLoading, hasLoadedInitially, loadingHistory, isUpdating, isSearchActive,
+  setSearchResults, clearSearch, isWebSocketEnabled, isConnected, connectionState, connectionProtocol,
+  connectionQuality, connectionText, connectionStatusClass, newMessageCount, isTyping, typingUsers,
+  scrollToBottom, setScrollTarget,
+  _internals
+} = controller
 
-// CRITICAL FIX: Add guard to prevent recursive watcher calls
-let isUpdatingMessages = false
-let lastMessagesLength = 0
+// Extract httpMessages from controller internals for template usage
+const httpMessages = _internals.state.httpMessages
 
-// Optimized message source watcher with unified debouncing and recursion guard
-const debouncedUpdateMessages = eventHandler.debounce(((newMessages: Message[]) => {
-  // Prevent recursive calls
-  if (isUpdatingMessages) {
-    return
-  }
-
-  // Skip if messages array hasn't actually changed
-  if (newMessages.length === lastMessagesLength && lastMessagesLength > 0) {
-    return
-  }
-
-  isUpdatingMessages = true
-  lastMessagesLength = newMessages.length
-
-  try {
-    updateMessages(newMessages, true)
-  } finally {
-    // 🔧 RECURSION FIX: Extended protection window to 300ms
-    // This covers the full animation duration (200ms) + 100ms buffer
-    // Previous 100ms was too short and allowed setTimeout cleanup to trigger unprotected
-    setTimeout(() => {
-      isUpdatingMessages = false
-    }, 300)
-  }
-}) as AnyFunction, 50)
-
-// CRITICAL FIX: Watch messages but prevent infinite recursion
-// The key is that updateMessages in useSmoothLoading does NOT trigger messages computed
-// because it only updates smoothMessages, which is separate from messages
-// 🔧 RECURSION FIX: Removed immediate: true to prevent early triggering during mount
-watch(
-  () => messages.value,
-  (newMessages) => {
-    if (newMessages && newMessages.length >= 0) {
-      debouncedUpdateMessages(newMessages)
-    }
-  },
-  { flush: 'post' }
-)
-
-// Core state with null safety
-const conversation = computed(() => conversationsStore.currentConversation || undefined)
-const closing = ref(false)
-const isTyping = ref(false)
-
-// Use new composable state management
-const { hasLoadedInitially, isInitialLoading, loadingHistory } = loadingState
-
-// 🚀 Dynamic skeleton screen based on cached message count
-const skeletonCount = computed(() =>
-  conversationCache.getEstimatedMessageCount(conversationId.value)
-)
-
-// 🚀 Dynamic loading text based on progressive loading phase
-const skeletonLoadingText = computed(() => {
-  if (httpMessages.isLoadingInitial?.value) {
-    return '正在載入最近消息...'
-  }
-  if (httpMessages.loadingHistory?.value) {
-    return '載入對話歷史...'
-  }
-  return '載入對話歷史...'
-})
-
-// Component refs
-const virtualMessageListRef = ref()
-const messageInputRef = ref()
-const keyboardShortcutsRef = ref()
-const messageSearchRef = ref()
-
-// 🌐 Use unified connection state from composable
-const {
-  currentProtocol,
-  connectionQuality
-} = connectionState
-
-const isWebSocketEnabled = computed(() => migration.shouldUseWebSocket.value)
-
-// Typing state (disabled in Phase 1)
-const isLocalTyping = ref(false)
-
-// Create debounced stop typing function
-const debouncedStopTyping = eventHandler.debounce(() => {
-  isTyping.value = false
-  isLocalTyping.value = false
-
-  // Send WebSocket typing stop if enabled
-  if (isWebSocketEnabled.value && isWebSocketJoined.value) {
-    try {
-      stopWebSocketTyping()
-    } catch (error) {
-      console.error('Failed to stop typing indicator:', error)
-    }
-  }
-}, 3000)
-
-// Search state
-const searchResults = ref<Message[]>([])
-const isSearchActive = ref(false)
+const virtualMessageListRef = ref(null)
+const messageInputRef = ref(null)
+const messageSearchRef = ref(null)
+const keyboardShortcutsRef = ref(null)
 const showSearchPanel = ref(false)
-
-// Toggle search panel from header button
-const toggleSearch = () => {
-  showSearchPanel.value = !showSearchPanel.value
-}
-
-// New message notification
 const showNewMessageModal = ref(false)
-const newMessageCount = computed(() => hasNewMessages.value ? newMessagesCount.value : 0)
-
-// WebSocket connection state
-const isWebSocketJoined = computed(() =>
-  isWebSocketEnabled.value && false
-)
-
-// Performance optimized computed properties
-// const customerInitials = computed(() => { // Unused - commented out
-//   const name = conversation.value?.customer?.name || 'U'
-//   return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-// })
-
-// CRITICAL FIX: Direct computed without performance optimizer cache
-// The cachedComputed was returning stale/empty values
-const displayedMessages = computed(() => {
-  return isSearchActive.value ? searchResults.value : smoothMessages.value
-})
-
-// 🌐 Performance optimized connection status with caching
-const connectionStatusText = performanceOptimizer.cachedComputed(() => {
-  // Priority 1: WebSocket Status
-  if (unifiedIsConnected.value) {
-    // Use messages.value.length to get total messages (including initial load)
-    const conn = unifiedConnection.value
-    const msgCount = conn ? (((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0) : 0
-    return `🔌 WebSocket 已連接 (${msgCount} 條訊息)`
-  }
-
-  if (unifiedConnectionState.value === 'connecting') {
-    return '🔌 WebSocket 連接中...'
-  }
-
-  if (unifiedConnectionState.value === 'reconnecting') {
-    const attempts = 0
-    return `🔌 WebSocket 重連中... (${attempts}/5)`
-  }
-
-  if (unifiedConnectionState.value === 'error') {
-    return '❌ WebSocket 連接失敗'
-  }
-
-  // Priority 2: Fallback to HTTP polling if WebSocket fails
-  if (currentProtocol.value === 'websocket') {
-    return websocketStatus.statusIndicator.value.label
-  }
-
-  // Priority 3: HTTP Fallback
-  if (currentProtocol.value === 'http') {
-    return `🔄 HTTP 輪詢 (${messageCount.value} 條訊息)`
-  }
-
-  return '⚠️ 未連接'
-}, 'connection-status', { timeout: 1000 }) // 1秒快取，快速更新狀態
-
-const connectionStatusClass = computed(() => {
-  // SSE Status Classes
-  if (unifiedIsConnected.value) {
-    return 'status-connected status-sse'
-  }
-
-  if (unifiedConnectionState.value === 'connecting' || unifiedConnectionState.value === 'reconnecting') {
-    return 'status-connecting status-sse'
-  }
-
-  if (unifiedConnectionState.value === 'error') {
-    return 'status-error status-sse'
-  }
-
-  // WebSocket Status Classes (legacy)
-  if (currentProtocol.value === 'websocket') {
-    const state = websocketStatus.connectionState.value
-    return {
-      'status-connected': state === 'connected',
-      'status-connecting': state === 'connecting',
-      'status-reconnecting': state === 'reconnecting',
-      'status-error': state === 'error',
-      'status-disconnected': state === 'disconnected',
-      'status-websocket': true
-    }
-  }
-
-  // HTTP Fallback
-  return 'status-connected status-http'
-})
-
-// const connectionQualityClass = computed(() => { // Unused - commented out
-//   const quality = websocketStatus.connectionHealth.value.quality
-//   return {
-//     'connection-excellent': quality === 'excellent',
-//     'connection-good': quality === 'good',
-//     'connection-fair': quality === 'fair',
-//     'connection-poor': quality === 'poor',
-//     'connection-offline': quality === 'offline'
-//   }
-// })
-
-// Removed unused computed property: statusIndicatorClass
-
-// 🔧 Memoized animation class generation - 暫時禁用以避免遞歸問題
-// const memoizedAnimationClasses = performanceOptimizer.memoize(
-//   (messages: Message[], getClassesFn: Function | undefined) => {
-//     const result: Record<string, string> = {}
-//
-//     if (typeof getClassesFn === 'function' && messages.length > 0) {
-//       messages.forEach(message => {
-//         const classes = getClassesFn(message.id)
-//         if (classes && classes['message-fade-in']) {
-//           result[message.id] = 'message-fade-in'
-//         }
-//       })
-//     }
-//
-//     return result
-//   },
-//   (messages, getClassesFn) => `${messages.length}-${typeof getClassesFn}`
-// )
-
-// Animation classes for smooth message transitions
-// 🔧 RECURSION FIX: Temporarily disable to test if this causes the loop
-const animationClasses = computed(() => {
-  return {} // Return empty object - no animations
-})
-
-// Quick replies
+const closing = ref(false)
+const isDraggingFile = ref(false)
+const dragCounter = ref(0)
+const animationClasses = computed(() => ({}))
 const quickReplies = ref([
   { id: '1', text: '感謝您的來信，我們會盡快回覆' },
   { id: '2', text: '請問還有其他需要協助的嗎？' },
@@ -804,1079 +398,180 @@ const quickReplies = ref([
   { id: '4', text: '問題已為您解決，如有其他疑問請隨時聯繫' }
 ])
 
-// Performance optimized polling as backup
-const pollingInterval = ref<NodeJS.Timeout | null>(null)
-// const pollingDelays = [30000, 60000, 120000, 300000] // Unused - commented out
-const currentPollingIndex = ref(0)
-const isPageVisible = ref(true)
-const lastUserActivity = ref(Date.now())
-// const USER_INACTIVE_THRESHOLD = 60000 // Unused - commented out
-
-// ⚡ Enhanced message handlers with Optimistic UI Update
-// 📤 Optimistic Message Sending - Instant UI feedback with background API sync
-const handleMessageSent = async (data: { content: string; attachments: unknown[]; file_attachments?: FileAttachmentData[] }) => {
-  console.log('📤 [Message] handleMessageSent called (backward compatibility event)')
-  trackUserActivity()
-
-  // 🔧 FIX: 這個事件只用於向後相容和日誌記錄
-  // 訊息已經在 handleMessagePending 中添加到 UI
-  // 不要再次添加訊息，避免重複！
-
-  // Stop typing indicators
-  stopTyping()
-
-  if (!data.content?.trim() && (!data.file_attachments || data.file_attachments.length === 0)) {
-    console.warn('Empty message content and no attachments, skipping')
-    return
-  }
-
-  migration.reportMetric('message_sent_http', { content: data.content?.substring(0, 50) || '[file only]' })
-
-  // Reset polling
-  resetPollingDelay()
-
-  console.log('✅ [Message] handleMessageSent completed - message already in UI via handleMessagePending')
-}
-
-// ⚡ Phase 3B: 處理訊息開始發送（樂觀更新）
-interface MessagePendingData {
-  tempId: string
-  content: string
-  attachments: Array<{
-    name: string
-    size: number
-    blobUrl?: string
-    isImage: boolean
-    fileType: string
-    typeColor: string
-  }>
-  status: 'uploading' | 'sending'
-  uploadProgress?: number
-}
-
-const handleMessagePending = (data: MessagePendingData) => {
-  console.log('⚡ [Phase 3B] Message pending - showing immediately:', data.tempId)
-  trackUserActivity()
-
-  const authStore = useAuthStore()
-
-  // 創建樂觀訊息，立即顯示給用戶
-  // 使用 'pending' 作為 deliveryStatus（符合 DeliveryStatus 類型）
-  // 實際上傳狀態存儲在 metadata.uploadStatus 中
-  const optimisticMessage: Message = {
-    id: data.tempId,
-    conversationId: conversationId.value,
-    senderId: authStore.currentAgent?.id || 'unknown',
-    senderType: 'agent' as const,
-    content: data.content,
-    messageType: data.attachments.length > 0 ? 'file' as const : 'text' as const,
-    platform: conversation.value?.platform || 'line',
-    timestamp: Date.now(),
-    createdAt: Date.now(),
-    status: 'pending' as const,  // 使用 pending，實際狀態在 metadata
-    deliveryStatus: 'pending' as const,
-    senderName: authStore.currentAgent?.displayName || authStore.currentAgent?.name || '我',
-    // 保存附件資訊（包含 blobUrl）供顯示
-    metadata: {
-      uploadStatus: data.status, // 'uploading' | 'sending' - Phase 3B 專用
-      uploadProgress: data.uploadProgress || 0,
-      pendingAttachments: data.attachments.map(a => ({
-        name: a.name,
-        size: a.size,
-        blobUrl: a.blobUrl,
-        isImage: a.isImage,
-        fileType: a.fileType,
-        typeColor: a.typeColor
-      }))
-    } as Record<string, unknown>
-  }
-
-  // 立即添加到訊息列表
-  httpMessages.addMessage(optimisticMessage)
-
-  // 滾動到最新訊息
-  setTimeout(() => scrollToNewest(), 50)
-}
-
-// ⚡ Phase 3B: 處理上傳進度更新
-interface UploadProgressData {
-  tempId: string
-  progress: number
-  status: 'uploading' | 'sending'
-}
-
-const handleUploadProgress = (data: UploadProgressData) => {
-  console.log(`⚡ [Phase 3B] Upload progress: ${data.progress}% - ${data.status}`)
-
-  const messageList = httpMessages.messages.value
-  const message = messageList.find(m => m.id === data.tempId)
-
-  if (message) {
-    // 根據狀態設置有效的 DeliveryStatus
-    // 'uploading' -> 保持 'pending'
-    // 'sending' -> 使用 'sending' (有效的 DeliveryStatus)
-    const deliveryStatus = data.status === 'sending' ? 'sending' as const : 'pending' as const
-    message.status = deliveryStatus
-    message.deliveryStatus = deliveryStatus
-
-    // 在 metadata 中儲存實際上傳狀態，供 UI 顯示使用
-    if (message.metadata && typeof message.metadata === 'object') {
-      const meta = message.metadata as Record<string, unknown>
-      meta.uploadProgress = data.progress
-      meta.uploadStatus = data.status  // 'uploading' | 'sending'
+onMounted(async () => {
+  try {
+    await controller.initialize()
+    if (virtualMessageListRef.value) {
+      const listRef = virtualMessageListRef.value as any
+      setScrollTarget({
+        scrollToBottom: () => listRef?.scrollToBottom?.()
+      })
     }
+  } catch (error) {
+    console.error('Failed to initialize:', error)
+    showError('無法載入對話，請重新整理頁面')
   }
-}
+})
 
-// ⚡ Phase 3B: 處理訊息發送成功確認
-interface MessageConfirmedData {
-  tempId: string
-  realId: string
-  file_attachments?: FileAttachmentData[]
-}
+onUnmounted(() => controller.cleanup())
 
-const handleMessageConfirmed = (data: MessageConfirmedData) => {
-  console.log('✅ [Phase 3B] Message confirmed:', data.tempId, '->', data.realId)
+function goBack() { router.push('/conversations') }
 
-  // 🔧 FIX: 立即將 realId 加入已發送集合
-  // 這樣即使 WebSocket 廣播先到達，handleUnifiedMessage 也能正確跳過
-  sentMessageIds.add(data.realId)
-  console.log(`📝 [Phase 3B] Added to sentMessageIds: ${data.realId}`)
+// Message event handlers (use controller methods directly)
+const handleMessageSent = controller.onMessageSent
+const handleMessagePending = controller.onMessagePending
+const handleUploadProgress = controller.onUploadProgress
+const handleMessageConfirmed = controller.onMessageConfirmed
+const handleMessageFailed = controller.onMessageFailed
+const handleTypingStart = controller.onTypingStart
+const handleTypingStop = controller.onTypingStop
 
-  // 定時清理（5分鐘後移除，避免記憶體洩漏）
-  setTimeout(() => {
-    sentMessageIds.delete(data.realId)
-    console.log(`🧹 [Phase 3B] Cleaned up sentMessageIds: ${data.realId}`)
-  }, 5 * 60 * 1000)
+// Forward controller methods to match template bindings
+const loadMoreMessages = controller.loadMoreMessages
+const retryFailedMessage = controller.retryMessage
 
-  const messageList = httpMessages.messages.value
-  const message = messageList.find(m => m.id === data.tempId)
+// Additional computed properties for template
+const unifiedIsConnected = isConnected
+const unifiedConnectionState = connectionState
+const currentProtocol = connectionProtocol
+const connectionStatusText = connectionText
+const skeletonLoadingText = loadingText
+const presence = computed(() => ({ typingUsers: typingUsers.value }))
 
-  if (message) {
-    // 🔧 FIX: 更新訊息 ID 從 tempId 到 realId
-    // 這樣當 WebSocket 廣播到達時，addMessage 的 ID 去重會正確跳過這個訊息
-    // 同時其他瀏覽器標籤可以正確接收訊息（因為它們沒有這個 realId）
-    message.id = data.realId
-    console.log(`📝 [Phase 3B] Updated message ID: ${data.tempId} -> ${data.realId}`)
-
-    // 更新訊息狀態為已發送
-    message.status = 'sent' as const
-    message.deliveryStatus = 'sent' as const
-
-    // 如果有真實的檔案附件資料，更新它
-    if (data.file_attachments && data.file_attachments.length > 0) {
-      // eslint-disable-next-line camelcase
-      message.file_attachments = data.file_attachments
-    }
-
-    // 清理臨時資料
-    if (message.metadata && typeof message.metadata === 'object') {
-      delete (message.metadata as Record<string, unknown>).uploadProgress
-      delete (message.metadata as Record<string, unknown>).pendingAttachments
-    }
-
-    console.log('✅ [Phase 3B] Message status updated to sent with realId')
-  }
-}
-
-// ⚡ Phase 3C: 附件介面定義（重試用）
-interface RetryAttachment {
-  name: string
-  size: number
-  file: globalThis.File  // 原始檔案物件
-  blobUrl?: string
-  isImage: boolean
-  fileType: string
-  typeColor: string
-}
-
-// ⚡ Phase 3C: 處理訊息發送失敗（含重試資料）
-interface MessageFailedData {
-  tempId: string
-  error: string
-  retryData?: {
-    content: string
-    attachments: RetryAttachment[]
-  }
-}
-
-const handleMessageFailed = (data: MessageFailedData) => {
-  console.error('❌ [Phase 3C] Message failed:', data.tempId, '-', data.error)
-
-  const messageList = httpMessages.messages.value
-  const message = messageList.find(m => m.id === data.tempId)
-
-  if (message) {
-    message.status = 'failed' as const
-    message.deliveryStatus = 'failed' as const
-
-    // Phase 3C: 儲存錯誤訊息和重試資料到 metadata
-    if (message.metadata && typeof message.metadata === 'object') {
-      const meta = message.metadata as Record<string, unknown>
-      meta.error = data.error
-      // 儲存重試資料（如果有）
-      if (data.retryData) {
-        meta.retryContent = data.retryData.content
-        meta.retryAttachments = data.retryData.attachments
-      }
-    }
-
-    console.log('❌ [Phase 3C] Failed message stored with retry data:', {
-      tempId: data.tempId,
-      hasRetryData: !!data.retryData,
-      attachmentCount: data.retryData?.attachments?.length || 0
-    })
-  }
-}
-
-// ⚡ Helper function to update optimistic message status
-const updateOptimisticMessageStatus = (messageId: string, newStatus: 'sending' | 'sent' | 'failed') => {
-  const messageList = httpMessages.messages.value
-  const message = messageList.find(m => m.id === messageId)
-
-  if (message) {
-    // ⚡ Update message properties directly (Vue will track changes)
-    message.status = newStatus
-    message.deliveryStatus = newStatus
-
-    console.log(`⚡ [Optimistic] Updated message ${messageId} status to: ${newStatus}`)
-  }
-}
-
-// 🔄 Phase 3C: Enhanced retry with attachment support
-const retryFailedMessage = async (messageId: string) => {
-  const messageList = httpMessages.messages.value
-  const failedMessage = messageList.find(m => m.id === messageId && m.status === 'failed')
-
-  if (!failedMessage) {
-    console.warn('⚠️ [Retry] Failed message not found:', messageId)
-    return
-  }
-
-  console.log('🔄 [Phase 3C] Retrying failed message:', messageId)
-
-  // Phase 3C: 從 metadata 獲取重試資料
-  const meta = failedMessage.metadata as Record<string, unknown> | undefined
-  const retryContent = (meta?.retryContent as string) || failedMessage.content
-  const retryAttachments = (meta?.retryAttachments as RetryAttachment[]) || []
-  const hasAttachments = retryAttachments.length > 0
-
-  console.log('🔄 [Phase 3C] Retry data:', {
-    content: retryContent,
-    attachmentCount: retryAttachments.length
+// Close conversation with confirmation (matches template @close="closeConversation")
+async function closeConversation() {
+  const confirmed = await showConfirm({
+    title: '確定要關閉這個對話嗎？',
+    message: '關閉後將無法繼續發送訊息',
+    confirmText: '關閉對話',
+    cancelText: '取消'
   })
+  if (!confirmed) {return}
+  closing.value = true
+  try {
+    const success = await controller.closeConversation()
+    success ? showSuccess('對話已關閉') : showError('關閉失敗')
+  } finally {
+    closing.value = false
+  }
+}
 
-  // Update status to sending/uploading
-  if (hasAttachments) {
-    failedMessage.status = 'pending' as const
-    failedMessage.deliveryStatus = 'pending' as const
-    if (meta) {
-      meta.uploadStatus = 'uploading'
-      meta.uploadProgress = 0
-    }
+// Reopen conversation (matches template @click="reopenConversation")
+async function reopenConversation() {
+  const success = await controller.reopenConversation()
+  success ? showSuccess('對話已重新打開') : showError('重新打開失敗')
+}
+
+async function handleRefreshMessages() {
+  try {
+    await controller.refreshMessages()
+    showSuccess('訊息已刷新')
+  } catch (_e) {
+    showError('刷新失敗')
+  }
+}
+
+function toggleSearch() {
+  showSearchPanel.value = !showSearchPanel.value
+  if (showSearchPanel.value) {
+    nextTick(() => {
+      const searchEl = messageSearchRef.value as any
+      searchEl?.focus?.()
+    })
   } else {
-    updateOptimisticMessageStatus(messageId, 'sending')
-  }
-
-  try {
-    const { uploadSingleFile } = useFileUpload()
-    const attachmentIds: string[] = []
-
-    // Phase 3C: 如果有附件，重新上傳
-    if (hasAttachments) {
-      console.log('🔄 [Phase 3C] Re-uploading attachments...')
-      const totalFiles = retryAttachments.length
-      let completedFiles = 0
-
-      for (const attachment of retryAttachments) {
-        try {
-          // 使用原始檔案物件重新上傳
-          const result = await uploadSingleFile(attachment.file, {}, (progress) => {
-            if (meta) {
-              const overallProgress = Math.round(
-                ((completedFiles + progress / 100) / totalFiles) * 100
-              )
-              meta.uploadProgress = overallProgress
-            }
-          })
-
-          if (result.success && result.fileId) {
-            attachmentIds.push(result.fileId)
-            completedFiles++
-            console.log(`✅ [Phase 3C] Attachment uploaded: ${attachment.name}`)
-          } else {
-            throw new Error(result.error || '上傳失敗')
-          }
-        } catch (uploadError) {
-          console.error('❌ [Phase 3C] Attachment re-upload failed:', uploadError)
-          updateOptimisticMessageStatus(messageId, 'failed')
-          if (meta) {
-            meta.error = `重試上傳失敗: ${attachment.name}`
-          }
-          const { showError } = useToast()
-          showError(`檔案 ${attachment.name} 重試上傳失敗`)
-          return
-        }
-      }
-
-      // 上傳完成，更新狀態
-      if (meta) {
-        meta.uploadStatus = 'sending'
-        meta.uploadProgress = 100
-      }
-    }
-
-    // Phase 3C: 發送訊息
-    updateOptimisticMessageStatus(messageId, 'sending')
-
-    // 🔧 FIX: 統一使用 httpMessages（customer-conversations API）以支持 WebSocket 廣播
-    // 之前使用 messageApi.send() 會走錯誤的端點，導致其他客服收不到即時更新
-    let success: boolean
-    if (attachmentIds.length > 0) {
-      // 使用 httpMessages.sendMessageWithAttachments() 發送帶附件的訊息
-      // 這會使用 /api/customer-conversations/ 端點，觸發 WebSocket 廣播給所有客服
-      const response = await httpMessages.sendMessageWithAttachments(
-        retryContent,
-        attachmentIds,
-        {
-          messageType: 'file',
-          platform: 'line'
-        }
-      )
-      success = response.success
-    } else {
-      success = await httpMessages.sendMessage(retryContent)
-    }
-
-    if (success) {
-      updateOptimisticMessageStatus(messageId, 'sent')
-      // 清理重試資料
-      if (meta) {
-        delete meta.retryContent
-        delete meta.retryAttachments
-        delete meta.uploadStatus
-        delete meta.uploadProgress
-        delete meta.error
-      }
-      console.log('✅ [Phase 3C] Retry successful')
-      const { showSuccess } = useToast()
-      showSuccess('訊息重試發送成功')
-    } else {
-      updateOptimisticMessageStatus(messageId, 'failed')
-      if (meta) {
-        meta.error = '重試發送失敗'
-      }
-      console.error('❌ [Phase 3C] Retry send failed')
-      const { showError } = useToast()
-      showError('訊息重試發送失敗，請再試一次')
-    }
-  } catch (error) {
-    updateOptimisticMessageStatus(messageId, 'failed')
-    console.error('❌ [Phase 3C] Exception during retry:', error)
-    const { showError } = useToast()
-    showError('重試時發生錯誤，請稍後再試')
+    handleSearchClear()
   }
 }
 
-// 🔄 Enhanced Message Refresh with SSE Support
-const handleRefreshMessages = async () => {
-  console.log('🔄 [Refresh] Manual refresh triggered via:', currentProtocol.value)
-  trackUserActivity()
+function handleSearchResults(results: Message[]) { setSearchResults(results) }
+function handleSearchClear() { clearSearch(); showSearchPanel.value = false }
+function useQuickReply(text: string) {
+  const inputEl = messageInputRef.value as any
+  inputEl?.setContent?.(text)
+  inputEl?.focus?.()
+}
+function handleVirtualScroll(scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }) {
+  const result = controller.onScroll(scrollInfo)
+  if (result.isAtBottom) {showNewMessageModal.value = false}
+}
+function handleNewMessageWhileScrolled() { showNewMessageModal.value = true }
+function scrollToNewest() { scrollToBottom(); showNewMessageModal.value = false }
+function dismissNewMessageModal() { showNewMessageModal.value = false }
 
-  try {
-    // Priority 1: SSE reconnection (if connection lost)
-    if (unifiedConnectionState.value === 'error' || unifiedConnectionState.value === 'disconnected') {
-      console.log('🔄 [Refresh] Reconnecting SSE...')
-      await unifiedConnection.value?.reconnect()
-    }
-
-    // Priority 2: HTTP refresh as fallback
-    if (!unifiedIsConnected.value) {
-      console.log('🔄 [Refresh] Using HTTP API refresh...')
-      await httpMessages.refreshMessages()
-    }
-
-
-    resetPollingDelay()
-    console.log('✅ [Refresh] Manual refresh completed')
-
-  } catch (error) {
-    console.error('❌ [Refresh] Failed to refresh messages:', error)
-    // TODO: Show user notification for failed refresh
+// Event handlers - these receive Message objects from VirtualMessageList
+function handleMessageCopy(message: Message) {
+  if (message) {
+    navigator.clipboard.writeText(message.content)
+    showSuccess('訊息已複製')
   }
 }
 
-// Typing handlers with WebSocket support
-const handleTypingStart = () => {
-  startTyping()
-}
-
-const handleTypingStop = () => {
-  stopTyping()
-}
-
-const startTyping = () => {
-  isTyping.value = true
-  isLocalTyping.value = true
-
-  // Send WebSocket typing indicator if enabled
-  if (isWebSocketEnabled.value && isWebSocketJoined.value) {
-    try {
-      startWebSocketTyping()
-    } catch (error) {
-      console.error('Failed to send typing indicator:', error)
-    }
-  }
-
-  // Auto-stop typing after delay using debounced function
-  debouncedStopTyping()
-}
-
-const stopTyping = () => {
-  isTyping.value = false
-  isLocalTyping.value = false
-
-  // Send WebSocket typing stop if enabled
-  if (isWebSocketEnabled.value && isWebSocketJoined.value) {
-    try {
-      stopWebSocketTyping()
-    } catch (error) {
-      console.error('Failed to stop typing indicator:', error)
-    }
+function handleMessageReply(message: Message) {
+  if (message && messageInputRef.value) {
+    const inputEl = messageInputRef.value as any
+    inputEl?.setReplyTo?.(message)
+    inputEl?.focus?.()
   }
 }
 
-const handleAttachmentUpload = (attachment: unknown) => {
-  console.log('Attachment uploaded:', attachment)
+function handleMessageForward(message: Message) {
+  console.log('Forward message:', message.id)
+  showSuccess('轉發功能開發中')
 }
 
-// 📎 Drag-and-Drop File Upload Handlers
-const handleDragEnter = (event: DragEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
+async function handleMessageRecall(message: Message) {
+  const confirmed = await showConfirm({
+    title: '確定要撤回這則訊息嗎？',
+    confirmText: '撤回',
+    cancelText: '取消'
+  })
+  if (!confirmed) {return}
+  const success = await controller.recallMessage(message.id)
+  success ? showSuccess('訊息已撤回') : showError('撤回失敗')
+}
 
-  // 檢查是否為檔案拖拽
+function handleMessageSelect(message: Message) {
+  console.log('Select message:', message.id)
+}
+
+function handleAttachmentUpload(attachment: unknown) {
+  console.log('Attachment upload:', attachment)
+}
+
+function handleDragEnter(event: DragEvent) {
+  event.preventDefault(); event.stopPropagation()
   if (event.dataTransfer?.types.includes('Files')) {
     dragCounter.value++
     isDraggingFile.value = true
   }
 }
 
-const handleDragLeave = (event: DragEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
-
+function handleDragLeave(event: DragEvent) {
+  event.preventDefault(); event.stopPropagation()
   dragCounter.value--
-  // 只有當計數器歸零時才隱藏覆蓋層（處理子元素事件）
   if (dragCounter.value <= 0) {
     dragCounter.value = 0
     isDraggingFile.value = false
   }
 }
 
-const handleDragOver = (event: DragEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
-
-  // 設置拖放效果
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'copy'
-  }
+function handleDragOver(event: DragEvent) {
+  event.preventDefault(); event.stopPropagation()
+  if (event.dataTransfer) {event.dataTransfer.dropEffect = 'copy'}
 }
 
-const handleDrop = (event: DragEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
-
-  // 重置拖拽狀態
+function handleDrop(event: DragEvent) {
+  event.preventDefault(); event.stopPropagation()
   isDraggingFile.value = false
   dragCounter.value = 0
-
-  // 獲取拖放的檔案
-  const files = event.dataTransfer?.files
-  if (!files || files.length === 0) {
-    console.log('📎 [Drag-Drop] No files detected')
-    return
+  const files = Array.from(event.dataTransfer?.files || [])
+  if (files.length > 0 && messageInputRef.value) {
+    const inputEl = messageInputRef.value as any
+    inputEl?.handleFilesDropped?.(files)
   }
-
-  console.log(`📎 [Drag-Drop] ${files.length} file(s) dropped`)
-
-  // 傳遞檔案給 MessageInput
-  if (messageInputRef.value && messageInputRef.value.addFiles) {
-    messageInputRef.value.addFiles(files)
-  } else {
-    console.warn('📎 [Drag-Drop] MessageInput ref not available')
-  }
-}
-
-// Load more messages function
-const loadMoreMessages = async () => {
-  try {
-    loadingState.setHistoryLoading(true)
-    await httpMessages.loadMoreMessages()
-  } catch (error) {
-    errorHandler.handleError(
-      error as Error,
-      { operation: 'load_more_messages' },
-      ErrorType._NETWORK
-    )
-  } finally {
-    loadingState.setHistoryLoading(false)
-  }
-}
-
-// WebSocket typing functions
-const startWebSocketTyping = () => {
-  // TODO: Implement WebSocket typing start when method is available
-  console.debug('WebSocket typing start requested (not yet implemented)')
-}
-
-const stopWebSocketTyping = () => {
-  // TODO: Implement WebSocket typing stop when method is available
-  console.debug('WebSocket typing stop requested (not yet implemented)')
-}
-
-// Refresh messages function
-const refreshMessages = async () => {
-  await handleRefreshMessages()
-}
-
-// Simplified conversation loading with null safety
-const loadConversation = async () => {
-  try {
-    await conversationsStore.fetchConversation(conversationId.value)
-    const currentConversation = conversation.value
-    if (currentConversation?.unreadCount) {
-      await markAsRead()
-    }
-
-    // Load HTTP messages explicitly
-    console.log('📥 [loadConversation] Loading HTTP messages...')
-    await httpMessages.fetchMessages()
-    console.log(`✅ [loadConversation] HTTP messages loaded: ${httpMessages.messages.value.length} messages`)
-    console.log('✅ [loadConversation] Messages loaded, VirtualMessageList will auto-scroll')
-  } catch (error) {
-    console.error('Failed to load conversation:', error)
-    // Handle conversation not found or network errors
-    router.push('/conversations')
-  }
-}
-
-const markAsRead = async () => {
-  try {
-    await conversationsStore.markAsRead(conversationId.value)
-  } catch (error) {
-    console.error('Failed to mark as read:', error)
-  }
-}
-
-// Message actions
-const handleMessageCopy = (message: Message) => {
-  navigator.clipboard.writeText(message.content)
-  console.log('Message copied:', message.content)
-}
-
-const handleMessageReply = (message: Message) => {
-  if (messageInputRef.value) {
-    const senderName = message.senderType === 'customer' ? '客戶' : '客服'
-    messageInputRef.value.setReplyTo(message.content, senderName)
-  }
-}
-
-const handleMessageForward = (message: Message) => {
-  console.log('Forward message:', message.content)
-}
-
-const handleMessageRecall = async (message: Message) => {
-  try {
-    const confirmed = await useConfirm().confirmWarning(
-      '撤回訊息',
-      '確定要撤回這條訊息嗎？撤回後對方將無法看到。',
-      '撤回'
-    )
-
-    if (confirmed) {
-      console.log('Message recalled:', message.id)
-      await refreshMessages()
-    }
-  } catch (error) {
-    console.error('Failed to recall message:', error)
-  }
-}
-
-const handleMessageSelect = (message: Message) => {
-  console.log('Select message:', message.id)
-}
-
-// Search handlers
-const handleSearchResults = (results: Message[]) => {
-  searchResults.value = results
-  isSearchActive.value = results.length > 0
-}
-
-const handleSearchClear = () => {
-  searchResults.value = []
-  isSearchActive.value = false
-}
-
-// Assignment handlers - Unused, commented out to reduce bundle size
-// const handleConversationAssigned = (conversation: Conversation, assignedTo: string) => {
-//   console.log('Conversation assigned:', { conversationId: conversation.id, assignedTo })
-// }
-
-// const handleConversationUnassigned = (conversation: Conversation) => {
-//   console.log('Conversation unassigned:', conversation.id)
-// }
-
-// const handleAssignError = (error: string) => {
-//   console.error('Assignment error:', error)
-// }
-
-// 🆕 Close conversation with permanent undo capability
-const closeConversation = async () => {
-  if (closing.value) {return}
-
-  try {
-    const confirmed = await useConfirm().confirmWarning(
-      '結束對話',
-      '確定要結束這個對話嗎？結束後仍可隨時重新打開。',
-      '結束對話'
-    )
-
-    if (!confirmed) {return}
-
-    closing.value = true
-    const success = await conversationsStore.closeConversation(conversationId.value)
-
-    if (success) {
-      console.log('✅ [CloseConversation] Conversation closed successfully')
-
-      // 🎯 显示简单的成功通知（不跳转）
-      const { showSuccess } = useToast()
-      showSuccess(
-        '對話已結束',
-        '您可以隨時重新打開此對話',
-        { duration: 3000 }
-      )
-
-      // ✅ 停留在当前页面，显示"已关闭"横幅和"重新打开"按钮
-      // UI会自动更新显示关闭状态（通过computed属性）
-    } else {
-      console.error('❌ [CloseConversation] Failed to close conversation: Server returned failure')
-      const { showError } = useToast()
-      showError('結束對話失敗', '無法結束對話，請稍後再試')
-    }
-  } catch (error) {
-    console.error('❌ [CloseConversation] Exception when closing conversation:', error)
-    const { showError } = useToast()
-    showError('操作失敗', '發生錯誤，請稍後再試')
-  } finally {
-    closing.value = false
-  }
-}
-
-// 🆕 Reopen closed conversation
-const reopenConversation = async () => {
-  try {
-    const confirmed = await useConfirm().confirmInfo(
-      '重新打開對話',
-      '確定要重新打開這個對話嗎？',
-      '重新打開'
-    )
-
-    if (!confirmed) {return}
-
-    const success = await conversationsStore.reopenConversation(conversationId.value)
-
-    if (success) {
-      console.log('✅ [ReopenConversation] Conversation reopened successfully')
-      const { showSuccess } = useToast()
-      showSuccess('對話已重新打開', '您可以繼續使用此對話')
-    } else {
-      console.error('❌ [ReopenConversation] Failed to reopen conversation')
-      const { showError } = useToast()
-      showError('重新打開失敗', '無法重新打開對話，請稍後再試')
-    }
-  } catch (error) {
-    console.error('❌ [ReopenConversation] Exception when reopening:', error)
-    const { showError } = useToast()
-    showError('操作失敗', '發生錯誤，請稍後再試')
-  }
-}
-
-// Quick reply handler with enhanced validation
-const useQuickReply = (text: string) => {
-  if (!text?.trim()) {
-    console.warn('Quick reply text is empty')
-    return
-  }
-
-  if (messageInputRef.value) {
-    try {
-      messageInputRef.value.setMessageText(text)
-      trackUserActivity()
-    } catch (error) {
-      console.error('Quick reply error:', error)
-    }
-  } else {
-    console.warn('Message input reference not available')
-  }
-}
-
-// Virtual scroll handler
-const handleVirtualScroll = performanceUtils.throttle((scrollInfo: unknown) => {
-  const info = scrollInfo as { scrollTop: number; scrollHeight: number; clientHeight: number } | undefined
-  if (!info) {return}
-
-  const threshold = 100
-  const isAtBottom = info.scrollHeight - info.scrollTop - info.clientHeight < threshold
-
-  if (!isAtBottom && newMessageCount.value > 0 && !showNewMessageModal.value) {
-    showNewMessageModal.value = true
-  }
-
-  resetPollingDelay()
-}, 16)
-
-const handleNewMessageWhileScrolled = () => {
-  // 🔧 FIX: 只有當新消息數量 > 0 時才顯示提示
-  if (newMessageCount.value > 0) {
-    showNewMessageModal.value = true
-  }
-}
-
-// New message modal
-const scrollToNewest = () => {
-  if (virtualMessageListRef.value) {
-    virtualMessageListRef.value.scrollToBottom()
-  }
-  showNewMessageModal.value = false
-  // 🎯 清除新消息計數，用戶已查看消息
-  // Unified connection handles this automatically
-}
-
-const dismissNewMessageModal = () => {
-  showNewMessageModal.value = false
-  // 🎯 清除新消息計數，用戶已關閉提醒
-  // Unified connection handles this automatically
-}
-
-// Navigation
-const goBack = () => {
-  router.push('/conversations')
-}
-
-// Polling backup
-const resetPollingDelay = () => {
-  currentPollingIndex.value = 0
-  lastUserActivity.value = Date.now()
-}
-
-const trackUserActivity = () => {
-  lastUserActivity.value = Date.now()
-  if (currentPollingIndex.value > 0) {
-    resetPollingDelay()
-  }
-}
-
-// Page visibility handling
-const handleVisibilityChange = () => {
-  isPageVisible.value = document.visibilityState === 'visible'
-  console.log(`👁️ Page visibility changed: ${isPageVisible.value ? 'visible' : 'hidden'}`)
-
-  if (isPageVisible.value) {
-    trackUserActivity()
-    resetPollingDelay()
-  }
-}
-
-// Keyboard shortcuts
-const handleGlobalKeydown = (event: KeyboardEvent) => {
-  trackUserActivity()
-  resetPollingDelay()
-
-  const target = event.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
-    return
-  }
-
-  switch (event.key) {
-    case '/':
-      event.preventDefault()
-      messageInputRef.value?.focus()
-      break
-
-    case 'r':
-      if (event.ctrlKey || event.metaKey) {
-        event.preventDefault()
-        handleRefreshMessages()
-      }
-      break
-
-    case 'Escape':
-      event.preventDefault()
-      goBack()
-      break
-
-    case 'End':
-      event.preventDefault()
-      scrollToNewest()
-      break
-
-    case '?':
-      event.preventDefault()
-      keyboardShortcutsRef.value?.showShortcuts()
-      break
-
-    case 'f':
-      if (event.ctrlKey || event.metaKey) {
-        event.preventDefault()
-        messageSearchRef.value?.focus()
-      }
-      break
-  }
-}
-
-// Watch for new messages from WebSocket
-watch(() => hasNewMessages.value, (hasNew) => {
-  // 🔧 FIX: 只有當新消息數量 > 0 時才顯示提示
-  if (hasNew && newMessagesCount.value > 0) {
-    showNewMessageModal.value = true
-  }
-})
-
-// 🔧 CRITICAL FIX: Watch unified connection messages to ensure reactivity
-// When SSE receives messages, the internal ref updates but Vue computed may not detect it
-// This watch ensures that changes to unifiedConnection.messages trigger UI updates
-watch(
-  () => {
-    const conn = unifiedConnection.value
-    return conn ? (((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0) : 0
-  },
-  (newCount, oldCount) => {
-    if (newCount !== undefined && newCount !== oldCount) {
-      console.log(`📊 [Watch] Unified messages count changed: ${oldCount} → ${newCount}`)
-      // The change in count will automatically trigger messages computed to re-run
-    }
-  }
-)
-
-// Note: Initial loading state is now managed by useLoadingState composable
-
-// Performance monitoring interval (declare at top level for cleanup)
-let performanceReportInterval: ReturnType<typeof setInterval> | null = null
-
-// =================== 🚀 Phase 2.1: Unified Connection Management ===================
-
-async function initializeUnifiedConnection() {
-  try {
-    console.log(`✅ [CUSTOMER API] Initializing Customer WebSocket for conversation: ${conversationId.value}`)
-
-    // ✅ CUSTOMER API: Create Customer WebSocket connection
-    const conn = await createCustomerRealtimeConnection(conversationId.value)
-    unifiedConnection.value = conn
-
-    // Store connection type for display
-    unifiedConnectionType.value = conn.type
-
-    // Setup event handlers
-    conn.onMessage(handleUnifiedMessage)
-    conn.onStateChange(handleUnifiedStateChange)
-    conn.onError(handleUnifiedError)
-
-    // Connect
-    await conn.connect()
-
-    console.log(`✅ [CUSTOMER API] Customer WebSocket connection established: ${unifiedConnectionType.value}`)
-  } catch (error) {
-    console.error('❌ [CUSTOMER API] Failed to initialize Customer WebSocket:', error)
-    unifiedConnectionState.value = 'error'
-  }
-}
-
-function handleUnifiedStateChange(newState: ConnectionState) {
-  console.log(`[Phase 2.1] Unified connection state changed: ${newState}`)
-  unifiedConnectionState.value = newState
-  unifiedIsConnected.value = newState === 'connected'
-}
-
-function handleUnifiedMessage(message: unknown) {
-  const msg = message as { type?: string; message?: Message }
-  console.log('✅ [CUSTOMER API] Received message:', msg.type, message)
-
-  // ✅ CUSTOMER API: Handle NEW_MESSAGE events
-  if (msg.type === 'NEW_MESSAGE' && msg.message) {
-    const messageId = msg.message.id
-
-    // 🔧 FIX: 檢查是否是本標籤發送的訊息（解決競態條件導致的重複問題）
-    // 當 WebSocket 廣播先於 handleMessageConfirmed 更新 message.id 時，
-    // 使用 sentMessageIds 來判斷是否應跳過
-    if (sentMessageIds.has(messageId)) {
-      console.log(`⏭️ [CUSTOMER API] Skipping own message (sentMessageIds): ${messageId}`)
-      return
-    }
-
-    // Add message to httpMessages using the addMessage method
-    // addMessage 也有 ID 去重，這是雙重保護
-    httpMessages.addMessage(msg.message)
-    console.log('📨 [CUSTOMER API] New message added to conversation')
-  }
-
-  // Force reactivity update
-  const conn = unifiedConnection.value
-  if (conn && conn.messages) {
-    const currentMsgCount = ((conn.messages as unknown) as Ref<Message[]>).value?.length || 0
-    console.log(`📊 [CUSTOMER API] Current messages count: ${currentMsgCount}`)
-  }
-}
-
-function handleUnifiedError(error: Error) {
-  console.error('[Phase 2.1] Unified connection error:', error)
-}
-
-// =================== End Phase 2.1 Functions ===================
-
-// Lifecycle with WebSocket and performance monitoring + error handling
-onMounted(async () => {
-  console.log('🔧 ConversationDetail mounted with WebSocket support')
-
-  // Start performance monitoring
-  mark('component-mount-start')
-  startMonitoring()
-
-  // Setup event listeners
-  document.addEventListener('keydown', handleGlobalKeydown)
-  document.addEventListener('visibilitychange', handleVisibilityChange)
-  document.addEventListener('mousemove', trackUserActivity)
-  document.addEventListener('click', trackUserActivity)
-
-  // Log performance summary in development
-  if (import.meta.env.DEV) {
-    // Performance monitoring with cache stats and error reporting
-    performanceReportInterval = setInterval(() => {
-      logPerformanceSummary()
-
-      // Cache performance stats
-      const cacheStats = performanceOptimizer.getCacheStats()
-      if (cacheStats.totalHits + cacheStats.totalMisses > 0) {
-        console.log('🧠 [Cache Performance]', {
-          hitRate: `${(cacheStats.hitRate * 100).toFixed(1)}%`,
-          size: cacheStats.size,
-          totalOperations: cacheStats.totalHits + cacheStats.totalMisses
-        })
-      }
-
-      // Error handling stats
-      const errorStats = errorHandler.getErrorStats()
-      if (errorStats.total > 0) {
-        console.log('🚨 [Error Statistics]', errorStats)
-      }
-    }, 10000) // 每10秒報告一次
-  }
-
-  // 🚀 Initialize unified connection (primary real-time system)
-  await initializeUnifiedConnection()
-  // CRITICAL FIX: Do NOT call loadConversation() here!
-  // The route watcher with immediate: true (line 1185-1211) already handles initial load
-  // Calling it twice causes race conditions and infinite reactive updates in AppLayout
-
-  // Simply mark mount complete - the route watcher will handle loading
-  measure('component-mount', 'component-mount-start')
-  console.log('✅ ConversationDetail mounted, route watcher will load conversation')
-})
-
-onUnmounted(() => {
-  // 🚀 Phase 2.1: Disconnect unified connection
-  if (unifiedConnection.value) {
-    console.log('[Phase 2.1] Disconnecting unified connection...')
-    unifiedConnection.value.disconnect()
-    unifiedConnection.value = null
-  }
-
-  // Clean up polling (still needed as it's not managed by eventHandler)
-  if (pollingInterval.value) {
-    clearTimeout(pollingInterval.value)
-    pollingInterval.value = null
-  }
-
-  // Clean up performance monitoring interval
-  if (performanceReportInterval) {
-    clearInterval(performanceReportInterval)
-    performanceReportInterval = null
-  }
-
-  // Note: Event listeners and timers are automatically cleaned up by useEventHandler
-
-  // Stop performance monitoring
-  stopMonitoring()
-
-  // Final performance report in development
-  if (import.meta.env.DEV) {
-    console.log('📊 [Final Performance Report]', getPerformanceReport())
-    console.log('🧠 [Cache Statistics]', performanceOptimizer.getCacheStats())
-  }
-})
-
-// Watch for route changes
-watch(
-  () => route.params.id,
-  async (newId) => {
-    if (!newId || typeof newId !== 'string') {return}
-
-    console.log(`🔄 Loading conversation: ${newId}`)
-    mark('conversation-load-start')
-
-    // Reset states using composable
-    loadingState.resetLoadingState()
-
-    try {
-      // Reset polling
-      currentPollingIndex.value = 0
-
-      // Load conversation
-      await loadConversation()
-
-      // 🔧 RECURSION FIX: No need to manually trigger updateMessages
-      // The watch on messages.value will automatically trigger when
-      // httpMessages.messages.value changes after loadConversation()
-      // Manual triggering causes double updates and infinite loops
-
-      measure('conversation-load', 'conversation-load-start')
-
-    } catch (error) {
-      console.error(`Failed to load conversation ${newId}:`, error)
-      measure('conversation-load-error', 'conversation-load-start')
-    }
-  },
-  { immediate: true, flush: 'post' }
-)
-
-// 🔍 Phase 2.1: Connection Comparison Monitoring (DEV only)
-if (import.meta.env.DEV) {
-  watch(
-    [
-      () => unifiedIsConnected.value,
-      () => unifiedConnectionType.value,
-      () => unifiedIsConnected.value
-    ],
-    ([unifiedConnected, unifiedType, sseConnected]) => {
-      console.log('[Phase 2.1 Monitor] Connection Status Comparison:', {
-        unified: {
-          connected: unifiedConnected,
-          type: unifiedType,
-          state: unifiedConnectionState.value
-        },
-        existing: {
-          sse: { connected: sseConnected },
-          protocol: currentProtocol.value
-        }
-      })
-    }
-  )
 }
 </script>
 
-<!-- 🎨 背景设计系统已在 main.ts 中全局导入，无需在此重复导入 -->
 <style scoped>
 /* ====== Minimal, Spacious Design System ====== */
 .conversation-detail {
@@ -2292,50 +987,48 @@ if (import.meta.env.DEV) {
   max-height: 200px;
 }
 
-/* 🔧 FIX: Fade transition for content switching (prevents flicker) */
-.fade-content-enter-active,
-.fade-content-leave-active {
-  transition: opacity 0.15s ease-out;
-}
-
-.fade-content-enter-from,
-.fade-content-leave-to {
-  opacity: 0;
-}
+/* 🔧 FIX Phase 1: Removed fade-content transition to eliminate flickering */
+/* Old transition code removed - no more 150ms animation delay */
 
 .messages-container-wrapper {
   flex: 1;
   min-height: 0;
   position: relative;
   contain: layout style paint;
-  will-change: contents; /* 🔧 FIX: Changed from scroll-position to contents */
-  /* 🎨 旧背景已移除 - 现在使用新的"对话舞台聚光"效果 (conversation-background.css) */
-  /* background: linear-gradient(
-    180deg,
-    rgba(248, 250, 252, 0.5) 0%,
-    rgba(241, 245, 249, 0.3) 50%,
-    rgba(248, 250, 252, 0.5) 100%
-  ); */
+  /* 🔧 FIX Phase 1: Removed will-change to reduce GPU overhead */
   padding: 0 1rem;
-  /* 🔧 FIX: Prevent layout shift during transitions */
+  /* 🔧 FIX Phase 1: All child layers use absolute positioning for instant switching */
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* 🔧 FIX: Ensure skeleton and content have consistent sizing */
-.messages-container-wrapper > .message-list-skeleton,
-.messages-container-wrapper > .virtual-message-list,
-.messages-container-wrapper > .empty-state-wrapper {
-  flex: 1;
-  min-height: 300px;
+/* 🔧 FIX Phase 1: Layer system for instant content switching (no transition) */
+.messages-container-wrapper > .skeleton-layer,
+.messages-container-wrapper > .empty-layer,
+.messages-container-wrapper > .messages-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 1rem;
+  /* ✅ No transition - instant visibility toggle */
+  transition: none;
+}
+
+/* Ensure layers take full space */
+.messages-container-wrapper > .skeleton-layer,
+.messages-container-wrapper > .messages-layer {
+  display: flex;
+  flex-direction: column;
 }
 
 .empty-state-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px; /* 🔧 FIX: Increased from 200px for consistency */
+  min-height: 300px;
 }
 
 .input-section {

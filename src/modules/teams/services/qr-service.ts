@@ -14,16 +14,19 @@ export class TeamQRService {
   private db: DrizzleD1Database;
   private kv?: KVNamespace;
   private lineBotId?: string;
+  private frontendUrl?: string;
 
-  constructor(database: D1Database, kv?: KVNamespace, lineBotId?: string) {
+  constructor(database: D1Database, kv?: KVNamespace, lineBotId?: string, frontendUrl?: string) {
     this.db = drizzle(database);
     this.kv = kv;
     this.lineBotId = lineBotId;
+    this.frontendUrl = frontendUrl;
   }
 
   /**
    * 生成團隊 QR 碼
    * Phase 2 優化：生成後同步到 teams.qrCode 欄位
+   * LIFF 方案：QR Code 指向 LIFF 頁面，確保 100% 團隊綁定成功率
    */
   async generateTeamQRCode(params: {
     teamId: number;
@@ -48,7 +51,8 @@ export class TeamQRService {
         } as QRCodeMetadata)
       },
       this.kv, // 傳遞 KV 命名空間
-      this.lineBotId // 傳遞 LINE Bot ID
+      this.lineBotId, // 傳遞 LINE Bot ID
+      this.frontendUrl // 傳遞前端 URL（用於 LIFF 方案）
     );
 
     // 2. 同步更新 teams.qrCode 欄位 (雙向同步機制)

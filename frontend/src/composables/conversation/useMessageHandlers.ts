@@ -88,9 +88,12 @@ export function useMessageHandlers(
   // ===== 狀態追蹤 =====
 
   /**
-   * 追蹤本標籤發送的訊息 ID，避免跨瀏覽器同步時重複
-   * 當 WebSocket 廣播先於 handleMessageConfirmed 到達時，使用此 Set 判斷是否應跳過
+   * 🔧 FIX: 雙重 ID 標記機制 - 解決消息確認與 WebSocket 廣播的競態條件
+   * pendingMessageIds: 追蹤正在發送的臨時訊息 ID (tempId)
+   * sentMessageIds: 追蹤已確認的真實訊息 ID (realId)
+   * 這樣即使 WebSocket 廣播先於 HTTP 響應到達，也能正確跳過重複消息
    */
+  const pendingMessageIds = new Set<string>()  // 🔧 新增：臨時 ID 集合
   const sentMessageIds = new Set<string>()
 
   /**
@@ -121,6 +124,10 @@ export function useMessageHandlers(
   function handleMessagePending(data: MessagePendingData) {
     console.log('⚡ [MessageHandlers] Message pending - showing immediately:', data.tempId)
     trackUserActivity()
+
+    // 🔧 FIX: 立即標記 tempId，防止 WebSocket 廣播重複
+    pendingMessageIds.add(data.tempId)
+    console.log(`📝 [MessageHandlers] Added to pendingMessageIds: ${data.tempId}`)
 
     // 創建樂觀訊息，立即顯示給用戶
     const optimisticMessage: Message = {
@@ -189,9 +196,11 @@ export function useMessageHandlers(
   function handleMessageConfirmed(data: MessageConfirmedData) {
     console.log('✅ [MessageHandlers] Message confirmed:', data.tempId, '->', data.realId)
 
-    // 立即將 realId 加入已發送集合（避免 WebSocket 廣播重複）
+    // 🔧 FIX: 轉移標記從 tempId 到 realId
+    pendingMessageIds.delete(data.tempId)
     sentMessageIds.add(data.realId)
-    console.log(`📝 [MessageHandlers] Added to sentMessageIds: ${data.realId}`)
+    console.log(`📝 [MessageHandlers] Transferred: ${data.tempId} → ${data.realId}`)
+    console.log(`📝 [MessageHandlers] pendingIds: ${pendingMessageIds.size}, sentIds: ${sentMessageIds.size}`)
 
     // 定時清理（5分鐘後移除）
     setTimeout(
@@ -410,10 +419,21 @@ export function useMessageHandlers(
   }
 
   /**
-   * 檢查消息 ID 是否已發送（用於 WebSocket 重複檢查）
+   * 🔧 FIX: 檢查消息 ID 是否已發送（雙重檢查）
+   * 檢查 tempId 和 realId 兩個集合，確保完整的競態條件保護
    */
   function isSentMessage(messageId: string): boolean {
-    return sentMessageIds.has(messageId)
+    const inPending = pendingMessageIds.has(messageId)
+    const inSent = sentMessageIds.has(messageId)
+
+    if (inPending || inSent) {
+      console.log(`📝 [MessageHandlers] Message ${messageId} found in:`, {
+        pending: inPending,
+        sent: inSent
+      })
+    }
+
+    return inPending || inSent
   }
 
   /**
@@ -443,6 +463,7 @@ export function useMessageHandlers(
     lastUserActivity,
 
     // Internal State (for testing)
+    pendingMessageIds,  // 🔧 新增：暴露供測試
     sentMessageIds
   }
 }
