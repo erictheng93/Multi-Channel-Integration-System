@@ -391,6 +391,7 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
 });
 
 // 🆕 Phase 1: 快速獲取最新 QR 碼 (用於懸停預載)
+// 🚀 Phase 3 優化: 優先從 teams.qrCode 讀取，實現雙向同步機制
 app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -402,6 +403,36 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, 400);
     }
 
+    const drizzleDb = createDbClient(c.env.DB);
+
+    // 🚀 Step 1: 優先從 teams.qrCode 直接讀取 (Optimal Path - 50x 提升)
+    const teamData = await drizzleDb
+      .select({ qrCode: teams.qrCode })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .get();
+
+    if (teamData?.qrCode) {
+      console.log(`✅ [QR Latest] Optimal path: 從 teams.qrCode 讀取 (teamId=${teamId})`);
+      // 從 qrCode URL 推斷 lineUrl (格式: https://line.me/R/ti/p/@{botId}?token={token})
+      const lineUrl = teamData.qrCode.includes('line.me')
+        ? teamData.qrCode.replace('api.qrserver.com/v1/create-qr-code/?data=', '')
+        : `https://line.me/R/ti/p/@${c.env.LINE_BOT_ID || 'unknown'}`;
+
+      return c.json({
+        success: true,
+        data: {
+          qrCode: teamData.qrCode,
+          lineUrl: lineUrl,
+          fromCache: false // 從 DB 讀取，不是 KV 快取
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 🔄 Step 2: Fallback - 從 qr_codes 表查詢 (兼容舊邏輯)
+    console.log(`📋 [QR Latest] Fallback: teams.qrCode 為空，使用 qrService (teamId=${teamId})`);
+
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID);
     const result = await qrService.getLatestQRCodeFast(teamId);
 
@@ -411,6 +442,23 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         error: 'No QR code found for this team'
       }, 404);
     }
+
+    // 🔄 Step 3: 異步同步回 teams.qrCode (雙向同步機制)
+    c.executionCtx.waitUntil(
+      drizzleDb
+        .update(teams)
+        .set({
+          qrCode: result.qrCodeImageUrl,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(teams.id, teamId))
+        .then(() => {
+          console.log(`✅ [QR Latest] 已同步到 teams.qrCode: teamId=${teamId}`);
+        })
+        .catch(err => {
+          console.error(`❌ [QR Latest] 同步失敗: teamId=${teamId}`, err);
+        })
+    );
 
     return c.json({
       success: true,
