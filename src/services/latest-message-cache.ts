@@ -24,11 +24,14 @@ export interface CachedLatestMessage {
 export class LatestMessageCache {
   private readonly kv: KVNamespace;
   private readonly db: ReturnType<typeof drizzle>;
+  private readonly env: Bindings;
   private readonly TTL = 86400; // 24 hours
+  private readonly USE_DO_BATCHING = true; // Feature flag for DO-based batching
 
   constructor(env: Bindings) {
     this.kv = env.CACHE!;
     this.db = drizzle(env.DB, { schema });
+    this.env = env;
   }
 
   /**
@@ -107,6 +110,9 @@ export class LatestMessageCache {
 
   /**
    * Set latest message in cache
+   *
+   * Phase 1.4b Optimization: Uses LatestMessageCacheCoordinator DO for batched updates
+   * Falls back to direct KV write if DO is unavailable or batching is disabled
    */
   async setLatestMessage(conversationId: string, message: Omit<CachedLatestMessage, 'cachedAt'>): Promise<void> {
     const cacheKey = `latest_msg:${conversationId}`;
@@ -115,12 +121,57 @@ export class LatestMessageCache {
       cachedAt: new Date().toISOString()
     };
 
+    // Phase 1.4b: Use DO-based batching if enabled and available
+    if (this.USE_DO_BATCHING && this.env.LATEST_MESSAGE_COORDINATOR) {
+      try {
+        await this.scheduleDOUpdate(conversationId);
+        console.log(`✅ [LatestMessageCache] Scheduled DO update for conversation ${conversationId}`);
+        return;
+      } catch (error) {
+        console.warn(`⚠️ [LatestMessageCache] DO scheduling failed for ${conversationId}, falling back to direct KV:`, error);
+        // Fall through to direct KV write
+      }
+    }
+
+    // Fallback: Direct KV write (original behavior)
     try {
       await this.kv.put(cacheKey, JSON.stringify(cached), { expirationTtl: this.TTL });
-      console.log(`✅ [LatestMessageCache] Cached latest message for conversation ${conversationId}`);
+      console.log(`✅ [LatestMessageCache] Cached latest message for conversation ${conversationId} (direct KV)`);
     } catch (error) {
       console.error(`❌ [LatestMessageCache] Failed to cache message for ${conversationId}:`, error);
     }
+  }
+
+  /**
+   * Schedule a cache update via LatestMessageCacheCoordinator DO
+   * Phase 1.4b: Batch updates with 5-second window for 90%+ KV write reduction
+   */
+  private async scheduleDOUpdate(conversationId: string, priority: 'low' | 'normal' | 'high' = 'normal'): Promise<void> {
+    if (!this.env.LATEST_MESSAGE_COORDINATOR) {
+      throw new Error('LATEST_MESSAGE_COORDINATOR binding not available');
+    }
+
+    // Get the global coordinator instance
+    const coordinatorId = this.env.LATEST_MESSAGE_COORDINATOR.idFromName('global');
+    const coordinator = this.env.LATEST_MESSAGE_COORDINATOR.get(coordinatorId);
+
+    // Schedule the update
+    const response = await coordinator.fetch('http://localhost/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId,
+        priority
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DO scheduling failed: ${error}`);
+    }
+
+    const result = await response.json() as any;
+    console.log(`📝 [LatestMessageCache] DO scheduled for ${conversationId}, queue size: ${result.queueSize}`);
   }
 
   /**
