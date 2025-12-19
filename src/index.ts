@@ -794,6 +794,19 @@ app.use('/api/channels/*', jwtAuth);
 // Register channel management routes
 app.route('/api/channels', channelHandler);
 
+// ==================== LIFF Handler (QR Code Team Binding) ====================
+import liffHandler from './handlers/liff';
+
+// LIFF endpoints are PUBLIC (no auth required) - used by LINE users
+app.route('/api/liff', liffHandler);
+
+log.info('LIFF endpoints registered (public)', {
+  endpoints: [
+    'POST /api/liff/verify-token',
+    'POST /api/liff/bind-team'
+  ]
+});
+
 // ==================== Task Reminder System (Phase 4: Notification Integration) ====================
 import taskReminderHandler, { handleScheduledEvent } from './handlers/task-reminder-main';
 app.route('/api/reminders', taskReminderHandler);

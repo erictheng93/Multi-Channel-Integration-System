@@ -14,7 +14,7 @@
  * - 對話操作 (由 useConversationActions 處理)
  */
 
-import { ref, computed, type Ref } from 'vue'
+import { ref, computed, nextTick, type Ref } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
 import { useCustomerMessages } from '@/composables/useCustomerMessages'
 import { useSmoothLoading } from '@/composables/useSmoothLoading'
@@ -68,8 +68,9 @@ export function useConversationState(
     debounceDelay: 50
   })
 
-  // Recursion guard
-  let isUpdatingMessages = false
+  // 🔧 FIX: 使用消息更新隊列替代固定窗口遞歸保護
+  const updateQueue = ref<Message[][]>([])
+  const isProcessingQueue = ref(false)
   let lastMessagesLength = 0
 
   // ===== Loading State Management =====
@@ -187,27 +188,69 @@ export function useConversationState(
   }
 
   /**
-   * 更新平滑加載消息（debounced）
+   * 🔧 FIX Phase 1: 批量消息更新機制 - 使用 Vue nextTick 優化
    */
-  function debouncedUpdateMessages(newMessages: Message[]) {
-    // Prevent recursive calls
-    if (isUpdatingMessages) {return}
-
-    // Skip if messages array hasn't actually changed
+  function queueMessageUpdate(newMessages: Message[]) {
+    // 過濾：只有當消息真的變化時才入隊
     if (newMessages.length === lastMessagesLength && lastMessagesLength > 0) {
+      console.log('📝 [useConversationState] Messages length unchanged, skipping queue')
       return
     }
 
-    isUpdatingMessages = true
+    console.log(`📝 [useConversationState] Queuing message update: ${newMessages.length} messages`)
+    updateQueue.value.push(newMessages)
     lastMessagesLength = newMessages.length
 
-    try {
-      updateMessages(newMessages, true)
-    } finally {
-      setTimeout(() => {
-        isUpdatingMessages = false
-      }, 300)
+    // 觸發隊列處理
+    processUpdateQueue()
+  }
+
+  /**
+   * 🔧 FIX Phase 1: 批量處理消息更新隊列 - 使用 nextTick 代替 setTimeout
+   */
+  async function processUpdateQueue() {
+    // 如果已經在處理或隊列為空，直接返回
+    if (isProcessingQueue.value || updateQueue.value.length === 0) {
+      return
     }
+
+    isProcessingQueue.value = true
+    console.log(`📝 [useConversationState] Processing update queue: ${updateQueue.value.length} items`)
+
+    try {
+      // 🔧 FIX Phase 1: 批量處理所有待更新的消息
+      // 取最新的消息數據（隊列中最後一個）
+      const latestMessages = updateQueue.value[updateQueue.value.length - 1]
+
+      // ✅ TypeScript safety check
+      if (!latestMessages) {
+        console.warn('⚠️ [useConversationState] No messages in queue, skipping update')
+        return
+      }
+
+      // 清空隊列
+      updateQueue.value = []
+
+      // 使用 nextTick 確保在 Vue 的下一個更新週期統一應用
+      await nextTick()
+
+      try {
+        updateMessages(latestMessages, true)
+        console.log(`✅ [useConversationState] Batch update applied: ${latestMessages.length} messages`)
+      } catch (error) {
+        console.error('❌ [useConversationState] Error updating messages:', error)
+      }
+    } finally {
+      isProcessingQueue.value = false
+      console.log('✅ [useConversationState] Queue processing completed')
+    }
+  }
+
+  /**
+   * 🔧 DEPRECATED: 保留舊函數名以兼容，但內部使用新的隊列機制
+   */
+  function debouncedUpdateMessages(newMessages: Message[]) {
+    queueMessageUpdate(newMessages)
   }
 
   /**
@@ -332,8 +375,13 @@ export function useConversationState(
     loadMoreMessages,
     addMessage,
     resetLoadingState,
-    debouncedUpdateMessages,
-    setHistoryLoading
+    debouncedUpdateMessages,  // 🔧 向後兼容（內部使用隊列）
+    queueMessageUpdate,        // 🔧 新增：新的隊列 API
+    setHistoryLoading,
+
+    // 🔧 新增：供測試和調試
+    updateQueue,
+    isProcessingQueue
   }
 }
 

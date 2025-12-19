@@ -39,7 +39,7 @@ const router = createRouter({
     {
       path: '/conversations/:id',
       name: 'ConversationDetail',
-      component: () => import('@/views/ConversationDetail.vue'),
+      component: () => import('@/views/ConversationDetail.vue'),  // 使用原始 2890 行版本
       meta: {
         requiresAuth: true,
         title: '對話詳情'
@@ -218,17 +218,27 @@ const router = createRouter({
   ]
 })
 
+// 🔧 FIX Phase 1: Auth state cache to reduce navigation delay
+interface AuthCache {
+  isAuthenticated: boolean
+  requiresAuth: boolean
+  timestamp: number
+}
+
+let authStateCache: AuthCache | null = null
+const AUTH_CACHE_TTL = 5000 // 5 seconds cache validity
+
 router.beforeEach(async (to, from, next) => {
   // 簡化的調試日誌
   console.log('🔀 Navigation:', from.path, '->', to.path)
-  
-  // Set page title
+
+  // Set page title immediately (no delay)
   if (to.meta.title) {
     document.title = `${to.meta.title} - Multi-Channel Support`
   } else {
     document.title = 'Multi-Channel Support'
   }
-  
+
   // 防止重複循環 - 如果已在目標路徑則直接允許
   if (to.path === from.path) {
     console.log('⚠️ Same path navigation detected, allowing...')
@@ -236,11 +246,47 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // 🔧 FIX Phase 1: Use cached auth state if available and fresh
+  const now = Date.now()
+  const requiresAuth = to.meta.requiresAuth !== false // Default to true
+
+  if (authStateCache && (now - authStateCache.timestamp) < AUTH_CACHE_TTL) {
+    // Cache is fresh
+    if (!requiresAuth) {
+      // Public route - allow immediately
+      console.log('✅ [Router Cache] Public route, allowing...')
+      next()
+      return
+    }
+
+    if (authStateCache.isAuthenticated && authStateCache.requiresAuth) {
+      // User was authenticated recently - allow immediately
+      console.log('✅ [Router Cache] Using cached auth state, allowing...')
+      next()
+      return
+    }
+  }
+
   // Use combined auth guard for all authentication logic
   try {
     await combinedAuthGuard(to, from, next)
+
+    // 🔧 FIX Phase 1: Update cache after successful auth check
+    authStateCache = {
+      isAuthenticated: true,
+      requiresAuth: requiresAuth,
+      timestamp: now
+    }
   } catch (error) {
     console.error('Router guard error:', error)
+
+    // 🔧 FIX Phase 1: Cache the failed state
+    authStateCache = {
+      isAuthenticated: false,
+      requiresAuth: requiresAuth,
+      timestamp: now
+    }
+
     // 確保即使出錯也能繼續導航
     next()
   }
