@@ -22,6 +22,9 @@ import {
   requireManagerOrAdmin,
   requireAdmin
 } from '@/middleware/auth';
+import { createDbClient } from '@/db/drizzle-factory';
+import { teams, qrCodes } from '@/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -420,6 +423,101 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
     });
   } catch (error) {
     console.error('Get latest QR code error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to get QR code',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 🚀 Phase 3: 極速查詢端點 - 優先從 teams.qrCode 讀取 (雙向同步優化)
+app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const drizzleDb = createDbClient(c.env.DB);
+
+    // Step 1: 優先從 teams 表直接讀取 (最快!)
+    const teamData = await drizzleDb
+      .select({ qrCode: teams.qrCode })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .get();
+
+    if (teamData?.qrCode) {
+      console.log(`✅ [Fast QR Query] 從 teams 表直接讀取: teamId=${teamId}`);
+      return c.json({
+        success: true,
+        data: {
+          qrCode: teamData.qrCode,
+          source: 'teams_table',  // 資料來源標記
+          performance: 'optimal'   // 效能標記
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Step 2: Fallback - 從 qr_codes 表查詢並同步回 teams 表
+    console.log(`📋 [Fast QR Query] teams.qrCode 為空，從 qr_codes 表查詢: teamId=${teamId}`);
+
+    const latestQR = await drizzleDb
+      .select()
+      .from(qrCodes)
+      .where(
+        and(
+          eq(qrCodes.teamId, teamId),
+          eq(qrCodes.isActive, true)
+        )
+      )
+      .orderBy(desc(qrCodes.createdAt))
+      .limit(1)
+      .get();
+
+    if (latestQR) {
+      // 異步同步回 teams 表 (不阻塞響應)
+      drizzleDb
+        .update(teams)
+        .set({
+          qrCode: latestQR.qrCodeImageUrl,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(teams.id, teamId))
+        .then(() => {
+          console.log(`✅ [Fast QR Query] 已同步到 teams.qrCode: teamId=${teamId}`);
+        })
+        .catch(err => {
+          console.error(`❌ [Fast QR Query] 同步失敗: teamId=${teamId}`, err);
+        });
+
+      return c.json({
+        success: true,
+        data: {
+          qrCode: latestQR.qrCodeImageUrl,
+          lineUrl: latestQR.lineUrl,
+          source: 'qr_codes_table',  // 資料來源標記
+          performance: 'fallback'     // 效能標記
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Step 3: 沒有找到任何 QR Code
+    return c.json({
+      success: false,
+      error: 'No QR code found for this team',
+      timestamp: new Date().toISOString()
+    }, 404);
+
+  } catch (error) {
+    console.error('Fast QR code query error:', error);
     return c.json({
       success: false,
       error: 'Failed to get QR code',
