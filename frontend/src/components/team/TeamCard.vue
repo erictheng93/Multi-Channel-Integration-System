@@ -952,61 +952,73 @@ const handleGenerateQR = async () => {
 }
 
 /**
- * 下載 QR Code 圖片 - Flex Bubble Card 樣式
- * 生成與畫面上完全一致的 Flex Bubble Card PNG 圖片
- * 使用 Canvas API 繪製完整卡片樣式
+ * 📥 下載 QR Code 圖片 - Flex Bubble Card 樣式 (Image 2 設計)
+ *
+ * 功能：生成完整的 LINE 官方帳號 QR Code 卡片
+ *
+ * 設計規格：
+ * - 完全符合 QRcodeDesign.html 的視覺設計
+ * - 包含：QR Code、團隊名稱、副標題、操作按鈕
+ * - iOS/Apple 風格設計語言
+ * - 3x 高清輸出 (780x600+ px)，適合印刷
+ *
+ * 輸出格式：PNG (高質量無損壓縮)
+ * 檔案命名：{團隊名稱}_LINE_QR_{時間戳}.png
  */
 const downloadQRCode = async () => {
   if (!currentQRCode.value?.qrCode) {return}
 
   const qrCodeDataUrl = currentQRCode.value.qrCode
   const teamName = props.team.name
-  const filename = `DAC_QRCode_${Date.now()}.png`
 
   try {
-    // 設計參數 (2x 縮放以獲得高清輸出)
-    const scale = 2
+    // 🎨 設計參數 (3x 縮放以獲得印刷級高清輸出)
+    const scale = 3
     const cardWidth = 260 * scale
     const borderRadius = 20 * scale
 
-    // Padding 設定 (對應 QRcodeDesign.html)
+    // 📐 Padding 設定 (完全對應 QRcodeDesign.html)
     const bodyPaddingTop = 35 * scale
     const footerPaddingX = 20 * scale
     const footerPaddingBottom = 20 * scale
 
-    // QR Code 尺寸
+    // 🎯 QR Code 尺寸
     const qrSize = 140 * scale
 
-    // 文字設定
+    // ✍️ 文字設定
     const titleFontSize = 19 * scale
     const titleMarginTop = 24 * scale
     const subtitleFontSize = 13 * scale
     const subtitleMarginTop = 8 * scale
 
-    // 按鈕設定
+    // 🔘 按鈕設定
     const btnHeight = 40 * scale
     const btnRadius = 10 * scale
     const btnFontSize = 15 * scale
     const btnMarginTop = 25 * scale
 
-    // 計算總高度
-    const titleHeight = titleFontSize * 1.2
-    const subtitleHeight = subtitleFontSize * 1.2
+    // 📏 計算總高度 (增加行高確保文字不被裁切)
+    const titleHeight = titleFontSize * 1.3
+    const subtitleHeight = subtitleFontSize * 1.3
     const cardHeight = bodyPaddingTop + qrSize + titleMarginTop + titleHeight +
                        subtitleMarginTop + subtitleHeight + btnMarginTop +
                        btnHeight + footerPaddingBottom
 
-    // 建立 Canvas
+    // 🎨 建立高清 Canvas (禁用 alpha 通道以提升性能)
     const canvas = document.createElement('canvas')
     canvas.width = cardWidth
     canvas.height = cardHeight
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: false })
 
     if (!ctx) {
       throw new Error('無法創建 Canvas 2D 上下文')
     }
 
-    // 輔助函數：繪製圓角矩形
+    // 🔧 啟用高質量渲染設定
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+
+    // 🎨 輔助函數：繪製完美圓角矩形
     const drawRoundedRect = (
       x: number, y: number, w: number, h: number, r: number
     ) => {
@@ -1023,8 +1035,8 @@ const downloadQRCode = async () => {
       ctx.closePath()
     }
 
-    // 1. 繪製卡片背景 (白色 + 圓角 + 陰影)
-    // 先繪製陰影
+    // 1️⃣ 繪製卡片背景 (純白 + iOS 風格圓角 + 柔和陰影)
+    // 先繪製外陰影效果
     ctx.shadowColor = 'rgba(0, 0, 0, 0.08)'
     ctx.shadowBlur = 12 * scale
     ctx.shadowOffsetX = 0
@@ -1034,13 +1046,13 @@ const downloadQRCode = async () => {
     drawRoundedRect(0, 0, cardWidth, cardHeight, borderRadius)
     ctx.fill()
 
-    // 關閉陰影
+    // 關閉陰影避免影響後續繪製
     ctx.shadowColor = 'transparent'
     ctx.shadowBlur = 0
     ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = 0
 
-    // 2. 載入並繪製 QR Code
+    // 2️⃣ 載入並繪製 QR Code (高質量縮放)
     const qrImg = new window.Image()
     await new Promise<void>((resolve, reject) => {
       qrImg.onload = () => resolve()
@@ -1048,56 +1060,65 @@ const downloadQRCode = async () => {
       qrImg.src = qrCodeDataUrl
     })
 
-    // QR Code 位置 (置中)
+    // QR Code 水平置中
     const qrX = (cardWidth - qrSize) / 2
     const qrY = bodyPaddingTop
     ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
 
-    // 3. 繪製標題 (團隊名稱)
-    ctx.fillStyle = '#000000'
-    ctx.font = `600 ${titleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+    // 3️⃣ 繪製標題 (團隊名稱 - iOS 風格字體)
+    ctx.fillStyle = '#000000'  // 純黑標題
+    ctx.font = `600 ${titleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
 
     const titleY = qrY + qrSize + titleMarginTop
     ctx.fillText(teamName, cardWidth / 2, titleY)
 
-    // 4. 繪製副標題
-    ctx.fillStyle = '#8E8E93'
-    ctx.font = `400 ${subtitleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+    // 4️⃣ 繪製副標題 (iOS 灰色)
+    ctx.fillStyle = '#8E8E93'  // Apple System Gray
+    ctx.font = `400 ${subtitleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
 
     const subtitleY = titleY + titleHeight + subtitleMarginTop
     ctx.fillText('掃描加入 LINE 官方帳號', cardWidth / 2, subtitleY)
 
-    // 5. 繪製按鈕
+    // 5️⃣ 繪製按鈕 (iOS Secondary 風格 - 灰底藍字)
     const btnWidth = cardWidth - (footerPaddingX * 2)
     const btnX = footerPaddingX
     const btnY = subtitleY + subtitleHeight + btnMarginTop
 
-    // 按鈕背景
+    // 按鈕背景 - iOS Secondary Gray
     ctx.fillStyle = '#F2F2F7'
     drawRoundedRect(btnX, btnY, btnWidth, btnHeight, btnRadius)
     ctx.fill()
 
-    // 按鈕文字
+    // 按鈕文字 - Apple Blue
     ctx.fillStyle = '#007AFF'
-    ctx.font = `600 ${btnFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+    ctx.font = `600 ${btnFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText('掃描 QR Code 加入', cardWidth / 2, btnY + btnHeight / 2)
 
-    // 轉換為 PNG 並下載
+    // 6️⃣ 轉換為高質量 PNG 並下載
+    // 生成專業檔名格式: {團隊名稱}_LINE_QR_{YYYYMMDD}.png
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    const dateStr = `${year}${month}${day}`
+
     const pngDataUrl = canvas.toDataURL('image/png', 1.0)
     const link = document.createElement('a')
     link.href = pngDataUrl
-    link.download = filename
+    link.download = `${teamName}_LINE_QR_${dateStr}.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
 
-    showSuccess('QR Code 卡片已下載')
+    showSuccess(`✅ QR Code 卡片已下載 (${teamName})`)
   } catch (error) {
-    console.error('QR Code 下載失敗:', error)
+    console.error('❌ QR Code 下載失敗:', error)
     showError('QR Code 下載失敗，請稍後再試')
   }
 }

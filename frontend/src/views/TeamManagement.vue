@@ -765,191 +765,171 @@
         </div>
       </div>
 
-      <!-- QR 碼顯示模態框 -->
+      <!-- QR 碼顯示模態框 - Flex Bubble Card 設計 -->
       <div
         v-if="showQRModal"
         class="modal-overlay"
         @click="closeQRModal"
       >
+        <!-- 載入中狀態 -->
         <div
-          class="modal qr-modal"
+          v-if="qrGenerating"
+          class="flex-bubble"
           @click.stop
         >
-          <div class="modal-header">
-            <h2>團隊 QR 碼</h2>
+          <div class="bubble-body">
+            <div class="qr-skeleton">
+              <div class="qr-skeleton-inner">
+                <div class="qr-pulse" />
+                <span class="qr-loading-text">載入中...</span>
+              </div>
+            </div>
+            <h2 class="bubble-title">
+              {{ currentTeam?.name || '載入中...' }}
+            </h2>
+            <p class="bubble-subtitle">
+              正在載入 QR Code...
+            </p>
+          </div>
+          <div class="bubble-footer">
             <button
-              class="close-btn"
+              class="bubble-btn"
               @click="closeQRModal"
             >
-              &times;
+              取消
             </button>
           </div>
-          <div class="modal-body qr-content">
-            <!-- 載入中狀態 -->
-            <div
-              v-if="qrGenerating"
-              class="qr-display"
+        </div>
+
+        <!-- 尚未生成 QR Code 警示狀態 -->
+        <div
+          v-else-if="!currentQRCode"
+          class="flex-bubble flex-bubble-empty"
+          @click.stop
+        >
+          <div class="bubble-body">
+            <div class="empty-icon">
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#f59e0b"
+                stroke-width="1.5"
+              >
+                <rect
+                  x="3"
+                  y="3"
+                  width="7"
+                  height="7"
+                />
+                <rect
+                  x="14"
+                  y="3"
+                  width="7"
+                  height="7"
+                />
+                <rect
+                  x="3"
+                  y="14"
+                  width="7"
+                  height="7"
+                />
+                <rect
+                  x="14"
+                  y="14"
+                  width="3"
+                  height="3"
+                />
+                <rect
+                  x="18"
+                  y="14"
+                  width="3"
+                  height="3"
+                />
+                <rect
+                  x="14"
+                  y="18"
+                  width="3"
+                  height="3"
+                />
+                <rect
+                  x="18"
+                  y="18"
+                  width="3"
+                  height="3"
+                />
+                <line
+                  x1="2"
+                  y1="2"
+                  x2="22"
+                  y2="22"
+                  stroke="#ef4444"
+                  stroke-width="2"
+                />
+              </svg>
+            </div>
+            <h2 class="bubble-title">
+              尚未生成 QR Code
+            </h2>
+            <p class="bubble-subtitle bubble-subtitle-warning">
+              此團隊尚未建立專屬 QR Code<br>
+              請點擊團隊卡片進入詳情頁面生成
+            </p>
+          </div>
+          <div class="bubble-footer">
+            <button
+              class="bubble-btn"
+              @click="closeQRModal"
             >
-              <div class="qr-skeleton">
+              了解
+            </button>
+          </div>
+        </div>
+
+        <!-- QR 碼顯示狀態 - Flex Bubble Card -->
+        <div
+          v-else
+          class="flex-bubble"
+          @click.stop
+        >
+          <div class="bubble-body">
+            <!-- QR Code Image -->
+            <div class="qr-image-wrapper">
+              <!-- 骨架屏（圖片載入中） -->
+              <div
+                v-if="qrImageLoading"
+                class="qr-skeleton"
+              >
                 <div class="qr-skeleton-inner">
                   <div class="qr-pulse" />
-                  <span class="qr-loading-text">載入中...</span>
                 </div>
               </div>
-            </div>
-
-            <!-- 尚未生成 QR Code 警示狀態 -->
-            <div
-              v-else-if="!currentQRCode"
-              class="qr-empty-state"
-            >
-              <div class="empty-icon">
-                <svg
-                  width="64"
-                  height="64"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#f59e0b"
-                  stroke-width="1.5"
-                >
-                  <rect
-                    x="3"
-                    y="3"
-                    width="7"
-                    height="7"
-                  />
-                  <rect
-                    x="14"
-                    y="3"
-                    width="7"
-                    height="7"
-                  />
-                  <rect
-                    x="3"
-                    y="14"
-                    width="7"
-                    height="7"
-                  />
-                  <rect
-                    x="14"
-                    y="14"
-                    width="3"
-                    height="3"
-                  />
-                  <rect
-                    x="18"
-                    y="14"
-                    width="3"
-                    height="3"
-                  />
-                  <rect
-                    x="14"
-                    y="18"
-                    width="3"
-                    height="3"
-                  />
-                  <rect
-                    x="18"
-                    y="18"
-                    width="3"
-                    height="3"
-                  />
-                  <line
-                    x1="2"
-                    y1="2"
-                    x2="22"
-                    y2="22"
-                    stroke="#ef4444"
-                    stroke-width="2"
-                  />
-                </svg>
-              </div>
-              <h3 class="empty-title">
-                尚未生成 QR Code
-              </h3>
-              <p class="empty-description">
-                此團隊尚未建立專屬 QR Code。<br>
-                請點擊團隊卡片進入<strong>團隊詳情</strong>，<br>
-                在「QR Code 資訊」區塊中生成。
-              </p>
-              <div class="empty-hint">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                  />
-                  <path d="M12 16v-4" />
-                  <path d="M12 8h.01" />
-                </svg>
-                <span>提示：點擊團隊名稱或頭像即可進入詳情頁面</span>
-              </div>
-            </div>
-
-            <!-- QR 碼顯示狀態 -->
-            <template v-else>
-              <div class="qr-display">
-                <!-- 骨架屏（圖片載入中） -->
-                <div
-                  v-if="qrImageLoading"
-                  class="qr-skeleton"
-                >
-                  <div class="qr-skeleton-inner">
-                    <div class="qr-pulse" />
-                    <span class="qr-loading-text">載入中...</span>
-                  </div>
-                </div>
-                <!-- QR 碼圖片 (帶淡入動畫) -->
-                <img
-                  v-show="!qrImageLoading"
-                  :src="currentQRCode"
-                  alt="Team QR Code"
-                  class="qr-image qr-fade-in"
-                  @load="onQRImageLoad"
-                  @error="onQRImageError"
-                >
-              </div>
-              <p class="qr-description">
-                掃描此 QR 碼可快速加入團隊 {{ currentTeam?.name }}
-              </p>
-              <div class="modal-actions">
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  @click="downloadQRCode"
-                >
-                  📥 下載
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-primary"
-                  @click="closeQRModal"
-                >
-                  關閉
-                </button>
-              </div>
-            </template>
-
-            <!-- 無 QR Code 時的關閉按鈕 -->
-            <div
-              v-if="!currentQRCode && !qrGenerating"
-              class="modal-actions"
-            >
-              <button
-                type="button"
-                class="btn btn-primary"
-                @click="closeQRModal"
+              <!-- QR 碼圖片 -->
+              <img
+                v-show="!qrImageLoading"
+                :src="currentQRCode"
+                alt="LINE QR Code"
+                class="qr-image qr-fade-in"
+                @load="onQRImageLoad"
+                @error="onQRImageError"
               >
-                了解
-              </button>
             </div>
+            <!-- Text Content -->
+            <h2 class="bubble-title">
+              {{ currentTeam?.name }}
+            </h2>
+            <p class="bubble-subtitle">
+              掃描加入 LINE 官方帳號
+            </p>
+          </div>
+          <div class="bubble-footer">
+            <button
+              class="bubble-btn"
+              @click="downloadQRCode"
+            >
+              下載 QR Code
+            </button>
           </div>
         </div>
       </div>
@@ -1021,13 +1001,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables'
 import { useTeamStore } from '@/stores/team'
 import { useQRCodeStore } from '@/stores/qrcode'
 import { useToast } from '@/composables/useToast'
 import { teamApi } from '@/api/team'
+
+// 🆕 Background QR Preload Service
+import { qrPreloadService } from '@/services/qrPreloadService'
+import { isFeatureEnabled, checkNetworkConditions, getFeatureConfig } from '@/config/features'
+import type { QRPreloadConfig } from '@/config/features'
 
 const route = useRoute()
 import type { TeamMember } from '@/types'
@@ -1325,6 +1310,9 @@ const loadTeams = async () => {
       // stats.teamCount 依賴 teamStore.teams，不同步會導致顯示 0
       teamStore.teams.splice(0, teamStore.teams.length, ...response.data)
       console.log('✔️ 團隊數據已更新:', teams.value.length, '個團隊')
+
+      // 🆕 Phase 1: 啟動背景預載 QR Code
+      startBackgroundQRPreload()
     } else {
       console.warn('⚠️ API 調用成功但沒有數據或失敗:', response)
     }
@@ -1768,9 +1756,57 @@ const handleMemberUpdated = async () => {
   }
 }
 
-// 🆕 Phase 1: 懸停預載 QR 碼 (在用戶點擊前就開始載入)
+// ==================== 🆕 Background QR Preload ====================
+
+/**
+ * 啟動背景預載 QR Code
+ *
+ * 策略：
+ * - 檢查 Feature Flag 是否啟用
+ * - 檢查網路條件是否符合
+ * - 延遲啟動以確保頁面完全可互動 (TTI)
+ * - 使用 qrPreloadService 智能載入
+ */
+const startBackgroundQRPreload = () => {
+  // 檢查 Feature Flag
+  if (!isFeatureEnabled('QR_BACKGROUND_PRELOAD')) {
+    console.log('🚫 [TeamManagement] Background QR preload is disabled (Feature Flag)')
+    return
+  }
+
+  // 檢查網路條件
+  if (!checkNetworkConditions()) {
+    console.log('🚫 [TeamManagement] Background QR preload is disabled (Network Conditions)')
+    return
+  }
+
+  // 檢查是否有團隊
+  if (teams.value.length === 0) {
+    console.log('📭 [TeamManagement] No teams to preload')
+    return
+  }
+
+  // 取得配置
+  const config = getFeatureConfig<QRPreloadConfig>('QR_BACKGROUND_PRELOAD')
+
+  // 延遲啟動，確保頁面可互動
+  const idleTimeout = config?.idleTimeout || 2000
+  setTimeout(() => {
+    console.log(`🚀 [TeamManagement] Starting background QR preload for ${teams.value.length} teams`)
+    qrPreloadService.start(teams.value)
+  }, idleTimeout)
+}
+
+// 🆕 Phase 1 (Fallback): 懸停預載 QR 碼（保留作為雙重保險）
 // 使用 Pinia Store 統一管理 QR 碼狀態
 const prefetchTeamQR = async (team: Team) => {
+  // 如果背景預載已啟用且快取有效，跳過
+  if (isFeatureEnabled('QR_BACKGROUND_PRELOAD') && qrCodeStore.isCacheValid(team.id)) {
+    console.log(`⚡ [TeamManagement] QR already preloaded for team ${team.id}, skipping hover prefetch`)
+    return
+  }
+
+  // Fallback: Hover prefetch（適用於背景預載禁用或快取未命中的情況）
   await qrCodeStore.prefetchQRCode(team.id)
 }
 
@@ -1835,85 +1871,169 @@ const onQRImageError = () => {
 }
 
 /**
- * 下載 QR 碼
- * 將 SVG 格式的 QR Code 轉換為 PNG 後下載
- * 解決 SVG Data URL 直接下載後無法正確顯示的問題
+ * 📥 下載 QR Code 圖片 - Flex Bubble Card 樣式 (Image 2 設計)
+ *
+ * 功能：生成完整的 LINE 官方帳號 QR Code 卡片
+ * - 完全符合 QRcodeDesign.html 的視覺設計
+ * - 包含：QR Code、團隊名稱、副標題、操作按鈕
+ * - iOS/Apple 風格設計語言
+ * - 3x 高清輸出，適合印刷
+ *
+ * 輸出格式：PNG (高質量無損壓縮)
  */
 const downloadQRCode = async () => {
   if (!currentQRCode.value || !currentTeam.value) {return}
 
-  // 生成檔名：QRCode_{時間戳}.png
-  const filename = `QRCode_${Date.now()}.png`
+  const qrCodeDataUrl = currentQRCode.value
+  const teamName = currentTeam.value.name
 
   try {
-    // 如果是 base64 格式
-    if (currentQRCode.value.startsWith('data:')) {
-      // 檢查是否為 SVG 格式 (需要轉換為 PNG)
-      if (currentQRCode.value.startsWith('data:image/svg+xml')) {
-        // 使用 Canvas 將 SVG 轉換為 PNG
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          throw new Error('無法創建 Canvas 2D 上下文')
-        }
-        const img = new window.Image()
+    // 🎨 設計參數 (3x 縮放以獲得印刷級高清輸出)
+    const scale = 3
+    const cardWidth = 260 * scale
+    const borderRadius = 20 * scale
 
-        // 建立 Promise 處理圖片載入
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => {
-            // 設定 Canvas 大小 (高品質輸出)
-            const size = 400 // PNG 輸出大小
-            canvas.width = size
-            canvas.height = size
+    // 📐 Padding 設定 (完全對應 QRcodeDesign.html)
+    const bodyPaddingTop = 35 * scale
+    const footerPaddingX = 20 * scale
+    const footerPaddingBottom = 20 * scale
 
-            // 繪製白色背景
-            ctx.fillStyle = '#FFFFFF'
-            ctx.fillRect(0, 0, size, size)
+    // 🎯 QR Code 尺寸
+    const qrSize = 140 * scale
 
-            // 繪製 QR Code 圖片
-            ctx.drawImage(img, 0, 0, size, size)
+    // ✍️ 文字設定
+    const titleFontSize = 19 * scale
+    const titleMarginTop = 24 * scale
+    const subtitleFontSize = 13 * scale
+    const subtitleMarginTop = 8 * scale
 
-            resolve()
-          }
-          img.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
-          img.src = currentQRCode.value
-        })
+    // 🔘 按鈕設定
+    const btnHeight = 40 * scale
+    const btnRadius = 10 * scale
+    const btnFontSize = 15 * scale
+    const btnMarginTop = 25 * scale
 
-        // 轉換為 PNG Data URL
-        const pngDataUrl = canvas.toDataURL('image/png', 1.0)
+    // 📏 計算總高度
+    const titleHeight = titleFontSize * 1.3
+    const subtitleHeight = subtitleFontSize * 1.3
+    const cardHeight = bodyPaddingTop + qrSize + titleMarginTop + titleHeight +
+                       subtitleMarginTop + subtitleHeight + btnMarginTop +
+                       btnHeight + footerPaddingBottom
 
-        // 觸發下載
-        const link = document.createElement('a')
-        link.href = pngDataUrl
-        link.download = filename
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      } else {
-        // 已經是 PNG/JPG 格式，直接下載
-        const link = document.createElement('a')
-        link.href = currentQRCode.value
-        link.download = filename
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-    } else {
-      // 如果是 URL，需要先獲取圖片
-      const response = await fetch(currentQRCode.value)
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+    // 🎨 建立高清 Canvas
+    const canvas = document.createElement('canvas')
+    canvas.width = cardWidth
+    canvas.height = cardHeight
+    const ctx = canvas.getContext('2d', { alpha: false })
+
+    if (!ctx) {
+      throw new Error('無法創建 Canvas 2D 上下文')
     }
-    showSuccess('下載成功', 'QR 碼已下載')
+
+    // 🔧 啟用高質量渲染
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+
+    // 🎨 輔助函數：繪製完美圓角矩形
+    const drawRoundedRect = (
+      x: number, y: number, w: number, h: number, r: number
+    ) => {
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.lineTo(x + w - r, y)
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+      ctx.lineTo(x + w, y + h - r)
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+      ctx.lineTo(x + r, y + h)
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+      ctx.lineTo(x, y + r)
+      ctx.quadraticCurveTo(x, y, x + r, y)
+      ctx.closePath()
+    }
+
+    // 1️⃣ 繪製卡片背景 (純白 + iOS 風格圓角 + 柔和陰影)
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)'
+    ctx.shadowBlur = 12 * scale
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 4 * scale
+
+    ctx.fillStyle = '#FFFFFF'
+    drawRoundedRect(0, 0, cardWidth, cardHeight, borderRadius)
+    ctx.fill()
+
+    // 關閉陰影
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
+
+    // 2️⃣ 載入並繪製 QR Code
+    const qrImg = new window.Image()
+    await new Promise<void>((resolve, reject) => {
+      qrImg.onload = () => resolve()
+      qrImg.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
+      qrImg.src = qrCodeDataUrl
+    })
+
+    // QR Code 水平置中
+    const qrX = (cardWidth - qrSize) / 2
+    const qrY = bodyPaddingTop
+    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
+
+    // 3️⃣ 繪製標題 (團隊名稱 - iOS 風格字體)
+    ctx.fillStyle = '#000000'  // 純黑標題
+    ctx.font = `600 ${titleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+
+    const titleY = qrY + qrSize + titleMarginTop
+    ctx.fillText(teamName, cardWidth / 2, titleY)
+
+    // 4️⃣ 繪製副標題 (iOS 灰色)
+    ctx.fillStyle = '#8E8E93'  // Apple System Gray
+    ctx.font = `400 ${subtitleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+
+    const subtitleY = titleY + titleHeight + subtitleMarginTop
+    ctx.fillText('掃描加入 LINE 官方帳號', cardWidth / 2, subtitleY)
+
+    // 5️⃣ 繪製按鈕 (iOS Secondary 風格)
+    const btnWidth = cardWidth - (footerPaddingX * 2)
+    const btnX = footerPaddingX
+    const btnY = subtitleY + subtitleHeight + btnMarginTop
+
+    // 按鈕背景
+    ctx.fillStyle = '#F2F2F7'
+    drawRoundedRect(btnX, btnY, btnWidth, btnHeight, btnRadius)
+    ctx.fill()
+
+    // 按鈕文字
+    ctx.fillStyle = '#007AFF'
+    ctx.font = `600 ${btnFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('掃描 QR Code 加入', cardWidth / 2, btnY + btnHeight / 2)
+
+    // 6️⃣ 轉換為高質量 PNG 並下載
+    // 生成專業檔名格式: {團隊名稱}_LINE_QR_{YYYYMMDD}.png
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    const dateStr = `${year}${month}${day}`
+
+    const pngDataUrl = canvas.toDataURL('image/png', 1.0)
+    const link = document.createElement('a')
+    link.href = pngDataUrl
+    link.download = `${teamName}_LINE_QR_${dateStr}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    showSuccess('下載成功', `✅ QR Code 卡片已下載 (${teamName})`)
   } catch (error) {
-    console.error('下載 QR 碼失敗:', error)
+    console.error('❌ 下載 QR 碼失敗:', error)
     showError('下載失敗', '無法下載 QR 碼')
   }
 }
@@ -1979,6 +2099,12 @@ watch(() => route.path, (newPath, oldPath) => {
 onMounted(() => {
   console.log('🚀 TeamManagement mounted')
   loadData()
+})
+
+// 🆕 頁面卸載時停止背景預載
+onUnmounted(() => {
+  console.log('🛑 TeamManagement unmounted, stopping background QR preload')
+  qrPreloadService.stop()
 })
 </script>
 <style scoped>
@@ -2962,34 +3088,92 @@ onMounted(() => {
   }
 }
 
-/* QR Modal Styles */
-.qr-modal {
-  max-width: 400px;
+/* ============================================
+   Flex Bubble Card - QR Modal (Image 2 設計)
+   ============================================ */
+.flex-bubble {
+  background-color: #FFFFFF;
+  width: 280px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   text-align: center;
+  margin: 0 auto;
 }
 
-.qr-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
+.bubble-body {
+  padding: 35px 30px 20px 30px;
 }
 
-.qr-display {
-  width: 200px;
-  height: 200px;
+.bubble-footer {
+  padding: 0 20px 20px 20px;
+}
+
+/* QR Code Image Wrapper */
+.qr-image-wrapper {
   display: flex;
-  align-items: center;
   justify-content: center;
-  border: 2px dashed var(--gray-300);
-  border-radius: var(--radius-xl);
-  background: var(--gray-25);
+  align-items: center;
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
 }
 
 .qr-image {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: var(--radius-md);
+  width: 140px;
+  height: 140px;
+  display: block;
+  object-fit: contain;
+}
+
+/* Typography - iOS/Apple Style */
+.bubble-title {
+  color: #000000;
+  font-size: 19px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 0;
+  letter-spacing: -0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.bubble-subtitle {
+  color: #8E8E93;
+  font-size: 13px;
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+.bubble-subtitle-warning {
+  color: #f59e0b;
+}
+
+/* Footer Button - iOS Secondary Style */
+.bubble-btn {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+  line-height: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  background-color: #F2F2F7;
+  color: #007AFF;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.bubble-btn:hover {
+  background-color: #E5E5EA;
+}
+
+.bubble-btn:active {
+  background-color: #D1D1D6;
 }
 
 /* QR 碼淡入動畫 */
@@ -3015,11 +3199,13 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
+  width: 140px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: var(--radius-xl);
+  border-radius: 12px;
 }
 
 .qr-skeleton-inner {
@@ -3030,10 +3216,10 @@ onMounted(() => {
 }
 
 .qr-pulse {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+  border-radius: 10px;
   animation: qrPulse 1.5s ease-in-out infinite;
   position: relative;
 }
@@ -3043,8 +3229,8 @@ onMounted(() => {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   background: white;
   border-radius: 4px;
   transform: translate(-50%, -50%);
@@ -3053,12 +3239,12 @@ onMounted(() => {
 .qr-pulse::after {
   content: '';
   position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
 }
 
 @keyframes qrPulse {
@@ -3074,76 +3260,25 @@ onMounted(() => {
 
 .qr-loading-text {
   color: #667eea;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.05em;
 }
 
-/* 確保 qr-display 是相對定位 */
-.qr-display {
-  position: relative;
+/* Empty State - Flex Bubble 樣式 */
+.flex-bubble-empty .bubble-body {
+  padding: 40px 30px;
 }
 
-.qr-description {
-  color: var(--gray-600);
-  font-size: 0.875rem;
-  line-height: 1.6;
-  margin: 0;
-}
-
-/* QR Code 空狀態樣式 */
-.qr-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  text-align: center;
-}
-
-.qr-empty-state .empty-icon {
+.flex-bubble-empty .empty-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-radius: var(--radius-xl);
-  margin-bottom: var(--space-2);
-}
-
-.qr-empty-state .empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gray-800);
-  margin: 0;
-}
-
-.qr-empty-state .empty-description {
-  font-size: 0.9375rem;
-  color: var(--gray-600);
-  line-height: 1.7;
-  margin: 0;
-}
-
-.qr-empty-state .empty-description strong {
-  color: var(--primary-600);
-  font-weight: 600;
-}
-
-.qr-empty-state .empty-hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--blue-50);
-  border-radius: var(--radius-lg);
-  color: var(--blue-700);
-  font-size: 0.8125rem;
-}
-
-.qr-empty-state .empty-hint svg {
-  flex-shrink: 0;
+  border-radius: 16px;
 }
 
 /* Team section header actions */

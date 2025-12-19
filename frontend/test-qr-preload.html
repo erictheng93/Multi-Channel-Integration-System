@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Background Preload 測試頁面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #1e293b;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section h2 {
+            color: #1e293b;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-running {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .test-step {
+            background: #f8fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .test-step h3 {
+            color: #334155;
+            font-size: 1.125rem;
+            margin-bottom: 10px;
+        }
+
+        .test-step p {
+            color: #64748b;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin: 10px 0;
+        }
+
+        .expected-result {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .expected-result strong {
+            color: #166534;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        .checklist {
+            list-style: none;
+        }
+
+        .checklist li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checklist li:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .checkbox.checked {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .metric-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            color: #1e293b;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🧪 QR Background Preload 測試頁面</h1>
+            <p class="subtitle">Phase 1 - MVP 功能驗證</p>
+        </div>
+
+        <!-- Test 1: 開發伺服器啟動 -->
+        <div class="test-section">
+            <h2>
+                <span class="status-badge status-pending" id="test1-status">⏳ 待執行</span>
+                Test 1: 開發伺服器啟動
+            </h2>
+
+            <div class="test-step">
+                <h3>步驟 1: 啟動前端開發伺服器</h3>
+                <p>在終端機執行以下命令：</p>
+                <div class="code-block">cd frontend<br>npm run dev</div>
+                <div class="expected-result">
+                    <strong>預期結果：</strong>
+                    <br>✅ 看到 "VITE vX.X.X ready in XXXms"
+                    <br>✅ 看到 "Local: http://localhost:3000/"
+                    <br>✅ 無編譯錯誤
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>步驟 2: 訪問團隊管理頁面</h3>
+                <p>開啟瀏覽器訪問：</p>
+                <div class="code-block">http://localhost:3000/team</div>
+            </div>
+        </div>
+
+        <!-- Test 2: Console 日誌檢查 -->
+        <div class="test-section">
+            <h2>
+                <span class="status-badge status-pending" id="test2-status">⏳ 待執行</span>
+                Test 2: Console 日誌檢查
+            </h2>
+
+            <div class="test-step">
+                <h3>步驟 1: 開啟瀏覽器開發者工具</h3>
+                <p>按 F12 或右鍵 → 檢查 → Console 分頁</p>
+            </div>
+
+            <div class="test-step">
+                <h3>步驟 2: 檢查預載啟動日誌</h3>
+                <p>應該看到以下日誌（依序出現）：</p>
+                <div class="code-block">🚀 TeamManagement mounted
+🔄 開始載入團隊列表...
+✔️ 團隊數據已更新: X 個團隊
+🚀 [TeamManagement] Starting background QR preload for X teams
+🎯 [QRPreload] Phase 1: Loading 3 priority teams
+📥 [phase1] Loading QR for team X (團隊名稱)
+✅ [phase1] Loaded QR for team X in XXms
+⏳ [QRPreload] Phase 2: Loading X teams (idle time)
+...</div>
+            </div>
+
+            <div class="test-step">
+                <h3>步驟 3: 驗證 Feature Flag</h3>
+                <p>在 Console 執行：</p>
+                <div class="code-block">window.featureFlags.list()</div>
+                <div class="expected-result">
+                    <strong>預期結果：</strong>
+                    <br>✅ 看到 QR_BACKGROUND_PRELOAD: Enabled ✅, Rollout 100%
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 3: 功能運作測試 -->
+        <div class="test-section">
+            <h2>
+                <span class="status-badge status-pending" id="test3-status">⏳ 待執行</span>
+                Test 3: 功能運作測試
+            </h2>
+
+            <div class="test-step">
+                <h3>步驟 1: 測試點擊延遲</h3>
+                <p>在 Console 執行：</p>
+                <div class="code-block">console.time('QR Click')</div>
+                <p>然後立即點擊任何團隊的「QR 碼」按鈕</p>
+                <p>在 Console 再執行：</p>
+                <div class="code-block">console.timeEnd('QR Click')</div>
+                <div class="expected-result">
+                    <strong>預期結果：</strong>
+                    <br>✅ 延遲時間 < 100ms（理想 < 50ms）
+                    <br>✅ QR Code Modal 立即顯示
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>步驟 2: 查看效能指標</h3>
+                <p>在 Console 執行：</p>
+                <div class="code-block">const metrics = qrPreloadService.getMetrics()
+console.table(metrics)</div>
+                <div class="expected-result">
+                    <strong>預期結果：</strong>
+                    <br>✅ Total Teams = 團隊數量
+                    <br>✅ Loaded Successfully ≈ Total Teams
+                    <br>✅ Failed = 0
+                    <br>✅ Cache Hit Rate > 90%
+                    <br>✅ Avg Load Time < 200ms
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 4: Feature Flag 切換 -->
+        <div class="test-section">
+            <h2>
+                <span class="status-badge status-pending" id="test4-status">⏳ 待執行</span>
+                Test 4: Feature Flag 切換測試
+            </h2>
+
+            <div class="test-step">
+                <h3>步驟 1: 禁用背景預載</h3>
+                <p>在 Console 執行：</p>
+                <div class="code-block">window.featureFlags.disable('QR_BACKGROUND_PRELOAD')</div>
+                <p>重新整理頁面 (F5)</p>
+                <div class="expected-result">
+                    <strong>預期結果：</strong>
+                    <br>✅ Console 顯示：🚫 [TeamManagement] Background QR preload is disabled
+                    <br>✅ 不再看到預載相關日誌
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>步驟 2: 重新啟用</h3>
+                <p>在 Console 執行：</p>
+                <div class="code-block">window.featureFlags.enable('QR_BACKGROUND_PRELOAD')</div>
+                <p>重新整理頁面 (F5)</p>
+                <div class="expected-result">
+                    <strong>預期結果：</strong>
+                    <br>✅ 背景預載功能恢復運作
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Checklist -->
+        <div class="test-section">
+            <h2>✅ 測試檢查清單</h2>
+            <ul class="checklist">
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>開發伺服器成功啟動（無錯誤）</span>
+                </li>
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>頁面載入後看到背景預載日誌</span>
+                </li>
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Feature Flag 功能正常運作</span>
+                </li>
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>點擊「QR 碼」按鈕延遲 < 100ms</span>
+                </li>
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>效能指標顯示快取命中率 > 90%</span>
+                </li>
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Feature Flag 切換功能正常</span>
+                </li>
+                <li>
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>無 Console 錯誤或警告</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="test-section">
+            <h2>📊 效能指標記錄</h2>
+            <p style="color: #64748b; margin-bottom: 20px;">請在完成測試後記錄以下指標：</p>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">團隊總數</div>
+                    <div class="metric-value" id="total-teams">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">載入成功</div>
+                    <div class="metric-value" id="loaded-teams">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">快取命中率</div>
+                    <div class="metric-value" id="cache-hit-rate">-%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">平均載入時間</div>
+                    <div class="metric-value" id="avg-load-time">-ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">首次點擊延遲</div>
+                    <div class="metric-value" id="click-delay">-ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">總耗時</div>
+                    <div class="metric-value" id="total-duration">-s</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                <strong style="color: #166534;">💡 如何填寫指標：</strong>
+                <p style="color: #166534; margin-top: 8px;">
+                    在 Console 執行 <code>qrPreloadService.getMetrics()</code>，
+                    然後手動將數值填入上方表格。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleCheck(element) {
+            element.classList.toggle('checked');
+        }
+
+        // 自動填充指標（如果可用）
+        window.addEventListener('load', () => {
+            console.log('📋 測試頁面已載入');
+            console.log('💡 提示：請先啟動開發伺服器再進行測試');
+            console.log('');
+            console.log('快速測試指令：');
+            console.log('1. window.featureFlags.list()');
+            console.log('2. qrPreloadService.getMetrics()');
+            console.log('3. console.time("QR Click") → 點擊按鈕 → console.timeEnd("QR Click")');
+        });
+    </script>
+</body>
+</html>

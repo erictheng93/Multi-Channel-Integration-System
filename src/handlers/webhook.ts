@@ -245,12 +245,42 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
   }
   
   try {
+    // 🔧 智能类型修正: 检测并修正 LINE API 的类型误判
+    // 问题: LINE API 可能将某些文件错误识别为 video/audio 类型
+    // 解决: 如果消息有 fileName 字段,强制修正为 'file' 类型
+    let correctedMessageType = message.type;
+
+    if (message.fileName && message.type !== 'file') {
+      console.warn(`⚠️ [LINE Webhook] Message type mismatch detected!`, {
+        originalType: message.type,
+        fileName: message.fileName,
+        fileSize: message.fileSize,
+        messageId: message.id,
+        userId: userId.substring(0, 10) + '...'
+      });
+      console.warn(`🔧 [LINE Webhook] Auto-correcting message type from "${message.type}" to "file"`);
+      correctedMessageType = 'file';
+    }
+
+    // 📊 诊断日志: 记录所有文件相关消息的详细信息
+    if (message.fileName || message.type === 'file' || correctedMessageType === 'file') {
+      console.log('📎 [LINE Webhook] File message details:', {
+        messageId: message.id,
+        originalType: message.type,
+        correctedType: correctedMessageType,
+        fileName: message.fileName,
+        fileSize: message.fileSize,
+        hasFileName: !!message.fileName,
+        wasTypeCorrected: message.type !== correctedMessageType
+      });
+    }
+
     // 解析訊息內容和類型
     let messageContent = '';
-    let messageType = message.type;
+    let messageType = correctedMessageType;  // ← 使用修正后的类型
     let mediaData: LineMediaData | null = null;
-    
-    switch (message.type) {
+
+    switch (correctedMessageType) {  // ← 使用修正后的类型
       case 'text':
         messageContent = message.text || '';
         break;

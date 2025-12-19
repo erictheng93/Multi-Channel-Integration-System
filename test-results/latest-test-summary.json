@@ -4,11 +4,11 @@
     "passedSuites": 0,
     "failedSuites": 8,
     "skippedSuites": 0,
-    "totalDuration": 35521.751399999994,
-    "startTime": 385.3282,
-    "endTime": 35907.0796
+    "totalDuration": 35579.5011,
+    "startTime": 177.6483,
+    "endTime": 35757.1494
   },
-  "timestamp": "2025-11-13T02:55:19.421Z",
+  "timestamp": "2025-12-18T01:55:55.675Z",
   "recommendations": [
     "🔧 8 tests failed - investigate and fix underlying issues",
     "🔍 Review error logs and stderr output for specific failure causes",
