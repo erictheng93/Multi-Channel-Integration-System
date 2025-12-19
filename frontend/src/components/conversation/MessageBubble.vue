@@ -6,8 +6,8 @@
       'message-incoming': !isOutgoing,
       'message-delivered': delivered && isOutgoing,
       'message-failed': !delivered && isOutgoing,
-      'message-image': message.messageType === 'image',
-      'message-file': message.messageType === 'file'
+      'message-image': actualMessageType === 'image',
+      'message-file': actualMessageType === 'file'
     }"
     @contextmenu="handleRightClick"
     @mouseenter="showActions = true"
@@ -16,7 +16,7 @@
     <div class="message-content">
       <!-- Image Message -->
       <div
-        v-if="message.messageType === 'image' && attachmentUrl"
+        v-if="actualMessageType === 'image' && attachmentUrl"
         class="message-media"
       >
         <div
@@ -67,7 +67,7 @@
 
       <!-- File Message (Single Attachment - Legacy) -->
       <div
-        v-else-if="message.messageType === 'file' && attachmentUrl && !hasMultipleAttachments"
+        v-else-if="actualMessageType === 'file' && attachmentUrl && !hasMultipleAttachments"
         class="message-file-content"
       >
         <div class="file-container">
@@ -243,7 +243,7 @@
 
       <!-- Sticker Message -->
       <div
-        v-else-if="message.messageType === 'sticker'"
+        v-else-if="actualMessageType === 'sticker'"
         class="message-sticker"
       >
         <!-- Comprehensive Sticker Renderer (Primary) -->
@@ -640,6 +640,40 @@ const senderInitials = computed(() => {
   return senderName.value[0]
 })
 
+// 🔧 智能消息类型识别: 防御性处理 LINE API 类型误判
+// 即使后端存储的 messageType 不正确,前端也能根据 metadata 智能识别
+const actualMessageType = computed(() => {
+  const originalType = props.message.messageType;
+
+  // 检查 metadata 中是否包含文件信息
+  if (props.message.metadata) {
+    try {
+      const metadata = typeof props.message.metadata === 'string'
+        ? JSON.parse(props.message.metadata)
+        : props.message.metadata;
+
+      // 如果 metadata 中有 fileName 和 fileSize,说明这是文件消息
+      // 即使 messageType 是 video/audio,也应该当作 file 处理
+      if (metadata.fileName && metadata.fileSize !== undefined) {
+        if (originalType !== 'file') {
+          console.warn('🔧 [MessageBubble] Type correction:', {
+            originalType,
+            correctedType: 'file',
+            fileName: metadata.fileName,
+            messageId: props.message.id
+          });
+        }
+        return 'file';
+      }
+    } catch (error) {
+      console.error('❌ [MessageBubble] Failed to parse metadata:', error);
+    }
+  }
+
+  // 如果无法从 metadata 判断,使用原始类型
+  return originalType;
+})
+
 const attachmentUrl = computed(() => {
   // Use prop if provided (for tests)
   if (props.attachmentUrl) {return props.attachmentUrl}
@@ -1024,7 +1058,7 @@ const getFileIcon = (filename: string) => {
 
 // Image preview methods
 const openImagePreview = () => {
-  if (props.message.messageType === 'image') {
+  if (actualMessageType.value === 'image') {
     showImagePreview.value = true
     zoomLevel.value = 1
     emit('preview', props.message)

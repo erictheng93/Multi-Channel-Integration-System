@@ -53,7 +53,9 @@
     <div class="glass-card">
       <!-- Header -->
       <div class="card-header">
-        <h1 class="headline">全通路客服整合平台</h1>
+        <h1 class="headline">
+          全通路客服整合平台
+        </h1>
       </div>
 
       <!-- Form -->
@@ -175,8 +177,9 @@
           </Transition>
         </div>
 
-        <!-- Remember Me -->
-        <div class="options-row">
+        <!-- Remember Me - Hidden until feature is fully implemented -->
+        <!-- TODO: Implement rememberMe logic in useAuth.ts and auth store -->
+        <!-- <div class="options-row">
           <label class="remember-toggle">
             <input
               v-model="formData.rememberMe"
@@ -188,7 +191,7 @@
             </span>
             <span class="toggle-label">保持登入狀態</span>
           </label>
-        </div>
+        </div> -->
 
         <!-- Submit Button -->
         <button
@@ -420,14 +423,14 @@ const onPasswordChangeSuccess = () => {
 }
 
 const handleLogin = async (event?: Event) => {
-  if (event) event.preventDefault()
-  if (loading.value) return
+  if (event) {event.preventDefault()}
+  if (loading.value) {return}
 
   // Mark form as submitted to show all validation errors
   formSubmitted.value = true
 
   // If form is invalid, don't proceed
-  if (!isValid.value) return
+  if (!isValid.value) {return}
 
   clearError()
 

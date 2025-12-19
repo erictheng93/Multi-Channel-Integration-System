@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flex Message Preview</title>
+    <style>
+        body {
+            background-color: #849ebf; /* LINE Default Chat Background */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* Flex Message Bubble Container */
+        .flex-bubble {
+            background-color: #FFFFFF;
+            width: 300px; /* Approximate 'kilo' size */
+            border-radius: 12px; /* Standard Flex Message Radius */
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Padding Utility */
+        .p-20 { padding: 20px; }
+        .pb-0 { padding-bottom: 0; }
+        .pt-0 { padding-top: 0; }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+        }
+        .header img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            margin-right: 8px; /* margin: md */
+        }
+        .header span {
+            color: #8E8E93;
+            font-size: 11px; /* size: xs */
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* Body */
+        .body-title {
+            color: #1C1C1E;
+            font-size: 20px; /* size: xl */
+            font-weight: bold;
+            margin: 0;
+        }
+        .body-desc {
+            color: #8E8E93;
+            font-size: 12px; /* size: sm */
+            margin-top: 8px; /* margin: md */
+            margin-bottom: 0;
+            line-height: 1.5;
+        }
+        .qr-container {
+            margin-top: 18px; /* margin: xl */
+            background-color: #F2F2F7;
+            padding: 20px;
+            border-radius: 18px; /* cornerRadius: xl */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .qr-image {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            /* Placeholder for the QR code */
+            background-image: url('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://line.me'); 
+            background-size: cover;
+        }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            flex-direction: column;
+            gap: 12px; /* margin: sm between buttons */
+        }
+        .btn {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            line-height: 40px; /* height: sm approx */
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px; /* Default OS button radius style simulation */
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #007AFF;
+            color: #FFFFFF;
+        }
+        .btn-link {
+            background-color: transparent;
+            color: #007AFF;
+        }
+        
+        /* Simulating Touch Active State */
+        .btn:active {
+            opacity: 0.7;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="flex-bubble">
+        <!-- Header -->
+        <div class="header p-20 pb-0">
+            <!-- Using Apple Logo SVG URL from the JSON -->
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/31/Apple_logo_white.svg" style="filter: invert(58%) sepia(6%) saturate(347%) hue-rotate(202deg) brightness(92%) contrast(88%);"> <!-- Simple CSS filter to make black logo grey-ish to match #8E8E93, or just use a grey icon -->
+            <span>CONTACT CARD</span>
+        </div>
+
+        <!-- Body -->
+        <div class="p-20">
+            <h2 class="body-title">Scan to Connect</h2>
+            <p class="body-desc">Use your camera to scan the code below.</p>
+            
+            <div class="qr-container">
+                <!-- Using a generated QR code for visual preview -->
+                <div class="qr-image"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer p-20 pt-0">
+            <a href="#" class="btn btn-primary">Open Link</a>
+            <a href="#" class="btn btn-link">Share Card</a>
+        </div>
+    </div>
+
+</body>
+</html>
