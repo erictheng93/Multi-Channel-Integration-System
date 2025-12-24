@@ -797,6 +797,11 @@ app.route('/api/channels', channelHandler);
 // ==================== LIFF Handler (QR Code Team Binding) ====================
 import liffHandler from './handlers/liff';
 
+// Test endpoint for debugging LIFF routes
+app.get('/api/liff-test', (c) => {
+  return c.json({ status: 'ok', message: 'LIFF test endpoint working' });
+});
+
 // LIFF endpoints are PUBLIC (no auth required) - used by LINE users
 app.route('/api/liff', liffHandler);
 

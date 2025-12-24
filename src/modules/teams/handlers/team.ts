@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import { TeamService } from '@modules/teams/services/team-service';
 import { TeamQRService } from '@modules/teams/services/qr-service';
 import { TeamActivityService } from '@modules/teams/services/activity-service';
+import { generateTeamQRCode } from '@/services/liff-qrcode-service';
 import type {
   TeamListRequest,
   TeamCreateRequest,
@@ -848,7 +849,7 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
 
     // Run activity logging and QR generation in parallel
-    const [, qrResult] = await Promise.all([
+    const [, qrResult, liffQrResult] = await Promise.all([
       // Task 1: Log activity (existing)
       activityService.logTeamCreate({
         userId: user.id.toString(),
@@ -858,7 +859,7 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
         teamName: team.name,
         ...(team.description && { description: team.description })
       }),
-      // Task 2: Pre-generate QR code (new - Phase 3)
+      // Task 2: Pre-generate QR code (existing - Phase 3)
       qrService.generateTeamQRCode({
         teamId: team.id,
         campaignName: `${team.name} - 預設 QR 碼`,
@@ -867,15 +868,32 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
         // QR generation failure should not fail team creation
         console.error(`[Phase 3] QR generation failed for team ${team.id}:`, err);
         return null;
+      }),
+      // Task 3: Generate LIFF QR code (NEW - LIFF Team QR Code System)
+      generateTeamQRCode(team.id, team.name, c.env).catch(err => {
+        // LIFF QR generation failure should not fail team creation
+        console.error(`[LIFF QR] Generation failed for team ${team.id}:`, err);
+        return { success: false, error: err.message };
       })
     ]);
 
     // Attach QR code to team response if generated successfully
-    const teamWithQR = qrResult ? {
+    const teamWithQR = {
       ...team,
-      qrCode: qrResult.qrCode,
-      lineUrl: qrResult.lineUrl
-    } : team;
+      // Legacy QR code (existing system)
+      ...(qrResult ? {
+        qrCode: qrResult.qrCode,
+        lineUrl: qrResult.lineUrl
+      } : {}),
+      // LIFF QR code (new system)
+      ...(liffQrResult?.success && 'qrCodeId' in liffQrResult ? {
+        liffQrCode: {
+          id: liffQrResult.qrCodeId,
+          liffUrl: liffQrResult.liffUrl,
+          qrCodeUrl: liffQrResult.qrCodeUrl
+        }
+      } : {})
+    };
 
     return c.json({
       success: true,

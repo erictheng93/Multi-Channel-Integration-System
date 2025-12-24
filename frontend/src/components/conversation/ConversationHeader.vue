@@ -107,29 +107,47 @@
         <SearchIcon :size="18" />
       </button>
 
-      <!-- 指派管理按鈕 -->
+      <!-- 指派管理按鈕 - Redesigned -->
       <div
         v-if="conversation && conversation.status !== 'closed'"
         class="assign-action-wrapper"
       >
         <button
           class="assign-action-btn"
-          :class="{ 'has-assignment': conversation.assignedTeamId || conversation.assignedUserId }"
+          :class="{
+            'has-assignment': conversation.assignedTeamId || conversation.assignedUserId,
+            'opened': showAssignPanel
+          }"
           @click="toggleAssignPanel"
         >
-          <UserPlusIcon class="action-icon" />
-          <!-- 🆕 顯示團隊或代理名稱 -->
-          <span v-if="conversation.assignedUserId && conversation.assignedAgent?.name">
-            {{ conversation.assignedAgent.name }}
-          </span>
-          <span v-else-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
-            {{ conversation.assignedTeam.name }}
-          </span>
-          <span v-else>指派管理</span>
-          <ChevronDownIcon
-            class="dropdown-icon"
-            :class="showAssignPanel ? 'rotated' : ''"
+          <!-- Status Indicator Dot -->
+          <span
+            class="status-dot"
+            :class="{ 'active': conversation.assignedTeamId || conversation.assignedUserId }"
           />
+
+          <!-- User Icon with Animation Container -->
+          <span class="icon-container">
+            <UserPlusIcon class="action-icon" />
+          </span>
+
+          <!-- Text with Truncation -->
+          <span class="button-text">
+            <span v-if="conversation.assignedUserId && conversation.assignedAgent?.name">
+              {{ conversation.assignedAgent.name }}
+            </span>
+            <span v-else-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
+              {{ conversation.assignedTeam.name }}
+            </span>
+            <span v-else>指派管理</span>
+          </span>
+
+          <!-- Dropdown Icon with Smooth Rotation -->
+          <span class="chevron-container">
+            <ChevronDownIcon
+              :class="showAssignPanel ? 'dropdown-icon rotated' : 'dropdown-icon'"
+            />
+          </span>
         </button>
 
         <!-- 指派面板 -->
@@ -820,98 +838,321 @@ onMounted(() => {
 
 .tag-selector-wrapper {
   position: relative;
+  z-index: 10;
 }
 
-/* 指派功能樣式 */
+/* ============================================
+   🎨 REFINED ASSIGNMENT BUTTON - REDESIGNED
+   ============================================ */
+
+/* Font Import - Professional Typography */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 .assign-action-wrapper {
   position: relative;
   display: inline-block;
 }
 
+/* Base Button Styles */
 .assign-action-btn {
+  /* Layout */
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.625rem;
+  padding: 0.625rem 1.125rem;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  /* Typography */
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25rem;
-  color: var(--gray-700, #374151);
-  background-color: white;
-  border: 1px solid var(--gray-300, #d1d5db);
-  border-radius: 0.5rem;
+  letter-spacing: -0.01em;
+
+  /* Colors - Unassigned State (Warm Neutral) */
+  color: #3f3f46;
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  border: 1.5px solid #e4e4e7;
+
+  /* Shape & Effects */
+  border-radius: 0.625rem;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+
+  /* Interaction */
   cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
   user-select: none;
+  white-space: nowrap;
+  transition:
+    all 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.assign-action-btn:hover {
-  background-color: var(--gray-50, #f9fafb);
-  border-color: var(--gray-400, #9ca3af);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+/* Status Indicator Dot */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d4d4d8;
+  flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 0 2px rgba(212, 212, 216, 0.15);
 }
 
-.assign-action-btn.has-assignment {
-  background-color: var(--green-50, #f0fdf4);
-  border-color: var(--green-300, #86efac);
-  color: var(--green-700, #15803d);
+.status-dot.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.15),
+    0 0 8px rgba(16, 185, 129, 0.3);
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.assign-action-btn.has-assignment:hover {
-  background-color: var(--green-100, #dcfce7);
-  border-color: var(--green-400, #4ade80);
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.1);
+  }
+}
+
+/* Icon Container with Animation */
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .action-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.125rem;
+  height: 1.125rem;
   flex-shrink: 0;
+  stroke-width: 2.25;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Button Text with Truncation */
+.button-text {
+  flex: 1;
+  min-width: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  font-weight: 600;
+}
+
+/* Fade-out effect for long text */
+.button-text::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to right, transparent 0%, currentColor 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.assign-action-btn:hover .button-text::after {
+  opacity: 0.05;
+}
+
+/* Chevron Container */
+.chevron-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.125rem;
 }
 
 .dropdown-icon {
   width: 0.875rem;
   height: 0.875rem;
-  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  stroke-width: 2.5;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0.7;
 }
 
 .dropdown-icon.rotated {
   transform: rotate(180deg);
+  opacity: 1;
+}
+
+/* ============================================
+   ASSIGNED STATE (Sophisticated Emerald)
+   ============================================ */
+.assign-action-btn.has-assignment {
+  color: #065f46;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%);
+  border-color: #34d399;
+  box-shadow:
+    0 1px 3px rgba(16, 185, 129, 0.12),
+    0 0 0 1px rgba(16, 185, 129, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.assign-action-btn.has-assignment .action-icon {
+  color: #059669;
+}
+
+.assign-action-btn.has-assignment .button-text {
+  font-weight: 600;
+}
+
+/* ============================================
+   HOVER STATE
+   ============================================ */
+.assign-action-btn:hover {
+  transform: translateY(-1px);
+  border-color: #a1a1aa;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+.assign-action-btn:hover .icon-container {
+  transform: scale(1.08);
+}
+
+.assign-action-btn:hover .action-icon {
+  stroke-width: 2.5;
+}
+
+.assign-action-btn:hover .dropdown-icon {
+  opacity: 1;
+}
+
+/* Assigned State Hover */
+.assign-action-btn.has-assignment:hover {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 50%, #34d399 100%);
+  box-shadow:
+    0 6px 16px rgba(16, 185, 129, 0.2),
+    0 2px 4px rgba(16, 185, 129, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.assign-action-btn.has-assignment:hover .status-dot {
+  transform: scale(1.2);
+}
+
+/* ============================================
+   OPENED STATE (Dropdown Active)
+   ============================================ */
+.assign-action-btn.opened {
+  border-color: #10b981;
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.15),
+    0 4px 12px rgba(16, 185, 129, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.assign-action-btn.has-assignment.opened {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-color: #059669;
+  box-shadow:
+    0 0 0 4px rgba(16, 185, 129, 0.2),
+    0 6px 16px rgba(16, 185, 129, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.7);
+}
+
+.assign-action-btn.opened .status-dot.active {
+  box-shadow:
+    0 0 0 4px rgba(16, 185, 129, 0.25),
+    0 0 16px rgba(16, 185, 129, 0.5);
+  animation: pulse-dot-active 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-dot-active {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.25);
+  }
+}
+
+/* ============================================
+   ACTIVE/PRESSED STATE
+   ============================================ */
+.assign-action-btn:active {
+  transform: translateY(0) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+  .assign-action-btn {
+    padding: 0.5rem 0.875rem;
+    gap: 0.5rem;
+  }
+
+  .button-text {
+    max-width: 100px;
+    font-size: 0.8125rem;
+  }
+
+  .action-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .dropdown-icon {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
 }
 
 .assign-panel-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
-  right: 0;
-  z-index: 50;
-  min-width: 24rem;
-  max-width: 32rem;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  min-width: 20rem;
+  max-width: 28rem;
   background: white;
   border: 1px solid var(--gray-200, #e5e7eb);
   border-radius: 0.75rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   animation: dropdown-appear 0.2s ease-out;
+  pointer-events: auto;
 }
 
 @keyframes dropdown-appear {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.95);
+    transform: translateX(-50%) translateY(-8px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 
 /* 響應式設計 */
 @media (max-width: 768px) {
   .assign-panel-dropdown {
-    right: auto;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     min-width: calc(100vw - 2rem);
     max-width: calc(100vw - 2rem);
   }
