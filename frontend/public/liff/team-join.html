@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>加入團隊</title>
+
+  <!-- LIFF SDK v2 -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    /* ========================================
+       CSS Variables - Apple Design System
+       ======================================== */
+    :root {
+      /* Colors */
+      --color-primary: #06c755;
+      --color-primary-hover: #05b84d;
+      --color-success: #34c759;
+      --color-error: #ff3b30;
+      --color-text: #1d1d1f;
+      --color-text-secondary: #86868b;
+      --color-background: #ffffff;
+      --color-surface: #f5f5f7;
+
+      /* Spacing - Apple's 8px grid */
+      --spacing-xs: 8px;
+      --spacing-sm: 16px;
+      --spacing-md: 24px;
+      --spacing-lg: 32px;
+      --spacing-xl: 48px;
+      --spacing-2xl: 64px;
+
+      /* Typography */
+      --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+      --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+      /* Shadows - Subtle, layered */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+      --shadow-button: 0 1px 4px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(6, 199, 85, 0.2);
+
+      /* Border Radius */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+
+      /* Transitions - Apple's timing functions */
+      --transition-swift: cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+      --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    /* ========================================
+       Base Styles
+       ======================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font-text);
+      font-size: 17px;
+      line-height: 1.47059;
+      font-weight: 400;
+      letter-spacing: -0.022em;
+      color: var(--color-text);
+      background: var(--color-background);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* ========================================
+       Layout Container
+       ======================================== */
+    #app {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-md);
+      background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+    }
+
+    /* ========================================
+       Content Card
+       ======================================== */
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--color-background);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      padding: var(--spacing-xl);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(20px) scale(0.96);
+      animation: cardEntrance 0.6s var(--transition-swift) forwards;
+    }
+
+    @keyframes cardEntrance {
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Subtle gradient overlay */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: radial-gradient(circle at top center, rgba(6, 199, 85, 0.03) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ========================================
+       Loading State
+       ======================================== */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--color-surface);
+      border-top-color: var(--color-primary);
+      border-radius: var(--radius-full);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      font-weight: 400;
+    }
+
+    /* ========================================
+       Welcome State
+       ======================================== */
+    .welcome {
+      display: none;
+      animation: fadeIn 0.6s var(--transition-ease);
+    }
+
+    .welcome.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Icon container */
+    .icon-container {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--spacing-md);
+      background: linear-gradient(135deg, var(--color-primary) 0%, #05b84d 100%);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-button);
+      animation: iconBounce 0.8s var(--transition-bounce) 0.3s backwards;
+    }
+
+    @keyframes iconBounce {
+      0% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .icon-container svg {
+      width: 44px;
+      height: 44px;
+      color: white;
+    }
+
+    /* Headings */
+    .title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.14286;
+      color: var(--color-text);
+      margin-bottom: var(--spacing-xs);
+      animation: fadeIn 0.6s var(--transition-ease) 0.1s backwards;
+    }
+
+    .subtitle {
+      font-size: 17px;
+      font-weight: 400;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-lg);
+      line-height: 1.47059;
+      animation: fadeIn 0.6s var(--transition-ease) 0.2s backwards;
+    }
+
+    .team-name {
+      display: inline-block;
+      font-weight: 600;
+      color: var(--color-primary);
+      background: linear-gradient(135deg, rgba(6, 199, 85, 0.1) 0%, rgba(6, 199, 85, 0.05) 100%);
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      margin: 0 4px;
+    }
+
+    /* ========================================
+       Primary Button - Apple Style
+       ======================================== */
+    .btn-primary {
+      width: 100%;
+      height: 56px;
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-text);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.022em;
+      cursor: pointer;
+      box-shadow: var(--shadow-button);
+      transition: all 0.2s var(--transition-swift);
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.6s var(--transition-ease) 0.3s backwards;
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary:hover::before {
+      opacity: 1;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(6, 199, 85, 0.15);
+    }
+
+    /* ========================================
+       Success State
+       ======================================== */
+    .success {
+      display: none;
+      animation: fadeIn 0.6s var(--transition-ease);
+    }
+
+    .success.active {
+      display: block;
+    }
+
+    .checkmark-container {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--spacing-md);
+      background: linear-gradient(135deg, var(--color-success) 0%, #30d158 100%);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(52, 199, 89, 0.3);
+      animation: checkmarkBounce 0.6s var(--transition-bounce);
+    }
+
+    @keyframes checkmarkBounce {
+      0% {
+        opacity: 0;
+        transform: scale(0);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .checkmark {
+      width: 40px;
+      height: 40px;
+      stroke: white;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation: drawCheck 0.5s var(--transition-ease) 0.3s forwards;
+    }
+
+    @keyframes drawCheck {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    .success-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .success-message {
+      font-size: 17px;
+      color: var(--color-text-secondary);
+      line-height: 1.47059;
+    }
+
+    /* ========================================
+       Error State
+       ======================================== */
+    .error {
+      display: none;
+      animation: fadeIn 0.6s var(--transition-ease);
+    }
+
+    .error.active {
+      display: block;
+    }
+
+    .error-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto var(--spacing-md);
+      background: linear-gradient(135deg, var(--color-error) 0%, #ff453a 100%);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(255, 59, 48, 0.3);
+      animation: shake 0.5s var(--transition-ease);
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    .error-icon svg {
+      width: 44px;
+      height: 44px;
+      color: white;
+    }
+
+    .error-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .error-message {
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      line-height: 1.47059;
+    }
+
+    /* ========================================
+       Utility Classes
+       ======================================== */
+    .hidden {
+      display: none !important;
+    }
+
+    /* ========================================
+       Responsive Design
+       ======================================== */
+    @media (max-width: 375px) {
+      .card {
+        padding: var(--spacing-lg);
+      }
+
+      .title {
+        font-size: 24px;
+      }
+
+      .subtitle {
+        font-size: 15px;
+      }
+    }
+
+    /* Support for safe area (iPhone notch) */
+    @supports (padding: env(safe-area-inset-top)) {
+      #app {
+        padding-top: calc(var(--spacing-md) + env(safe-area-inset-top));
+        padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="card">
+      <!-- Loading State -->
+      <div id="loadingState" class="loading">
+        <div class="spinner"></div>
+        <p class="loading-text">正在載入...</p>
+      </div>
+
+      <!-- Welcome State (Not Friend) -->
+      <div id="welcomeState" class="welcome">
+        <div class="icon-container">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="9" cy="7" r="4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="title">歡迎加入</h1>
+        <p class="subtitle">
+          您即將加入<span id="teamNameDisplay" class="team-name">團隊</span>
+          <br>請先加入我們的官方帳號為好友
+        </p>
+        <button id="addFriendBtn" class="btn-primary">
+          加入好友
+        </button>
+      </div>
+
+      <!-- Success State (Already Friend) -->
+      <div id="successState" class="success">
+        <div class="checkmark-container">
+          <svg class="checkmark" viewBox="0 0 52 52">
+            <path d="M14 27l7.5 7.5L38 18" />
+          </svg>
+        </div>
+        <h1 class="success-title">設定完成！</h1>
+        <p class="success-message">
+          您已成功加入<span id="teamNameSuccess" class="team-name">團隊</span>
+          <br>即將自動關閉...
+        </p>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" class="error">
+        <div class="error-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+            <line x1="12" y1="8" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h1 class="error-title">發生錯誤</h1>
+        <p id="errorMessage" class="error-message">
+          無法載入頁面，請稍後再試
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // Configuration
+    // ========================================
+    const CONFIG = {
+      LIFF_ID: '2008756115-vWtFyDMA',
+      API_ENDPOINT: 'https://multi-channel.imfinethankyouandyou.com',
+      LINE_OA_ID: '110xsqef', // Without @ symbol
+      AUTO_CLOSE_DELAY: 2000, // 2 seconds
+    };
+
+    // ========================================
+    // State Management
+    // ========================================
+    const state = {
+      liffInitialized: false,
+      userProfile: null,
+      teamId: null,
+      teamName: null,
+      isFriend: false,
+    };
+
+    // ========================================
+    // DOM Elements
+    // ========================================
+    const elements = {
+      loadingState: document.getElementById('loadingState'),
+      welcomeState: document.getElementById('welcomeState'),
+      successState: document.getElementById('successState'),
+      errorState: document.getElementById('errorState'),
+      addFriendBtn: document.getElementById('addFriendBtn'),
+      teamNameDisplay: document.getElementById('teamNameDisplay'),
+      teamNameSuccess: document.getElementById('teamNameSuccess'),
+      errorMessage: document.getElementById('errorMessage'),
+    };
+
+    // ========================================
+    // UI State Management
+    // ========================================
+    function showState(stateName) {
+      // Hide all states
+      elements.loadingState.classList.add('hidden');
+      elements.welcomeState.classList.remove('active');
+      elements.successState.classList.remove('active');
+      elements.errorState.classList.remove('active');
+
+      // Show requested state
+      switch (stateName) {
+        case 'loading':
+          elements.loadingState.classList.remove('hidden');
+          break;
+        case 'welcome':
+          elements.welcomeState.classList.add('active');
+          break;
+        case 'success':
+          elements.successState.classList.add('active');
+          break;
+        case 'error':
+          elements.errorState.classList.add('active');
+          break;
+      }
+    }
+
+    // ========================================
+    // API Functions
+    // ========================================
+    async function recordTeamAssignment() {
+      try {
+        const response = await fetch(`${CONFIG.API_ENDPOINT}/api/liff/assign-team`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            lineUserId: state.userProfile.userId,
+            teamId: state.teamId,
+            displayName: state.userProfile.displayName,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to record team assignment');
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error('Record assignment error:', error);
+        throw error;
+      }
+    }
+
+    async function sendWelcomeMessage() {
+      try {
+        const response = await fetch(`${CONFIG.API_ENDPOINT}/api/liff/welcome`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            lineUserId: state.userProfile.userId,
+            teamId: state.teamId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send welcome message');
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error('Send welcome error:', error);
+        // Non-critical error, don't throw
+      }
+    }
+
+    async function getTeamInfo() {
+      try {
+        const response = await fetch(`${CONFIG.API_ENDPOINT}/api/liff/teams/${state.teamId}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to get team info');
+        }
+
+        const result = await response.json();
+        return result.data?.name || '團隊';
+      } catch (error) {
+        console.error('Get team info error:', error);
+        return '團隊'; // Fallback
+      }
+    }
+
+    // ========================================
+    // LIFF Functions
+    // ========================================
+    async function initializeLIFF() {
+      try {
+        console.log('Initializing LIFF...');
+        await liff.init({ liffId: CONFIG.LIFF_ID });
+        state.liffInitialized = true;
+
+        // Check if user is logged in
+        if (!liff.isLoggedIn()) {
+          console.log('User not logged in, redirecting to login...');
+          liff.login();
+          return;
+        }
+
+        // Get user profile
+        state.userProfile = await liff.getProfile();
+        console.log('User profile:', state.userProfile);
+
+        // Get team ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        state.teamId = urlParams.get('team');
+
+        if (!state.teamId) {
+          throw new Error('Team ID not found in URL');
+        }
+
+        console.log('Team ID:', state.teamId);
+
+        // Get team information
+        state.teamName = await getTeamInfo();
+        elements.teamNameDisplay.textContent = state.teamName;
+        elements.teamNameSuccess.textContent = state.teamName;
+
+        // Check friendship status
+        const friendship = await liff.getFriendship();
+        state.isFriend = friendship.friendFlag;
+        console.log('Is friend:', state.isFriend);
+
+        // Record team assignment (even if not friend yet)
+        await recordTeamAssignment();
+
+        // Show appropriate state
+        if (state.isFriend) {
+          // Already friend - show success and close
+          showState('success');
+          await sendWelcomeMessage();
+
+          setTimeout(() => {
+            liff.closeWindow();
+          }, CONFIG.AUTO_CLOSE_DELAY);
+        } else {
+          // Not friend - show welcome with add friend button
+          showState('welcome');
+        }
+
+      } catch (error) {
+        console.error('LIFF initialization error:', error);
+        showError(error.message || '無法載入頁面，請稍後再試');
+      }
+    }
+
+    // ========================================
+    // Event Handlers
+    // ========================================
+    function handleAddFriend() {
+      // Method 1: Use LINE URL Scheme (Recommended)
+      const addFriendUrl = `https://line.me/R/ti/p/@${CONFIG.LINE_OA_ID}`;
+      window.location.href = addFriendUrl;
+
+      // Alternative Method: Use liff.openWindow
+      // liff.openWindow({
+      //   url: addFriendUrl,
+      //   external: false
+      // });
+    }
+
+    function showError(message) {
+      elements.errorMessage.textContent = message;
+      showState('error');
+    }
+
+    // ========================================
+    // Event Listeners
+    // ========================================
+    elements.addFriendBtn.addEventListener('click', handleAddFriend);
+
+    // ========================================
+    // Application Entry Point
+    // ========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded, initializing LIFF...');
+      initializeLIFF();
+    });
+
+    // Handle LIFF errors
+    window.addEventListener('error', (event) => {
+      console.error('Global error:', event.error);
+      showError('發生未預期的錯誤，請重新整理頁面');
+    });
+
+    // Handle LIFF closed
+    window.addEventListener('unload', () => {
+      console.log('LIFF window unloading...');
+    });
+  </script>
+</body>
+</html>

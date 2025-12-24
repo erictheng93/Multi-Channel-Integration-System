@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
-import { QRCodeService } from '../services/qrcode-service';
+import { QRCodeServiceImpl as QRCodeService } from '../services/qrcode-service-impl';
 import { getTeamByQRCode } from '../utils/team';
 import { jwtAuth } from '../middleware/auth';
 import { handleApiError } from '../utils/api-response';
@@ -13,8 +13,8 @@ const qrcodeHandler = new Hono<{ Bindings: Bindings }>();
 qrcodeHandler.delete('/:token', jwtAuth, async (c) => {
   try {
     const token = c.req.param('token');
-    await QRCodeService.deactivateQRCode(token);
-    
+    await QRCodeService.deactivateQRCode(c.env.DB, token);
+
     return c.json({
       success: true,
       message: 'QR Code deactivated successfully',

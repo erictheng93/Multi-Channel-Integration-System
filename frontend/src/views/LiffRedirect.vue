@@ -2,38 +2,79 @@
   <div class="liff-container">
     <div class="liff-card">
       <!-- Loading State -->
-      <div v-if="state === 'loading'" class="liff-loading">
-        <div class="spinner"></div>
+      <div
+        v-if="state === 'loading'"
+        class="liff-loading"
+      >
+        <div class="spinner" />
         <p>正在處理中...</p>
       </div>
 
       <!-- Success State -->
-      <div v-else-if="state === 'success'" class="liff-success">
-        <div class="success-icon">✓</div>
+      <div
+        v-else-if="state === 'success'"
+        class="liff-success"
+      >
+        <div class="success-icon">
+          ✓
+        </div>
         <h2>加入成功！</h2>
         <p>您已成功加入客服團隊</p>
-        <p class="team-name" v-if="teamName">{{ teamName }}</p>
-        <button @click="closeLiff" class="btn-primary">關閉</button>
+        <p
+          v-if="teamName"
+          class="team-name"
+        >
+          {{ teamName }}
+        </p>
+        <button
+          class="btn-primary"
+          @click="closeLiff"
+        >
+          關閉
+        </button>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="state === 'error'" class="liff-error">
-        <div class="error-icon">✕</div>
+      <div
+        v-else-if="state === 'error'"
+        class="liff-error"
+      >
+        <div class="error-icon">
+          ✕
+        </div>
         <h2>發生錯誤</h2>
         <p>{{ errorMessage }}</p>
-        <button @click="retry" class="btn-secondary">重試</button>
+        <button
+          class="btn-secondary"
+          @click="retry"
+        >
+          重試
+        </button>
       </div>
 
       <!-- Not in LINE State -->
-      <div v-else-if="state === 'not-in-line'" class="liff-not-in-line">
+      <div
+        v-else-if="state === 'not-in-line'"
+        class="liff-not-in-line"
+      >
         <div class="line-icon">
-          <svg viewBox="0 0 24 24" width="48" height="48">
-            <path fill="#06C755" d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+          <svg
+            viewBox="0 0 24 24"
+            width="48"
+            height="48"
+          >
+            <path
+              fill="#06C755"
+              d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"
+            />
           </svg>
         </div>
         <h2>請使用 LINE 開啟</h2>
         <p>請在 LINE 應用程式中掃描 QR Code</p>
-        <a :href="lineAddFriendUrl" class="btn-line">在 LINE 中開啟</a>
+        <a
+          :href="lineAddFriendUrl"
+          class="btn-line"
+        >在 LINE 中開啟</a>
       </div>
     </div>
   </div>
@@ -43,19 +84,21 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
-// LIFF SDK 類型
-declare global {
-  interface Window {
-    liff: {
-      init: (config: { liffId: string }) => Promise<void>;
-      isLoggedIn: () => boolean;
-      login: (config?: { redirectUri?: string }) => void;
-      getProfile: () => Promise<{ userId: string; displayName: string; pictureUrl?: string }>;
-      isInClient: () => boolean;
-      closeWindow: () => void;
-      getAccessToken: () => string | null;
-    };
-  }
+// LIFF SDK 類型 - 使用 window 擴展
+interface LiffSDK {
+  init(_options: { liffId: string }): Promise<void>;
+  isLoggedIn(): boolean;
+  login(_options?: { redirectUri?: string }): void;
+  getProfile(): Promise<{ userId: string; displayName: string; pictureUrl?: string }>;
+  isInClient(): boolean;
+  closeWindow(): void;
+  getAccessToken(): string | null;
+}
+
+// 獲取 LIFF SDK 實例
+function getLiff(): LiffSDK | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (window as any).liff || null;
 }
 
 type LiffState = 'loading' | 'success' | 'error' | 'not-in-line';
@@ -109,28 +152,33 @@ async function initLiff() {
   }
 
   // 載入 LIFF SDK
-  if (!window.liff) {
+  if (!getLiff()) {
     await loadLiffSdk();
   }
 
   try {
-    await window.liff.init({ liffId: LIFF_ID });
+    const liffSdk = getLiff();
+    if (!liffSdk) {
+      throw new Error('LIFF SDK not loaded');
+    }
+
+    await liffSdk.init({ liffId: LIFF_ID });
 
     // 檢查是否在 LINE 內開啟
-    if (!window.liff.isInClient()) {
+    if (!liffSdk.isInClient()) {
       state.value = 'not-in-line';
       return;
     }
 
     // 檢查登入狀態
-    if (!window.liff.isLoggedIn()) {
-      window.liff.login({ redirectUri: window.location.href });
+    if (!liffSdk.isLoggedIn()) {
+      liffSdk.login({ redirectUri: window.location.href });
       return;
     }
 
     // 獲取用戶資料
-    const profile = await window.liff.getProfile();
-    const accessToken = window.liff.getAccessToken();
+    const profile = await liffSdk.getProfile();
+    const accessToken = liffSdk.getAccessToken();
 
     // 發送到後端完成團隊綁定
     await bindUserToTeam(token, profile, accessToken);
@@ -187,8 +235,9 @@ async function bindUserToTeam(
 }
 
 function closeLiff() {
-  if (window.liff?.isInClient()) {
-    window.liff.closeWindow();
+  const liffSdk = getLiff();
+  if (liffSdk && liffSdk.isInClient()) {
+    liffSdk.closeWindow();
   } else {
     window.close();
   }

@@ -70,6 +70,10 @@ export interface Bindings {
   LINE_CHANNEL_SECRET: string;
   LINE_BOT_BASIC_ID: string;
   LINE_BOT_ID?: string; // LINE OA Basic ID for QR Code generation (e.g., @110xsqef)
+  LINE_LIFF_ID?: string; // LIFF App ID for team QR Code system
+
+  // KV Cache alias (for backward compatibility)
+  KV_CACHE?: KVNamespace;
   
   // Environment variables - JWT and Auth
   JWT_SECRET: string;

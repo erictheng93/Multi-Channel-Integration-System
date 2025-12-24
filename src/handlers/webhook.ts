@@ -955,7 +955,34 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       }
     }
 
-    // Step 5: 如果沒有追蹤參數，嘗試匹配最近建立的 QR Code
+    // Step 5: 🆕 優先查詢 customer_team_assignments 表（LIFF QR Code 系統）
+    if (!assignedTeamId) {
+      try {
+        const { customerTeamAssignments } = await import('../db/schema');
+        const assignment = await drizzleDb
+          .select()
+          .from(customerTeamAssignments)
+          .where(eq(customerTeamAssignments.platformUserId, userId))
+          .orderBy(desc(customerTeamAssignments.assignedAt))
+          .limit(1)
+          .get();
+
+        if (assignment) {
+          assignedTeamId = assignment.teamId;
+          console.log(`🎯 [LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
+            assignmentId: assignment.id,
+            source: assignment.source,
+            assignedAt: assignment.assignedAt
+          });
+        }
+      } catch (assignmentError) {
+        log.warn('LINE Follow: Failed to query customer_team_assignments', {
+          error: assignmentError instanceof Error ? assignmentError.message : String(assignmentError)
+        });
+      }
+    }
+
+    // Step 6: 如果沒有找到預先分配，嘗試匹配最近建立的 QR Code
     if (!assignedTeamId) {
       try {
         // 查找過去 5 分鐘內建立的活躍 QR Code (用於測試/示範)
@@ -997,7 +1024,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
     const timestamp = new Date().toISOString();
 
-    // Step 6: 創建或更新客戶記錄
+    // Step 7: 創建或更新客戶記錄
     if (!existingCustomer) {
       console.log('🆕 [LINE Follow] Creating new customer...');
       await drizzleDb
@@ -1053,7 +1080,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         .where(eq(customers.id, existingCustomer.id));
     }
 
-    // Step 7: 如果有團隊指派，創建預設對話
+    // Step 8: 如果有團隊指派，創建預設對話
     if (assignedTeamId && existingCustomer) {
       // 檢查是否已有活躍對話
       existingConversation = await drizzleDb
@@ -1109,7 +1136,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       }
     }
 
-    // Step 8: 記錄活動
+    // Step 9: 記錄活動
     try {
       const activityService = new ActivityService(env.DB);
       await activityService.logActivity({
@@ -1142,7 +1169,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       source: qrCodeToken ? 'qr_code' : 'direct'
     });
 
-    // 🆕 Step 9: 觸發新客戶加入通知
+    // 🆕 Step 10: 觸發新客戶加入通知
     try {
       const { triggerCustomerFollowedNotification } = await import('../utils/notification-trigger');
 
@@ -1178,6 +1205,58 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError)
       });
       // 不要讓通知失敗影響主流程
+    }
+
+    // 🆕 Step 11: 發送歡迎訊息
+    if (event.replyToken && assignedTeamId) {
+      try {
+        const { teams } = await import('../db/schema');
+
+        // 獲取團隊名稱
+        const team = await drizzleDb
+          .select()
+          .from(teams)
+          .where(eq(teams.id, assignedTeamId))
+          .get();
+
+        const teamName = team?.name || '我們的團隊';
+        const welcomeMessage = `🎉 歡迎加入 ${teamName}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
+
+        // 使用 LINE Messaging API 發送歡迎訊息
+        const response = await fetch('https://api.line.me/v2/bot/message/reply', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`
+          },
+          body: JSON.stringify({
+            replyToken: event.replyToken,
+            messages: [{
+              type: 'text',
+              text: welcomeMessage
+            }]
+          })
+        });
+
+        if (response.ok) {
+          console.log('✅ [LINE Follow] Welcome message sent successfully', {
+            userId: userId.substring(0, 10) + '...',
+            teamId: assignedTeamId,
+            teamName
+          });
+        } else {
+          const errorText = await response.text();
+          log.warn('LINE Follow: Failed to send welcome message', {
+            status: response.status,
+            error: errorText
+          });
+        }
+      } catch (welcomeError) {
+        log.warn('LINE Follow: Failed to send welcome message', {
+          error: welcomeError instanceof Error ? welcomeError.message : String(welcomeError)
+        });
+        // 不要讓歡迎訊息失敗影響主流程
+      }
     }
 
   } catch (error) {

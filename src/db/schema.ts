@@ -620,6 +620,34 @@ export const taskReminders = sqliteTable('task_reminders', {
   sentAt: text('sent_at'),
 });
 
+// ======================== LIFF Team QR Code System (Migrations 0030-0031) ========================
+
+// Team LIFF QR Codes table - 團隊 LIFF QR Code (Migration 0030)
+// Stores persistent LIFF URLs and QR Code images for team member onboarding
+export const teamLiffQrCodes = sqliteTable('team_liff_qr_codes', {
+  id: text('id').primaryKey(),
+  teamId: integer('team_id').notNull().unique().references(() => teams.id, { onDelete: 'cascade' }),
+  liffUrl: text('liff_url').notNull(), // Full LIFF URL with team parameter
+  qrCodeUrl: text('qr_code_url').notNull(), // QR Code image URL (R2)
+  scanCount: integer('scan_count').default(0),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Customer Team Assignments table - 客戶團隊分配記錄 (Migration 0031)
+// Tracks customer team assignments from LIFF QR Code scans (recorded BEFORE friend status)
+export const customerTeamAssignments = sqliteTable('customer_team_assignments', {
+  id: text('id').primaryKey(),
+  platformUserId: text('platform_user_id').notNull(), // LINE User ID (U...)
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  qrCodeId: text('qr_code_id').references(() => teamLiffQrCodes.id, { onDelete: 'set null' }),
+  source: text('source').default('liff_qr'), // 'liff_qr', 'manual', 'import', 'webhook'
+  displayName: text('display_name'),
+  assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
+  metadata: text('metadata'), // JSON: additional info
+});
+
 // Export types for reports system
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -639,3 +667,9 @@ export type NewTaskReminder = typeof taskReminders.$inferInsert;
 // Export types for agent teams (multi-team membership)
 export type AgentTeam = typeof agentTeams.$inferSelect;
 export type NewAgentTeam = typeof agentTeams.$inferInsert;
+
+// Export types for LIFF team QR Code system (Migrations 0030-0031)
+export type TeamLiffQrCode = typeof teamLiffQrCodes.$inferSelect;
+export type NewTeamLiffQrCode = typeof teamLiffQrCodes.$inferInsert;
+export type CustomerTeamAssignment = typeof customerTeamAssignments.$inferSelect;
+export type NewCustomerTeamAssignment = typeof customerTeamAssignments.$inferInsert;

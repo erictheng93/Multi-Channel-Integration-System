@@ -487,7 +487,8 @@ function handleSearchResults(results: Message[]) { setSearchResults(results) }
 function handleSearchClear() { clearSearch(); showSearchPanel.value = false }
 function useQuickReply(text: string) {
   const inputEl = messageInputRef.value as any
-  inputEl?.setContent?.(text)
+  // 🔧 FIX: 使用正確的方法名 setMessageText (填充文本到輸入框)
+  inputEl?.setMessageText?.(text)
   inputEl?.focus?.()
 }
 function handleVirtualScroll(scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }) {
