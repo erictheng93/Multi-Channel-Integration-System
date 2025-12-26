@@ -513,6 +513,8 @@ onMounted(() => {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
   background: var(--background-color);
+  position: relative;
+  z-index: 10;
 }
 
 .header-left {

@@ -53,18 +53,21 @@
         </button>
       </div>
 
-      <!-- 遮罩層 -->
-      <div
-        v-if="showTeamSelector"
-        class="modal-backdrop"
-        @click="closeTeamSelector"
-      />
+      <!-- 遮罩層 - 使用 Teleport 移到 body 层级避免 transform 影响 -->
+      <Teleport to="body">
+        <div
+          v-if="showTeamSelector"
+          class="modal-backdrop"
+          @click="closeTeamSelector"
+        />
+      </Teleport>
 
-      <!-- 團隊選擇面板 -->
-      <div
-        v-if="showTeamSelector"
-        class="team-selector-panel"
-      >
+      <!-- 團隊選擇面板 - 使用 Teleport 移到 body 层级避免 transform 影响 -->
+      <Teleport to="body">
+        <div
+          v-if="showTeamSelector"
+          class="team-selector-panel"
+        >
         <div class="panel-header">
           <h4>選擇指派團隊</h4>
           <div class="panel-header-actions">
@@ -199,6 +202,7 @@
           </div>
         </div>
       </div>
+      </Teleport>
     </div>
   </div>
 </template>
