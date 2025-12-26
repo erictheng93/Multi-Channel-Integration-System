@@ -183,7 +183,18 @@ export class PermissionService {
    * 檢查用戶是否可以取消指派對話
    */
   static canUnassignConversation(user: TeamMember | null, conversation: Conversation): boolean {
-    if (!user || conversation.status !== 'assigned') {
+    if (!user) {
+      return false
+    }
+
+    // 檢查對話是否已指派（可能指派給團隊或個別客服）
+    const isAssigned = !!(conversation.assignedTeamId || conversation.assignedAgentId)
+    if (!isAssigned) {
+      return false
+    }
+
+    // 不能取消指派已關閉的對話
+    if (conversation.status === 'closed') {
       return false
     }
 
