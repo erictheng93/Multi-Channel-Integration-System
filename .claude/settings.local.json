@@ -139,7 +139,9 @@
       "Bash(netstat:*)",
       "Bash(Select-String -Pattern \"(error TS|Error:|✓|built|success)\")",
       "Bash(copy \"drizzle\\0029_add_task_reminders.sql\" \"migrations\\0029_add_task_reminders.sql\")",
-      "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" log --oneline -3)"
+      "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" log --oneline -3)",
+      "Bash(npm install:*)",
+      "Bash(npx vue-tsc:*)"
     ],
     "deny": [],
     "ask": [],
