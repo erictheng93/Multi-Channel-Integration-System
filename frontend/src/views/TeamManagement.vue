@@ -1008,6 +1008,7 @@ import { useTeamStore } from '@/stores/team'
 import { useQRCodeStore } from '@/stores/qrcode'
 import { useToast } from '@/composables/useToast'
 import { teamApi } from '@/api/team'
+import { ROLES } from '@/constants/roles'
 
 // 🆕 Background QR Preload Service
 import { qrPreloadService } from '@/services/qrPreloadService'
@@ -1078,18 +1079,18 @@ const teamStore = useTeamStore()
 // Access computed properties from the store with System Administrator pinned to top
 const teamMembers = computed(() => {
   const members = teamStore.members
-  const systemAdmin = members.find(member => 
-    member.role === 'admin' && (
-      member.name?.includes('系統管理員') || 
+  const systemAdmin = members.find(member =>
+    member.role === ROLES.ADMIN && (
+      member.name?.includes('系統管理員') ||
       member.name?.includes('System Administrator') ||
       member.name?.toLowerCase().includes('admin') ||
       member.loginId === 'admin' ||
       member.email?.includes('admin')
     )
   )
-  const otherMembers = members.filter(member => 
-    !(member.role === 'admin' && (
-      member.name?.includes('系統管理員') || 
+  const otherMembers = members.filter(member =>
+    !(member.role === ROLES.ADMIN && (
+      member.name?.includes('系統管理員') ||
       member.name?.includes('System Administrator') ||
       member.name?.toLowerCase().includes('admin') ||
       member.loginId === 'admin' ||
@@ -1115,7 +1116,7 @@ const addMemberForm = reactive({
   name: '',
   email: '',
   password: '',
-  role: 'agent' as 'admin' | 'agent', // Simplified from 3-tier to 2-tier role system
+  role: ROLES.AGENT as typeof ROLES.ADMIN | typeof ROLES.AGENT, // Simplified from 3-tier to 2-tier role system
   group: '',
   isActive: true
 })
@@ -1166,7 +1167,7 @@ const isPasswordFormValid = computed(() => {
 const availableMembers = computed(() => {
   return teamMembers.value.filter(member =>
     // 只排除管理員，允許客服加入多個團隊
-    member.role !== 'admin'
+    member.role !== ROLES.ADMIN
   )
 })
 
@@ -1180,7 +1181,7 @@ const isAllMembersSelected = computed(() => {
 const editTeamAvailableMembers = computed(() => {
   const currentMemberIds = editTeamCurrentMembers.value.map(m => m.id)
   return teamMembers.value.filter(member =>
-    member.role !== 'admin' && // 排除管理員
+    member.role !== ROLES.ADMIN && // 排除管理員
     !currentMemberIds.includes(member.id) // 不在當前團隊成員中（但可以在其他團隊）
   )
 })
@@ -1342,7 +1343,7 @@ const submitAddMember = async () => {
       name: '',
       email: '',
       password: '',
-      role: 'agent' as 'admin' | 'agent',
+      role: ROLES.AGENT as typeof ROLES.ADMIN | typeof ROLES.AGENT,
       group: '',
       isActive: true
     })
@@ -1368,7 +1369,7 @@ const closeAddMemberModal = () => {
     name: '',
     email: '',
     password: '',
-    role: 'agent' as 'admin' | 'agent',
+    role: ROLES.AGENT as typeof ROLES.ADMIN | typeof ROLES.AGENT,
     group: '',
     isActive: true
   })
@@ -1382,7 +1383,7 @@ const toggleAddPasswordVisibility = () => {
 // 更新成員角色
 const updateMemberRole = async (memberId: string, role: string) => {
   try {
-    await teamStore.updateMemberRole(memberId, role as 'admin' | 'agent') // Simplified from 3-tier to 2-tier
+    await teamStore.updateMemberRole(memberId, role as typeof ROLES.ADMIN | typeof ROLES.AGENT) // Simplified from 3-tier to 2-tier
   } catch (error) {
     console.error('更新角色失敗:', error)
   }
@@ -1969,6 +1970,9 @@ const downloadQRCode = async () => {
 
     // 2️⃣ 載入並繪製 QR Code
     const qrImg = new window.Image()
+    // 設置 crossOrigin 以避免 Canvas 跨域污染 (Tainted Canvas)
+    // 這允許我們從 R2 (s3.imfinethankyouandyou.com) 加載圖片並導出
+    qrImg.crossOrigin = 'anonymous'
     await new Promise<void>((resolve, reject) => {
       qrImg.onload = () => resolve()
       qrImg.onerror = () => reject(new Error('QR Code 圖片載入失敗'))
