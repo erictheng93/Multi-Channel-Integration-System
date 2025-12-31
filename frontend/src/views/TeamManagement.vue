@@ -1060,7 +1060,8 @@ interface Team {
 }
 
 // 團隊管理相關狀態
-const teams = ref<Team[]>([])
+// ✅ 统一数据源：使用 computed 引用 teamStore.teams（避免双重数据源导致闪烁）
+const teams = computed(() => teamStore.teams)
 const addTeamLoading = ref(false)
 const editTeamLoading = ref(false)
 const showAddTeamModal = ref(false)
@@ -1293,35 +1294,14 @@ const loadData = async (force = false) => {
   lastLoadTime.value = now
   await Promise.all([
     teamStore.loadMembers(),
-    loadTeams()
+    teamStore.loadTeams()  // ✅ Use store method with loading state management
   ])
+
+  // 🆕 Start background QR preload after teams are loaded
+  startBackgroundQRPreload()
 }
 
-// 載入團隊數據
-const loadTeams = async () => {
-  try {
-    console.log('🔄 開始載入團隊列表...')
-    const response = await teamApi.getTeams(true) // Include inactive teams
-    console.log('📥 API 響應:', response)
-    console.log('✅ success:', response.success, '📦 data:', response.data, '📊 data length:', response.data?.length)
-
-    if (response.success && response.data) {
-      teams.value = response.data
-      // 🔧 修復：同步更新 teamStore.teams 以確保統計數據正確計算
-      // stats.teamCount 依賴 teamStore.teams，不同步會導致顯示 0
-      teamStore.teams.splice(0, teamStore.teams.length, ...response.data)
-      console.log('✔️ 團隊數據已更新:', teams.value.length, '個團隊')
-
-      // 🆕 Phase 1: 啟動背景預載 QR Code
-      startBackgroundQRPreload()
-    } else {
-      console.warn('⚠️ API 調用成功但沒有數據或失敗:', response)
-    }
-  } catch (error) {
-    console.error('❌ 載入團隊失敗:', error)
-    showError('載入團隊失敗', '請檢查網路連線或稍後重試')
-  }
-}
+// Note: Removed local loadTeams() function - now using teamStore.loadTeams() for consistent loading state management
 
 // 新增成員
 const submitAddMember = async () => {
@@ -1507,7 +1487,8 @@ const submitAddTeam = async () => {
       const newTeamId = response.data.id
 
       // ③ 樂觀更新：直接將新團隊添加到列表（避免 loadTeams）
-      teams.value = [...teams.value, response.data]
+      // ✅ 统一数据源：更新 teamStore.teams（teams 是 computed，会自动反映变化）
+      teamStore.teams = [...teamStore.teams, response.data]
 
       // 🆕 Phase 3: 團隊創建時已預生成 QR 碼，觸發 Store 預載
       // 這樣其他元件也能共享這個 QR 碼
@@ -1750,7 +1731,8 @@ const toggleTeamStatus = async (team: Team) => {
 const handleMemberUpdated = async () => {
   console.log('🔄 團隊成員已更新，重新載入團隊數據...')
   try {
-    await loadTeams()
+    await teamStore.loadTeams()  // ✅ Use store method with loading state management
+    startBackgroundQRPreload()  // Restart QR preload after reload
     console.log('✅ 團隊數據重新載入完成')
   } catch (error) {
     console.error('❌ 重新載入團隊數據失敗:', error)
@@ -2068,7 +2050,8 @@ const confirmRemoveTeam = (team: Team) => {
       console.error('Failed to retrieve team from list')
       return
     }
-    teams.value.splice(teamIndex, 1)
+    // ✅ 统一数据源：更新 teamStore.teams
+    teamStore.teams = teamStore.teams.filter((_, index) => index !== teamIndex)
 
     try {
       const response = await teamApi.deleteTeam(team.id)
@@ -2077,13 +2060,19 @@ const confirmRemoveTeam = (team: Team) => {
         // 不需要重新載入所有團隊，已經樂觀更新了
       } else {
         // API 返回失敗，恢復團隊到列表
-        teams.value.splice(teamIndex, 0, removedTeam)
+        // ✅ 统一数据源：恢复到 teamStore.teams
+        const restoredTeams = [...teamStore.teams]
+        restoredTeams.splice(teamIndex, 0, removedTeam)
+        teamStore.teams = restoredTeams
         showError('刪除團隊失敗', response.error || '請稍後重試')
       }
     } catch (error) {
       console.error('刪除團隊失敗:', error)
       // 發生錯誤，恢復團隊到列表
-      teams.value.splice(teamIndex, 0, removedTeam)
+      // ✅ 统一数据源：恢复到 teamStore.teams
+      const restoredTeams = [...teamStore.teams]
+      restoredTeams.splice(teamIndex, 0, removedTeam)
+      teamStore.teams = restoredTeams
       showError('刪除團隊失敗', '請稍後重試')
     }
   }
