@@ -375,11 +375,11 @@
               <!-- Left: Flex Bubble Card (QRcodeDesign.html Style) -->
               <div class="flex-bubble">
                 <div class="bubble-body">
-                  <!-- QR Code Image -->
+                  <!-- LIFF QR Code Image -->
                   <div class="qr-image-wrapper">
                     <img
-                      :src="currentQRCode.qrCode"
-                      alt="LINE QR Code"
+                      :src="currentQRCode.qrCodeUrl"
+                      alt="LINE LIFF QR Code"
                       class="qr-image"
                       @error="handleQRImageError"
                     >
@@ -430,16 +430,16 @@
                   </div>
                 </div>
 
-                <!-- LINE URL -->
+                <!-- LIFF URL -->
                 <div class="url-display">
                   <div class="url-text">
-                    <span class="url-label">連結</span>
-                    <code class="url-value">{{ currentQRCode.lineUrl }}</code>
+                    <span class="url-label">LIFF 連結</span>
+                    <code class="url-value">{{ currentQRCode.liffUrl }}</code>
                   </div>
                   <button
                     class="btn-copy"
                     :class="{ 'copied': urlCopied }"
-                    @click="copyLineUrl"
+                    @click="copyLiffUrl"
                   >
                     <svg
                       v-if="!urlCopied"
@@ -478,29 +478,28 @@
                 <!-- Stats Grid -->
                 <div class="qr-stats-mini">
                   <div class="qr-stat-item">
-                    <span class="qr-stat-label">使用次數</span>
+                    <span class="qr-stat-label">掃描次數</span>
                     <span class="qr-stat-value">
-                      {{ currentQRCode.usageCount || 0 }}
-                      <span
-                        v-if="currentQRCode.maxUses"
-                        class="qr-stat-max"
-                      >/ {{ currentQRCode.maxUses }}</span>
-                      <span
-                        v-else
-                        class="qr-stat-max"
-                      >/ ∞</span>
+                      {{ qrStats?.scanCount || 0 }}
+                      <span class="qr-stat-max">次</span>
+                    </span>
+                  </div>
+                  <div class="qr-stat-item">
+                    <span class="qr-stat-label">成功分配</span>
+                    <span class="qr-stat-value">
+                      {{ qrStats?.assignmentCount || 0 }}
+                      <span class="qr-stat-max">人</span>
                     </span>
                   </div>
                   <div class="qr-stat-item">
                     <span class="qr-stat-label">建立時間</span>
                     <span class="qr-stat-value">{{ formatDate(currentQRCode.createdAt) }}</span>
                   </div>
-                  <div
-                    v-if="currentQRCode.campaignName"
-                    class="qr-stat-item"
-                  >
-                    <span class="qr-stat-label">活動名稱</span>
-                    <span class="qr-stat-value">{{ currentQRCode.campaignName }}</span>
+                  <div class="qr-stat-item">
+                    <span class="qr-stat-label">類型</span>
+                    <span class="qr-stat-value">
+                      <span style="color: #06c755; font-weight: 500;">LIFF永久</span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -541,7 +540,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useQRCodeStore } from '@/stores/qrcode'
-import type { TeamMember, QRCode } from '@/types'
+import type { TeamMember, LiffQRCode } from '@/types'
 
 interface Team {
   id: number;
@@ -595,11 +594,12 @@ const editForm = reactive({
 const showAddMemberModal = ref(false)
 const removingMemberId = ref<string | null>(null)
 
-// QR Code 狀態
-const currentQRCode = ref<QRCode | null>(null)
+// LIFF QR Code 狀態
+const currentQRCode = ref<LiffQRCode | null>(null)
 const loadingQRCode = ref(false)
 const generatingQR = ref(false)
 const urlCopied = ref(false)
+const qrStats = ref<{scanCount: number; assignmentCount: number} | null>(null)
 
 // 圖標組件
 const EmptyIcon = {
@@ -826,24 +826,33 @@ const handleRemoveMember = async (member: TeamMember) => {
   }
 }
 
-// QR Code 相關方法
-// 🆕 使用 Pinia Store 統一管理 QR 碼狀態，與 TeamManagement 共享
+// LIFF QR Code 相關方法
+// 🆕 使用 Pinia Store 統一管理 LIFF QR 碼狀態，與 TeamManagement 共享
 const loadTeamQRCode = async () => {
   loadingQRCode.value = true
   try {
-    console.log(`🔍 [TeamCard] 從 Store 載入 QR Code: team ${props.team.id}`)
+    console.log(`🔍 [TeamCard] 從 Store 載入 LIFF QR Code: team ${props.team.id}`)
     // 使用 Store 的 loadQRCode 方法，統一快取管理
     const qrCode = await qrCodeStore.loadQRCode(props.team.id)
     currentQRCode.value = qrCode
 
     if (qrCode) {
-      console.log(`✅ [TeamCard] QR Code 載入成功`)
+      console.log(`✅ [TeamCard] LIFF QR Code 載入成功`)
+      // 同時載入統計資料
+      const stats = await qrCodeStore.getQRStats(props.team.id)
+      if (stats) {
+        qrStats.value = {
+          scanCount: stats.scanCount,
+          assignmentCount: stats.assignmentCount
+        }
+      }
     } else {
-      console.log(`📭 [TeamCard] 團隊尚未有 QR Code: team ${props.team.id}`)
+      console.log(`📭 [TeamCard] 團隊尚未有 LIFF QR Code: team ${props.team.id}`)
     }
   } catch (error) {
-    console.error('載入 QR Code 失敗:', error)
+    console.error('載入 LIFF QR Code 失敗:', error)
     currentQRCode.value = null
+    qrStats.value = null
   } finally {
     loadingQRCode.value = false
   }
@@ -966,9 +975,9 @@ const handleGenerateQR = async () => {
  * 檔案命名：{團隊名稱}_LINE_QR_{時間戳}.png
  */
 const downloadQRCode = async () => {
-  if (!currentQRCode.value?.qrCode) {return}
+  if (!currentQRCode.value?.qrCodeUrl) {return}
 
-  const qrCodeDataUrl = currentQRCode.value.qrCode
+  const qrCodeDataUrl = currentQRCode.value.qrCodeUrl
   const teamName = props.team.name
 
   try {
@@ -1123,13 +1132,13 @@ const downloadQRCode = async () => {
   }
 }
 
-const copyLineUrl = async () => {
-  if (!currentQRCode.value?.lineUrl) {return}
+const copyLiffUrl = async () => {
+  if (!currentQRCode.value?.liffUrl) {return}
 
   try {
-    await navigator.clipboard.writeText(currentQRCode.value.lineUrl)
+    await navigator.clipboard.writeText(currentQRCode.value.liffUrl)
     urlCopied.value = true
-    showSuccess('連結已複製到剪貼簿')
+    showSuccess('LIFF 連結已複製到剪貼簿')
     setTimeout(() => {
       urlCopied.value = false
     }, 2000)

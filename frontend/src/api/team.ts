@@ -5,7 +5,6 @@ import type {
   Invitation,
   InvitationRequest,
   ApiResponse,
-  QRCode,
   AgentTeamMembership
 } from '@/types'
 
@@ -303,61 +302,40 @@ export const teamApi = {
     return apiClient.get(`/teams/${teamId}/stats`)
   },
 
-  // 生成團隊 QR 碼 (永久有效，不設過期時間)
-  generateTeamQR: async (teamId: number, data?: {
-    campaignName?: string;
-    description?: string;
-    maxUses?: number;
-  }): Promise<ApiResponse<{
+  // ==================== LIFF QR Code API ====================
+  // 生成或重新生成團隊 LIFF QR 碼 (永久有效，每團隊一個)
+  generateLiffQR: async (teamId: number): Promise<ApiResponse<{
     id: string;
-    qrCode: string;
-    lineUrl: string;
-    token: string;
-    campaignName?: string;
-    usageCount: number;
-    maxUses?: number;
+    liffUrl: string;
+    qrCodeUrl: string;
+    scanCount: number;
+    isActive: boolean;
   }>> => {
-    return apiClient.post(`/teams/${teamId}/qr-code`, data || {})
-  },
-  
-  // 獲取團隊 QR 碼列表
-  getTeamQRCodes: async (teamId: number): Promise<ApiResponse<QRCode[]>> => {
-    return apiClient.get(`/teams/${teamId}/qr-codes`)
+    return apiClient.post(`/teams/${teamId}/qr-code/liff`)
   },
 
-  /**
-   * 🆕 Phase 1: 快速獲取團隊最新 QR 碼 (用於懸停預載)
-   * 優先從 KV 快取讀取，響應更快
-   */
-  getLatestQRCodeFast: async (teamId: number): Promise<ApiResponse<{
-    qrCode: string;
-    lineUrl: string;
-    fromCache: boolean;
+  // 獲取團隊 LIFF QR 碼
+  getLiffQRCode: async (teamId: number): Promise<ApiResponse<{
+    id: string;
+    liffUrl: string;
+    qrCodeUrl: string;
+    scanCount: number;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
   }>> => {
-    return apiClient.get(`/teams/${teamId}/qr-code/latest`)
+    return apiClient.get(`/teams/${teamId}/qr-code/liff`)
   },
 
-  // 停用 QR 碼
-  deactivateQRCode: async (teamId: number, qrCodeId: string): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/teams/${teamId}/qr-codes/${qrCodeId}/deactivate`)
-  },
-  
-  // 獲取 QR 碼統計
-  getTeamQRStats: async (teamId: number, dateRange?: { start: Date; end: Date }): Promise<ApiResponse<{
-    totalScans: number;
-    newCustomers: number;
-    conversionRate: number;
-    activeQRCodes: number;
+  // 獲取 LIFF QR 碼統計
+  getLiffQRStats: async (teamId: number): Promise<ApiResponse<{
+    scanCount: number;
+    assignmentCount: number;
+    createdAt: string;
+    lastScannedAt: string;
+    isActive: boolean;
   }>> => {
-    let url = `/teams/${teamId}/qr-stats`
-    if (dateRange) {
-      const searchParams = new URLSearchParams({
-        start: dateRange.start.toISOString(),
-        end: dateRange.end.toISOString()
-      })
-      url += `?${searchParams.toString()}`
-    }
-    return apiClient.get(url)
+    return apiClient.get(`/teams/${teamId}/qr-code/liff/stats`)
   },
 
   // 獲取團隊成員（用於指派功能）

@@ -43,6 +43,11 @@ export interface ConversationApiFilters extends Omit<ConversationFilters, 'assig
 }
 
 // QR碼相關型別
+
+// QR Code 類型枚舉
+export type QRCodeType = 'legacy' | 'liff';
+
+// 傳統 QR Code (直接添加好友)
 export interface QRCode {
   id: string;
   qrCode: string;
@@ -54,6 +59,28 @@ export interface QRCode {
   isActive: boolean;
   expiresAt?: Date;
   createdAt: Date;
+  type?: QRCodeType; // 類型標記（用於區分）
+}
+
+// LIFF QR Code (LIFF 頁面引導)
+export interface LiffQRCode {
+  id: string;
+  liffUrl: string;
+  qrCodeUrl: string;
+  scanCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  type: 'liff'; // 固定為 liff
+}
+
+// LIFF QR Code 統計
+export interface LiffQRCodeStats {
+  scanCount: number;
+  assignmentCount: number;
+  createdAt: string;
+  lastScannedAt: string;
+  isActive: boolean;
 }
 
 // 分頁響應型別（保留向後兼容）
