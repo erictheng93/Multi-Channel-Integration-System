@@ -53,10 +53,10 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
     headers: {
       csp: [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Consider tightening in production
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://static.cloudflareinsights.com", // Allow LIFF SDK and Cloudflare Insights
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
-        "connect-src 'self' https://api.line.me https://graph.facebook.com",
+        "connect-src 'self' https://api.line.me https://graph.facebook.com https://access.line.me", // Add LINE Access API for LIFF
         "font-src 'self' data:",
         "object-src 'none'",
         "base-uri 'self'",
@@ -163,14 +163,35 @@ export function sanitizeLogData(data: any): any {
 }
 
 /**
+ * Get current environment safely
+ * Compatible with both Node.js and Cloudflare Workers
+ */
+function getEnvironment(): string {
+  // Check if we're in a Node.js-like environment
+  if (typeof globalThis !== 'undefined' && 'process' in globalThis) {
+    const nodeEnv = (globalThis as any).process?.env?.NODE_ENV;
+    if (nodeEnv) {
+      return nodeEnv;
+    }
+  }
+  // Default to production for safety in Workers environment
+  return 'production';
+}
+
+/**
  * Environment-aware console logging
  */
 export class SecureLogger {
-  private static environment = process.env.NODE_ENV || 'production';
-  private static isDevelopment = this.environment === 'development';
+  private static getEnvironment(): string {
+    return getEnvironment();
+  }
+
+  private static isDevelopment(): boolean {
+    return this.getEnvironment() === 'development';
+  }
 
   static log(message: string, data?: any): void {
-    if (this.isDevelopment) {
+    if (this.isDevelopment()) {
       console.log(message, data ? sanitizeLogData(data) : '');
     }
   }
@@ -183,7 +204,7 @@ export class SecureLogger {
     if (error instanceof Error) {
       console.error(message, {
         message: error.message,
-        stack: this.isDevelopment ? error.stack : '[REDACTED]',
+        stack: this.isDevelopment() ? error.stack : '[REDACTED]',
       });
     } else {
       console.error(message, sanitizeLogData(error));
@@ -191,7 +212,7 @@ export class SecureLogger {
   }
 
   static debug(message: string, data?: any): void {
-    if (this.isDevelopment) {
+    if (this.isDevelopment()) {
       console.debug(message, sanitizeLogData(data));
     }
   }
