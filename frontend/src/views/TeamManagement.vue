@@ -1821,24 +1821,24 @@ const viewTeamQR = async (team: Team) => {
   const cachedQR = qrCodeStore.getQRCode(team.id)
   if (cachedQR) {
     console.log(`⚡ [viewTeamQR] Store 快取命中: team ${team.id}`)
-    currentQRCode.value = cachedQR.qrCode
+    currentQRCode.value = cachedQR.qrCodeUrl
     qrGenerating.value = false
     qrImageLoading.value = true  // 圖片仍需載入
     return
   }
 
-  // 無快取，嘗試從 API 載入現有 QR Code（不生成新的）
+  // 無快取，嘗試從 API 載入現有 LIFF QR Code（不生成新的）
   currentQRCode.value = ''
   qrGenerating.value = true
   qrImageLoading.value = true
 
   try {
-    // 使用 Store 的 loadQRCode 方法，僅載入現有 QR Code
+    // 使用 Store 的 loadQRCode 方法，僅載入現有 LIFF QR Code
     const qrCode = await qrCodeStore.loadQRCode(team.id)
 
     if (qrCode) {
-      console.log(`✅ [viewTeamQR] QR 碼載入成功: team ${team.id}`)
-      currentQRCode.value = qrCode.qrCode
+      console.log(`✅ [viewTeamQR] LIFF QR 碼載入成功: team ${team.id}`)
+      currentQRCode.value = qrCode.qrCodeUrl
       qrGenerating.value = false
     } else {
       // 沒有現有 QR Code，顯示警示訊息

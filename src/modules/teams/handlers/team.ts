@@ -24,7 +24,7 @@ import {
   requireAdmin
 } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
-import { teams, qrCodes } from '@/db/schema';
+import { teams, qrCodes, teamLiffQrCodes } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -594,6 +594,168 @@ app.post('/:id/qr-code-test', async (c) => {
     }, 500);
   }
 });
+
+// ==================== LIFF QR Code API Endpoints ====================
+
+// Get team LIFF QR Code
+app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const db = createDbClient(c.env.DB);
+
+    const liffQrCode = await db
+      .select()
+      .from(teamLiffQrCodes)
+      .where(eq(teamLiffQrCodes.teamId, teamId))
+      .get();
+
+    if (!liffQrCode) {
+      return c.json({
+        success: false,
+        error: 'No LIFF QR code found for this team'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        id: liffQrCode.id,
+        liffUrl: liffQrCode.liffUrl,
+        qrCodeUrl: liffQrCode.qrCodeUrl,
+        scanCount: liffQrCode.scanCount || 0,
+        isActive: liffQrCode.isActive,
+        createdAt: liffQrCode.createdAt,
+        updatedAt: liffQrCode.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Get LIFF QR code error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to get LIFF QR code'
+    }, 500);
+  }
+});
+
+// Generate or regenerate team LIFF QR Code
+app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    // Get team name
+    const db = createDbClient(c.env.DB);
+    const team = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .get();
+
+    if (!team) {
+      return c.json({
+        success: false,
+        error: 'Team not found'
+      }, 404);
+    }
+
+    // Generate or regenerate LIFF QR Code
+    const result = await generateTeamQRCode(teamId, team.name, c.env);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: result.error || 'Failed to generate LIFF QR code'
+      }, 500);
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        id: result.qrCodeId,
+        liffUrl: result.liffUrl,
+        qrCodeUrl: result.qrCodeUrl,
+        scanCount: 0,
+        isActive: true
+      }
+    });
+  } catch (error) {
+    console.error('Generate LIFF QR code error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to generate LIFF QR code'
+    }, 500);
+  }
+});
+
+// Get LIFF QR Code statistics
+app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, 400);
+    }
+
+    const db = createDbClient(c.env.DB);
+
+    const liffQrCode = await db
+      .select()
+      .from(teamLiffQrCodes)
+      .where(eq(teamLiffQrCodes.teamId, teamId))
+      .get();
+
+    if (!liffQrCode) {
+      return c.json({
+        success: false,
+        error: 'No LIFF QR code found for this team'
+      }, 404);
+    }
+
+    // Get customer team assignments count (from Migration 0031)
+    const { customerTeamAssignments } = await import('@/db/schema');
+    const assignments = await db
+      .select()
+      .from(customerTeamAssignments)
+      .where(eq(customerTeamAssignments.teamId, teamId))
+      .all();
+
+    return c.json({
+      success: true,
+      data: {
+        scanCount: liffQrCode.scanCount || 0,
+        assignmentCount: assignments.length,
+        createdAt: liffQrCode.createdAt,
+        lastScannedAt: liffQrCode.updatedAt,
+        isActive: liffQrCode.isActive
+      }
+    });
+  } catch (error) {
+    console.error('Get LIFF QR code stats error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to get LIFF QR code statistics'
+    }, 500);
+  }
+});
+
+// ==================== End of LIFF QR Code API Endpoints ====================
 
 // Get team statistics
 app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {

@@ -812,6 +812,17 @@ log.info('LIFF endpoints registered (public)', {
   ]
 });
 
+// ==================== Admin LIFF QR Batch Generation ====================
+import adminLiffQRBatchHandler from './handlers/admin-liff-qr-batch';
+app.route('/api/admin/liff-qr', adminLiffQRBatchHandler);
+
+log.info('Admin LIFF QR batch generation endpoints registered (admin only)', {
+  endpoints: [
+    'POST /api/admin/liff-qr/batch-generate - Batch generate LIFF QR Codes',
+    'GET  /api/admin/liff-qr/status - Check LIFF QR Code coverage'
+  ]
+});
+
 // ==================== Task Reminder System (Phase 4: Notification Integration) ====================
 import taskReminderHandler, { handleScheduledEvent } from './handlers/task-reminder-main';
 app.route('/api/reminders', taskReminderHandler);
