@@ -651,7 +651,16 @@
     // ========================================
     async function initializeLIFF() {
       try {
-        console.log('Initializing LIFF...');
+        // ========================================
+        // 🔍 Environment Check - Must be in LINE App
+        // ========================================
+        if (typeof liff === 'undefined') {
+          console.error('❌ LIFF SDK not loaded - Not in LINE environment');
+          showError('請在 LINE 應用中打開此連結\n\n如何使用：\n1. 將此連結分享到 LINE 聊天室\n2. 在 LINE 中點擊連結開啟');
+          return;
+        }
+
+        console.log('✅ LIFF SDK detected, initializing...');
         await liff.init({ liffId: CONFIG.LIFF_ID });
         state.liffInitialized = true;
 
