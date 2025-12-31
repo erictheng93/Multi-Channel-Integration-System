@@ -3,6 +3,7 @@
 // 路徑: /api/files/public/*
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { createDbClient } from '../db/drizzle-factory';
 import { fileAttachments } from '../db/schema';
@@ -26,20 +27,20 @@ fileProxyHandler.get('/public/*', async (c) => {
     console.log(`[File Proxy] Downloading file: ${r2Key}`);
 
     if (!r2Key || r2Key === 'public') {
-      return c.json({ success: false, error: 'File path is required' }, 400);
+      return c.json({ success: false, error: 'File path is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 從 R2 獲取文件
     if (!c.env.R2_BUCKET) {
       console.error('[File Proxy] R2_BUCKET not configured');
-      return c.json({ success: false, error: 'Storage not configured' }, 500);
+      return c.json({ success: false, error: 'Storage not configured' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     const object = await c.env.R2_BUCKET.get(r2Key);
 
     if (!object) {
       console.warn(`[File Proxy] File not found in R2: ${r2Key}`);
-      return c.json({ success: false, error: 'File not found' }, 404);
+      return c.json({ success: false, error: 'File not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 從 R2 object 獲取元數據
@@ -68,7 +69,7 @@ fileProxyHandler.get('/public/*', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -83,7 +84,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
     const attachmentId = c.req.param('attachmentId');
 
     if (!attachmentId) {
-      return c.json({ success: false, error: 'Attachment ID is required' }, 400);
+      return c.json({ success: false, error: 'Attachment ID is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     console.log(`[File Proxy] Looking up attachment: ${attachmentId}`);
@@ -97,27 +98,27 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
 
     if (!attachment) {
       console.warn(`[File Proxy] Attachment not found in DB: ${attachmentId}`);
-      return c.json({ success: false, error: 'Attachment not found' }, 404);
+      return c.json({ success: false, error: 'Attachment not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     const r2Key = attachment.r2Key;
 
     if (!r2Key) {
       console.warn(`[File Proxy] No R2 key for attachment: ${attachmentId}`);
-      return c.json({ success: false, error: 'File storage key not found' }, 404);
+      return c.json({ success: false, error: 'File storage key not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 從 R2 獲取文件
     if (!c.env.R2_BUCKET) {
       console.error('[File Proxy] R2_BUCKET not configured');
-      return c.json({ success: false, error: 'Storage not configured' }, 500);
+      return c.json({ success: false, error: 'Storage not configured' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     const object = await c.env.R2_BUCKET.get(r2Key);
 
     if (!object) {
       console.warn(`[File Proxy] File not found in R2: ${r2Key}`);
-      return c.json({ success: false, error: 'File not found in storage' }, 404);
+      return c.json({ success: false, error: 'File not found in storage' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 從附件記錄獲取元數據
@@ -145,7 +146,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

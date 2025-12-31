@@ -13,6 +13,7 @@ import type {
   ScheduledReport
 } from '../types/report-types';
 import { REPORT_TYPE_CONFIG } from '@modules/reports/types/report-types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // ======================== 基礎驗證函數 ========================
 
@@ -90,7 +91,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
         success: false,
         error: 'Request size too large (max 2MB)',
         timestamp: new Date().toISOString()
-      }, 413);
+      }, HTTP_STATUS.PAYLOAD_TOO_LARGE);
     }
 
     await next();
@@ -100,7 +101,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
       success: false,
       error: 'Request validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -118,7 +119,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
       success: false,
       error: 'Rate limit check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -136,7 +137,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
         success: false,
         error: 'Report ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!validateUUID(reportId)) {
@@ -144,7 +145,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
         success: false,
         error: 'Invalid report ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     (c as any).set('reportId', reportId);
@@ -155,7 +156,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
       success: false,
       error: 'Report ID validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -171,7 +172,7 @@ export async function validateScheduledReportId(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'Scheduled report ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!validateUUID(scheduledReportId)) {
@@ -179,7 +180,7 @@ export async function validateScheduledReportId(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'Invalid scheduled report ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     (c as any).set('scheduledReportId', scheduledReportId);
@@ -190,7 +191,7 @@ export async function validateScheduledReportId(c: Context<{ Bindings: Bindings 
       success: false,
       error: 'Scheduled report ID validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -209,7 +210,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Report type is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!Object.keys(REPORT_TYPE_CONFIG).includes(body.type)) {
@@ -217,7 +218,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Invalid report type',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.title || body.title.length < 1) {
@@ -225,7 +226,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Report title is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.format) {
@@ -233,7 +234,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Report format is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查報告類型支持的格式
@@ -243,7 +244,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: `Format '${body.format}' not supported for report type '${body.type}'`,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.timeRange) {
@@ -251,7 +252,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Time range is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 時間範圍驗證
@@ -266,7 +267,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Invalid time range',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 自定義時間範圍驗證
@@ -276,7 +277,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'Start date and end date are required for custom time range',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (!validateISODate(body.startDate) || !validateISODate(body.endDate)) {
@@ -284,7 +285,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'Invalid date format. Use ISO 8601 format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const start = new Date(body.startDate);
@@ -295,7 +296,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'Start date must be before end date',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (end > new Date()) {
@@ -303,7 +304,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'End date cannot be in the future',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -314,7 +315,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
         success: false,
         error: 'Title cannot exceed 200 characters',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.description) {
@@ -324,7 +325,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'Description cannot exceed 1000 characters',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -335,7 +336,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'teamIds must be an array with maximum 10 items',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (body.filters.agentIds && (!Array.isArray(body.filters.agentIds) || body.filters.agentIds.length > 50)) {
@@ -343,7 +344,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'agentIds must be an array with maximum 50 items',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // 驗證優先級篩選
@@ -355,7 +356,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
               success: false,
               error: 'Invalid priority value',
               timestamp: new Date().toISOString()
-            }, 400);
+            }, HTTP_STATUS.BAD_REQUEST);
           }
         }
       }
@@ -366,7 +367,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'tags must be an array with maximum 20 items',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -377,7 +378,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
           success: false,
           error: 'maxRecords must be between 1 and 100000',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (body.options.chartType) {
@@ -387,7 +388,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
             success: false,
             error: 'Invalid chart type',
             timestamp: new Date().toISOString()
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
       }
     }
@@ -400,7 +401,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -420,7 +421,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
         success: false,
         error: 'Invalid report type',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     if (type) query.type = type;
 
@@ -433,7 +434,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           success: false,
           error: 'Invalid status',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.status = status as any;
     }
@@ -447,7 +448,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           success: false,
           error: 'Invalid format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.format = format;
     }
@@ -460,7 +461,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           success: false,
           error: 'Invalid createdBy format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.createdBy = createdBy;
     }
@@ -473,7 +474,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           success: false,
           error: 'Invalid startDate format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.startDate = startDate;
     }
@@ -485,7 +486,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           success: false,
           error: 'Invalid endDate format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.endDate = endDate;
     }
@@ -499,7 +500,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
         success: false,
         error: 'page must be between 1 and 1000',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!pageSize) {
@@ -507,7 +508,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
         success: false,
         error: 'pageSize must be between 1 and 100',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     query.page = page;
@@ -522,7 +523,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           success: false,
           error: 'Invalid sortBy field',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.sortBy = sortBy;
     }
@@ -533,7 +534,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
         success: false,
         error: 'sortOrder must be asc or desc',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sortOrder) query.sortOrder = sortOrder as 'asc' | 'desc';
 
@@ -545,7 +546,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
       success: false,
       error: 'Query validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -563,7 +564,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
         success: false,
         error: 'reportIds must be a non-empty array',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.reportIds.length > 50) {
@@ -571,7 +572,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Cannot process more than 50 reports at once',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證所有報告ID格式
@@ -581,7 +582,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
           success: false,
           error: `Invalid report ID format: ${reportId}`,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -590,7 +591,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
         success: false,
         error: 'action must be one of: delete, regenerate, download, export',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證操作相關選項
@@ -602,7 +603,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
             success: false,
             error: 'Invalid format in options',
             timestamp: new Date().toISOString()
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
       }
 
@@ -611,7 +612,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
           success: false,
           error: 'mergeReports must be a boolean',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -623,7 +624,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -642,7 +643,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: 'Report name is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.type || !Object.keys(REPORT_TYPE_CONFIG).includes(body.type)) {
@@ -650,7 +651,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: 'Valid report type is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.format || !REPORT_TYPE_CONFIG[body.type].supportedFormats.includes(body.format)) {
@@ -658,7 +659,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: `Format '${body.format}' not supported for report type '${body.type}'`,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證排程配置
@@ -667,7 +668,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: 'Schedule configuration is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const validFrequencies = ['daily', 'weekly', 'monthly', 'quarterly'];
@@ -676,7 +677,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: 'Invalid schedule frequency',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!validateTimeFormat(body.schedule.time)) {
@@ -684,7 +685,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: 'Invalid time format. Use HH:mm format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 週頻率需要指定星期幾
@@ -694,7 +695,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
           success: false,
           error: 'dayOfWeek must be between 0 and 6 for weekly schedule',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -705,7 +706,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
           success: false,
           error: 'dayOfMonth must be between 1 and 31 for monthly schedule',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -716,7 +717,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
         success: false,
         error: 'Name cannot exceed 200 characters',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.description) {
@@ -726,7 +727,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
           success: false,
           error: 'Description cannot exceed 1000 characters',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -737,7 +738,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
           success: false,
           error: 'Cannot have more than 20 recipients',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       for (const recipient of body.recipients) {
@@ -746,7 +747,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
             success: false,
             error: `Invalid email format: ${recipient.email}`,
             timestamp: new Date().toISOString()
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
 
         if (!recipient.name || recipient.name.length < 1) {
@@ -754,7 +755,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
             success: false,
             error: 'Recipient name is required',
             timestamp: new Date().toISOString()
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
       }
     }
@@ -767,7 +768,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -786,7 +787,7 @@ export async function validateReportPreviewRequest(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Valid report type is required for preview',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.timeRange) {
@@ -794,7 +795,7 @@ export async function validateReportPreviewRequest(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Time range is required for preview',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     (c as any).set('previewParams', body);
@@ -805,6 +806,6 @@ export async function validateReportPreviewRequest(c: Context<{ Bindings: Bindin
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }

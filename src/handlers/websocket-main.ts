@@ -3,6 +3,7 @@
 // 處理 WebSocket 連接生命週期和遷移邏輯
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import type {
   MigrationConfig,
@@ -77,7 +78,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
     if (c.req.header('Upgrade') !== 'websocket') {
       return c.json({
         error: 'WebSocket upgrade required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Check connection limits
@@ -87,7 +88,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
       return c.json({
         error: 'Connection limit reached',
         retryAfter: 60
-      }, 429);
+      }, HTTP_STATUS.TOO_MANY_REQUESTS);
     }
 
     // 🔧 修復：直接將 WebSocket 升級請求轉發到 Durable Object
@@ -155,7 +156,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
     return c.json({
       error: 'Connection failed',
       reason: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -187,7 +188,7 @@ websocketHandler.post('/disconnect', websocketAuth, async (c) => {
     return c.json({
       error: 'Disconnect failed',
       reason: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -292,7 +293,7 @@ websocketHandler.get('/health', async (c) => {
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -388,7 +389,7 @@ websocketHandler.get('/migration-status', async (c) => {
     return c.json({
       error: 'Failed to get migration status',
       reason: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -398,7 +399,7 @@ websocketHandler.post('/migration-config', websocketAuth, async (c) => {
 
     // Only admins can modify migration config
     if (user.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const newConfig = await c.req.json() as Partial<MigrationConfig>;
@@ -418,7 +419,7 @@ websocketHandler.post('/migration-config', websocketAuth, async (c) => {
     return c.json({
       error: 'Failed to update migration config',
       reason: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -523,7 +524,7 @@ websocketHandler.get('/test-connection', async (c) => {
   const conversationId = url.searchParams.get('conversationId');
 
   if (!userId) {
-    return c.json({ error: 'userId parameter required' }, 400);
+    return c.json({ error: 'userId parameter required' }, HTTP_STATUS.BAD_REQUEST);
   }
 
   try {
@@ -583,7 +584,7 @@ websocketHandler.get('/test-connection', async (c) => {
       error: 'Connection test failed',
       reason: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { SystemService } from '@modules/system/services/system-service';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   SystemSettingsUpdate
 } from '../types/system-types';
@@ -16,7 +17,7 @@ app.get('/health', async (c) => {
     const systemService = new SystemService(c.env.DB, c.env.CACHE || c.env.KV, c.env);
     const health = await systemService.checkHealth();
 
-    const status = health.status === 'healthy' ? 200 : 500;
+    const status = health.status === 'healthy' ? HTTP_STATUS.OK : HTTP_STATUS.INTERNAL_SERVER_ERROR;
     return c.json(health, status);
   } catch (error) {
     console.error('Health check error:', error);
@@ -26,7 +27,7 @@ app.get('/health', async (c) => {
       database: 'disconnected',
       version: '2.0.0-modular',
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -36,7 +37,7 @@ app.get('/status', async (c) => {
     const systemService = new SystemService(c.env.DB, c.env.CACHE || c.env.KV, c.env);
     const status = await systemService.getSystemStatus();
 
-    const httpStatus = status.overall === 'healthy' ? 200 : 500;
+    const httpStatus = status.overall === 'healthy' ? HTTP_STATUS.OK : HTTP_STATUS.INTERNAL_SERVER_ERROR;
     return c.json(status, httpStatus);
   } catch (error) {
     console.error('System status error:', error);
@@ -44,7 +45,7 @@ app.get('/status', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get system status',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -65,7 +66,7 @@ app.get('/info', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get system info',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -82,7 +83,7 @@ app.get('/api', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get API info',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -103,7 +104,7 @@ app.get('/stats', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get stats',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -124,7 +125,7 @@ app.get('/settings', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get settings',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -146,7 +147,7 @@ app.put('/settings', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update settings',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -160,13 +161,13 @@ app.post('/integrations/:platform/test', async (c) => {
         success: false,
         error: 'Invalid platform. Must be "line" or "facebook"',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const systemService = new SystemService(c.env.DB, c.env.CACHE || c.env.KV, c.env);
     const result = await systemService.testIntegration(platform);
 
-    const status = result.status === 'success' ? 200 : 500;
+    const status = result.status === 'success' ? HTTP_STATUS.OK : HTTP_STATUS.INTERNAL_SERVER_ERROR;
     return c.json({
       success: result.status === 'success',
       data: result,
@@ -178,7 +179,7 @@ app.post('/integrations/:platform/test', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Integration test failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -199,7 +200,7 @@ app.get('/metrics', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get metrics',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -220,7 +221,7 @@ app.post('/backup', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create backup',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -241,7 +242,7 @@ app.get('/backups', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get backups',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -255,7 +256,7 @@ app.post('/restore/:backupId', async (c) => {
         success: false,
         error: 'Backup ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const systemService = new SystemService(c.env.DB, c.env.CACHE || c.env.KV, c.env);
@@ -272,7 +273,7 @@ app.post('/restore/:backupId', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to restore backup',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -293,7 +294,7 @@ app.post('/cache/clear', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to clear cache',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -315,7 +316,7 @@ app.post('/restart', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to restart system',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -336,7 +337,7 @@ app.get('/messages/recall-stats', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get recall statistics',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -350,7 +351,7 @@ app.get('/messages/:messageId/replies', async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 動態導入數據庫工具
@@ -372,7 +373,7 @@ app.get('/messages/:messageId/replies', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message replies',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -386,7 +387,7 @@ app.get('/conversations/:conversationId/message-tree', async (c) => {
         success: false,
         error: 'Conversation ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 動態導入數據庫工具
@@ -415,7 +416,7 @@ app.get('/conversations/:conversationId/message-tree', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversation message tree',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -429,7 +430,7 @@ app.get('/conversations/:conversationId/sessions', async (c) => {
         success: false,
         error: 'Conversation ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 動態導入會話分析服務
@@ -448,7 +449,7 @@ app.get('/conversations/:conversationId/sessions', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get session stats',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

@@ -1007,6 +1007,7 @@ import { useAuth } from '@/composables'
 import { useTeamStore } from '@/stores/team'
 import { useQRCodeStore } from '@/stores/qrcode'
 import { useToast } from '@/composables/useToast'
+import { getBackendUrl } from '@/config/runtime'
 import { teamApi } from '@/api/team'
 import { ROLES } from '@/constants/roles'
 
@@ -1867,7 +1868,21 @@ const onQRImageError = () => {
 const downloadQRCode = async () => {
   if (!currentQRCode.value || !currentTeam.value) {return}
 
-  const qrCodeDataUrl = currentQRCode.value
+  // 🔧 使用 Worker 代理端點以獲得 CORS 支持
+  // R2 Custom Domain 不支持 CORS，因此我們通過 Worker 代理請求
+  let qrCodeDataUrl = currentQRCode.value
+
+  // 將 R2 Custom Domain URL 轉換為 Worker 代理 URL
+  // 例如: https://s3.imfinethankyouandyou.com/qr-codes/team-14-xxx.svg
+  // 轉為: https://multi-channel.imfinethankyouandyou.com/api/r2-public/qr-codes/team-14-xxx.svg
+  if (qrCodeDataUrl.includes('s3.imfinethankyouandyou.com/')) {
+    qrCodeDataUrl = qrCodeDataUrl.replace(
+      'https://s3.imfinethankyouandyou.com/',
+      `${getBackendUrl()}/api/r2-public/`
+    )
+    console.log('🔧 [QR Download] 使用 Worker 代理 URL:', qrCodeDataUrl)
+  }
+
   const teamName = currentTeam.value.name
 
   try {

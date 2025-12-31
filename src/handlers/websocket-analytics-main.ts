@@ -3,6 +3,7 @@
 // 專案：Multi-Channel Support MVP - WebSocket 監控系統
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { createAnalyticsService, AlertLevel } from '../monitoring/websocket-analytics-service';
@@ -22,7 +23,7 @@ analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
       return c.json({
         error: 'Insufficient permissions',
         message: 'Only administrators can access analytics'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const analyticsService = createAnalyticsService(c.env);
@@ -40,7 +41,7 @@ analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to fetch dashboard data',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -51,7 +52,7 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (user.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const timeRangeParam = c.req.query('timeRange');
@@ -62,7 +63,7 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid time range',
         message: 'Time range must be between 1 and 168 hours'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const analyticsService = createAnalyticsService(c.env);
@@ -80,7 +81,7 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to fetch trend data',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -99,7 +100,7 @@ analyticsHandler.post('/errors', async (c) => {
       return c.json({
         error: 'Invalid error data',
         message: 'timestamp, errorCode, and errorType are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const analyticsService = createAnalyticsService(c.env);
@@ -117,7 +118,7 @@ analyticsHandler.post('/errors', async (c) => {
     return c.json({
       error: 'Failed to record error',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -131,7 +132,7 @@ analyticsHandler.post('/quality', async (c) => {
       return c.json({
         error: 'Invalid quality data',
         message: 'timestamp, userId, and connectionId are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const analyticsService = createAnalyticsService(c.env);
@@ -148,7 +149,7 @@ analyticsHandler.post('/quality', async (c) => {
     return c.json({
       error: 'Failed to record connection quality',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -161,7 +162,7 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
 
     // 只有管理員可以手動觸發告警
     if (user.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { level, title, description } = await c.req.json();
@@ -170,7 +171,7 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
       return c.json({
         error: 'Missing required fields',
         message: 'level, title, and description are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證告警級別
@@ -179,7 +180,7 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid alert level',
         message: 'Level must be one of: info, warning, critical, emergency'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const analyticsService = createAnalyticsService(c.env);
@@ -198,7 +199,7 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to trigger alert',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -211,7 +212,7 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (user.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查分析服務組件狀態
@@ -258,7 +259,7 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -271,7 +272,7 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (user.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 獲取當前告警配置
@@ -298,7 +299,7 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to get alert configuration',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -309,7 +310,7 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
 
     // 只有管理員可以修改告警配置
     if (user.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const newConfig = await c.req.json();
@@ -322,16 +323,16 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
       return c.json({
         error: 'Missing required fields',
         missingFields
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證數值範圍
     if (newConfig.errorRateThreshold < 0 || newConfig.errorRateThreshold > 1) {
-      return c.json({ error: 'errorRateThreshold must be between 0 and 1' }, 400);
+      return c.json({ error: 'errorRateThreshold must be between 0 and 1' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (newConfig.latencyThreshold < 0 || newConfig.latencyThreshold > 30000) {
-      return c.json({ error: 'latencyThreshold must be between 0 and 30000ms' }, 400);
+      return c.json({ error: 'latencyThreshold must be between 0 and 30000ms' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 保存配置
@@ -355,7 +356,7 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to update alert configuration',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -368,7 +369,7 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (user.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const format = c.req.query('format') || 'json';
@@ -404,7 +405,7 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to export trend data',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

@@ -19,6 +19,7 @@ import {
   type BatchSessionOperation
 } from '../types/session-types';
 import { createContextLogger } from '@/utils/logger';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 const sessionHandler = new Hono<{ Bindings: Bindings }>();
 const logger = createContextLogger('SessionHandler');
@@ -51,7 +52,7 @@ sessionHandler.get('/search', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Search query is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const sessionService = new SessionService(c.env.DB);
@@ -69,7 +70,7 @@ sessionHandler.get('/search', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to search sessions'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -94,7 +95,7 @@ sessionHandler.get('/stats', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get session stats'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -124,7 +125,7 @@ sessionHandler.get('/activity-stats', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get activity stats'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -149,7 +150,7 @@ sessionHandler.get('/topics/stats', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get topic stats'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -165,7 +166,7 @@ sessionHandler.post('/topics/analyze', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Message content is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const topicService = new TopicService(c.env.DB);
@@ -182,7 +183,7 @@ sessionHandler.post('/topics/analyze', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to analyze topic'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -198,7 +199,7 @@ sessionHandler.post('/topics/suggest', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Message content is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const topicService = new TopicService(c.env.DB);
@@ -216,7 +217,7 @@ sessionHandler.post('/topics/suggest', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to suggest topics'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -232,7 +233,7 @@ sessionHandler.post('/get-or-create', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Missing required fields: conversation_id, messageContent, senderType'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const sessionService = new SessionService(c.env.DB);
@@ -249,7 +250,7 @@ sessionHandler.post('/get-or-create', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get or create session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -265,7 +266,7 @@ sessionHandler.post('/batch', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Session IDs are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const sessionService = new SessionService(c.env.DB);
@@ -288,7 +289,7 @@ sessionHandler.post('/batch', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to execute batch operation'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -304,7 +305,7 @@ sessionHandler.post('/detect-boundary', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Message content and sender type are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const sessionService = new SessionService(c.env.DB);
@@ -322,7 +323,7 @@ sessionHandler.post('/detect-boundary', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to detect session boundary'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -342,7 +343,7 @@ sessionHandler.post('/:sessionId/close', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: `Session not found: ${sessionId}`
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     logger.info('Session closed', { sessionId });
@@ -358,7 +359,7 @@ sessionHandler.post('/:sessionId/close', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to close session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -376,7 +377,7 @@ sessionHandler.post('/:sessionId/reopen', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: `Session not found: ${sessionId}`
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     logger.info('Session reopened', { sessionId });
@@ -392,7 +393,7 @@ sessionHandler.post('/:sessionId/reopen', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to reopen session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -420,7 +421,7 @@ sessionHandler.get('/:sessionId/messages', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get session messages'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -447,13 +448,13 @@ sessionHandler.get('/:sessionId/health', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: error.message
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to analyze session health'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -473,7 +474,7 @@ sessionHandler.put('/:sessionId/topic', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: `Session not found: ${sessionId}`
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     logger.info('Session topic updated', { sessionId, topic });
@@ -489,7 +490,7 @@ sessionHandler.put('/:sessionId/topic', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update session topic'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -510,7 +511,7 @@ sessionHandler.get('/:sessionId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: `Session not found: ${sessionId}`
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -524,7 +525,7 @@ sessionHandler.get('/:sessionId', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -555,7 +556,7 @@ sessionHandler.put('/:sessionId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: error.message
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     if (error instanceof SessionValidationError) {
@@ -563,13 +564,13 @@ sessionHandler.put('/:sessionId', jwtAuth, async (c) => {
         success: false,
         error: error.message,
         field: error.field
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -587,7 +588,7 @@ sessionHandler.delete('/:sessionId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: `Session not found: ${sessionId}`
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     logger.info('Session deleted', { sessionId });
@@ -603,7 +604,7 @@ sessionHandler.delete('/:sessionId', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -643,7 +644,7 @@ sessionHandler.get('/', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to list sessions'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -660,7 +661,7 @@ sessionHandler.post('/', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Missing required fields: conversationId, messageContent, senderType'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const sessionService = new SessionService(c.env.DB);
@@ -682,13 +683,13 @@ sessionHandler.post('/', jwtAuth, async (c) => {
         success: false,
         error: error.message,
         field: error.field
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create session'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

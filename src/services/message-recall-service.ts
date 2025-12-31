@@ -13,6 +13,8 @@
  */
 
 import type { Bindings } from '../types';
+import { MESSAGE_STATUS } from '../constants/message-status';
+import { SENDER_TYPES } from '../constants/sender-types';
 import type {
   PendingMessage,
   // MessageDeliveryResult
@@ -74,7 +76,7 @@ export class MessageRecallService {
         content: request.content,
         messageType: request.messageType || 'text',
         scheduledAt: scheduledSendTime.toISOString(),
-        status: 'pending',
+        status: MESSAGE_STATUS.PENDING,
         metadata: JSON.stringify({
           recipientPlatformId: request.recipientPlatformId,
           platform: request.platform,
@@ -209,7 +211,7 @@ export class MessageRecallService {
         .from(delayedMessages)
         .where(and(
           eq(delayedMessages.id, messageId),
-          eq(delayedMessages.status, 'pending')
+          eq(delayedMessages.status, MESSAGE_STATUS.PENDING)
         ))
         .get();
 
@@ -222,7 +224,7 @@ export class MessageRecallService {
       
       // 4. 更新狀態
       const now = new Date();
-      const newStatus = sendSuccess ? 'sent' : 'failed';
+      const newStatus = sendSuccess ? MESSAGE_STATUS.SENT : MESSAGE_STATUS.FAILED;
 
       await this.updateMessageStatus(messageId, newStatus, String(pendingMessage.agentId), now, sendSuccess);
 
@@ -350,7 +352,7 @@ export class MessageRecallService {
       updatedAt: timestampStr
     };
 
-    if (status === 'sent') {
+    if (status === MESSAGE_STATUS.SENT) {
       updateData.sentAt = timestampStr;
     } else if (status === 'cancelled') {
       updateData.cancelledAt = timestampStr;
@@ -362,7 +364,7 @@ export class MessageRecallService {
       .where(eq(delayedMessages.id, messageId));
 
     // 如果發送成功，創建正式訊息記錄
-    if (createMessageRecord && status === 'sent') {
+    if (createMessageRecord && status === MESSAGE_STATUS.SENT) {
       const pendingMessage = await drizzleDb
         .select()
         .from(delayedMessages)
@@ -374,12 +376,12 @@ export class MessageRecallService {
         await drizzleDb.insert(messages).values({
           id: messageId,
           conversationId: pendingMessage.conversationId,
-          senderType: 'agent',
+          senderType: SENDER_TYPES.AGENT,
           agentSenderId: pendingMessage.agentId,
           content: pendingMessage.content,
           messageType: pendingMessage.messageType,
           isSent: true,
-          deliveryStatus: 'sent',
+          deliveryStatus: MESSAGE_STATUS.SENT,
           sentAt: timestampStr,
           createdAt: timestampStr
         });

@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { createDb } from '@/db';
 import { AgentService } from '@modules/agents/services/agent-crud';
 import { AgentSkillsService } from '@modules/agents/services/agent-skills';
@@ -151,7 +152,7 @@ export function createAgentRouter() {
       const deleted = await skillsService.removeSkill(agentId, skillId);
 
       if (!deleted) {
-        return c.json({ error: 'Skill not found' }, 404);
+        return c.json({ error: 'Skill not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -217,7 +218,7 @@ export function createAgentRouter() {
         success: true,
         data: skill,
         message: 'Skill added successfully'
-      }, 201);
+      }, HTTP_STATUS.CREATED);
     }
   );
 
@@ -294,7 +295,7 @@ export function createAgentRouter() {
       // 取得基本資料
       const agent = await agentService.getAgent(agentId);
       if (!agent) {
-        return c.json({ error: 'Agent not found' }, 404);
+        return c.json({ error: 'Agent not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 取得技能和狀態（並行處理）
@@ -333,7 +334,7 @@ export function createAgentRouter() {
       // 取得目標 agent 的資訊
       const targetAgent = await agentService.getAgent(agentId);
       if (!targetAgent) {
-        return c.json({ error: 'Agent not found' }, 404);
+        return c.json({ error: 'Agent not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 防止修改角色為比當前用戶更高的權限
@@ -347,7 +348,7 @@ export function createAgentRouter() {
             success: false,
             error: 'Cannot assign a role higher than your own',
             timestamp: new Date().toISOString()
-          }, 403);
+          }, HTTP_STATUS.FORBIDDEN);
         }
       }
 
@@ -373,7 +374,7 @@ export function createAgentRouter() {
       const deleted = await agentService.deleteAgent(agentId);
 
       if (!deleted) {
-        return c.json({ error: 'Agent not found' }, 404);
+        return c.json({ error: 'Agent not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({

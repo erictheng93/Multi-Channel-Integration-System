@@ -2,6 +2,7 @@ import { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
 import type { DbUser } from '../types';
 import { verifyJWT, getUserById, getSession } from '../utils/auth';
+import { ROLES, type Role } from '../constants/roles';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -180,16 +181,16 @@ export async function sessionAuth(c: Context<{ Bindings: Bindings }>, next: Next
  * 角色權限中間件
  * Simplified from 3-tier to 2-tier role system
  */
-export function requireRole(requiredRole: 'admin' | 'agent') {
+export function requireRole(requiredRole: Role) {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     const user = c.get('user');
-    
+
     if (!user) {
       return c.json({ error: 'Authentication required' }, 401);
     }
 
     // admin 有所有權限
-    if (user.role === 'admin') {
+    if (user.role === ROLES.ADMIN) {
       await next();
       return;
     }
@@ -211,7 +212,7 @@ export function requireRole(requiredRole: 'admin' | 'agent') {
  * 角色層級權限中間件 - 檢查用戶是否有足夠的角色層級
  * Simplified from 3-tier to 2-tier role system
  */
-export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
+export function requireRoleLevel(requiredRole: Role) {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     // Check for both 'user' and 'agent' in context (different auth middlewares use different keys)
     const user = c.get('user');
@@ -272,14 +273,14 @@ export function requireRoleLevel(requiredRole: 'admin' | 'agent') {
  * 原本 team 角色的管理權限現在統一由 admin 處理
  */
 export function requireManagerOrAdmin() {
-  return requireRoleLevel('admin');
+  return requireRoleLevel(ROLES.ADMIN);
 }
 
 /**
  * 僅管理員權限中間件
  */
 export function requireAdmin() {
-  return requireRoleLevel('admin');
+  return requireRoleLevel(ROLES.ADMIN);
 }
 
 /**
@@ -294,7 +295,7 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
     }
 
     // admin 可以訪問所有團隊
-    if (user.role === 'admin') {
+    if (user.role === ROLES.ADMIN) {
       await next();
       return;
     }

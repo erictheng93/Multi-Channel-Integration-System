@@ -2,6 +2,7 @@
 // 訊息主要處理器 - 功能完整版本
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, and, desc, count, isNull } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import type { Bindings, JWTPayload } from '../types';
@@ -176,7 +177,7 @@ app.get('/search', jwtAuth, async (c) => {
       error: 'Failed to search messages',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -230,7 +231,7 @@ app.get('/stats', jwtAuth, async (c) => {
       error: 'Failed to get message statistics',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -291,7 +292,7 @@ app.get('/tags', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message tags',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -321,7 +322,7 @@ app.get('/export', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid format. Must be "json" or "csv"',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -436,7 +437,7 @@ app.get('/export', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to export messages',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -474,7 +475,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { messages: messagesToCreate } = requestData;
@@ -485,7 +486,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
         success: false,
         error: 'Messages array is required and must not be empty',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 批量操作限制 (最多100條)
@@ -494,7 +495,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
         success: false,
         error: 'Bulk operation limited to 100 messages at a time',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -589,7 +590,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
       },
       message: `Bulk operation completed: ${results.length} succeeded, ${errors.length} failed`,
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('Bulk create messages error:', error);
@@ -597,7 +598,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to bulk create messages',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -622,7 +623,7 @@ app.post('/bulk-delete', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { messageIds } = requestData;
@@ -633,7 +634,7 @@ app.post('/bulk-delete', jwtAuth, async (c) => {
         success: false,
         error: 'Message IDs array is required and must not be empty',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 批量操作限制 (最多100條)
@@ -642,7 +643,7 @@ app.post('/bulk-delete', jwtAuth, async (c) => {
         success: false,
         error: 'Bulk operation limited to 100 messages at a time',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -753,7 +754,7 @@ app.post('/bulk-delete', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to bulk delete messages',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -784,7 +785,7 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -801,7 +802,7 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 構建查詢條件
@@ -921,7 +922,7 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversation messages',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -942,7 +943,7 @@ app.get('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -959,7 +960,7 @@ app.get('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 獲取附件列表
@@ -996,7 +997,7 @@ app.get('/:id/attachments', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message attachments',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1016,7 +1017,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1038,7 +1039,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查權限：只有發送者或管理員可以添加附件
@@ -1049,7 +1050,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Permission denied: Only the sender or admin can add attachments',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 獲取上傳的檔案
@@ -1061,7 +1062,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'File is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查檔案大小 (10MB 限制)
@@ -1071,7 +1072,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: `File size exceeds maximum limit of ${maxSize / 1024 / 1024}MB`,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查MIME類型
@@ -1090,7 +1091,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         error: 'File type not allowed',
         details: { allowedTypes: allowedMimeTypes },
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 生成R2 key
@@ -1113,7 +1114,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Failed to upload file to storage',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // 生成公開URL - 使用 API 代理端點而非直接 R2 URL
@@ -1151,7 +1152,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
       },
       message: 'Attachment uploaded successfully',
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('Upload attachment error:', error);
@@ -1159,7 +1160,7 @@ app.post('/:id/attachments', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to upload attachment',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1181,7 +1182,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     let requestData: {
@@ -1196,7 +1197,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { targetConversationIds, comment } = requestData;
@@ -1207,7 +1208,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
         success: false,
         error: 'Target conversation IDs array is required and must not be empty',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 限制一次最多轉發到20個對話
@@ -1216,7 +1217,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
         success: false,
         error: 'Maximum 20 conversations allowed per forward operation',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1242,7 +1243,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     const results: any[] = [];
@@ -1340,7 +1341,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
       },
       message: `Message forwarded: ${results.length} succeeded, ${errors.length} failed`,
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('Forward message error:', error);
@@ -1348,7 +1349,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to forward message',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1370,7 +1371,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     let requestData: {
@@ -1384,7 +1385,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { tags: tagNames } = requestData;
@@ -1395,7 +1396,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
         success: false,
         error: 'Tags array is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 限制標籤數量
@@ -1404,7 +1405,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
         success: false,
         error: 'Maximum 10 tags allowed per message',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1425,7 +1426,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 解析現有的元數據
@@ -1469,7 +1470,7 @@ app.put('/:id/tags', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update message tags',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1484,7 +1485,7 @@ app.get('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1535,7 +1536,7 @@ app.get('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 構造回應數據
@@ -1585,7 +1586,7 @@ app.get('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1605,7 +1606,7 @@ app.put('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     let updateData: {
@@ -1621,7 +1622,7 @@ app.put('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1644,7 +1645,7 @@ app.put('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查權限：只有發送者或管理員可以編輯
@@ -1655,7 +1656,7 @@ app.put('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Permission denied: Only the sender or admin can update this message',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查訊息是否已被撤回
@@ -1664,7 +1665,7 @@ app.put('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Cannot update a recalled message',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 準備更新數據
@@ -1678,7 +1679,7 @@ app.put('/:id', jwtAuth, async (c) => {
           success: false,
           error: 'Content cannot be empty',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       updateValues.content = updateData.content;
     }
@@ -1727,7 +1728,7 @@ app.put('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update message',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1747,7 +1748,7 @@ app.delete('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1773,7 +1774,7 @@ app.delete('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查權限：只有發送者或管理員可以撤回
@@ -1784,7 +1785,7 @@ app.delete('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Permission denied: Only the sender or admin can recall this message',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查訊息是否已被撤回
@@ -1793,7 +1794,7 @@ app.delete('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Message has already been recalled',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查撤回時限（如果設定了）
@@ -1805,7 +1806,7 @@ app.delete('/:id', jwtAuth, async (c) => {
           success: false,
           error: 'Message recall deadline has passed',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -1853,7 +1854,7 @@ app.delete('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to recall message',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1882,7 +1883,7 @@ app.post('/', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { conversationId, content, messageType, replyToMessageId, metadata, attachmentIds } = requestData;  // 🔧 FIX: 提取 attachmentIds
@@ -1893,7 +1894,7 @@ app.post('/', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation ID and content are required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 創建資料庫連線
@@ -1911,7 +1912,7 @@ app.post('/', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 生成訊息ID
@@ -2009,7 +2010,7 @@ app.post('/', jwtAuth, async (c) => {
       },
       message: 'Message created successfully',
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('Create message error:', error);
@@ -2017,7 +2018,7 @@ app.post('/', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create message',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

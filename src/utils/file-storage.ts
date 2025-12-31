@@ -4,6 +4,7 @@ import type {
   MediaFileInfo
 } from '../types/file-storage';
 import { createContextLogger } from './logger';
+import { PLATFORMS } from '../constants/platforms';
 
 // Legacy interface for backward compatibility
 export interface MediaFile {
@@ -46,7 +47,7 @@ export class FileStorageService {
         'User-Agent': 'Multi-Channel-Platform-Bot/1.0'
       };
 
-      if (platform === 'line' && (originalUrl.includes('api.line.me') || originalUrl.includes('api-data.line.me'))) {
+      if (platform === PLATFORMS.LINE && (originalUrl.includes('api.line.me') || originalUrl.includes('api-data.line.me'))) {
         const hasToken = !!this.env.LINE_CHANNEL_ACCESS_TOKEN;
         const tokenPrefix = hasToken ? this.env.LINE_CHANNEL_ACCESS_TOKEN.substring(0, 10) + '...' : 'MISSING';
         console.log(`🔑 [FileStorage] LINE auth token status:`, { hasToken, tokenPrefix });

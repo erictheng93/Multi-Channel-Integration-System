@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   InviteMemberRequest,
   Invitation
@@ -28,7 +29,7 @@ invitationsHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'email is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const invitationId = uuidv4();
@@ -60,14 +61,14 @@ invitationsHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       },
       message: 'Invitation sent successfully',
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('Send invitation error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send invitation'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -105,7 +106,7 @@ invitationsHandler.get('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get invitations'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -122,14 +123,14 @@ invitationsHandler.delete('/:invitationId', jwtAuth, requireManagerOrAdmin(), as
       return c.json({
         success: false,
         error: 'Invitation not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     if (invitation.status !== 'pending') {
       return c.json({
         success: false,
         error: `Cannot revoke ${invitation.status} invitation`
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     invitation.status = 'revoked';
@@ -146,7 +147,7 @@ invitationsHandler.delete('/:invitationId', jwtAuth, requireManagerOrAdmin(), as
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to revoke invitation'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

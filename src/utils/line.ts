@@ -1,5 +1,6 @@
 import type { LineReplyRequest, LineReplyMessage, LineFlexBubble } from '../types';
 import { createContextLogger } from './logger';
+import { LINE_API, buildLineApiUrl } from '../config/external-apis';
 
 // Context logger for LINE utils
 const log = createContextLogger('LineUtils');
@@ -19,7 +20,7 @@ export async function sendLineReply(
       notificationDisabled: false
     };
 
-    const response = await fetch('https://api.line.me/v2/bot/message/reply', {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.reply), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +58,7 @@ export async function pushLineMessage(
       notificationDisabled: false
     };
 
-    const response = await fetch('https://api.line.me/v2/bot/message/push', {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.push), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -191,7 +192,7 @@ export async function multicastLineMessage(
           notificationDisabled
         };
 
-        const response = await fetch('https://api.line.me/v2/bot/message/multicast', {
+        const response = await fetch(buildLineApiUrl(LINE_API.endpoints.multicast), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -294,7 +295,7 @@ export async function broadcastLineMessage(
 
     log.info('LINE Broadcast broadcasting message to all followers');
 
-    const response = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.broadcast), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -371,7 +372,7 @@ export async function getLineMessageQuota(accessToken: string): Promise<{
   error?: string;
 }> {
   try {
-    const response = await fetch('https://api.line.me/v2/bot/message/quota', {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.quota), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -410,7 +411,7 @@ export async function getLineMessageUsage(accessToken: string): Promise<{
 }> {
   try {
     // 獲取當月使用量
-    const response = await fetch('https://api.line.me/v2/bot/message/quota/consumption', {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.quotaConsumption), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -1008,7 +1009,7 @@ export async function getLineUserProfile(
   statusMessage?: string;
 } | null> {
   try {
-    const response = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.profile, { userId }), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -1043,7 +1044,7 @@ export async function getLineGroupMemberProfile(
   pictureUrl?: string;
 } | null> {
   try {
-    const response = await fetch(`https://api.line.me/v2/bot/group/${groupId}/member/${userId}`, {
+    const response = await fetch(buildLineApiUrl(LINE_API.endpoints.groupMember, { groupId, userId }), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

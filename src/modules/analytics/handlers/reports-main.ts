@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import { ReportsService } from '@modules/analytics/services/reports-service';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -73,7 +74,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         timestamp: new Date().toISOString(),
         service: 'reports-system',
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -93,7 +94,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Generation record not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -106,7 +107,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: 'Failed to get generation status'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -124,7 +125,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Report generation not completed or not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // TODO: 實現實際的文件下載邏輯
@@ -141,7 +142,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: 'Failed to download report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -162,7 +163,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Report not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查權限
@@ -170,7 +171,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to generate this report'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const generationResult = await reportsService.generateReport(reportId, format as ReportFormat, options);
@@ -186,7 +187,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to generate report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -205,7 +206,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Report not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查權限
@@ -213,7 +214,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to export this report'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const exportPath = await reportsService.exportReport(
@@ -236,7 +237,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to export report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -255,7 +256,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to generate report batches'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const generationResults = await reportsService.generateBatch(batchId, format as ReportFormat);
@@ -271,7 +272,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to generate batch'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -292,7 +293,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Report not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查權限
@@ -300,7 +301,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to access this report'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       return c.json({
@@ -313,7 +314,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to get report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -332,7 +333,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Report not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查編輯權限
@@ -340,7 +341,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to edit this report'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const updatedReport = await reportsService.updateReport(reportId, updates);
@@ -356,7 +357,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to update report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -374,7 +375,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Report not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查刪除權限
@@ -382,7 +383,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to delete this report'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       await reportsService.deleteReport(reportId);
@@ -397,7 +398,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to delete report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -415,7 +416,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Template not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -428,7 +429,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to get template'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -477,7 +478,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to query reports'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -495,7 +496,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to create reports'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const reportConfig = {
@@ -516,7 +517,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to create report'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -541,7 +542,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to get templates'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -559,7 +560,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to create templates'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const template = {
@@ -580,7 +581,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to create template'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -598,7 +599,7 @@ const createReportsApp = (reportsService: ReportsService) => {
         return c.json({
           success: false,
           error: 'Insufficient permissions to create report batches'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const batch = {
@@ -619,7 +620,7 @@ const createReportsApp = (reportsService: ReportsService) => {
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to create batch'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 

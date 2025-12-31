@@ -3,6 +3,7 @@
 
 import type { MiddlewareHandler } from 'hono';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { verifyJWT } from '@/utils/auth';
 import { AgentPermissionError } from '@modules/agents/types/agent-types';
 
@@ -12,18 +13,18 @@ export const agentAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }>
     try {
       const authHeader = c.req.header('Authorization');
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return c.json({ error: 'Missing or invalid authorization header' }, 401);
+        return c.json({ error: 'Missing or invalid authorization header' }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const token = authHeader.split(' ')[1];
       if (!token) {
-        return c.json({ error: 'Missing token' }, 401);
+        return c.json({ error: 'Missing token' }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const payload = await verifyJWT(token, c.env.JWT_SECRET);
 
       if (!payload) {
-        return c.json({ error: 'Invalid token' }, 401);
+        return c.json({ error: 'Invalid token' }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       // 設定使用者資訊到 context
@@ -41,7 +42,7 @@ export const agentAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }>
 
       return await next();
     } catch (error) {
-      return c.json({ error: 'Authentication failed' }, 401);
+      return c.json({ error: 'Authentication failed' }, HTTP_STATUS.UNAUTHORIZED);
     }
   };
 };
@@ -53,12 +54,12 @@ export const requireAdminRole = (): MiddlewareHandler<{ Bindings: Bindings }> =>
       const user = c.get('user');
 
       if (!user || user.role !== 'admin') {
-        return c.json({ error: 'Admin role required' }, 403);
+        return c.json({ error: 'Admin role required' }, HTTP_STATUS.FORBIDDEN);
       }
 
       return await next();
     } catch (error) {
-      return c.json({ error: 'Permission check failed' }, 500);
+      return c.json({ error: 'Permission check failed' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   };
 };
@@ -70,12 +71,12 @@ export const requireTeamLeaderOrAdmin = (): MiddlewareHandler<{ Bindings: Bindin
       const user = c.get('user');
 
       if (!user || !['admin', 'team'].includes(user.role)) {
-        return c.json({ error: 'Team leader or admin role required' }, 403);
+        return c.json({ error: 'Team leader or admin role required' }, HTTP_STATUS.FORBIDDEN);
       }
 
       return await next();
     } catch (error) {
-      return c.json({ error: 'Permission check failed' }, 500);
+      return c.json({ error: 'Permission check failed' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   };
 };
@@ -88,7 +89,7 @@ export const checkAgentAccess = (): MiddlewareHandler<{ Bindings: Bindings }> =>
       const targetAgentId = c.req.param('agentId') || c.req.query('agentId');
 
       if (!user) {
-        return c.json({ error: 'Authentication required' }, 401);
+        return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       // 管理員可以操作所有代理
@@ -100,7 +101,7 @@ export const checkAgentAccess = (): MiddlewareHandler<{ Bindings: Bindings }> =>
       // 代理只能操作自己
       if (user.role === 'agent') {
         if (targetAgentId && targetAgentId !== user.id) {
-          return c.json({ error: 'Cannot access other agents' }, 403);
+          return c.json({ error: 'Cannot access other agents' }, HTTP_STATUS.FORBIDDEN);
         }
         await next();
         return;
@@ -114,9 +115,9 @@ export const checkAgentAccess = (): MiddlewareHandler<{ Bindings: Bindings }> =>
         return;
       }
 
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     } catch (error) {
-      return c.json({ error: 'Permission check failed' }, 500);
+      return c.json({ error: 'Permission check failed' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   };
 };
@@ -182,7 +183,7 @@ export const agentErrorHandler = (): MiddlewareHandler<{ Bindings: Bindings }> =
       return await next();
     } catch (error) {
       if (error instanceof AgentPermissionError) {
-        return c.json({ error: error.message }, 403);
+        return c.json({ error: error.message }, HTTP_STATUS.FORBIDDEN);
       }
 
       // 其他錯誤
@@ -190,7 +191,7 @@ export const agentErrorHandler = (): MiddlewareHandler<{ Bindings: Bindings }> =
       return c.json({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   };
 };

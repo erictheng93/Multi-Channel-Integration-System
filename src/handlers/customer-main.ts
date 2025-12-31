@@ -1,5 +1,6 @@
 // 客戶管理處理器 - 主要實現
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { handleApiError } from '../utils/api-response';
 import { customerTagsHandler } from './customer-tags';
@@ -39,7 +40,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
         success: false,
         error: 'Customer not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     const conversations = await getCustomerConversations(c.env.DB, customer.id);
@@ -76,7 +77,7 @@ customerHandler.get('/:customerId', async (c) => {
         success: false,
         error: 'Customer not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     const conversations = await getCustomerConversations(c.env.DB, customerId);

@@ -3,6 +3,7 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { createDb } from '@/db';
 import { AgentService } from '@modules/agents/services/agent-crud';
 import { AgentSkillsService } from '@modules/agents/services/agent-skills';
@@ -39,12 +40,12 @@ export class AgentHandler {
         success: true,
         data: agent,
         message: 'Agent created successfully'
-      }, 201);
+      }, HTTP_STATUS.CREATED);
     } catch (error) {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -73,7 +74,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -82,12 +83,12 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const agent = await this.agentService.getAgent(agentId);
       if (!agent) {
-        return c.json({ error: 'Agent not found' }, 404);
+        return c.json({ error: 'Agent not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -99,7 +100,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -108,7 +109,7 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // 並行取得基本資料、技能和狀態
@@ -119,7 +120,7 @@ export class AgentHandler {
       ]);
 
       if (!agent) {
-        return c.json({ error: 'Agent not found' }, 404);
+        return c.json({ error: 'Agent not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       const agentWithDetails: AgentWithDetails = {
@@ -137,7 +138,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -146,7 +147,7 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const data: UpdateAgentRequest = await c.req.json();
@@ -161,7 +162,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -170,12 +171,12 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const deleted = await this.agentService.deleteAgent(agentId);
       if (!deleted) {
-        return c.json({ error: 'Agent not found' }, 404);
+        return c.json({ error: 'Agent not found' }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -186,7 +187,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -205,7 +206,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -214,7 +215,7 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const skills = await this.skillsService.getAgentSkills(agentId);
@@ -228,7 +229,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -237,7 +238,7 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const skillData = await c.req.json();
@@ -247,12 +248,12 @@ export class AgentHandler {
         success: true,
         data: skill,
         message: 'Skill added successfully'
-      }, 201);
+      }, HTTP_STATUS.CREATED);
     } catch (error) {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -261,7 +262,7 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const status = await this.statusService.getAgentStatus(agentId);
@@ -275,7 +276,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -284,7 +285,7 @@ export class AgentHandler {
     try {
       const agentId = c.req.param('agentId');
       if (!agentId) {
-        return c.json({ error: 'Agent ID is required' }, 400);
+        return c.json({ error: 'Agent ID is required' }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const statusData = await c.req.json();
@@ -299,7 +300,7 @@ export class AgentHandler {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 }

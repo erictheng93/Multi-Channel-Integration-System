@@ -1,5 +1,6 @@
 // 監控儀表板API處理器
 import type { Context } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { automatedHealthMonitoring } from '../services/automated-health-monitoring';
 import { healthCheckService } from '../services/health-check-service';
@@ -122,7 +123,7 @@ export async function updateMonitoringConfig(c: Context<{ Bindings: Bindings }>)
         success: false,
         error: 'Check interval must be between 10 seconds and 5 minutes',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     automatedHealthMonitoring.updateConfig(config);

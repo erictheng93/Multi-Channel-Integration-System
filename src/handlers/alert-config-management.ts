@@ -2,6 +2,7 @@
 // Phase 2: 告警通知渠道配置和管理
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { AlertNotificationService, NotificationChannel as _NotificationChannel } from '../services/alert-notification-service';
@@ -22,7 +23,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can configure notification channels'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { webhookUrl, testMessage = false } = await c.req.json();
@@ -31,7 +32,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
       return c.json({
         error: 'Missing webhook URL',
         message: 'Slack webhook URL is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 Slack webhook URL 格式
@@ -39,7 +40,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid Slack webhook URL',
         message: 'URL must be a valid Slack webhook URL'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 保存配置到 KV 存儲
@@ -114,7 +115,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can configure notification channels'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const {
@@ -135,7 +136,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
         return c.json({
           error: 'Missing required field',
           message: `${field} is required`
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -144,7 +145,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid recipients',
         message: 'Recipients must be a non-empty array of email addresses'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證郵箱格式
@@ -153,7 +154,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid email format',
         message: 'fromEmail must be a valid email address'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     for (const recipient of recipients) {
@@ -161,7 +162,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
         return c.json({
           error: 'Invalid recipient email',
           message: `Invalid email format: ${recipient}`
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -258,7 +259,7 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Admin access required'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { webhookUrl, headers = {}, testMessage = false } = await c.req.json();
@@ -266,7 +267,7 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
     if (!webhookUrl) {
       return c.json({
         error: 'Webhook URL is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 URL 格式
@@ -275,7 +276,7 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
     } catch {
       return c.json({
         error: 'Invalid webhook URL format'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 保存 Webhook 配置
@@ -343,7 +344,7 @@ alertConfigHandler.get('/channels/status', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查各通知渠道配置狀態
@@ -392,7 +393,7 @@ alertConfigHandler.get('/logs', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Admin access required'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 獲取最近的配置日誌（簡化版實現）
@@ -428,7 +429,7 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Admin access required'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { level = 'warning', title, description } = await c.req.json();
@@ -439,7 +440,7 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid alert level',
         message: `Level must be one of: ${validLevels.join(', ')}`
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const alertService = new AlertNotificationService(c.env);

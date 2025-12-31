@@ -3,6 +3,7 @@
 // 專案：Multi-Channel Support MVP - WebSocket 用戶體驗追蹤
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { createUserExperienceMonitoringService } from '../services/user-experience-monitoring';
@@ -29,7 +30,7 @@ userExperienceHandler.post('/metrics', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid metrics data',
         message: 'sessionId and timestamp are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const uxService = createUserExperienceMonitoringService(c.env);
@@ -46,7 +47,7 @@ userExperienceHandler.post('/metrics', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to record metrics',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -67,7 +68,7 @@ userExperienceHandler.post('/behavior', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid behavior data',
         message: 'eventType and timestamp are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const uxService = createUserExperienceMonitoringService(c.env);
@@ -84,7 +85,7 @@ userExperienceHandler.post('/behavior', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to record behavior',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -99,7 +100,7 @@ userExperienceHandler.get('/survey/invitation', jwtAuth, async (c) => {
     if (!sessionId) {
       return c.json({
         error: 'Missing sessionId parameter'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const uxService = createUserExperienceMonitoringService(c.env);
@@ -116,7 +117,7 @@ userExperienceHandler.get('/survey/invitation', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to generate survey invitation',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -137,7 +138,7 @@ userExperienceHandler.post('/survey', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid survey data',
         message: 'sessionId and overallSatisfaction are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證評分範圍
@@ -154,7 +155,7 @@ userExperienceHandler.post('/survey', jwtAuth, async (c) => {
         return c.json({
           error: 'Invalid score range',
           message: 'All scores must be between 1 and 5'
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -173,7 +174,7 @@ userExperienceHandler.post('/survey', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to submit survey',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -189,7 +190,7 @@ userExperienceHandler.get('/report', jwtAuth, async (c) => {
       return c.json({
         error: 'Insufficient permissions',
         message: 'Only administrators can access experience reports'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const timeRangeParam = c.req.query('timeRange');
@@ -200,7 +201,7 @@ userExperienceHandler.get('/report', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid time range',
         message: 'Time range must be between 1 and 720 hours'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const uxService = createUserExperienceMonitoringService(c.env);
@@ -219,7 +220,7 @@ userExperienceHandler.get('/report', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to generate experience report',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -250,7 +251,7 @@ userExperienceHandler.get('/ab-tests/:testId/assignment', jwtAuth, async (c) => 
     return c.json({
       error: 'Failed to get A/B test assignment',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -265,7 +266,7 @@ userExperienceHandler.post('/ab-tests/:testId/metrics', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid metric data',
         message: 'metricName (string) and value (number) are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const uxService = createUserExperienceMonitoringService(c.env);
@@ -282,7 +283,7 @@ userExperienceHandler.post('/ab-tests/:testId/metrics', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to record A/B test metric',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -296,7 +297,7 @@ userExperienceHandler.post('/ab-tests', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can create A/B tests'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const testConfig = await c.req.json() as ABTestConfig;
@@ -317,7 +318,7 @@ userExperienceHandler.post('/ab-tests', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to create A/B test',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -354,7 +355,7 @@ userExperienceHandler.get('/personal-dashboard', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to get personal dashboard',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -367,7 +368,7 @@ userExperienceHandler.get('/health', jwtAuth, async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (user.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查系統組件狀態
@@ -414,7 +415,7 @@ userExperienceHandler.get('/health', jwtAuth, async (c) => {
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

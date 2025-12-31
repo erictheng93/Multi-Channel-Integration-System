@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types/bindings';
 import { jwtAuth } from '../middleware/auth';
 import { KVManagementService, KV_KEY_PATTERNS, LEGACY_KEY_PATTERNS } from '../services/kv-management-service';
@@ -31,7 +32,7 @@ kvManagementHandler.get('/stats', jwtAuth, async (c) => {
     // Check admin role
     const agent = c.get('agent' as never) as { role?: string } | undefined;
     if (!agent || agent.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const kvService = new KVManagementService(c.env);
@@ -51,7 +52,7 @@ kvManagementHandler.get('/stats', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: 'Failed to get KV statistics',
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -88,7 +89,7 @@ kvManagementHandler.get('/health', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: 'Failed to check KV health',
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -106,7 +107,7 @@ kvManagementHandler.post('/cleanup', jwtAuth, async (c) => {
     // Check admin role
     const agent = c.get('agent' as never) as { role?: string } | undefined;
     if (!agent || agent.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const execute = c.req.query('execute') === 'true';
@@ -154,7 +155,7 @@ kvManagementHandler.post('/cleanup', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: 'Failed to clean up KV keys',
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -169,7 +170,7 @@ kvManagementHandler.get('/config', jwtAuth, async (c) => {
     // Check admin role
     const agent = c.get('agent' as never) as { role?: string } | undefined;
     if (!agent || agent.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     return c.json({
@@ -187,7 +188,7 @@ kvManagementHandler.get('/config', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: 'Failed to get KV configuration',
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -208,7 +209,7 @@ kvManagementHandler.post('/migrate', jwtAuth, async (c) => {
     // Check admin role
     const agent = c.get('agent' as never) as { role?: string } | undefined;
     if (!agent || agent.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const body = await c.req.json();
@@ -218,14 +219,14 @@ kvManagementHandler.post('/migrate', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Missing required fields: oldPattern, newPattern, namespace',
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (namespace !== 'SESSIONS' && namespace !== 'CACHE') {
       return c.json({
         success: false,
         error: 'Invalid namespace. Must be SESSIONS or CACHE',
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const kvService = new KVManagementService(c.env);
@@ -248,7 +249,7 @@ kvManagementHandler.post('/migrate', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: 'Failed to migrate keys',
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

@@ -1,5 +1,6 @@
 // 系統處理器 - 主要實現
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { jwtAuth } from '../middleware/auth';
@@ -32,7 +33,7 @@ systemHandler.get('/health', async (c) => {
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Unknown error',
       version: '1.0.0'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -286,7 +287,7 @@ systemHandler.post('/sync-qr-codes', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: '需要管理員權限才能執行此操作'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const dryRun = c.req.query('dryRun') === 'true';
@@ -450,7 +451,7 @@ systemHandler.get('/sync-qr-codes/validate', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: '需要管理員權限'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const drizzleDb = createDbClient(c.env.DB);

@@ -194,6 +194,69 @@ log.info('DelayedMessageScheduler public endpoint registered', {
   endpoint: 'GET /api/delayed-messages-v2/health (public, no auth)'
 });
 
+// 🔧 Pre-register R2 Public Proxy Endpoint (QR Code Fix)
+// This endpoint proxies R2 requests and adds CORS headers
+// WHY: R2 Custom Domains don't apply CORS settings, causing download failures
+app.get('/api/r2-public/:folder/:filename', async (c) => {
+  try {
+    const { folder, filename } = c.req.param();
+    const objectKey = `${folder}/${filename}`;
+
+    // Fetch from R2
+    const object = await c.env.R2_BUCKET.get(objectKey);
+
+    if (!object) {
+      return c.json({ error: 'File not found' }, 404);
+    }
+
+    // Create response with CORS headers
+    const headers = new Headers();
+
+    // CORS headers for all origins (public files only)
+    const origin = c.req.header('Origin');
+    if (origin && isOriginAllowed(origin)) {
+      headers.set('Access-Control-Allow-Origin', origin);
+      headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      headers.set('Access-Control-Allow-Headers', '*');
+      headers.set('Access-Control-Expose-Headers', 'ETag, Content-Length, Content-Type');
+      headers.set('Access-Control-Max-Age', '3600');
+    }
+
+    // Content headers
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'application/octet-stream');
+    headers.set('ETag', object.httpEtag);
+    headers.set('Cache-Control', 'public, max-age=31536000'); // 1 year
+    headers.set('Content-Length', object.size.toString());
+
+    return new Response(object.body, { headers });
+  } catch (error) {
+    log.error('R2 proxy error', { error });
+    return c.json({ error: 'Failed to fetch file' }, 500);
+  }
+});
+
+// Handle OPTIONS for R2 proxy
+app.options('/api/r2-public/:folder/:filename', (c) => {
+  const origin = c.req.header('Origin');
+  const headers = new Headers();
+
+  if (origin && isOriginAllowed(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', '*');
+    headers.set('Access-Control-Max-Age', '3600');
+  }
+
+  return new Response(null, { status: 204, headers });
+});
+
+log.info('R2 Public Proxy endpoint registered', {
+  endpoints: [
+    'GET /api/r2-public/:folder/:filename (public, CORS enabled)',
+    'OPTIONS /api/r2-public/:folder/:filename (CORS preflight)'
+  ]
+});
+
 // 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
 // This prevents auth middleware from being applied (SSE uses query token)
 app.options('/api/activities/stream', (c) => {

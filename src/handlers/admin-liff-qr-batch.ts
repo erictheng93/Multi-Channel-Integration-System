@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { createDbClient } from '@/db/drizzle-factory';
 import { teams, teamLiffQrCodes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -124,7 +125,7 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
       success: false,
       error: error instanceof Error ? error.message : '批量生成失败',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -178,7 +179,7 @@ app.get('/status', jwtAuth, requireAdmin(), async (c) => {
       success: false,
       error: error instanceof Error ? error.message : '状态查询失败',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

@@ -11,6 +11,7 @@ import {
   badRequestResponse,
   handleApiError
 } from '@/utils/api-response';
+import { PLATFORMS } from '@/constants/platforms';
 import { FileService } from '@modules/file-management/services/file-service';
 import type {
   FileUploadRequest,
@@ -51,7 +52,7 @@ fileMainHandler.get('/info', jwtAuth, async (c) => {
       limits: {
         maxFileSize: '10MB',
         allowedTypes: ['image/*', 'video/*', 'audio/*', 'application/pdf', 'text/*'],
-        platforms: ['line', 'facebook', 'system']
+        platforms: [PLATFORMS.LINE, PLATFORMS.FACEBOOK, PLATFORMS.SYSTEM]
       }
     });
   } catch (error) {

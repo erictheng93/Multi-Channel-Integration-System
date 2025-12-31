@@ -7,6 +7,7 @@ import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 
@@ -46,7 +47,7 @@ comparisonAPI.get('/metric', async (c) => {
       return c.json({
         success: false,
         error: 'Missing required parameters: metric, currentStart, currentEnd'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 構建查詢
@@ -89,7 +90,7 @@ comparisonAPI.get('/metric', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -126,7 +127,7 @@ comparisonAPI.get('/metrics', async (c) => {
       return c.json({
         success: false,
         error: 'Missing required parameters: metrics, currentStart, currentEnd'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 解析指標列表
@@ -136,7 +137,7 @@ comparisonAPI.get('/metrics', async (c) => {
       return c.json({
         success: false,
         error: 'At least one metric must be specified'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 構建查詢
@@ -179,7 +180,7 @@ comparisonAPI.get('/metrics', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -201,7 +202,7 @@ comparisonAPI.get('/preset/conversation', async (c) => {
       return c.json({
         success: false,
         error: 'Missing required parameters: currentStart, currentEnd'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const currentPeriod: Period = { start: currentStart, end: currentEnd };
@@ -227,7 +228,7 @@ comparisonAPI.get('/preset/conversation', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -249,7 +250,7 @@ comparisonAPI.get('/preset/message', async (c) => {
       return c.json({
         success: false,
         error: 'Missing required parameters: currentStart, currentEnd'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const currentPeriod: Period = { start: currentStart, end: currentEnd };
@@ -275,7 +276,7 @@ comparisonAPI.get('/preset/message', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -297,7 +298,7 @@ comparisonAPI.get('/preset/user-activity', async (c) => {
       return c.json({
         success: false,
         error: 'Missing required parameters: currentStart, currentEnd'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const currentPeriod: Period = { start: currentStart, end: currentEnd };
@@ -323,7 +324,7 @@ comparisonAPI.get('/preset/user-activity', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -351,7 +352,7 @@ comparisonAPI.get('/cache/stats', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

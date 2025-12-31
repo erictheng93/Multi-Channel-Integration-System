@@ -11,6 +11,7 @@ import {
   errorResponse,
   validationErrorResponse
 } from '@/utils/api-response'
+import { HTTP_STATUS } from '@/constants/http-status'
 
 export class ActivityHandler {
   private activityService: ActivityService
@@ -28,7 +29,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload) {
-        return errorResponse(c, 'Unauthorized', 401)
+        return errorResponse(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED)
       }
 
       // 解析查詢參數
@@ -78,7 +79,7 @@ export class ActivityHandler {
           { field: 'query', message: error.message, value: null }
         ])
       }
-      return errorResponse(c, 'Failed to get activities', 500)
+      return errorResponse(c, 'Failed to get activities', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -89,7 +90,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload) {
-        return errorResponse(c, 'Unauthorized', 401)
+        return errorResponse(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED)
       }
 
       const targetUserId = c.req.param('userId')
@@ -97,7 +98,7 @@ export class ActivityHandler {
 
       // 權限檢查：只有 admin 可以查看其他用戶的統計，其他用戶只能查看自己的
       if (payload.role !== 'admin' && targetUserId !== payload.userId) {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const stats = await this.activityService.getUserActivityStats(targetUserId, days)
@@ -105,7 +106,7 @@ export class ActivityHandler {
       return successResponse(c, stats)
     } catch (error) {
       console.error('Failed to get user activity stats:', error)
-      return errorResponse(c, 'Failed to get user activity stats', 500)
+      return errorResponse(c, 'Failed to get user activity stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -116,7 +117,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const daysToKeep = parseInt(c.req.query('days') || '90')
@@ -135,7 +136,7 @@ export class ActivityHandler {
           { field: 'daysToKeep', message: error.message, value: null }
         ])
       }
-      return errorResponse(c, 'Failed to cleanup activities', 500)
+      return errorResponse(c, 'Failed to cleanup activities', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -146,7 +147,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const days = parseInt(c.req.query('days') || '7')
@@ -155,7 +156,7 @@ export class ActivityHandler {
       return successResponse(c, overview)
     } catch (error) {
       console.error('Failed to get activity overview:', error)
-      return errorResponse(c, 'Failed to get activity overview', 500)
+      return errorResponse(c, 'Failed to get activity overview', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -166,7 +167,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const days = parseInt(c.req.query('days') || '30')
@@ -175,7 +176,7 @@ export class ActivityHandler {
       return successResponse(c, stats)
     } catch (error) {
       console.error('Failed to get resource stats:', error)
-      return errorResponse(c, 'Failed to get resource stats', 500)
+      return errorResponse(c, 'Failed to get resource stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -186,7 +187,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const days = parseInt(c.req.query('days') || '30')
@@ -195,7 +196,7 @@ export class ActivityHandler {
       return successResponse(c, stats)
     } catch (error) {
       console.error('Failed to get role stats:', error)
-      return errorResponse(c, 'Failed to get role stats', 500)
+      return errorResponse(c, 'Failed to get role stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -206,7 +207,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const days = parseInt(c.req.query('days') || '30')
@@ -215,7 +216,7 @@ export class ActivityHandler {
       return successResponse(c, trends)
     } catch (error) {
       console.error('Failed to get activity trends:', error)
-      return errorResponse(c, 'Failed to get activity trends', 500)
+      return errorResponse(c, 'Failed to get activity trends', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -226,7 +227,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const days = parseInt(c.req.query('days') || '30')
@@ -235,7 +236,7 @@ export class ActivityHandler {
       return successResponse(c, heatmap)
     } catch (error) {
       console.error('Failed to get activity heatmap:', error)
-      return errorResponse(c, 'Failed to get activity heatmap', 500)
+      return errorResponse(c, 'Failed to get activity heatmap', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -246,7 +247,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const days = parseInt(c.req.query('days') || '7')
@@ -255,7 +256,7 @@ export class ActivityHandler {
       return successResponse(c, metrics)
     } catch (error) {
       console.error('Failed to get activity metrics:', error)
-      return errorResponse(c, 'Failed to get activity metrics', 500)
+      return errorResponse(c, 'Failed to get activity metrics', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -266,7 +267,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload) {
-        return errorResponse(c, 'Unauthorized', 401)
+        return errorResponse(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED)
       }
 
       const id = parseInt(c.req.param('id'))
@@ -278,18 +279,18 @@ export class ActivityHandler {
 
       const activity = await this.activityService.getActivityById(id)
       if (!activity) {
-        return errorResponse(c, 'Activity not found', 404)
+        return errorResponse(c, 'Activity not found', HTTP_STATUS.NOT_FOUND)
       }
 
       // 權限檢查：只有 admin 或活動所有者可以查看詳情
       if (payload.role !== 'admin' && activity.userId !== payload.userId) {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       return successResponse(c, activity)
     } catch (error) {
       console.error('Failed to get activity by ID:', error)
-      return errorResponse(c, 'Failed to get activity', 500)
+      return errorResponse(c, 'Failed to get activity', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -300,7 +301,7 @@ export class ActivityHandler {
     try {
       const payload = c.get('jwtPayload')
       if (!payload || payload.role !== 'admin') {
-        return errorResponse(c, 'Forbidden', 403)
+        return errorResponse(c, 'Forbidden', HTTP_STATUS.FORBIDDEN)
       }
 
       const startDate = c.req.query('startDate')
@@ -317,7 +318,7 @@ export class ActivityHandler {
       return successResponse(c, stats)
     } catch (error) {
       console.error('Failed to get custom stats:', error)
-      return errorResponse(c, 'Failed to get custom stats', 500)
+      return errorResponse(c, 'Failed to get custom stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
 }

@@ -3,6 +3,7 @@
 
 import { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { SystemSettingsUpdate } from '@modules/system/types/system-types';
 
 // ======================== 基礎驗證中間件 ========================
@@ -19,7 +20,7 @@ export async function validateBackupId(c: Context<{ Bindings: Bindings }>, next:
         success: false,
         error: 'Backup ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 UUID 格式 (基本)
@@ -29,7 +30,7 @@ export async function validateBackupId(c: Context<{ Bindings: Bindings }>, next:
         success: false,
         error: 'Invalid backup ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return await next();
@@ -39,7 +40,7 @@ export async function validateBackupId(c: Context<{ Bindings: Bindings }>, next:
       success: false,
       error: 'Backup ID validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -55,7 +56,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 UUID 格式
@@ -65,7 +66,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
         success: false,
         error: 'Invalid message ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return await next();
@@ -75,7 +76,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
       success: false,
       error: 'Message ID validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -91,7 +92,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
         success: false,
         error: 'Conversation ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 UUID 格式
@@ -101,7 +102,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
         success: false,
         error: 'Invalid conversation ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return await next();
@@ -111,7 +112,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       success: false,
       error: 'Conversation ID validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -131,7 +132,7 @@ export async function validateSystemSettingsUpdate(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const errors: string[] = [];
@@ -296,7 +297,7 @@ export async function validateSystemSettingsUpdate(c: Context<{ Bindings: Bindin
         error: 'Settings validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return await next();
@@ -306,7 +307,7 @@ export async function validateSystemSettingsUpdate(c: Context<{ Bindings: Bindin
       success: false,
       error: 'Settings validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -324,7 +325,7 @@ export async function validatePlatformParameter(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'Platform parameter is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const supportedPlatforms = ['line', 'facebook'];
@@ -333,7 +334,7 @@ export async function validatePlatformParameter(c: Context<{ Bindings: Bindings 
         success: false,
         error: `Invalid platform. Must be one of: ${supportedPlatforms.join(', ')}`,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return await next();
@@ -343,7 +344,7 @@ export async function validatePlatformParameter(c: Context<{ Bindings: Bindings 
       success: false,
       error: 'Platform parameter validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -392,7 +393,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
         error: 'Rate limit exceeded',
         retryAfter: limit.window,
         timestamp: new Date().toISOString()
-      }, 429);
+      }, HTTP_STATUS.TOO_MANY_REQUESTS);
     }
 
     // 更新請求次數
@@ -425,7 +426,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
           error: 'Request body too large',
           maxSize: maxSize,
           timestamp: new Date().toISOString()
-        }, 413);
+        }, HTTP_STATUS.PAYLOAD_TOO_LARGE);
       }
     }
 
@@ -436,7 +437,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
       success: false,
       error: 'Request size validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 

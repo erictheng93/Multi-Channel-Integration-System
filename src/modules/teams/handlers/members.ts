@@ -14,6 +14,7 @@ import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/ac
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { desc, sql } from 'drizzle-orm';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   AddTeamMemberRequest,
   UpdateMemberStatusRequest,
@@ -38,7 +39,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Insufficient permissions to view team members'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 使用直接的數據庫查詢來獲取所有成員
@@ -97,7 +98,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
       success: false,
       error: 'Failed to get team members',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -115,7 +116,7 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Missing required fields: email, password, displayName'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const memberService = new MemberService(c.env.DB);
@@ -126,7 +127,7 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Member with this email already exists'
-      }, 409);
+      }, HTTP_STATUS.CONFLICT);
     }
 
     // Create member
@@ -152,14 +153,14 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       data: member,
       message: 'Team member added successfully',
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('Add team member error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add team member'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -177,7 +178,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       return c.json({
         success: false,
         error: 'isActive field is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Cannot deactivate yourself
@@ -185,7 +186,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       return c.json({
         success: false,
         error: 'Cannot change your own status'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const memberService = new MemberService(c.env.DB);
@@ -221,13 +222,13 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       return c.json({
         success: false,
         error: 'Member not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update member status'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -245,7 +246,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       return c.json({
         success: false,
         error: 'role field is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Cannot change your own role
@@ -253,7 +254,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       return c.json({
         success: false,
         error: 'Cannot change your own role'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const memberService = new MemberService(c.env.DB);
@@ -289,13 +290,13 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       return c.json({
         success: false,
         error: 'Member not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update member role'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -340,13 +341,13 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       return c.json({
         success: false,
         error: 'Member not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update member'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -364,7 +365,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
       return c.json({
         success: false,
         error: 'Cannot delete your own account'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const memberService = new MemberService(c.env.DB);
@@ -375,7 +376,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
       return c.json({
         success: false,
         error: 'Member not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Delete member
@@ -407,7 +408,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete member'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

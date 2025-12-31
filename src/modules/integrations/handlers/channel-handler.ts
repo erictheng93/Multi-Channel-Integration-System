@@ -10,6 +10,7 @@ import type {
   ChannelUpdateRequest,
   ChannelVerificationRequest
 } from '../types/channel-types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 const channelHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -25,23 +26,23 @@ channelHandler.get('/:id/stats', async (c: Context) => {
     const channelId = parseInt(c.req.param('id'));
 
     if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, 400);
+      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!user || !user.teamId) {
-      return c.json({ error: 'Team ID not found in user context' }, 400);
+      return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
     if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
+      return c.json({ error: 'Channel not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify user has access to this channel
     if (channel.teamId !== user.teamId) {
-      return c.json({ error: 'Access denied' }, 403);
+      return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const stats = await channelService.getChannelStatistics(channelId);
@@ -56,7 +57,7 @@ channelHandler.get('/:id/stats', async (c: Context) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get statistics'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -72,23 +73,23 @@ channelHandler.get('/:id/health', async (c: Context) => {
     const channelId = parseInt(c.req.param('id'));
 
     if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, 400);
+      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!user || !user.teamId) {
-      return c.json({ error: 'Team ID not found in user context' }, 400);
+      return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
     if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
+      return c.json({ error: 'Channel not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify user has access to this channel
     if (channel.teamId !== user.teamId) {
-      return c.json({ error: 'Access denied' }, 403);
+      return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const health = await channelService.checkChannelHealth(channelId);
@@ -103,7 +104,7 @@ channelHandler.get('/:id/health', async (c: Context) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to check health'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -119,23 +120,23 @@ channelHandler.post('/:id/verify', async (c: Context) => {
     const channelId = parseInt(c.req.param('id'));
 
     if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, 400);
+      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!user || !user.teamId) {
-      return c.json({ error: 'Team ID not found in user context' }, 400);
+      return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
     if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
+      return c.json({ error: 'Channel not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify user has access to this channel
     if (channel.teamId !== user.teamId) {
-      return c.json({ error: 'Access denied' }, 403);
+      return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const body = await c.req.json().catch(() => ({})) as Partial<ChannelVerificationRequest>;
@@ -147,7 +148,7 @@ channelHandler.post('/:id/verify', async (c: Context) => {
 
     const result = await channelService.verifyChannel(request);
 
-    const statusCode = result.success ? 200 : 400;
+    const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST;
     return c.json(result, statusCode);
 
   } catch (error) {
@@ -156,7 +157,7 @@ channelHandler.post('/:id/verify', async (c: Context) => {
       success: false,
       verified: false,
       message: error instanceof Error ? error.message : 'Verification failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -172,24 +173,24 @@ channelHandler.get('/:id', async (c: Context) => {
     const channelId = parseInt(c.req.param('id'));
 
     if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, 400);
+      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!user) {
-      return c.json({ error: 'Authentication required' }, 401);
+      return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
     if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
+      return c.json({ error: 'Channel not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify user has access to this channel (same team)
     // Admin users without teamId can access any channel
     if (user.teamId && channel.teamId !== user.teamId && user.role !== 'admin') {
-      return c.json({ error: 'Access denied' }, 403);
+      return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     return c.json({
@@ -202,7 +203,7 @@ channelHandler.get('/:id', async (c: Context) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get channel'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -216,11 +217,11 @@ channelHandler.put('/:id', async (c: Context) => {
     const channelId = parseInt(c.req.param('id'));
 
     if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, 400);
+      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!user || !user.teamId) {
-      return c.json({ error: 'Team ID not found in user context' }, 400);
+      return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Only admin can update channels
@@ -228,19 +229,19 @@ channelHandler.put('/:id', async (c: Context) => {
       return c.json({
         success: false,
         error: 'Only administrators can update channels'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
     if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
+      return c.json({ error: 'Channel not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify user has access to this channel
     if (channel.teamId !== user.teamId) {
-      return c.json({ error: 'Access denied' }, 403);
+      return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const body = await c.req.json() as Partial<ChannelUpdateRequest>;
@@ -267,7 +268,7 @@ channelHandler.put('/:id', async (c: Context) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update channel'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -281,11 +282,11 @@ channelHandler.delete('/:id', async (c: Context) => {
     const channelId = parseInt(c.req.param('id'));
 
     if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, 400);
+      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!user || !user.teamId) {
-      return c.json({ error: 'Team ID not found in user context' }, 400);
+      return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Only admin can deactivate channels
@@ -293,19 +294,19 @@ channelHandler.delete('/:id', async (c: Context) => {
       return c.json({
         success: false,
         error: 'Only administrators can deactivate channels'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const channelService = new ChannelService(c.env as Bindings);
     const channel = await channelService.getChannel(channelId);
 
     if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
+      return c.json({ error: 'Channel not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify user has access to this channel
     if (channel.teamId !== user.teamId) {
-      return c.json({ error: 'Access denied' }, 403);
+      return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const success = await channelService.deactivateChannel(channelId);
@@ -314,7 +315,7 @@ channelHandler.delete('/:id', async (c: Context) => {
       return c.json({
         success: false,
         error: 'Failed to deactivate channel'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     return c.json({
@@ -327,7 +328,7 @@ channelHandler.delete('/:id', async (c: Context) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to deactivate channel'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -340,7 +341,7 @@ channelHandler.get('/', async (c: Context) => {
     const user = c.get('user');
 
     if (!user) {
-      return c.json({ error: 'Authentication required' }, 401);
+      return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Admin users without teamId can access all channels or filter by teamId query param
@@ -351,13 +352,13 @@ channelHandler.get('/', async (c: Context) => {
       if (teamIdParam) {
         teamId = parseInt(teamIdParam);
         if (isNaN(teamId)) {
-          return c.json({ error: 'Invalid teamId parameter' }, 400);
+          return c.json({ error: 'Invalid teamId parameter' }, HTTP_STATUS.BAD_REQUEST);
         }
       }
       // If no teamId param provided, admin can see all channels (teamId will be undefined)
     } else if (!teamId) {
       // Non-admin users must have a teamId
-      return c.json({ error: 'Team ID not found in user context' }, 400);
+      return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const platform = c.req.query('platform') as 'line' | 'facebook' | 'whatsapp' | undefined;
@@ -376,7 +377,7 @@ channelHandler.get('/', async (c: Context) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to list channels'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -389,7 +390,7 @@ channelHandler.post('/', async (c: Context) => {
     const user = c.get('user');
 
     if (!user) {
-      return c.json({ error: 'Authentication required' }, 401);
+      return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Only admin can create channels
@@ -397,7 +398,7 @@ channelHandler.post('/', async (c: Context) => {
       return c.json({
         success: false,
         error: 'Only administrators can configure channels'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const body = await c.req.json() as Partial<ChannelConfigRequest>;
@@ -413,40 +414,40 @@ channelHandler.post('/', async (c: Context) => {
       } else {
         return c.json({
           error: 'Team ID required - provide teamId in request body or user must have teamId'
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
     // Validate required fields
     if (!body.platform) {
-      return c.json({ error: 'Platform is required' }, 400);
+      return c.json({ error: 'Platform is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!['line', 'facebook', 'whatsapp'].includes(body.platform)) {
-      return c.json({ error: 'Invalid platform' }, 400);
+      return c.json({ error: 'Invalid platform' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Platform-specific validation
     if (body.platform === 'line') {
       if (!body.lineConfig) {
-        return c.json({ error: 'LINE configuration is required' }, 400);
+        return c.json({ error: 'LINE configuration is required' }, HTTP_STATUS.BAD_REQUEST);
       }
       if (!body.lineConfig.channelId || !body.lineConfig.channelAccessToken || !body.lineConfig.channelSecret) {
-        return c.json({ error: 'LINE Channel ID, Access Token, and Secret are required' }, 400);
+        return c.json({ error: 'LINE Channel ID, Access Token, and Secret are required' }, HTTP_STATUS.BAD_REQUEST);
       }
     } else if (body.platform === 'facebook') {
       if (!body.facebookConfig) {
-        return c.json({ error: 'Facebook configuration is required' }, 400);
+        return c.json({ error: 'Facebook configuration is required' }, HTTP_STATUS.BAD_REQUEST);
       }
       if (!body.facebookConfig.pageId || !body.facebookConfig.accessToken || !body.facebookConfig.appSecret) {
-        return c.json({ error: 'Facebook Page ID, Access Token, and App Secret are required' }, 400);
+        return c.json({ error: 'Facebook Page ID, Access Token, and App Secret are required' }, HTTP_STATUS.BAD_REQUEST);
       }
     } else if (body.platform === 'whatsapp') {
       if (!body.whatsappConfig) {
-        return c.json({ error: 'WhatsApp configuration is required' }, 400);
+        return c.json({ error: 'WhatsApp configuration is required' }, HTTP_STATUS.BAD_REQUEST);
       }
       if (!body.whatsappConfig.phoneNumber || !body.whatsappConfig.businessAccountId || !body.whatsappConfig.accessToken) {
-        return c.json({ error: 'WhatsApp Phone Number, Business Account ID, and Access Token are required' }, 400);
+        return c.json({ error: 'WhatsApp Phone Number, Business Account ID, and Access Token are required' }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -469,14 +470,14 @@ channelHandler.post('/', async (c: Context) => {
     // Record activity
     // TODO: Add activity logging
 
-    return c.json(result, 201);
+    return c.json(result, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('[ChannelHandler] Error creating channel:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create channel'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
