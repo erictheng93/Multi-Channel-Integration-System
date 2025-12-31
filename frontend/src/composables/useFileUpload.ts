@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { filesApi } from '@/api/files'
 import { useError } from './useError'
+import { getBackendUrl } from '@/config/runtime'
 import type { MediaFileInfo, FileStatsResponse } from '@/api/files'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,7 +42,7 @@ function getApiUrl(endpoint: string): string {
     return endpoint
   } else {
     // 生產環境: 使用絕對路徑
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    const baseUrl = getBackendUrl()
     const fullUrl = `${baseUrl}${endpoint}`
     console.log(`[API URL] Production mode - using absolute URL: ${fullUrl}`)
     return fullUrl

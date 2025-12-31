@@ -3,6 +3,7 @@
 // Phase 2.2 - Frontend Feature Toggle Implementation
 // Project: Multi-Channel Support MVP
 
+import { getBackendUrl } from '@/config/runtime'
 import { ref, computed, type Ref } from 'vue'
 import { createWebSocketClient, type WebSocketMessage, type WebSocketConnectionState as WsConnectionState } from './websocketClient'
 import type { Message } from '@/types'
@@ -64,7 +65,7 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
 
   try {
     // REMOTE-ONLY: Always use remote API
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    const baseUrl = getBackendUrl()
     const response = await fetch(`${baseUrl}/api/websocket/migration-status`, {
       method: 'GET',
       headers: {

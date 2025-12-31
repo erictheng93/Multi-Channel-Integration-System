@@ -1,11 +1,12 @@
 // 現代化 API 客戶端
 // 支持標準化響應格式和現代化錯誤處理
 
-import type { 
-  StandardApiResponse, 
-  PaginatedApiResponse, 
-  ApiResponse 
-} from '../../../shared/api-types'
+import { getBackendUrl } from '@/config/runtime'
+import type {
+  StandardApiResponse,
+  PaginatedApiResponse,
+  ApiResponse
+} from '@shared/api-types'
 // import { useError } from '@/composables' // Removed unused import
 
 interface ModernApiClientOptions {
@@ -24,7 +25,7 @@ class ModernApiClient {
   private refreshToken: string | null = null
 
   constructor(options: ModernApiClientOptions = {}) {
-    this.baseURL = options.baseURL || import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    this.baseURL = options.baseURL || getBackendUrl()
     this.timeout = options.timeout || 30000
     this.retries = options.retries || 3
     this.retryDelay = options.retryDelay || 1000
