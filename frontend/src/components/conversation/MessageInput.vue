@@ -184,6 +184,7 @@
   // 🔧 FIX: 不再使用 messageApi (走錯誤的 /api/conversations/ 端點)
   // import { messageApi } from '@/api/message'
   import { useAuthStore } from '@/stores/auth'
+  import { getBackendUrl } from '@/config/runtime'
   import {
     SendIcon,
     SmileIcon,
@@ -286,7 +287,7 @@
       return endpoint
     } else {
       // 生產環境: 使用絕對路徑
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+      const baseUrl = getBackendUrl()
       const fullUrl = `${baseUrl}${endpoint}`
       console.log(`[API URL] Production mode - using absolute URL: ${fullUrl}`)
       return fullUrl

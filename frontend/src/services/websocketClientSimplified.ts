@@ -1,6 +1,7 @@
 // Simplified WebSocket Client - Reduces complexity while maintaining functionality
 // Project: Multi-Channel Support MVP
 
+import { getBackendUrl } from '@/config/runtime'
 import { ref, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -110,7 +111,7 @@ export class SimplifiedWebSocketClient {
   private buildWebSocketUrl(): string {
     const authStore = useAuthStore()
     // REMOTE-ONLY: Always use remote API
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    const baseUrl = getBackendUrl()
     const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws'
     const wsBaseUrl = baseUrl.replace(/^https?/, wsProtocol)
 

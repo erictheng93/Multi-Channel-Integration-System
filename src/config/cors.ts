@@ -1,19 +1,27 @@
 /**
- * 統一的 CORS 配置
- * 集中管理所有允許的 origins，避免在多個文件中重複維護
+ * ============================================================================
+ * 統一的 CORS 配置 - Layer 2/3: 配置層
+ * ============================================================================
+ * 集中管理所有允許的 origins，支持動態環境配置
+ *
+ * 📋 注意: 本文件現在支持兩種模式：
+ * 1. 靜態模式: 使用硬編碼的 ALLOWED_ORIGINS (向後兼容)
+ * 2. 動態模式: 使用 getAllowedOrigins(env) 函數 (推薦)
  */
 
 /**
- * 允許的 CORS origins 列表
- * 包含所有生產、開發和測試環境的域名
+ * ⚠️ 已棄用: 靜態 origins 列表 (僅向後兼容)
+ * 推薦使用 getAllowedOrigins(env) 函數獲取動態配置
+ *
+ * @deprecated 請使用 getAllowedOrigins(env) 以支持環境動態配置
  */
 export const ALLOWED_ORIGINS = [
-  // 生產環境
+  // 生產環境 (默認值 - 實際值應從環境變量讀取)
   'https://multi-channel.imfinethankyouandyou.com',        // Backend API
   'https://multi-channel-platform-frontend.pages.dev',     // Frontend Cloudflare Pages
   'https://mcp.imfinethankyouandyou.com',                  // MCP Frontend Domain
 
-  // 開發環境
+  // 開發環境 (本地開發)
   'http://localhost:3000',                                  // Vite dev server
   'http://localhost:3001',                                  // Vite dev server (alt port)
   'https://localhost:3000',                                 // Vite dev server (SSL)
@@ -22,6 +30,55 @@ export const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3001',                                  // Local IP (alt port)
   'http://localhost:8787',                                  // Wrangler dev server
 ] as const;
+
+/**
+ * ✅ 動態獲取允許的 origins (推薦)
+ * 根據環境變量動態構建允許的 origins 列表
+ *
+ * @param env - Cloudflare Workers 環境對象
+ * @returns 允許的 origins 數組
+ *
+ * @example
+ * ```ts
+ * const allowedOrigins = getAllowedOrigins(c.env);
+ * if (allowedOrigins.includes(origin)) {
+ *   // 允許此 origin
+ * }
+ * ```
+ */
+export function getAllowedOrigins(env?: any): string[] {
+  if (!env) {
+    // 無環境對象，返回靜態列表
+    return [...ALLOWED_ORIGINS];
+  }
+
+  const origins: string[] = [];
+
+  // 從環境變量讀取生產 URLs
+  const backendUrl = env.BACKEND_URL || 'https://multi-channel.imfinethankyouandyou.com';
+  const frontendUrl = env.FRONTEND_URL || 'https://mcp.imfinethankyouandyou.com';
+
+  // 添加生產環境 URLs
+  origins.push(backendUrl);
+  origins.push(frontendUrl);
+
+  // 添加備用前端 URL
+  origins.push('https://multi-channel-platform-frontend.pages.dev');
+
+  // 開發環境 URLs (總是包含)
+  origins.push(
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://localhost:3000',
+    'https://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://localhost:8787'
+  );
+
+  // 去重並返回
+  return [...new Set(origins)];
+}
 
 /**
  * 檢查給定的 origin 是否被允許

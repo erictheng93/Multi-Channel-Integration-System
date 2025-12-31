@@ -205,6 +205,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
+import { getBackendUrl } from '@/config/runtime';
 
 interface Props {
   title?: string;
@@ -361,7 +362,7 @@ async function loadDataFromAPI(isBackground: boolean) {
   error.value = null;
 
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://multi-channel.imfinethankyouandyou.com';
+    const apiUrl = getBackendUrl();
 
     // 根據 preset 決定使用哪個 API endpoint
     let endpoint = '/api/analytics/comparison/metrics';
@@ -418,7 +419,7 @@ async function loadDataFromAPI(isBackground: boolean) {
 // 載入快取統計
 async function loadCacheStats() {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://multi-channel.imfinethankyouandyou.com';
+    const apiUrl = getBackendUrl();
     const response = await fetch(`${apiUrl}/api/analytics/comparison/cache/stats`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`

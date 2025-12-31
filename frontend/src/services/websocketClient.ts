@@ -4,6 +4,7 @@
 
 import { ref, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { getWebSocketUrl } from '@/config/runtime'
 
 // WebSocket connection states
 export type WebSocketConnectionState =
@@ -343,10 +344,10 @@ export class WebSocketClient {
 
   private buildWebSocketUrl(): string {
     const authStore = useAuthStore()
-    // REMOTE-ONLY: Always use remote API, never localhost
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
-    const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws'
-    const wsBaseUrl = baseUrl.replace(/^https?/, wsProtocol)
+
+    // ✅ Layer 3: 使用運行時配置層
+    // 不再硬編碼 URL，自動適配開發/生產環境
+    const wsBaseUrl = getWebSocketUrl()
 
     // Build WebSocket URL matching backend Durable Objects architecture
     const url = new URL(`${wsBaseUrl}/api/websocket/connect`)

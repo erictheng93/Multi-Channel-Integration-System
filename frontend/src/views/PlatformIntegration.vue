@@ -390,6 +390,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { systemApi } from '@/api/system'
 import { useToast } from '@/composables/useToast'
+import { getBackendUrl } from '@/config/runtime'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import PlatformStatus from '@/components/platform/PlatformStatus.vue'
@@ -439,7 +440,7 @@ const facebookMetrics = ref({
 
 // Webhook Status
 const lineWebhookStatus = ref({
-  endpoint: 'https://multi-channel.imfinethankyouandyou.com/api/webhook',
+  endpoint: `${getBackendUrl()  }/api/webhook`,
   isActive: false,
   lastVerified: new Date(),
   lastError: undefined

@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
 import { conversationCache } from '@/utils/conversationCache'
+import { getBackendUrl } from '@/config/runtime'
 
 export interface CustomerMessagesOptions {
   enablePagination?: boolean
@@ -46,7 +47,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       return endpoint
     } else {
       // 生產環境: 使用絕對路徑
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+      const baseUrl = getBackendUrl()
       const fullUrl = `${baseUrl}${endpoint}`
       console.log(`[useCustomerMessages] Production mode - using absolute URL: ${fullUrl}`)
       return fullUrl

@@ -324,8 +324,14 @@ class ApiClient {
   }
 }
 
+// ============================================================================
+// Layer 3: 使用運行時配置層
+// ============================================================================
+import { getBackendUrl } from '@/config/runtime';
+
 // 建立 API 客戶端實例
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
-export const apiClient = new ApiClient(
-  baseURL.endsWith('/api') ? baseURL : `${baseURL}/api`
-);
+// ✅ 不再硬編碼 URL，使用運行時配置
+const backendUrl = getBackendUrl();
+const apiBaseUrl = backendUrl.endsWith('/api') ? backendUrl : `${backendUrl}/api`;
+
+export const apiClient = new ApiClient(apiBaseUrl);

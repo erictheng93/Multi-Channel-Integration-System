@@ -3,6 +3,7 @@
 import { ref, computed, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
+import { getBackendUrl } from '@/config/runtime'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 
@@ -61,7 +62,7 @@ export function createCustomerWebSocketConnection(
    */
   const buildWebSocketUrl = (): string => {
     // 永遠使用遠端後端
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    const apiUrl = getBackendUrl()
     const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws'
     const wsHost = apiUrl.replace(/^https?:\/\//, '')
 

@@ -1,8 +1,10 @@
 // 健康檢查 API 客戶端
 import type { SystemHealth, HealthCheckResult, ComponentHealth } from '@/types/health';
+import { getBackendUrl } from '@/config/runtime';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
-const API_BASE_URL = baseURL.endsWith('/api') ? baseURL : `${baseURL}/api`;
+// ✅ Layer 3: 使用運行時配置層
+const backendUrl = getBackendUrl();
+const API_BASE_URL = backendUrl.endsWith('/api') ? backendUrl : `${backendUrl}/api`;
 const BASE_URL = `${API_BASE_URL}/health`;
 
 export class HealthAPI {

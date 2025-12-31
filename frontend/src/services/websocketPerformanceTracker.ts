@@ -16,6 +16,8 @@
  * @date 2025-10-08
  */
 
+import { getBackendUrl } from '@/config/runtime'
+
 // REMOVED: axios import (replaced with native fetch API)
 
 // =================== Type Definitions ===================
@@ -125,7 +127,7 @@ export class WebSocketPerformanceTracker {
     this.conversationId = conversationId
     this.connectionType = connectionType
     // REMOTE-ONLY: Always use remote API
-    this.apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+    this.apiBaseUrl = getBackendUrl()
 
     this.log('Performance tracker initialized', {
       sessionId: this.sessionId,

@@ -2,6 +2,7 @@
  * 即時通訊配置模組
  * 統一管理 WebSocket 和 SSE 配置
  */
+import { getBackendUrl } from './runtime'
 
 export interface RealtimeConfig {
   // WebSocket 配置 (100% rollout, SSE removed in Phase 1-2)
@@ -26,7 +27,7 @@ export interface RealtimeConfig {
  */
 export function loadRealtimeConfig(): RealtimeConfig {
   // REMOTE-ONLY: Always use remote API
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com'
+  const apiBaseUrl = getBackendUrl()
 
   // 解析 WebSocket URL (將 https:// 轉換為 wss://)
   const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL ||
