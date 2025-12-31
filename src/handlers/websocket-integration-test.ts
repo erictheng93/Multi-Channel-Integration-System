@@ -3,6 +3,7 @@
 // Provides endpoints for testing real-time functionality
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 import { jwtAuth } from '../middleware/auth';
@@ -23,7 +24,7 @@ websocketTestHandler.post('/test-message-broadcast', jwtAuth, async (c) => {
     const { conversationId, messageType = 'test', content = 'Test message broadcast' } = await c.req.json();
 
     if (!conversationId) {
-      return c.json({ error: 'conversationId is required' }, 400);
+      return c.json({ error: 'conversationId is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -66,7 +67,7 @@ websocketTestHandler.post('/test-message-broadcast', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -79,11 +80,11 @@ websocketTestHandler.post('/test-typing-indicator', jwtAuth, async (c) => {
     const { conversationId, action = 'start' } = await c.req.json();
 
     if (!conversationId) {
-      return c.json({ error: 'conversationId is required' }, 400);
+      return c.json({ error: 'conversationId is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!['start', 'stop'].includes(action)) {
-      return c.json({ error: 'action must be "start" or "stop"' }, 400);
+      return c.json({ error: 'action must be "start" or "stop"' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -114,7 +115,7 @@ websocketTestHandler.post('/test-typing-indicator', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -132,7 +133,7 @@ websocketTestHandler.post('/test-conversation-event', jwtAuth, async (c) => {
     } = await c.req.json();
 
     if (!conversationId) {
-      return c.json({ error: 'conversationId is required' }, 400);
+      return c.json({ error: 'conversationId is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const validEvents = [
@@ -146,7 +147,7 @@ websocketTestHandler.post('/test-conversation-event', jwtAuth, async (c) => {
     if (!validEvents.includes(eventType)) {
       return c.json({
         error: `eventType must be one of: ${validEvents.join(', ')}`
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -184,7 +185,7 @@ websocketTestHandler.post('/test-conversation-event', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -202,7 +203,7 @@ websocketTestHandler.post('/test-delayed-message-event', jwtAuth, async (c) => {
     } = await c.req.json();
 
     if (!conversationId) {
-      return c.json({ error: 'conversationId is required' }, 400);
+      return c.json({ error: 'conversationId is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const validEvents = [
@@ -215,7 +216,7 @@ websocketTestHandler.post('/test-delayed-message-event', jwtAuth, async (c) => {
     if (!validEvents.includes(eventType)) {
       return c.json({
         error: `eventType must be one of: ${validEvents.join(', ')}`
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -262,7 +263,7 @@ websocketTestHandler.post('/test-delayed-message-event', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -289,7 +290,7 @@ websocketTestHandler.post('/test-presence-event', jwtAuth, async (c) => {
     if (!validEvents.includes(eventType)) {
       return c.json({
         error: `eventType must be one of: ${validEvents.join(', ')}`
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -321,7 +322,7 @@ websocketTestHandler.post('/test-presence-event', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -334,11 +335,11 @@ websocketTestHandler.post('/test-batch-broadcast', jwtAuth, async (c) => {
     const { conversationId, eventCount = 3 } = await c.req.json();
 
     if (!conversationId) {
-      return c.json({ error: 'conversationId is required' }, 400);
+      return c.json({ error: 'conversationId is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (eventCount > 10) {
-      return c.json({ error: 'eventCount cannot exceed 10' }, 400);
+      return c.json({ error: 'eventCount cannot exceed 10' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -388,7 +389,7 @@ websocketTestHandler.post('/test-batch-broadcast', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -411,7 +412,7 @@ websocketTestHandler.get('/health', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Health check failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -435,7 +436,7 @@ websocketTestHandler.get('/websocket-status', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Status check failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -447,14 +448,14 @@ websocketTestHandler.post('/send-test-event', jwtAuth, async (c) => {
     const { targetType, targetId } = await c.req.json();
 
     if (!targetType || !targetId) {
-      return c.json({ error: 'targetType and targetId are required' }, 400);
+      return c.json({ error: 'targetType and targetId are required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const validTargetTypes = ['conversation', 'user', 'team', 'global'];
     if (!validTargetTypes.includes(targetType)) {
       return c.json({
         error: `targetType must be one of: ${validTargetTypes.join(', ')}`
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -478,7 +479,7 @@ websocketTestHandler.post('/send-test-event', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Test event failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -493,7 +494,7 @@ websocketTestHandler.post('/run-integration-test', jwtAuth, async (c) => {
     const { conversationId } = await c.req.json();
 
     if (!conversationId) {
-      return c.json({ error: 'conversationId is required' }, 400);
+      return c.json({ error: 'conversationId is required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const broadcastService = new WebSocketBroadcastService(c.env);
@@ -620,7 +621,7 @@ websocketTestHandler.post('/run-integration-test', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Integration test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -658,7 +659,7 @@ websocketTestHandler.get('/test-conversations', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get test conversations'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

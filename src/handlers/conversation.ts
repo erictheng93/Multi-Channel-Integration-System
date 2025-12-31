@@ -1,10 +1,12 @@
 // 使用 Drizzle ORM 和 KV 的對話處理器
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { Context } from 'hono';
 import { DatabaseService } from '../services/database';
 import { databaseMiddleware, authMiddleware } from '../middleware/database';
 import type { HonoContext } from '../types/bindings';
 import type { Bindings } from '../types';
+import { CONVERSATION_STATUS } from '../constants/conversation-status';
 import {
   successResponse,
   errorResponse,
@@ -43,7 +45,7 @@ conversations.post('/:id/attachments', async (c) => {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = c.get('db');
@@ -56,7 +58,7 @@ conversations.post('/:id/attachments', async (c) => {
       return c.json({
         success: false,
         error: 'Access denied'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查對話是否存在
@@ -65,7 +67,7 @@ conversations.post('/:id/attachments', async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 解析 FormData
@@ -78,7 +80,7 @@ conversations.post('/:id/attachments', async (c) => {
       return c.json({
         success: false,
         error: 'No file provided'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 文件大小限制：10MB
@@ -87,7 +89,7 @@ conversations.post('/:id/attachments', async (c) => {
       return c.json({
         success: false,
         error: 'File too large (max 10MB)'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 生成 R2 key
@@ -109,7 +111,7 @@ conversations.post('/:id/attachments', async (c) => {
       return c.json({
         success: false,
         error: 'Failed to upload file to storage'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // 生成公開 URL - 使用 API 代理端點而非直接 R2 URL
@@ -150,7 +152,7 @@ conversations.post('/:id/attachments', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -165,14 +167,14 @@ conversations.post('/:id/messages', async (c) => {
       return c.json({
         success: false,
         error: 'Message content is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!conversationId) {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = c.get('db');
@@ -185,7 +187,7 @@ conversations.post('/:id/messages', async (c) => {
       return c.json({
         success: false,
         error: 'Access denied'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查對話是否存在
@@ -194,7 +196,7 @@ conversations.post('/:id/messages', async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 建立訊息
@@ -252,9 +254,9 @@ conversations.post('/:id/messages', async (c) => {
     }
 
     // 如果對話狀態是 pending，更新為 in-progress
-    if (conversation.status === 'pending') {
+    if (conversation.status === CONVERSATION_STATUS.PENDING) {
       await dbService.updateConversation(conversationId, {
-        status: 'in-progress',
+        status: CONVERSATION_STATUS.IN_PROGRESS,
         assignedUserId: agent!.id, // Keep as string - agents table uses TEXT id
       });
 
@@ -264,11 +266,11 @@ conversations.post('/:id/messages', async (c) => {
           'conversation_status_changed',
           {
             conversationId: parseInt(conversationId),
-            status: 'in-progress',
+            status: CONVERSATION_STATUS.IN_PROGRESS,
             assignedUserId: parseInt(agent!.id),
             customerName: conversation.customer?.displayName,
             updatedAt: new Date().toISOString(),
-            changes: { status: { from: 'pending', to: 'in-progress' } }
+            changes: { status: { from: CONVERSATION_STATUS.PENDING, to: CONVERSATION_STATUS.IN_PROGRESS } }
           },
           {
             conversationId: parseInt(conversationId),
@@ -300,18 +302,18 @@ conversations.patch('/:id/status', async (c) => {
     const agent = c.get('agent');
     const { status } = await c.req.json();
 
-    if (!['pending', 'in-progress', 'closed'].includes(status)) {
+    if (![CONVERSATION_STATUS.PENDING, CONVERSATION_STATUS.IN_PROGRESS, CONVERSATION_STATUS.CLOSED].includes(status)) {
       return c.json({
         success: false,
         error: 'Invalid status'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!conversationId) {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = c.get('db');
@@ -324,7 +326,7 @@ conversations.patch('/:id/status', async (c) => {
       return c.json({
         success: false,
         error: 'Access denied'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查對話是否存在
@@ -333,14 +335,14 @@ conversations.patch('/:id/status', async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 更新對話狀態
     const updates: any = { status };
 
     // 如果狀態變為 in-progress 且沒有指派客服，指派當前客服
-    if (status === 'in-progress' && !conversation.assignedUserId) {
+    if (status === CONVERSATION_STATUS.IN_PROGRESS && !conversation.assignedUserId) {
       updates.assignedUserId = agent!.id;
     }
 
@@ -367,7 +369,7 @@ conversations.post('/:id/mark-read', async (c) => {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = c.get('db');
@@ -380,7 +382,7 @@ conversations.post('/:id/mark-read', async (c) => {
       return c.json({
         success: false,
         error: 'Access denied'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     await dbService.markMessagesAsRead(conversationId, agent!.id);
@@ -416,7 +418,7 @@ conversations.post('/:id/assign', requireAdmin(), async (c) => {
     await dbService.updateConversation(conversationId, {
       assignedTeamId: teamId || null,
       assignedUserId: userId || null,
-      status: 'assigned'
+      status: CONVERSATION_STATUS.ASSIGNED
     });
 
     // 🆕 P2-3: Invalidate conversation cache for affected agents
@@ -441,7 +443,7 @@ conversations.post('/:id/assign', requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Failed to retrieve updated conversation'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     console.log('✅ [Assign API] Conversation assigned:', {
@@ -482,7 +484,7 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查對話是否已指派
@@ -490,7 +492,7 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Conversation is not assigned'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 記錄取消指派前的狀態
@@ -522,7 +524,7 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Failed to retrieve updated conversation'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     console.log('✅ [Unassign API] Conversation unassigned:', {
@@ -602,7 +604,7 @@ conversations.post('/:id/transfer', async (c) => {
       return c.json({
         success: false,
         error: 'Permission denied'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 獲取當前對話資訊
@@ -680,7 +682,7 @@ conversations.get('/:id', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Conversation ID is required' 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查權限 - 確保代理可以存取此對話
@@ -689,7 +691,7 @@ conversations.get('/:id', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Access denied' 
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 獲取對話資訊
@@ -699,7 +701,7 @@ conversations.get('/:id', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Conversation not found' 
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 獲取對話中的訊息
@@ -1054,7 +1056,7 @@ const handlerMethods = {
             .set({
               assignedUserId: data.userId || null,
               assignedTeamId: data.teamId || null,
-              status: 'assigned',
+              status: CONVERSATION_STATUS.ASSIGNED,
               updatedAt: sql`datetime('now')`
             })
             .where(inArray(conversationTable.id, conversationIdsArray));
@@ -1086,7 +1088,7 @@ const handlerMethods = {
         case 'close':
           await drizzleDb.update(conversationTable)
             .set({
-              status: 'closed',
+              status: CONVERSATION_STATUS.CLOSED,
               updatedAt: sql`datetime('now')`
             })
             .where(inArray(conversationTable.id, conversationIdsArray));
@@ -1095,7 +1097,7 @@ const handlerMethods = {
         case 'reopen':
           await drizzleDb.update(conversationTable)
             .set({
-              status: 'active',
+              status: CONVERSATION_STATUS.ACTIVE,
               updatedAt: sql`datetime('now')`
             })
             .where(inArray(conversationTable.id, conversationIdsArray));
@@ -1170,7 +1172,7 @@ const handlerMethods = {
 
       // 獲取未分配的對話 - 使用 Drizzle ORM
       const baseConditions = [
-        eq(conversationTable.status, 'active'),
+        eq(conversationTable.status, CONVERSATION_STATUS.ACTIVE),
         sql`${conversationTable.assignedUserId} IS NULL`
       ];
       
@@ -1212,7 +1214,7 @@ const handlerMethods = {
           .from(agents)
           .leftJoin(conversationTable, and(
             eq(agents.id, conversationTable.assignedUserId),
-            inArray(conversationTable.status, ['active', 'assigned'])
+            inArray(conversationTable.status, [CONVERSATION_STATUS.ACTIVE, CONVERSATION_STATUS.ASSIGNED])
           ))
           .where(and(...agentConditions))
           .groupBy(agents.id)
@@ -1233,7 +1235,7 @@ const handlerMethods = {
           await drizzleDb.update(conversationTable)
             .set({
               assignedUserId: agentId,
-              status: 'assigned',
+              status: CONVERSATION_STATUS.ASSIGNED,
               updatedAt: sql`datetime('now')`
             })
             .where(eq(conversationTable.id, conv.id));

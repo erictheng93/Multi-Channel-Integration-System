@@ -75,6 +75,7 @@ import type { Bindings } from '../../types';
 import integrationMainHandler from '@modules/integrations/handlers/integration-main';
 import { WebhookRouterService } from '@modules/integrations/services/webhook-router-service';
 import { CredentialManagementService } from '@modules/integrations/services/credential-management-service';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // Import types for local use
 import type { IntegrationPlatform, PlatformFeatures } from '@modules/integrations/types/integration-types';
@@ -118,7 +119,7 @@ export function createIntegrationRouter(
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       // TODO: 實作統計數據獲取
@@ -142,7 +143,7 @@ export function createIntegrationRouter(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get statistics',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -156,7 +157,7 @@ export function createIntegrationRouter(
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       // TODO: 實作健康狀態檢查
@@ -183,7 +184,7 @@ export function createIntegrationRouter(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get health status',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -221,14 +222,14 @@ export function createIntegrationRouter(
           errors: result.errors,
           warnings: result.warnings,
           timestamp: result.processedAt
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     } catch (error) {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Webhook processing failed',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -241,7 +242,7 @@ export function createIntegrationRouter(
           success: false,
           error: 'Insufficient permissions for batch operations',
           timestamp: new Date().toISOString()
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       // TODO: 實作批量操作
@@ -264,7 +265,7 @@ export function createIntegrationRouter(
         success: false,
         error: error instanceof Error ? error.message : 'Batch operation failed',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 

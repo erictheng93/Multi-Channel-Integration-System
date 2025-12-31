@@ -4,6 +4,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // ======================== 基礎權限檢查 ========================
 
@@ -19,7 +20,7 @@ export async function checkSessionAccess(c: Context<{ Bindings: Bindings }>, nex
         success: false,
         error: 'Missing or invalid authorization header',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     const token = authHeader.substring(7);
@@ -30,7 +31,7 @@ export async function checkSessionAccess(c: Context<{ Bindings: Bindings }>, nex
         success: false,
         error: 'Invalid or expired token',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 將 JWT payload 存储到 context 中
@@ -42,7 +43,7 @@ export async function checkSessionAccess(c: Context<{ Bindings: Bindings }>, nex
       success: false,
       error: 'Authentication failed',
       timestamp: new Date().toISOString()
-    }, 401);
+    }, HTTP_STATUS.UNAUTHORIZED);
   }
 }
 
@@ -60,7 +61,7 @@ export async function checkSessionViewPermission(c: Context<{ Bindings: Bindings
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // SECURITY: Admin can view all sessions, Agent can view assigned only (2-tier system)
@@ -69,7 +70,7 @@ export async function checkSessionViewPermission(c: Context<{ Bindings: Bindings
         success: false,
         error: 'Insufficient permissions to view sessions',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     await next();
@@ -79,7 +80,7 @@ export async function checkSessionViewPermission(c: Context<{ Bindings: Bindings
       success: false,
       error: 'Permission check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -95,7 +96,7 @@ export async function checkSessionCreatePermission(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // SECURITY: All valid roles can create sessions (2-tier system)
@@ -104,7 +105,7 @@ export async function checkSessionCreatePermission(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Insufficient permissions to create sessions',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     await next();
@@ -114,7 +115,7 @@ export async function checkSessionCreatePermission(c: Context<{ Bindings: Bindin
       success: false,
       error: 'Permission check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -130,7 +131,7 @@ export async function checkSessionUpdatePermission(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // SECURITY: Admin can update all sessions (2-tier role system)
@@ -150,14 +151,14 @@ export async function checkSessionUpdatePermission(c: Context<{ Bindings: Bindin
       success: false,
       error: 'Insufficient permissions to update sessions',
       timestamp: new Date().toISOString()
-    }, 403);
+    }, HTTP_STATUS.FORBIDDEN);
   } catch (error) {
     console.error('Session update permission check error:', error);
     return c.json({
       success: false,
       error: 'Permission check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -173,7 +174,7 @@ export async function checkSessionDeletePermission(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 只有 Admin 角色可以刪除會話
@@ -182,7 +183,7 @@ export async function checkSessionDeletePermission(c: Context<{ Bindings: Bindin
         success: false,
         error: 'Only administrators can delete sessions',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     await next();
@@ -192,7 +193,7 @@ export async function checkSessionDeletePermission(c: Context<{ Bindings: Bindin
       success: false,
       error: 'Permission check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -208,7 +209,7 @@ export async function checkSessionStatsPermission(c: Context<{ Bindings: Binding
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // SECURITY: Admin-only access (2-tier role system)
@@ -217,7 +218,7 @@ export async function checkSessionStatsPermission(c: Context<{ Bindings: Binding
         success: false,
         error: 'Insufficient permissions to view session statistics',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     await next();
@@ -227,7 +228,7 @@ export async function checkSessionStatsPermission(c: Context<{ Bindings: Binding
       success: false,
       error: 'Permission check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -243,7 +244,7 @@ export async function checkSessionBatchPermission(c: Context<{ Bindings: Binding
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // SECURITY: Admin-only access (2-tier role system)
@@ -252,7 +253,7 @@ export async function checkSessionBatchPermission(c: Context<{ Bindings: Binding
         success: false,
         error: 'Insufficient permissions for batch operations',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     await next();
@@ -262,7 +263,7 @@ export async function checkSessionBatchPermission(c: Context<{ Bindings: Binding
       success: false,
       error: 'Permission check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 

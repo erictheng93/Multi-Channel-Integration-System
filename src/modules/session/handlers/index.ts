@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import sessionMainHandler from '@modules/session/handlers/session-main';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // 中間件導入 (暫時註釋以避免部署錯誤)
 import {
@@ -130,7 +131,7 @@ sessionRouter.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session configuration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -160,7 +161,7 @@ sessionRouter.post(
           success: false,
           error: 'conversationId, messageContent, and senderType are required',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // TODO: 實現邊界檢測測試
@@ -203,7 +204,7 @@ sessionRouter.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to test boundary detection',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -237,7 +238,7 @@ sessionRouter.post(
           success: false,
           error: 'Cannot cleanup sessions newer than 7 days',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // TODO: 實現清理功能
@@ -270,7 +271,7 @@ sessionRouter.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to cleanup sessions',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -303,7 +304,7 @@ sessionRouter.post(
           success: false,
           error: 'format must be json or csv',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // TODO: 實現匯出功能
@@ -336,7 +337,7 @@ sessionRouter.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to export sessions',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );

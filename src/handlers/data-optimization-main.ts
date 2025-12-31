@@ -6,6 +6,7 @@ import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { createDataOptimizationService } from '../services/data-optimization-service';
 import type { DataOptimizationConfig } from '../services/data-optimization-service';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 const dataOptimizationHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -21,7 +22,7 @@ dataOptimizationHandler.get('/config', jwtAuth, async (c) => {
       return c.json({
         error: 'Insufficient permissions',
         message: 'Only administrators can view optimization config'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -39,7 +40,7 @@ dataOptimizationHandler.get('/config', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to retrieve configuration',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -52,7 +53,7 @@ dataOptimizationHandler.put('/config', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can modify optimization configuration'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const configUpdate = await c.req.json() as Partial<DataOptimizationConfig>;
@@ -63,7 +64,7 @@ dataOptimizationHandler.put('/config', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid configuration',
         message: validationError
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -81,7 +82,7 @@ dataOptimizationHandler.put('/config', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to update configuration',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -96,7 +97,7 @@ dataOptimizationHandler.get('/stats', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -129,7 +130,7 @@ dataOptimizationHandler.get('/stats', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to retrieve statistics',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -144,7 +145,7 @@ dataOptimizationHandler.post('/test-cache', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { testSize = 100, testData } = await c.req.json();
@@ -153,7 +154,7 @@ dataOptimizationHandler.post('/test-cache', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid test size',
         message: 'Test size must be between 10 and 1000'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -172,7 +173,7 @@ dataOptimizationHandler.post('/test-cache', jwtAuth, async (c) => {
     return c.json({
       error: 'Cache test failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -185,7 +186,7 @@ dataOptimizationHandler.post('/cleanup', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can perform cleanup operations'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { force = false } = await c.req.json();
@@ -197,7 +198,7 @@ dataOptimizationHandler.post('/cleanup', jwtAuth, async (c) => {
       return c.json({
         error: 'Cleanup disabled',
         message: 'Automatic cleanup is disabled. Use force=true to override.'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const cleanupResults = await optimizationService.performCleanup();
@@ -215,7 +216,7 @@ dataOptimizationHandler.post('/cleanup', jwtAuth, async (c) => {
     return c.json({
       error: 'Cleanup operation failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -230,7 +231,7 @@ dataOptimizationHandler.post('/test-batch', jwtAuth, async (c) => {
     if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { operationCount = 50, operationType = 'mixed' } = await c.req.json();
@@ -239,7 +240,7 @@ dataOptimizationHandler.post('/test-batch', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid operation count',
         message: 'Operation count must be between 10 and 500'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -263,7 +264,7 @@ dataOptimizationHandler.post('/test-batch', jwtAuth, async (c) => {
     return c.json({
       error: 'Batch test failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -278,7 +279,7 @@ dataOptimizationHandler.post('/indexes', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can create indexes'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { indexName, field, sampleData } = await c.req.json();
@@ -287,14 +288,14 @@ dataOptimizationHandler.post('/indexes', jwtAuth, async (c) => {
       return c.json({
         error: 'Missing required fields',
         message: 'indexName and field are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!Array.isArray(sampleData) || sampleData.length === 0) {
       return c.json({
         error: 'Invalid sample data',
         message: 'sampleData must be a non-empty array'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -315,7 +316,7 @@ dataOptimizationHandler.post('/indexes', jwtAuth, async (c) => {
     return c.json({
       error: 'Index creation failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -328,7 +329,7 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
     if (user.role !== 'admin') {
       return c.json({
         error: 'Insufficient permissions'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const indexName = c.req.param('indexName');
@@ -339,7 +340,7 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
       return c.json({
         error: 'Missing value parameter',
         message: 'value query parameter is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -361,7 +362,7 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
     return c.json({
       error: 'Index query failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -460,7 +461,7 @@ dataOptimizationHandler.get('/health', async (c) => {
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -476,7 +477,7 @@ dataOptimizationHandler.post('/initialize-baseline', jwtAuth, async (c) => {
       return c.json({
         error: 'Insufficient permissions',
         message: 'Only administrators can initialize baseline'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const optimizationService = createDataOptimizationService(c.env);
@@ -511,7 +512,7 @@ dataOptimizationHandler.post('/initialize-baseline', jwtAuth, async (c) => {
     return c.json({
       error: 'Failed to initialize baseline',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

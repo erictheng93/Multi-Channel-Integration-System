@@ -2,11 +2,12 @@
 // 訊息匯出功能端點
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, and, desc } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
-import type { Bindings, JWTPayload } from '../../../types';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { Bindings, JWTPayload } from '@/types';
 import { messages, agents, customers } from '@shared/database/schema';
-import { jwtAuth } from '../../../middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 
 const exportRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -31,7 +32,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid format. Must be "json" or "csv"',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -143,7 +144,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to export messages',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

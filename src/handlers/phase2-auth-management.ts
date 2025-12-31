@@ -2,6 +2,7 @@
 // 專門處理 Phase 2 監控系統的認證令牌管理
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import {
@@ -25,7 +26,7 @@ phase2AuthHandler.post('/monitoring-token', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can generate monitoring tokens'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const expiresIn = parseInt(c.req.query('expiresIn') || '604800'); // 默認7天
@@ -35,7 +36,7 @@ phase2AuthHandler.post('/monitoring-token', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid expiration time',
         message: 'Expiration time must be between 1 hour and 30 days'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const token = await generateMonitoringToken(c.env.JWT_SECRET, expiresIn);
@@ -55,7 +56,7 @@ phase2AuthHandler.post('/monitoring-token', jwtAuth, async (c) => {
     return c.json({
       error: 'Token generation failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -70,14 +71,14 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
       return c.json({
         error: 'Insufficient permissions',
         message: 'Only administrators can generate user tokens'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     if (!targetUserId) {
       return c.json({
         error: 'Missing target user ID',
         message: 'targetUserId is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證過期時間範圍 (5分鐘 - 24小時)
@@ -85,7 +86,7 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid expiration time',
         message: 'Expiration time must be between 5 minutes and 24 hours'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 獲取目標用戶信息
@@ -121,7 +122,7 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
     return c.json({
       error: 'Token generation failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -135,7 +136,7 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
       return c.json({
         error: 'Admin access required',
         message: 'Only administrators can generate batch tokens'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 開發環境限制
@@ -144,7 +145,7 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
       return c.json({
         error: 'Not available in production',
         message: 'Batch token generation is only available in development'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const { users, expiresIn = 3600 } = await c.req.json();
@@ -153,7 +154,7 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
       return c.json({
         error: 'Invalid user list',
         message: 'Users array is required and must not be empty'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 限制批量生成數量
@@ -161,7 +162,7 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
       return c.json({
         error: 'Too many users',
         message: 'Maximum 10 users per batch'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const tokens = await generateTokenBatch(users, c.env.JWT_SECRET, expiresIn);
@@ -181,7 +182,7 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
     return c.json({
       error: 'Batch token generation failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -196,7 +197,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
       return c.json({
         error: 'Missing token',
         message: 'Token is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 動態導入以避免循環依賴
@@ -243,7 +244,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       return c.json({
         error: 'Missing token',
         message: 'Token is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 動態導入以避免循環依賴
@@ -256,7 +257,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       return c.json({
         error: 'Invalid token',
         message: 'Cannot refresh invalid or expired token'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查是否為系統令牌
@@ -293,7 +294,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
     return c.json({
       error: 'Token refresh failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -328,7 +329,7 @@ phase2AuthHandler.get('/status', jwtAuth, async (c) => {
     return c.json({
       error: 'Status check failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

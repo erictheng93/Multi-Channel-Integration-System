@@ -1,11 +1,12 @@
 // Teams Module Handlers
-// 團隊模組請求處理器
+// ?��?模�?請�??��???
 
 import { Hono } from 'hono';
 import { TeamService } from '@modules/teams/services/team-service';
 import { TeamQRService } from '@modules/teams/services/qr-service';
 import { TeamActivityService } from '@modules/teams/services/activity-service';
 import { generateTeamQRCode } from '@/services/liff-qrcode-service';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   TeamListRequest,
   TeamCreateRequest,
@@ -29,10 +30,10 @@ import { eq, and, desc } from 'drizzle-orm';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
-// 不再需要模組級別的 CORS middleware
+// ??CORS ?��?已移??src/index.ts 統�?管�?
+// 不�??�要模組�??��? CORS middleware
 
-// 健康檢查端點
+// ?�康檢查端�?
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
@@ -42,7 +43,7 @@ app.get('/health', (c) => {
   });
 });
 
-// 模組資訊端點
+// 模�?資�?端�?
 app.get('/info', (c) => {
   return c.json({
     success: true,
@@ -53,7 +54,7 @@ app.get('/info', (c) => {
         'GET /health - Health check',
         'GET /info - Module information',
         'GET / - List teams',
-        'GET /members - Get all team members (admin/team only) ✨ NEW',
+        'GET /members - Get all team members (admin/team only) ??NEW',
         'GET /:id - Get team details',
         'POST / - Create team',
         'PUT /:id - Update team',
@@ -98,7 +99,7 @@ app.get('/stats/all', jwtAuth, requireAdmin(), async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -111,7 +112,7 @@ app.post('/transfer', async (c) => {
       return c.json({
         success: false,
         error: 'From team ID, to team ID, and agent IDs are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -123,7 +124,7 @@ app.post('/transfer', async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -137,7 +138,7 @@ app.get('/search/:query', async (c) => {
       return c.json({
         success: false,
         error: 'Search query is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -149,7 +150,7 @@ app.get('/search/:query', async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -167,7 +168,7 @@ app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       return c.json({
         success: false,
         error: 'Invalid team ID or agent ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -179,7 +180,7 @@ app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => 
     return c.json({
       success: false,
       error: 'Failed to update team member'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -194,7 +195,7 @@ app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) 
       return c.json({
         success: false,
         error: 'Invalid team ID or agent ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -204,7 +205,7 @@ app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) 
       return c.json({
         success: false,
         error: 'Failed to remove team member'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     return c.json({ success: true });
@@ -213,12 +214,12 @@ app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) 
     return c.json({
       success: false,
       error: 'Failed to remove team member'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
 // Deactivate QR code
-// Phase 1 優化：同時清除 KV 快取
+// Phase 1 ?��?：�??��???KV 快�?
 app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -228,7 +229,7 @@ app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), 
       return c.json({
         success: false,
         error: 'Invalid team ID or QR code ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
@@ -245,7 +246,7 @@ app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), 
       success: false,
       error: error instanceof Error ? error.message : 'Failed to deactivate QR code',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -259,7 +260,7 @@ app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID - must be a number'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -271,7 +272,7 @@ app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_MEMBERS
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -286,14 +287,14 @@ app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.agentId?.trim()) {
       return c.json({
         success: false,
         error: 'Agent ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -302,19 +303,19 @@ app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
     return c.json({
       success: true,
       data: member
-    }, 201);
+    }, HTTP_STATUS.CREATED);
   } catch (error) {
     console.error('Add team member error:', error);
     return c.json({
       success: false,
       error: 'Failed to add team member'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
 // Generate QR Code for team
-// Phase 1 優化：傳遞 KV 命名空間用於快取
-// Phase 2 修正：傳遞 LINE_BOT_ID 環境變數
+// Phase 1 ?��?：傳??KV ?��?空�??�於快�?
+// Phase 2 修正：傳??LINE_BOT_ID ?��?變數
 app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -324,10 +325,10 @@ app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 傳遞 CACHE KV 命名空間、LINE_BOT_ID 和 FRONTEND_URL（用於 LIFF 方案）
+    // ?��? CACHE KV ?��?空�??�LINE_BOT_ID ??FRONTEND_URL（用??LIFF ?��?�?
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const qrCodeParams: any = {
       teamId,
@@ -350,14 +351,14 @@ app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
       success: true,
       data: qrCode,
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
   } catch (error) {
     console.error('Generate QR code error:', error);
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GENERATE_QR_CODE,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -370,7 +371,7 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
@@ -387,12 +388,12 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_QR_CODES,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
-// 🆕 Phase 1: 快速獲取最新 QR 碼 (用於懸停預載)
-// 🚀 Phase 3 優化: 優先從 teams.qrCode 讀取，實現雙向同步機制
+// ?? Phase 1: 快速獲?��???QR �?(?�於?��??��?)
+// ?? Phase 3 ?��?: ?��?�?teams.qrCode 讀?��?實現?��??�步機制
 app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -401,12 +402,12 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const drizzleDb = createDbClient(c.env.DB);
 
-    // 🚀 Step 1: 優先從 teams.qrCode 直接讀取 (Optimal Path - 50x 提升)
+    // ?? Step 1: ?��?�?teams.qrCode ?�接讀??(Optimal Path - 50x ?��?)
     const teamData = await drizzleDb
       .select({ qrCode: teams.qrCode })
       .from(teams)
@@ -414,8 +415,8 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       .get();
 
     if (teamData?.qrCode) {
-      console.log(`✅ [QR Latest] Optimal path: 從 teams.qrCode 讀取 (teamId=${teamId})`);
-      // 從 qrCode URL 推斷 lineUrl (格式: https://line.me/R/ti/p/@{botId}?token={token})
+      console.log(`??[QR Latest] Optimal path: �?teams.qrCode 讀??(teamId=${teamId})`);
+      // �?qrCode URL ?�斷 lineUrl (?��?: https://line.me/R/ti/p/@{botId}?token={token})
       const lineUrl = teamData.qrCode.includes('line.me')
         ? teamData.qrCode.replace('api.qrserver.com/v1/create-qr-code/?data=', '')
         : `https://line.me/R/ti/p/@${c.env.LINE_BOT_ID || 'unknown'}`;
@@ -425,14 +426,14 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         data: {
           qrCode: teamData.qrCode,
           lineUrl: lineUrl,
-          fromCache: false // 從 DB 讀取，不是 KV 快取
+          fromCache: false // �?DB 讀?��?不是 KV 快�?
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    // 🔄 Step 2: Fallback - 從 qr_codes 表查詢 (兼容舊邏輯)
-    console.log(`📋 [QR Latest] Fallback: teams.qrCode 為空，使用 qrService (teamId=${teamId})`);
+    // ?? Step 2: Fallback - �?qr_codes 表查�?(?�容?��?�?
+    console.log(`?? [QR Latest] Fallback: teams.qrCode ?�空，使??qrService (teamId=${teamId})`);
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const result = await qrService.getLatestQRCodeFast(teamId);
@@ -441,10 +442,10 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'No QR code found for this team'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // 🔄 Step 3: 異步同步回 teams.qrCode (雙向同步機制)
+    // ?? Step 3: ?�步?�步??teams.qrCode (?��??�步機制)
     c.executionCtx.waitUntil(
       drizzleDb
         .update(teams)
@@ -454,10 +455,10 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         })
         .where(eq(teams.id, teamId))
         .then(() => {
-          console.log(`✅ [QR Latest] 已同步到 teams.qrCode: teamId=${teamId}`);
+          console.log(`??[QR Latest] 已�?步到 teams.qrCode: teamId=${teamId}`);
         })
         .catch(err => {
-          console.error(`❌ [QR Latest] 同步失敗: teamId=${teamId}`, err);
+          console.error(`??[QR Latest] ?�步失�?: teamId=${teamId}`, err);
         })
     );
 
@@ -476,11 +477,11 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       success: false,
       error: 'Failed to get QR code',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
-// 🚀 Phase 3: 極速查詢端點 - 優先從 teams.qrCode 讀取 (雙向同步優化)
+// ?? Phase 3: 極速查詢端�?- ?��?�?teams.qrCode 讀??(?��??�步?��?)
 app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -489,12 +490,12 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const drizzleDb = createDbClient(c.env.DB);
 
-    // Step 1: 優先從 teams 表直接讀取 (最快!)
+    // Step 1: ?��?�?teams 表直?��???(?��?)
     const teamData = await drizzleDb
       .select({ qrCode: teams.qrCode })
       .from(teams)
@@ -502,20 +503,20 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
       .get();
 
     if (teamData?.qrCode) {
-      console.log(`✅ [Fast QR Query] 從 teams 表直接讀取: teamId=${teamId}`);
+      console.log(`??[Fast QR Query] �?teams 表直?��??? teamId=${teamId}`);
       return c.json({
         success: true,
         data: {
           qrCode: teamData.qrCode,
-          source: 'teams_table',  // 資料來源標記
-          performance: 'optimal'   // 效能標記
+          source: 'teams_table',  // 資�?來�?標�?
+          performance: 'optimal'   // ?�能標�?
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    // Step 2: Fallback - 從 qr_codes 表查詢並同步回 teams 表
-    console.log(`📋 [Fast QR Query] teams.qrCode 為空，從 qr_codes 表查詢: teamId=${teamId}`);
+    // Step 2: Fallback - �?qr_codes 表查詢並?�步??teams �?
+    console.log(`?? [Fast QR Query] teams.qrCode ?�空，�? qr_codes 表查�? teamId=${teamId}`);
 
     const latestQR = await drizzleDb
       .select()
@@ -531,7 +532,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
       .get();
 
     if (latestQR) {
-      // 異步同步回 teams 表 (不阻塞響應)
+      // ?�步?�步??teams �?(不阻塞響??
       c.executionCtx.waitUntil(
         drizzleDb
           .update(teams)
@@ -541,10 +542,10 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
           })
           .where(eq(teams.id, teamId))
           .then(() => {
-            console.log(`✅ [Fast QR Query] 已同步到 teams.qrCode: teamId=${teamId}`);
+            console.log(`??[Fast QR Query] 已�?步到 teams.qrCode: teamId=${teamId}`);
           })
           .catch(err => {
-            console.error(`❌ [Fast QR Query] 同步失敗: teamId=${teamId}`, err);
+            console.error(`??[Fast QR Query] ?�步失�?: teamId=${teamId}`, err);
           })
       );
 
@@ -553,19 +554,19 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
         data: {
           qrCode: latestQR.qrCodeImageUrl,
           lineUrl: latestQR.lineUrl,
-          source: 'qr_codes_table',  // 資料來源標記
-          performance: 'fallback'     // 效能標記
+          source: 'qr_codes_table',  // 資�?來�?標�?
+          performance: 'fallback'     // ?�能標�?
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    // Step 3: 沒有找到任何 QR Code
+    // Step 3: 沒�??�到任�? QR Code
     return c.json({
       success: false,
       error: 'No QR code found for this team',
       timestamp: new Date().toISOString()
-    }, 404);
+    }, HTTP_STATUS.NOT_FOUND);
 
   } catch (error) {
     console.error('Fast QR code query error:', error);
@@ -573,7 +574,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
       success: false,
       error: 'Failed to get QR code',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -591,7 +592,7 @@ app.post('/:id/qr-code-test', async (c) => {
     return c.json({
       success: false,
       error: 'Test failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -606,7 +607,7 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -621,7 +622,7 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'No LIFF QR code found for this team'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -641,7 +642,7 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: 'Failed to get LIFF QR code'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -654,7 +655,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Get team name
@@ -669,7 +670,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Team not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Generate or regenerate LIFF QR Code
@@ -679,7 +680,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: result.error || 'Failed to generate LIFF QR code'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     return c.json({
@@ -697,7 +698,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
     return c.json({
       success: false,
       error: 'Failed to generate LIFF QR code'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -710,7 +711,7 @@ app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), async (c) =
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -725,7 +726,7 @@ app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), async (c) =
       return c.json({
         success: false,
         error: 'No LIFF QR code found for this team'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Get customer team assignments count (from Migration 0031)
@@ -751,7 +752,7 @@ app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), async (c) =
     return c.json({
       success: false,
       error: 'Failed to get LIFF QR code statistics'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -766,7 +767,7 @@ app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const dateFromParam = c.req.query('dateFrom');
@@ -786,7 +787,7 @@ app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -799,7 +800,7 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -809,7 +810,7 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
       return c.json({
         success: false,
         error: ERROR_MESSAGES.TEAM_NOT_FOUND
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({ success: true, data: team });
@@ -818,7 +819,7 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAM
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -833,7 +834,7 @@ app.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -864,14 +865,14 @@ app.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
         success: false,
         error: 'Team not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_UPDATE_TEAM,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -884,19 +885,19 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid team ID'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
 
-    // 先獲取團隊信息以便記錄
+    // ?�獲?��??�信?�以便�???
     const teamInfo = await teamService.getTeam(teamId);
     if (!teamInfo) {
       return c.json({
         success: false,
         error: 'Team not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     const success = await teamService.deleteTeam(teamId);
@@ -906,7 +907,7 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
         success: false,
         error: ERROR_MESSAGES.FAILED_TO_DELETE_TEAM,
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // Log activity
@@ -931,7 +932,7 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_DELETE_TEAM,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -942,7 +943,7 @@ app.get('/', jwtAuth, async (c) => {
     const user = c.get('user');
     const includeInactive = c.req.query('includeInactive') === 'true';
 
-    // 非 admin/team 用戶只能看到自己的團隊
+    // ??admin/team ?�戶?�能?�到?�己?��???
     if (user.role === 'agent' && user.teamId) {
       const teamService = new TeamService(c.env.DB);
       const team = await teamService.getTeam(user.teamId);
@@ -964,8 +965,8 @@ app.get('/', jwtAuth, async (c) => {
 
     const result = await teamService.listTeams(params);
 
-    // 診斷日誌
-    console.log('📊 Teams List Result:', {
+    // 診斷?��?
+    console.log('?? Teams List Result:', {
       teamsCount: result.teams?.length || 0,
       teams: result.teams,
       pagination: result.pagination,
@@ -974,7 +975,7 @@ app.get('/', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      data: result.teams,  // ✅ 修復：使用 data 字段而不是 teams
+      data: result.teams,  // ??修復：使??data 字段?��???teams
       pagination: result.pagination,
       timestamp: new Date().toISOString()
     });
@@ -984,7 +985,7 @@ app.get('/', jwtAuth, async (c) => {
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -997,17 +998,17 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Team name is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamService = new TeamService(c.env.DB);
     const team = await teamService.createTeam(body);
 
-    // Phase 3 優化：並行執行活動日誌和 QR 碼生成
+    // Phase 3 ?��?：並行執行活?�日誌�? QR 碼�???
     // QR code generation runs in parallel with activity logging (~30-50ms overhead)
     const user = c.get('user');
     const activityService = new TeamActivityService(c.env.DB);
-    // 🔧 修正：傳遞 LINE_BOT_ID 和 FRONTEND_URL 以生成正確的 LIFF URL
+    // ?�� 修正：傳??LINE_BOT_ID ??FRONTEND_URL 以�??�正確�? LIFF URL
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
 
     // Run activity logging and QR generation in parallel
@@ -1024,8 +1025,8 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       // Task 2: Pre-generate QR code (existing - Phase 3)
       qrService.generateTeamQRCode({
         teamId: team.id,
-        campaignName: `${team.name} - 預設 QR 碼`,
-        description: `團隊 ${team.name} 的預設 QR 碼`
+        campaignName: `${team.name} - ?�設 QR 碼`,
+        description: `?��? ${team.name} ?��?�?QR 碼`
       }).catch(err => {
         // QR generation failure should not fail team creation
         console.error(`[Phase 3] QR generation failed for team ${team.id}:`, err);
@@ -1061,7 +1062,7 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       success: true,
       data: teamWithQR,
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
   } catch (error) {
     console.error('Create team error:', error);
 
@@ -1071,7 +1072,7 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
         success: false,
         error: 'QR code already exists',
         timestamp: new Date().toISOString()
-      }, 409);
+      }, HTTP_STATUS.CONFLICT);
     }
 
     // Handle JSON parsing errors
@@ -1080,14 +1081,14 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
         success: false,
         error: 'Invalid JSON',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return c.json({
       success: false,
       error: ERROR_MESSAGES.FAILED_TO_CREATE_TEAM,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

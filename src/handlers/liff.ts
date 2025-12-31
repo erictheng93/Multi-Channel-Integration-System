@@ -2,6 +2,7 @@
 // 用於實現精確的 QR Code 團隊綁定
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { createDbClient } from '../db/drizzle-factory';
 import { eq, and, sql } from 'drizzle-orm';
@@ -22,7 +23,7 @@ liffHandler.post('/verify-token', async (c) => {
     const { token } = await c.req.json<{ token: string }>();
 
     if (!token) {
-      return c.json({ success: false, message: '缺少 token 參數' }, 400);
+      return c.json({ success: false, message: '缺少 token 參數' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -43,21 +44,21 @@ liffHandler.post('/verify-token', async (c) => {
       .get();
 
     if (!qrCode) {
-      return c.json({ success: false, message: 'QR Code 不存在' }, 404);
+      return c.json({ success: false, message: 'QR Code 不存在' }, HTTP_STATUS.NOT_FOUND);
     }
 
     if (!qrCode.isActive) {
-      return c.json({ success: false, message: 'QR Code 已停用' }, 400);
+      return c.json({ success: false, message: 'QR Code 已停用' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查是否過期
     if (qrCode.expiresAt && new Date() > new Date(qrCode.expiresAt)) {
-      return c.json({ success: false, message: 'QR Code 已過期' }, 400);
+      return c.json({ success: false, message: 'QR Code 已過期' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查使用次數
     if (qrCode.maxUses && (qrCode.usageCount ?? 0) >= qrCode.maxUses) {
-      return c.json({ success: false, message: 'QR Code 已達使用上限' }, 400);
+      return c.json({ success: false, message: 'QR Code 已達使用上限' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 獲取團隊名稱
@@ -78,7 +79,7 @@ liffHandler.post('/verify-token', async (c) => {
 
   } catch (error) {
     log.error('LIFF verify-token error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, message: '伺服器錯誤' }, 500);
+    return c.json({ success: false, message: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -99,7 +100,7 @@ liffHandler.post('/bind-team', async (c) => {
     const { token, lineUserId, displayName, pictureUrl } = body;
 
     if (!token || !lineUserId) {
-      return c.json({ success: false, message: '缺少必要參數' }, 400);
+      return c.json({ success: false, message: '缺少必要參數' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -113,16 +114,16 @@ liffHandler.post('/bind-team', async (c) => {
       .get();
 
     if (!qrCode || !qrCode.isActive) {
-      return c.json({ success: false, message: 'QR Code 無效或已停用' }, 400);
+      return c.json({ success: false, message: 'QR Code 無效或已停用' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查過期和使用次數
     if (qrCode.expiresAt && new Date() > new Date(qrCode.expiresAt)) {
-      return c.json({ success: false, message: 'QR Code 已過期' }, 400);
+      return c.json({ success: false, message: 'QR Code 已過期' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (qrCode.maxUses && (qrCode.usageCount ?? 0) >= qrCode.maxUses) {
-      return c.json({ success: false, message: 'QR Code 已達使用上限' }, 400);
+      return c.json({ success: false, message: 'QR Code 已達使用上限' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const teamId = qrCode.teamId;
@@ -269,7 +270,7 @@ liffHandler.post('/bind-team', async (c) => {
 
   } catch (error) {
     log.error('LIFF bind-team error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, message: '伺服器錯誤' }, 500);
+    return c.json({ success: false, message: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -304,7 +305,7 @@ liffHandler.get('/config', async (c) => {
       return c.json({
         success: false,
         error: 'LIFF ID 未配置，請聯繫系統管理員'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     log.info('LIFF config retrieved', { liffId: liffId.substring(0, 10) });
@@ -324,7 +325,7 @@ liffHandler.get('/config', async (c) => {
     return c.json({
       success: false,
       error: '伺服器錯誤'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -338,7 +339,7 @@ liffHandler.get('/teams/:teamId', async (c) => {
     const teamId = parseInt(teamIdParam);
 
     if (isNaN(teamId)) {
-      return c.json({ success: false, error: '無效的團隊 ID' }, 400);
+      return c.json({ success: false, error: '無效的團隊 ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -350,7 +351,7 @@ liffHandler.get('/teams/:teamId', async (c) => {
       .get();
 
     if (!team) {
-      return c.json({ success: false, error: '團隊不存在' }, 404);
+      return c.json({ success: false, error: '團隊不存在' }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -364,7 +365,7 @@ liffHandler.get('/teams/:teamId', async (c) => {
 
   } catch (error) {
     log.error('Get team error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: '伺服器錯誤' }, 500);
+    return c.json({ success: false, error: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -378,7 +379,7 @@ liffHandler.post('/assign-team', async (c) => {
     const { lineUserId, teamId, displayName, timestamp: assignTimestamp } = body;
 
     if (!lineUserId || !teamId) {
-      return c.json({ success: false, error: '缺少必要參數: lineUserId 或 teamId' }, 400);
+      return c.json({ success: false, error: '缺少必要參數: lineUserId 或 teamId' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -391,7 +392,7 @@ liffHandler.post('/assign-team', async (c) => {
       .get();
 
     if (!team) {
-      return c.json({ success: false, error: '團隊不存在' }, 404);
+      return c.json({ success: false, error: '團隊不存在' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Check for existing assignment
@@ -462,7 +463,7 @@ liffHandler.post('/assign-team', async (c) => {
 
   } catch (error) {
     log.error('Assign team error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: '伺服器錯誤' }, 500);
+    return c.json({ success: false, error: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -476,7 +477,7 @@ liffHandler.post('/welcome', async (c) => {
     const { lineUserId, teamId } = body;
 
     if (!lineUserId || !teamId) {
-      return c.json({ success: false, error: '缺少必要參數: lineUserId 或 teamId' }, 400);
+      return c.json({ success: false, error: '缺少必要參數: lineUserId 或 teamId' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -489,7 +490,7 @@ liffHandler.post('/welcome', async (c) => {
       .get();
 
     if (!team) {
-      return c.json({ success: false, error: '團隊不存在' }, 404);
+      return c.json({ success: false, error: '團隊不存在' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Send welcome message via LINE API
@@ -497,7 +498,7 @@ liffHandler.post('/welcome', async (c) => {
 
     if (!channelAccessToken) {
       log.error('LINE_CHANNEL_ACCESS_TOKEN not configured');
-      return c.json({ success: false, error: 'LINE 整合未配置' }, 500);
+      return c.json({ success: false, error: 'LINE 整合未配置' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     const welcomeMessage = `🎉 歡迎加入 ${team.name}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
@@ -520,7 +521,7 @@ liffHandler.post('/welcome', async (c) => {
     if (!response.ok) {
       const errorText = await response.text();
       log.error('LINE API error', { error: errorText });
-      return c.json({ success: false, error: '發送歡迎消息失敗' }, 500);
+      return c.json({ success: false, error: '發送歡迎消息失敗' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     log.info('Welcome message sent', { lineUserId, teamId });
@@ -534,7 +535,7 @@ liffHandler.post('/welcome', async (c) => {
 
   } catch (error) {
     log.error('Send welcome error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: '伺服器錯誤' }, 500);
+    return c.json({ success: false, error: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

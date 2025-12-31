@@ -4,6 +4,9 @@
  * Created: 2025-08-29
  */
 
+import { MESSAGE_STATUS } from '../constants/message-status';
+import type { SenderType } from '../constants/sender-types';
+
 import type {
   customers,
   conversations,
@@ -65,12 +68,12 @@ export function convertMessage(drizzleMessage: DrizzleMessage): DbMessage {
   const result: DbMessage = {
     id: drizzleMessage.id,
     conversationId: drizzleMessage.conversationId,
-    senderType: drizzleMessage.senderType as 'customer' | 'agent' | 'system',
+    senderType: drizzleMessage.senderType as SenderType,
     content: drizzleMessage.content,
     messageType: drizzleMessage.messageType as 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker',
     isRecalled: Boolean(drizzleMessage.isRecalled),
     isSent: Boolean(drizzleMessage.isSent),
-    deliveryStatus: (drizzleMessage.deliveryStatus as 'pending' | 'sent' | 'delivered' | 'failed') || 'pending',
+    deliveryStatus: (drizzleMessage.deliveryStatus as 'pending' | 'sent' | 'delivered' | 'failed') || MESSAGE_STATUS.PENDING,
     createdAt: drizzleMessage.createdAt || new Date().toISOString()
   };
 
@@ -205,7 +208,7 @@ export function prepareConversationInsert(conversationData: {
 export function prepareMessageInsert(messageData: {
   id: string;
   conversationId: string;
-  senderType: 'customer' | 'agent' | 'system';
+  senderType: SenderType;
   customerSenderId?: number;
   agentSenderId?: string;
   content: string;
@@ -229,7 +232,7 @@ export function prepareMessageInsert(messageData: {
     recalledAt: null,
     isSent: messageData.isSent !== undefined ? messageData.isSent : true,
     sentAt: messageData.isSent !== false ? timestamp : null,
-    deliveryStatus: messageData.isSent !== false ? 'sent' : 'pending',
+    deliveryStatus: messageData.isSent !== false ? MESSAGE_STATUS.SENT : MESSAGE_STATUS.PENDING,
     replyToMessageId: null,
     threadId: null,
     sessionId: null,

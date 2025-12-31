@@ -4,7 +4,7 @@
     :class="{
       'selected': selected,
       'unread': hasUnreadMessages,
-      'is-closed': conversation.status === 'closed'
+      'is-closed': conversation.status === CONVERSATION_STATUS.CLOSED
     }"
     tabindex="0"
     role="button"
@@ -87,6 +87,7 @@ import { UserIcon } from '@/components/icons'
 import { usePrefetch } from '@/composables/usePrefetch'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
 import QuickAssignActions from './QuickAssignActions.vue'
+import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 
 interface Props {
   conversation: Conversation

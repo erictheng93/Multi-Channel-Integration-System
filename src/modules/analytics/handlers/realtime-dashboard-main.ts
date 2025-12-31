@@ -9,6 +9,7 @@ import { DashboardService } from '@modules/analytics/services/dashboard-service'
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
 import { getSSECorsHeaders } from '@/config/cors';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -95,7 +96,7 @@ const createRealtimeDashboardApp = (
       });
 
       return new Response(errorStream, {
-        status: 500,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
         headers: {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache'
@@ -117,7 +118,7 @@ const createRealtimeDashboardApp = (
       success: false,
       error: 'WebSocket connections not yet implemented. Please use SSE endpoint.',
       alternativeEndpoint: `/api/analytics/realtime/sse/${c.req.param('dashboardId')}`
-    }, 501);
+    }, HTTP_STATUS.NOT_IMPLEMENTED);
   });
 
   /**
@@ -145,7 +146,7 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to update subscription'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -163,7 +164,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Insufficient permissions to broadcast updates'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       switch (type) {
@@ -192,7 +193,7 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to broadcast update'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -214,7 +215,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Widget not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 獲取最新數據
@@ -234,7 +235,7 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to trigger widget update'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -271,7 +272,7 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to trigger dashboard update'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -288,7 +289,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Insufficient permissions to view connection status'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const status = realtimeService.getConnectionStatus();
@@ -304,7 +305,7 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: false,
         error: 'Failed to get connection status'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -380,7 +381,7 @@ const createRealtimeDashboardApp = (
         timestamp: new Date().toISOString(),
         service: 'realtime-dashboard',
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -397,7 +398,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Insufficient permissions to perform cleanup'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       realtimeService.cleanupExpiredConnections();
@@ -412,7 +413,7 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: false,
         error: 'Failed to cleanup connections'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 

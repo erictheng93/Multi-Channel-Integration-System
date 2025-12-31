@@ -178,7 +178,7 @@
               <span class="status-spinner" />
               <span class="status-text">傳送中...</span>
             </template>
-            <template v-else-if="messageStatus === 'failed'">
+            <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
               <span class="status-icon failed">✕</span>
               <span class="status-text failed">發送失敗</span>
             </template>
@@ -219,7 +219,7 @@
                 <span class="status-spinner" />
                 <span class="status-text">傳送中...</span>
               </template>
-              <template v-else-if="messageStatus === 'failed'">
+              <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
                 <span class="status-icon failed">✕</span>
                 <span class="status-text failed">發送失敗</span>
               </template>
@@ -359,7 +359,7 @@
         >
           <!-- ⏳ Sending状态 -->
           <div
-            v-if="messageStatus === 'sending' || messageStatus === 'pending'"
+            v-if="messageStatus === 'sending' || messageStatus === MESSAGE_STATUS.PENDING"
             class="status-sending"
             title="发送中..."
           >
@@ -368,14 +368,14 @@
 
           <!-- ✅ Sent/Delivered状态 -->
           <CheckIcon
-            v-else-if="messageStatus === 'sent' || messageStatus === 'delivered' || delivered"
+            v-else-if="messageStatus === MESSAGE_STATUS.SENT || messageStatus === MESSAGE_STATUS.DELIVERED || delivered"
             class="status-delivered"
             title="已送达"
           />
 
           <!-- ❌ Failed状态 with重试按钮 -->
           <div
-            v-else-if="messageStatus === 'failed'"
+            v-else-if="messageStatus === MESSAGE_STATUS.FAILED"
             class="status-failed-wrapper"
           >
             <XIcon
@@ -555,6 +555,7 @@ import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
 import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
 import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'
 import FileAttachmentCard from '@/components/file/FileAttachmentCard.vue'
+import { MESSAGE_STATUS } from '@/constants/message-status'
 
 // Local interface matching FileAttachmentCard's expected type
 interface FileAttachment {
@@ -782,11 +783,11 @@ const messageStatus = computed(() => {
 
   // Priority 3: Fallback to delivered prop
   if (props.delivered) {
-    return 'delivered'
+    return MESSAGE_STATUS.DELIVERED
   }
 
   // Default: assume sent
-  return 'sent'
+  return MESSAGE_STATUS.SENT
 })
 
 const stickerMetadata = computed(() => {
@@ -1252,7 +1253,7 @@ const isAttachmentPending = (attachment: { id?: string; isPending?: boolean }): 
   if (attachment.id?.startsWith('pending-')) {return true}
 
   // 如果消息狀態為 sending 或 pending
-  if (messageStatus.value === 'sending' || messageStatus.value === 'pending') {return true}
+  if (messageStatus.value === 'sending' || messageStatus.value === MESSAGE_STATUS.PENDING) {return true}
 
   return false
 }
@@ -1262,7 +1263,7 @@ const getAttachmentStatusClass = (attachment: { id?: string; isPending?: boolean
   if (isAttachmentPending(attachment)) {
     return 'status-pending'
   }
-  if (messageStatus.value === 'failed') {
+  if (messageStatus.value === MESSAGE_STATUS.FAILED) {
     return 'status-failed'
   }
   return 'status-success'

@@ -4,6 +4,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { SessionService } from '@modules/session/services/session-service';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // 中間件導入
 import {
@@ -140,7 +141,7 @@ sessionHandler.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to execute batch operation',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -173,7 +174,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to search sessions',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -204,7 +205,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session statistics',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -227,7 +228,7 @@ sessionHandler.get(
           success: false,
           error: 'timeRange must be one of: day, week, month, year',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       const sessionService = new SessionService(c.env.DB);
@@ -247,7 +248,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get activity statistics',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -282,7 +283,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get conversation session statistics',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -312,7 +313,7 @@ sessionHandler.post(
           success: false,
           error: 'Session not found or could not be closed',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -327,7 +328,7 @@ sessionHandler.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to close session',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -355,7 +356,7 @@ sessionHandler.post(
           success: false,
           error: 'Session not found or could not be reopened',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -370,7 +371,7 @@ sessionHandler.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to reopen session',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -404,7 +405,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session messages',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -436,7 +437,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to analyze session health',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -470,7 +471,7 @@ sessionHandler.get(
           success: false,
           error: 'Session not found or access denied',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -484,7 +485,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -522,7 +523,7 @@ sessionHandler.put(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to update session',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -550,7 +551,7 @@ sessionHandler.delete(
           success: false,
           error: 'Session not found or could not be deleted',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -565,7 +566,7 @@ sessionHandler.delete(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete session',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -596,14 +597,14 @@ sessionHandler.post(
         data: session,
         message: 'Session created successfully',
         timestamp: new Date().toISOString()
-      }, 201);
+      }, HTTP_STATUS.CREATED);
     } catch (error) {
       console.error('Create session error:', error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create session',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -635,7 +636,7 @@ sessionHandler.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to list sessions',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -649,7 +650,7 @@ sessionHandler.onError((err, c) => {
     success: false,
     error: 'Internal server error in session module',
     timestamp: new Date().toISOString()
-  }, 500);
+  }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
 });
 
 // 404 處理
@@ -676,7 +677,7 @@ sessionHandler.notFound((c) => {
       'GET /:sessionId/health'
     ],
     timestamp: new Date().toISOString()
-  }, 404);
+  }, HTTP_STATUS.NOT_FOUND);
 });
 
 export default sessionHandler;

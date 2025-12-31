@@ -1,5 +1,6 @@
 // 健康檢查路由器 - 統一健康檢查路由處理器
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { createHealthCheckHandlerMethods } from './health-main';
@@ -177,14 +178,14 @@ app.get('/ready', async (c) => {
         status: 'not_ready',
         reason: healthData.overall?.message,
         timestamp: new Date().toISOString()
-      }, 503);
+      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     return c.json({
       status: 'not_ready',
       reason: 'Health check failed',
       timestamp: new Date().toISOString()
-    }, 503);
+    }, HTTP_STATUS.SERVICE_UNAVAILABLE);
   }
 });
 
@@ -217,7 +218,7 @@ app.post('/check/all', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Health check failed',
       message: 'Manual health check failed'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -236,7 +237,7 @@ app.post('/reset', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Reset failed',
       message: 'Failed to reset health check service'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

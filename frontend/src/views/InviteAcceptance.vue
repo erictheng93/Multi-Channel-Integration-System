@@ -178,6 +178,7 @@ import { useAuthStore } from '@/stores/auth'
 import { teamApi } from '@/api/team'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { ROLES } from '@/constants/roles'
 
 // 路由和認證
 const route = useRoute()
@@ -342,7 +343,7 @@ const resetForm = () => {
 
 // 工具函數
 const getRoleText = (role: string) => {
-  return role === 'admin' ? '管理員' : '客服'
+  return role === ROLES.ADMIN ? '管理員' : '客服'
 }
 
 const formatDate = (date: string) => {

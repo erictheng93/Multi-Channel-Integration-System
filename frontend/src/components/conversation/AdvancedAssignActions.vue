@@ -68,140 +68,140 @@
           v-if="showTeamSelector"
           class="team-selector-panel"
         >
-        <div class="panel-header">
-          <h4>選擇指派團隊</h4>
-          <div class="panel-header-actions">
-            <!-- 🆕 手动刷新按钮 -->
-            <button
-              class="refresh-btn"
-              :disabled="isLoadingTeams"
-              :title="isLoadingTeams ? '載入中...' : '重新載入團隊列表'"
-              @click="handleManualRefresh"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                :class="{ 'spinning': isLoadingTeams }"
+          <div class="panel-header">
+            <h4>選擇指派團隊</h4>
+            <div class="panel-header-actions">
+              <!-- 🆕 手动刷新按钮 -->
+              <button
+                class="refresh-btn"
+                :disabled="isLoadingTeams"
+                :title="isLoadingTeams ? '載入中...' : '重新載入團隊列表'"
+                @click="handleManualRefresh"
               >
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-              </svg>
-            </button>
-            <button
-              class="close-panel-btn"
-              @click="closeTeamSelector"
-            >
-              <XIcon />
-            </button>
-          </div>
-        </div>
-
-        <!-- 搜索框 -->
-        <div class="search-section">
-          <div class="search-input-wrapper">
-            <SearchIcon class="search-icon" />
-            <input
-              v-model="teamSearchTerm"
-              type="text"
-              placeholder="搜索團隊..."
-              class="search-input"
-            >
-          </div>
-        </div>
-
-        <!-- 團隊列表 -->
-        <div class="teams-section">
-          <!-- 🆕 加载状态：显示骨架屏 -->
-          <div
-            v-if="isLoadingTeams"
-            class="loading-state"
-          >
-            <TeamListSkeleton :count="3" />
-            <p class="loading-text">
-              載入團隊中...
-            </p>
-          </div>
-
-          <!-- 空状态：确认无团队数据 -->
-          <div
-            v-else-if="teams.length === 0"
-            class="no-teams"
-          >
-            <div class="no-teams-icon">
-              <TeamIcon />
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  :class="{ 'spinning': isLoadingTeams }"
+                >
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                </svg>
+              </button>
+              <button
+                class="close-panel-btn"
+                @click="closeTeamSelector"
+              >
+                <XIcon />
+              </button>
             </div>
-            <p>沒有找到可用的團隊</p>
           </div>
 
-          <!-- 团队列表 -->
-          <div
-            v-else
-            class="teams-grid"
-          >
+          <!-- 搜索框 -->
+          <div class="search-section">
+            <div class="search-input-wrapper">
+              <SearchIcon class="search-icon" />
+              <input
+                v-model="teamSearchTerm"
+                type="text"
+                placeholder="搜索團隊..."
+                class="search-input"
+              >
+            </div>
+          </div>
+
+          <!-- 團隊列表 -->
+          <div class="teams-section">
+            <!-- 🆕 加载状态：显示骨架屏 -->
             <div
-              v-for="team in filteredTeams"
-              :key="team.id"
-              class="team-card"
-              :class="{
-                'selected': selectedTeam === team.id,
-                'current': conversation.assignedTeamId === team.id
-              }"
-              @click="selectTeam(team.id)"
+              v-if="isLoadingTeams"
+              class="loading-state"
             >
-              <div class="team-icon">
+              <TeamListSkeleton :count="3" />
+              <p class="loading-text">
+                載入團隊中...
+              </p>
+            </div>
+
+            <!-- 空状态：确认无团队数据 -->
+            <div
+              v-else-if="teams.length === 0"
+              class="no-teams"
+            >
+              <div class="no-teams-icon">
                 <TeamIcon />
               </div>
-              <div class="team-info">
-                <div class="team-name">
-                  {{ team.name }}
+              <p>沒有找到可用的團隊</p>
+            </div>
+
+            <!-- 团队列表 -->
+            <div
+              v-else
+              class="teams-grid"
+            >
+              <div
+                v-for="team in filteredTeams"
+                :key="team.id"
+                class="team-card"
+                :class="{
+                  'selected': selectedTeam === team.id,
+                  'current': conversation.assignedTeamId === team.id
+                }"
+                @click="selectTeam(team.id)"
+              >
+                <div class="team-icon">
+                  <TeamIcon />
                 </div>
-                <div class="team-details">
-                  <span class="team-member-count">
-                    {{ team.memberCount || 0 }} 位成員
-                  </span>
-                  <span
-                    v-if="conversation.assignedTeamId === team.id"
-                    class="current-tag"
-                  >
-                    目前指派
-                  </span>
+                <div class="team-info">
+                  <div class="team-name">
+                    {{ team.name }}
+                  </div>
+                  <div class="team-details">
+                    <span class="team-member-count">
+                      {{ team.memberCount || 0 }} 位成員
+                    </span>
+                    <span
+                      v-if="conversation.assignedTeamId === team.id"
+                      class="current-tag"
+                    >
+                      目前指派
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 確認操作 -->
-        <div
-          v-if="selectedTeam"
-          class="confirm-section"
-        >
-          <div class="confirm-info">
-            <span>{{ selectedTeam === conversation.assignedTeamId ? '重新確認指派給團隊：' : '將對話指派給團隊：' }}</span>
-            <strong>{{ selectedTeamName || '未知團隊' }}</strong>
-          </div>
-          <div class="confirm-actions">
-            <button
-              class="confirm-btn cancel"
-              @click="cancelSelection"
-            >
-              取消
-            </button>
-            <button
-              class="confirm-btn confirm"
-              :disabled="isAssigning || !selectedTeam"
-              @click="confirmAssignment"
-            >
-              {{ isAssigning ? '處理中...' : '確認指派' }}
-            </button>
+          <!-- 確認操作 -->
+          <div
+            v-if="selectedTeam"
+            class="confirm-section"
+          >
+            <div class="confirm-info">
+              <span>{{ selectedTeam === conversation.assignedTeamId ? '重新確認指派給團隊：' : '將對話指派給團隊：' }}</span>
+              <strong>{{ selectedTeamName || '未知團隊' }}</strong>
+            </div>
+            <div class="confirm-actions">
+              <button
+                class="confirm-btn cancel"
+                @click="cancelSelection"
+              >
+                取消
+              </button>
+              <button
+                class="confirm-btn confirm"
+                :disabled="isAssigning || !selectedTeam"
+                @click="confirmAssignment"
+              >
+                {{ isAssigning ? '處理中...' : '確認指派' }}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </Teleport>
     </div>
   </div>

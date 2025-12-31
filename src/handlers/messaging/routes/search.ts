@@ -2,13 +2,14 @@
 // 訊息搜尋、統計、標籤端點
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, count } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
-import type { Bindings } from '../../../types';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { Bindings } from '@/types';
 import { messages } from '@shared/database/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
-import { jwtAuth } from '../../../middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 
 const searchRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -74,7 +75,7 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
       error: 'Failed to search messages',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -124,7 +125,7 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
       error: 'Failed to get message statistics',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -182,7 +183,7 @@ searchRoutes.get('/tags', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message tags',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

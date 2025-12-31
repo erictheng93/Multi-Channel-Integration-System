@@ -277,6 +277,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { ROLES } from '@/constants/roles'
 
 const route = useRoute()
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -342,7 +343,7 @@ const pagination = ref({
 const authStore = useAuthStore()
 
 // Computed
-const isAdmin = computed(() => authStore.currentAgent?.role === 'admin')
+const isAdmin = computed(() => authStore.currentAgent?.role === ROLES.ADMIN)
 
 // Safe pagination access
 const currentPage = computed(() => pagination.value?.page || 1)

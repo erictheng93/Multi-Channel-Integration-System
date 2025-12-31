@@ -2,6 +2,7 @@
 // 註冊所有系統相關的API路由
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import systemMainHandler from '@modules/system/handlers/system';
 
 // 中間件導入
@@ -133,7 +134,7 @@ systemRouter.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to generate security audit',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -194,7 +195,7 @@ systemRouter.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to generate performance report',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -219,7 +220,7 @@ systemRouter.post(
           success: false,
           error: 'enabled field must be a boolean',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // TODO: 實現維護模式功能
@@ -242,7 +243,7 @@ systemRouter.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to toggle maintenance mode',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -268,7 +269,7 @@ systemRouter.get(
           success: false,
           error: 'Invalid log level. Must be: error, warn, info, debug',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (limit > 1000) {
@@ -276,7 +277,7 @@ systemRouter.get(
           success: false,
           error: 'Limit cannot exceed 1000',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // TODO: 實現系統日誌查詢功能
@@ -303,7 +304,7 @@ systemRouter.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to retrieve system logs',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -342,7 +343,7 @@ systemRouter.post(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to validate configuration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );
@@ -391,7 +392,7 @@ systemRouter.get(
         success: false,
         error: error instanceof Error ? error.message : 'Failed to run system diagnostics',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 );

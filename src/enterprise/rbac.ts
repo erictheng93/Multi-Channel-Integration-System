@@ -2,6 +2,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings, DbUser } from '../types';
 import type { RBACContext } from '../types/enterprise';
+import { ROLES, type Role as RoleType } from '../constants/roles';
 
 // 權限定義
 export interface Permission {
@@ -77,15 +78,15 @@ export class EnterpriseRBACManager {
 
   // 基本權限檢查
   private checkBasicPermission(user: DbUser, resource: string, action: string): PermissionCheckResult {
-    const userRole = user.role?.toLowerCase() || 'agent';
-    
+    const userRole = user.role?.toLowerCase() || ROLES.AGENT;
+
     // Admin 有所有權限
-    if (userRole === 'admin') {
+    if (userRole === ROLES.ADMIN) {
       return { granted: true, userRole };
     }
-    
+
     // Team 角色權限
-    if (userRole === 'team') {
+    if (userRole === ROLES.TEAM) {
       const teamPermissions = [
         'conversation:view', 'conversation:assign', 'conversation:transfer',
         'customer:view', 'customer:edit',
@@ -99,9 +100,9 @@ export class EnterpriseRBACManager {
         return { granted: true, userRole };
       }
     }
-    
+
     // Agent 基本權限
-    if (userRole === 'agent') {
+    if (userRole === ROLES.AGENT) {
       const agentPermissions = [
         'conversation:view', 'conversation:respond',
         'customer:view',
@@ -124,10 +125,10 @@ export class EnterpriseRBACManager {
 
   // 資源存取檢查
   private async checkResourceAccess(user: DbUser, resource: string, resourceId: string): Promise<PermissionCheckResult> {
-    const userRole = user.role?.toLowerCase() || 'agent';
-    
+    const userRole = user.role?.toLowerCase() || ROLES.AGENT;
+
     // Admin 可存取所有資源
-    if (userRole === 'admin') {
+    if (userRole === ROLES.ADMIN) {
       return { granted: true };
     }
     
@@ -151,15 +152,15 @@ export class EnterpriseRBACManager {
         if (!conversation) {
           return { granted: false, reason: 'Conversation not found' };
         }
-        
+
         // Team 可存取同團隊的對話
-        if (userRole === 'team' && user.teamId && 
+        if (userRole === ROLES.TEAM && user.teamId &&
             conversation.assignedTeamId === user.teamId) {
           return { granted: true };
         }
-        
+
         // Agent 只能存取指派給自己的對話
-        if (userRole === 'agent' && conversation.assignedUserId === String(user.id)) {
+        if (userRole === ROLES.AGENT && conversation.assignedUserId === String(user.id)) {
           return { granted: true };
         }
         
@@ -177,18 +178,18 @@ export class EnterpriseRBACManager {
   private getRequiredRole(resource: string, action: string): string {
     const adminActions = ['system:*', 'user:create', 'user:delete', 'team:create', 'team:delete'];
     const teamActions = ['team:manage', 'analytics:view_team', 'conversation:assign'];
-    
+
     const permission = `${resource}:${action}`;
-    
+
     if (adminActions.some(p => p === permission || p.endsWith(':*'))) {
-      return 'admin';
+      return ROLES.ADMIN;
     }
-    
+
     if (teamActions.includes(permission)) {
-      return 'team';
+      return ROLES.TEAM;
     }
-    
-    return 'agent';
+
+    return ROLES.AGENT;
   }
 
   // 角色管理
@@ -209,27 +210,27 @@ export class EnterpriseRBACManager {
         .get();
       
       if (!user) return [];
-      
+
       const roleMap: Record<string, Role> = {
-        admin: {
-          id: 'admin',
-          name: 'admin',
+        [ROLES.ADMIN]: {
+          id: ROLES.ADMIN,
+          name: ROLES.ADMIN,
           displayName: 'Administrator',
           description: 'Full system access',
           permissions: [],
           level: 0
         },
-        team: {
-          id: 'team',
-          name: 'team',
+        [ROLES.TEAM]: {
+          id: ROLES.TEAM,
+          name: ROLES.TEAM,
           displayName: 'Team Leader',
           description: 'Team management access',
           permissions: [],
           level: 1
         },
-        agent: {
-          id: 'agent',
-          name: 'agent',
+        [ROLES.AGENT]: {
+          id: ROLES.AGENT,
+          name: ROLES.AGENT,
           displayName: 'Agent',
           description: 'Basic agent access',
           permissions: [],

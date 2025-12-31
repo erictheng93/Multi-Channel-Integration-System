@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
+import { PLATFORMS } from '@/constants/platforms';
 
 // 導入處理器
 import { createFileHandler } from '@modules/file-management/handlers/file-handler';
@@ -202,7 +203,7 @@ export function createFileRoutes() {
       maxUploadsPerMinute: 15
     }),
     fileValidationMiddleware({
-      platform: 'line',
+      platform: PLATFORMS.LINE,
       requireAuthentication: true
     }),
     async (c) => {
@@ -219,7 +220,7 @@ export function createFileRoutes() {
       maxUploadsPerMinute: 20
     }),
     fileValidationMiddleware({
-      platform: 'facebook',
+      platform: PLATFORMS.FACEBOOK,
       requireAuthentication: true
     }),
     async (c) => {

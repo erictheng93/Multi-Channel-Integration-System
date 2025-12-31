@@ -11,6 +11,7 @@ import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
 import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { teams, conversations, agents } from '@/db/schema';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -33,7 +34,7 @@ agentTeamsHandler.get('/team/:teamId/members', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Invalid teamId'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const service = new AgentTeamsService(c.env.DB);
@@ -49,7 +50,7 @@ agentTeamsHandler.get('/team/:teamId/members', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get team members'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -67,7 +68,7 @@ agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Insufficient permissions to view agent teams'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const service = new AgentTeamsService(c.env.DB);
@@ -83,7 +84,7 @@ agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get agent teams'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -101,7 +102,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       return c.json({
         success: false,
         error: 'teamId is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const service = new AgentTeamsService(c.env.DB);
@@ -112,7 +113,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       return c.json({
         success: false,
         error: 'Agent is already a member of this team'
-      }, 409);
+      }, HTTP_STATUS.CONFLICT);
     }
 
     const db = drizzle(c.env.DB);
@@ -186,13 +187,13 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       data: membership,
       message: 'Agent added to team successfully',
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
   } catch (error) {
     console.error('Add agent to team error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add agent to team'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -210,7 +211,7 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
       return c.json({
         success: false,
         error: 'teamIds array is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const service = new AgentTeamsService(c.env.DB);
@@ -243,7 +244,7 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add agent to teams'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -266,7 +267,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
       return c.json({
         success: false,
         error: 'Invalid teamId'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = drizzle(c.env.DB);
@@ -366,7 +367,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to remove agent from team'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -385,7 +386,7 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireManagerOrAdmin()
       return c.json({
         success: false,
         error: 'Invalid teamId'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const service = new AgentTeamsService(c.env.DB);
@@ -418,7 +419,7 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireManagerOrAdmin()
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update agent team role'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -436,7 +437,7 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireManagerOrAdmi
       return c.json({
         success: false,
         error: 'Invalid teamId'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const service = new AgentTeamsService(c.env.DB);
@@ -466,7 +467,7 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireManagerOrAdmi
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to set primary team'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

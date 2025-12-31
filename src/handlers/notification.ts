@@ -2,6 +2,7 @@
 // 即時通知系統 - WebSocket/SSE 和通知管理
 
 import { Context } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   Bindings,
   // AuthPayload,
@@ -490,7 +491,7 @@ export const notificationHandler = {
 
     } catch (error) {
       console.error('SSE error:', error);
-      return c.json({ error: 'Failed to establish SSE connection' }, 500);
+      return c.json({ error: 'Failed to establish SSE connection' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 };

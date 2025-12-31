@@ -7,6 +7,7 @@ import {
   systemSettings
 } from '../db/schema';
 import { createContextLogger } from './logger';
+import { SENDER_TYPES, type SenderType } from '../constants/sender-types';
 import { 
   convertCustomer,
   convertConversation,
@@ -233,7 +234,7 @@ export async function saveMessage(
   messageData: {
     id: string;
     conversationId: string;
-    senderType: 'customer' | 'agent' | 'system';
+    senderType: SenderType;
     senderId?: string;
     content: string;
     messageType: 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker';
@@ -253,8 +254,8 @@ export async function saveMessage(
     id: messageData.id,
     conversationId: messageData.conversationId,
     senderType: messageData.senderType,
-    customerSenderId: messageData.senderType === 'customer' ? parseInt(messageData.senderId || '0') || null : null,
-    agentSenderId: messageData.senderType === 'agent' ? messageData.senderId || null : null,
+    customerSenderId: messageData.senderType === SENDER_TYPES.CUSTOMER ? parseInt(messageData.senderId || '0') || null : null,
+    agentSenderId: messageData.senderType === SENDER_TYPES.AGENT ? messageData.senderId || null : null,
     content: messageData.content,
     messageType: messageData.messageType,
     platformMessageId: messageData.platformMessageId || null,

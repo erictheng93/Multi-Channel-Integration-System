@@ -2,6 +2,7 @@
 // 任務提醒 API 路由處理器
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings, JWTPayload } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { TaskReminderService } from '../services/task-reminder-service';
@@ -47,7 +48,7 @@ app.get('/upcoming', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get upcoming reminders',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -73,7 +74,7 @@ app.get('/stats', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get reminder stats',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -91,7 +92,7 @@ app.post('/process', jwtAuth, async (c) => {
         success: false,
         error: 'Admin access required',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     const service = new TaskReminderService(c.env.DB, c.env);
@@ -109,7 +110,7 @@ app.post('/process', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to process reminders',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -130,7 +131,7 @@ app.put('/:id/complete', jwtAuth, async (c) => {
         success: false,
         error: 'Reminder not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -144,7 +145,7 @@ app.put('/:id/complete', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to complete reminder',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -165,7 +166,7 @@ app.get('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Reminder not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -179,7 +180,7 @@ app.get('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get reminder',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -201,7 +202,7 @@ app.put('/:id', jwtAuth, async (c) => {
           success: false,
           error: 'Invalid remindAt date format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       body.remindAt = remindAt;
     }
@@ -214,7 +215,7 @@ app.put('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Reminder not found or update failed',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -228,7 +229,7 @@ app.put('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update reminder',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -249,7 +250,7 @@ app.delete('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Reminder not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -263,7 +264,7 @@ app.delete('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete reminder',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -291,7 +292,7 @@ app.get('/', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get reminders',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -310,7 +311,7 @@ app.post('/', jwtAuth, async (c) => {
         success: false,
         error: 'Title and remindAt are required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證提醒時間
@@ -320,7 +321,7 @@ app.post('/', jwtAuth, async (c) => {
         success: false,
         error: 'Invalid remindAt date format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證提醒時間不能是過去
@@ -329,7 +330,7 @@ app.post('/', jwtAuth, async (c) => {
         success: false,
         error: 'remindAt must be in the future',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const service = new TaskReminderService(c.env.DB, c.env);
@@ -348,14 +349,14 @@ app.post('/', jwtAuth, async (c) => {
       data: { id: reminderId },
       message: 'Reminder created successfully',
       timestamp: new Date().toISOString()
-    }, 201);
+    }, HTTP_STATUS.CREATED);
   } catch (error) {
     console.error('Create reminder error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create reminder',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

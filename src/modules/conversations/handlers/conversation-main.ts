@@ -1,5 +1,6 @@
 // 對話管理處理器 - 主要實現
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, inArray, desc, and, count, sql, gt } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, messages, agents, conversationTransfers, teams, fileAttachments, conversationTags, tags } from '@/db/schema';
@@ -63,7 +64,7 @@ conversationHandler.get('/stream', async (c) => {
     }
 
     if (!authToken) {
-      return c.json({ error: 'Missing authentication token' }, 401);
+      return c.json({ error: 'Missing authentication token' }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 驗證JWT並設置用戶
@@ -71,7 +72,7 @@ conversationHandler.get('/stream', async (c) => {
     const user = await getUserById(c.env.DB, payload.userId);
 
     if (!user.isActive) {
-      return c.json({ error: 'User account is inactive' }, 401);
+      return c.json({ error: 'User account is inactive' }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 手動設置用戶到context
@@ -247,7 +248,7 @@ conversationHandler.get('/stream', async (c) => {
       success: false,
       error: 'Failed to establish SSE connection',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -541,7 +542,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       return c.json({
         error: 'Missing authentication token',
         message: 'Please provide token via Authorization header or query parameter'
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     log.debug('SSE verifying JWT');
@@ -565,7 +566,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
     log.debug('SSE user fetched', { userId: user.id, displayName: user.displayName });
 
     if (!user || !user.isActive) {
-      return c.json({ error: 'Invalid or inactive user account' }, 401);
+      return c.json({ error: 'Invalid or inactive user account' }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     const conversationId = c.req.param('conversationId');
@@ -581,7 +582,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       return c.json({
         error: 'Access denied to conversation',
         conversationId: conversationId
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     log.debug('SSE permission check passed, creating stream');
@@ -749,7 +750,7 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
       error: 'Failed to establish message stream',
       reason: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -772,7 +773,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     );
 
     if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
+      return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 更新對話指派
@@ -914,7 +915,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Failed to retrieve updated conversation'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // 构建返回对象，確保 customer 對象包含 name 字段
@@ -950,7 +951,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -971,7 +972,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
     );
 
     if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
+      return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const drizzleDb = createDbClient(c.env.DB);
@@ -985,13 +986,13 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       .limit(1);
 
     if (!conversation || !conversation.conversations) {
-      return c.json({ error: 'Conversation not found' }, 404);
+      return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查對話是否已指派
     const conv = conversation.conversations;
     if (!conv.assignedTeamId && !conv.assignedUserId) {
-      return c.json({ error: 'Conversation is not assigned' }, 400);
+      return c.json({ error: 'Conversation is not assigned' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 記錄取消指派前的狀態
@@ -1117,7 +1118,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to unassign conversation',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1136,7 +1137,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     );
 
     if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
+      return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 更新對話指派
@@ -1257,7 +1258,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1277,7 +1278,7 @@ conversationHandler.get('/:id/tags', jwtAuth, async (c) => {
       .get();
 
     if (!conversation) {
-      return c.json({ success: false, error: 'Conversation not found' }, 404);
+      return c.json({ success: false, error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 獲取對話的所有標籤
@@ -1319,7 +1320,7 @@ conversationHandler.get('/:id/tags', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversation tags'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1347,7 +1348,7 @@ conversationHandler.post('/:id/tags', jwtAuth, async (c) => {
       .get();
 
     if (!conversation) {
-      return c.json({ success: false, error: 'Conversation not found' }, 404);
+      return c.json({ success: false, error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 構建批量插入值
@@ -1398,7 +1399,7 @@ conversationHandler.post('/:id/tags', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add tags to conversation'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1425,7 +1426,7 @@ conversationHandler.delete('/:id/tags', jwtAuth, async (c) => {
       .get();
 
     if (!conversation) {
-      return c.json({ success: false, error: 'Conversation not found' }, 404);
+      return c.json({ success: false, error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
     const parsedTagIds = tagIds.map((id: string | number) => parseInt(String(id)));
@@ -1473,7 +1474,7 @@ conversationHandler.delete('/:id/tags', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to remove tags from conversation'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1487,7 +1488,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -1503,7 +1504,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 解析 FormData
@@ -1516,7 +1517,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'No file provided'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 文件大小限制：10MB
@@ -1525,7 +1526,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'File too large (max 10MB)'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 生成 R2 key
@@ -1547,7 +1548,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Failed to upload file to storage'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // 生成公開 URL - 使用 API 代理端點而非直接 R2 URL
@@ -1587,7 +1588,7 @@ conversationHandler.post('/:id/attachments', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1754,7 +1755,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
         success: false,
         error: 'Permission denied',
         timestamp: new Date().toISOString()
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查對話是否存在
@@ -1770,7 +1771,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 獲取訊息總數
@@ -1878,7 +1879,7 @@ conversationHandler.get('/:id/messages', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get messages',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -1904,7 +1905,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
     );
 
     if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, 403);
+      return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const drizzleDb = createDbClient(c.env.DB);
@@ -1923,7 +1924,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation not found',
         timestamp: new Date().toISOString()
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 構建完整的對話對象，包含嵌套的 customer 和 assignedTeam 對象
@@ -1960,7 +1961,7 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversation',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -2102,7 +2103,7 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get conversations',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

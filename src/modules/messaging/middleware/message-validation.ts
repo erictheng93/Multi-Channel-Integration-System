@@ -12,6 +12,7 @@ import {
   DEFAULT_MESSAGE_VALIDATION
 } from '../index';
 import type { MessageType, SenderType, Platform, DelayedSendRequest, RecallRequest, BatchSendRequest } from '@modules/messaging/types/message-types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // ======================== 基礎驗證中間件 ========================
 
@@ -27,7 +28,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
         success: false,
         error: 'Message ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 UUID 格式 (基本)
@@ -37,7 +38,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
         success: false,
         error: 'Invalid message ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -47,7 +48,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
       success: false,
       error: 'Message ID validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -63,7 +64,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
         success: false,
         error: 'Conversation ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 UUID 格式
@@ -73,7 +74,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
         success: false,
         error: 'Invalid conversation ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -83,7 +84,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       success: false,
       error: 'Conversation ID validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -104,7 +105,7 @@ export async function validatePaginationParams(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'Page must be a positive integer',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -116,7 +117,7 @@ export async function validatePaginationParams(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'Limit must be between 1 and 100',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -128,7 +129,7 @@ export async function validatePaginationParams(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'Offset must be a non-negative integer',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -139,7 +140,7 @@ export async function validatePaginationParams(c: Context<{ Bindings: Bindings }
       success: false,
       error: 'Pagination validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -166,7 +167,7 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const errors: string[] = [];
@@ -213,7 +214,7 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
         error: 'Message data validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -223,7 +224,7 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
       success: false,
       error: 'Message data validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -244,7 +245,7 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const errors: string[] = [];
@@ -268,7 +269,7 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
         error: 'Update data validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -278,7 +279,7 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
       success: false,
       error: 'Update data validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -298,7 +299,7 @@ export async function validateDelayedSendData(c: Context<{ Bindings: Bindings }>
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const errors: string[] = [];
@@ -340,7 +341,7 @@ export async function validateDelayedSendData(c: Context<{ Bindings: Bindings }>
         error: 'Delayed send data validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -350,7 +351,7 @@ export async function validateDelayedSendData(c: Context<{ Bindings: Bindings }>
       success: false,
       error: 'Delayed send data validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -393,7 +394,7 @@ export async function validateRecallRequest(c: Context<{ Bindings: Bindings }>, 
         error: 'Recall request validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -403,7 +404,7 @@ export async function validateRecallRequest(c: Context<{ Bindings: Bindings }>, 
       success: false,
       error: 'Recall request validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -423,7 +424,7 @@ export async function validateBatchSendData(c: Context<{ Bindings: Bindings }>, 
         success: false,
         error: 'Invalid JSON data',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const errors: string[] = [];
@@ -468,7 +469,7 @@ export async function validateBatchSendData(c: Context<{ Bindings: Bindings }>, 
         error: 'Batch send data validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -478,7 +479,7 @@ export async function validateBatchSendData(c: Context<{ Bindings: Bindings }>, 
       success: false,
       error: 'Batch send data validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -542,7 +543,7 @@ export async function validateSearchQuery(c: Context<{ Bindings: Bindings }>, ne
         error: 'Search query validation failed',
         details: errors,
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -552,6 +553,6 @@ export async function validateSearchQuery(c: Context<{ Bindings: Bindings }>, ne
       success: false,
       error: 'Search query validation failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }

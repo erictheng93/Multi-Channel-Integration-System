@@ -8,6 +8,7 @@ import {
   notFoundResponse,
   handleApiError
 } from '../utils/api-response';
+import { MESSAGE_STATUS } from '../constants/message-status';
 import { MessageRecallService } from '../services/message-recall-service';
 import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
@@ -185,7 +186,7 @@ export const delayedMessageHandler = {
       return successResponse(c, {
         messageId,
         success: true,
-        status: 'sent'
+        status: MESSAGE_STATUS.SENT
       }, 'Message sent successfully');
 
     } catch (error) {

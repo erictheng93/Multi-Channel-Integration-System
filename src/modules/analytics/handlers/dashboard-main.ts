@@ -8,6 +8,7 @@ import { DashboardService } from '@modules/analytics/services/dashboard-service'
 import { WidgetManager } from '@modules/analytics/services/widget-manager';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -135,7 +136,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
         error: error instanceof Error ? error.message : 'Unknown error'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -158,7 +159,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: 'Failed to get widget types'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -180,7 +181,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: 'Failed to get dashboard templates'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -204,7 +205,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: 'Failed to get widget templates'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -227,7 +228,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           return c.json({
             success: false,
             error: 'Insufficient permissions to optimize layout'
-          }, 403);
+          }, HTTP_STATUS.FORBIDDEN);
         }
 
         const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
@@ -252,7 +253,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: error instanceof AnalyticsError ? error.message : 'Failed to optimize layout'
-        }, 500);
+        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
     }
   );
@@ -279,7 +280,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to get dashboard configuration'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -320,7 +321,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to save dashboard configuration'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -357,7 +358,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to update dashboard configuration'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -379,7 +380,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           return c.json({
             success: false,
             error: 'Invalid timeRange parameter'
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
       }
 
@@ -399,7 +400,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to get dashboard data'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -424,7 +425,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           return c.json({
             success: false,
             error: 'Invalid timeRange parameter'
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
       }
 
@@ -436,7 +437,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: 'Widget not found'
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       const data = await dashboardService.getWidgetData(widget, timeRange as unknown as AnalyticsTimeRange);
@@ -451,7 +452,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to get widget data'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -475,7 +476,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           return c.json({
             success: false,
             error: 'Insufficient permissions to clone widgets'
-          }, 403);
+          }, HTTP_STATUS.FORBIDDEN);
         }
 
         // 獲取原小工具
@@ -486,7 +487,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           return c.json({
             success: false,
             error: 'Widget not found'
-          }, 404);
+          }, HTTP_STATUS.NOT_FOUND);
         }
 
         const clonedWidget = await widgetManager.cloneWidget(originalWidget, newId);
@@ -501,7 +502,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: error instanceof AnalyticsError ? error.message : 'Failed to clone widget'
-        }, 500);
+        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
     }
   );
@@ -539,7 +540,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: error instanceof AnalyticsError ? error.message : 'Failed to create dashboard from template'
-        }, 500);
+        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
     }
   );
@@ -577,7 +578,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           return c.json({
             success: false,
             error: 'Insufficient permissions to create widgets'
-          }, 403);
+          }, HTTP_STATUS.FORBIDDEN);
         }
 
         const widget = await widgetManager.createWidgetFromTemplate(templateId, customConfig);
@@ -592,7 +593,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: error instanceof AnalyticsError ? error.message : 'Failed to create widget from template'
-        }, 500);
+        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
     }
   );
@@ -613,7 +614,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: 'Insufficient permissions to create widgets'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const widget = await widgetManager.createWidget(widgetConfig);
@@ -628,7 +629,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to create widget'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 
@@ -649,7 +650,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         return c.json({
           success: false,
           error: 'Insufficient permissions to update widgets'
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       const widget = await widgetManager.updateWidget(widgetId, updates);
@@ -664,7 +665,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: false,
         error: error instanceof AnalyticsError ? error.message : 'Failed to update widget'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   });
 

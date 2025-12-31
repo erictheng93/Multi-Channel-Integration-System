@@ -1,5 +1,6 @@
 // 憑證管理處理器
 import { Context } from 'hono'
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types'
 import { successResponse, handleApiError } from '../utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
@@ -79,13 +80,13 @@ export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
     // 驗證用戶權限 - 只有管理員可以管理憑證
     const payload = c.get('jwtPayload')
     if (!payload || payload.role !== 'admin') {
-      return c.json({ success: false, message: '權限不足：需要管理員權限' }, 403)
+      return c.json({ success: false, message: '權限不足：需要管理員權限' }, HTTP_STATUS.FORBIDDEN)
     }
 
     const { platform, type, value } = await c.req.json<Credential>()
     
     if (!platform || !type || value === undefined) {
-      return c.json({ success: false, message: '缺少必要參數' }, 400)
+      return c.json({ success: false, message: '缺少必要參數' }, HTTP_STATUS.BAD_REQUEST)
     }
 
     // 驗證平台和類型
@@ -93,11 +94,11 @@ export const storeCredential = async (c: Context<{ Bindings: Bindings }>) => {
     const validTypes = ['channelId', 'channelSecret', 'accessToken', 'appId', 'appSecret', 'pageId', 'pageToken']
     
     if (!validPlatforms.includes(platform)) {
-      return c.json({ success: false, message: '無效的平台類型' }, 400)
+      return c.json({ success: false, message: '無效的平台類型' }, HTTP_STATUS.BAD_REQUEST)
     }
     
     if (!validTypes.includes(type)) {
-      return c.json({ success: false, message: '無效的憑證類型' }, 400)
+      return c.json({ success: false, message: '無效的憑證類型' }, HTTP_STATUS.BAD_REQUEST)
     }
 
     // 清理輸入值
@@ -147,14 +148,14 @@ export const getCredential = async (c: Context<{ Bindings: Bindings }>) => {
     // 驗證用戶權限 - 只有管理員可以查看憑證
     const payload = c.get('jwtPayload')
     if (!payload || payload.role !== 'admin') {
-      return c.json({ success: false, message: '權限不足：需要管理員權限' }, 403)
+      return c.json({ success: false, message: '權限不足：需要管理員權限' }, HTTP_STATUS.FORBIDDEN)
     }
 
     const platform = c.req.param('platform') as 'line' | 'facebook'
     const type = c.req.param('type')
     
     if (!platform || !type) {
-      return c.json({ success: false, message: '缺少必要參數' }, 400)
+      return c.json({ success: false, message: '缺少必要參數' }, HTTP_STATUS.BAD_REQUEST)
     }
 
     // 驗證參數
@@ -162,7 +163,7 @@ export const getCredential = async (c: Context<{ Bindings: Bindings }>) => {
     const validTypes = ['channelId', 'channelSecret', 'accessToken', 'appId', 'appSecret', 'pageId', 'pageToken']
     
     if (!validPlatforms.includes(platform) || !validTypes.includes(type)) {
-      return c.json({ success: false, message: '無效的參數' }, 400)
+      return c.json({ success: false, message: '無效的參數' }, HTTP_STATUS.BAD_REQUEST)
     }
 
     const key = `credentials:${platform}:${type}`
@@ -187,7 +188,7 @@ export const getAllCredentials = async (c: Context<{ Bindings: Bindings }>) => {
     // 驗證用戶權限 - 只有管理員可以查看所有憑證
     const payload = c.get('jwtPayload')
     if (!payload || payload.role !== 'admin') {
-      return c.json({ success: false, message: '權限不足：需要管理員權限' }, 403)
+      return c.json({ success: false, message: '權限不足：需要管理員權限' }, HTTP_STATUS.FORBIDDEN)
     }
 
     const encryptionKey = getEncryptionKey(c.env)
@@ -246,19 +247,19 @@ export const clearPlatformCredentials = async (c: Context<{ Bindings: Bindings }
     // 驗證用戶權限 - 只有管理員可以清除憑證
     const payload = c.get('jwtPayload')
     if (!payload || payload.role !== 'admin') {
-      return c.json({ success: false, message: '權限不足：需要管理員權限' }, 403)
+      return c.json({ success: false, message: '權限不足：需要管理員權限' }, HTTP_STATUS.FORBIDDEN)
     }
 
     const platform = c.req.param('platform') as 'line' | 'facebook'
     
     if (!platform) {
-      return c.json({ success: false, message: '缺少平台參數' }, 400)
+      return c.json({ success: false, message: '缺少平台參數' }, HTTP_STATUS.BAD_REQUEST)
     }
 
     // 驗證平台參數
     const validPlatforms = ['line', 'facebook']
     if (!validPlatforms.includes(platform)) {
-      return c.json({ success: false, message: '無效的平台參數' }, 400)
+      return c.json({ success: false, message: '無效的平台參數' }, HTTP_STATUS.BAD_REQUEST)
     }
 
     const credentialTypes = platform === 'line' 
@@ -301,7 +302,7 @@ export const backupCredentials = async (c: Context<{ Bindings: Bindings }>) => {
     // 驗證用戶權限 - 只有管理員可以備份憑證
     const payload = c.get('jwtPayload')
     if (!payload || payload.role !== 'admin') {
-      return c.json({ success: false, message: '權限不足：需要管理員權限' }, 403)
+      return c.json({ success: false, message: '權限不足：需要管理員權限' }, HTTP_STATUS.FORBIDDEN)
     }
 
     const backup: Record<string, string> = {}

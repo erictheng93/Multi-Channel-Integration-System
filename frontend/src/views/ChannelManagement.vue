@@ -331,6 +331,7 @@ import { channelsApi } from '@/api/channels'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import Modal from '@/components/ui/Modal.vue'
+import { ROLES } from '@/constants/roles'
 
 // Stores
 const authStore = useAuthStore()
@@ -347,7 +348,7 @@ const activeDropdown = ref<number | null>(null)
 
 // Check admin role
 onMounted(() => {
-  if (authStore.currentAgent?.role !== 'admin') {
+  if (authStore.currentAgent?.role !== ROLES.ADMIN) {
     router.push('/conversations')
     return
   }

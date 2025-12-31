@@ -340,6 +340,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
+import { ROLES } from '@/constants/roles'
 
 const { login, loading, error, clearError } = useAuth()
 useI18n() // Reserved for future i18n support
@@ -414,7 +415,7 @@ const forcedPasswordChangeData = reactive({
     id: '',
     email: '',
     name: '',
-    role: 'agent' as 'admin' | 'team' | 'agent'
+    role: ROLES.AGENT as typeof ROLES.ADMIN | typeof ROLES.TEAM | typeof ROLES.AGENT
   }
 })
 
@@ -453,7 +454,7 @@ const handleLogin = async (event?: Event) => {
         id: '',
         email: formData.value.email,
         name: '',
-        role: 'agent'
+        role: ROLES.AGENT
       }
     }
   } catch (err) {

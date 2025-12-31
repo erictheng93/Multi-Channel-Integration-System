@@ -1,5 +1,6 @@
 import { DatabaseService } from './database';
 import { KVService } from '../db';
+import { SENDER_TYPES } from '../constants/sender-types';
 import type {
   // AgentStatus
 } from '../types/services';
@@ -85,11 +86,11 @@ export class ConversationService {
       throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((rateLimit.resetTime - Date.now()) / 1000)} seconds`);
     }
 
-    // Create message  
+    // Create message
     const message = await this.dbService.createMessage({
       conversationId,
       senderType,
-      agentSenderId: senderType === 'agent' ? senderId : null,
+      agentSenderId: senderType === SENDER_TYPES.AGENT ? senderId : null,
       customerSenderId: senderType === 'user' ? parseInt(senderId) || null : null,
       content,
       messageType: 'text'

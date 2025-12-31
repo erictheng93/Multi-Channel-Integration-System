@@ -109,7 +109,7 @@
 
       <!-- 指派管理按鈕 - Redesigned -->
       <div
-        v-if="conversation && conversation.status !== 'closed'"
+        v-if="conversation && conversation.status !== CONVERSATION_STATUS.CLOSED"
         class="assign-action-wrapper"
       >
         <button
@@ -190,7 +190,7 @@
         />
       </div>
       <button
-        v-if="conversation?.status !== 'closed'"
+        v-if="conversation?.status !== CONVERSATION_STATUS.CLOSED"
         class="close-conversation-btn"
         :class="{ 'is-closing': closing }"
         :disabled="closing"
@@ -227,6 +227,7 @@ import type { Conversation } from '@/types'
 import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
 import { conversationApi } from '@/api/conversations'
 import { useToast } from '@/composables/useToast'
+import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 
 interface Props {
   conversation?: Conversation

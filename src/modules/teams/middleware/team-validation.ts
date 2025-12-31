@@ -4,6 +4,7 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Bindings } from '@/types';
 import { InvalidTeamDataError } from '@modules/teams/types/team-types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // 建立團隊資料驗證
 export const validateCreateTeamData = (): MiddlewareHandler<{ Bindings: Bindings }> => {
@@ -53,7 +54,7 @@ export const validateCreateTeamData = (): MiddlewareHandler<{ Bindings: Bindings
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message, details: error.details }, 400);
+        return c.json({ error: error.message, details: error.details }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -109,7 +110,7 @@ export const validateUpdateTeamData = (): MiddlewareHandler<{ Bindings: Bindings
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message, details: error.details }, 400);
+        return c.json({ error: error.message, details: error.details }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -135,7 +136,7 @@ export const validateTeamId = (): MiddlewareHandler<{ Bindings: Bindings }> => {
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -161,7 +162,7 @@ export const validateMemberId = (): MiddlewareHandler<{ Bindings: Bindings }> =>
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -201,7 +202,7 @@ export const validateAddMemberData = (): MiddlewareHandler<{ Bindings: Bindings 
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -237,7 +238,7 @@ export const validateUpdateMemberData = (): MiddlewareHandler<{ Bindings: Bindin
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -274,7 +275,7 @@ export const validatePaginationParams = (): MiddlewareHandler<{ Bindings: Bindin
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -310,7 +311,7 @@ export const validateSearchParams = (): MiddlewareHandler<{ Bindings: Bindings }
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -352,7 +353,7 @@ export const validateBatchOperationData = (): MiddlewareHandler<{ Bindings: Bind
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -405,7 +406,7 @@ export const validateStatisticsParams = (): MiddlewareHandler<{ Bindings: Bindin
       await next();
     } catch (error) {
       if (error instanceof InvalidTeamDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }

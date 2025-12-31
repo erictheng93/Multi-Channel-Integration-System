@@ -18,6 +18,7 @@ import type {
   IntegrationPlatform,
   IntegrationStatus
 } from '../types/integration-types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 import { FacebookIntegrationService } from '@modules/integrations/services/facebook-integration-service';
@@ -50,7 +51,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       // 基本驗證
@@ -61,7 +62,7 @@ class IntegrationMainHandler {
           error: 'Validation failed',
           details: validation.errors,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // 檢查平台支援
@@ -70,7 +71,7 @@ class IntegrationMainHandler {
           success: false,
           error: `Unsupported platform: ${body.platform}`,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // 驗證憑證
@@ -86,7 +87,7 @@ class IntegrationMainHandler {
           error: 'Invalid credentials',
           details: credentialValidation.errors,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // 加密憑證
@@ -139,7 +140,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -155,7 +156,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       // 解析查詢參數
@@ -239,7 +240,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to list integrations',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -257,7 +258,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const integration = await this.getIntegration(integrationId, user);
@@ -266,7 +267,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Integration not found',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
@@ -280,7 +281,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -299,7 +300,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const integration = await this.getIntegration(integrationId, user);
@@ -308,7 +309,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Integration not found',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查權限
@@ -317,7 +318,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Access denied',
           timestamp: new Date().toISOString()
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       // 更新欄位
@@ -359,7 +360,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to update integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -377,7 +378,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const integration = await this.getIntegration(integrationId, user);
@@ -386,7 +387,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Integration not found',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 檢查權限
@@ -395,7 +396,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Access denied',
           timestamp: new Date().toISOString()
-        }, 403);
+        }, HTTP_STATUS.FORBIDDEN);
       }
 
       // 軟刪除 - 將狀態設為 inactive
@@ -415,7 +416,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -435,7 +436,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const integration = await this.getIntegration(integrationId, user);
@@ -444,7 +445,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Integration not found',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 測試連接
@@ -455,7 +456,7 @@ class IntegrationMainHandler {
           error: 'Connection test failed',
           details: testResult.errors,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // 更新狀態
@@ -472,7 +473,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to activate integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -490,7 +491,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const integration = await this.getIntegration(integrationId, user);
@@ -499,7 +500,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Integration not found',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       // 更新狀態
@@ -516,7 +517,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to deactivate integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -537,7 +538,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Authentication required',
           timestamp: new Date().toISOString()
-        }, 401);
+        }, HTTP_STATUS.UNAUTHORIZED);
       }
 
       const integration = await this.getIntegration(integrationId, user);
@@ -546,7 +547,7 @@ class IntegrationMainHandler {
           success: false,
           error: 'Integration not found',
           timestamp: new Date().toISOString()
-        }, 404);
+        }, HTTP_STATUS.NOT_FOUND);
       }
 
       const testResult = await this.performIntegrationTest(integration, body);
@@ -563,7 +564,7 @@ class IntegrationMainHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to test integration',
         timestamp: new Date().toISOString()
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
 

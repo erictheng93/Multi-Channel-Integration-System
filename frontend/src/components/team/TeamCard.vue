@@ -540,6 +540,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useQRCodeStore } from '@/stores/qrcode'
+import { getBackendUrl } from '@/config/runtime'
 import type { TeamMember, LiffQRCode } from '@/types'
 
 interface Team {
@@ -977,7 +978,21 @@ const handleGenerateQR = async () => {
 const downloadQRCode = async () => {
   if (!currentQRCode.value?.qrCodeUrl) {return}
 
-  const qrCodeDataUrl = currentQRCode.value.qrCodeUrl
+  // 🔧 使用 Worker 代理端點以獲得 CORS 支持
+  // R2 Custom Domain 不支持 CORS，因此我們通過 Worker 代理請求
+  let qrCodeDataUrl = currentQRCode.value.qrCodeUrl
+
+  // 將 R2 Custom Domain URL 轉換為 Worker 代理 URL
+  // 例如: https://s3.imfinethankyouandyou.com/qr-codes/team-14-xxx.svg
+  // 轉為: https://multi-channel.imfinethankyouandyou.com/api/r2-public/qr-codes/team-14-xxx.svg
+  if (qrCodeDataUrl.includes('s3.imfinethankyouandyou.com/')) {
+    qrCodeDataUrl = qrCodeDataUrl.replace(
+      'https://s3.imfinethankyouandyou.com/',
+      `${getBackendUrl()}/api/r2-public/`
+    )
+    console.log('🔧 [QR Download] 使用 Worker 代理 URL:', qrCodeDataUrl)
+  }
+
   const teamName = props.team.name
 
   try {
@@ -1063,6 +1078,9 @@ const downloadQRCode = async () => {
 
     // 2️⃣ 載入並繪製 QR Code (高質量縮放)
     const qrImg = new window.Image()
+    // 🔧 設置 crossOrigin 以避免 Canvas 跨域污染 (Tainted Canvas)
+    // 這允許我們從 R2 (s3.imfinethankyouandyou.com) 加載圖片並導出
+    qrImg.crossOrigin = 'anonymous'
     await new Promise<void>((resolve, reject) => {
       qrImg.onload = () => resolve()
       qrImg.onerror = () => reject(new Error('QR Code 圖片載入失敗'))

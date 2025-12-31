@@ -3,6 +3,7 @@
 
 import type { MiddlewareHandler } from 'hono';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { InvalidAgentDataError } from '@modules/agents/types/agent-types';
 
 // 建立代理資料驗證
@@ -46,7 +47,7 @@ export const validateCreateAgentData = (): MiddlewareHandler<{ Bindings: Binding
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message, details: error.details }, 400);
+        return c.json({ error: error.message, details: error.details }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -100,7 +101,7 @@ export const validateUpdateAgentData = (): MiddlewareHandler<{ Bindings: Binding
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message, details: error.details }, 400);
+        return c.json({ error: error.message, details: error.details }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -125,7 +126,7 @@ export const validateAgentId = (): MiddlewareHandler<{ Bindings: Bindings }> => 
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -176,7 +177,7 @@ export const validateSkillData = (): MiddlewareHandler<{ Bindings: Bindings }> =
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -221,7 +222,7 @@ export const validateStatusData = (): MiddlewareHandler<{ Bindings: Bindings }> 
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -258,7 +259,7 @@ export const validatePaginationParams = (): MiddlewareHandler<{ Bindings: Bindin
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }
@@ -294,7 +295,7 @@ export const validateBatchOperationData = (): MiddlewareHandler<{ Bindings: Bind
       await next();
     } catch (error) {
       if (error instanceof InvalidAgentDataError) {
-        return c.json({ error: error.message }, 400);
+        return c.json({ error: error.message }, HTTP_STATUS.BAD_REQUEST);
       }
       throw error;
     }

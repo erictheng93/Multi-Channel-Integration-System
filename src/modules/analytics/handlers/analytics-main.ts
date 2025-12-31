@@ -7,6 +7,7 @@ import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import { analyticsAuth } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
@@ -68,7 +69,7 @@ analyticsHandler.get('/conversations', async (c) => {
 
   // Service 現在返回標準化的 ServiceResponse，直接返回即可
   const errorCode = result.metadata?.errorCode;
-  const statusCode = result.success ? 200 : (errorCode === 'VALIDATION_ERROR' ? 400 : 500);
+  const statusCode = result.success ? HTTP_STATUS.OK : (errorCode === 'VALIDATION_ERROR' ? HTTP_STATUS.BAD_REQUEST : HTTP_STATUS.INTERNAL_SERVER_ERROR);
   return c.json(result, statusCode);
 });
 
@@ -99,7 +100,7 @@ analyticsHandler.get('/messages', async (c) => {
   const result = await analyticsService.getMessageAnalytics(query);
 
   const errorCode = result.metadata?.errorCode;
-  const statusCode = result.success ? 200 : (errorCode === 'VALIDATION_ERROR' ? 400 : 500);
+  const statusCode = result.success ? HTTP_STATUS.OK : (errorCode === 'VALIDATION_ERROR' ? HTTP_STATUS.BAD_REQUEST : HTTP_STATUS.INTERNAL_SERVER_ERROR);
   return c.json(result, statusCode);
 });
 
@@ -143,7 +144,7 @@ analyticsHandler.get('/users', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       code: 'USER_ANALYTICS_ERROR'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -185,7 +186,7 @@ analyticsHandler.get('/performance', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       code: 'PERFORMANCE_ANALYTICS_ERROR'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -228,7 +229,7 @@ analyticsHandler.post('/custom', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       code: 'CUSTOM_ANALYTICS_ERROR'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -272,7 +273,7 @@ analyticsHandler.post('/export', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       code: 'EXPORT_ANALYTICS_ERROR'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -314,7 +315,7 @@ analyticsHandler.get('/health', async (c) => {
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -337,7 +338,7 @@ analyticsHandler.post('/metrics', async (c) => {
         success: false,
         error: 'Missing metrics data',
         code: 'INVALID_METRICS_DATA'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     return c.json({
@@ -351,7 +352,7 @@ analyticsHandler.post('/metrics', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       code: 'METRICS_COLLECTION_ERROR'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -390,6 +391,6 @@ analyticsHandler.get('/metrics/:name', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       code: 'METRICS_QUERY_ERROR'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

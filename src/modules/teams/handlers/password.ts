@@ -8,6 +8,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { eq } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   ResetPasswordRequest,
   ChangePasswordRequest
@@ -29,7 +30,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
       return c.json({
         success: false,
         error: 'newPassword is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -39,7 +40,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
       return c.json({
         success: false,
         error: 'Use change-password endpoint to change your own password'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // Hash the password before storing
@@ -71,7 +72,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
       return c.json({
         success: false,
         error: 'Member not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
@@ -88,7 +89,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to reset password'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -105,7 +106,7 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'currentPassword and newPassword are required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = createDbClient(c.env.DB);
@@ -121,7 +122,7 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'User not found'
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify current password using bcrypt
@@ -130,7 +131,7 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Current password is incorrect'
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Hash the new password before storing
@@ -156,7 +157,7 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to change password'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

@@ -13,6 +13,7 @@ import type {
   ValidationRuleSetType
 } from '../types/validation-types';
 import type { PlatformType } from '@modules/file-management/types/file-types';
+import { PLATFORMS } from '@/constants/platforms';
 import {
   FILE_SIZE_LIMITS,
   PLATFORM_CONFIG,
@@ -144,8 +145,8 @@ export class FileValidationService {
         ],
         prohibitedExtensions: [...SECURITY_CONFIG.BLOCKED_EXTENSIONS]
       },
-      line_platform: this.getRulesForPlatform('line'),
-      facebook_platform: this.getRulesForPlatform('facebook'),
+      line_platform: this.getRulesForPlatform(PLATFORMS.LINE),
+      facebook_platform: this.getRulesForPlatform(PLATFORMS.FACEBOOK),
       system_admin: {
         maxSize: 50 * 1024 * 1024, // 50MB for admin
         allowedMimeTypes: [], // 允許所有類型

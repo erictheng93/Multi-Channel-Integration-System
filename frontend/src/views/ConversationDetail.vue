@@ -10,7 +10,7 @@
       <!-- 📎 Drag-and-Drop Overlay -->
       <Transition name="fade-overlay">
         <div
-          v-if="isDraggingFile && conversation?.status !== 'closed'"
+          v-if="isDraggingFile && conversation?.status !== CONVERSATION_STATUS.CLOSED"
           class="drag-drop-overlay"
         >
           <div class="drag-drop-content">
@@ -48,7 +48,7 @@
 
       <!-- 🆕 Closed Conversation Banner -->
       <div
-        v-if="conversation && conversation.status === 'closed'"
+        v-if="conversation && conversation.status === CONVERSATION_STATUS.CLOSED"
         class="closed-conversation-banner"
       >
         <div class="banner-content">
@@ -231,7 +231,7 @@
 
       <!-- Enhanced Message Input with WebSocket features -->
       <div
-        v-if="conversation?.status !== 'closed'"
+        v-if="conversation?.status !== CONVERSATION_STATUS.CLOSED"
         class="input-section"
       >
         <MessageInput
@@ -326,6 +326,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Message } from '@/types'
+import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 
 // 🚀 Refactored Composables
 import { useConversationController } from '@/composables/conversation'

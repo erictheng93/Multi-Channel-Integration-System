@@ -1,5 +1,6 @@
 // 認證處理器 - 主要實現
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import {
   signJWT,
@@ -210,7 +211,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Login failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -220,12 +221,12 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
     const { email, password, displayName, role, teamId } = await c.req.json();
     
     if (!email || !password || !displayName || !role) {
-      return c.json({ error: 'All fields are required' }, 400);
+      return c.json({ error: 'All fields are required' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // SECURITY: Only allow 2-tier role system (admin/agent)
     if (!['admin', 'agent'].includes(role)) {
-      return c.json({ error: 'Invalid role. Allowed roles: admin, agent' }, 400);
+      return c.json({ error: 'Invalid role. Allowed roles: admin, agent' }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查 email 是否已存在
@@ -237,7 +238,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
       .get();
 
     if (existingUser) {
-      return c.json({ error: 'Email already exists' }, 409);
+      return c.json({ error: 'Email already exists' }, HTTP_STATUS.CONFLICT);
     }
 
     // 創建用戶
@@ -292,7 +293,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Registration failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -336,7 +337,7 @@ authHandler.post('/logout', sessionAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Logout failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -369,7 +370,7 @@ authHandler.get('/profile', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get profile',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -398,7 +399,7 @@ authHandler.get('/me', jwtAuth, async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get user info',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -412,7 +413,7 @@ authHandler.post('/refresh', async (c) => {
         success: false,
         error: 'Refresh token is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證 refresh token
@@ -426,7 +427,7 @@ authHandler.post('/refresh', async (c) => {
         success: false,
         error: 'Invalid refresh token',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 檢查 token 類型
@@ -435,7 +436,7 @@ authHandler.post('/refresh', async (c) => {
         success: false,
         error: 'Invalid token type',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 驗證用戶是否仍然存在且活躍
@@ -470,7 +471,7 @@ authHandler.post('/refresh', async (c) => {
         success: false,
         error: 'User not found or inactive',
         timestamp: new Date().toISOString()
-      }, 401);
+      }, HTTP_STATUS.UNAUTHORIZED);
     }
 
     // 生成新的 access token
@@ -516,7 +517,7 @@ authHandler.post('/refresh', async (c) => {
       success: false,
       error: error instanceof Error ? error.message : 'Token refresh failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

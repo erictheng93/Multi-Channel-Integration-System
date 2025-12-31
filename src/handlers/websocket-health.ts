@@ -2,6 +2,7 @@
 // 提供完整的 WebSocket + Durable Objects 健康檢查端點
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import type { MigrationConfig } from '../types/websocket-types';
 
@@ -92,7 +93,7 @@ healthApp.get('/health', async (c) => {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 503);
+    }, HTTP_STATUS.SERVICE_UNAVAILABLE);
   }
 });
 
@@ -117,7 +118,7 @@ healthApp.get('/migration-status', async (c) => {
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -133,19 +134,19 @@ healthApp.get('/readiness', async (c) => {
     if (config.enableWebSocket) {
       const doHealth = await checkDurableObjects(c.env);
       if (doHealth.status === 'unhealthy') {
-        return c.json({ ready: false, reason: 'Durable Objects unavailable' }, 503);
+        return c.json({ ready: false, reason: 'Durable Objects unavailable' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
       }
     }
 
     // Check KV availability (required for sessions)
     const kvHealth = await checkKVStorage(c.env);
     if (kvHealth.status === 'unhealthy') {
-      return c.json({ ready: false, reason: 'KV storage unavailable' }, 503);
+      return c.json({ ready: false, reason: 'KV storage unavailable' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
-    return c.json({ ready: true }, 200);
+    return c.json({ ready: true }, HTTP_STATUS.OK);
   } catch (error) {
-    return c.json({ ready: false, error: error instanceof Error ? error.message : 'Unknown error' }, 503);
+    return c.json({ ready: false, error: error instanceof Error ? error.message : 'Unknown error' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
   }
 });
 
@@ -155,7 +156,7 @@ healthApp.get('/readiness', async (c) => {
  */
 healthApp.get('/liveness', async (c) => {
   // Simple liveness check - just verify the worker is responding
-  return c.json({ alive: true, timestamp: new Date().toISOString() }, 200);
+  return c.json({ alive: true, timestamp: new Date().toISOString() }, HTTP_STATUS.OK);
 });
 
 /**
@@ -237,7 +238,7 @@ healthApp.get('/metrics', async (c) => {
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -292,7 +293,7 @@ healthApp.get('/health-detail', async (c) => {
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -410,7 +411,7 @@ healthApp.get('/comparison', async (c) => {
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

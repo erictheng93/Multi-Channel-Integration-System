@@ -2,6 +2,7 @@
 // 實時連接池監控與性能分析儀表板
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import type { JWTPayload } from '../types';
 
@@ -84,7 +85,7 @@ dashboardApp.get('/metrics', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const metrics = await collectRealtimeMetrics(c.env);
@@ -99,7 +100,7 @@ dashboardApp.get('/metrics', async (c) => {
     return c.json({
       error: 'Failed to collect metrics',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -113,7 +114,7 @@ dashboardApp.get('/connections', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const connections = await getActiveConnections(c.env);
@@ -128,7 +129,7 @@ dashboardApp.get('/connections', async (c) => {
     return c.json({
       error: 'Failed to get connections',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -142,7 +143,7 @@ dashboardApp.get('/history', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const period = c.req.query('period') || '24h';
@@ -158,7 +159,7 @@ dashboardApp.get('/history', async (c) => {
     return c.json({
       error: 'Failed to get history',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -172,7 +173,7 @@ dashboardApp.get('/trends', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const period = c.req.query('period') || '24h';
@@ -187,7 +188,7 @@ dashboardApp.get('/trends', async (c) => {
     return c.json({
       error: 'Failed to analyze trends',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -200,7 +201,7 @@ dashboardApp.get('/durable-objects', async (c) => {
     const payload = c.get('jwtPayload');
 
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, 403);
+      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const doHealth = await getDurableObjectsHealth(c.env);
@@ -214,7 +215,7 @@ dashboardApp.get('/durable-objects', async (c) => {
     return c.json({
       error: 'Failed to get Durable Objects health',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -228,7 +229,7 @@ dashboardApp.get('/alerts', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, 403);
+      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const alerts = await getActiveAlerts(c.env);
@@ -243,7 +244,7 @@ dashboardApp.get('/alerts', async (c) => {
     return c.json({
       error: 'Failed to get alerts',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

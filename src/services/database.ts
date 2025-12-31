@@ -2,6 +2,7 @@ import { eq, desc, and, or, like, inArray, isNull } from 'drizzle-orm';
 import { Database, KVService } from '../db';
 import * as schema from '../db/schema';
 import { v4 as uuidv4 } from 'uuid';
+import { MESSAGE_STATUS } from '../constants/message-status';
 
 export class DatabaseService {
   constructor(
@@ -465,7 +466,7 @@ export class DatabaseService {
   async getPendingDelayedMessages(beforeTime: string) {
     return await this.db.select().from(schema.delayedMessages)
       .where(and(
-        eq(schema.delayedMessages.status, 'pending'),
+        eq(schema.delayedMessages.status, MESSAGE_STATUS.PENDING),
         eq(schema.delayedMessages.scheduledAt, beforeTime) // This should be <= comparison
       ));
   }

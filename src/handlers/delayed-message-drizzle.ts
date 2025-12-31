@@ -1,5 +1,6 @@
 // 使用 Drizzle ORM 的延遲訊息處理器
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, and, desc } from 'drizzle-orm';
 import { DatabaseService } from '../services/database';
 import { databaseMiddleware, authMiddleware } from '../middleware/database';
@@ -7,6 +8,7 @@ import * as schema from '../db/schema';
 import type { HonoContext } from '../types/bindings';
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 import { createContextLogger } from '../utils/logger';
+import { MESSAGE_STATUS } from '../constants/message-status';
 
 const delayedMessages = new Hono<HonoContext>();
 const delayedMessageLogger = createContextLogger('DelayedMessage');
@@ -34,14 +36,14 @@ delayedMessages.post('/send', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Content is required' 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (delaySeconds < 1 || delaySeconds > 120) {
       return c.json({ 
         success: false, 
         error: 'Delay must be between 1 and 120 seconds' 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = c.get('db');
@@ -54,7 +56,7 @@ delayedMessages.post('/send', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Conversation not found' 
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 計算發送時間
@@ -142,7 +144,7 @@ delayedMessages.post('/send', async (c) => {
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -164,7 +166,7 @@ delayedMessages.post('/recall/:messageId', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Message not found' 
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查權限
@@ -172,7 +174,7 @@ delayedMessages.post('/recall/:messageId', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Permission denied' 
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查是否還能撤回
@@ -183,15 +185,15 @@ delayedMessages.post('/recall/:messageId', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Recall deadline has passed' 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查狀態
-    if (delayedMessage.status !== 'pending') {
+    if (delayedMessage.status !== MESSAGE_STATUS.PENDING) {
       return c.json({ 
         success: false, 
         error: `Message is already ${delayedMessage.status}` 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 更新狀態為已取消
@@ -256,7 +258,7 @@ delayedMessages.post('/recall/:messageId', async (c) => {
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -264,7 +266,7 @@ delayedMessages.post('/recall/:messageId', async (c) => {
 delayedMessages.get('/pending', async (c) => {
   try {
     const agent = c.get('agent');
-    const { page = '1', pageSize = '20', status = 'pending' } = c.req.query();
+    const { page = '1', pageSize = '20', status = MESSAGE_STATUS.PENDING } = c.req.query();
     
     const pageNum = Math.max(parseInt(page), 1);
     const pageSizeNum = Math.min(parseInt(pageSize), 100);
@@ -306,7 +308,7 @@ delayedMessages.get('/pending', async (c) => {
     const items = messages.map(msg => {
       const metadata = msg.metadata ? JSON.parse(msg.metadata) : {};
       const recallDeadline = new Date(metadata.recallDeadline || msg.scheduledAt);
-      const canRecall = new Date() < recallDeadline && msg.status === 'pending';
+      const canRecall = new Date() < recallDeadline && msg.status === MESSAGE_STATUS.PENDING;
 
       return {
         ...msg,
@@ -330,7 +332,7 @@ delayedMessages.get('/pending', async (c) => {
 
   } catch (error) {
     const agent = c.get('agent');
-    const { status = 'pending', page = '1', pageSize = '20' } = c.req.query();
+    const { status = MESSAGE_STATUS.PENDING, page = '1', pageSize = '20' } = c.req.query();
     const pageNum = Math.max(parseInt(page), 1);
     const pageSizeNum = Math.min(parseInt(pageSize), 100);
     delayedMessageLogger.error('Get pending messages failed', {
@@ -342,7 +344,7 @@ delayedMessages.get('/pending', async (c) => {
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 
@@ -355,7 +357,7 @@ delayedMessages.post('/process', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Message ID is required' 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const db = c.get('db');
@@ -371,7 +373,7 @@ delayedMessages.post('/process', async (c) => {
       return c.json({ 
         success: false, 
         error: 'Message not found' 
-      }, 404);
+      }, HTTP_STATUS.NOT_FOUND);
     }
 
     // 檢查狀態
@@ -382,11 +384,11 @@ delayedMessages.post('/process', async (c) => {
       });
     }
 
-    if (delayedMessage.status !== 'pending') {
+    if (delayedMessage.status !== MESSAGE_STATUS.PENDING) {
       return c.json({ 
         success: false, 
         error: `Message is already ${delayedMessage.status}` 
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     try {
@@ -403,11 +405,11 @@ delayedMessages.post('/process', async (c) => {
         recalledAt: null,
         sentAt: new Date().toISOString(),
         isSent: true,
-        deliveryStatus: 'sent'
+        deliveryStatus: MESSAGE_STATUS.SENT
       });
 
       // 更新延遲訊息狀態
-      await dbService.updateDelayedMessageStatus(messageId, 'sent');
+      await dbService.updateDelayedMessageStatus(messageId, MESSAGE_STATUS.SENT);
 
       // Platform integration will be handled by external services
 
@@ -424,7 +426,7 @@ delayedMessages.post('/process', async (c) => {
             messageType: delayedMessage.messageType,
             actualMessageId: message?.id || '',
             processedAt: new Date().toISOString(),
-            deliveryStatus: 'sent',
+            deliveryStatus: MESSAGE_STATUS.SENT,
             delayCompleted: true,
             originalScheduledTime: delayedMessage.scheduledAt,
             actualSentTime: new Date().toISOString(),
@@ -454,7 +456,7 @@ delayedMessages.post('/process', async (c) => {
         data: {
           messageId,
           actualMessageId: message?.id || '',
-          status: 'sent',
+          status: MESSAGE_STATUS.SENT,
           sentAt: new Date().toISOString(),
         }
       });
@@ -468,7 +470,7 @@ delayedMessages.post('/process', async (c) => {
       }, sendError instanceof Error ? sendError : new Error(String(sendError)));
       
       // 更新狀態為失敗
-      await dbService.updateDelayedMessageStatus(messageId, 'failed');
+      await dbService.updateDelayedMessageStatus(messageId, MESSAGE_STATUS.FAILED);
 
       // 🚀 WebSocket Broadcasting: Delayed Message Send Failed
       try {
@@ -482,7 +484,7 @@ delayedMessages.post('/process', async (c) => {
             failureReason: sendError instanceof Error ? sendError.message : 'Message sending failed',
             processedAt: new Date().toISOString(),
             operation: 'send_to_platform',
-            deliveryStatus: 'failed',
+            deliveryStatus: MESSAGE_STATUS.FAILED,
             originalContent: delayedMessage.content.substring(0, 100) + (delayedMessage.content.length > 100 ? '...' : ''),
             originalMessageType: delayedMessage.messageType,
             originalScheduledTime: delayedMessage.scheduledAt,
@@ -509,7 +511,7 @@ delayedMessages.post('/process', async (c) => {
       return c.json({
         success: false,
         error: 'Failed to send message'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
   } catch (error) {
@@ -520,7 +522,7 @@ delayedMessages.post('/process', async (c) => {
     return c.json({ 
       success: false, 
       error: 'Internal server error' 
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
 

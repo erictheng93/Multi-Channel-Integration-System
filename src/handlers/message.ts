@@ -1,5 +1,6 @@
 // 訊息處理器 - 使用 Drizzle ORM 以獲得完整類型安全
 import type { Context } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { 
   Bindings, 
   Message, 
@@ -138,7 +139,7 @@ export const messageHandler = {
             const conversationId = c.req.param('id');
             const agent = c.get('agent'); // 從 auth middleware 獲取
             if (!agent) {
-                return c.json({ error: 'Authentication required' }, 401);
+                return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
             }
             
             const { content, mediaUrl, mediaType, attachmentIds } = await c.req.json();

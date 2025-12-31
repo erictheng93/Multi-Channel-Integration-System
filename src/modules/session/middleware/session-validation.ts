@@ -11,6 +11,7 @@ import type {
   BatchSessionOperation,
   ConversationSession
 } from '../types/session-types';
+import { HTTP_STATUS } from '@/constants/http-status';
 
 // ======================== 基礎驗證函數 ========================
 
@@ -73,7 +74,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
         success: false,
         error: 'Request size too large (max 1MB)',
         timestamp: new Date().toISOString()
-      }, 413);
+      }, HTTP_STATUS.PAYLOAD_TOO_LARGE);
     }
 
     await next();
@@ -83,7 +84,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
       success: false,
       error: 'Request validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -101,7 +102,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
       success: false,
       error: 'Rate limit check failed',
       timestamp: new Date().toISOString()
-    }, 500);
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -119,7 +120,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
         success: false,
         error: 'Session ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!validateUUID(sessionId)) {
@@ -127,7 +128,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
         success: false,
         error: 'Invalid session ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     c.set('sessionId', sessionId);
@@ -138,7 +139,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
       success: false,
       error: 'Session ID validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -154,7 +155,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
         success: false,
         error: 'Conversation ID is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!validateUUID(conversationId)) {
@@ -162,7 +163,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
         success: false,
         error: 'Invalid conversation ID format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     await next();
@@ -172,7 +173,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       success: false,
       error: 'Conversation ID validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -191,7 +192,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'conversationId is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!validateUUID(body.conversationId)) {
@@ -199,7 +200,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'Invalid conversationId format',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!body.senderType || !['customer', 'agent', 'system'].includes(body.senderType)) {
@@ -207,7 +208,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'senderType must be one of: customer, agent, system',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 可選欄位檢查
@@ -216,7 +217,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.priority && !['low', 'medium', 'high', 'urgent'].includes(body.priority)) {
@@ -224,7 +225,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'priority must be one of: low, medium, high, urgent',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 清理和驗證字符串欄位
@@ -235,7 +236,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
           success: false,
           error: 'topic cannot exceed 200 characters',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -246,7 +247,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
           success: false,
           error: 'messageContent cannot exceed 2000 characters',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -257,7 +258,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
           success: false,
           error: 'tags must be an array with maximum 10 items',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       body.tags = body.tags.map(tag => sanitizeString(tag)).filter(tag => tag.length > 0);
@@ -271,7 +272,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -288,7 +289,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'At least one field is required for update',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證可選欄位
@@ -297,7 +298,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.priority && !['low', 'medium', 'high', 'urgent'].includes(body.priority)) {
@@ -305,7 +306,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'priority must be one of: low, medium, high, urgent',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.sentiment && !['positive', 'negative', 'neutral'].includes(body.sentiment)) {
@@ -313,7 +314,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'sentiment must be one of: positive, negative, neutral',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (typeof body.isActive !== 'undefined' && typeof body.isActive !== 'boolean') {
@@ -321,7 +322,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         success: false,
         error: 'isActive must be a boolean',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 清理字符串欄位
@@ -333,7 +334,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
             success: false,
             error: 'topic cannot exceed 200 characters',
             timestamp: new Date().toISOString()
-          }, 400);
+          }, HTTP_STATUS.BAD_REQUEST);
         }
       }
     }
@@ -345,7 +346,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
           success: false,
           error: 'endTime must be a valid ISO date string',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -356,7 +357,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
           success: false,
           error: 'tags must be an array with maximum 10 items',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       body.tags = body.tags.map(tag => sanitizeString(tag)).filter(tag => tag.length > 0);
@@ -370,7 +371,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -391,7 +392,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'Invalid conversationId format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.conversationId = conversationId;
     }
@@ -403,7 +404,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'isActive must be true or false',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.isActive = isActive === 'true';
     }
@@ -414,7 +415,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sessionType) query.sessionType = sessionType;
 
@@ -424,7 +425,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         success: false,
         error: 'priority must be one of: low, medium, high, urgent',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     if (priority) query.priority = priority;
 
@@ -434,7 +435,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         success: false,
         error: 'sentiment must be one of: positive, negative, neutral',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sentiment) query.sentiment = sentiment;
 
@@ -446,7 +447,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'startDate must be a valid ISO date string',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.startDate = startDate;
     }
@@ -458,7 +459,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
           success: false,
           error: 'endDate must be a valid ISO date string',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.endDate = endDate;
     }
@@ -483,7 +484,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         success: false,
         error: 'page must be between 1 and 1000',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!pageSize) {
@@ -491,7 +492,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         success: false,
         error: 'pageSize must be between 1 and 100',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     query.page = page;
@@ -505,7 +506,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
       success: false,
       error: 'Query validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -524,7 +525,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
         success: false,
         error: 'query parameter is required',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     query.query = sanitizeString(searchQuery);
@@ -533,7 +534,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
         success: false,
         error: 'query must be at least 2 characters',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const conversationId = c.req.query('conversationId');
@@ -543,7 +544,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
           success: false,
           error: 'Invalid conversationId format',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
       query.conversationId = conversationId;
     }
@@ -554,7 +555,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sessionType) query.sessionType = sessionType;
 
@@ -564,7 +565,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
         success: false,
         error: 'limit must be between 1 and 100',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
     query.limit = limit;
 
@@ -576,7 +577,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
       success: false,
       error: 'Search query validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }
 
@@ -594,7 +595,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         success: false,
         error: 'sessionIds must be a non-empty array',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (body.sessionIds.length > 100) {
@@ -602,7 +603,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         success: false,
         error: 'Cannot process more than 100 sessions at once',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證所有會話ID格式
@@ -612,7 +613,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
           success: false,
           error: `Invalid session ID format: ${sessionId}`,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -621,7 +622,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         success: false,
         error: 'action must be one of: close, reopen, update_priority, add_tags, remove_tags, delete',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證操作相關數據
@@ -631,7 +632,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
           success: false,
           error: `data is required for action: ${body.action}`,
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (body.action === 'update_priority' && !body.data.priority) {
@@ -639,7 +640,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
           success: false,
           error: 'priority is required in data for update_priority action',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       if (['add_tags', 'remove_tags'].includes(body.action) && !body.data.tags) {
@@ -647,7 +648,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
           success: false,
           error: 'tags are required in data for tag operations',
           timestamp: new Date().toISOString()
-        }, 400);
+        }, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -659,6 +660,6 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
       success: false,
       error: 'Invalid JSON data or validation failed',
       timestamp: new Date().toISOString()
-    }, 400);
+    }, HTTP_STATUS.BAD_REQUEST);
   }
 }

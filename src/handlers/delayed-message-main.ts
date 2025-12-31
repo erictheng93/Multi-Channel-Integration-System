@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { PermissionService } from '../services/permission-service';
 import { jwtAuth } from '../middleware/auth';
@@ -43,7 +44,7 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Missing required fields: conversationId, content, platform, recipientPlatformId'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 驗證延遲時間範圍 (1-120 秒)
@@ -51,7 +52,7 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Delay seconds must be between 1 and 120'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查權限
@@ -70,7 +71,7 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Permission denied'
-      }, 403);
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 檢查 Durable Object 綁定
@@ -78,7 +79,7 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Delayed message service is not configured'
-      }, 503);
+      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 🎯 使用 Durable Objects 方案
@@ -121,7 +122,7 @@ delayedMessageHandler.post('/send', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: result.error || 'Failed to schedule message'
-      }, 500);
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // 🚀 WebSocket Broadcasting: Delayed Message Scheduled
@@ -190,14 +191,14 @@ delayedMessageHandler.post('/recall/:messageId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Message ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     if (!conversationId) {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查 Durable Object 綁定
@@ -205,7 +206,7 @@ delayedMessageHandler.post('/recall/:messageId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Delayed message service is not configured'
-      }, 503);
+      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 🎯 使用 Durable Objects 方案
@@ -293,7 +294,7 @@ delayedMessageHandler.post('/recall/:messageId', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: result.reason || 'Failed to recall message'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
   } catch (error) {
@@ -316,7 +317,7 @@ delayedMessageHandler.get('/pending', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Conversation ID is required'
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 檢查 Durable Object 綁定
@@ -324,7 +325,7 @@ delayedMessageHandler.get('/pending', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Delayed message service is not configured'
-      }, 503);
+      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 🎯 使用 Durable Objects 方案

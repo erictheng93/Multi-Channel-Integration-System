@@ -1,5 +1,6 @@
 // 統一健康檢查處理程序
 import type { Context } from 'hono';
+import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { healthCheckService } from '../services/health-check-service';
 import { DatabaseHealthChecker } from '../health-checkers/database-checker';
@@ -133,7 +134,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
         error: 'Component parameter is required',
         message: 'Please specify a component to check',
         timestamp: new Date().toISOString()
-      }, 400);
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     initializeHealthCheckers(c.env.DB, c.env.CACHE);
