@@ -25,6 +25,9 @@ export const useTeamStore = defineStore('team', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // ✅ Loading counter to prevent race conditions when multiple operations run in parallel
+  let loadingCounter = 0
+
   // 統計數據
   const stats = computed(() => ({
     totalMembers: members.value.length,
@@ -35,6 +38,8 @@ export const useTeamStore = defineStore('team', () => {
   // 動作
   const loadMembers = async () => {
     try {
+      // ✅ Increment counter and set loading state
+      loadingCounter++
       loading.value = true
       error.value = null
       const response = await teamApi.getMembers()
@@ -47,7 +52,11 @@ export const useTeamStore = defineStore('team', () => {
       error.value = (err as Error)?.message || '載入成員列表失敗'
       console.error('載入成員失敗:', err)
     } finally {
-      loading.value = false
+      // ✅ Decrement counter and only set loading=false when all operations complete
+      loadingCounter--
+      if (loadingCounter === 0) {
+        loading.value = false
+      }
     }
   }
 
@@ -71,6 +80,9 @@ export const useTeamStore = defineStore('team', () => {
 
   const loadTeams = async () => {
     try {
+      // ✅ Increment counter and set loading state
+      loadingCounter++
+      loading.value = true
       error.value = null
       const response = await teamApi.getTeams()
       if (response.success && response.data) {
@@ -81,6 +93,12 @@ export const useTeamStore = defineStore('team', () => {
     } catch (err: unknown) {
       error.value = (err as Error)?.message || '載入團隊列表失敗'
       console.error('載入團隊失敗:', err)
+    } finally {
+      // ✅ Decrement counter and only set loading=false when all operations complete
+      loadingCounter--
+      if (loadingCounter === 0) {
+        loading.value = false
+      }
     }
   }
 
