@@ -32,28 +32,24 @@ export async function generateTeamQRCode(
 
     const liffUrl = 'https://liff.line.me/' + liffId + '?team=' + teamId;
 
-    // Use toDataURL instead of toBuffer for Cloudflare Workers compatibility
-    const qrCodeDataUrl = await QRCode.toDataURL(liffUrl, {
-      type: 'image/png',
+    // Use toString with SVG output for Cloudflare Workers compatibility
+    // SVG is fully supported in Workers and can be rendered by browsers
+    const qrCodeSvg = await QRCode.toString(liffUrl, {
+      type: 'svg',
       width: 512,
       margin: 2,
       errorCorrectionLevel: 'H'
     });
 
-    // Convert data URL to buffer
-    // Format: data:image/png;base64,<base64-string>
-    const base64Data = qrCodeDataUrl.split(',')[1];
-    const qrCodeBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-
-    const fileName = 'qr-codes/team-' + teamId + '-' + Date.now() + '.png';
+    const fileName = 'qr-codes/team-' + teamId + '-' + Date.now() + '.svg';
     const r2Bucket = env.R2_BUCKET;
 
     if (!r2Bucket) {
       return { success: false, error: 'R2_BUCKET not configured' };
     }
 
-    await r2Bucket.put(fileName, qrCodeBuffer, {
-      httpMetadata: { contentType: 'image/png' },
+    await r2Bucket.put(fileName, qrCodeSvg, {
+      httpMetadata: { contentType: 'image/svg+xml' },
       customMetadata: {
         teamId: teamId.toString(),
         teamName: teamName,
