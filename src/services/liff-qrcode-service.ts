@@ -31,12 +31,19 @@ export async function generateTeamQRCode(
     }
 
     const liffUrl = 'https://liff.line.me/' + liffId + '?team=' + teamId;
-    const qrCodeBuffer = await QRCode.toBuffer(liffUrl, {
-      type: 'png',
+
+    // Use toDataURL instead of toBuffer for Cloudflare Workers compatibility
+    const qrCodeDataUrl = await QRCode.toDataURL(liffUrl, {
+      type: 'image/png',
       width: 512,
       margin: 2,
       errorCorrectionLevel: 'H'
     });
+
+    // Convert data URL to buffer
+    // Format: data:image/png;base64,<base64-string>
+    const base64Data = qrCodeDataUrl.split(',')[1];
+    const qrCodeBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
     const fileName = 'qr-codes/team-' + teamId + '-' + Date.now() + '.png';
     const r2Bucket = env.R2_BUCKET;
