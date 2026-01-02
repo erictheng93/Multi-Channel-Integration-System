@@ -118,3 +118,12 @@ profile.json
 
 # Vite
 .vite/
+
+# Backup files
+*.backup
+*.backup-*
+*.refactored.vue
+
+# Test results
+test-results.txt
+test-results.json
