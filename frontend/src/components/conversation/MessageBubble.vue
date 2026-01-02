@@ -549,23 +549,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import type { Message } from '@/types'
-import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
-import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
 import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'
 import FileAttachmentCard from '@/components/file/FileAttachmentCard.vue'
 import { MESSAGE_STATUS } from '@/constants/message-status'
 
-// Local interface matching FileAttachmentCard's expected type
-interface FileAttachment {
-  id: string
-  filename: string
-  mimeType: string
-  fileSize: number
-  fileUrl: string
-  r2Key?: string
-}
+// Import message utilities and composables
+import {
+  formatFileSize,
+  getFileExtension,
+  getFileTypeClass
+} from '@/utils/message'
+import { useMessageTime, useMessageAttachment, useMessageActions, useMessageSticker, useMessageContent, type FileAttachment } from '@/composables/message'
 
 import {
   CheckIcon,
@@ -611,13 +607,101 @@ const emit = defineEmits<{
   retry: [messageId: string] // ⚡ New: Retry failed message
 }>()
 
+// Use message composables
+const { formatTime } = useMessageTime()
+
+// Create reactive props for useMessageAttachment
+const attachmentProps = computed(() => ({
+  message: props.message,
+  attachmentUrl: props.attachmentUrl,
+  attachmentName: props.attachmentName,
+  attachmentSize: props.attachmentSize
+}))
+
+const {
+  attachmentUrl,
+  attachmentName,
+  attachmentSize,
+  fileAttachments, // Used internally by imageAttachments and nonImageAttachments
+  imageAttachments,
+  nonImageAttachments,
+  hasMultipleAttachments,
+  isFileOnlyContent,
+  messageStatus,
+  downloadFile,
+  downloadAttachment,
+  handleAttachmentPreview: handleAttachmentPreviewBase,
+  isAttachmentPending,
+  getAttachmentStatusClass
+} = useMessageAttachment(attachmentProps)
+
+// Mark fileAttachments as used (it's internally used by imageAttachments and nonImageAttachments)
+void fileAttachments
+
+// Wrap handleAttachmentPreview to emit the preview event
+const handleAttachmentPreview = (attachment: FileAttachment) => {
+  handleAttachmentPreviewBase(attachment, (message) => emit('preview', message))
+}
+
+// Create reactive props for useMessageActions
+const actionsProps = computed(() => ({
+  message: props.message
+}))
+
+const actionsEmit = {
+  copy: (message: Message) => emit('copy', message),
+  reply: (message: Message) => emit('reply', message),
+  forward: (message: Message) => emit('forward', message),
+  recall: (message: Message) => emit('recall', message),
+  select: (message: Message) => emit('select', message),
+  retry: (messageId: string) => emit('retry', messageId)
+}
+
+const {
+  showActions,
+  showActionsMenu,
+  handleRightClick,
+  toggleActionsMenu,
+  copyMessage,
+  replyToMessage,
+  forwardMessage,
+  recallMessage,
+  selectMessage,
+  handleRetry
+} = useMessageActions(actionsProps, actionsEmit)
+
+// Create reactive props for useMessageSticker
+const stickerProps = computed(() => ({
+  message: props.message
+}))
+
+const {
+  stickerMetadata,
+  stickerUrls,
+  stickerImageUrl,
+  currentStickerUrlIndex,
+  stickerLoadError,
+  stickerLoading,
+  onStickerLoadStart,
+  onStickerError,
+  onStickerLoad
+} = useMessageSticker(stickerProps)
+
+// Create reactive props for useMessageContent
+const contentProps = computed(() => ({
+  message: props.message
+}))
+
+const {
+  processedMessageContent,
+  actualMessageType
+} = useMessageContent(contentProps)
+
 // State
 const showImagePreview = ref(false)
 const zoomLevel = ref(1)
 const imageLoaded = ref(false)
 const imageError = ref(false)
-const showActions = ref(false)
-const showActionsMenu = ref(false)
 
 // Computed properties
 const isOutgoing = computed(() => {
@@ -639,413 +723,28 @@ const senderInitials = computed(() => {
   return senderName.value[0]
 })
 
-// 🔧 智能消息类型识别: 防御性处理 LINE API 类型误判
-// 即使后端存储的 messageType 不正确,前端也能根据 metadata 智能识别
-const actualMessageType = computed(() => {
-  const originalType = props.message.messageType;
+// ✅ Refactored: Attachment-related computed properties moved to useMessageAttachment composable
+// - attachmentUrl, attachmentName, attachmentSize
+// - fileAttachments, imageAttachments, nonImageAttachments
+// - hasMultipleAttachments, isFileOnlyContent
+// - messageStatus
 
-  // 检查 metadata 中是否包含文件信息
-  if (props.message.metadata) {
-    try {
-      const metadata = typeof props.message.metadata === 'string'
-        ? JSON.parse(props.message.metadata)
-        : props.message.metadata;
+// ✅ Refactored: Sticker-related logic moved to useMessageSticker composable
+// - stickerMetadata, stickerUrls, stickerImageUrl
+// - currentStickerUrlIndex, stickerLoadError, stickerLoading
+// - onStickerLoadStart, onStickerError, onStickerLoad
 
-      // 如果 metadata 中有 fileName 和 fileSize,说明这是文件消息
-      // 即使 messageType 是 video/audio,也应该当作 file 处理
-      if (metadata.fileName && metadata.fileSize !== undefined) {
-        if (originalType !== 'file') {
-          console.warn('🔧 [MessageBubble] Type correction:', {
-            originalType,
-            correctedType: 'file',
-            fileName: metadata.fileName,
-            messageId: props.message.id
-          });
-        }
-        return 'file';
-      }
-    } catch (error) {
-      console.error('❌ [MessageBubble] Failed to parse metadata:', error);
-    }
-  }
+// ✅ Refactored: Content processing moved to useMessageContent composable
+// - actualMessageType (smart type detection from metadata)
+// - processedMessageContent (async processing with caching)
+// - contentCache (LRU cache with max 100 entries)
+// - processMessageContent() (debounced processing function)
+// - watch() for message changes
+// - onUnmounted() cleanup
 
-  // 如果无法从 metadata 判断,使用原始类型
-  return originalType;
-})
-
-const attachmentUrl = computed(() => {
-  // Use prop if provided (for tests)
-  if (props.attachmentUrl) {return props.attachmentUrl}
-  
-  if (props.message.metadata?.attachment?.url) {
-    return props.message.metadata.attachment.url
-  }
-  const urlMatch = props.message.content?.match(/https?:\/\/[^\s]+/)
-  return urlMatch ? urlMatch[0] : null
-})
-
-const attachmentName = computed(() => {
-  // Use prop if provided (for tests)
-  if (props.attachmentName) {return props.attachmentName}
-  
-  if (props.message.metadata?.attachment?.name) {
-    return props.message.metadata.attachment.name
-  }
-  const fileMatch = props.message.content?.match(/\[(?:檔案|圖片)\]\s*(.+)/)
-  return fileMatch ? fileMatch[1] : '附件'
-})
-
-const attachmentSize = computed(() => {
-  // Use prop if provided (for tests)
-  if (props.attachmentSize) {return props.attachmentSize}
-
-  return props.message.metadata?.attachment?.size
-})
-
-// 處理 file_attachments 陣列 - 用於 Flex Message Card 顯示
-// 🔧 FIX: 同時支援 file_attachments 和 metadata.pendingAttachments (optimistic UI)
-const fileAttachments = computed(() => {
-  // Priority 1: Use confirmed file_attachments
-  if (props.message.file_attachments && props.message.file_attachments.length > 0) {
-    return props.message.file_attachments
-  }
-
-  // Priority 2: Use pending attachments from optimistic UI (during upload)
-  const pendingAttachments = (props.message.metadata as Record<string, unknown>)?.pendingAttachments as Array<{
-    name: string
-    size: number
-    blobUrl?: string
-    isImage: boolean
-    fileType: string
-    typeColor: string
-  }> | undefined
-
-  if (pendingAttachments && pendingAttachments.length > 0) {
-    // Normalize pending attachments to match file_attachments structure
-    return pendingAttachments.map((pending, index) => ({
-      id: `pending-${index}`,
-      filename: pending.name,
-      mimeType: pending.isImage ? 'image/*' : pending.fileType,
-      fileSize: pending.size,
-      fileUrl: pending.blobUrl || '', // Use blob URL for preview during upload
-      isPending: true // Mark as pending for UI differentiation
-    }))
-  }
-
-  return []
-})
-
-// 🔧 FIX: 分離圖片附件 - 圖片不使用 Flex Message Card 效果
-const isImageFile = (attachment: { mimeType?: string; filename?: string }) => {
-  const mimeType = (attachment.mimeType || '').toLowerCase()
-  const filename = (attachment.filename || '').toLowerCase()
-  return mimeType.startsWith('image/') ||
-    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].some(ext =>
-      filename.endsWith(`.${ext}`)
-    )
-}
-
-// 圖片附件 - 使用簡單圖片顯示
-const imageAttachments = computed(() => {
-  return fileAttachments.value.filter(isImageFile)
-})
-
-// 非圖片附件 - 使用 Flex Message Card 顯示
-const nonImageAttachments = computed(() => {
-  return fileAttachments.value.filter(attachment => !isImageFile(attachment))
-})
-
-const hasMultipleAttachments = computed(() => {
-  return fileAttachments.value.length > 1
-})
-
-const isFileOnlyContent = computed(() => {
-  const content = props.message.content || ''
-  // Match Chinese format: [檔案] [圖片] [影片] [語音] [貼圖] [位置] etc.
-  // Match English format: Sent a file: filename
-  // Match multi-file format: Sent 2 files, Sent 3 files
-  return /^\[(?:檔案|圖片|影片|語音|貼圖|位置)\](?:\s*.+)?$/.test(content) ||
-         /^Sent a file:\s*.+$/i.test(content) ||
-         /^Sent \d+ files$/i.test(content)
-})
-
-// ⚡ Message Status for Optimistic UI
-const messageStatus = computed(() => {
-  // Priority 1: Use message.status (new optimistic UI field)
-  if (props.message.status) {
-    return props.message.status
-  }
-
-  // Priority 2: Use message.deliveryStatus (legacy field)
-  if (props.message.deliveryStatus) {
-    return props.message.deliveryStatus
-  }
-
-  // Priority 3: Fallback to delivered prop
-  if (props.delivered) {
-    return MESSAGE_STATUS.DELIVERED
-  }
-
-  // Default: assume sent
-  return MESSAGE_STATUS.SENT
-})
-
-const stickerMetadata = computed(() => {
-  // Debug logs for sticker metadata parsing
-  console.log('🔍 [Sticker Debug] Message type:', props.message.messageType)
-  console.log('🔍 [Sticker Debug] Message content:', props.message.content)
-  console.log('🔍 [Sticker Debug] Raw metadata:', props.message.metadata)
-  
-  if (props.message.messageType !== 'sticker' || !props.message.metadata) {
-    console.log('🔍 [Sticker Debug] Condition failed - messageType or metadata missing')
-    return null
-  }
-  
-  try {
-    const metadata = typeof props.message.metadata === 'string' 
-      ? JSON.parse(props.message.metadata) 
-      : props.message.metadata
-    
-    console.log('🔍 [Sticker Debug] Parsed metadata:', metadata)
-    
-    const result = {
-      packageId: metadata.packageId,
-      stickerId: metadata.stickerId
-    }
-    
-    console.log('🔍 [Sticker Debug] Final sticker metadata:', result)
-    return result
-  } catch (error) {
-    console.error('❌ [Sticker Debug] Failed to parse sticker metadata:', error)
-    return null
-  }
-})
-
-// 貼圖 CDN 回退機制狀態
-const currentStickerUrlIndex = ref(0)
-const stickerLoadError = ref(false)
-const stickerLoading = ref(false)
-
-const stickerUrls = computed(() => {
-  if (!stickerMetadata.value) {return []}
-
-  return [
-    // Format 1: Android 平台（主要）
-    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/android/sticker.png`,
-    // Format 2: iPhone 平台（備用1）
-    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/iPhone/sticker.png`,
-    // Format 3: iPad 平台（備用2）
-    `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerMetadata.value.stickerId}/iPad/sticker.png`,
-    // Format 4: 舊版格式（最終回退）
-    `http://dl.stickershop.line.naver.jp/products/0/0/1/${stickerMetadata.value.packageId}/android/sticker.png`
-  ]
-})
-
-const stickerImageUrl = computed(() => {
-  console.log('🔍 [Sticker Debug] Computing sticker image URL...')
-  console.log('🔍 [Sticker Debug] stickerMetadata.value:', stickerMetadata.value)
-
-  if (!stickerUrls.value.length) {
-    console.log('🔍 [Sticker Debug] No sticker URLs available')
-    return null
-  }
-
-  const currentUrl = stickerUrls.value[currentStickerUrlIndex.value]
-  console.log('🔍 [Sticker Debug] Current URL index:', currentStickerUrlIndex.value)
-  console.log('🔍 [Sticker Debug] Generated sticker URL:', currentUrl)
-  console.log('🔍 [Sticker Debug] PackageId:', stickerMetadata.value?.packageId)
-  console.log('🔍 [Sticker Debug] StickerId:', stickerMetadata.value?.stickerId)
-
-  return currentUrl
-})
-
-// 处理消息内容，使用智能emoji渲染器
-const processedMessageContent = ref('')
-
-// 异步处理消息内容
-// 缓存处理结果，避免重复处理
-const contentCache = new Map<string, string>()
-let debounceTimer: number | null = null
-
-const processMessageContent = async () => {
-  if (!props.message.content) {
-    processedMessageContent.value = ''
-    return
-  }
-
-  // 清除之前的防抖计时器
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
-
-  // 防抖处理，避免频繁调用
-  debounceTimer = window.setTimeout(async () => {
-    try {
-      // 创建内容标识符，包含内容、类型和metadata
-      const messageType = props.message.messageType || 'text' // 提供fallback
-      const contentIdentifier = `${props.message.content}|${messageType}|${JSON.stringify(props.message.metadata || {})}`
-      
-      // 检查缓存
-      if (contentCache.has(contentIdentifier)) {
-        const cachedContent = contentCache.get(contentIdentifier)
-        if (cachedContent) {
-          processedMessageContent.value = cachedContent
-          return
-        }
-      }
-
-      if (import.meta.env.DEV) {
-        console.log('🔍 [MessageBubble] Processing message:', {
-          content: `${props.message.content.substring(0, 50)  }...`,
-          type: messageType,
-          hasMetadata: !!props.message.metadata
-        })
-      }
-      
-      let result: string
-      
-      // 如果是贴图消息，使用完整的数据库消息渲染器（包含贴图处理）
-      if (messageType === 'sticker' && props.message.metadata) {
-        const metadataString = typeof props.message.metadata === 'string' 
-          ? props.message.metadata 
-          : JSON.stringify(props.message.metadata)
-        
-        result = await renderDatabaseMessageForVue(
-          props.message.content,
-          messageType,
-          metadataString
-        )
-      } else {
-        // 其他消息类型使用分层emoji处理器 (Layer 1 + Layer 2)
-        result = await convertEmojiForMessageDetail(props.message.content)
-      }
-      
-      // 缓存结果（限制缓存大小，避免内存泄漏）
-      if (contentCache.size > 100) {
-        const firstKey = contentCache.keys().next().value
-        if (firstKey) {
-          contentCache.delete(firstKey)
-        }
-      }
-      contentCache.set(contentIdentifier, result)
-      
-      processedMessageContent.value = result
-      
-      if (import.meta.env.DEV) {
-        console.log('🔍 [MessageBubble] Content processed successfully')
-      }
-    } catch (error) {
-      console.error('❌ [MessageBubble] 处理消息内容时出错:', error)
-      // 如果处理失败，使用原始内容（转义HTML）
-      processedMessageContent.value = escapeHtml(props.message.content)
-    }
-  }, 100) // 100ms防抖
-}
-
-// HTML转义函数
-const escapeHtml = (text: string): string => {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
-}
-
-// 智能监听消息变化，包含内容、类型和metadata的变更
-watch(
-  () => ({
-    content: props.message.content,
-    messageType: props.message.messageType,
-    metadata: props.message.metadata
-  }),
-  (newValue, oldValue) => {
-    // 只有在实际内容发生变化时才重新处理
-    if (!oldValue || 
-        newValue.content !== oldValue.content ||
-        newValue.messageType !== oldValue.messageType ||
-        JSON.stringify(newValue.metadata) !== JSON.stringify(oldValue.metadata)) {
-      processMessageContent()
-    }
-  },
-  { immediate: true, deep: true }
-)
-
-// 組件清理
-onUnmounted(() => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
-  contentCache.clear()
-})
-
-// Methods
-const formatTime = (date: Date | string | number) => {
-  let messageDate: Date
-
-  if (typeof date === 'number') {
-    messageDate = new Date(date)
-  } else if (typeof date === 'string') {
-    messageDate = new Date(date)
-  } else {
-    messageDate = date
-  }
-
-  // 智能时间戳显示：今天显示时分，历史显示完整日期时间
-  const now = new Date()
-  const isToday = messageDate.toDateString() === now.toDateString()
-
-  if (isToday) {
-    // 今天的消息：仅显示时分 (例如: "14:30")
-    return messageDate.toLocaleTimeString('zh-TW', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false  // 使用24小时制
-    })
-  } else {
-    // 历史消息：显示完整日期和时间 (例如: "2025/01/27 15:30")
-    return messageDate.toLocaleString('zh-TW', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false  // 使用24小时制
-    })
-  }
-}
-
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) {return '0 B'}
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))  } ${  sizes[i]}`
-}
-
-const getFileExtension = (filename: string): string => {
-  const parts = filename.split('.')
-  if (parts.length <= 1) {return ''}
-  const ext = parts.pop()?.toUpperCase()
-  return ext || ''
-}
-
-const getFileTypeClass = (filename: string): string => {
-  const ext = filename.split('.').pop()?.toLowerCase()
-  const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-  const docExts = ['doc', 'docx', 'pdf', 'txt', 'rtf']
-  const codeExts = ['js', 'ts', 'html', 'css', 'json', 'xml']
-  const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz']
-
-  // Return specific extension names for test compatibility
-  if (ext === 'pdf') {return 'pdf'}
-  if (ext === 'jpg' || ext === 'jpeg') {return 'image'}
-  if (ext === 'txt') {return 'text'}
-  
-  if (imageExts.includes(ext || '')) {return 'file-type-image'}
-  if (docExts.includes(ext || '')) {return 'file-type-document'}
-  if (codeExts.includes(ext || '')) {return 'file-type-code'}
-  if (archiveExts.includes(ext || '')) {return 'file-type-archive'}
-  
-  return 'file-type-document'
-}
+// ✅ Refactored: Formatting functions moved to utils and composables
+// - formatTime: from useMessageTime composable
+// - formatFileSize, getFileExtension, getFileTypeClass: from @/utils/message
 
 const getFileIcon = (filename: string) => {
   const ext = filename.split('.').pop()?.toLowerCase()
@@ -1102,172 +801,15 @@ const onImageError = () => {
   emit('image-error', props.message)
 }
 
-// 貼圖載入開始
-const onStickerLoadStart = () => {
-  stickerLoading.value = true
-  console.log('🔄 [Sticker Debug] Starting to load sticker...')
-}
+// ✅ Refactored: All sticker event handlers moved to useMessageSticker composable
+// - onStickerLoadStart(), onStickerError(), onStickerLoad()
+// - watch() for sticker metadata changes
 
-// 貼圖錯誤處理 - 智能 CDN 回退
-const onStickerError = () => {
-  const currentUrl = stickerUrls.value[currentStickerUrlIndex.value]
-  console.warn('❌ [Sticker Debug] Failed to load sticker from URL:', currentUrl)
-  console.warn('❌ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
-
-  // 嘗試下一個 CDN 源
-  if (currentStickerUrlIndex.value < stickerUrls.value.length - 1) {
-    currentStickerUrlIndex.value++
-    console.log('🔄 [Sticker Debug] Trying fallback URL index:', currentStickerUrlIndex.value)
-    console.log('🔄 [Sticker Debug] Next URL:', stickerUrls.value[currentStickerUrlIndex.value])
-
-    // 重新觸發載入（透過重設 key 強制重新渲染）
-    nextTick(() => {
-      stickerLoading.value = true
-    })
-  } else {
-    // 所有 URL 都失敗了
-    console.error('💥 [Sticker Debug] All CDN sources failed for sticker:', stickerMetadata.value?.stickerId)
-    stickerLoadError.value = true
-    stickerLoading.value = false
-  }
-}
-
-// 貼圖載入成功
-const onStickerLoad = () => {
-  console.log('✅ [Sticker Debug] Sticker loaded successfully from URL index:', currentStickerUrlIndex.value)
-  console.log('✅ [Sticker Debug] Loaded URL:', stickerImageUrl.value)
-  console.log('✅ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
-
-  stickerLoadError.value = false
-  stickerLoading.value = false
-}
-
-// 重設貼圖狀態（當 sticker metadata 改變時）
-watch(() => stickerMetadata.value, () => {
-  currentStickerUrlIndex.value = 0
-  stickerLoadError.value = false
-  stickerLoading.value = false
-}, { deep: true })
-
-// File download
-const downloadFile = () => {
-  if (attachmentUrl.value) {
-    const link = document.createElement('a')
-    link.href = attachmentUrl.value
-    link.download = attachmentName.value || 'download'
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-}
-
-// 🔧 FIX: Download attachment from file_attachments array
-const downloadAttachment = (attachment: { fileUrl?: string; filename?: string }) => {
-  if (attachment.fileUrl) {
-    const link = document.createElement('a')
-    link.href = attachment.fileUrl
-    link.download = attachment.filename || 'download'
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-}
-
-// Message Actions
-const handleRightClick = (event: MouseEvent) => {
-  event.preventDefault()
-  showActionsMenu.value = !showActionsMenu.value
-  showActions.value = true
-}
-
-const toggleActionsMenu = () => {
-  showActionsMenu.value = !showActionsMenu.value
-}
-
-const copyMessage = async () => {
-  try {
-    await navigator.clipboard.writeText(props.message.content)
-    emit('copy', props.message)
-    showActionsMenu.value = false
-  } catch (error) {
-    console.error('Failed to copy message:', error)
-    // Fallback for older browsers
-    const textArea = document.createElement('textarea')
-    textArea.value = props.message.content
-    document.body.appendChild(textArea)
-    textArea.focus()
-    textArea.select()
-    try {
-      document.execCommand('copy')
-      emit('copy', props.message)
-    } catch (fallbackError) {
-      console.error('Fallback copy failed:', fallbackError)
-    }
-    document.body.removeChild(textArea)
-    showActionsMenu.value = false
-  }
-}
-
-const replyToMessage = () => {
-  emit('reply', props.message)
-  showActionsMenu.value = false
-}
-
-const forwardMessage = () => {
-  emit('forward', props.message)
-  showActionsMenu.value = false
-}
-
-const recallMessage = () => {
-  emit('recall', props.message)
-  showActionsMenu.value = false
-}
-
-const selectMessage = () => {
-  emit('select', props.message)
-  showActionsMenu.value = false
-}
-
-// ⚡ Retry failed message
-const handleRetry = () => {
-  console.log('🔄 [MessageBubble] Retry button clicked for message:', props.message.id)
-  emit('retry', props.message.id)
-}
-
-// 🔧 Handle attachment preview (for image files)
-const handleAttachmentPreview = (attachment: FileAttachment) => {
-  console.log('🖼️ [MessageBubble] Attachment preview requested:', attachment)
-  // For image attachments, we could open a preview modal
-  // For now, just log and potentially emit an event
-  emit('preview', props.message)
-}
-
-// 🆕 判斷附件是否處於 pending 狀態（正在傳送中）
-const isAttachmentPending = (attachment: { id?: string; isPending?: boolean }): boolean => {
-  // 如果附件明確標記為 pending
-  if (attachment.isPending) {return true}
-
-  // 如果附件 ID 以 'pending-' 開頭
-  if (attachment.id?.startsWith('pending-')) {return true}
-
-  // 如果消息狀態為 sending 或 pending
-  if (messageStatus.value === 'sending' || messageStatus.value === MESSAGE_STATUS.PENDING) {return true}
-
-  return false
-}
-
-// 🆕 獲取附件狀態對應的 CSS 類名
-const getAttachmentStatusClass = (attachment: { id?: string; isPending?: boolean }): string => {
-  if (isAttachmentPending(attachment)) {
-    return 'status-pending'
-  }
-  if (messageStatus.value === MESSAGE_STATUS.FAILED) {
-    return 'status-failed'
-  }
-  return 'status-success'
-}
+// ✅ Refactored: All action methods moved to useMessageActions composable
+// - handleRightClick(), toggleActionsMenu(), copyMessage()
+// - replyToMessage(), forwardMessage(), recallMessage(), selectMessage()
+// - handleRetry()
+// - showActions, showActionsMenu state
 </script>
 
 <style scoped>

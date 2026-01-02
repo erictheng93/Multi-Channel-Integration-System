@@ -85,44 +85,84 @@ export function useConfirm() {
     })
   }
 
-  // Convenience methods for different types
-  const confirmDanger = (title: string, message?: string, confirmText?: string) => {
+  // Convenience methods for different types (support both object and string params)
+  const confirmDanger = (
+    titleOrOptions: string | Omit<ConfirmOptions, 'type'>,
+    message?: string,
+    confirmText?: string
+  ) => {
+    if (typeof titleOrOptions === 'string') {
+      return showConfirm({
+        title: titleOrOptions,
+        message,
+        type: 'danger',
+        confirmText: confirmText || '確定',
+        cancelText: '取消'
+      })
+    }
     return showConfirm({
-      title,
-      message,
-      type: 'danger',
-      confirmText: confirmText || '確定',
-      cancelText: '取消'
+      ...titleOrOptions,
+      type: 'danger'
     })
   }
 
-  const confirmWarning = (title: string, message?: string, confirmText?: string) => {
+  const confirmWarning = (
+    titleOrOptions: string | Omit<ConfirmOptions, 'type'>,
+    message?: string,
+    confirmText?: string
+  ) => {
+    if (typeof titleOrOptions === 'string') {
+      return showConfirm({
+        title: titleOrOptions,
+        message,
+        type: 'warning',
+        confirmText: confirmText || '確定',
+        cancelText: '取消'
+      })
+    }
     return showConfirm({
-      title,
-      message,
-      type: 'warning',
-      confirmText: confirmText || '確定',
-      cancelText: '取消'
+      ...titleOrOptions,
+      type: 'warning'
     })
   }
 
-  const confirmInfo = (title: string, message?: string, confirmText?: string) => {
+  const confirmInfo = (
+    titleOrOptions: string | Omit<ConfirmOptions, 'type'>,
+    message?: string,
+    confirmText?: string
+  ) => {
+    if (typeof titleOrOptions === 'string') {
+      return showConfirm({
+        title: titleOrOptions,
+        message,
+        type: 'info',
+        confirmText: confirmText || '確定',
+        cancelText: '取消'
+      })
+    }
     return showConfirm({
-      title,
-      message,
-      type: 'info',
-      confirmText: confirmText || '確定',
-      cancelText: '取消'
+      ...titleOrOptions,
+      type: 'info'
     })
   }
 
-  const confirmDefault = (title: string, message?: string, confirmText?: string) => {
+  const confirmDefault = (
+    titleOrOptions: string | Omit<ConfirmOptions, 'type'>,
+    message?: string,
+    confirmText?: string
+  ) => {
+    if (typeof titleOrOptions === 'string') {
+      return showConfirm({
+        title: titleOrOptions,
+        message,
+        type: 'default',
+        confirmText: confirmText || '確定',
+        cancelText: '取消'
+      })
+    }
     return showConfirm({
-      title,
-      message,
-      type: 'default',
-      confirmText: confirmText || '確定',
-      cancelText: '取消'
+      ...titleOrOptions,
+      type: 'default'
     })
   }
 
