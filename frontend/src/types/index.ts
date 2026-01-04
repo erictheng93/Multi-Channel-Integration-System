@@ -21,6 +21,14 @@ export type {
   SendMessageRequest
 } from '@shared/api-types';
 
+// Activity Stream 型別
+export type {
+  Activity,
+  ActivityType,
+  ActivityPriority,
+  ActivityStreamEvent
+} from './activity';
+
 import type { Agent, Platform } from '@shared/types/index';
 
 // 前端專用型別

@@ -9,18 +9,31 @@
   <div class="line-integration-form">
     <div class="form-header">
       <div>
-        <h3 class="integration-title">{{ t('systemSettings.integrations.line.title') }}</h3>
-        <p class="integration-description">{{ t('systemSettings.integrations.line.description') }}</p>
+        <h3 class="integration-title">
+          {{ t('systemSettings.integrations.line.title') }}
+        </h3>
+        <p class="integration-description">
+          {{ t('systemSettings.integrations.line.description') }}
+        </p>
       </div>
-      <div class="status-badge" :class="statusClass">
-        <span class="status-dot"></span>
+      <div
+        class="status-badge"
+        :class="statusClass"
+      >
+        <span class="status-dot" />
         {{ statusText }}
       </div>
     </div>
 
-    <form @submit.prevent="handleSave" class="integration-form">
+    <form
+      class="integration-form"
+      @submit.prevent="handleSave"
+    >
       <div class="form-group">
-        <label for="lineChannelId" class="form-label">
+        <label
+          for="lineChannelId"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.line.channelId') }}
         </label>
         <input
@@ -30,11 +43,14 @@
           class="form-input"
           :placeholder="t('systemSettings.integrations.line.channelIdPlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="lineChannelSecret" class="form-label">
+        <label
+          for="lineChannelSecret"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.line.channelSecret') }}
         </label>
         <input
@@ -44,11 +60,14 @@
           class="form-input"
           :placeholder="t('systemSettings.integrations.line.channelSecretPlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="lineAccessToken" class="form-label">
+        <label
+          for="lineAccessToken"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.line.accessToken') }}
         </label>
         <textarea
@@ -58,7 +77,7 @@
           rows="3"
           :placeholder="t('systemSettings.integrations.line.accessTokenPlaceholder')"
           required
-        ></textarea>
+        />
       </div>
 
       <div class="form-actions">
@@ -68,7 +87,10 @@
           :disabled="testing || saving"
           @click="handleTest"
         >
-          <span v-if="testing" class="spinner"></span>
+          <span
+            v-if="testing"
+            class="spinner"
+          />
           {{ testing ? t('common.testing') : t('common.testConnection') }}
         </button>
 
@@ -86,7 +108,10 @@
           class="btn-primary"
           :disabled="saving || testing"
         >
-          <span v-if="saving" class="spinner"></span>
+          <span
+            v-if="saving"
+            class="spinner"
+          />
           {{ saving ? t('common.saving') : t('common.save') }}
         </button>
       </div>

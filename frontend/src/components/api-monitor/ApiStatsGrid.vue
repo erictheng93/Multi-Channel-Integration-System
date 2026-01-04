@@ -126,7 +126,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'stat-click', type: 'all' | 'healthy' | 'warning' | 'error'): void
+  (_e: 'stat-click', _type: 'all' | 'healthy' | 'warning' | 'error'): void
 }
 
 defineProps<Props>()

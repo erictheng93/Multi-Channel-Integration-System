@@ -35,7 +35,10 @@
           />
 
           <!-- Integrations Tab -->
-          <div v-if="controller.activeTab.value === 'integrations'" class="integrations-container">
+          <div
+            v-if="controller.activeTab.value === 'integrations'"
+            class="integrations-container"
+          >
             <LineIntegrationForm
               :settings="controller.settings.integrations.line"
               :saving="controller.saving.value"
@@ -64,7 +67,10 @@
           />
 
           <!-- System Maintenance Tab -->
-          <div v-if="controller.activeTab.value === 'system'" class="system-container">
+          <div
+            v-if="controller.activeTab.value === 'system'"
+            class="system-container"
+          >
             <BackupManager
               :backups="controller.backups.value"
               :processing="controller.processing.value"

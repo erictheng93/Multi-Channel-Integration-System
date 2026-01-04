@@ -97,7 +97,7 @@ export interface PopularTypesWidgetProps {
   /**
    * 获取报表类型图标
    */
-  getReportTypeIcon: (type: string) => string
+  getReportTypeIcon: (_type: string) => string
 }
 
 defineProps<PopularTypesWidgetProps>()

@@ -41,8 +41,8 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'refresh'): void
-  (e: 'toggle-auto-refresh', enabled: boolean): void
+  (_e: 'refresh'): void
+  (_e: 'toggle-auto-refresh', _enabled: boolean): void
 }
 
 const props = withDefaults(defineProps<Props>(), {

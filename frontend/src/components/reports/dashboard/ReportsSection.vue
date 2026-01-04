@@ -220,52 +220,52 @@ export interface ReportsSectionProps {
   /**
    * 获取类型徽章类别
    */
-  getTypeBadgeClass: (type: ReportType) => string
+  getTypeBadgeClass: (_type: ReportType) => string
 
   /**
    * 获取报表类型图标
    */
-  getReportTypeIcon: (type: ReportType) => string
+  getReportTypeIcon: (_type: ReportType) => string
 
   /**
    * 获取状态图标
    */
-  getStatusIcon: (status: ReportStatus) => string
+  getStatusIcon: (_status: ReportStatus) => string
 
   /**
    * 获取状态标签
    */
-  getStatusLabel: (status: ReportStatus) => string
+  getStatusLabel: (_status: ReportStatus) => string
 
   /**
    * 获取状态类别
    */
-  getStatusClass: (status: ReportStatus) => string
+  getStatusClass: (_status: ReportStatus) => string
 
   /**
    * 获取格式图标
    */
-  getFormatIcon: (format: ReportFormat) => string
+  getFormatIcon: (_format: ReportFormat) => string
 
   /**
    * 获取格式标签
    */
-  getFormatLabel: (format: ReportFormat) => string
+  getFormatLabel: (_format: ReportFormat) => string
 
   /**
    * 格式化时间
    */
-  formatRelativeTime: (time: string) => string
+  formatRelativeTime: (_time: string) => string
 
   /**
    * 格式化文件大小
    */
-  formatFileSize: (bytes: number) => string
+  formatFileSize: (_bytes: number) => string
 
   /**
    * 截断文本
    */
-  truncateText: (text: string, length: number) => string
+  truncateText: (_text: string, _length: number) => string
 }
 
 withDefaults(defineProps<ReportsSectionProps>(), {

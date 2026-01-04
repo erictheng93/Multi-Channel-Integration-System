@@ -154,7 +154,10 @@
                 活動動態
               </h2>
               <p class="card-subtitle">
-                <!-- REMOVED: SSE connection status (Phase 1 cleanup) -->
+                <!-- ✅ WebSocket connection status -->
+                <span :class="['connection-status', activityStreamConnected ? 'connected' : 'disconnected']">
+                  {{ activityStreamConnected ? '● 已連線' : '○ 未連線' }}
+                </span>
                 WebSocket 模式
               </p>
             </div>
@@ -406,8 +409,7 @@ import { useConversations } from '@/composables/useConversations'
 import { useAsyncData } from '@/composables/useAsyncData'
 import { useTokenRefresh } from '@/composables/useTokenRefresh'
 import { useActivityTracker } from '@/composables/useActivityTracker'
-// REMOVED: useActivityStream (SSE-based, replaced by WebSocket in Phase 1 cleanup)
-// import { useActivityStream } from '@/composables/useActivityStream'
+import { useActivityStream } from '@/composables/useActivityStream'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import DashboardSkeleton from '@/components/ui/DashboardSkeleton.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
@@ -460,13 +462,14 @@ const activityTrackerData = useActivityTracker()
 const startTracking = activityTrackerData.startTracking
 const stopTracking = activityTrackerData.stopTracking
 
-// REMOVED: SSE-based Activity Stream (Phase 1 cleanup)
-// TODO: Replace with WebSocket-based activity stream in future
-// const activityStreamData = useActivityStream()
-// const realtimeActivities = activityStreamData.activities
-// const connectionStatus = activityStreamData.connectionStatus
-// const activityStreamError = activityStreamData.error
-// const reconnectActivityStream = activityStreamData.reconnect
+// ✅ WebSocket-based Activity Stream (Phase 1完成)
+const activityStreamData = useActivityStream({
+  maxActivities: 50,
+  autoConnect: true,
+  priorityFilter: [] // 顯示所有優先級
+})
+const realtimeActivities = activityStreamData.activities
+const activityStreamConnected = activityStreamData.isConnected
 
 // 使用 useAsyncData 獲取統計數據
 const { data: dashboardStats, pending: statsLoading, refresh: refreshStats } = useAsyncData(
@@ -484,51 +487,20 @@ const { data: dashboardStats, pending: statsLoading, refresh: refreshStats } = u
   { immediate: true }
 )
 
-// Note: SSE-based Activity Stream removed in Phase 1 cleanup
-// WebSocket infrastructure is deployed - activity stream can be re-implemented when needed
-// 篩選重要活動 - 只顯示最近2小時內的高優先級和中優先級活動
-interface ActivityItem {
-  id: string
-  type: string
-  priority: string
-  title: string
-  description: string
-  createdAt: Date
-}
-
-const importantActivities = computed<ActivityItem[]>(() => {
-  // Temporarily return empty array until WebSocket activity stream is implemented
-  return []
-
-  /* ORIGINAL CODE (SSE-based, removed in Phase 1):
+// ✅ WebSocket-based Activity Stream - 篩選重要活動
+// 只顯示最近2小時內的高優先級和中優先級活動
+const importantActivities = computed(() => {
   const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000)
 
   return realtimeActivities.value
-    .filter((activity: ActivityLog) => {
+    .filter((activity) => {
       const activityTime = new Date(activity.createdAt).getTime()
       const isRecent = activityTime > twoHoursAgo
-      const isImportant = activityPriority.high.includes(activity.action) ||
-                         activityPriority.medium.includes(activity.action)
+      const isImportant = activity.priority === 'high' || activity.priority === 'medium'
       return isRecent && isImportant
     })
-    .map((activity: ActivityLog) => ({
-      id: activity.id.toString(),
-      type: mapActivityActionToType(activity.action),
-      priority: getActivityPriority(activity.action),
-      title: getActivityTitle(activity.action),
-      description: getActivityDescription(activity),
-      createdAt: new Date(activity.createdAt)
-    }))
     .slice(0, 8) // 最多顯示 8 個重要活動
-  */
 })
-
-// Note: Activity helper functions removed in Phase 1 cleanup
-// Re-implement with WebSocket when activity stream feature is prioritized
-// - getActivityPriority(action: string): string
-// - mapActivityActionToType(action: string): string
-// - getActivityTitle(action: string): string
-// - getActivityDescription(activity: ActivityLog): string
 
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('zh-TW', {
@@ -834,6 +806,27 @@ onBeforeUnmount(() => {
   font-size: 0.875rem;
   color: var(--gray-600);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.connection-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  transition: all var(--transition-fast);
+}
+
+.connection-status.connected {
+  color: var(--success-600);
+  background: var(--success-50);
+}
+
+.connection-status.disconnected {
+  color: var(--gray-500);
+  background: var(--gray-100);
 }
 
 .view-all-link {

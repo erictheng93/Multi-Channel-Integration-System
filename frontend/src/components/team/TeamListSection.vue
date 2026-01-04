@@ -80,13 +80,13 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'add-team'): void
-  (e: 'toggle-status', team: Team): void
-  (e: 'view-qr', team: Team): void
-  (e: 'prefetch-qr', team: Team): void
-  (e: 'remove-team', team: Team): void
-  (e: 'member-updated'): void
-  (e: 'team-updated'): void
+  (_e: 'add-team'): void
+  (_e: 'toggle-status', _team: Team): void
+  (_e: 'view-qr', _team: Team): void
+  (_e: 'prefetch-qr', _team: Team): void
+  (_e: 'remove-team', _team: Team): void
+  (_e: 'member-updated'): void
+  (_e: 'team-updated'): void
 }
 
 defineProps<Props>()

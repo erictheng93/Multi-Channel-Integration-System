@@ -124,8 +124,8 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void
-  (e: 'download'): void
+  (_e: 'close'): void
+  (_e: 'download'): void
 }
 
 defineProps<Props>()

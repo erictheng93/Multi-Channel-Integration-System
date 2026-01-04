@@ -100,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+ 
 import type { PasswordResetFormData } from '@/composables/team-management'
 import type { TeamMember } from '@/types'
 
@@ -113,8 +114,8 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void
-  (e: 'submit'): void
+  (_e: 'close'): void
+  (_e: 'submit'): void
 }
 
 defineProps<Props>()

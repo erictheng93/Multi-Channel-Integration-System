@@ -106,12 +106,12 @@ const props = withDefaults(defineProps<Props>(), {
   isOutgoing: false
 })
 
+const emit = defineEmits<Emits>()
+
 interface Emits {
   /** Emitted when user clicks download button */
-  (e: 'download', url: string, filename: string): void
+  (_e: 'download', _url: string, _filename: string): void
 }
-
-const emit = defineEmits<Emits>()
 
 // ═══════════════════════════════════════════════════════════════
 // Computed Properties

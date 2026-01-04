@@ -7,12 +7,22 @@
 
 <template>
   <div class="general-settings-form">
-    <h2 class="form-title">{{ t('systemSettings.general.title') }}</h2>
-    <p class="form-description">{{ t('systemSettings.general.description') }}</p>
+    <h2 class="form-title">
+      {{ t('systemSettings.general.title') }}
+    </h2>
+    <p class="form-description">
+      {{ t('systemSettings.general.description') }}
+    </p>
 
-    <form @submit.prevent="handleSave" class="settings-form">
+    <form
+      class="settings-form"
+      @submit.prevent="handleSave"
+    >
       <div class="form-group">
-        <label for="systemName" class="form-label">
+        <label
+          for="systemName"
+          class="form-label"
+        >
           {{ t('systemSettings.general.systemName') }}
         </label>
         <input
@@ -22,11 +32,14 @@
           class="form-input"
           :placeholder="t('systemSettings.general.systemNamePlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="contactEmail" class="form-label">
+        <label
+          for="contactEmail"
+          class="form-label"
+        >
           {{ t('systemSettings.general.contactEmail') }}
         </label>
         <input
@@ -36,11 +49,14 @@
           class="form-input"
           :placeholder="t('systemSettings.general.contactEmailPlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="timezone" class="form-label">
+        <label
+          for="timezone"
+          class="form-label"
+        >
           {{ t('systemSettings.general.timezone') }}
         </label>
         <select
@@ -49,17 +65,32 @@
           class="form-select"
           required
         >
-          <option value="Asia/Taipei">Asia/Taipei (UTC+8)</option>
-          <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
-          <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
-          <option value="Asia/Hong_Kong">Asia/Hong Kong (UTC+8)</option>
-          <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
-          <option value="UTC">UTC (UTC+0)</option>
+          <option value="Asia/Taipei">
+            Asia/Taipei (UTC+8)
+          </option>
+          <option value="Asia/Tokyo">
+            Asia/Tokyo (UTC+9)
+          </option>
+          <option value="Asia/Shanghai">
+            Asia/Shanghai (UTC+8)
+          </option>
+          <option value="Asia/Hong_Kong">
+            Asia/Hong Kong (UTC+8)
+          </option>
+          <option value="Asia/Singapore">
+            Asia/Singapore (UTC+8)
+          </option>
+          <option value="UTC">
+            UTC (UTC+0)
+          </option>
         </select>
       </div>
 
       <div class="form-group">
-        <label for="language" class="form-label">
+        <label
+          for="language"
+          class="form-label"
+        >
           {{ t('systemSettings.general.language') }}
         </label>
         <select
@@ -68,10 +99,18 @@
           class="form-select"
           required
         >
-          <option value="zh-TW">繁體中文</option>
-          <option value="zh-CN">简体中文</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
+          <option value="zh-TW">
+            繁體中文
+          </option>
+          <option value="zh-CN">
+            简体中文
+          </option>
+          <option value="en">
+            English
+          </option>
+          <option value="ja">
+            日本語
+          </option>
         </select>
       </div>
 
@@ -81,7 +120,10 @@
           class="btn-primary"
           :disabled="saving"
         >
-          <span v-if="saving" class="spinner"></span>
+          <span
+            v-if="saving"
+            class="spinner"
+          />
           {{ saving ? t('common.saving') : t('common.save') }}
         </button>
       </div>

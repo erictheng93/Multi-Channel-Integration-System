@@ -120,14 +120,14 @@ const props = withDefaults(defineProps<Props>(), {
   isOutgoing: false
 })
 
+const emit = defineEmits<Emits>()
+
 interface Emits {
   /** Emitted when sticker loads successfully */
-  (e: 'sticker-load', message: Message): void
+  (_e: 'sticker-load', _message: Message): void
   /** Emitted when sticker fails to load */
-  (e: 'sticker-error', message: Message): void
+  (_e: 'sticker-error', _message: Message): void
 }
-
-const emit = defineEmits<Emits>()
 
 // ═══════════════════════════════════════════════════════════════
 // State Management

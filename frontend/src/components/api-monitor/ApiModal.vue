@@ -134,7 +134,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void
+  (_e: 'close'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -144,7 +144,7 @@ const props = withDefaults(defineProps<Props>(), {
 defineEmits<Emits>()
 
 const percentage = computed(() => {
-  if (props.totalApis === 0) return 0
+  if (props.totalApis === 0) {return 0}
   return Math.round((props.modalState.apis.length / props.totalApis) * 100)
 })
 
@@ -171,16 +171,16 @@ function getCategoryText(category: string): string {
 }
 
 function getResponseTimeClass(time: number): string {
-  if (time < 200) return 'excellent'
-  if (time < 500) return 'good'
-  if (time < 1000) return 'fair'
+  if (time < 200) {return 'excellent'}
+  if (time < 500) {return 'good'}
+  if (time < 1000) {return 'fair'}
   return 'poor'
 }
 
 function getSuccessRateClass(rate: number): string {
-  if (rate >= 98) return 'excellent'
-  if (rate >= 95) return 'good'
-  if (rate >= 90) return 'fair'
+  if (rate >= 98) {return 'excellent'}
+  if (rate >= 95) {return 'good'}
+  if (rate >= 90) {return 'fair'}
   return 'poor'
 }
 

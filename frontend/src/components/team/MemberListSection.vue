@@ -80,11 +80,11 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'add-member'): void
-  (e: 'update-role', memberId: string, role: string): void
-  (e: 'toggle-status', member: TeamMember): void
-  (e: 'reset-password', member: TeamMember): void
-  (e: 'remove-member', member: TeamMember): void
+  (_e: 'add-member'): void
+  (_e: 'update-role', _memberId: string, _role: string): void
+  (_e: 'toggle-status', _member: TeamMember): void
+  (_e: 'reset-password', _member: TeamMember): void
+  (_e: 'remove-member', _member: TeamMember): void
 }
 
 defineProps<Props>()

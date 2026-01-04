@@ -9,26 +9,41 @@
   <div class="backup-manager">
     <div class="manager-header">
       <div>
-        <h3 class="manager-title">{{ t('systemSettings.system.backup.title') }}</h3>
-        <p class="manager-description">{{ t('systemSettings.system.backup.description') }}</p>
+        <h3 class="manager-title">
+          {{ t('systemSettings.system.backup.title') }}
+        </h3>
+        <p class="manager-description">
+          {{ t('systemSettings.system.backup.description') }}
+        </p>
       </div>
       <button
         class="btn-primary"
         :disabled="processing"
         @click="handleBackup"
       >
-        <span v-if="processing" class="spinner"></span>
+        <span
+          v-if="processing"
+          class="spinner"
+        />
         {{ processing ? t('common.processing') : t('systemSettings.system.backup.create') }}
       </button>
     </div>
 
     <div class="backup-list">
-      <div v-if="backups.length === 0" class="empty-state">
+      <div
+        v-if="backups.length === 0"
+        class="empty-state"
+      >
         <span class="empty-icon">📦</span>
-        <p class="empty-text">{{ t('systemSettings.system.backup.noBackups') }}</p>
+        <p class="empty-text">
+          {{ t('systemSettings.system.backup.noBackups') }}
+        </p>
       </div>
 
-      <div v-else class="backup-items">
+      <div
+        v-else
+        class="backup-items"
+      >
         <div
           v-for="backup in backups"
           :key="backup.id"
@@ -53,8 +68,12 @@
 
     <div class="credentials-backup">
       <div class="credentials-info">
-        <h4 class="credentials-title">{{ t('systemSettings.system.backup.credentialsTitle') }}</h4>
-        <p class="credentials-description">{{ t('systemSettings.system.backup.credentialsDescription') }}</p>
+        <h4 class="credentials-title">
+          {{ t('systemSettings.system.backup.credentialsTitle') }}
+        </h4>
+        <p class="credentials-description">
+          {{ t('systemSettings.system.backup.credentialsDescription') }}
+        </p>
       </div>
       <button
         class="btn-secondary"
@@ -113,8 +132,8 @@ function formatDate(date: Date): string {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
+  if (bytes < 1024) {return `${bytes} B`}
+  if (bytes < 1024 * 1024) {return `${(bytes / 1024).toFixed(2)} KB`}
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 </script>

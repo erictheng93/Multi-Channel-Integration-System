@@ -72,10 +72,10 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'card-click', id: string): void
-  (e: 'test', api: ApiEndpoint): void
-  (e: 'view-logs', api: ApiEndpoint): void
-  (e: 'view-docs', api: ApiEndpoint): void
+  (_e: 'card-click', _id: string): void
+  (_e: 'test', _api: ApiEndpoint): void
+  (_e: 'view-logs', _api: ApiEndpoint): void
+  (_e: 'view-docs', _api: ApiEndpoint): void
 }
 
 defineProps<Props>()

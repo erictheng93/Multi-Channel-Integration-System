@@ -18,7 +18,9 @@
         v-else-if="hasError"
         class="image-placeholder error"
       >
-        <div class="error-icon">📷</div>
+        <div class="error-icon">
+          📷
+        </div>
         <span class="error-text">圖片載入失敗</span>
       </div>
 
@@ -105,18 +107,18 @@ const props = withDefaults(defineProps<Props>(), {
   isOutgoing: false
 })
 
+const emit = defineEmits<Emits>()
+
 interface Emits {
   /** Emitted when user clicks to preview image */
-  (e: 'preview', message: Message): void
+  (_e: 'preview', _message: Message): void
   /** Emitted when user clicks to download image */
-  (e: 'download', url: string, filename: string): void
+  (_e: 'download', _url: string, _filename: string): void
   /** Emitted when image loads successfully */
-  (e: 'image-load', message: Message): void
+  (_e: 'image-load', _message: Message): void
   /** Emitted when image fails to load */
-  (e: 'image-error', message: Message): void
+  (_e: 'image-error', _message: Message): void
 }
-
-const emit = defineEmits<Emits>()
 
 // ═══════════════════════════════════════════════════════════════
 // State Management

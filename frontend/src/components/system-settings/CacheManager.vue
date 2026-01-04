@@ -9,14 +9,22 @@
   <div class="cache-manager">
     <div class="manager-header">
       <div>
-        <h3 class="manager-title">{{ t('systemSettings.system.maintenance.title') }}</h3>
-        <p class="manager-description">{{ t('systemSettings.system.maintenance.description') }}</p>
+        <h3 class="manager-title">
+          {{ t('systemSettings.system.maintenance.title') }}
+        </h3>
+        <p class="manager-description">
+          {{ t('systemSettings.system.maintenance.description') }}
+        </p>
       </div>
     </div>
 
     <div class="maintenance-section">
-      <h4 class="section-title">{{ t('systemSettings.system.maintenance.cacheTitle') }}</h4>
-      <p class="section-description">{{ t('systemSettings.system.maintenance.cacheDescription') }}</p>
+      <h4 class="section-title">
+        {{ t('systemSettings.system.maintenance.cacheTitle') }}
+      </h4>
+      <p class="section-description">
+        {{ t('systemSettings.system.maintenance.cacheDescription') }}
+      </p>
 
       <div class="cache-actions">
         <button
@@ -58,8 +66,12 @@
     </div>
 
     <div class="maintenance-section">
-      <h4 class="section-title">{{ t('systemSettings.system.maintenance.systemTitle') }}</h4>
-      <p class="section-description">{{ t('systemSettings.system.maintenance.systemDescription') }}</p>
+      <h4 class="section-title">
+        {{ t('systemSettings.system.maintenance.systemTitle') }}
+      </h4>
+      <p class="section-description">
+        {{ t('systemSettings.system.maintenance.systemDescription') }}
+      </p>
 
       <div class="system-actions">
         <button
@@ -67,8 +79,14 @@
           :disabled="processing"
           @click="handleHealthCheck"
         >
-          <span v-if="processing" class="spinner"></span>
-          <span v-else class="action-icon">🏥</span>
+          <span
+            v-if="processing"
+            class="spinner"
+          />
+          <span
+            v-else
+            class="action-icon"
+          >🏥</span>
           <span class="action-label">{{ t('systemSettings.system.maintenance.healthCheck') }}</span>
         </button>
 
@@ -77,8 +95,14 @@
           :disabled="processing"
           @click="handleRestart"
         >
-          <span v-if="processing" class="spinner"></span>
-          <span v-else class="action-icon">🔄</span>
+          <span
+            v-if="processing"
+            class="spinner"
+          />
+          <span
+            v-else
+            class="action-icon"
+          >🔄</span>
           <span class="action-label">{{ t('systemSettings.system.maintenance.restart') }}</span>
         </button>
       </div>

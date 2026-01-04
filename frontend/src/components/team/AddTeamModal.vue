@@ -133,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+ 
 import type { AddTeamFormData } from '@/composables/team-management'
 import type { TeamMember } from '@/types'
 
@@ -142,15 +143,15 @@ interface Props {
   loading: boolean
   availableMembers: TeamMember[]
   isAllMembersSelected: boolean
-  getInitials: (name: string) => string
-  getRoleDisplayName: (role: string) => string
+  getInitials: (_name: string) => string
+  getRoleDisplayName: (_role: string) => string
 }
 
 interface Emits {
-  (e: 'close'): void
-  (e: 'submit'): void
-  (e: 'toggle-member', memberId: string): void
-  (e: 'toggle-select-all'): void
+  (_e: 'close'): void
+  (_e: 'submit'): void
+  (_e: 'toggle-member', _memberId: string): void
+  (_e: 'toggle-select-all'): void
 }
 
 defineProps<Props>()

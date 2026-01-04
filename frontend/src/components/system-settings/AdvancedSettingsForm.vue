@@ -7,15 +7,27 @@
 
 <template>
   <div class="advanced-settings-form">
-    <h2 class="form-title">{{ t('systemSettings.advanced.title') }}</h2>
-    <p class="form-description">{{ t('systemSettings.advanced.description') }}</p>
+    <h2 class="form-title">
+      {{ t('systemSettings.advanced.title') }}
+    </h2>
+    <p class="form-description">
+      {{ t('systemSettings.advanced.description') }}
+    </p>
 
-    <form @submit.prevent="handleSave" class="settings-form">
+    <form
+      class="settings-form"
+      @submit.prevent="handleSave"
+    >
       <div class="settings-section">
-        <h3 class="section-title">{{ t('systemSettings.advanced.messaging') }}</h3>
+        <h3 class="section-title">
+          {{ t('systemSettings.advanced.messaging') }}
+        </h3>
 
         <div class="form-group">
-          <label for="messageQueueSize" class="form-label">
+          <label
+            for="messageQueueSize"
+            class="form-label"
+          >
             {{ t('systemSettings.advanced.messageQueueSize') }}
           </label>
           <input
@@ -27,12 +39,17 @@
             max="1000"
             step="10"
             required
-          />
-          <p class="form-hint">{{ t('systemSettings.advanced.messageQueueSizeHint') }}</p>
+          >
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.messageQueueSizeHint') }}
+          </p>
         </div>
 
         <div class="form-group">
-          <label for="messageTimeout" class="form-label">
+          <label
+            for="messageTimeout"
+            class="form-label"
+          >
             {{ t('systemSettings.advanced.messageTimeout') }}
           </label>
           <input
@@ -44,16 +61,23 @@
             max="60000"
             step="1000"
             required
-          />
-          <p class="form-hint">{{ t('systemSettings.advanced.messageTimeoutHint') }}</p>
+          >
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.messageTimeoutHint') }}
+          </p>
         </div>
       </div>
 
       <div class="settings-section">
-        <h3 class="section-title">{{ t('systemSettings.advanced.caching') }}</h3>
+        <h3 class="section-title">
+          {{ t('systemSettings.advanced.caching') }}
+        </h3>
 
         <div class="form-group">
-          <label for="cacheExpiry" class="form-label">
+          <label
+            for="cacheExpiry"
+            class="form-label"
+          >
             {{ t('systemSettings.advanced.cacheExpiry') }}
           </label>
           <input
@@ -65,12 +89,17 @@
             max="86400"
             step="60"
             required
-          />
-          <p class="form-hint">{{ t('systemSettings.advanced.cacheExpiryHint') }}</p>
+          >
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.cacheExpiryHint') }}
+          </p>
         </div>
 
         <div class="form-group">
-          <label for="sessionExpiry" class="form-label">
+          <label
+            for="sessionExpiry"
+            class="form-label"
+          >
             {{ t('systemSettings.advanced.sessionExpiry') }}
           </label>
           <input
@@ -82,13 +111,17 @@
             max="86400"
             step="300"
             required
-          />
-          <p class="form-hint">{{ t('systemSettings.advanced.sessionExpiryHint') }}</p>
+          >
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.sessionExpiryHint') }}
+          </p>
         </div>
       </div>
 
       <div class="settings-section">
-        <h3 class="section-title">{{ t('systemSettings.advanced.features') }}</h3>
+        <h3 class="section-title">
+          {{ t('systemSettings.advanced.features') }}
+        </h3>
 
         <div class="form-group-toggle">
           <label class="toggle-label">
@@ -96,11 +129,13 @@
               v-model="localSettings.enableRateLimit"
               type="checkbox"
               class="toggle-input"
-            />
-            <span class="toggle-slider"></span>
+            >
+            <span class="toggle-slider" />
             <span class="toggle-text">{{ t('systemSettings.advanced.enableRateLimit') }}</span>
           </label>
-          <p class="form-hint">{{ t('systemSettings.advanced.enableRateLimitHint') }}</p>
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.enableRateLimitHint') }}
+          </p>
         </div>
 
         <div class="form-group-toggle">
@@ -109,11 +144,13 @@
               v-model="localSettings.enableLogging"
               type="checkbox"
               class="toggle-input"
-            />
-            <span class="toggle-slider"></span>
+            >
+            <span class="toggle-slider" />
             <span class="toggle-text">{{ t('systemSettings.advanced.enableLogging') }}</span>
           </label>
-          <p class="form-hint">{{ t('systemSettings.advanced.enableLoggingHint') }}</p>
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.enableLoggingHint') }}
+          </p>
         </div>
 
         <div class="form-group-toggle">
@@ -122,11 +159,13 @@
               v-model="localSettings.enableMetrics"
               type="checkbox"
               class="toggle-input"
-            />
-            <span class="toggle-slider"></span>
+            >
+            <span class="toggle-slider" />
             <span class="toggle-text">{{ t('systemSettings.advanced.enableMetrics') }}</span>
           </label>
-          <p class="form-hint">{{ t('systemSettings.advanced.enableMetricsHint') }}</p>
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.enableMetricsHint') }}
+          </p>
         </div>
       </div>
 
@@ -136,7 +175,10 @@
           class="btn-primary"
           :disabled="saving"
         >
-          <span v-if="saving" class="spinner"></span>
+          <span
+            v-if="saving"
+            class="spinner"
+          />
           {{ saving ? t('common.saving') : t('common.save') }}
         </button>
       </div>

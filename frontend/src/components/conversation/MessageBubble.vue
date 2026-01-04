@@ -619,9 +619,6 @@ const attachmentProps = computed(() => ({
 }))
 
 const {
-  attachmentUrl,
-  attachmentName,
-  attachmentSize,
   fileAttachments, // Used internally by imageAttachments and nonImageAttachments
   imageAttachments,
   nonImageAttachments,

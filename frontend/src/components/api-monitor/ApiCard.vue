@@ -179,10 +179,10 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'toggle', id: string): void
-  (e: 'test', api: ApiEndpoint): void
-  (e: 'view-logs', api: ApiEndpoint): void
-  (e: 'view-docs', api: ApiEndpoint): void
+  (_e: 'toggle', _id: string): void
+  (_e: 'test', _api: ApiEndpoint): void
+  (_e: 'view-logs', _api: ApiEndpoint): void
+  (_e: 'view-docs', _api: ApiEndpoint): void
 }
 
 const props = defineProps<Props>()
@@ -212,17 +212,17 @@ const categoryText = computed(() => {
 
 const responseTimeClass = computed(() => {
   const time = props.api.responseTime
-  if (time < 200) return 'excellent'
-  if (time < 500) return 'good'
-  if (time < 1000) return 'fair'
+  if (time < 200) {return 'excellent'}
+  if (time < 500) {return 'good'}
+  if (time < 1000) {return 'fair'}
   return 'poor'
 })
 
 const successRateClass = computed(() => {
   const rate = props.api.successRate
-  if (rate >= 98) return 'excellent'
-  if (rate >= 95) return 'good'
-  if (rate >= 90) return 'fair'
+  if (rate >= 98) {return 'excellent'}
+  if (rate >= 95) {return 'good'}
+  if (rate >= 90) {return 'fair'}
   return 'poor'
 })
 

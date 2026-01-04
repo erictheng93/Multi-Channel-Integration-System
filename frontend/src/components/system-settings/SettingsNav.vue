@@ -15,7 +15,10 @@
         :class="{ active: modelValue === tab.key }"
         @click="$emit('update:modelValue', tab.key)"
       >
-        <component :is="tab.icon" class="tab-icon" />
+        <component
+          :is="tab.icon"
+          class="tab-icon"
+        />
         <span class="tab-label">{{ tab.label }}</span>
       </button>
     </div>

@@ -101,12 +101,12 @@ const props = withDefaults(defineProps<Props>(), {
   imageSize: 0
 })
 
-interface Emits {
-  (e: 'close'): void
-  (e: 'download'): void
-}
-
 const emit = defineEmits<Emits>()
+
+interface Emits {
+  (_e: 'close'): void
+  (_e: 'download'): void
+}
 
 const currentZoom = ref(1)
 const minZoom = 0.5
