@@ -236,5 +236,17 @@ export const notificationApi = {
     data?: Record<string, unknown>
   }): Promise<ApiResponse<{ ids: string[]; count: number }>> => {
     return apiClient.post('/notifications/system', params)
+  },
+
+  // ==================== 設定管理 ====================
+
+  // 獲取通知設定
+  getSettings: async (): Promise<ApiResponse<NotificationSettings>> => {
+    return apiClient.get('/notifications/settings')
+  },
+
+  // 更新通知設定
+  updateSettings: async (settings: Partial<Omit<NotificationSettings, 'userId'>>): Promise<ApiResponse<void>> => {
+    return apiClient.put('/notifications/settings', settings)
   }
 }

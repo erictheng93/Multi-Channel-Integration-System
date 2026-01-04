@@ -192,7 +192,15 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off'
     }
   },
-  
+
+  // Team modal files overrides - allow prop mutation for form bindings
+  {
+    files: ['src/components/team/*Modal.vue'],
+    rules: {
+      'vue/no-mutating-props': 'off'
+    }
+  },
+
   // Icons files overrides
   {
     files: ['src/components/icons/**/*.ts'],

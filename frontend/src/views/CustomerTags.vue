@@ -31,6 +31,7 @@
                 />
               </svg>
               新增標籤
+              <span class="keyboard-hint">Ctrl+N</span>
             </button>
             <button
               class="btn btn-secondary"
@@ -139,26 +140,77 @@
         </div>
 
         <div class="toolbar-actions">
-          <button
+          <div
             v-if="selectedTags.length > 0"
-            class="btn btn-secondary"
-            @click="showBulkMenu = !showBulkMenu"
+            class="bulk-actions-wrapper"
           >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
+            <button
+              class="btn btn-secondary"
+              @click="showBulkMenu = !showBulkMenu"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-              />
-            </svg>
-            批量操作 ({{ selectedTags.length }})
-          </button>
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+              批量操作 ({{ selectedTags.length }})
+            </button>
+
+            <!-- 批量操作下拉選單 -->
+            <Transition name="dropdown">
+              <div
+                v-if="showBulkMenu"
+                class="bulk-menu-dropdown"
+              >
+                <button
+                  class="bulk-menu-item danger"
+                  @click="confirmBulkDelete"
+                >
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  批量刪除 ({{ selectedTags.length }})
+                </button>
+                <button
+                  class="bulk-menu-item"
+                  @click="clearSelection"
+                >
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  取消選擇
+                </button>
+              </div>
+            </Transition>
+          </div>
         </div>
       </div>
 
@@ -193,6 +245,7 @@
                 />
               </svg>
               立即創建
+              <span class="keyboard-hint">Ctrl+N</span>
             </button>
           </template>
         </EmptyState>
@@ -258,9 +311,34 @@
                 v-model="formData.name"
                 type="text"
                 class="form-input"
+                :class="{ 'input-error': isDuplicateName }"
                 placeholder="例如: VIP客戶"
                 maxlength="50"
               >
+              <div
+                v-if="isDuplicateName"
+                class="form-error"
+              >
+                <svg
+                  class="error-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 8v4m0 4h.01"
+                  />
+                </svg>
+                標籤名稱「{{ formData.name.trim() }}」已存在
+              </div>
             </div>
 
             <div class="form-group">
@@ -340,7 +418,7 @@
             </button>
             <button
               class="btn btn-primary"
-              :disabled="!formData.name"
+              :disabled="!formData.name.trim() || isDuplicateName"
               @click="saveTag"
             >
               <svg
@@ -432,13 +510,96 @@
       :tag="statsTag"
       @close="showStatsModal = false"
     />
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <Modal
+      :show="showBulkDeleteModal"
+      title="確認批量刪除標籤"
+      size="md"
+      @close="cancelBulkDelete"
+    >
+      <div class="delete-modal-content">
+        <div class="delete-warning-icon">
+          <svg
+            class="icon-large"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+        <p class="delete-message">
+          確定要批量刪除
+          <span class="tag-name-highlight">{{ selectedTags.length }} 個標籤</span>
+          嗎？
+        </p>
+        <div class="bulk-delete-list">
+          <div
+            v-for="tagId in selectedTags.slice(0, 5)"
+            :key="tagId"
+            class="bulk-delete-tag-item"
+          >
+            <div
+              class="tag-color-dot"
+              :style="{ backgroundColor: getTagById(tagId)?.color }"
+            />
+            <span>{{ getTagById(tagId)?.name }}</span>
+          </div>
+          <div
+            v-if="selectedTags.length > 5"
+            class="bulk-delete-more"
+          >
+            還有 {{ selectedTags.length - 5 }} 個標籤...
+          </div>
+        </div>
+        <p class="delete-description">
+          此操作無法撤銷。刪除後，這些標籤將從所有客戶和對話中移除。
+        </p>
+      </div>
+
+      <template #footer>
+        <button
+          class="modal-cancel-btn"
+          @click="cancelBulkDelete"
+        >
+          取消
+        </button>
+        <button
+          class="modal-delete-btn"
+          @click="executeBulkDelete"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          確認刪除 ({{ selectedTags.length }})
+        </button>
+      </template>
+    </Modal>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { getTags, createTag, updateTag, deleteTag, type Tag } from '@/api/tags'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { createTag, updateTag, deleteTag, type Tag } from '@/api/tags'
+import { tagCacheService } from '@/services/tagCacheService'
 import { useToast } from '@/composables/useToast'
+import { useDebounceFn } from '@vueuse/core'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -451,12 +612,14 @@ const { showSuccess, showError } = useToast()
 
 const loading = ref(true)  // 初始為 true，避免首次渲染時閃爍空狀態
 const searchQuery = ref('')
+const debouncedSearchQuery = ref('')  // 🚀 防抖搜尋查詢
 const tags = ref<Tag[]>([])
 const selectedTags = ref<number[]>([])
 const showBulkMenu = ref(false)
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
+const showBulkDeleteModal = ref(false)
 const showStatsModal = ref(false)
 const editingTag = ref<Tag | null>(null)
 const deletingTag = ref<Tag | null>(null)
@@ -477,12 +640,23 @@ const predefinedColors = [
 const totalTags = computed(() => tags.value.length)
 const totalCustomers = computed(() => tags.value.reduce((sum, t) => sum + (t.customerCount || 0), 0))
 
+// 實時驗證：檢查名稱是否重複
+const isDuplicateName = computed(() => {
+  const trimmedName = formData.value.name.trim().toLowerCase()
+  if (!trimmedName) {return false}
+
+  return tags.value.some(
+    t => t.name.toLowerCase() === trimmedName &&
+         t.id !== editingTag.value?.id
+  )
+})
+
 const filteredTags = computed(() => {
   let result = tags.value
 
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
+  // Search filter - 🚀 使用防抖搜尋查詢
+  if (debouncedSearchQuery.value) {
+    const query = debouncedSearchQuery.value.toLowerCase()
     result = result.filter(
       t => t.name.toLowerCase().includes(query) || t.description?.toLowerCase().includes(query)
     )
@@ -491,16 +665,29 @@ const filteredTags = computed(() => {
   return result
 })
 
-// Load tags
+// 🚀 防抖搜尋處理 (300ms 延遲)
+const updateDebouncedSearch = useDebounceFn((value: string) => {
+  debouncedSearchQuery.value = value
+}, 300)
+
+// 監聽搜尋輸入變化
+watch(searchQuery, (newValue) => {
+  updateDebouncedSearch(newValue)
+})
+
+// Load tags - 🚀 使用 tagCacheService 優化
 const loadTags = async () => {
   try {
     loading.value = true
-    const response = await getTags({ pageSize: 100 })
-    if (response.success) {
-      tags.value = response.data
-    }
+    // 使用緩存服務載入標籤（3分鐘TTL）
+    tags.value = await tagCacheService.ensureTagsLoaded()
+    console.log(`✅ [CustomerTags] Loaded ${tags.value.length} tags from cache service`)
   } catch (error) {
-    console.error('Failed to load tags:', error)
+    console.error('❌ [CustomerTags] Failed to load tags:', error)
+    showError(
+      '載入標籤失敗',
+      '請檢查網路連線或稍後重試'
+    )
   } finally {
     loading.value = false
   }
@@ -577,7 +764,31 @@ const editTag = (tag: Tag) => {
 // Save tag - 🚀 乐观UI更新版本
 const saveTag = async () => {
   const isEdit = showEditModal.value && editingTag.value
-  const tagName = formData.value.name
+  const tagName = formData.value.name.trim()
+
+  // ===== 驗證：檢查名稱是否為空 =====
+  if (!tagName) {
+    showError(
+      '標籤名稱不能為空',
+      '請輸入有效的標籤名稱'
+    )
+    return
+  }
+
+  // ===== 驗證：檢查名稱是否重複 =====
+  const isDuplicate = tags.value.some(
+    t => t.name.toLowerCase() === tagName.toLowerCase() &&
+         t.id !== editingTag.value?.id
+  )
+
+  if (isDuplicate) {
+    showError(
+      '標籤名稱已存在',
+      `標籤「${tagName}」已經存在，請使用不同的名稱`,
+      { duration: 4000 }
+    )
+    return
+  }
 
   try {
     if (isEdit && editingTag.value) {
@@ -607,7 +818,11 @@ const saveTag = async () => {
 
       // 🔄 后台验证 - 使用保存的 updateData 而非 formData.value
       try {
-        await updateTag(tagId, updateData)
+        const response = await updateTag(tagId, updateData)
+        if (response.success && response.data) {
+          // 🚀 更新緩存
+          tagCacheService.optimisticUpdateTag(response.data)
+        }
         console.log('✅ [CustomerTags] Tag updated (verified):', tagName)
       } catch (error) {
         // ❌ 失败 - 回滚UI
@@ -662,6 +877,8 @@ const saveTag = async () => {
           if (index !== -1) {
             tags.value[index] = response.data
           }
+          // 🚀 更新緩存
+          tagCacheService.optimisticAddTag(response.data)
           console.log('✅ [CustomerTags] Tag created (verified):', tagName)
         }
       } catch (error) {
@@ -713,6 +930,8 @@ const executeDelete = async () => {
   // 🔄 后台验证
   try {
     await deleteTag(tagToDelete.id)
+    // 🚀 更新緩存
+    tagCacheService.optimisticRemoveTag(tagToDelete.id)
     console.log('✅ [CustomerTags] Tag deleted (verified):', tagName)
   } catch (error) {
     // ❌ 失败 - 回滚UI
@@ -751,8 +970,132 @@ const closeModals = () => {
   }
 }
 
+// ===== 🚀 批量操作功能 =====
+// Get tag by ID helper
+const getTagById = (id: number): Tag | undefined => {
+  return tags.value.find(t => t.id === id)
+}
+
+// Clear selection
+const clearSelection = () => {
+  selectedTags.value = []
+  showBulkMenu.value = false
+}
+
+// Confirm bulk delete - Show modal
+const confirmBulkDelete = () => {
+  if (selectedTags.value.length === 0) {return}
+  showBulkMenu.value = false
+  showBulkDeleteModal.value = true
+}
+
+// Execute bulk delete - 🚀 樂觀UI更新版本
+const executeBulkDelete = async () => {
+  if (selectedTags.value.length === 0) {return}
+
+  const tagIdsToDelete = [...selectedTags.value]
+  const tagCount = tagIdsToDelete.length
+
+  // ===== 樂觀批量刪除 - 立即更新UI =====
+  const deletedTags = tagIdsToDelete.map(id => optimisticDeleteTag(id)).filter(Boolean) as Tag[]
+
+  // ✅ 立即顯示成功提示
+  showSuccess(
+    '批量刪除成功',
+    `成功刪除 ${tagCount} 個標籤`,
+    { duration: 3000 }
+  )
+
+  // 關閉模態框和清理狀態
+  showBulkDeleteModal.value = false
+  selectedTags.value = []
+
+  // 🔄 後台驗證 - 批量刪除
+  try {
+    // 並行刪除所有標籤
+    const deletePromises = tagIdsToDelete.map(id => deleteTag(id))
+    const results = await Promise.allSettled(deletePromises)
+
+    // 檢查是否有失敗的刪除
+    const failedCount = results.filter(r => r.status === 'rejected').length
+
+    if (failedCount > 0) {
+      // 部分失敗 - 需要回滾失敗的標籤
+      console.error(`❌ [CustomerTags] ${failedCount}/${tagCount} tags failed to delete`)
+
+      // 重新載入標籤列表以確保數據一致性
+      await loadTags()
+
+      showError(
+        '批量刪除部分失敗',
+        `${failedCount} 個標籤刪除失敗，請重試`
+      )
+    } else {
+      // 🚀 更新緩存 - 批量移除
+      tagIdsToDelete.forEach(id => tagCacheService.optimisticRemoveTag(id))
+      console.log(`✅ [CustomerTags] ${tagCount} tags deleted successfully (verified)`)
+    }
+  } catch (error) {
+    // ❌ 完全失敗 - 回滾所有UI更改
+    deletedTags.forEach(tag => rollbackDeleteTag(tag))
+
+    showError(
+      '批量刪除失敗',
+      '請檢查網路連線或稍後重試'
+    )
+    console.error('❌ [CustomerTags] Failed to bulk delete tags:', error)
+  }
+}
+
+// Cancel bulk delete
+const cancelBulkDelete = () => {
+  showBulkDeleteModal.value = false
+}
+
+// ===== 🎹 鍵盤快捷鍵支援 =====
+const handleKeyboardShortcuts = (event: KeyboardEvent) => {
+  // Ctrl+N 或 Cmd+N: 新增標籤
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'n') {
+    event.preventDefault()
+    showCreateModal.value = true
+    return
+  }
+
+  // ESC: 關閉所有模態框
+  if (event.key === 'Escape') {
+    if (showCreateModal.value || showEditModal.value) {
+      closeModals()
+    } else if (showDeleteModal.value) {
+      cancelDelete()
+    } else if (showBulkDeleteModal.value) {
+      cancelBulkDelete()
+    } else if (showBulkMenu.value) {
+      showBulkMenu.value = false
+    }
+    return
+  }
+
+  // Ctrl+/ 或 Cmd+/: 聚焦搜尋框
+  if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+    event.preventDefault()
+    const searchInput = document.querySelector('.search-input') as HTMLInputElement
+    if (searchInput) {
+      searchInput.focus()
+    }
+    return
+  }
+}
+
 onMounted(() => {
   loadTags()
+  // 🎹 添加鍵盤快捷鍵監聽
+  document.addEventListener('keydown', handleKeyboardShortcuts)
+  console.log('🎹 [CustomerTags] Keyboard shortcuts enabled: Ctrl+N (新增), ESC (關閉), Ctrl+/ (搜尋)')
+})
+
+onUnmounted(() => {
+  // 🧹 移除鍵盤快捷鍵監聽
+  document.removeEventListener('keydown', handleKeyboardShortcuts)
 })
 </script>
 
@@ -1024,6 +1367,26 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+/* Keyboard Hint */
+.keyboard-hint {
+  margin-left: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+
+.btn-secondary .keyboard-hint {
+  background: var(--gray-200);
+  border-color: var(--gray-300);
+  color: var(--gray-600);
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
@@ -1127,6 +1490,38 @@ onMounted(() => {
 .form-textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+/* Form Validation */
+.input-error {
+  border-color: var(--danger-500) !important;
+  background: var(--danger-50) !important;
+}
+
+.input-error:focus {
+  border-color: var(--danger-600) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.form-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--danger-50);
+  border-left: 3px solid var(--danger-500);
+  border-radius: var(--radius-md);
+  color: var(--danger-700);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.error-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--danger-600);
 }
 
 /* 顏色選擇區域容器 */
@@ -1459,6 +1854,111 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+/* Bulk Actions */
+.bulk-actions-wrapper {
+  position: relative;
+}
+
+.bulk-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 220px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  padding: var(--space-2);
+  z-index: 100;
+}
+
+.bulk-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bulk-menu-item:hover {
+  background: var(--gray-50);
+  color: var(--gray-900);
+}
+
+.bulk-menu-item.danger {
+  color: var(--danger-600);
+}
+
+.bulk-menu-item.danger:hover {
+  background: var(--danger-50);
+  color: var(--danger-700);
+}
+
+.bulk-menu-item .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Bulk Delete Modal */
+.bulk-delete-list {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.bulk-delete-tag-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+}
+
+.tag-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.bulk-delete-more {
+  padding: var(--space-2) 0;
+  color: var(--gray-500);
+  font-size: 0.8125rem;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Dropdown Animation */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .stat-card,
@@ -1466,12 +1966,18 @@ onMounted(() => {
   .action-btn,
   .btn,
   .modal-overlay,
-  .modal-content {
+  .modal-content,
+  .bulk-menu-dropdown {
     transition: none !important;
   }
 
   .stat-card:hover,
   .tag-card:hover {
+    transform: none !important;
+  }
+
+  .dropdown-enter-from,
+  .dropdown-leave-to {
     transform: none !important;
   }
 }

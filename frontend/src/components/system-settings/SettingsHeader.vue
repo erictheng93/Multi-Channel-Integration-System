@@ -9,21 +9,32 @@
   <div class="settings-header">
     <div class="header-content">
       <div class="header-text">
-        <h1 class="header-title">{{ t('systemSettings.title') }}</h1>
-        <p class="header-subtitle">{{ t('systemSettings.subtitle') }}</p>
+        <h1 class="header-title">
+          {{ t('systemSettings.title') }}
+        </h1>
+        <p class="header-subtitle">
+          {{ t('systemSettings.subtitle') }}
+        </p>
       </div>
       <button
         class="refresh-button"
         :disabled="loading"
-        @click="$emit('refresh')"
         :title="t('common.refresh')"
+        @click="$emit('refresh')"
       >
-        <span class="refresh-icon" :class="{ spinning: loading }">&#x21bb;</span>
+        <span
+          class="refresh-icon"
+          :class="{ spinning: loading }"
+        >&#x21bb;</span>
         {{ t('common.refresh') }}
       </button>
     </div>
 
-    <div v-if="message" class="message-banner" :class="messageTypeClass">
+    <div
+      v-if="message"
+      class="message-banner"
+      :class="messageTypeClass"
+    >
       <span class="message-icon">{{ messageIcon }}</span>
       <span class="message-text">{{ message }}</span>
     </div>

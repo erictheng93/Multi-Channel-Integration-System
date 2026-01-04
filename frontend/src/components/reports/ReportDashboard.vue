@@ -275,7 +275,7 @@ function handleDeleteReport(report: ReportBase) {
 }
 
 async function confirmDelete() {
-  if (!reportToDelete.value) return
+  if (!reportToDelete.value) {return}
 
   const success = await deleteReport(reportToDelete.value.id)
 

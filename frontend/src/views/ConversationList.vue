@@ -356,6 +356,8 @@ import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import SmartVirtualScrollList from '@/components/ui/SmartVirtualScrollList.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
+import { translateError } from '@/utils/error-handler'
+import toast from '@/composables/useToast'
 
 import { RefreshIcon, ChatIcon } from '@/components/icons'
 import { tagCacheService } from '@/services/tagCacheService'
@@ -396,6 +398,12 @@ const filters = ref<ConversationFilters>({
   assignedTo: undefined
 })
 
+// 錯誤狀態
+const loadError = ref<string | null>(null)
+const hasNetworkError = ref(false)
+const retryCount = ref(0)
+const MAX_RETRY_COUNT = 3
+
 // 虛擬滾動狀態
 const reachedEnd = ref(false)
 const visibleRange = ref({ startIndex: 0, endIndex: 0 })
@@ -414,9 +422,31 @@ const unreadCount = computed(() =>
 )
 
 // Methods - Using smart cache loading with all optimizations
+
+/**
+ * 載入對話列表，使用多層優化策略
+ *
+ * 優化策略包括：
+ * 1. 預測性預載入 - 使用預先載入的數據實現零等待
+ * 2. 智能快取 - 優先顯示快取數據，後台更新
+ * 3. 增量更新動畫 - 平滑的數據更新過渡
+ * 4. 空閒時間處理 - 在瀏覽器空閒時進行預載入
+ *
+ * @async
+ * @throws {Error} 當 API 請求失敗時拋出錯誤（已捕獲並記錄）
+ *
+ * @example
+ * // 初始載入
+ * await loadConversations()
+ *
+ * @example
+ * // 篩選變更後載入
+ * filters.value.status = 'open'
+ * await loadConversations()
+ */
 async function loadConversations() {
   console.log('🚀 [ConversationList] Loading conversations with advanced optimizations')
-  
+
   try {
     // 準備篩選條件
     const apiFilters: Record<string, unknown> = { ...filters.value }
@@ -481,24 +511,93 @@ async function loadConversations() {
     idleTimeProcessor.scheduleTask(() => {
       predictiveLoader.predictAndPreload()
     }, TaskPriority._LOW)
-    
+
+    // 載入成功，清除錯誤狀態
+    loadError.value = null
+    hasNetworkError.value = false
+    retryCount.value = 0
+
   } catch (error) {
     console.error('載入對話失敗:', error)
+
+    // 設置錯誤狀態
+    const errorMessage = translateError(error, '載入對話失敗')
+    loadError.value = errorMessage
+    hasNetworkError.value = true
+
+    // 顯示用戶友好的錯誤提示
+    toast.error(errorMessage, undefined, {
+      duration: 5000,
+      actionText: '重試',
+      onAction: () => {
+        if (retryCount.value < MAX_RETRY_COUNT) {
+          retryCount.value++
+          loadConversations()
+        } else {
+          toast.warning('已達最大重試次數，請稍後再試')
+        }
+      }
+    })
+
+    // 記錄錯誤到監控系統
+    if (import.meta.env.PROD) {
+      // TODO: 發送錯誤到監控服務（如 Sentry）
+      console.error('[ConversationList] Production error:', {
+        error,
+        filters: filters.value,
+        page: currentPage.value,
+        timestamp: new Date().toISOString()
+      })
+    }
   }
 }
 
+/**
+ * 選擇對話並導航到詳情頁
+ *
+ * @param {Conversation} conversation - 要查看的對話對象
+ *
+ * @example
+ * selectConversation(conversation)
+ * // 導航到 /conversations/{conversation.id}
+ */
 function selectConversation(conversation: Conversation) {
   selectedConversationId.value = conversation.id
   router.push(`/conversations/${conversation.id}`)
 }
 
+/**
+ * 切換分頁
+ *
+ * @param {number} page - 目標頁碼（從1開始）
+ *
+ * @remarks
+ * - 會驗證頁碼是否在有效範圍內（1 到 totalPages）
+ * - 無效頁碼會被忽略
+ * - 頁碼變更後會自動重新載入對話
+ *
+ * @example
+ * changePage(2) // 跳轉到第2頁
+ */
 function changePage(page: number) {
   if (page < 1 || page > totalPages.value) {return}
   currentPage.value = page
   loadConversations()
 }
 
-
+/**
+ * 清除所有篩選條件並重新載入對話
+ *
+ * @remarks
+ * 重置以下篩選條件：
+ * - status: 對話狀態
+ * - platform: 平台類型
+ * - assignedTo: 指派對象
+ * - tagIds: 標籤ID列表
+ *
+ * @example
+ * clearFilters() // 顯示所有對話
+ */
 function clearFilters() {
   filters.value = {
     status: '',
@@ -511,7 +610,19 @@ function clearFilters() {
   loadConversations()
 }
 
-// 標籤篩選方法
+/**
+ * 切換標籤篩選狀態
+ *
+ * @param {number} tagId - 標籤ID
+ *
+ * @remarks
+ * - 如果標籤已選中，則取消選中
+ * - 如果標籤未選中，則選中
+ * - 會自動重置到第一頁並重新載入對話
+ *
+ * @example
+ * toggleTagFilter(1) // 選中/取消選中 ID=1 的標籤
+ */
 function toggleTagFilter(tagId: number) {
   const index = selectedTagIds.value.indexOf(tagId)
   if (index > -1) {
@@ -524,6 +635,19 @@ function toggleTagFilter(tagId: number) {
   loadConversations()
 }
 
+/**
+ * 清除標籤篩選並關閉下拉選單
+ *
+ * @remarks
+ * 執行以下操作：
+ * - 清空選中的標籤ID列表
+ * - 清除篩選條件中的 tagIds
+ * - 關閉標籤下拉選單
+ * - 重置到第一頁並重新載入
+ *
+ * @example
+ * clearTagFilter() // 移除所有標籤篩選
+ */
 function clearTagFilter() {
   selectedTagIds.value = []
   filters.value.tagIds = []
@@ -558,12 +682,27 @@ conversationSync.onStatus((status) => {
   }
 })
 
-// 手動刷新 - 使用新的store方法
+/**
+ * 手動刷新對話列表
+ *
+ * @async
+ *
+ * @remarks
+ * 使用雙重刷新策略：
+ * 1. 優先使用 store 的 refresh 方法（更平滑的用戶體驗）
+ * 2. 同時刷新 WebSocket 同步服務
+ * 3. 如果失敗，回退到原始的 loadConversations 方法
+ *
+ * @throws {Error} 刷新失敗時會捕獲錯誤並回退
+ *
+ * @example
+ * await refreshConversations() // 手動刷新
+ */
 async function refreshConversations() {
   console.log('🔄 [ConversationList] Manual refresh triggered')
   currentPage.value = 1
   isAutoRefreshing.value = true
-  
+
   try {
     // 優先使用store的refresh方法（更平滑）
     await storeRefresh()
@@ -578,25 +717,52 @@ async function refreshConversations() {
   }
 }
 
-// 新增：載入更多對話
+/**
+ * 載入更多對話（分頁載入）
+ *
+ * @async
+ *
+ * @remarks
+ * - 只在 canLoadMore 為 true 時執行
+ * - 更新總數量計數器
+ *
+ * @example
+ * await loadMoreConversations() // 載入下一頁
+ */
 async function loadMoreConversations() {
   if (!conversationsStore.canLoadMore) {return}
-  
+
   console.log('📄 [ConversationList] Loading more conversations')
   await conversationsStore.loadMore()
   total.value = conversationsStore.pagination.total
 }
 
-// 虛擬滾動事件處理
+/**
+ * 處理虛擬滾動到底部事件
+ *
+ * @async
+ *
+ * @remarks
+ * 邊緣情況處理：
+ * - 防止重複載入（檢查 loadingMore 和 reachedEnd）
+ * - 檢測是否真的載入了新數據（比較長度）
+ * - 自動設置 reachedEnd 標記
+ *
+ * @throws {Error} 載入失敗時記錄錯誤但不中斷程序
+ *
+ * @example
+ * // 由 SmartVirtualScrollList 自動觸發
+ * handleLoadMore()
+ */
 async function handleLoadMore() {
   if (loadingMore || reachedEnd.value) {return}
-  
+
   console.log('🔄 [ConversationList] Virtual scroll reached bottom, loading more')
-  
+
   try {
     const currentLength = conversations.value.length
     await loadMoreConversations()
-    
+
     // 檢查是否真的載入了更多數據
     if (conversations.value.length === currentLength) {
       reachedEnd.value = true
@@ -604,42 +770,80 @@ async function handleLoadMore() {
     }
   } catch (error) {
     console.error('❌ [ConversationList] Failed to load more conversations:', error)
+
+    // 顯示錯誤提示
+    const errorMessage = translateError(error, '載入更多對話失敗')
+    toast.error(errorMessage, undefined, {
+      duration: 3000,
+      actionText: '重試',
+      onAction: () => handleLoadMore()
+    })
   }
 }
 
-// 預測性載入事件處理
+/**
+ * 處理預測性載入事件
+ *
+ * @param {'up' | 'down'} direction - 滾動方向
+ * @param {number} estimatedDistance - 估計距離（剩餘項目數）
+ *
+ * @remarks
+ * AI驅動的預測載入：
+ * - 記錄用戶滾動行為用於機器學習
+ * - 在空閒時間執行預測分析和預載入
+ * - 當接近底部時（<5項）自動載入更多
+ *
+ * @example
+ * handlePredictiveLoad('down', 3) // 向下滾動，剩餘3項
+ */
 function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: number) {
   console.log(`🔮 [ConversationList] Predictive load triggered: ${direction}, distance: ${estimatedDistance}`)
-  
+
   // 記錄滾動行為用於預測
   predictiveLoader.recordBehavior({
     type: 'scroll',
     timestamp: Date.now(),
     data: { direction, estimatedDistance }
   })
-  
+
   // 在空閒時間執行預測性載入
   idleTimeProcessor.scheduleTask(() => {
     predictiveLoader.predictAndPreload()
   }, TaskPriority._LOW)
-  
+
   // 如果用戶接近數據底部，提前載入更多
   if (direction === 'down' && estimatedDistance < 5 && conversationsStore.canLoadMore) {
     handleLoadMore()
   }
 }
 
+/**
+ * 處理可見範圍變化事件（虛擬滾動）
+ *
+ * @param {number} startIndex - 可見範圍起始索引
+ * @param {number} endIndex - 可見範圍結束索引
+ *
+ * @remarks
+ * 智能預載入策略：
+ * - 閾值計算：最小10項或總數的80%
+ * - 防止重複預載入（isPreloading 標記）
+ * - 自動錯誤處理和狀態重置
+ * - 開發模式下輸出調試信息
+ *
+ * @example
+ * handleVisibleRangeChange(0, 20) // 顯示第0-20項
+ */
 function handleVisibleRangeChange(startIndex: number, endIndex: number) {
   visibleRange.value = { startIndex, endIndex }
-  
+
   // 智能預載入：當接近數據末尾時，預載入下一頁
   const loadThreshold = Math.max(10, Math.floor(conversations.value.length * 0.8))
-  
+
   if (endIndex >= loadThreshold && !isPreloading.value && !reachedEnd.value && conversationsStore.canLoadMore) {
     isPreloading.value = true
-    
+
     console.log(`🔮 [ConversationList] Smart preloading triggered at index ${endIndex}`)
-    
+
     preloadNextPage().then(() => {
       isPreloading.value = false
     }).catch((error) => {
@@ -647,7 +851,7 @@ function handleVisibleRangeChange(startIndex: number, endIndex: number) {
       isPreloading.value = false
     })
   }
-  
+
   if (import.meta.env.DEV) {
     console.log(`👀 [ConversationList] Visible range: ${startIndex}-${endIndex} of ${conversations.value.length}`)
   }

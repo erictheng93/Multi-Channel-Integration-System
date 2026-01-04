@@ -510,12 +510,13 @@
 
       <!-- 新增成員 Modal -->
       <AddMemberModal
-        :is-open="showAddMemberModal"
-        :team-id="team.id"
-        :team-name="team.name"
-        :current-members="members"
+        :visible="memberOps.addMemberModal.value"
+        :form="memberOps.addMemberForm"
+        :loading="memberOps.addMemberLoading.value"
+        :show-password="memberOps.showAddPassword.value"
         @close="closeAddMemberModal"
-        @member-added="handleMemberAdded"
+        @submit="handleMemberAdded"
+        @toggle-password="memberOps.toggleAddPasswordVisibility"
       />
 
       <!-- Modal Footer -->
@@ -540,6 +541,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useQRCodeStore } from '@/stores/qrcode'
+import { useMemberOperations } from '@/composables/team-management'
 import { getBackendUrl } from '@/config/runtime'
 import type { TeamMember, LiffQRCode } from '@/types'
 
@@ -591,8 +593,8 @@ const editForm = reactive({
   description: ''
 })
 
-// 成員管理狀態
-const showAddMemberModal = ref(false)
+// 成員管理狀態 - 使用 useMemberOperations composable
+const memberOps = useMemberOperations()
 const removingMemberId = ref<string | null>(null)
 
 // LIFF QR Code 狀態
@@ -753,35 +755,21 @@ const loadTeamMembers = async () => {
 
 // 顯示新增成員 Modal
 const openAddMemberModal = () => {
-  showAddMemberModal.value = true
+  memberOps.openAddMemberModal()
 }
 
 // 關閉新增成員 Modal
 const closeAddMemberModal = () => {
-  showAddMemberModal.value = false
+  memberOps.closeAddMemberModal()
 }
 
-// 當成員被新增時的回調
-const handleMemberAdded = (member: TeamMember) => {
-  // 🔧 修復：使用樂觀更新，直接更新本地狀態而非重新載入 API
-  // 這樣可以確保 UI 立即反映變化，避免 API 返回舊數據的問題
+// 提交新增成員
+const handleMemberAdded = async () => {
+  // 調用 memberOps 的提交方法
+  await memberOps.submitAddMember()
 
-  // 將新成員轉換為正確格式並加入列表
-  const newMember: TeamMember = {
-    id: member.id,
-    loginId: member.loginId || member.email || member.id,
-    name: member.name || member.loginId || '未命名',
-    email: member.email,
-    role: member.role as 'admin' | 'agent',
-    status: member.status || 'active',
-    teams: member.teams || [],
-    teamCount: member.teamCount || 1,
-    createdAt: member.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-
-  // 樂觀更新：直接將新成員加入到當前列表（使用新陣列觸發響應式更新）
-  members.value = [...members.value, newMember]
+  // 成功後刷新成員列表
+  await loadTeamMembers()
 
   // 通知父組件更新（用於更新團隊卡片上的成員數量）
   emit('member-updated')
@@ -1174,7 +1162,7 @@ const handleQRImageError = () => {
 watch(() => props.team.id, () => {
   showModal.value = false
   members.value = []
-  showAddMemberModal.value = false
+  memberOps.addMemberModal.value = false
   currentQRCode.value = null
 })
 </script>

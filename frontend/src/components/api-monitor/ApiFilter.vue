@@ -62,7 +62,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: FilterState): void
+  (_e: 'update:modelValue', _value: FilterState): void
 }
 
 const props = defineProps<Props>()

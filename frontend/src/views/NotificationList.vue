@@ -1,7 +1,14 @@
 <template>
-  <div class="notification-page">
+  <div
+    class="notification-page"
+    role="main"
+    aria-label="通知中心頁面"
+  >
     <!-- Page Header -->
-    <header class="page-header">
+    <header
+      class="page-header"
+      role="banner"
+    >
       <div class="header-content">
         <div class="header-title-section">
           <h1 class="page-title">
@@ -52,7 +59,7 @@
         </div>
         <div class="stat-card stat-card-highlight">
           <div class="stat-icon stat-icon-unread">
-            <BellRingIcon />
+            <BellIcon />
           </div>
           <div class="stat-content">
             <span class="stat-value">{{ stats?.unread || 0 }}</span>
@@ -85,7 +92,11 @@
     </header>
 
     <!-- Filters Section -->
-    <section class="filters-section">
+    <section
+      class="filters-section"
+      role="search"
+      aria-label="通知篩選選項"
+    >
       <div class="filters-row">
         <!-- Type Filter -->
         <div class="filter-group">
@@ -171,11 +182,19 @@
     </section>
 
     <!-- Notifications List -->
-    <section class="notifications-section">
+    <section
+      class="notifications-section"
+      role="region"
+      aria-label="通知列表"
+      aria-live="polite"
+      :aria-busy="loading"
+    >
       <!-- Loading State -->
       <div
         v-if="loading && notifications.length === 0"
         class="loading-state"
+        role="status"
+        aria-live="polite"
       >
         <LoadingSpinner size="lg" />
         <p>載入通知中...</p>
@@ -221,15 +240,22 @@
       >
         <TransitionGroup name="notification-list">
           <article
-            v-for="notification in notifications"
+            v-for="(notification, index) in notifications"
             :key="notification.id"
+            :ref="(el) => setNotificationRef(el, index)"
             class="notification-card"
             :class="{
               'notification-unread': !notification.isRead,
               'notification-urgent': notification.priority === 'urgent',
-              'notification-high': notification.priority === 'high'
+              'notification-high': notification.priority === 'high',
+              'notification-focused': focusedNotificationIndex === index
             }"
+            tabindex="0"
+            role="article"
+            :aria-label="`${notification.title} - ${notification.content}`"
+            :aria-describedby="`notification-${notification.id}-meta`"
             @click="handleNotificationClick(notification)"
+            @keydown.enter="handleNotificationClick(notification)"
           >
             <!-- Priority Indicator -->
             <div
@@ -257,10 +283,14 @@
               <p class="notification-text">
                 {{ notification.content }}
               </p>
-              <div class="notification-meta">
+              <div
+                :id="`notification-${notification.id}-meta`"
+                class="notification-meta"
+              >
                 <span
                   class="notification-type-badge"
                   :class="`type-${notification.type}`"
+                  role="status"
                 >
                   {{ getTypeLabel(notification.type) }}
                 </span>
@@ -268,6 +298,8 @@
                   v-if="notification.priority === 'urgent' || notification.priority === 'high'"
                   class="notification-priority-badge"
                   :class="`priority-${notification.priority}`"
+                  role="status"
+                  :aria-label="`優先級: ${notification.priority === 'urgent' ? '緊急' : '高優先'}`"
                 >
                   {{ notification.priority === 'urgent' ? '緊急' : '高優先' }}
                 </span>
@@ -277,22 +309,28 @@
             <!-- Actions -->
             <div
               class="notification-actions"
+              role="group"
+              aria-label="通知操作"
               @click.stop
             >
               <button
                 v-if="!notification.isRead"
                 class="action-btn"
-                title="標記已讀"
+                type="button"
+                :aria-label="`標記 ${notification.title} 為已讀`"
+                title="標記已讀 (Ctrl+M)"
                 @click="handleMarkRead(notification.id)"
               >
-                <CheckIcon />
+                <CheckIcon aria-hidden="true" />
               </button>
               <button
                 class="action-btn action-btn-danger"
-                title="刪除"
+                type="button"
+                :aria-label="`刪除 ${notification.title}`"
+                title="刪除 (Delete)"
                 @click="handleDelete(notification.id)"
               >
-                <TrashIcon />
+                <TrashIcon aria-hidden="true" />
               </button>
             </div>
 
@@ -478,15 +516,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationsStore, type Notification, type NotificationType, type NotificationPriority } from '@/stores/notifications'
+import { notificationApi } from '@/api/notifications'
 import { useToast } from '@/composables/useToast'
+import { useWebSocket } from '@/composables/useWebSocket'
 import { LoadingSpinner } from '@/components/ui'
 import {
   BellIcon,
   BellOffIcon,
   CheckIcon,
+  CheckAllIcon,
   TrashIcon,
   SettingsIcon,
   XIcon,
@@ -503,13 +544,14 @@ import {
   VolumeIcon
 } from '@/components/icons'
 
-// 額外圖標定義
-const BellRingIcon = BellIcon
-const CheckAllIcon = CheckIcon
-
 const router = useRouter()
 const store = useNotificationsStore()
 const { showSuccess } = useToast()
+const {
+  isConnected: wsConnected,
+  setEventCallbacks,
+  clearEventCallbacks
+} = useWebSocket({ autoConnect: true })
 
 // State
 const showSettings = ref(false)
@@ -517,6 +559,10 @@ const markingAllRead = ref(false)
 const selectedType = ref<NotificationType | ''>('')
 const selectedPriority = ref<NotificationPriority | ''>('')
 const selectedReadStatus = ref<boolean | undefined>(undefined)
+
+// Keyboard navigation state
+const focusedNotificationIndex = ref<number>(-1)
+const notificationRefs = ref<HTMLElement[]>([])
 
 // Settings state
 const settings = ref({
@@ -624,9 +670,108 @@ const handleNotificationClick = (notification: Notification) => {
   }
 }
 
+// Keyboard navigation handlers
+const handleKeyDown = (event: KeyboardEvent) => {
+  const notificationCount = notifications.value.length
+
+  if (notificationCount === 0) {return}
+
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      focusedNotificationIndex.value = Math.min(focusedNotificationIndex.value + 1, notificationCount - 1)
+      focusNotification(focusedNotificationIndex.value)
+      break
+
+    case 'ArrowUp':
+      event.preventDefault()
+      focusedNotificationIndex.value = Math.max(focusedNotificationIndex.value - 1, 0)
+      focusNotification(focusedNotificationIndex.value)
+      break
+
+    case 'Enter':
+      event.preventDefault()
+      if (focusedNotificationIndex.value >= 0 && focusedNotificationIndex.value < notificationCount) {
+        const notification = notifications.value[focusedNotificationIndex.value]
+        if (notification) {
+          handleNotificationClick(notification)
+        }
+      }
+      break
+
+    case 'Escape':
+      event.preventDefault()
+      if (showSettings.value) {
+        showSettings.value = false
+      } else {
+        // Clear focus
+        focusedNotificationIndex.value = -1
+        ;(document.activeElement as HTMLElement)?.blur()
+      }
+      break
+
+    case 'm':
+      // Mark as read shortcut
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        if (focusedNotificationIndex.value >= 0 && focusedNotificationIndex.value < notificationCount) {
+          const notification = notifications.value[focusedNotificationIndex.value]
+          if (notification && !notification.isRead) {
+            handleMarkRead(notification.id)
+          }
+        }
+      }
+      break
+
+    case 'Delete':
+    case 'Backspace':
+      // Delete notification shortcut
+      if (focusedNotificationIndex.value >= 0 && focusedNotificationIndex.value < notificationCount) {
+        event.preventDefault()
+        const notification = notifications.value[focusedNotificationIndex.value]
+        if (notification) {
+          handleDelete(notification.id)
+          // Adjust focus after deletion
+          focusedNotificationIndex.value = Math.min(focusedNotificationIndex.value, notificationCount - 2)
+        }
+      }
+      break
+  }
+}
+
+const focusNotification = (index: number) => {
+  if (notificationRefs.value[index]) {
+    notificationRefs.value[index].focus()
+    notificationRefs.value[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
+}
+
+const setNotificationRef = (el: any, index: number) => {
+  if (el) {
+    notificationRefs.value[index] = el
+  }
+}
+
 const saveSettings = async () => {
-  // TODO: Call API to save settings
-  showSuccess('設定已儲存')
+  try {
+    // Save to localStorage as backup (synchronous)
+    localStorage.setItem('notification-settings', JSON.stringify(settings.value))
+
+    // Save to API (asynchronous)
+    const response = await notificationApi.updateSettings(settings.value)
+
+    if (response.success) {
+      showSuccess('設定已儲存')
+    } else {
+      // If API fails, keep localStorage backup
+      console.warn('[NotificationSettings] API save failed, using localStorage backup:', response.error)
+      showSuccess('設定已暫存（離線模式）')
+    }
+  } catch (error) {
+    // On error, keep localStorage backup
+    console.error('[NotificationSettings] Failed to save settings:', error)
+    showSuccess('設定已暫存（離線模式）')
+  }
 }
 
 const getIcon = (type: NotificationType) => {
@@ -686,12 +831,109 @@ const formatTime = (dateStr: string) => {
   })
 }
 
+// Load settings from API or localStorage
+const loadSettings = async () => {
+  try {
+    // Try to load from API first
+    const response = await notificationApi.getSettings()
+
+    if (response.success && response.data) {
+      settings.value = {
+        pushEnabled: response.data.pushEnabled,
+        soundEnabled: response.data.soundEnabled,
+        emailEnabled: response.data.emailEnabled,
+        messageEnabled: response.data.messageEnabled,
+        assignmentEnabled: response.data.assignmentEnabled,
+        mentionEnabled: response.data.mentionEnabled
+      }
+
+      // Update localStorage backup
+      localStorage.setItem('notification-settings', JSON.stringify(settings.value))
+      console.log('✅ [NotificationSettings] Settings loaded from API')
+    } else {
+      // Fallback to localStorage
+      const cached = localStorage.getItem('notification-settings')
+      if (cached) {
+        settings.value = JSON.parse(cached)
+        console.log('📦 [NotificationSettings] Settings loaded from localStorage (fallback)')
+      }
+    }
+  } catch (_error) {
+    // Fallback to localStorage on error
+    const cached = localStorage.getItem('notification-settings')
+    if (cached) {
+      try {
+        settings.value = JSON.parse(cached)
+        console.log('📦 [NotificationSettings] Settings loaded from localStorage (error fallback)')
+      } catch (parseError) {
+        console.error('[NotificationSettings] Failed to parse localStorage settings:', parseError)
+      }
+    }
+  }
+}
+
+// WebSocket event handlers
+const handleNewNotification = (data: any) => {
+  console.log('🔔 [NotificationList] New notification received via WebSocket:', data)
+
+  // Add to store (will update UI automatically)
+  if (data && typeof data === 'object') {
+    if ('notification' in data && data.notification) {
+      store.addNotification(data.notification)
+    } else {
+      // If data itself is the notification
+      store.addNotification(data)
+    }
+  }
+
+  // Refresh stats
+  store.fetchStats()
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Load initial data
   await Promise.all([
     store.fetchNotifications(),
-    store.fetchStats()
+    store.fetchStats(),
+    loadSettings()
   ])
+
+  // Setup WebSocket event callbacks for real-time updates
+  if (setEventCallbacks) {
+    setEventCallbacks({
+      onNotification: (notification: unknown) => {
+        console.log('🔔 [NotificationList] New notification received via WebSocket:', notification)
+        handleNewNotification(notification)
+      }
+    })
+    console.log('✅ [NotificationList] WebSocket event callbacks registered')
+  }
+
+  // Reduce polling frequency since we have WebSocket
+  // Only poll every 2 minutes as a fallback
+  if (!wsConnected.value) {
+    store.startPolling(120000) // 2 minutes instead of 30 seconds
+    console.log('📡 [NotificationList] Fallback polling enabled (WebSocket disconnected)')
+  }
+
+  // Add keyboard event listener
+  document.addEventListener('keydown', handleKeyDown)
+  console.log('⌨️ [NotificationList] Keyboard navigation enabled')
+})
+
+onUnmounted(() => {
+  // Cleanup WebSocket event callbacks
+  if (clearEventCallbacks) {
+    clearEventCallbacks()
+    console.log('🧹 [NotificationList] WebSocket event callbacks cleared')
+  }
+
+  // Remove keyboard event listener
+  document.removeEventListener('keydown', handleKeyDown)
+
+  // Stop polling
+  store.stopPolling()
 })
 
 // Watch for filter changes
@@ -1064,7 +1306,19 @@ watch([selectedType, selectedPriority, selectedReadStatus], () => {
   box-shadow: var(--shadow-md);
 }
 
-.notification-card:hover .notification-actions {
+.notification-card:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+.notification-card.notification-focused {
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.notification-card:hover .notification-actions,
+.notification-card:focus .notification-actions,
+.notification-card.notification-focused .notification-actions {
   opacity: 1;
 }
 

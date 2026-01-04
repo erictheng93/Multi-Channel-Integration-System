@@ -112,12 +112,12 @@ export interface RecentActivityWidgetProps {
   /**
    * 获取状态图标
    */
-  getStatusIcon: (status: string) => string
+  getStatusIcon: (_status: string) => string
 
   /**
    * 格式化相对时间
    */
-  formatRelativeTime: (time: string) => string
+  formatRelativeTime: (_time: string) => string
 }
 
 defineProps<RecentActivityWidgetProps>()

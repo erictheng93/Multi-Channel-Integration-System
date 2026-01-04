@@ -138,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+ 
 import { ROLES } from '@/constants/roles'
 import type { AddMemberFormData } from '@/composables/team-management'
 
@@ -149,9 +150,9 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void
-  (e: 'submit'): void
-  (e: 'toggle-password'): void
+  (_e: 'close'): void
+  (_e: 'submit'): void
+  (_e: 'toggle-password'): void
 }
 
 defineProps<Props>()

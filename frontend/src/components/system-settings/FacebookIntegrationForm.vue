@@ -9,18 +9,31 @@
   <div class="facebook-integration-form">
     <div class="form-header">
       <div>
-        <h3 class="integration-title">{{ t('systemSettings.integrations.facebook.title') }}</h3>
-        <p class="integration-description">{{ t('systemSettings.integrations.facebook.description') }}</p>
+        <h3 class="integration-title">
+          {{ t('systemSettings.integrations.facebook.title') }}
+        </h3>
+        <p class="integration-description">
+          {{ t('systemSettings.integrations.facebook.description') }}
+        </p>
       </div>
-      <div class="status-badge" :class="statusClass">
-        <span class="status-dot"></span>
+      <div
+        class="status-badge"
+        :class="statusClass"
+      >
+        <span class="status-dot" />
         {{ statusText }}
       </div>
     </div>
 
-    <form @submit.prevent="handleSave" class="integration-form">
+    <form
+      class="integration-form"
+      @submit.prevent="handleSave"
+    >
       <div class="form-group">
-        <label for="facebookAppId" class="form-label">
+        <label
+          for="facebookAppId"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.facebook.appId') }}
         </label>
         <input
@@ -30,11 +43,14 @@
           class="form-input"
           :placeholder="t('systemSettings.integrations.facebook.appIdPlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="facebookAppSecret" class="form-label">
+        <label
+          for="facebookAppSecret"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.facebook.appSecret') }}
         </label>
         <input
@@ -44,11 +60,14 @@
           class="form-input"
           :placeholder="t('systemSettings.integrations.facebook.appSecretPlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="facebookPageId" class="form-label">
+        <label
+          for="facebookPageId"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.facebook.pageId') }}
         </label>
         <input
@@ -58,11 +77,14 @@
           class="form-input"
           :placeholder="t('systemSettings.integrations.facebook.pageIdPlaceholder')"
           required
-        />
+        >
       </div>
 
       <div class="form-group">
-        <label for="facebookPageToken" class="form-label">
+        <label
+          for="facebookPageToken"
+          class="form-label"
+        >
           {{ t('systemSettings.integrations.facebook.pageToken') }}
         </label>
         <textarea
@@ -72,7 +94,7 @@
           rows="3"
           :placeholder="t('systemSettings.integrations.facebook.pageTokenPlaceholder')"
           required
-        ></textarea>
+        />
       </div>
 
       <div class="form-actions">
@@ -82,7 +104,10 @@
           :disabled="testing || saving"
           @click="handleTest"
         >
-          <span v-if="testing" class="spinner"></span>
+          <span
+            v-if="testing"
+            class="spinner"
+          />
           {{ testing ? t('common.testing') : t('common.testConnection') }}
         </button>
 
@@ -100,7 +125,10 @@
           class="btn-primary"
           :disabled="saving || testing"
         >
-          <span v-if="saving" class="spinner"></span>
+          <span
+            v-if="saving"
+            class="spinner"
+          />
           {{ saving ? t('common.saving') : t('common.save') }}
         </button>
       </div>

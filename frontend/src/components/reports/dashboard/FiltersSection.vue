@@ -180,7 +180,7 @@ export interface FiltersSectionProps {
   /**
    * 获取报表类型图标的方法
    */
-  getReportTypeIcon: (type: ReportType) => string
+  getReportTypeIcon: (_type: ReportType) => string
 }
 
 const props = defineProps<FiltersSectionProps>()
