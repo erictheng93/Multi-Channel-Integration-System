@@ -516,7 +516,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationsStore, type Notification, type NotificationType, type NotificationPriority } from '@/stores/notifications'
 import { notificationApi } from '@/api/notifications'
@@ -746,8 +746,8 @@ const focusNotification = (index: number) => {
   }
 }
 
-const setNotificationRef = (el: any, index: number) => {
-  if (el) {
+const setNotificationRef = (el: Element | ComponentPublicInstance | null, index: number) => {
+  if (el && el instanceof HTMLElement) {
     notificationRefs.value[index] = el
   }
 }
@@ -873,16 +873,16 @@ const loadSettings = async () => {
 }
 
 // WebSocket event handlers
-const handleNewNotification = (data: any) => {
+const handleNewNotification = (data: unknown) => {
   console.log('🔔 [NotificationList] New notification received via WebSocket:', data)
 
   // Add to store (will update UI automatically)
   if (data && typeof data === 'object') {
     if ('notification' in data && data.notification) {
-      store.addNotification(data.notification)
+      store.addNotification(data.notification as Notification)
     } else {
       // If data itself is the notification
-      store.addNotification(data)
+      store.addNotification(data as Notification)
     }
   }
 

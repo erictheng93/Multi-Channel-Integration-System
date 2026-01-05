@@ -195,13 +195,14 @@ const emit = defineEmits<{
  * 处理筛选条件变更
  */
 function handleFilterChange(key: keyof ReportListQuery, value: string) {
-  const newFilters = { ...props.filters }
+  const newFilters = { ...props.filters } as Record<string, unknown>
   if (value === '') {
     newFilters[key] = undefined
   } else {
-    newFilters[key] = value as any
+    // Type-safe assignment based on ReportListQuery interface
+    newFilters[key] = value
   }
-  emit('update:filters', newFilters)
+  emit('update:filters', newFilters as ReportListQuery)
 }
 </script>
 

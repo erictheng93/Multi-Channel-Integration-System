@@ -55,8 +55,9 @@ const processMessageContent = async () => {
   const cacheKey = `${content}_${props.message.messageType}`
 
   // Check cache first
-  if (contentCache.has(cacheKey)) {
-    processedContent.value = contentCache.get(cacheKey)!
+  const cachedContent = contentCache.get(cacheKey)
+  if (cachedContent !== undefined) {
+    processedContent.value = cachedContent
     return
   }
 

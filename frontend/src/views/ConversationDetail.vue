@@ -328,6 +328,22 @@ import { useConfirm } from '@/composables/useConfirm'
 import type { Message } from '@/types'
 import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 
+// Component instance types
+interface VirtualMessageListInstance {
+  scrollToBottom?: () => void
+}
+
+interface MessageInputInstance {
+  setMessageText?: (_text: string) => void
+  setReplyTo?: (_message: Message) => void
+  handleFilesDropped?: (_files: File[]) => void
+  focus?: () => void
+}
+
+interface MessageSearchInstance {
+  focus?: () => void
+}
+
 // 🚀 Refactored Composables
 import { useConversationController } from '@/composables/conversation'
 
@@ -382,9 +398,9 @@ const {
 // Extract httpMessages from controller internals for template usage
 const httpMessages = _internals.state.httpMessages
 
-const virtualMessageListRef = ref(null)
-const messageInputRef = ref(null)
-const messageSearchRef = ref(null)
+const virtualMessageListRef = ref<VirtualMessageListInstance | null>(null)
+const messageInputRef = ref<MessageInputInstance | null>(null)
+const messageSearchRef = ref<MessageSearchInstance | null>(null)
 const keyboardShortcutsRef = ref(null)
 const showSearchPanel = ref(false)
 const showNewMessageModal = ref(false)
@@ -403,9 +419,8 @@ onMounted(async () => {
   try {
     await controller.initialize()
     if (virtualMessageListRef.value) {
-      const listRef = virtualMessageListRef.value as any
       setScrollTarget({
-        scrollToBottom: () => listRef?.scrollToBottom?.()
+        scrollToBottom: () => virtualMessageListRef.value?.scrollToBottom?.()
       })
     }
   } catch (error) {
@@ -476,8 +491,7 @@ function toggleSearch() {
   showSearchPanel.value = !showSearchPanel.value
   if (showSearchPanel.value) {
     nextTick(() => {
-      const searchEl = messageSearchRef.value as any
-      searchEl?.focus?.()
+      messageSearchRef.value?.focus?.()
     })
   } else {
     handleSearchClear()
@@ -487,10 +501,9 @@ function toggleSearch() {
 function handleSearchResults(results: Message[]) { setSearchResults(results) }
 function handleSearchClear() { clearSearch(); showSearchPanel.value = false }
 function useQuickReply(text: string) {
-  const inputEl = messageInputRef.value as any
   // 🔧 FIX: 使用正確的方法名 setMessageText (填充文本到輸入框)
-  inputEl?.setMessageText?.(text)
-  inputEl?.focus?.()
+  messageInputRef.value?.setMessageText?.(text)
+  messageInputRef.value?.focus?.()
 }
 function handleVirtualScroll(scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }) {
   const result = controller.onScroll(scrollInfo)
@@ -510,9 +523,8 @@ function handleMessageCopy(message: Message) {
 
 function handleMessageReply(message: Message) {
   if (message && messageInputRef.value) {
-    const inputEl = messageInputRef.value as any
-    inputEl?.setReplyTo?.(message)
-    inputEl?.focus?.()
+    messageInputRef.value.setReplyTo?.(message)
+    messageInputRef.value.focus?.()
   }
 }
 
@@ -568,8 +580,7 @@ function handleDrop(event: DragEvent) {
   dragCounter.value = 0
   const files = Array.from(event.dataTransfer?.files || [])
   if (files.length > 0 && messageInputRef.value) {
-    const inputEl = messageInputRef.value as any
-    inputEl?.handleFilesDropped?.(files)
+    messageInputRef.value.handleFilesDropped?.(files)
   }
 }
 </script>
