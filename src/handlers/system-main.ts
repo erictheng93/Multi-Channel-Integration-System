@@ -5,7 +5,7 @@ import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { jwtAuth } from '../middleware/auth';
 import { createDbClient } from '../db/drizzle-factory';
-import { agents, customers, conversations, messages, teams, qrCodes } from '../db/schema';
+import { agents, customers, conversations, messages, teams, qrCodes, customerFeedback } from '../db/schema';
 import { count, sql, eq, and, desc } from 'drizzle-orm';
 import { handleApiError } from '../utils/api-response';
 
@@ -234,7 +234,9 @@ systemHandler.get('/stats', async (c) => {
         // ✅ 新增：在線客服數 (最近 5 分鐘有活動)
         onlineAgentsResult,
         // ✅ 新增：平均響應時間 (最近 24 小時)
-        responseTimeResult
+        responseTimeResult,
+        // ✅ 新增：客戶滿意度統計 (最近 30 天)
+        satisfactionRateResult
       ] = await Promise.all([
         drizzleDb.select({ count: count() }).from(messages),
         drizzleDb.select({ count: count() }).from(customers),
@@ -272,6 +274,15 @@ systemHandler.get('/stats', async (c) => {
             sql`first_response_at IS NOT NULL`,
             sql`datetime(created_at) >= datetime('now', '-24 hours')`
           )
+        ),
+        // 客戶滿意度 (最近 30 天，4分和5分佔總反饋的比例)
+        drizzleDb.select({
+          totalCount: sql<number>`COUNT(*)`.as('total_count'),
+          satisfiedCount: sql<number>`SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END)`.as('satisfied_count')
+        })
+        .from(customerFeedback)
+        .where(
+          sql`datetime(created_at) >= datetime('now', '-30 days')`
         )
       ]);
 
@@ -294,9 +305,13 @@ systemHandler.get('/stats', async (c) => {
         }
       }
 
-      // TODO: 客戶滿意度 - 需要實現反饋系統後計算
-      // 暫時保持為 0，等待實現 feedback 表
-      satisfactionRate = 0;
+      // ✅ 客戶滿意度統計 (4分和5分的比例)
+      const feedbackStats = satisfactionRateResult[0];
+      if (feedbackStats && feedbackStats.totalCount > 0) {
+        satisfactionRate = Math.round((feedbackStats.satisfiedCount / feedbackStats.totalCount) * 100);
+      } else {
+        satisfactionRate = 0; // 沒有反饋數據時返回 0
+      }
 
       console.log('📊 Stats calculated:', {
         totalMessages,
