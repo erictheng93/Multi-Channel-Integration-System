@@ -224,6 +224,8 @@
           <div
             v-if="error && !loading"
             class="error-banner"
+            role="alert"
+            aria-live="assertive"
           >
             <svg
               width="16"
@@ -255,9 +257,9 @@
           </div>
         </Transition>
 
-        <!-- Debug -->
+        <!-- Debug (仅开发环境) -->
         <div
-          v-if="$route.query.debug === '1'"
+          v-if="isDev && $route.query.debug === '1'"
           class="debug-info"
         >
           <code>Loading: {{ loading }} | Valid: {{ isValid }} | Theme: {{ isLightMode ? 'light' : 'dark' }}</code>
@@ -337,19 +339,23 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
 import { useModernForm } from '@/composables/useModernVue'
 import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
 import { ROLES } from '@/constants/roles'
 
 const { login, loading, error, clearError } = useAuth()
+const authStore = useAuthStore()
 useI18n() // Reserved for future i18n support
 const router = useRouter()
 
+// Development environment check
+const isDev = import.meta.env.DEV
+
 const { formData, errors, isValid, setValidator, validateForm } = useModernForm({
   email: '',
-  password: '',
-  rememberMe: false
+  password: ''
 })
 
 // Theme state - 預設為淺色模式
@@ -380,6 +386,13 @@ const emailTouched = ref(false)
 const passwordTouched = ref(false)
 const formSubmitted = ref(false)
 
+// 登入尝试次数限制
+const loginAttempts = ref(0)
+const isLocked = ref(false)
+const lockUntil = ref<number | null>(null)
+const MAX_LOGIN_ATTEMPTS = 5
+const LOCK_DURATION_MS = 5 * 60 * 1000 // 5 分钟
+
 // Computed: should show error only after interaction
 const showEmailError = computed(() =>
   (emailTouched.value || formSubmitted.value) && errors.value.email
@@ -401,8 +414,10 @@ setValidator('email', (value) => {
 setValidator('password', (value) => {
   if (!value || value === '') {
     return '請輸入密碼'
-  } else if (value.length < 6) {
-    return '密碼至少需要 6 個字元'
+  } else if (value.length < 8) {
+    return '密碼至少需要 8 個字元'
+  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
+    return '密碼必須包含大小寫字母和數字'
   }
   return null
 })
@@ -415,7 +430,7 @@ const forcedPasswordChangeData = reactive({
     id: '',
     email: '',
     name: '',
-    role: ROLES.AGENT as typeof ROLES.ADMIN | typeof ROLES.TEAM | typeof ROLES.AGENT
+    role: ROLES.AGENT as typeof ROLES.ADMIN | typeof ROLES.AGENT
   }
 })
 
@@ -426,6 +441,18 @@ const onPasswordChangeSuccess = () => {
 const handleLogin = async (event?: Event) => {
   if (event) {event.preventDefault()}
   if (loading.value) {return}
+
+  // 检查是否被锁定
+  if (isLocked.value && lockUntil.value && Date.now() < lockUntil.value) {
+    const remainingSeconds = Math.ceil((lockUntil.value - Date.now()) / 1000)
+    authStore.error = `帳號已鎖定,請在 ${remainingSeconds} 秒後重試`
+    return
+  } else if (isLocked.value && lockUntil.value && Date.now() >= lockUntil.value) {
+    // 锁定时间已过,重置状态
+    isLocked.value = false
+    lockUntil.value = null
+    loginAttempts.value = 0
+  }
 
   // Mark form as submitted to show all validation errors
   formSubmitted.value = true
@@ -442,6 +469,11 @@ const handleLogin = async (event?: Event) => {
     })
 
     if (result.success) {
+      // 登入成功,重置尝试次数
+      loginAttempts.value = 0
+      isLocked.value = false
+      lockUntil.value = null
+
       try {
         await router.push('/dashboard')
       } catch (navError) {
@@ -456,9 +488,35 @@ const handleLogin = async (event?: Event) => {
         name: '',
         role: ROLES.AGENT
       }
+    } else {
+      // 登入失败,增加尝试次数
+      loginAttempts.value++
+
+      if (loginAttempts.value >= MAX_LOGIN_ATTEMPTS) {
+        // 达到最大尝试次数,锁定账号
+        isLocked.value = true
+        lockUntil.value = Date.now() + LOCK_DURATION_MS
+        authStore.error = `登入嘗試次數過多,帳號已鎖定 ${LOCK_DURATION_MS / 60000} 分鐘`
+      }
     }
   } catch (err) {
     console.error('Login error:', err)
+
+    // 登入错误,增加尝试次数
+    loginAttempts.value++
+
+    if (loginAttempts.value >= MAX_LOGIN_ATTEMPTS) {
+      isLocked.value = true
+      lockUntil.value = Date.now() + LOCK_DURATION_MS
+      authStore.error = `登入嘗試次數過多,帳號已鎖定 ${LOCK_DURATION_MS / 60000} 分鐘`
+    } else {
+      // 显示友好的错误消息
+      if (err instanceof Error) {
+        authStore.error = err.message
+      } else {
+        authStore.error = '登入失敗,請稍後重試'
+      }
+    }
   }
 }
 </script>

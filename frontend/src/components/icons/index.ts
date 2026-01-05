@@ -764,3 +764,108 @@ export const VolumeIcon = defineComponent<IconProps>({
     ])
   }
 })
+
+// Customer Tags Icons
+export const AlertTriangleIcon = defineComponent<IconProps>({
+  name: 'AlertTriangleIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'm21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z' }),
+      h('path', { d: 'M12 9v4' }),
+      h('path', { d: 'M12 17h.01' })
+    ])
+  }
+})
+
+export const BarChartIcon = defineComponent<IconProps>({
+  name: 'BarChartIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('line', { x1: '12', x2: '12', y1: '20', y2: '10' }),
+      h('line', { x1: '18', x2: '18', y1: '20', y2: '4' }),
+      h('line', { x1: '6', x2: '6', y1: '20', y2: '16' })
+    ])
+  }
+})
+
+export const EditIcon = defineComponent<IconProps>({
+  name: 'EditIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' }),
+      h('path', { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' })
+    ])
+  }
+})
+
+export const PlusIcon = createIcon('M12 5v14M5 12h14')
+
+export const TagIcon = defineComponent<IconProps>({
+  name: 'TagIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z' }),
+      h('path', { d: 'M7 7h.01' })
+    ])
+  }
+})
