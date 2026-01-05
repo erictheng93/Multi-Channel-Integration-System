@@ -620,9 +620,23 @@ export const taskReminders = sqliteTable('task_reminders', {
   sentAt: text('sent_at'),
 });
 
-// ======================== LIFF Team QR Code System (Migrations 0030-0031) ========================
+// Customer Feedback table - 客户满意度反馈 (Migration 0032)
+export const customerFeedback = sqliteTable('customer_feedback', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  customerId: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  agentId: text('agent_id').references(() => agents.id, { onDelete: 'set null' }),
+  rating: integer('rating').notNull(), // 1-5 stars, enforced by CHECK in migration
+  comment: text('comment'),
+  feedbackType: text('feedback_type').default('satisfaction'), // 'satisfaction', 'service_quality', 'response_time'
+  metadata: text('metadata'), // JSON string for additional info
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});
 
-// Team LIFF QR Codes table - 團隊 LIFF QR Code (Migration 0030)
+// ======================== LIFF Team QR Code System (Migrations 0031+) ========================
+
+// Team LIFF QR Codes table - 團隊 LIFF QR Code (Migration 0031 - pending)
 // Stores persistent LIFF URLs and QR Code images for team member onboarding
 export const teamLiffQrCodes = sqliteTable('team_liff_qr_codes', {
   id: text('id').primaryKey(),

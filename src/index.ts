@@ -61,6 +61,7 @@ import { activityHandler } from './handlers/activity';
 // import { activityStreamHandler } from './handlers/activity-stream';
 import websocketMainHandler from './handlers/websocket-main';
 import delayedMessageBufferHandler from './handlers/delayed-message-buffer';
+import { feedbackHandler } from './handlers/feedback-main';
 
 // Import system functions (grouped by functionality)
 import {
@@ -1364,6 +1365,9 @@ app.post('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config)
 // 活動記錄路由 - SSE stream 已在前面註冊 (lines 129-160)
 // Only register the main activities handler here
 app.route('/api/activities', activityHandler);
+
+// 客户满意度反馈路由 - Customer Feedback (Migration 0032)
+app.route('/api/feedback', feedbackHandler);
 
 // 隊列監控細粒度路由 - 保留 (queueMonitorHandler 需要特定方法映射)
 import { queueMonitorHandler } from './handlers/queue-monitor';

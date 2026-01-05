@@ -370,3 +370,90 @@ export const credentialsApi = {
     return apiClient.get('/credentials/backup')
   }
 }
+
+// 客户满意度反馈 API
+export const feedbackApi = {
+  // 提交客户反馈
+  submitFeedback: async (feedback: {
+    conversationId: string;
+    customerId: number;
+    agentId?: string;
+    rating: number;
+    comment?: string;
+    feedbackType?: 'satisfaction' | 'service_quality' | 'response_time';
+    metadata?: Record<string, unknown>;
+  }): Promise<ApiResponse<{
+    id: string;
+    conversationId: string;
+    rating: number;
+    createdAt: string;
+  }>> => {
+    return apiClient.post('/feedback', feedback)
+  },
+
+  // 获取满意度统计
+  getStats: async (timeRange?: '24h' | '7d' | '30d' | 'all'): Promise<ApiResponse<{
+    satisfactionRate: number;
+    totalFeedback: number;
+    averageRating: number;
+    ratingDistribution: {
+      1: number;
+      2: number;
+      3: number;
+      4: number;
+      5: number;
+    };
+    timeRange: string;
+    timestamp: string;
+  }>> => {
+    const queryString = timeRange ? `?timeRange=${timeRange}` : ''
+    return apiClient.get(`/feedback/stats${queryString}`)
+  },
+
+  // 获取特定对话的反馈
+  getConversationFeedback: async (conversationId: string): Promise<ApiResponse<{
+    conversationId: string;
+    feedback: Array<{
+      id: string;
+      rating: number;
+      comment?: string;
+      feedbackType: string;
+      customerName: string;
+      agentName?: string;
+      createdAt: string;
+    }>;
+    count: number;
+  }>> => {
+    return apiClient.get(`/feedback/conversation/${conversationId}`)
+  },
+
+  // 获取反馈列表（带分页）
+  getFeedbackList: async (params?: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<ApiResponse<{
+    feedback: Array<{
+      id: string;
+      conversationId: string;
+      rating: number;
+      comment?: string;
+      feedbackType: string;
+      customerName: string;
+      agentName?: string;
+      createdAt: string;
+    }>;
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }>> => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) {queryParams.append('page', params.page.toString())}
+    if (params?.pageSize) {queryParams.append('pageSize', params.pageSize.toString())}
+
+    const queryString = queryParams.toString()
+    return apiClient.get(`/feedback${queryString ? `?${queryString}` : ''}`)
+  }
+}
