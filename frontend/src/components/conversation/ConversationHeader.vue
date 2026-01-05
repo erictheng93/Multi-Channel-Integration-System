@@ -44,7 +44,7 @@
               v-if="customerTags.length > 0"
               class="customer-tags"
             >
-              <span class="tags-label">客戶:</span>
+              <span class="tags-label">標籤:</span>
               <div
                 v-for="tag in customerTags.slice(0, 3)"
                 :key="tag.id"
@@ -63,33 +63,6 @@
                 @click="showAllTags = !showAllTags"
               >
                 +{{ customerTags.length - 3 }}
-              </button>
-            </div>
-
-            <!-- 對話標籤顯示區 -->
-            <div
-              v-if="conversationTags.length > 0"
-              class="customer-tags conversation-tags"
-            >
-              <span class="tags-label">對話:</span>
-              <div
-                v-for="tag in conversationTags.slice(0, 3)"
-                :key="'conv-' + tag.id"
-                class="tag-chip conversation-tag"
-                :style="{ backgroundColor: tag.color + '20', borderColor: tag.color }"
-              >
-                <div
-                  class="tag-dot"
-                  :style="{ backgroundColor: tag.color }"
-                />
-                <span class="tag-label">{{ tag.name }}</span>
-              </div>
-              <button
-                v-if="conversationTags.length > 3"
-                class="more-tags-btn"
-                @click="showAllConversationTags = !showAllConversationTags"
-              >
-                +{{ conversationTags.length - 3 }}
               </button>
             </div>
           </div>
@@ -149,11 +122,16 @@
             />
           </span>
         </button>
+      </div>
 
-        <!-- 指派面板 -->
+      <!-- 指派面板 - 使用 Teleport 移到 body 層級 -->
+      <Teleport to="body">
         <div
-          v-if="showAssignPanel"
+          v-if="showAssignPanel && conversation"
+          ref="assignPanelRef"
           class="assign-panel-dropdown"
+          :style="assignPanelStyle"
+          @click.stop
         >
           <AdvancedAssignActions
             :conversation="conversation"
@@ -162,7 +140,7 @@
             @error="handleAssignError"
           />
         </div>
-      </div>
+      </Teleport>
 
       <!-- 客戶標籤管理按鈕 -->
       <div
@@ -174,19 +152,6 @@
           :customer-id="customerIdNumber"
           button-label="客戶標籤"
           @change="handleTagsChange"
-        />
-      </div>
-
-      <!-- 對話標籤管理按鈕 -->
-      <div
-        v-if="conversation?.id"
-        class="tag-selector-wrapper"
-      >
-        <TagSelector
-          v-model="selectedConversationTagIds"
-          :conversation-id="conversation.id"
-          button-label="對話標籤"
-          @change="handleConversationTagsChange"
         />
       </div>
       <button
@@ -216,7 +181,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ArrowLeftIcon, AlertCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
@@ -225,7 +190,6 @@ import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
-import { conversationApi } from '@/api/conversations'
 import { useToast } from '@/composables/useToast'
 import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 
@@ -248,11 +212,8 @@ const customerTags = ref<Tag[]>([])
 const selectedTagIds = ref<number[]>([])
 const showAllTags = ref(false)
 const showAssignPanel = ref(false)
-
-// 對話標籤狀態
-const conversationTags = ref<Tag[]>([])
-const selectedConversationTagIds = ref<number[]>([])
-const showAllConversationTags = ref(false)
+const assignPanelRef = ref<HTMLElement | null>(null)
+const assignPanelStyle = ref<Record<string, string>>({})
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
@@ -322,81 +283,28 @@ const handleTagsChange = async (tags: Tag[]) => {
   }
 }
 
-// 載入對話標籤
-const loadConversationTags = async () => {
-  if (!props.conversation?.id) { return }
-
-  try {
-    const response = await conversationApi.getConversationTags(props.conversation.id)
-    if (response.success && response.data) {
-      // 轉換為 Tag 類型
-      conversationTags.value = response.data.map(t => ({
-        id: t.id,
-        name: t.name,
-        color: t.color,
-        description: t.description,
-        teamId: null,
-        isActive: true,
-        createdBy: t.assignedBy,
-        createdAt: t.assignedAt,
-        updatedAt: t.assignedAt
-      }))
-      selectedConversationTagIds.value = response.data.map(t => t.id)
-    }
-  } catch (error) {
-    console.error('Failed to load conversation tags:', error)
-  }
-}
-
-// 處理對話標籤變更
-const handleConversationTagsChange = async (tags: Tag[]) => {
-  if (!props.conversation?.id) { return }
-
-  // 計算變化
-  const previousTagIds = new Set(conversationTags.value.map(t => t.id))
-  const newTagIds = new Set(tags.map(t => t.id))
-
-  const added = tags.filter(t => !previousTagIds.has(t.id))
-  const removed = conversationTags.value.filter(t => !newTagIds.has(t.id))
-
-  conversationTags.value = tags
-
-  try {
-    // 添加新標籤
-    if (added.length > 0) {
-      const addedTagIds = added.map(t => t.id)
-      await conversationApi.addConversationTags(props.conversation.id, addedTagIds)
-    }
-
-    // 移除舊標籤
-    if (removed.length > 0) {
-      const removedTagIds = removed.map(t => t.id)
-      await conversationApi.removeConversationTags(props.conversation.id, removedTagIds)
-    }
-
-    // 顯示成功提示
-    if (added.length > 0 && removed.length > 0) {
-      showSuccess('對話標籤更新成功', `已新增 ${added.length} 個標籤，移除 ${removed.length} 個標籤`)
-    } else if (added.length > 0) {
-      const tagNames = added.map(t => t.name).join('、')
-      showSuccess('對話標籤新增成功', `已成功新增標籤：${tagNames}`)
-    } else if (removed.length > 0) {
-      const tagNames = removed.map(t => t.name).join('、')
-      showSuccess('對話標籤移除成功', `已成功移除標籤：${tagNames}`)
-    }
-  } catch (error) {
-    console.error('Failed to update conversation tags:', error)
-    showError('對話標籤更新失敗', '無法更新對話標籤，請稍後再試')
-    // 回滾本地狀態
-    loadConversationTags()
-  }
-}
-
 // 指派管理功能
 const toggleAssignPanel = () => {
   const before = showAssignPanel.value
   showAssignPanel.value = !showAssignPanel.value
   const after = showAssignPanel.value
+
+  // 🔧 計算下拉選單位置（使用 Teleport 時需要）
+  if (after) {
+    nextTick(() => {
+      const assignButton = document.querySelector('.assign-action-btn') as HTMLElement
+      if (assignButton) {
+        const rect = assignButton.getBoundingClientRect()
+        assignPanelStyle.value = {
+          position: 'fixed',
+          top: `${rect.bottom + 8}px`,
+          left: `${rect.left + rect.width / 2}px`,
+          transform: 'translateX(-50%)',
+          zIndex: '10000'
+        }
+      }
+    })
+  }
 
   // 🔧 DEBUG: 添加调试日志
   console.log('🔍 [AssignPanel] Toggle clicked', {
@@ -493,16 +401,8 @@ watch(() => props.conversation?.customer?.id, (newId) => {
   }
 }, { immediate: true })
 
-// 監聽對話變化
-watch(() => props.conversation?.id, (newId) => {
-  if (newId) {
-    loadConversationTags()
-  }
-}, { immediate: true })
-
 onMounted(() => {
   loadCustomerTags()
-  loadConversationTags()
 })
 </script>
 
@@ -833,15 +733,6 @@ onMounted(() => {
   margin-right: 0.25rem;
 }
 
-/* 對話標籤特定樣式 */
-.conversation-tags {
-  margin-top: 0.25rem;
-}
-
-.conversation-tag {
-  border-style: dashed;
-}
-
 .tag-selector-wrapper {
   position: relative;
   z-index: 10;
@@ -1123,12 +1014,7 @@ onMounted(() => {
 }
 
 .assign-panel-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: auto;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
+  /* 位置由 JS 動態計算（使用 Teleport 到 body） */
   min-width: 20rem;
   max-width: 28rem;
   background: white;
@@ -1143,11 +1029,11 @@ onMounted(() => {
 @keyframes dropdown-appear {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-8px) scale(0.95);
+    transform: translateX(-50%) translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0);
   }
 }
 

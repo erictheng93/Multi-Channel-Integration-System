@@ -99,8 +99,8 @@
     </div>
 
     <!-- 已指派狀態顯示 -->
-    <div 
-      v-if="conversation.status === 'assigned' && conversation.assignedAgent"
+    <div
+      v-if="conversation.status === CONVERSATION_STATUS.IN_PROGRESS && conversation.assignedAgent"
       class="assigned-status"
     >
       <UserCheckIcon class="status-icon" />
@@ -125,6 +125,7 @@ import {
   CheckIcon,
   UserCheckIcon
 } from '@/components/icons'
+import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
 
 interface Props {
   conversation: Conversation
@@ -169,8 +170,8 @@ const agentToTeamMember = (agent: Agent): TeamMember | null => {
 
 // Computed
 const showActions = computed(() => {
-  // 只有 open 狀態的對話才顯示指派操作
-  return props.conversation.status === 'open' || props.conversation.status === 'assigned'
+  // 只有開放狀態的對話才顯示指派操作
+  return isOpenConversation(props.conversation.status)
 })
 
 const canAssignToMe = computed(() => {

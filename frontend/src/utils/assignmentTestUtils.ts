@@ -5,6 +5,7 @@
 
 import type { Conversation, TeamMember } from '@/types'
 import { PermissionService, Permission } from '@/services/permissionService'
+import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
 
 // 模擬數據生成器 - Simplified from 3-tier to 2-tier role system
 export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMember> = {}): TeamMember => ({
@@ -20,7 +21,7 @@ export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMe
   ...options
 })
 
-export const createMockConversation = (status: 'open' | 'assigned' | 'closed' = 'open', options: Partial<Conversation> = {}): Conversation => ({
+export const createMockConversation = (status: ConversationStatus = CONVERSATION_STATUS.PENDING, options: Partial<Conversation> = {}): Conversation => ({
   id: `conv-${Math.random().toString(36).substr(2, 9)}`,
   userId: 'customer-123',
   customer: {
@@ -33,7 +34,7 @@ export const createMockConversation = (status: 'open' | 'assigned' | 'closed' = 
   status,
   platform: 'line',
   lastMessageAt: Date.now(),
-  unreadCount: status === 'open' ? 1 : 0,
+  unreadCount: status === CONVERSATION_STATUS.PENDING ? 1 : 0,
   createdAt: Date.now(),
   updatedAt: Date.now(),
   ...options
@@ -44,8 +45,8 @@ export class AssignmentPermissionTests {
   static testAdminPermissions() {
     console.log('🔍 Testing Admin Permissions...')
     const admin = createMockAgent('admin')
-    const openConversation = createMockConversation('open')
-    const assignedConversation = createMockConversation('assigned', { assignedAgentId: 'other-agent' })
+    const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
+    const assignedConversation = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'other-agent' })
 
     const tests = [
       {
@@ -81,8 +82,8 @@ export class AssignmentPermissionTests {
   static testTeamPermissions() {
     console.log('🔍 Testing Admin Permissions (team role removed)...')
     const teamLead = createMockAgent('admin') // Changed from 'team' to 'admin'
-    const openConversation = createMockConversation('open')
-    const assignedConversation = createMockConversation('assigned', { assignedAgentId: 'other-agent' })
+    const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
+    const assignedConversation = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'other-agent' })
 
     const tests = [
       {
@@ -123,9 +124,9 @@ export class AssignmentPermissionTests {
   static testAgentPermissions() {
     console.log('🔍 Testing Agent Permissions...')
     const agent = createMockAgent('agent')
-    const openConversation = createMockConversation('open')
-    const assignedToSelf = createMockConversation('assigned', { assignedAgentId: agent.id })
-    const assignedToOther = createMockConversation('assigned', { assignedAgentId: 'other-agent' })
+    const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
+    const assignedToSelf = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: agent.id })
+    const assignedToOther = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'other-agent' })
 
     const tests = [
       {
@@ -227,17 +228,17 @@ export class AssignmentUITests {
       {
         description: 'Agent assigns conversation to self',
         user: createMockAgent('agent'),
-        conversation: createMockConversation('open')
+        conversation: createMockConversation(CONVERSATION_STATUS.PENDING)
       },
       {
         description: 'Admin assigns conversation to team member',
         user: createMockAgent('admin'), // Changed from 'team' to 'admin'
-        conversation: createMockConversation('open')
+        conversation: createMockConversation(CONVERSATION_STATUS.PENDING)
       },
       {
         description: 'Admin reassigns conversation',
         user: createMockAgent('admin'),
-        conversation: createMockConversation('assigned', { assignedAgentId: 'old-agent' })
+        conversation: createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'old-agent' })
       }
     ]
 

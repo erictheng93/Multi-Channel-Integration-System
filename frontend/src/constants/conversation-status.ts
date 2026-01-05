@@ -7,6 +7,8 @@
  * @module constants/conversation-status
  */
 
+import type { ConversationStatus as SharedConversationStatus } from '@shared/types/core'
+
 /**
  * Conversation status enum
  */
@@ -91,16 +93,16 @@ export function isValidConversationStatus(status: string): status is Conversatio
 }
 
 /**
- * Check if a conversation is open
+ * Check if a conversation is open (accepts both frontend and shared types)
  */
-export function isOpenConversation(status: ConversationStatus): boolean {
+export function isOpenConversation(status: ConversationStatus | SharedConversationStatus): boolean {
   return OPEN_CONVERSATION_STATUSES.includes(status as typeof OPEN_CONVERSATION_STATUSES[number]);
 }
 
 /**
- * Check if a conversation is closed
+ * Check if a conversation is closed (accepts both frontend and shared types)
  */
-export function isClosedConversation(status: ConversationStatus): boolean {
+export function isClosedConversation(status: ConversationStatus | SharedConversationStatus): boolean {
   return CLOSED_CONVERSATION_STATUSES.includes(status as typeof CLOSED_CONVERSATION_STATUSES[number]);
 }
 

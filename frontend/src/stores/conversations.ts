@@ -6,6 +6,7 @@ import { messageApi } from '@/api/message'
 import { useAuthStore } from './auth'
 import { translateError } from '@/utils/error-handler'
 import { conversationCache, cacheManager } from '@/services/cacheManager'
+import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 
 // Interface removed as it's not used
 
@@ -859,7 +860,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     console.log(`📝 [ConversationsStore] Unassigning conversation ${conversationId}`, reason ? `(reason: ${reason})` : '')
 
-    // Optimistic update - 清除指派資訊，狀態改回 'open'
+    // Optimistic update - 清除指派資訊，狀態改回 'pending'
     const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
     let originalConversation: Conversation | null = null
 
@@ -873,7 +874,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           id: current.id,
           userId: current.userId,
           customer: current.customer,
-          status: 'open' as const, // 改回 'open' 狀態（前端使用 'open'）
+          status: CONVERSATION_STATUS.PENDING,
           assignedTeamId: undefined,
           assignedTeam: undefined,
           assignedTo: undefined,
@@ -889,7 +890,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     if (currentConversation.value && currentConversation.value.id === conversationId) {
       currentConversation.value = {
         ...currentConversation.value,
-        status: 'open' as const,
+        status: CONVERSATION_STATUS.PENDING,
         assignedTeamId: undefined,
         assignedTeam: undefined,
         assignedTo: undefined,
@@ -1045,7 +1046,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           id: current.id,
           userId: current.userId,
           customer: current.customer,
-          status: 'open' as const
+          status: CONVERSATION_STATUS.ACTIVE
         }
         conversations.value[conversationIndex] = updatedConversation
         console.log(`⚡ [ConversationsStore] Optimistic update applied to list (reopened)`)
@@ -1056,7 +1057,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     if (currentConversation.value && currentConversation.value.id === conversationId) {
       currentConversation.value = {
         ...currentConversation.value,
-        status: 'open' as const
+        status: CONVERSATION_STATUS.ACTIVE
       }
       console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (reopened)`)
     }
@@ -1166,9 +1167,9 @@ export const useConversationsStore = defineStore('conversations', () => {
         // Fallback to calculating from local conversations
         stats.value = {
           total: conversations.value.length,
-          open: conversations.value.filter(c => c.status === 'open').length,
-          assigned: conversations.value.filter(c => c.status === 'assigned').length,
-          closed: conversations.value.filter(c => c.status === 'closed').length,
+          open: conversations.value.filter(c => c.status === CONVERSATION_STATUS.PENDING || c.status === CONVERSATION_STATUS.ACTIVE).length,
+          assigned: conversations.value.filter(c => c.status === CONVERSATION_STATUS.IN_PROGRESS).length,
+          closed: conversations.value.filter(c => c.status === CONVERSATION_STATUS.CLOSED || c.status === CONVERSATION_STATUS.RESOLVED).length,
           unreadCount: conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
         }
       }
@@ -1176,9 +1177,9 @@ export const useConversationsStore = defineStore('conversations', () => {
       // Fallback to calculating from local conversations
       stats.value = {
         total: conversations.value.length,
-        open: conversations.value.filter(c => c.status === 'open').length,
-        assigned: conversations.value.filter(c => c.status === 'assigned').length,
-        closed: conversations.value.filter(c => c.status === 'closed').length,
+        open: conversations.value.filter(c => c.status === CONVERSATION_STATUS.PENDING || c.status === CONVERSATION_STATUS.ACTIVE).length,
+        assigned: conversations.value.filter(c => c.status === CONVERSATION_STATUS.IN_PROGRESS).length,
+        closed: conversations.value.filter(c => c.status === CONVERSATION_STATUS.CLOSED || c.status === CONVERSATION_STATUS.RESOLVED).length,
         unreadCount: conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
       }
       handleError(err, '統計資料載入失敗')

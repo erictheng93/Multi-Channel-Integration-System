@@ -3,14 +3,15 @@
 // Created by: API Service Developer
 
 import { apiClient } from './base'
-import type { 
-  Conversation, 
-  ConversationFilters, 
-  Message, 
+import type {
+  Conversation,
+  ConversationFilters,
+  Message,
   ApiResponse,
   PaginatedResponse,
-  Platform 
+  Platform
 } from '@/types'
+import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
 
 // API 返回的原始對話數據格式 (標準 camelCase 格式)
 interface RawConversationData {
@@ -19,7 +20,7 @@ interface RawConversationData {
   customer_id?: number
   assignedTeamId: number | null
   assignedUserId: string | null
-  status: 'active' | 'assigned' | 'closed'
+  status: ConversationStatus | 'open' | 'assigned' // Support legacy status values
   lastMessageAt: string
   createdAt: string
   updatedAt: string
@@ -74,11 +75,18 @@ export interface AssignConversationOptions {
 
 // 數據轉換適配器
 function adaptConversationData(rawData: RawConversationData): Conversation {
-  // 狀態映射: API 的 'active' 對應前端的 'open'
-  const statusMap: Record<string, 'open' | 'assigned' | 'closed'> = {
-    'active': 'open',
-    'assigned': 'assigned',
-    'closed': 'closed'
+  // 狀態映射: Backend status → Frontend status
+  // Backend uses: active, pending, in-progress, waiting, closed, resolved
+  // Frontend uses: active, pending, in-progress, waiting, closed, resolved (same values)
+  const statusMap: Record<string, ConversationStatus> = {
+    'active': CONVERSATION_STATUS.ACTIVE,
+    'pending': CONVERSATION_STATUS.PENDING,
+    'in-progress': CONVERSATION_STATUS.IN_PROGRESS,
+    'open': CONVERSATION_STATUS.ACTIVE, // Legacy: map old 'open' to 'active'
+    'assigned': CONVERSATION_STATUS.IN_PROGRESS, // Legacy: map old 'assigned' to 'in-progress'
+    'waiting': CONVERSATION_STATUS.WAITING,
+    'closed': CONVERSATION_STATUS.CLOSED,
+    'resolved': CONVERSATION_STATUS.RESOLVED
   }
 
   const customerId = rawData.customerId || rawData.customer_id
@@ -134,7 +142,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
     } : undefined,
     assignedTo: rawData.assignedUserId || undefined,
     assignedAgentId: rawData.assignedUserId || undefined,
-    status: statusMap[rawData.status] || 'open',
+    status: statusMap[rawData.status] || CONVERSATION_STATUS.PENDING,
     platform: customerPlatform,
     lastMessageAt: new Date(rawData.lastMessageAt).getTime(),
     lastMessage: rawData.lastMessageContent ? {

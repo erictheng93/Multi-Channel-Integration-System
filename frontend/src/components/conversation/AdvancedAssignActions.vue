@@ -2,7 +2,7 @@
   <div class="advanced-assign-actions">
     <!-- 當前指派狀態 -->
     <div
-      v-if="conversation.status === 'assigned' && (conversation.assignedTeamId || conversation.assignedAgent)"
+      v-if="(conversation.assignedTeamId || conversation.assignedAgentId) && conversation.status !== 'closed'"
       class="current-assignment"
     >
       <div class="assignment-info">
@@ -58,7 +58,7 @@
         <div
           v-if="showTeamSelector"
           class="modal-backdrop"
-          @click="closeTeamSelector"
+          @click.self="closeTeamSelector"
         />
       </Teleport>
 
@@ -67,6 +67,7 @@
         <div
           v-if="showTeamSelector"
           class="team-selector-panel"
+          @click.stop
         >
           <div class="panel-header">
             <h4>選擇指派團隊</h4>
@@ -151,7 +152,7 @@
                   'selected': selectedTeam === team.id,
                   'current': conversation.assignedTeamId === team.id
                 }"
-                @click="selectTeam(team.id)"
+                @click.stop="selectTeam(team.id)"
               >
                 <div class="team-icon">
                   <TeamIcon />
@@ -225,6 +226,7 @@ import {
   SearchIcon
 } from '@/components/icons'
 import TeamListSkeleton from '@/components/ui/TeamListSkeleton.vue'
+import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
 
 interface Props {
   conversation: Conversation
@@ -295,16 +297,20 @@ const canAssignToTeam = computed(() => {
 
   const teamMemberAgent = agentToTeamMember(currentAgent.value)
   const result = canAssignConversation(teamMemberAgent, props.conversation) &&
-         ['open', 'assigned'].includes(props.conversation.status)
+         isOpenConversation(props.conversation.status)
 
   return result
 })
 
 const canUnassign = computed(() => {
-  if (!currentAgent.value) {return false}
+  if (!currentAgent.value) {
+    return false
+  }
 
   const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  return canUnassignConversation(teamMemberAgent, props.conversation)
+  const result = canUnassignConversation(teamMemberAgent, props.conversation)
+
+  return result
 })
 
 const filteredTeams = computed(() => {
@@ -412,6 +418,29 @@ const confirmAssignment = async () => {
   const teamName = selectedTeamData?.name || '團隊'
   console.log(`🎯 [AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeamId})`)
 
+  // 🔄 轉指派確認：檢查是否從一個團隊轉指派到另一個團隊
+  if (props.conversation.assignedTeamId && props.conversation.assignedTeamId !== selectedTeamId) {
+    // 這是轉指派的情況
+    const currentTeamId = props.conversation.assignedTeamId
+    const currentTeamData = teams.value.find(t => t.id === currentTeamId)
+    const currentTeamName = currentTeamData?.name || props.conversation.assignedTeam?.name || `團隊 #${currentTeamId}`
+
+    console.log(`⚠️ [AdvancedAssignActions] Re-assignment detected: ${currentTeamName} → ${teamName}`)
+
+    // 顯示轉指派確認對話框
+    const confirmed = await showWarning(
+      '確定要轉指派給其他團隊？',
+      `此對話目前指派給「${currentTeamName}」，確定要轉指派給「${teamName}」嗎？`
+    )
+
+    if (!confirmed) {
+      console.log('❌ [AdvancedAssignActions] Re-assignment cancelled by user')
+      return
+    }
+
+    console.log('✅ [AdvancedAssignActions] Re-assignment confirmed by user')
+  }
+
   // 🚀 步骤 1: 乐观更新 - 立即显示成功状态
   showSuccess('指派成功', `已成功將對話指派給「${teamName}」`)
   closeTeamSelector()  // 立即关闭面板，提升用户体验
@@ -456,10 +485,12 @@ const confirmAssignment = async () => {
 }
 
 const handleUnassign = async () => {
-  if (isAssigning.value) {return}
+  if (isAssigning.value) {
+    return
+  }
 
   // 確認對話是否已指派
-  if (!props.conversation.assignedTeamId && !props.conversation.assignedUserId) {
+  if (!props.conversation.assignedTeamId && !props.conversation.assignedAgentId) {
     showError('無法取消指派', '此對話尚未指派')
     return
   }
@@ -488,7 +519,7 @@ const handleUnassign = async () => {
   // 立即發送 unassigned 事件（樂觀）
   const optimisticConv: Conversation = {
     ...props.conversation,
-    status: 'open',
+    status: CONVERSATION_STATUS.PENDING,
     assignedTeamId: undefined,
     assignedUserId: undefined,
     assignedTeam: undefined,

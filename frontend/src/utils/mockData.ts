@@ -3,9 +3,14 @@
 // Created by: Mock Data Developer
 
 import type { Conversation, Customer, Agent, Message, Platform } from '@/types'
+import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
 
 const platforms: Platform[] = ['line', 'facebook']
-const statuses: ('open' | 'assigned' | 'closed')[] = ['open', 'assigned', 'closed']
+const statuses: ConversationStatus[] = [
+  CONVERSATION_STATUS.PENDING,
+  CONVERSATION_STATUS.IN_PROGRESS,
+  CONVERSATION_STATUS.CLOSED
+]
 
 const mockCustomers: Customer[] = [
   { id: '1', name: '王小明', platform: 'line', platformUserId: 'line_001', avatarUrl: '', createdAt: Date.now() },
@@ -26,11 +31,11 @@ export function generateMockConversations(count: number = 20): Conversation[] {
   
   for (let i = 1; i <= count; i++) {
     const customer = mockCustomers[Math.floor(Math.random() * mockCustomers.length)]
-    const status = statuses[Math.floor(Math.random() * statuses.length)]
-    const assignedAgent = status === 'assigned' ? mockAgents[Math.floor(Math.random() * mockAgents.length)] : undefined
-    
+    const status = statuses[Math.floor(Math.random() * statuses.length)] || CONVERSATION_STATUS.PENDING
+    const assignedAgent = status === CONVERSATION_STATUS.IN_PROGRESS ? mockAgents[Math.floor(Math.random() * mockAgents.length)] : undefined
+
     if (!customer) {continue} // Skip if no customer found
-    
+
     const conversation: Conversation = {
       id: `conv_${i}`,
       userId: customer.id,
@@ -38,7 +43,7 @@ export function generateMockConversations(count: number = 20): Conversation[] {
       assignedTo: assignedAgent?.id,
       assignedAgent,
       platform: customer.platform,
-      status: status as 'open' | 'assigned' | 'closed',
+      status,
       unreadCount: Math.random() > 0.5 ? Math.floor(Math.random() * 5) + 1 : 0,
       lastMessageAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
       createdAt: Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
