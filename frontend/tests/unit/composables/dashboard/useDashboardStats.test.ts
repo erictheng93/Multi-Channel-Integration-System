@@ -23,7 +23,26 @@ describe('useDashboardStats', () => {
   describe('初始化状态', () => {
     it('应该使用默认值初始化', async () => {
       const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.getDashboardStats).mockResolvedValue({
+
+      // Use a delayed promise to ensure we can check loading state
+      let resolvePromise: (value: any) => void
+      const delayedPromise = new Promise((resolve) => {
+        resolvePromise = resolve
+      })
+
+      vi.mocked(systemApi.getDashboardStats).mockReturnValue(delayedPromise as any)
+
+      const { stats, loading } = useDashboardStats()
+
+      // Wait for the microtask to run (useAsyncData uses Promise.resolve().then())
+      await flushPromises()
+
+      // Should be loading before promise resolves
+      expect(loading.value).toBe(true)
+      expect(stats.value).toBeNull()
+
+      // Resolve the promise
+      resolvePromise!({
         success: true,
         data: {
           todayMessages: 150,
@@ -34,10 +53,11 @@ describe('useDashboardStats', () => {
         }
       })
 
-      const { stats, loading } = useDashboardStats()
+      await flushPromises()
 
-      expect(loading.value).toBe(true)
-      expect(stats.value).toBeNull()
+      // Should have loaded data
+      expect(loading.value).toBe(false)
+      expect(stats.value).not.toBeNull()
     })
 
     it('immediate: false 时不应该自动加载数据', () => {
