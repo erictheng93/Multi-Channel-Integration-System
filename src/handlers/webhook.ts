@@ -758,32 +758,82 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       log.warn('LINE Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
-    // 🔔 通知觸發：如果對話已指派給客服，發送新訊息通知
-    if (conversation!.assignedUserId) {
-      triggerNewMessageNotification(env, {
-        assignedUserId: conversation!.assignedUserId,
-        conversationId: conversation!.id,
-        senderName: user.displayName || '客戶',
-        messageContent: messageContent.substring(0, 100)
-      }).catch(err => {
-        log.warn('LINE Webhook: Failed to trigger notification', {
-          error: err instanceof Error ? err.message : String(err)
+    // 🔔 通知觸發：根據對話指派狀態發送適當的通知
+    try {
+      // 情況 1: 已指派給個人客服 (優先使用個人指派)
+      if (conversation!.assignedUserId) {
+        console.log('📬 [LINE Webhook] Triggering notification for assigned user:', {
+          conversationId: conversation!.id,
+          assignedUserId: conversation!.assignedUserId,
+          scenario: 'individual_assignment'
         });
-      });
 
-      // 🔔 客戶回覆通知：如果客服已回覆過，發送客戶回覆通知
-      if (conversation!.firstResponseAt) {
-        triggerCustomerRespondedNotification(env, {
+        await triggerNewMessageNotification(env, {
           assignedUserId: conversation!.assignedUserId,
           conversationId: conversation!.id,
-          customerName: user.displayName || '客戶',
-          messagePreview: messageContent.substring(0, 100)
-        }).catch(err => {
-          log.warn('LINE Webhook: Failed to trigger customer responded notification', {
-            error: err instanceof Error ? err.message : String(err)
+          senderName: user.displayName || '客戶',
+          messageContent: messageContent.substring(0, 100)
+        });
+
+        // 客戶回覆通知：如果客服已回覆過
+        if (conversation!.firstResponseAt) {
+          await triggerCustomerRespondedNotification(env, {
+            assignedUserId: conversation!.assignedUserId,
+            conversationId: conversation!.id,
+            customerName: user.displayName || '客戶',
+            messagePreview: messageContent.substring(0, 100)
           });
+        }
+      }
+      // 情況 2: 已指派給團隊（但沒有指派個人客服）
+      else if (conversation!.assignedTeamId) {
+        console.log('📬 [LINE Webhook] Triggering notification for assigned team:', {
+          conversationId: conversation!.id,
+          assignedTeamId: conversation!.assignedTeamId,
+          scenario: 'team_assignment'
+        });
+
+        // 動態導入 notification-trigger 函數
+        const { triggerNewConversationNotification } = await import('../utils/notification-trigger');
+
+        // 通知該團隊的所有成員和所有管理員
+        await triggerNewConversationNotification(env, {
+          conversationId: conversation!.id,
+          customerName: user.displayName || 'LINE User',
+          platform: 'LINE',
+          messagePreview: messageContent,
+          teamId: conversation!.assignedTeamId
         });
       }
+      // 情況 3: 未指派（沒有個人客服也沒有團隊）
+      else {
+        console.log('📬 [LINE Webhook] Triggering notification for unassigned conversation:', {
+          conversationId: conversation!.id,
+          scenario: 'unassigned'
+        });
+
+        // 動態導入 notification-trigger 函數
+        const { triggerNewConversationNotification } = await import('../utils/notification-trigger');
+
+        // 通知所有管理員和所有客服人員
+        await triggerNewConversationNotification(env, {
+          conversationId: conversation!.id,
+          customerName: user.displayName || 'LINE User',
+          platform: 'LINE',
+          messagePreview: messageContent,
+          teamId: undefined  // 沒有團隊 → 通知所有人
+        });
+      }
+
+      console.log('✅ [LINE Webhook] Notification triggered successfully');
+    } catch (notificationError) {
+      log.warn('LINE Webhook: Failed to trigger notification', {
+        error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+        conversationId: conversation!.id,
+        assignedUserId: conversation!.assignedUserId,
+        assignedTeamId: conversation!.assignedTeamId
+      });
+      // 不要讓通知失敗影響主流程
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2

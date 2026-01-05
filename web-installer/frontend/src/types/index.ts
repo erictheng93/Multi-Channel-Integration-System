@@ -29,17 +29,38 @@ export type DeploymentStatus = 'idle' | 'in_progress' | 'completed' | 'failed' |
 export type LogLevel = 'info' | 'success' | 'warning' | 'error';
 
 export interface DeploymentConfig {
+  // ===== Basic Configuration =====
   projectName: string;
   adminEmail: string;
   customDomain?: string;
   accountId: string;
   oauthToken: string;
-  // LINE OA Integration (optional - can configure later)
+
+  // ===== URL Configuration (Phase 1 Enhancement) =====
+  /** Backend Worker URL (if using custom domain) */
+  backendUrl?: string;
+  /** Frontend Pages URL (if using custom domain) */
+  frontendUrl?: string;
+  /** R2 custom domain for file access (e.g., https://files.yourdomain.com) */
+  r2PublicUrl?: string;
+
+  // ===== LINE OA Integration (Enhanced) =====
+  /** LINE Channel Access Token (optional - can configure later) */
   lineChannelAccessToken?: string;
+  /** LINE Channel Secret (optional - can configure later) */
   lineChannelSecret?: string;
-  // Facebook Integration (optional - future feature)
+  /** LINE Bot Basic ID (e.g., @110xsqef) - Required for QR Code generation */
+  lineBotId?: string;
+  /** LINE LIFF ID (e.g., 2008756115-vWtFyDMA) - Required for team binding feature */
+  lineLiffId?: string;
+
+  // ===== Facebook Integration (Future Feature) =====
   facebookPageAccessToken?: string;
   facebookAppSecret?: string;
+
+  // ===== System Configuration (Phase 1 Enhancement) =====
+  /** Log level for Worker console output */
+  logLevel?: 'debug' | 'info' | 'warn' | 'error' | 'silent';
 }
 
 export interface DeploymentState {
@@ -123,12 +144,20 @@ export interface StartDeploymentRequest {
   customDomain?: string;
   accountId: string;
   oauthToken: string;
-  // LINE OA Integration (optional - can configure later)
+  // Phase 1 Enhancement: URL Configuration
+  backendUrl?: string;
+  frontendUrl?: string;
+  r2PublicUrl?: string;
+  // LINE OA Integration (Enhanced)
   lineChannelAccessToken?: string;
   lineChannelSecret?: string;
+  lineBotId?: string;
+  lineLiffId?: string;
   // Facebook Integration (optional - future feature)
   facebookPageAccessToken?: string;
   facebookAppSecret?: string;
+  // System Configuration
+  logLevel?: 'debug' | 'info' | 'warn' | 'error' | 'silent';
 }
 
 export interface StartDeploymentResponse {
@@ -204,12 +233,20 @@ export interface FormErrors {
   adminEmail?: string;
   customDomain?: string;
   accountId?: string;
-  // LINE OA validation errors
+  // Phase 1 Enhancement: URL Configuration errors
+  backendUrl?: string;
+  frontendUrl?: string;
+  r2PublicUrl?: string;
+  // LINE OA validation errors (Enhanced)
   lineChannelAccessToken?: string;
   lineChannelSecret?: string;
+  lineBotId?: string;
+  lineLiffId?: string;
   // Facebook validation errors
   facebookPageAccessToken?: string;
   facebookAppSecret?: string;
+  // System Configuration errors
+  logLevel?: string;
 }
 
 export interface RouteParams {

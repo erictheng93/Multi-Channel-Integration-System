@@ -381,8 +381,8 @@
 
           <!-- Default Status Icon -->
           <component
-            v-else-if="statusIcon"
             :is="statusIcon"
+            v-else-if="statusIcon"
             :class="message.deliveryStatus === 'sending' ? 'animate-spin' : ''"
           />
         </div>
