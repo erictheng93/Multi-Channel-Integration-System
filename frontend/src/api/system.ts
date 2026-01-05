@@ -253,7 +253,7 @@ export const systemApi = {
     resolvedToday: number;
     timestamp: string;
   }>> => {
-    return apiClient.get('/stats')
+    return apiClient.get('/system/stats')
   },
 
   // 更新 Webhook URL
