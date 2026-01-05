@@ -178,6 +178,11 @@ npm run verify:deployment # Verify production deployment
 - `frontend/vite.config.ts` - Frontend build configuration
 - `frontend/vitest.config.ts` - Test configuration with WebSocket test environment
 - `src/config/cors.ts` - **Unified CORS configuration** (single source of truth for all allowed origins)
+- `src/config/runtime.ts` - **Runtime configuration layer** (backend URL, environment detection)
+- `src/config/external-apis.ts` - **External API URLs** (LINE, Facebook, Cloudflare, etc.)
+- `src/constants/` - **Unified constants management**
+  - `src/constants/durable-objects.ts` - Durable Objects route constants
+  - `src/constants/limits.ts` - Time, size, and quantity limits
 - `src/monitoring/cors-monitor.ts` - CORS error monitoring and analytics
 
 ### Core Backend Files
@@ -535,6 +540,7 @@ For detailed information on specific topics, see:
 - **[Testing Strategy](docs/claude/TESTING.md)** - Complete testing infrastructure and best practices
 - **[Route Registration](docs/claude/ROUTE_REGISTRATION.md)** - Critical routing order rules and debugging
 - **[Web Installer](docs/claude/WEB_INSTALLER.md)** - Self-hosted deployment system documentation
+- **[Hardcoding Best Practices](docs/HARDCODING_BEST_PRACTICES.md)** - Constants management and coding standards
 
 ---
 

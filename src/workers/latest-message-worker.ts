@@ -8,6 +8,8 @@
 import type { Bindings } from '../types';
 import { LatestMessageCache } from '../services/latest-message-cache';
 import type { DurableObjectStub } from '@cloudflare/workers-types';
+import { MESSAGE_BROADCASTER_ROUTES, CACHE_COORDINATOR_ROUTES } from '../constants/durable-objects';
+import { QUEUE_LIMITS, calculateExponentialBackoff } from '../constants/limits';
 
 export interface LatestMessageJobPayload {
   type: 'update_latest_message' | 'invalidate_cache' | 'warmup_cache';
@@ -140,8 +142,7 @@ export class LatestMessageWorker {
    * Handle cache warmup job
    */
   private async handleWarmupCache(_payload: LatestMessageJobPayload): Promise<void> {
-    const limit = 100; // Warm up top 100 conversations
-    const warmedUp = await this.cache.warmupCache(limit);
+    const warmedUp = await this.cache.warmupCache(QUEUE_LIMITS.WARMUP_CONVERSATIONS);
     console.log(`🔥 [LatestMessageWorker] Cache warmup completed: ${warmedUp} conversations`);
   }
 
@@ -154,7 +155,7 @@ export class LatestMessageWorker {
 
     if (retryCount < maxRetries) {
       // Schedule retry with exponential backoff
-      const retryDelay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+      const retryDelay = calculateExponentialBackoff(retryCount);
 
       console.log(`🔄 [LatestMessageWorker] Scheduling retry ${retryCount + 1}/${maxRetries} for job ${message.id} in ${retryDelay}ms`);
 
@@ -216,7 +217,8 @@ export class LatestMessageWorker {
       const broadcaster = broadcasterId ? this.env.MESSAGE_BROADCASTER?.get(broadcasterId) : null;
 
       if (broadcaster) {
-        await broadcaster.fetch('http://localhost/broadcast', {
+        // Durable Object internal communication uses relative paths
+        await broadcaster.fetch(MESSAGE_BROADCASTER_ROUTES.BROADCAST, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -281,7 +283,8 @@ export class LatestMessageJobQueue {
     priority: 'low' | 'normal' | 'high' = 'normal'
   ): Promise<void> {
     try {
-      const response = await this.coordinator.fetch('http://localhost/schedule', {
+      // Durable Object internal communication uses relative paths
+      const response = await this.coordinator.fetch(CACHE_COORDINATOR_ROUTES.SCHEDULE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -307,7 +310,8 @@ export class LatestMessageJobQueue {
    */
   async invalidateCache(conversationId: string): Promise<void> {
     try {
-      const response = await this.coordinator.fetch('http://localhost/invalidate', {
+      // Durable Object internal communication uses relative paths
+      const response = await this.coordinator.fetch(CACHE_COORDINATOR_ROUTES.INVALIDATE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId })
@@ -327,9 +331,10 @@ export class LatestMessageJobQueue {
   /**
    * Trigger cache warmup
    */
-  async warmupCache(limit: number = 100): Promise<void> {
+  async warmupCache(limit: number = QUEUE_LIMITS.WARMUP_CONVERSATIONS): Promise<void> {
     try {
-      const response = await this.coordinator.fetch('http://localhost/warmup', {
+      // Durable Object internal communication uses relative paths
+      const response = await this.coordinator.fetch(CACHE_COORDINATOR_ROUTES.WARMUP, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit })

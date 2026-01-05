@@ -542,7 +542,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useQRCodeStore } from '@/stores/qrcode'
 import { useMemberOperations } from '@/composables/team-management'
-import { getBackendUrl } from '@/config/runtime'
+import { getBackendUrl, getStoragePublicUrl } from '@/config/runtime'
 import type { TeamMember, LiffQRCode } from '@/types'
 
 interface Team {
@@ -971,12 +971,15 @@ const downloadQRCode = async () => {
   let qrCodeDataUrl = currentQRCode.value.qrCodeUrl
 
   // 將 R2 Custom Domain URL 轉換為 Worker 代理 URL
-  // 例如: https://s3.imfinethankyouandyou.com/qr-codes/team-14-xxx.svg
-  // 轉為: https://multi-channel.imfinethankyouandyou.com/api/r2-public/qr-codes/team-14-xxx.svg
-  if (qrCodeDataUrl.includes('s3.imfinethankyouandyou.com/')) {
+  // 使用動態配置的 Storage URL 而非硬編碼域名
+  const storageUrl = getStoragePublicUrl()
+  const storageHostname = new URL(storageUrl).hostname
+
+  if (qrCodeDataUrl.includes(storageHostname)) {
+    // 將 Storage URL 轉換為 Worker 代理 URL 以支持 CORS
     qrCodeDataUrl = qrCodeDataUrl.replace(
-      'https://s3.imfinethankyouandyou.com/',
-      `${getBackendUrl()}/api/r2-public/`
+      storageUrl,
+      `${getBackendUrl()}/api/r2-public`
     )
     console.log('🔧 [QR Download] 使用 Worker 代理 URL:', qrCodeDataUrl)
   }
