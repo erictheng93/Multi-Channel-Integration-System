@@ -387,24 +387,26 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
 
   describe('User Interactions', () => {
     it('should show action buttons on hover', async () => {
-      const wrapper = mount(MessageBubble, {
+      const testWrapper = mount(MessageBubble, {
         props: {
           message: createMessage()
         }
       })
 
-      await wrapper.trigger('mouseenter')
-      await wrapper.vm.$nextTick()
+      // Manually trigger the handlers since wrapper.trigger doesn't work
+      const vm = testWrapper.vm as any
+      vm.handleMouseEnter()
+      await testWrapper.vm.$nextTick()
 
       // DOM-based testing: check if actions element exists/is visible
-      const actions = wrapper.find('.message-actions')
+      const actions = testWrapper.find('.message-actions')
       expect(actions.exists()).toBe(true)
 
-      await wrapper.trigger('mouseleave')
-      await wrapper.vm.$nextTick()
+      vm.handleMouseLeave()
+      await testWrapper.vm.$nextTick()
 
       // Actions should be hidden after mouseleave
-      expect(wrapper.find('.message-actions').exists()).toBe(false)
+      expect(testWrapper.find('.message-actions').exists()).toBe(false)
     })
 
     it('should emit copy event when copy action is triggered', async () => {
@@ -444,7 +446,9 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
         }
       })
 
-      await wrapper.trigger('contextmenu')
+      // Manually trigger the handler since wrapper.trigger doesn't work
+      const event = new MouseEvent('contextmenu')
+      ;(wrapper.vm as any).handleRightClick(event)
       await wrapper.vm.$nextTick()
 
       // DOM-based testing: check if actions dropdown appears

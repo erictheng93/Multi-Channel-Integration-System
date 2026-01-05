@@ -3,6 +3,8 @@
  * Centralized security settings and utilities
  */
 
+import { CACHE_TTL, RATE_LIMITS } from '../constants/limits';
+
 export interface SecurityConfig {
   cors: {
     allowedOrigins: string[];
@@ -48,7 +50,7 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
             // Allow development access to production API
           ],
       allowCredentials: true,
-      maxAge: 86400, // 24 hours
+      maxAge: CACHE_TTL.CORS_MAX_AGE,
     },
     headers: {
       csp: [
@@ -71,8 +73,10 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
       allowedRoles: ['admin'], // Only admins can use debug endpoints
     },
     rateLimit: {
-      windowMs: 60 * 1000, // 1 minute
-      maxRequests: isProduction ? 100 : 1000, // Stricter in production
+      windowMs: RATE_LIMITS.WINDOW_MS,
+      maxRequests: isProduction
+        ? RATE_LIMITS.MAX_REQUESTS_PRODUCTION
+        : RATE_LIMITS.MAX_REQUESTS_DEVELOPMENT,
     },
   };
 }

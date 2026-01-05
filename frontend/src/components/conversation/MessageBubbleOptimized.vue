@@ -1,15 +1,10 @@
 <template>
-  <!-- 
-    v-memo optimization: Only re-render when essential props change
-    This prevents unnecessary re-renders when scrolling through large message lists
-  -->
   <div
-    v-memo="[message.id, message.content, message.deliveryStatus, message.createdAt, message.messageType, delivered]"
     class="message-bubble"
     :class="messageBubbleClasses"
     @contextmenu="handleRightClick"
-    @mouseenter="setShowActions(true)"
-    @mouseleave="setShowActions(false)"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
   >
     <div class="message-content">
       <!-- Image Message (lazy loaded) -->
@@ -680,8 +675,7 @@ const {
   forwardMessage,
   recallMessage,
   selectMessage,
-  handleRetry,
-  setShowActions
+  handleRetry
 } = useMessageActions(actionsProps, actionsEmit)
 
 // 4️⃣ useMessageSticker - 贴纸处理
@@ -841,8 +835,14 @@ const messageBubbleClasses = computed(() => ({
 // handleRightClick, toggleActionsMenu, copyMessage, replyToMessage, forwardMessage, recallMessage, selectMessage, handleRetry
 // 已由 useMessageActions 提供
 
-// Note: showActions visibility is handled directly in template using setShowActions from composable
-// @mouseenter="setShowActions(true)" and @mouseleave="setShowActions(false)"
+// Hover handlers for showing/hiding message actions
+const handleMouseEnter = () => {
+  showActions.value = true
+}
+
+const handleMouseLeave = () => {
+  showActions.value = false
+}
 
 // 🔴 Module 3.1: Complete Image Preview with Modal
 const openImagePreview = () => {

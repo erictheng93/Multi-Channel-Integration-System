@@ -447,7 +447,7 @@ const lineWebhookStatus = ref({
 })
 
 const facebookWebhookStatus = ref({
-  endpoint: 'https://your-domain.com/webhooks/facebook',
+  endpoint: `${getBackendUrl()}/api/webhook/facebook`,
   isActive: false,
   lastVerified: new Date(),
   lastError: undefined
