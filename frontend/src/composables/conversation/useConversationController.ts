@@ -228,12 +228,10 @@ export type ConversationController = ReturnType<typeof useConversationController
 /**
  * 導出子模塊類型（方便單獨測試）
  */
-export type {
-  ConversationState,
-  MessageHandlers,
-  WebSocketIntegration,
-  ConversationActions
-} from './index'
+export type { ConversationState } from './useConversationState'
+export type { MessageHandlers } from './useMessageHandlers'
+export type { WebSocketIntegration } from './useWebSocketIntegration'
+export type { ConversationActions } from './useConversationActions'
 
 /**
  * 導出消息處理相關類型

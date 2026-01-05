@@ -5,7 +5,7 @@ import type { Bindings } from '../types';
 import { ERROR_MESSAGES } from '../utils/error-messages';
 import { jwtAuth } from '../middleware/auth';
 import { createDbClient } from '../db/drizzle-factory';
-import { customers, conversations, messages, teams, qrCodes } from '../db/schema';
+import { agents, customers, conversations, messages, teams, qrCodes } from '../db/schema';
 import { count, sql, eq, and, desc } from 'drizzle-orm';
 import { handleApiError } from '../utils/api-response';
 
@@ -211,17 +211,104 @@ systemHandler.get('/stats', async (c) => {
     let totalMessages = 0;
     let totalCustomers = 0;
     let totalConversations = 0;
+    let todayMessages = 0;
+    let onlineAgents = 0;
+    let responseTime = '-';
+    let satisfactionRate = 0;
+    let resolvedToday = 0;
 
     try {
-      const [messagesResult, customersResult, conversationsResult] = await Promise.all([
+      // 計算今日的開始時間 (使用 UTC 時區)
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      // 並行查詢所有統計數據
+      const [
+        messagesResult,
+        customersResult,
+        conversationsResult,
+        todayMessagesResult,
+        // ✅ 新增：今日已解決對話數
+        resolvedTodayResult,
+        // ✅ 新增：在線客服數 (最近 5 分鐘有活動)
+        onlineAgentsResult,
+        // ✅ 新增：平均響應時間 (最近 24 小時)
+        responseTimeResult
+      ] = await Promise.all([
         drizzleDb.select({ count: count() }).from(messages),
         drizzleDb.select({ count: count() }).from(customers),
-        drizzleDb.select({ count: count() }).from(conversations)
+        drizzleDb.select({ count: count() }).from(conversations),
+        // 今日消息數
+        drizzleDb.select({ count: count() })
+          .from(messages)
+          .where(sql`datetime(created_at) >= datetime(${todayISO})`),
+        // 今日已解決對話數 (status = 'closed' AND closedAt >= today)
+        drizzleDb.select({ count: count() })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.status, 'closed'),
+              sql`datetime(closed_at) >= datetime(${todayISO})`
+            )
+          ),
+        // 在線客服數 (最近 5 分鐘有活動)
+        drizzleDb.select({ count: count() })
+          .from(agents)
+          .where(
+            sql`datetime(last_active) >= datetime('now', '-5 minutes')`
+          ),
+        // 平均響應時間 (計算 createdAt 到 firstResponseAt 的平均時間，最近 24 小時)
+        drizzleDb.select({
+          avgResponseTime: sql<number>`
+            AVG(
+              CAST((julianday(first_response_at) - julianday(created_at)) * 24 * 60 AS INTEGER)
+            )
+          `.as('avg_response_time')
+        })
+        .from(conversations)
+        .where(
+          and(
+            sql`first_response_at IS NOT NULL`,
+            sql`datetime(created_at) >= datetime('now', '-24 hours')`
+          )
+        )
       ]);
 
       totalMessages = messagesResult[0]?.count || 0;
       totalCustomers = customersResult[0]?.count || 0;
       totalConversations = conversationsResult[0]?.count || 0;
+      todayMessages = todayMessagesResult[0]?.count || 0;
+      resolvedToday = resolvedTodayResult[0]?.count || 0;
+      onlineAgents = onlineAgentsResult[0]?.count || 0;
+
+      // 計算平均響應時間（分鐘）
+      const avgMinutes = responseTimeResult[0]?.avgResponseTime;
+      if (avgMinutes && avgMinutes > 0) {
+        if (avgMinutes < 60) {
+          responseTime = `${Math.round(avgMinutes)}分鐘`;
+        } else {
+          const hours = Math.floor(avgMinutes / 60);
+          const minutes = Math.round(avgMinutes % 60);
+          responseTime = `${hours}小時${minutes}分鐘`;
+        }
+      }
+
+      // TODO: 客戶滿意度 - 需要實現反饋系統後計算
+      // 暫時保持為 0，等待實現 feedback 表
+      satisfactionRate = 0;
+
+      console.log('📊 Stats calculated:', {
+        totalMessages,
+        totalCustomers,
+        totalConversations,
+        todayMessages,
+        resolvedToday,
+        onlineAgents,
+        responseTime,
+        satisfactionRate,
+        todayStart: todayISO
+      });
     } catch (dbError) {
       console.warn('Database query failed, using default values:', dbError);
       // 如果查詢失敗，使用默認值 0
@@ -233,6 +320,11 @@ systemHandler.get('/stats', async (c) => {
         totalMessages,
         totalCustomers,
         totalConversations,
+        todayMessages,
+        onlineAgents,
+        responseTime,
+        satisfactionRate,
+        resolvedToday,
         timestamp: new Date().toISOString()
       },
       timestamp: new Date().toISOString()

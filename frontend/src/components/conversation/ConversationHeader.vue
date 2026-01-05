@@ -507,6 +507,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Font Import - Professional Typography */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 .conversation-header {
   display: flex;
   justify-content: space-between;
@@ -847,9 +850,6 @@ onMounted(() => {
 /* ============================================
    🎨 REFINED ASSIGNMENT BUTTON - REDESIGNED
    ============================================ */
-
-/* Font Import - Professional Typography */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 .assign-action-wrapper {
   position: relative;

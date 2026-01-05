@@ -141,7 +141,8 @@
       "Bash(copy \"drizzle\\0029_add_task_reminders.sql\" \"migrations\\0029_add_task_reminders.sql\")",
       "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" log --oneline -3)",
       "Bash(npm install:*)",
-      "Bash(npx vue-tsc:*)"
+      "Bash(npx vue-tsc:*)",
+      "mcp__chrome-devtools__press_key"
     ],
     "deny": [],
     "ask": [],

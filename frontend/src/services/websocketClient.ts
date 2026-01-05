@@ -4,7 +4,7 @@
 
 import { ref, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getWebSocketUrl } from '@/config/runtime'
+import { getWebSocketUrl, getBackendUrl } from '@/config/runtime'
 
 // WebSocket connection states
 export type WebSocketConnectionState =
@@ -289,7 +289,8 @@ export class WebSocketClient {
 
       // 檢查 6: 網路連接性預檢（可選）
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+        // ✅ 使用統一的配置層獲取後端 URL
+        const baseUrl = getBackendUrl()
         const healthUrl = `${baseUrl}/api/websocket/health`
 
         // Create AbortController for timeout handling
