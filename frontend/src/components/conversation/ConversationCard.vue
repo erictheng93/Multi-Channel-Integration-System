@@ -142,8 +142,8 @@ const assignedToDisplay = computed(() => {
 const conversationAriaLabel = computed(() => {
   const customerName = props.conversation.customer?.name || props.conversation.user?.name || '未知用戶'
   const unreadText = hasUnreadMessages.value ? `，${props.conversation.unreadCount} 則未讀訊息` : ''
-  const statusText = props.conversation.status === 'open' ? '待處理' : 
-                    props.conversation.status === 'assigned' ? '處理中' : '已結束'
+  const statusText = props.conversation.status === CONVERSATION_STATUS.PENDING ? '待處理' :
+                    props.conversation.status === CONVERSATION_STATUS.IN_PROGRESS ? '處理中' : '已結束'
   return `與 ${customerName} 的對話，狀態：${statusText}${unreadText}`
 })
 
