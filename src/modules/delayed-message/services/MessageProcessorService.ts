@@ -204,15 +204,10 @@ export class MessageProcessorService {
     averageProcessingTime: number;
   }> {
     try {
-      // 這裡可以實現統計邏輯
-      // 目前返回模擬數據
-      return {
-        totalProcessed: 0,
-        successfulSends: 0,
-        failedSends: 0,
-        skippedMessages: 0,
-        averageProcessingTime: 0
-      };
+      // ✅ 從 StorageService 獲取真實統計數據
+      const stats = await this.storageService.getProcessingStats();
+      console.log('📊 [MessageProcessorService] Processing stats retrieved:', stats);
+      return stats;
     } catch (error) {
       console.error('❌ [MessageProcessorService] Failed to get processing stats:', error);
       return {

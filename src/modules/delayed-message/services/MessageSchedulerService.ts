@@ -236,19 +236,19 @@ export class MessageSchedulerService {
     averageDelaySeconds: number;
   }> {
     try {
-      // 這裡可以實現統計邏輯
-      // 目前返回模擬數據
-      return {
-        pendingCount: 0,
-        scheduledForNext24Hours: 0,
-        averageDelaySeconds: 30
-      };
+      // ✅ 從 StorageService 獲取真實統計數據
+      const stats = await this.storageService.getSchedulingStats();
+
+      console.log('📊 [MessageSchedulerService] Scheduling stats retrieved:', stats);
+
+      return stats;
     } catch (error) {
       console.error('❌ [MessageSchedulerService] Failed to get scheduling stats:', error);
+      // 發生錯誤時返回默認值
       return {
         pendingCount: 0,
         scheduledForNext24Hours: 0,
-        averageDelaySeconds: 30
+        averageDelaySeconds: 0
       };
     }
   }

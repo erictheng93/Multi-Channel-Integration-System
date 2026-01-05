@@ -335,6 +335,128 @@ export class StorageService implements DelayedMessageStorage {
   }
 
   /**
+   * 獲取排程統計資訊
+   */
+  async getSchedulingStats(): Promise<{
+    pendingCount: number;
+    scheduledForNext24Hours: number;
+    averageDelaySeconds: number;
+  }> {
+    try {
+      const now = new Date().toISOString();
+      const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      // ✅ 查詢待處理消息數量
+      const [pendingResult, scheduledNext24Result, avgDelayResult] = await Promise.all([
+        // 待處理消息總數
+        this.db.select({ count: count() })
+          .from(delayedMessages)
+          .where(eq(delayedMessages.status, 'pending'))
+          .get(),
+
+        // 未來 24 小時內要發送的消息數
+        this.db.select({ count: count() })
+          .from(delayedMessages)
+          .where(
+            and(
+              eq(delayedMessages.status, 'pending'),
+              sql`datetime(scheduled_at) >= datetime(${now})`,
+              sql`datetime(scheduled_at) <= datetime(${next24Hours})`
+            )
+          )
+          .get(),
+
+        // 平均延遲秒數
+        this.db.select({
+          avgDelay: sql<number>`
+            AVG(
+              CAST((julianday(scheduled_at) - julianday(created_at)) * 24 * 60 * 60 AS INTEGER)
+            )
+          `.as('avg_delay')
+        })
+        .from(delayedMessages)
+        .where(eq(delayedMessages.status, 'pending'))
+        .get()
+      ]);
+
+      return {
+        pendingCount: pendingResult?.count || 0,
+        scheduledForNext24Hours: scheduledNext24Result?.count || 0,
+        averageDelaySeconds: avgDelayResult?.avgDelay || 0
+      };
+    } catch (error) {
+      console.error('❌ [StorageService] Failed to get scheduling stats:', error);
+      return {
+        pendingCount: 0,
+        scheduledForNext24Hours: 0,
+        averageDelaySeconds: 0
+      };
+    }
+  }
+
+  /**
+   * 獲取處理統計資訊
+   */
+  async getProcessingStats(): Promise<{
+    totalProcessed: number;
+    successfulSends: number;
+    failedSends: number;
+    skippedMessages: number;
+    averageProcessingTime: number;
+  }> {
+    try {
+      // ✅ 查詢已處理消息的統計
+      const [totalResult, successResult, failedResult, cancelledResult] = await Promise.all([
+        // 總處理數 (已發送 + 失敗)
+        this.db.select({ count: count() })
+          .from(delayedMessages)
+          .where(
+            sql`status IN ('sent', 'failed')`
+          )
+          .get(),
+
+        // 成功發送
+        this.db.select({ count: count() })
+          .from(delayedMessages)
+          .where(eq(delayedMessages.status, 'sent'))
+          .get(),
+
+        // 發送失敗
+        this.db.select({ count: count() })
+          .from(delayedMessages)
+          .where(eq(delayedMessages.status, 'failed'))
+          .get(),
+
+        // 已取消/跳過
+        this.db.select({ count: count() })
+          .from(delayedMessages)
+          .where(eq(delayedMessages.status, 'cancelled'))
+          .get()
+      ]);
+
+      // TODO: 計算平均處理時間 (需要記錄處理時間戳)
+      const averageProcessingTime = 0;
+
+      return {
+        totalProcessed: totalResult?.count || 0,
+        successfulSends: successResult?.count || 0,
+        failedSends: failedResult?.count || 0,
+        skippedMessages: cancelledResult?.count || 0,
+        averageProcessingTime
+      };
+    } catch (error) {
+      console.error('❌ [StorageService] Failed to get processing stats:', error);
+      return {
+        totalProcessed: 0,
+        successfulSends: 0,
+        failedSends: 0,
+        skippedMessages: 0,
+        averageProcessingTime: 0
+      };
+    }
+  }
+
+  /**
    * 檢查資料庫連接狀態
    */
   async healthCheck(): Promise<boolean> {
