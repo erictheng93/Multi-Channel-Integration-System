@@ -3,13 +3,13 @@
     v-memo optimization: Only re-render when essential props change
     This prevents unnecessary re-renders when scrolling through large message lists
   -->
-  <div 
+  <div
     v-memo="[message.id, message.content, message.deliveryStatus, message.createdAt, message.messageType, delivered]"
     class="message-bubble"
     :class="messageBubbleClasses"
     @contextmenu="handleRightClick"
-    @mouseenter="showActionsOnHover"
-    @mouseleave="hideActionsOnHover"
+    @mouseenter="setShowActions(true)"
+    @mouseleave="setShowActions(false)"
   >
     <div class="message-content">
       <!-- Image Message (lazy loaded) -->
@@ -211,6 +211,18 @@
                 class="file-size"
               >{{ formattedFileSize }}</span>
               <span class="file-type">{{ fileExtension }}</span>
+            </div>
+            <div
+              v-if="uploadProgress !== undefined"
+              class="file-progress"
+            >
+              <div class="progress-bar">
+                <div
+                  class="progress-fill"
+                  :style="{ width: `${uploadProgress}%` }"
+                />
+              </div>
+              <span class="progress-text">{{ uploadProgress }}%</span>
             </div>
           </div>
           <div class="file-actions">
@@ -445,6 +457,17 @@
         </button>
       </div>
     </div>
+
+    <!-- Sender info for incoming messages -->
+    <div
+      v-if="!isOutgoing && showSender"
+      class="sender-info"
+    >
+      <div class="sender-avatar">
+        {{ senderInitials }}
+      </div>
+      <span class="sender-name">{{ senderName }}</span>
+    </div>
   </div>
 
   <!-- 🔴 Module 3.1: Image Preview Modal with Zoom Controls -->
@@ -657,7 +680,8 @@ const {
   forwardMessage,
   recallMessage,
   selectMessage,
-  handleRetry
+  handleRetry,
+  setShowActions
 } = useMessageActions(actionsProps, actionsEmit)
 
 // 4️⃣ useMessageSticker - 贴纸处理
@@ -708,6 +732,10 @@ const senderName = computed(() => {
   return '客服'
 })
 
+const senderInitials = computed(() => {
+  return senderName.value[0]
+})
+
 // File handling - 优先使用 props，fallback 到 metadata（兼容性保留）
 const attachmentUrl = computed(() => {
   return props.attachmentUrl || props.message.metadata?.attachment?.url || ''
@@ -752,7 +780,8 @@ const fileIconComponent = computed(() => {
 
 // 时间格式化（使用 useMessageTime 提供的 formatTime）
 const formattedTime = computed(() => {
-  return formatTime(props.message.createdAt)
+  // 支持 timestamp 或 createdAt（向后兼容测试数据）
+  return formatTime(props.message.timestamp || props.message.createdAt)
 })
 
 // Message status
@@ -788,11 +817,12 @@ const statusClass = computed(() => {
 
 const canRecall = computed(() => {
   if (!isOutgoing.value) {return false}
-  
-  const messageTime = new Date(props.message.createdAt).getTime()
+
+  // 支持 timestamp 或 createdAt（向后兼容）
+  const messageTime = new Date(props.message.timestamp || props.message.createdAt).getTime()
   const now = Date.now()
   const fiveMinutes = 5 * 60 * 1000
-  
+
   return (now - messageTime) < fiveMinutes && props.message.deliveryStatus !== 'failed'
 })
 
@@ -811,17 +841,8 @@ const messageBubbleClasses = computed(() => ({
 // handleRightClick, toggleActionsMenu, copyMessage, replyToMessage, forwardMessage, recallMessage, selectMessage, handleRetry
 // 已由 useMessageActions 提供
 
-// 保留的事件处理（与 useMessageActions 配合）
-const showActionsOnHover = () => {
-  showActions.value = true
-}
-
-const hideActionsOnHover = () => {
-  // Delay hiding to allow interaction with actions
-  setTimeout(() => {
-    showActions.value = false
-  }, 200)
-}
+// Note: showActions visibility is handled directly in template using setShowActions from composable
+// @mouseenter="setShowActions(true)" and @mouseleave="setShowActions(false)"
 
 // 🔴 Module 3.1: Complete Image Preview with Modal
 const openImagePreview = () => {
@@ -1764,5 +1785,63 @@ const onImageError = () => {
 
 .retry-btn:active {
   transform: scale(0.95);
+}
+
+/* Sender info styles */
+.sender-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.sender-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--gray-300);
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.sender-name {
+  color: var(--gray-600);
+  font-size: 0.75rem;
+}
+
+/* Upload progress styles */
+.file-progress {
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.progress-text {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  min-width: 3ch;
+  text-align: right;
 }
 </style>
