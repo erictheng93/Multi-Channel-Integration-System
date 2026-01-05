@@ -122,7 +122,7 @@
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
-import AppLayout from '@/components/layout/AppLayout.vue'
+import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import TeamStatsOverview from '@/components/team/TeamStatsOverview.vue'
 import MemberListSection from '@/components/team/MemberListSection.vue'

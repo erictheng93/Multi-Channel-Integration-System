@@ -1,0 +1,193 @@
+/**
+ * Unit Tests for useConversationFilters Composable
+ *
+ * @module tests/unit/composables/conversation/useConversationFilters.test
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest'
+import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
+
+describe('useConversationFilters', () => {
+  let filtersComposable: ReturnType<typeof useConversationFilters>
+
+  beforeEach(() => {
+    filtersComposable = useConversationFilters()
+  })
+
+  describe('初始化状态', () => {
+    it('应该初始化为默认筛选条件', () => {
+      const { filters, selectedTagIds, hasActiveFilters } = filtersComposable
+
+      expect(filters.value.status).toBe('')
+      expect(filters.value.platform).toBe('')
+      expect(filters.value.assignedTo).toBeUndefined()
+      expect(filters.value.tagIds).toEqual([])
+      expect(selectedTagIds.value).toEqual([])
+      expect(hasActiveFilters.value).toBe(false)
+    })
+  })
+
+  describe('updateFilter', () => {
+    it('应该正确更新单个筛选条件', () => {
+      const { filters, updateFilter } = filtersComposable
+
+      updateFilter('status', 'open')
+      expect(filters.value.status).toBe('open')
+
+      updateFilter('platform', 'line')
+      expect(filters.value.platform).toBe('line')
+    })
+
+    it('更新筛选条件后 hasActiveFilters 应该为 true', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('status', 'open')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+  })
+
+  describe('updateTagFilter', () => {
+    it('应该正确更新标签筛选', () => {
+      const { filters, selectedTagIds, updateTagFilter } = filtersComposable
+
+      updateTagFilter([1, 2, 3])
+      expect(selectedTagIds.value).toEqual([1, 2, 3])
+      expect(filters.value.tagIds).toEqual([1, 2, 3])
+    })
+  })
+
+  describe('toggleTagFilter', () => {
+    it('应该正确切换标签选中状态', () => {
+      const { selectedTagIds, toggleTagFilter } = filtersComposable
+
+      // 选中标签 1
+      toggleTagFilter(1)
+      expect(selectedTagIds.value).toEqual([1])
+
+      // 选中标签 2
+      toggleTagFilter(2)
+      expect(selectedTagIds.value).toEqual([1, 2])
+
+      // 取消选中标签 1
+      toggleTagFilter(1)
+      expect(selectedTagIds.value).toEqual([2])
+    })
+  })
+
+  describe('clearTagFilter', () => {
+    it('应该清除所有标签筛选', () => {
+      const { selectedTagIds, filters, updateTagFilter, clearTagFilter } = filtersComposable
+
+      updateTagFilter([1, 2, 3])
+      expect(selectedTagIds.value).toEqual([1, 2, 3])
+
+      clearTagFilter()
+      expect(selectedTagIds.value).toEqual([])
+      expect(filters.value.tagIds).toEqual([])
+    })
+  })
+
+  describe('clearAllFilters', () => {
+    it('应该清除所有筛选条件', () => {
+      const { filters, updateFilter, updateTagFilter, clearAllFilters, hasActiveFilters } =
+        filtersComposable
+
+      // 设置多个筛选条件
+      updateFilter('status', 'open')
+      updateFilter('platform', 'line')
+      updateFilter('assignedTo', 'agent-001')
+      updateTagFilter([1, 2])
+
+      expect(hasActiveFilters.value).toBe(true)
+
+      // 清除所有筛选
+      clearAllFilters()
+
+      expect(filters.value.status).toBe('')
+      expect(filters.value.platform).toBe('')
+      expect(filters.value.assignedTo).toBeUndefined()
+      expect(filters.value.tagIds).toEqual([])
+      expect(hasActiveFilters.value).toBe(false)
+    })
+  })
+
+  describe('getApiFilters', () => {
+    it('应该正确处理 "me" assignedTo 值', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+
+      updateFilter('assignedTo', 'me')
+      const apiFilters = getApiFilters('agent-001')
+
+      expect(apiFilters.assignedTo).toBe('agent-001')
+    })
+
+    it('应该正确处理 "unassigned" assignedTo 值', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+
+      updateFilter('assignedTo', 'unassigned')
+      const apiFilters = getApiFilters()
+
+      expect(apiFilters.assignedTo).toBeUndefined()
+    })
+
+    it('应该移除空字符串值', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+
+      updateFilter('status', '')
+      updateFilter('platform', 'line')
+      const apiFilters = getApiFilters()
+
+      expect(apiFilters.status).toBeUndefined()
+      expect(apiFilters.platform).toBe('line')
+    })
+
+    it('应该包含所有非空筛选条件', () => {
+      const { updateFilter, updateTagFilter, getApiFilters } = filtersComposable
+
+      updateFilter('status', 'open')
+      updateFilter('platform', 'line')
+      updateTagFilter([1, 2])
+      const apiFilters = getApiFilters()
+
+      expect(apiFilters.status).toBe('open')
+      expect(apiFilters.platform).toBe('line')
+      expect(apiFilters.tagIds).toEqual([1, 2])
+    })
+  })
+
+  describe('hasActiveFilters 计算属性', () => {
+    it('当所有筛选为默认值时应该为 false', () => {
+      const { hasActiveFilters } = filtersComposable
+
+      expect(hasActiveFilters.value).toBe(false)
+    })
+
+    it('当 status 筛选有值时应该为 true', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('status', 'open')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('当 platform 筛选有值时应该为 true', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('platform', 'line')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('当 assignedTo 筛选有值时应该为 true', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('assignedTo', 'agent-001')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('当有标签筛选时应该为 true', () => {
+      const { hasActiveFilters, updateTagFilter } = filtersComposable
+
+      updateTagFilter([1])
+      expect(hasActiveFilters.value).toBe(true)
+    })
+  })
+})

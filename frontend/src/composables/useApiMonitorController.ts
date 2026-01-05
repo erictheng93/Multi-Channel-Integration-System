@@ -8,6 +8,7 @@
  */
 
 import { ref, computed, reactive, onUnmounted, getCurrentInstance } from 'vue'
+import { getBackendUrl } from '@/config/runtime'
 import type {
   ApiEndpoint,
   FilterState,
@@ -213,7 +214,8 @@ export function useApiMonitorController() {
    */
   async function loadApiStatusFromBackend(): Promise<void> {
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+      // ✅ 使用統一的配置層獲取後端 URL
+      const baseUrl = getBackendUrl()
       const response = await fetch(`${baseUrl}/api/system/api-status`)
 
       if (!response.ok) {
@@ -252,7 +254,8 @@ export function useApiMonitorController() {
    */
   async function fetchMigrationStatus(): Promise<void> {
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+      // ✅ 使用統一的配置層獲取後端 URL
+      const baseUrl = getBackendUrl()
       const response = await fetch(`${baseUrl}/api/websocket/migration-status`)
 
       if (response.ok) {

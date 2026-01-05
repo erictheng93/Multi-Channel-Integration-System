@@ -241,6 +241,21 @@ export const systemApi = {
     return apiClient.get(`/system/stats${period ? `?period=${period}` : ''}`)
   },
 
+  // 獲取 Dashboard 統計數據
+  getDashboardStats: async (): Promise<ApiResponse<{
+    totalMessages: number;
+    totalCustomers: number;
+    totalConversations: number;
+    todayMessages: number;
+    onlineAgents: number;
+    responseTime: string;
+    satisfactionRate: number;
+    resolvedToday: number;
+    timestamp: string;
+  }>> => {
+    return apiClient.get('/stats')
+  },
+
   // 更新 Webhook URL
   updateWebhookUrl: async (
     platform: 'line' | 'facebook',

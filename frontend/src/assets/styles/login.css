@@ -1,0 +1,574 @@
+/* ==========================================================================
+   APPLE DESIGN SYSTEM - LOGIN PAGE STYLES
+   ========================================================================== */
+
+/* ==========================================================================
+   CSS CUSTOM PROPERTIES
+   ========================================================================== */
+.login-page {
+  /* ===== DARK MODE (Default) ===== */
+  --bg-primary: #000000;
+  --bg-secondary: #1d1d1f;
+  --bg-tertiary: #2d2d2d;
+
+  --text-primary: #f5f5f7;
+  --text-secondary: #86868b;
+  --text-tertiary: #6e6e73;
+  --text-muted: #424245;
+
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-hover: rgba(255, 255, 255, 0.08);
+
+  /* 柔和淺灰調 - 中性邀請感 */
+  --input-bg: rgba(160, 160, 165, 0.08);
+  --input-bg-hover: rgba(160, 160, 165, 0.12);
+  --input-bg-focus: rgba(180, 180, 185, 0.16);
+
+  --btn-bg: #f5f5f7;
+  --btn-bg-hover: #ffffff;
+  --btn-text: #000000;
+
+  --accent-green: #34c759;
+  --accent-error: #ff453a;
+  --accent-error-bg: rgba(255, 69, 58, 0.1);
+  --accent-error-border: rgba(255, 69, 58, 0.2);
+
+  --orb-1: radial-gradient(circle, #1a1a2e 0%, transparent 70%);
+  --orb-2: radial-gradient(circle, #16213e 0%, transparent 70%);
+  --orb-3: radial-gradient(circle, #1f1f3d 0%, transparent 70%);
+
+  --toggle-track-bg: #424245;
+  --noise-opacity: 0.03;
+
+  /* Typography - 優雅中文字體支援 */
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+                  'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei',
+                  'Helvetica Neue', sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+               'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei',
+               'Helvetica Neue', sans-serif;
+
+  /* Spacing */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Transitions */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 600ms;
+}
+
+/* ===== LIGHT MODE ===== */
+.login-page.light-mode {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #e8e8ed;
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #86868b;
+  --text-muted: #a1a1a6;
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.9);
+
+  /* 柔和淺灰調 - 溫暖中性 */
+  --input-bg: rgba(120, 115, 110, 0.05);
+  --input-bg-hover: rgba(120, 115, 110, 0.08);
+  --input-bg-focus: rgba(100, 95, 90, 0.12);
+
+  --btn-bg: #1d1d1f;
+  --btn-bg-hover: #000000;
+  --btn-text: #ffffff;
+
+  --accent-green: #34c759;
+  --accent-error: #ff3b30;
+  --accent-error-bg: rgba(255, 59, 48, 0.08);
+  --accent-error-border: rgba(255, 59, 48, 0.15);
+
+  --orb-1: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  --orb-2: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  --orb-3: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 70%);
+
+  --toggle-track-bg: #d1d1d6;
+  --noise-opacity: 0.015;
+}
+
+/* ==========================================================================
+   PAGE LAYOUT
+   ========================================================================== */
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  font-family: var(--font-text);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--duration-normal) ease,
+    color var(--duration-normal) ease;
+}
+
+/* ==========================================================================
+   AMBIENT BACKGROUND
+   ========================================================================== */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity var(--duration-slow) ease;
+}
+
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.4;
+  animation: float 25s ease-in-out infinite;
+  transition: background var(--duration-slow) ease;
+}
+
+.orb-1 {
+  width: 800px;
+  height: 800px;
+  background: var(--orb-1);
+  top: -300px;
+  left: -200px;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 600px;
+  height: 600px;
+  background: var(--orb-2);
+  bottom: -200px;
+  right: -150px;
+  animation-delay: -8s;
+}
+
+.orb-3 {
+  width: 400px;
+  height: 400px;
+  background: var(--orb-3);
+  top: 50%;
+  left: 60%;
+  animation-delay: -16s;
+}
+
+.light-mode .ambient-orb {
+  opacity: 0.6;
+  filter: blur(100px);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(20px, -30px) scale(1.02);
+  }
+  50% {
+    transform: translate(-10px, 20px) scale(0.98);
+  }
+  75% {
+    transform: translate(30px, 10px) scale(1.01);
+  }
+}
+
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: var(--noise-opacity);
+  mix-blend-mode: overlay;
+  transition: opacity var(--duration-slow) ease;
+}
+
+/* ==========================================================================
+   GLASS CARD
+   ========================================================================== */
+.glass-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  padding: 56px var(--space-xl) 48px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  animation: card-reveal 0.8s var(--ease-out-expo) backwards;
+  transition:
+    background-color var(--duration-normal) ease,
+    border-color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease;
+}
+
+.light-mode .glass-card {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.02),
+    0 12px 24px rgba(0, 0, 0, 0.06);
+}
+
+@keyframes card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+}
+
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
+.card-header {
+  text-align: center;
+  margin-bottom: 36px;
+  display: block;
+  padding: 0;
+  border-bottom: none;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin: 0;
+  text-align: center;
+  animation: text-reveal 0.6s var(--ease-out-expo) 0.2s backwards;
+  transition: color var(--duration-normal) ease;
+}
+
+@keyframes text-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ==========================================================================
+   FORM
+   ========================================================================== */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ==========================================================================
+   SUBMIT BUTTON
+   ========================================================================== */
+.submit-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  height: 56px;
+  margin-top: var(--space-md);
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--btn-text);
+  background: var(--btn-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all var(--duration-fast) ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--btn-bg-hover);
+  transform: scale(1.01);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.submit-btn.is-loading .btn-text,
+.submit-btn.is-loading .btn-icon {
+  opacity: 0;
+}
+
+.btn-icon {
+  transition: transform var(--duration-fast) ease;
+}
+
+.submit-btn:hover:not(:disabled) .btn-icon {
+  transform: translateX(4px);
+}
+
+.btn-loader {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-top-color: var(--btn-text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   ERROR BANNER
+   ========================================================================== */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--accent-error-bg);
+  border: 1px solid var(--accent-error-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--accent-error);
+  transition: all var(--duration-normal) ease;
+}
+
+.error-banner svg {
+  flex-shrink: 0;
+}
+
+.alert-reveal-enter-active,
+.alert-reveal-leave-active {
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+.alert-reveal-enter-from,
+.alert-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ==========================================================================
+   DEBUG
+   ========================================================================== */
+.debug-info {
+  padding: var(--space-sm);
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: all var(--duration-normal) ease;
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: 32px;
+}
+
+.footer-link {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease;
+}
+
+.footer-link:hover {
+  color: var(--text-primary);
+}
+
+.footer-divider {
+  width: 4px;
+  height: 4px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: background-color var(--duration-normal) ease;
+}
+
+/* ==========================================================================
+   SOCIAL SECTION
+   ========================================================================== */
+.social-section {
+  margin-top: 28px;
+}
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+  transition: background-color var(--duration-normal) ease;
+}
+
+.divider-text {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  transition: color var(--duration-normal) ease;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  height: 50px;
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: not-allowed;
+  opacity: 0.5;
+  transition: all var(--duration-fast) ease;
+}
+
+.social-btn:not(:disabled):hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-border);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   BRAND MARK
+   ========================================================================== */
+.brand-mark {
+  position: fixed;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  transition: color var(--duration-normal) ease;
+}
+
+.brand-mark svg {
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 480px) {
+  .login-page {
+    padding: var(--space-md);
+    align-items: flex-start;
+    padding-top: 80px;
+  }
+
+  .glass-card {
+    padding: var(--space-xl) var(--space-lg);
+    border-radius: var(--radius-lg);
+  }
+
+  .headline {
+    font-size: 40px;
+  }
+
+  .brand-mark {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    margin-top: var(--space-xl);
+    justify-content: center;
+  }
+
+  .ambient-orb {
+    filter: blur(80px);
+  }
+
+  .orb-1 {
+    width: 400px;
+    height: 400px;
+  }
+
+  .orb-2 {
+    width: 300px;
+    height: 300px;
+  }
+
+  .orb-3 {
+    display: none;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .submit-btn {
+    border: 2px solid var(--btn-text);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb {
+    animation: none;
+  }
+
+  .glass-card {
+    animation: none;
+  }
+
+  .headline {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

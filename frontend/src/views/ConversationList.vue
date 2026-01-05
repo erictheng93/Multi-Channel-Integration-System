@@ -1,224 +1,38 @@
 <template>
   <AppLayout>
     <div class="conversation-list">
-      <!-- Header with Filters -->
-      <div class="list-header">
-        <div class="header-content">
-          <div class="header-info">
-            <h1 class="page-title">
-              對話管理
-            </h1>
-            <p class="page-subtitle">
-              管理所有客戶對話，快速回應客戶需求
-            </p>
-          </div>
-          
-          <div class="header-actions">
-            <!-- 智能快取狀態指示器 -->
-            <div
-              v-if="cacheManager.cacheHitRate.value > 0"
-              class="cache-status-indicator"
-              :title="`快取命中率: ${cacheManager.cacheHitRate.value.toFixed(1)}%`"
-            >
-              <div class="cache-icon">
-                ⚡
-              </div>
-              <span class="cache-text">{{ cacheManager.cacheHitRate.value.toFixed(0) }}%</span>
-            </div>
-            
-            <!-- 混合同步狀態指示器 -->
-            <div
-              v-if="syncStatus !== 'disconnected'"
-              class="sync-status-indicator"
-              :class="`status-${syncStatus}`"
-            >
-              <div
-                class="sync-dot"
-                :class="{ 'syncing': isAutoRefreshing }"
-              />
-              <span class="sync-text">
-                <template v-if="syncStatus === 'connected'">SSE連線</template>
-                <template v-else-if="syncStatus === 'polling'">輪詢模式</template>
-                <template v-else-if="syncStatus === 'connecting'">連線中</template>
-                <template v-else-if="isAutoRefreshing">更新中</template>
-                <template v-else>{{ syncStatus }}</template>
-              </span>
-            </div>
-            
-            <button
-              class="btn btn-secondary"
-              :disabled="isLoading"
-              @click="refreshConversations"
-            >
-              <RefreshIcon :spinning="isLoading || isAutoRefreshing" />
-              重新整理
-            </button>
-          </div>
-        </div>
+      <!-- Header with Actions -->
+      <ConversationHeader
+        :cache-hit-rate="controller.cache.cacheHitRate.value"
+        :sync-status="syncComposable.syncStatus.value"
+        :is-syncing="syncComposable.isSyncing.value"
+        :is-refreshing="controller.isRefreshing.value"
+        @refresh="handleRefresh"
+      />
 
-        <!-- Filters -->
-        <div class="filters-section">
-          <div class="filters">
-            <div class="filter-group">
-              <label class="filter-label">狀態篩選</label>
-              <select
-                v-model="filters.status"
-                class="form-select"
-                @change="loadConversations"
-              >
-                <option value="">
-                  所有狀態
-                </option>
-                <option value="open">
-                  待處理
-                </option>
-                <option value="assigned">
-                  已指派
-                </option>
-                <option value="closed">
-                  已關閉
-                </option>
-              </select>
-            </div>
-            
-            <div class="filter-group">
-              <label class="filter-label">平台篩選</label>
-              <select
-                v-model="filters.platform"
-                class="form-select"
-                @change="loadConversations"
-              >
-                <option value="">
-                  所有平台
-                </option>
-                <option value="line">
-                  LINE
-                </option>
-                <option value="facebook">
-                  Facebook
-                </option>
-                <option value="instagram">
-                  Instagram
-                </option>
-                <option value="whatsapp">
-                  WhatsApp
-                </option>
-              </select>
-            </div>
-            
-            <div class="filter-group">
-              <label class="filter-label">指派狀態</label>
-              <select
-                v-model="filters.assignedTo"
-                class="form-select"
-                @change="loadConversations"
-              >
-                <option value="">
-                  全部
-                </option>
-                <option value="me">
-                  指派給我
-                </option>
-                <option value="unassigned">
-                  未指派
-                </option>
-              </select>
-            </div>
-
-            <!-- 標籤篩選 -->
-            <div class="filter-group tag-filter-group">
-              <label class="filter-label">標籤篩選</label>
-              <div class="tag-filter-wrapper">
-                <button
-                  class="tag-filter-btn"
-                  :class="{ 'has-selection': selectedTagIds.length > 0 }"
-                  @click="showTagFilterDropdown = !showTagFilterDropdown"
-                >
-                  <span v-if="selectedTagIds.length === 0">選擇標籤</span>
-                  <span v-else>已選 {{ selectedTagIds.length }} 個</span>
-                  <svg
-                    class="dropdown-chevron"
-                    :class="{ 'rotated': showTagFilterDropdown }"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                <div
-                  v-if="showTagFilterDropdown"
-                  class="tag-filter-dropdown"
-                >
-                  <div
-                    v-if="availableTags.length === 0"
-                    class="no-tags-message"
-                  >
-                    暫無可用標籤
-                  </div>
-                  <div
-                    v-for="tag in availableTags"
-                    v-else
-                    :key="tag.id"
-                    class="tag-option"
-                    :class="{ 'selected': selectedTagIds.includes(tag.id) }"
-                    @click="toggleTagFilter(tag.id)"
-                  >
-                    <div
-                      class="tag-color-dot"
-                      :style="{ backgroundColor: tag.color }"
-                    />
-                    <span class="tag-name">{{ tag.name }}</span>
-                    <svg
-                      v-if="selectedTagIds.includes(tag.id)"
-                      class="check-icon"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <div
-                    v-if="selectedTagIds.length > 0"
-                    class="clear-tags-btn"
-                    @click="clearTagFilter"
-                  >
-                    清除篩選
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Stats -->
-          <div class="quick-stats">
-            <div class="stat-item">
-              <span class="stat-number">{{ totalConversations }}</span>
-              <span class="stat-label">總對話</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-number">{{ unreadCount }}</span>
-              <span class="stat-label">未讀</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Filters Section -->
+      <ConversationFilters
+        :filters="controller.filters.filters.value"
+        :available-tags="availableTags"
+        :total-conversations="controller.totalConversations.value"
+        :unread-count="controller.unreadCount.value"
+        @update:filter="handleFilterUpdate"
+        @toggle:tag="controller.filters.toggleTagFilter"
+        @clear:tags="controller.filters.clearTagFilter"
+      />
 
       <!-- Content -->
       <div class="list-content">
-        <!-- Skeleton Loading for initial load -->
+        <!-- Skeleton Loading -->
         <SkeletonLoader
           v-if="showSkeleton"
           :count="8"
           class="skeleton-fade-in"
         />
-        
-        <!-- Empty state when no conversations found -->
-        <EmptyState 
-          v-else-if="conversations.length === 0 && !isLoading"
+
+        <!-- Empty State -->
+        <EmptyState
+          v-else-if="controller.conversations.value.length === 0 && !controller.isLoading.value"
           title="沒有找到對話"
           description="目前沒有符合篩選條件的對話，請調整篩選條件或等待新對話"
         >
@@ -228,47 +42,36 @@
           <template #actions>
             <button
               class="btn btn-primary"
-              @click="clearFilters"
+              @click="controller.filters.clearAllFilters"
             >
               清除篩選
             </button>
             <button
               class="btn btn-secondary"
-              @click="refreshConversations"
+              @click="handleRefresh"
             >
               重新整理
             </button>
           </template>
         </EmptyState>
-        
-        <!-- Conversations list with virtual scrolling -->
+
+        <!-- Conversations List with Virtual Scrolling -->
         <div
           v-else
           class="conversations-container"
-          :class="{ 'updating': showShimmer }"
         >
-          <!-- Background refresh indicator -->
-          <div
-            v-if="showShimmer"
-            class="refresh-indicator"
-          >
-            <div class="refresh-bar" />
-            <span class="refresh-text">更新中...</span>
-          </div>
-          
-          <!-- Enhanced Smart Virtual scrolling list for performance -->
           <SmartVirtualScrollList
-            :items="conversations"
-            :item-height="120"
-            :container-height="600"
-            :overscan="3"
-            :loading-more="loadingMore"
-            :reached-end="reachedEnd"
-            :preload-pages="2"
-            :enable-smart-preload="true"
-            :predictive-load-threshold="0.8"
-            :intersection-threshold="0.5"
-            :root-margin="'200px'"
+            :items="controller.conversations.value"
+            :item-height="virtualScroll.scrollConfig.itemHeight"
+            :container-height="virtualScroll.scrollConfig.containerHeight"
+            :overscan="virtualScroll.scrollConfig.overscan"
+            :loading-more="controller.loadingMore.value"
+            :reached-end="virtualScroll.reachedEnd.value"
+            :preload-pages="virtualScroll.scrollConfig.preloadPages"
+            :enable-smart-preload="virtualScroll.scrollConfig.enableSmartPreload"
+            :predictive-load-threshold="virtualScroll.scrollConfig.predictiveLoadThreshold"
+            :intersection-threshold="virtualScroll.scrollConfig.intersectionThreshold"
+            :root-margin="virtualScroll.scrollConfig.rootMargin"
             :get-item-key="(item) => (item as Conversation).id"
             class="smart-virtual-conversations"
             @reach-bottom="handleLoadMore"
@@ -276,29 +79,26 @@
             @predictive-load="handlePredictiveLoad"
           >
             <template #default="{ item }">
-              <div 
-                class="virtual-conversation-wrapper"
-                :class="{ 'shimmer-effect': showShimmer }"
-              >
+              <div class="virtual-conversation-wrapper">
                 <ConversationCard
                   :conversation="item as Conversation"
-                  :selected="selectedConversationId === (item as Conversation).id"
-                  @select="selectConversation"
+                  :selected="controller.selectedConversationId.value === (item as Conversation).id"
+                  @select="controller.selectConversation"
                 />
               </div>
             </template>
-            
+
             <template #loading>
               <div class="virtual-loading">
                 <HamsterLoader message="刷新中..." />
                 <span>智能載入更多對話中...</span>
               </div>
             </template>
-            
+
             <template #end>
               <div class="virtual-end">
                 <div class="end-stats">
-                  <span>✨ 已顯示全部 {{ totalConversations }} 個對話</span>
+                  <span>✨ 已顯示全部 {{ controller.totalConversations.value }} 個對話</span>
                 </div>
               </div>
             </template>
@@ -308,27 +108,27 @@
 
       <!-- Pagination -->
       <div
-        v-if="totalPages > 1"
+        v-if="controller.totalPages.value > 1"
         class="pagination"
       >
-        <button 
-          :disabled="currentPage === 1"
+        <button
+          :disabled="controller.currentPage.value === 1"
           class="btn btn-secondary"
-          @click="changePage(currentPage - 1)"
+          @click="controller.changePage(controller.currentPage.value - 1)"
         >
           <ChevronLeftIcon />
           上一頁
         </button>
-        
+
         <div class="page-info">
-          <span class="page-text">第 {{ currentPage }} / {{ totalPages }} 頁</span>
-          <span class="total-text">共 {{ totalConversations }} 個對話</span>
+          <span class="page-text">第 {{ controller.currentPage.value }} / {{ controller.totalPages.value }} 頁</span>
+          <span class="total-text">共 {{ controller.totalConversations.value }} 個對話</span>
         </div>
-        
-        <button 
-          :disabled="currentPage === totalPages"
+
+        <button
+          :disabled="controller.currentPage.value === controller.totalPages.value"
           class="btn btn-secondary"
-          @click="changePage(currentPage + 1)"
+          @click="controller.changePage(controller.currentPage.value + 1)"
         >
           下一頁
           <ChevronRightIcon />
@@ -339,30 +139,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuth, useConversations } from '@/composables'
-import type { Conversation, ConversationFilters } from '@/types'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
-import { conversationSync } from '@/services/conversationSync'
-import { cacheManager } from '@/services/cacheManager'
-import { updateConversationsWithAnimation } from '@/services/incrementalUpdateManager'
-import { webWorkerManager } from '@/services/webWorkerManager'
-import { predictiveLoader } from '@/services/predictiveLoader'
-import { idleTimeProcessor, TaskPriority } from '@/services/idleTimeProcessor'
+import {
+  useConversationListController,
+  useConversationSync,
+  useConversationVirtualScroll
+} from '@/composables/conversation'
+import type { Conversation, ConversationFilters as ConversationFiltersType } from '@/types'
+import { tagCacheService } from '@/services/tagCacheService'
+
+// UI Components
 import AppLayout from '@/components/ui/AppLayout.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import SmartVirtualScrollList from '@/components/ui/SmartVirtualScrollList.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
-import { translateError } from '@/utils/error-handler'
-import toast from '@/composables/useToast'
+import { ConversationHeader, ConversationFilters } from '@/components/conversation-list'
+import { ChatIcon } from '@/components/icons'
 
-import { RefreshIcon, ChatIcon } from '@/components/icons'
-import { tagCacheService } from '@/services/tagCacheService'
-
-// Chevron icons (small, can stay inline)
+// Chevron icons
 const ChevronLeftIcon = {
   template: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>`
 }
@@ -371,555 +168,77 @@ const ChevronRightIcon = {
   template: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>`
 }
 
-const router = useRouter()
-const { currentAgent } = useAuth()
-const { conversations } = useConversations()
+// Initialize composables
 const conversationsStore = useConversationsStore()
+const controller = useConversationListController()
+const syncComposable = useConversationSync()
+const virtualScroll = useConversationVirtualScroll()
 
-// Use enhanced loading states from store
-const {
-  showSkeleton,
-  showShimmer, 
-  isLoading,
-  loadingMore,
-  refreshConversations: storeRefresh,
-  loadWithCache,
-  preloadNextPage
-} = conversationsStore
-
-// State
-const currentPage = ref(1)
-const pageSize = ref(20)
-const total = ref(0)
-const selectedConversationId = ref<string | null>(null)
-const filters = ref<ConversationFilters>({
-  status: '', // 設定為空字串以顯示「所有狀態」
-  platform: '', // 設定為空字串以顯示「所有平台」
-  assignedTo: undefined
-})
-
-// 錯誤狀態
-const loadError = ref<string | null>(null)
-const hasNetworkError = ref(false)
-const retryCount = ref(0)
-const MAX_RETRY_COUNT = 3
-
-// 虛擬滾動狀態
-const reachedEnd = ref(false)
-const visibleRange = ref({ startIndex: 0, endIndex: 0 })
-const isPreloading = ref(false)
-
-// 標籤篩選狀態
-const showTagFilterDropdown = ref(false)
-const selectedTagIds = ref<number[]>([])
+// Computed properties
+const showSkeleton = computed(() => conversationsStore.showSkeleton)
 const availableTags = computed(() => tagCacheService.getAllTags())
 
-// Computed
-const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-const totalConversations = computed(() => total.value)
-const unreadCount = computed(() => 
-  conversations.value.filter((c: Conversation) => c.unreadCount && c.unreadCount > 0).length
-)
-
-// Methods - Using smart cache loading with all optimizations
-
 /**
- * 載入對話列表，使用多層優化策略
- *
- * 優化策略包括：
- * 1. 預測性預載入 - 使用預先載入的數據實現零等待
- * 2. 智能快取 - 優先顯示快取數據，後台更新
- * 3. 增量更新動畫 - 平滑的數據更新過渡
- * 4. 空閒時間處理 - 在瀏覽器空閒時進行預載入
- *
- * @async
- * @throws {Error} 當 API 請求失敗時拋出錯誤（已捕獲並記錄）
- *
- * @example
- * // 初始載入
- * await loadConversations()
- *
- * @example
- * // 篩選變更後載入
- * filters.value.status = 'open'
- * await loadConversations()
+ * 处理筛选更新
  */
-async function loadConversations() {
-  console.log('🚀 [ConversationList] Loading conversations with advanced optimizations')
-
-  try {
-    // 準備篩選條件
-    const apiFilters: Record<string, unknown> = { ...filters.value }
-    if (apiFilters.assignedTo === 'me') {
-      apiFilters.assignedTo = currentAgent.value?.id
-    } else if (apiFilters.assignedTo === 'unassigned') {
-      apiFilters.assignedTo = undefined
-    } else {
-      delete apiFilters.assignedTo
-    }
-
-    // 記錄篩選行為用於預測
-    predictiveLoader.recordFilterChange(apiFilters as ConversationFilters)
-
-    // 首先檢查預測性預載入的數據
-    const preloadedData = predictiveLoader.getPreloadedData(apiFilters as ConversationFilters)
-    
-    if (preloadedData && preloadedData.length > 0) {
-      console.log('🎯 [ConversationList] Using preloaded data!')
-      
-      // 使用預載入的數據進行增量更新動畫
-      await updateConversationsWithAnimation(preloadedData)
-      conversationsStore.setConversations(preloadedData)
-      total.value = preloadedData.length
-      
-      // 背景驗證數據是否最新
-      idleTimeProcessor.scheduleTask(async () => {
-        const result = await loadWithCache(apiFilters as ConversationFilters, currentPage.value)
-        if (result && 'count' in result && result.fresh) {
-          // 獲取最新的對話數據進行比較
-          const latestData = conversations.value
-          if (JSON.stringify(latestData) !== JSON.stringify(preloadedData)) {
-            // 如果數據不同，進行平滑更新
-            await updateConversationsWithAnimation(latestData)
-          }
-        }
-      }, TaskPriority._LOW)
-      
-    } else {
-      // 使用智能快取載入 - 先顯示快取，再背景更新
-      const result = await loadWithCache(apiFilters as ConversationFilters, currentPage.value)
-      
-      if (result && result.fresh) {
-        // 使用增量更新動畫更新對話列表
-        await updateConversationsWithAnimation(conversations.value)
-        total.value = conversationsStore.pagination.total
-      }
-      
-      // 預載入下一頁
-      if (result?.fresh && !result?.error) {
-        idleTimeProcessor.scheduleTask(() => {
-          preloadNextPage()
-        }, TaskPriority._LOW)
-      }
-      
-      if (result?.fromCache && result?.fresh) {
-        console.log('✨ [ConversationList] Zero-wait experience achieved!')
-      }
-    }
-
-    // 在空閒時間進行預測性預載入
-    idleTimeProcessor.scheduleTask(() => {
-      predictiveLoader.predictAndPreload()
-    }, TaskPriority._LOW)
-
-    // 載入成功，清除錯誤狀態
-    loadError.value = null
-    hasNetworkError.value = false
-    retryCount.value = 0
-
-  } catch (error) {
-    console.error('載入對話失敗:', error)
-
-    // 設置錯誤狀態
-    const errorMessage = translateError(error, '載入對話失敗')
-    loadError.value = errorMessage
-    hasNetworkError.value = true
-
-    // 顯示用戶友好的錯誤提示
-    toast.error(errorMessage, undefined, {
-      duration: 5000,
-      actionText: '重試',
-      onAction: () => {
-        if (retryCount.value < MAX_RETRY_COUNT) {
-          retryCount.value++
-          loadConversations()
-        } else {
-          toast.warning('已達最大重試次數，請稍後再試')
-        }
-      }
-    })
-
-    // 記錄錯誤到監控系統
-    if (import.meta.env.PROD) {
-      // TODO: 發送錯誤到監控服務（如 Sentry）
-      console.error('[ConversationList] Production error:', {
-        error,
-        filters: filters.value,
-        page: currentPage.value,
-        timestamp: new Date().toISOString()
-      })
-    }
-  }
+function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | undefined) {
+  controller.filters.updateFilter(key, value)
 }
 
 /**
- * 選擇對話並導航到詳情頁
- *
- * @param {Conversation} conversation - 要查看的對話對象
- *
- * @example
- * selectConversation(conversation)
- * // 導航到 /conversations/{conversation.id}
+ * 处理刷新
  */
-function selectConversation(conversation: Conversation) {
-  selectedConversationId.value = conversation.id
-  router.push(`/conversations/${conversation.id}`)
+async function handleRefresh() {
+  await controller.refresh()
+  await syncComposable.refresh()
 }
 
 /**
- * 切換分頁
- *
- * @param {number} page - 目標頁碼（從1開始）
- *
- * @remarks
- * - 會驗證頁碼是否在有效範圍內（1 到 totalPages）
- * - 無效頁碼會被忽略
- * - 頁碼變更後會自動重新載入對話
- *
- * @example
- * changePage(2) // 跳轉到第2頁
- */
-function changePage(page: number) {
-  if (page < 1 || page > totalPages.value) {return}
-  currentPage.value = page
-  loadConversations()
-}
-
-/**
- * 清除所有篩選條件並重新載入對話
- *
- * @remarks
- * 重置以下篩選條件：
- * - status: 對話狀態
- * - platform: 平台類型
- * - assignedTo: 指派對象
- * - tagIds: 標籤ID列表
- *
- * @example
- * clearFilters() // 顯示所有對話
- */
-function clearFilters() {
-  filters.value = {
-    status: '',
-    platform: '',
-    assignedTo: undefined,
-    tagIds: []
-  }
-  selectedTagIds.value = []
-  currentPage.value = 1
-  loadConversations()
-}
-
-/**
- * 切換標籤篩選狀態
- *
- * @param {number} tagId - 標籤ID
- *
- * @remarks
- * - 如果標籤已選中，則取消選中
- * - 如果標籤未選中，則選中
- * - 會自動重置到第一頁並重新載入對話
- *
- * @example
- * toggleTagFilter(1) // 選中/取消選中 ID=1 的標籤
- */
-function toggleTagFilter(tagId: number) {
-  const index = selectedTagIds.value.indexOf(tagId)
-  if (index > -1) {
-    selectedTagIds.value.splice(index, 1)
-  } else {
-    selectedTagIds.value.push(tagId)
-  }
-  filters.value.tagIds = [...selectedTagIds.value]
-  currentPage.value = 1
-  loadConversations()
-}
-
-/**
- * 清除標籤篩選並關閉下拉選單
- *
- * @remarks
- * 執行以下操作：
- * - 清空選中的標籤ID列表
- * - 清除篩選條件中的 tagIds
- * - 關閉標籤下拉選單
- * - 重置到第一頁並重新載入
- *
- * @example
- * clearTagFilter() // 移除所有標籤篩選
- */
-function clearTagFilter() {
-  selectedTagIds.value = []
-  filters.value.tagIds = []
-  showTagFilterDropdown.value = false
-  currentPage.value = 1
-  loadConversations()
-}
-
-// 混合同步相關狀態
-const syncStatus = ref<'disconnected' | 'connecting' | 'connected' | 'polling' | 'error'>('disconnected')
-const isAutoRefreshing = ref(false)
-// Sync error and last update are handled by the sync service itself
-
-// 設置同步服務回調
-conversationSync.onData((data: Conversation[]) => {
-  console.log('📥 [ConversationList] Received data from sync service:', data.length)
-  // Note: conversations is readonly from useConversations, so we refresh the store instead
-  conversationsStore.setConversations(data)
-  total.value = data.length
-  isAutoRefreshing.value = false
-})
-
-conversationSync.onStatus((status) => {
-  console.log('📊 [ConversationList] Sync status changed:', status)
-  syncStatus.value = status
-  
-  // 更新刷新狀態指示器
-  if (status === 'connecting') {
-    isAutoRefreshing.value = true
-  } else if (status === 'connected' || status === 'polling') {
-    isAutoRefreshing.value = false
-  }
-})
-
-/**
- * 手動刷新對話列表
- *
- * @async
- *
- * @remarks
- * 使用雙重刷新策略：
- * 1. 優先使用 store 的 refresh 方法（更平滑的用戶體驗）
- * 2. 同時刷新 WebSocket 同步服務
- * 3. 如果失敗，回退到原始的 loadConversations 方法
- *
- * @throws {Error} 刷新失敗時會捕獲錯誤並回退
- *
- * @example
- * await refreshConversations() // 手動刷新
- */
-async function refreshConversations() {
-  console.log('🔄 [ConversationList] Manual refresh triggered')
-  currentPage.value = 1
-  isAutoRefreshing.value = true
-
-  try {
-    // 優先使用store的refresh方法（更平滑）
-    await storeRefresh()
-    // 同時刷新sync service
-    await conversationSync.refresh()
-  } catch (error) {
-    console.error('Manual refresh failed:', error)
-    // 回退到原始方法
-    await loadConversations()
-  } finally {
-    isAutoRefreshing.value = false
-  }
-}
-
-/**
- * 載入更多對話（分頁載入）
- *
- * @async
- *
- * @remarks
- * - 只在 canLoadMore 為 true 時執行
- * - 更新總數量計數器
- *
- * @example
- * await loadMoreConversations() // 載入下一頁
- */
-async function loadMoreConversations() {
-  if (!conversationsStore.canLoadMore) {return}
-
-  console.log('📄 [ConversationList] Loading more conversations')
-  await conversationsStore.loadMore()
-  total.value = conversationsStore.pagination.total
-}
-
-/**
- * 處理虛擬滾動到底部事件
- *
- * @async
- *
- * @remarks
- * 邊緣情況處理：
- * - 防止重複載入（檢查 loadingMore 和 reachedEnd）
- * - 檢測是否真的載入了新數據（比較長度）
- * - 自動設置 reachedEnd 標記
- *
- * @throws {Error} 載入失敗時記錄錯誤但不中斷程序
- *
- * @example
- * // 由 SmartVirtualScrollList 自動觸發
- * handleLoadMore()
+ * 处理加载更多
  */
 async function handleLoadMore() {
-  if (loadingMore || reachedEnd.value) {return}
-
-  console.log('🔄 [ConversationList] Virtual scroll reached bottom, loading more')
-
-  try {
-    const currentLength = conversations.value.length
-    await loadMoreConversations()
-
-    // 檢查是否真的載入了更多數據
-    if (conversations.value.length === currentLength) {
-      reachedEnd.value = true
-      console.log('🏁 [ConversationList] No more conversations to load')
-    }
-  } catch (error) {
-    console.error('❌ [ConversationList] Failed to load more conversations:', error)
-
-    // 顯示錯誤提示
-    const errorMessage = translateError(error, '載入更多對話失敗')
-    toast.error(errorMessage, undefined, {
-      duration: 3000,
-      actionText: '重試',
-      onAction: () => handleLoadMore()
-    })
-  }
+  await virtualScroll.handleReachBottom(() => controller.loadMore())
 }
 
 /**
- * 處理預測性載入事件
- *
- * @param {'up' | 'down'} direction - 滾動方向
- * @param {number} estimatedDistance - 估計距離（剩餘項目數）
- *
- * @remarks
- * AI驅動的預測載入：
- * - 記錄用戶滾動行為用於機器學習
- * - 在空閒時間執行預測分析和預載入
- * - 當接近底部時（<5項）自動載入更多
- *
- * @example
- * handlePredictiveLoad('down', 3) // 向下滾動，剩餘3項
+ * 处理可见范围变化
+ */
+async function handleVisibleRangeChange(startIndex: number, endIndex: number) {
+  await virtualScroll.handleVisibleRangeChange(startIndex, endIndex, () => controller.loadMore())
+}
+
+/**
+ * 处理预测性加载
  */
 function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: number) {
-  console.log(`🔮 [ConversationList] Predictive load triggered: ${direction}, distance: ${estimatedDistance}`)
-
-  // 記錄滾動行為用於預測
-  predictiveLoader.recordBehavior({
-    type: 'scroll',
-    timestamp: Date.now(),
-    data: { direction, estimatedDistance }
-  })
-
-  // 在空閒時間執行預測性載入
-  idleTimeProcessor.scheduleTask(() => {
-    predictiveLoader.predictAndPreload()
-  }, TaskPriority._LOW)
-
-  // 如果用戶接近數據底部，提前載入更多
-  if (direction === 'down' && estimatedDistance < 5 && conversationsStore.canLoadMore) {
-    handleLoadMore()
-  }
+  virtualScroll.handlePredictiveLoad(direction, estimatedDistance, () => controller.loadMore())
 }
-
-/**
- * 處理可見範圍變化事件（虛擬滾動）
- *
- * @param {number} startIndex - 可見範圍起始索引
- * @param {number} endIndex - 可見範圍結束索引
- *
- * @remarks
- * 智能預載入策略：
- * - 閾值計算：最小10項或總數的80%
- * - 防止重複預載入（isPreloading 標記）
- * - 自動錯誤處理和狀態重置
- * - 開發模式下輸出調試信息
- *
- * @example
- * handleVisibleRangeChange(0, 20) // 顯示第0-20項
- */
-function handleVisibleRangeChange(startIndex: number, endIndex: number) {
-  visibleRange.value = { startIndex, endIndex }
-
-  // 智能預載入：當接近數據末尾時，預載入下一頁
-  const loadThreshold = Math.max(10, Math.floor(conversations.value.length * 0.8))
-
-  if (endIndex >= loadThreshold && !isPreloading.value && !reachedEnd.value && conversationsStore.canLoadMore) {
-    isPreloading.value = true
-
-    console.log(`🔮 [ConversationList] Smart preloading triggered at index ${endIndex}`)
-
-    preloadNextPage().then(() => {
-      isPreloading.value = false
-    }).catch((error) => {
-      console.warn('⚠️ [ConversationList] Preloading failed:', error)
-      isPreloading.value = false
-    })
-  }
-
-  if (import.meta.env.DEV) {
-    console.log(`👀 [ConversationList] Visible range: ${startIndex}-${endIndex} of ${conversations.value.length}`)
-  }
-}
-
-// Watch for filter changes
-watch(filters, () => {
-  currentPage.value = 1
-}, { deep: true })
 
 // Lifecycle
 onMounted(async () => {
-  console.log('🚀 [ConversationList] Component mounted, initializing advanced loading system')
-  
-  // 初始化 Web Worker
-  await new Promise((resolve) => {
-    const checkWorkerReady = () => {
-      if (webWorkerManager.isReady.value) {
-        console.log('✅ [ConversationList] Web Worker ready')
-        resolve(true)
-      } else {
-        setTimeout(checkWorkerReady, 100)
-      }
-    }
-    checkWorkerReady()
+  console.log('🚀 [ConversationList] Component mounted (refactored)')
+
+  // 初始化控制器
+  await controller.initialize()
+
+  // 启动同步服务
+  await syncComposable.startSync((data: Conversation[]) => {
+    console.log('📥 [ConversationList] Sync data received:', data.length)
+    conversationsStore.setConversations(data)
   })
-  
-  // 啟用預測性載入系統
-  predictiveLoader.setEnabled(true)
-  
-  // 優化的初始加載：不會有突兀的loading狀態
-  await loadConversations()
-  
-  // 啟動混合同步服務（背景運行）
-  await conversationSync.start()
-  
-  // 在空閒時間進行初始預測分析
-  idleTimeProcessor.scheduleTask(() => {
-    predictiveLoader.predictAndPreload()
-  }, TaskPriority._LOW)
-  
-  // 監聽滾動事件實現無限滾動
-  const handleScroll = () => {
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement
-    const threshold = 200 // 200px from bottom
-    
-    if (scrollTop + clientHeight >= scrollHeight - threshold && conversationsStore.canLoadMore) {
-      loadMoreConversations()
-    }
-  }
-  
-  document.addEventListener('scroll', handleScroll)
-  
-  // 清理事件監聽器
-  onUnmounted(() => {
-    document.removeEventListener('scroll', handleScroll)
-  })
+
+  console.log('✅ [ConversationList] Initialized successfully')
 })
 
 onUnmounted(() => {
-  console.log('🛑 [ConversationList] Component unmounted, cleaning up services')
-  
-  // 停止所有服務
-  conversationSync.stop()
-  predictiveLoader.setEnabled(false)
-  idleTimeProcessor.cancelAllTasks()
-  
-  console.log('✨ [ConversationList] All services cleaned up')
+  console.log('🛑 [ConversationList] Component unmounted')
+
+  // 清理资源
+  controller.cleanup()
+  syncComposable.stopSync()
+  virtualScroll.resetScroll()
+
+  console.log('✨ [ConversationList] Cleanup completed')
 })
 </script>
 
@@ -928,202 +247,6 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.list-header {
-  background-color: white;
-  border-bottom: 1px solid var(--gray-200);
-  padding: var(--space-6);
-}
-
-.header-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: var(--space-6);
-}
-
-.page-title {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-2) 0;
-}
-
-.page-subtitle {
-  font-size: 1rem;
-  color: var(--gray-600);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.sync-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.sync-status-indicator.status-connected {
-  background-color: var(--green-50);
-  border-color: var(--green-200);
-  color: var(--green-700);
-}
-
-.sync-status-indicator.status-polling {
-  background-color: var(--yellow-50);
-  border-color: var(--yellow-200);
-  color: var(--yellow-700);
-}
-
-.sync-status-indicator.status-connecting {
-  background-color: var(--blue-50);
-  border-color: var(--blue-200);
-  color: var(--blue-700);
-}
-
-.sync-status-indicator.status-error {
-  background-color: var(--red-50);
-  border-color: var(--red-200);
-  color: var(--red-700);
-}
-
-/* Cache status indicator */
-.cache-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-  transition: all 0.3s ease;
-}
-
-.cache-status-indicator:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
-}
-
-.cache-icon {
-  font-size: 0.875rem;
-  animation: cache-pulse 2s ease-in-out infinite;
-}
-
-@keyframes cache-pulse {
-  0%, 100% { 
-    opacity: 1; 
-    transform: scale(1);
-  }
-  50% { 
-    opacity: 0.8; 
-    transform: scale(1.1);
-  }
-}
-
-.cache-text {
-  font-weight: 700;
-  letter-spacing: 0.025em;
-}
-
-.sync-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-connected .sync-dot {
-  background-color: var(--green-500);
-}
-
-.status-polling .sync-dot {
-  background-color: var(--yellow-500);
-}
-
-.status-connecting .sync-dot, .sync-dot.syncing {
-  background-color: var(--blue-500);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.status-error .sync-dot {
-  background-color: var(--red-500);
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.1);
-  }
-}
-
-.filters-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-}
-
-.filters {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.filter-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--gray-700);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.quick-stats {
-  display: flex;
-  gap: var(--space-6);
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary-600);
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  font-weight: 500;
-  margin-top: var(--space-1);
 }
 
 .list-content {
@@ -1139,16 +262,19 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.skeleton-fade-in {
+  animation: skeleton-appear 0.6s ease-out;
+}
 
-
-.conversations-grid {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-6);
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: var(--space-4);
-  align-content: start;
+@keyframes skeleton-appear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .pagination {
@@ -1177,225 +303,23 @@ onUnmounted(() => {
   color: var(--gray-600);
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .conversations-grid {
-    grid-template-columns: 1fr;
-    padding: var(--space-4);
-  }
-  
-  .filters-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-4);
-  }
-  
-  .quick-stats {
-    justify-content: center;
-  }
-}
-
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  
-  .header-actions {
-    width: 100%;
-  }
-  
-  .filters {
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  
-  .filter-group {
-    width: 100%;
-  }
-  
-  .pagination {
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  
-  .page-title {
-    font-size: 1.5rem;
-  }
-  
-  .list-header {
-    padding: var(--space-4);
-  }
-}
-
-@media (max-width: 640px) {
-  .conversations-grid {
-    padding: var(--space-3);
-    gap: var(--space-3);
-  }
-  
-  .quick-stats {
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  
-  .stat-item {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: var(--space-3);
-    background-color: var(--gray-50);
-    border-radius: var(--radius-lg);
-  }
-}
-
-/* Enhanced loading and animation styles */
-.skeleton-fade-in {
-  animation: skeleton-appear 0.6s ease-out;
-}
-
-@keyframes skeleton-appear {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Background refresh indicator */
-.refresh-indicator {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: rgba(59, 130, 246, 0.95);
-  color: white;
-  padding: var(--space-2) var(--space-4);
-  text-align: center;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.refresh-bar {
-  height: 2px;
-  background: linear-gradient(90deg, transparent, white, transparent);
-  border-radius: 1px;
-  margin-bottom: var(--space-2);
-  animation: refresh-progress 2s ease-in-out infinite;
-}
-
-@keyframes refresh-progress {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.refresh-text {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-/* Shimmer effect for existing conversations during updates */
-.conversations-container.updating {
-  position: relative;
-}
-
-.shimmer-effect {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer-effect::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
-  animation: shimmer 2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes shimmer {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
-}
-
-/* Load more indicator */
-.load-more-indicator {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: var(--space-6);
-  margin-top: var(--space-4);
-}
-
-/* Smooth transitions for conversation list */
-.list-enter-active, .list-leave-active {
-  transition: all 0.5s ease;
-}
-
-.list-enter-from, .list-leave-to {
-  opacity: 0;
-  transform: translateY(30px);
-}
-
-/* Individual conversation card transitions */
-.conversation-enter-active, .conversation-leave-active {
-  transition: all 0.3s ease;
-}
-
-.conversation-enter-from, .conversation-leave-to {
-  opacity: 0;
-  transform: translateX(30px);
-}
-
-.conversation-move {
-  transition: transform 0.3s ease;
-}
-
-/* Smooth fade for updating states */
-.conversations-container {
-  transition: opacity 0.2s ease;
-}
-
-.conversations-container.updating {
-  opacity: 0.9;
-}
-
 /* Virtual scrolling styles */
-.virtual-conversations {
-  height: calc(100vh - 300px); /* 調整以適應頁面布局 */
+.smart-virtual-conversations {
+  height: calc(100vh - 300px);
   min-height: 400px;
 }
 
 .virtual-conversation-wrapper {
   padding: var(--space-2);
   transition: all 0.2s ease;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .virtual-conversation-wrapper:hover {
-  transform: translateY(-1px);
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .virtual-loading {
@@ -1425,169 +349,20 @@ onUnmounted(() => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Performance optimizations */
-.conversations-grid {
-  contain: layout style paint;
-}
-
-/* 第五階段：GPU 加速基礎優化 */
-.virtual-conversation-wrapper {
-  padding: var(--space-2);
-  transition: all 0.2s ease;
-  /* GPU 加速 */
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-.virtual-conversation-wrapper:hover {
-  transform: translateY(-1px) translateZ(0);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pagination {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
 }
 
 /* Reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .skeleton-fade-in,
-  .refresh-bar,
-  .shimmer-effect::after,
-  .list-enter-active,
-  .list-leave-active,
-  .conversation-enter-active,
-  .conversation-leave-active {
+  .virtual-conversation-wrapper {
     animation: none !important;
     transition: none !important;
   }
-
-  .conversations-container.updating {
-    opacity: 1;
-  }
-}
-
-/* 標籤篩選樣式 */
-.tag-filter-group {
-  position: relative;
-}
-
-.tag-filter-wrapper {
-  position: relative;
-}
-
-.tag-filter-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: white;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary, #6b7280);
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 120px;
-}
-
-.tag-filter-btn:hover {
-  border-color: var(--primary-color, #6366f1);
-  color: var(--primary-color, #6366f1);
-}
-
-.tag-filter-btn.has-selection {
-  background: var(--primary-50, #eef2ff);
-  border-color: var(--primary-color, #6366f1);
-  color: var(--primary-color, #6366f1);
-}
-
-.dropdown-chevron {
-  width: 16px;
-  height: 16px;
-  transition: transform 0.2s;
-  margin-left: auto;
-}
-
-.dropdown-chevron.rotated {
-  transform: rotate(180deg);
-}
-
-.tag-filter-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  z-index: 50;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  animation: dropdown-appear 0.2s ease-out;
-}
-
-@keyframes dropdown-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.no-tags-message {
-  padding: 1rem;
-  text-align: center;
-  color: var(--text-secondary, #6b7280);
-  font-size: 0.875rem;
-}
-
-.tag-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.tag-option:hover {
-  background: var(--hover-color, #f9fafb);
-}
-
-.tag-option.selected {
-  background: var(--primary-50, #eef2ff);
-}
-
-.tag-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tag-name {
-  flex: 1;
-  font-size: 0.875rem;
-  color: var(--text-primary, #374151);
-}
-
-.check-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--primary-color, #6366f1);
-}
-
-.clear-tags-btn {
-  padding: 0.75rem 1rem;
-  text-align: center;
-  color: var(--error-color, #ef4444);
-  font-size: 0.875rem;
-  cursor: pointer;
-  border-top: 1px solid var(--border-color, #e5e7eb);
-}
-
-.clear-tags-btn:hover {
-  background: var(--error-50, #fef2f2);
 }
 </style>

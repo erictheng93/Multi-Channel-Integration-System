@@ -475,13 +475,36 @@ const activityStreamConnected = activityStreamData.isConnected
 const { data: dashboardStats, pending: statsLoading, refresh: refreshStats } = useAsyncData(
   'dashboard-stats',
   async () => {
-    // 模擬 API 調用獲取統計數據
-    return {
-      todayMessages: 156,
-      onlineAgents: 3,
-      responseTime: '2.5分鐘',
-      satisfactionRate: 94,
-      resolvedToday: 23
+    try {
+      // ✅ 調用真實 API 獲取統計數據
+      const { systemApi } = await import('@/api/system')
+      const response = await systemApi.getDashboardStats()
+
+      if (!response.success || !response.data) {
+        console.error('❌ Failed to fetch dashboard stats:', response)
+        throw new Error('Failed to fetch dashboard stats')
+      }
+
+      console.log('✅ Dashboard stats fetched successfully:', response.data)
+
+      // ✅ 返回真實統計數據
+      return {
+        todayMessages: response.data.todayMessages,
+        onlineAgents: response.data.onlineAgents,
+        responseTime: response.data.responseTime,
+        satisfactionRate: response.data.satisfactionRate,
+        resolvedToday: response.data.resolvedToday
+      }
+    } catch (error) {
+      console.error('❌ Error fetching dashboard stats:', error)
+      // 發生錯誤時返回默認值
+      return {
+        todayMessages: 0,
+        onlineAgents: 0,
+        responseTime: '-',
+        satisfactionRate: 0,
+        resolvedToday: 0
+      }
     }
   },
   { immediate: true }
@@ -624,10 +647,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .dashboard {
-  /* 動態容器尺寸，根據筆電螢幕調整 */
-  max-width: clamp(1200px, 85vw, 1650px);
-  margin: 0 auto;
-  padding: clamp(1rem, 2vw, 2rem) clamp(0.5rem, 2vw, 1.5rem);
+  /* 移除 max-width 和 margin: 0 auto，讓內容占滿整個 page-content */
+  /* 不再居中，消除兩側空白 */
+  width: 100%;
+  margin: 0;
+  padding: clamp(1rem, 2vw, 2rem) 0;
   min-height: 100%;
   /* 確保內容可以完整顯示並滾動 */
 }
@@ -1136,8 +1160,7 @@ onBeforeUnmount(() => {
 /* 低解析度筆電特殊優化 (1080x720等) */
 @media (min-width: 1025px) and (max-width: 1119px) {
   .dashboard {
-    max-width: 1000px;
-    padding: 1rem 0.75rem;
+    padding: 1rem 0;
   }
 
   .welcome-title {
@@ -1182,10 +1205,6 @@ onBeforeUnmount(() => {
 
 /* 標準筆電斷點 */
 @media (min-width: 1120px) and (max-width: 1279px) {
-  .dashboard {
-    max-width: 1200px;
-  }
-
   .stats-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1196,45 +1215,27 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 1280px) and (max-width: 1439px) {
-  .dashboard {
-    max-width: 1350px;
-  }
-
   .welcome-title {
     font-size: clamp(2rem, 1.7rem + 1.5vw, 2.3rem);
   }
 }
 
 @media (min-width: 1440px) and (max-width: 1679px) {
-  .dashboard {
-    max-width: 1500px;
-  }
-
   .welcome-title {
     font-size: clamp(2.2rem, 1.9rem + 1.8vw, 2.5rem);
   }
 }
 
 @media (min-width: 1680px) {
-  .dashboard {
-    max-width: 1650px;
-  }
-
   .welcome-title {
     font-size: clamp(2.4rem, 2rem + 2vw, 2.8rem);
-  }
-
-  /* 防止內容過於分散 */
-  .content-grid {
-    max-width: 1400px;
-    margin: 0 auto;
   }
 }
 
 /* Responsive Design */
 @media (max-width: 1024px) {
   .dashboard {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-4) 0;
   }
 
   .content-grid {
@@ -1265,7 +1266,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .dashboard {
-    padding: var(--space-3) var(--space-2);
+    padding: var(--space-3) 0;
   }
 
   .welcome-title {
@@ -1347,7 +1348,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 320px) {
   .dashboard {
-    padding: var(--space-2) var(--space-1);
+    padding: var(--space-2) 0;
   }
 
   .welcome-title {
