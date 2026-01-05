@@ -127,3 +127,9 @@ profile.json
 # Test results
 test-results.txt
 test-results.json
+coverage-output.txt
+*-output.txt
+
+# Linting and error logs
+lint-errors.txt
+*-errors.txt

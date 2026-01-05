@@ -137,7 +137,7 @@ const {
  * Get Tag objects for selected IDs
  */
 const selectedTagObjects = computed(() =>
-  tags.value.filter((tag: any) => selection.selectedTags.value.includes(tag.id))
+  tags.value.filter((tag) => selection.selectedTags.value.includes(tag.id))
 )
 
 /**
