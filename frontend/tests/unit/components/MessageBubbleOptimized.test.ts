@@ -55,7 +55,10 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
       // Wait for content processing
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.classes()).toContain('message-incoming')
+      // DOM-based testing: find the actual message bubble element
+      const bubble = wrapper.find('.message-bubble')
+      expect(bubble.exists()).toBe(true)
+      expect(bubble.classes()).toContain('message-incoming')
       // Check for message-text wrapper instead of raw text
       expect(wrapper.find('.message-text').exists()).toBe(true)
     })
@@ -72,8 +75,10 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
         }
       })
 
-      expect(wrapper.classes()).toContain('message-outgoing')
-      expect(wrapper.classes()).toContain('message-delivered')
+      // DOM-based testing
+      const bubble = wrapper.find('.message-bubble')
+      expect(bubble.classes()).toContain('message-outgoing')
+      expect(bubble.classes()).toContain('message-delivered')
     })
 
     it('should apply correct classes based on message type', () => {
@@ -87,7 +92,9 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
         }
       })
 
-      expect(wrapper.classes()).toContain('message-image')
+      // DOM-based testing
+      const bubble = wrapper.find('.message-bubble')
+      expect(bubble.classes()).toContain('message-image')
     })
 
     it('should show failed state for undelivered outgoing messages', () => {
@@ -100,9 +107,11 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
         }
       })
 
-      expect(wrapper.classes()).toContain('message-outgoing')
-      expect(wrapper.classes()).toContain('message-failed')
-      expect(wrapper.classes()).not.toContain('message-delivered')
+      // DOM-based testing
+      const bubble = wrapper.find('.message-bubble')
+      expect(bubble.classes()).toContain('message-outgoing')
+      expect(bubble.classes()).toContain('message-failed')
+      expect(bubble.classes()).not.toContain('message-delivered')
     })
   })
 
@@ -387,14 +396,15 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
       await wrapper.trigger('mouseenter')
       await wrapper.vm.$nextTick()
 
-      // Actions should be shown
-      expect(wrapper.vm.showActions).toBe(true)
+      // DOM-based testing: check if actions element exists/is visible
+      const actions = wrapper.find('.message-actions')
+      expect(actions.exists()).toBe(true)
 
       await wrapper.trigger('mouseleave')
       await wrapper.vm.$nextTick()
 
-      // Actions should be hidden
-      expect(wrapper.vm.showActions).toBe(false)
+      // Actions should be hidden after mouseleave
+      expect(wrapper.find('.message-actions').exists()).toBe(false)
     })
 
     it('should emit copy event when copy action is triggered', async () => {
@@ -437,8 +447,9 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
       await wrapper.trigger('contextmenu')
       await wrapper.vm.$nextTick()
 
-      // Should show actions menu
-      expect(wrapper.vm.showActionsMenu).toBe(true)
+      // DOM-based testing: check if actions dropdown appears
+      const dropdown = wrapper.find('.actions-dropdown')
+      expect(dropdown.exists()).toBe(true)
     })
   })
 
@@ -476,12 +487,16 @@ describe('MessageBubbleOptimized Component Integration (Functional Parity Test)'
         }
       })
 
-      expect(wrapper.classes()).toContain('message-failed')
+      // DOM-based testing
+      let bubble = wrapper.find('.message-bubble')
+      expect(bubble.classes()).toContain('message-failed')
 
       await wrapper.setProps({ delivered: true })
 
-      expect(wrapper.classes()).toContain('message-delivered')
-      expect(wrapper.classes()).not.toContain('message-failed')
+      // Re-query after prop change
+      bubble = wrapper.find('.message-bubble')
+      expect(bubble.classes()).toContain('message-delivered')
+      expect(bubble.classes()).not.toContain('message-failed')
     })
   })
 
