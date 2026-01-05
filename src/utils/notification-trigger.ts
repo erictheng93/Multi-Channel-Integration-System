@@ -939,7 +939,11 @@ export async function triggerNewConversationNotification(
 
 /**
  * 🆕 輔助函數：獲取應該接收通知的用戶列表
- * 根據團隊 ID 獲取所有管理員或團隊成員
+ * 根據團隊 ID 獲取管理員和團隊成員（或所有客服人員）
+ *
+ * 行為邏輯：
+ * - 如果有 teamId：返回「所有管理員 + 該團隊的所有成員」
+ * - 如果沒有 teamId：返回「所有管理員 + 所有客服人員」
  */
 async function getNotificationTargetUsers(
   env: NotificationTriggerEnv,
@@ -948,25 +952,11 @@ async function getNotificationTargetUsers(
   try {
     const { createDbClient } = await import('../db/drizzle-factory');
     const { agents } = await import('../db/schema');
-    const { eq, and } = await import('drizzle-orm');
+    const { eq, and, or, inArray } = await import('drizzle-orm');
 
     const db = createDbClient(env.DB);
 
-    // 如果有指定團隊，則通知該團隊的所有成員
-    if (teamId) {
-      const { agentTeams } = await import('../db/schema');
-      const teamMembers = await db
-        .select({ agentId: agentTeams.agentId })
-        .from(agentTeams)
-        .where(eq(agentTeams.teamId, teamId))
-        .all();
-
-      if (teamMembers.length > 0) {
-        return teamMembers.map(m => m.agentId);
-      }
-    }
-
-    // 否則通知所有管理員
+    // Step 1: 總是獲取所有活躍的管理員
     const admins = await db
       .select({ id: agents.id })
       .from(agents)
@@ -976,9 +966,64 @@ async function getNotificationTargetUsers(
       ))
       .all();
 
-    return admins.map(a => a.id);
+    const adminIds = new Set(admins.map(a => a.id));
+
+    // Step 2: 獲取應該通知的客服人員
+    let agentIds: string[] = [];
+
+    if (teamId) {
+      // 情況 A: 有指定團隊 → 獲取該團隊的所有成員
+      const { agentTeams } = await import('../db/schema');
+      const teamMembers = await db
+        .select({ agentId: agentTeams.agentId })
+        .from(agentTeams)
+        .where(eq(agentTeams.teamId, teamId))
+        .all();
+
+      agentIds = teamMembers.map(m => m.agentId);
+
+      console.log('📋 [Notification Target] Team-specific:', {
+        teamId,
+        teamMemberCount: agentIds.length,
+        adminCount: adminIds.size
+      });
+    } else {
+      // 情況 B: 沒有指定團隊 → 獲取所有活躍的客服人員
+      const allAgents = await db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(and(
+          eq(agents.role, 'agent'),
+          eq(agents.isActive, true)
+        ))
+        .all();
+
+      agentIds = allAgents.map(a => a.id);
+
+      console.log('📋 [Notification Target] All agents:', {
+        agentCount: agentIds.length,
+        adminCount: adminIds.size
+      });
+    }
+
+    // Step 3: 合併管理員和客服人員（去重）
+    const allTargetUsers = [...adminIds];
+    for (const agentId of agentIds) {
+      if (!adminIds.has(agentId)) {
+        allTargetUsers.push(agentId);
+      }
+    }
+
+    console.log('✅ [Notification Target] Final target users:', {
+      totalCount: allTargetUsers.length,
+      adminCount: adminIds.size,
+      agentCount: agentIds.length,
+      teamId: teamId || 'none'
+    });
+
+    return allTargetUsers;
   } catch (error) {
-    console.error('Error getting notification target users:', error);
+    console.error('❌ [Notification Target] Error getting notification target users:', error);
     return [];
   }
 }

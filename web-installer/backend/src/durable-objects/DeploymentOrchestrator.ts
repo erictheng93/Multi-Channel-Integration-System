@@ -557,7 +557,8 @@ export class DeploymentOrchestrator implements DurableObject {
     if (!this.deploymentState) return;
     const config = this.configGenerator.generateWranglerConfig(
       this.deploymentState.config.projectName,
-      this.deploymentState.resources
+      this.deploymentState.resources,
+      this.deploymentState.config  // Phase 1: Pass user configuration
     );
     this.log('success', 'Generated wrangler.toml configuration');
     // Config would be used in deploy_worker step
@@ -600,15 +601,26 @@ export class DeploymentOrchestrator implements DurableObject {
 
     this.log('info', 'Preparing frontend assets...');
 
-    // Get Worker URL (should be set from stepDeployWorker)
-    const workerUrl = this.deploymentState.resources.workerUrl || '';
     const projectName = this.deploymentState.config.projectName;
+    const config = this.deploymentState.config;
+    const resources = this.deploymentState.resources;
 
-    // Generate frontend assets with correct API configuration
+    // Phase 1: Smart URL derivation from user configuration
+    const backendUrl = config.backendUrl ||
+      (config.customDomain ? `https://api.${config.customDomain}` : '') ||
+      resources.workerUrl ||
+      `https://${projectName}-worker.workers.dev`;
+
+    const frontendUrl = config.frontendUrl ||
+      (config.customDomain ? `https://${config.customDomain}` : '') ||
+      resources.pagesUrl ||
+      `https://${projectName}.pages.dev`;
+
+    // Generate frontend assets with user configuration
     this.frontendAssets = this.frontendBundleService.getBundledAssets({
-      apiBaseUrl: workerUrl,
-      wsBaseUrl: workerUrl.replace('https://', 'wss://'),
-      appUrl: `https://${projectName}.pages.dev`, // Will be updated after Pages deployment
+      apiBaseUrl: backendUrl,
+      wsBaseUrl: backendUrl.replace('https://', 'wss://'),
+      appUrl: frontendUrl,
       projectName
     });
 

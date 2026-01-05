@@ -6,13 +6,20 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ConfigGenerator } from '@/services/ConfigGenerator';
-import type { CloudflareResources } from '@/types/deployment';
+import type { CloudflareResources, DeploymentConfig } from '@/types/deployment';
 
 describe('ConfigGenerator Service - Integration Tests', () => {
   let generator: ConfigGenerator;
+  let mockConfig: DeploymentConfig;
 
   beforeEach(() => {
     generator = new ConfigGenerator();
+    mockConfig = {
+      projectName: 'test-crm-system',
+      adminEmail: 'admin@test.com',
+      accountId: 'test-account-123',
+      oauthToken: 'test-token-456'
+    };
   });
 
   describe('Wrangler Config Generation', () => {
@@ -30,7 +37,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://test-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       // Verify all required sections exist
       expect(config).toContain('name = "test-crm-system-worker"');
@@ -74,7 +81,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://my-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       expect(config).toContain('name = "my-crm-2024-worker"');
       expect(config).toContain('bucket_name = "uploads-2024"');
@@ -94,7 +101,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://test-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       // Verify all Durable Objects
       expect(config).toContain('[durable_objects]');
@@ -119,7 +126,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://test-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       expect(config).toContain('[vars]');
       expect(config).toContain('ENVIRONMENT =');
@@ -141,7 +148,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://test-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       // compatibility_date should be in YYYY-MM-DD format
       const dateMatch = config.match(/compatibility_date = "(\d{4}-\d{2}-\d{2})"/);
@@ -156,41 +163,53 @@ describe('ConfigGenerator Service - Integration Tests', () => {
 
   describe('Frontend Configuration', () => {
     it('should generate frontend .env configuration', () => {
-      const workerUrl = 'https://test-crm.workers.dev';
-      const pagesUrl = 'https://test-crm.pages.dev';
+      const resources: CloudflareResources = {
+        workerUrl: 'https://test-crm.workers.dev',
+        pagesUrl: 'https://test-crm.pages.dev'
+      };
 
-      const envConfig = generator.generateFrontendEnv(workerUrl, pagesUrl);
+      const envConfig = generator.generateFrontendEnv(resources, mockConfig);
 
-      expect(envConfig).toContain('VITE_API_BASE_URL=https://test-crm.workers.dev');
-      expect(envConfig).toContain('VITE_WS_BASE_URL=wss://test-crm.workers.dev');
-      expect(envConfig).toContain('VITE_APP_URL=https://test-crm.pages.dev');
+      expect(envConfig).toContain('VITE_BACKEND_URL=https://test-crm.workers.dev');
+      expect(envConfig).toContain('VITE_WEBSOCKET_URL=wss://test-crm.workers.dev');
+      expect(envConfig).toContain('VITE_FRONTEND_URL=https://test-crm.pages.dev');
       expect(envConfig).toContain('VITE_ENVIRONMENT=production');
     });
 
     it('should handle custom domains in frontend config', () => {
-      const workerUrl = 'https://api.crm.example.com';
-      const pagesUrl = 'https://crm.example.com';
+      const resources: CloudflareResources = {
+        workerUrl: 'https://api.crm.example.com',
+        pagesUrl: 'https://crm.example.com'
+      };
+      const customConfig: DeploymentConfig = {
+        ...mockConfig,
+        customDomain: 'crm.example.com',
+        backendUrl: 'https://api.crm.example.com',
+        frontendUrl: 'https://crm.example.com'
+      };
 
-      const envConfig = generator.generateFrontendEnv(workerUrl, pagesUrl);
+      const envConfig = generator.generateFrontendEnv(resources, customConfig);
 
-      expect(envConfig).toContain('VITE_API_BASE_URL=https://api.crm.example.com');
-      expect(envConfig).toContain('VITE_WS_BASE_URL=wss://api.crm.example.com');
-      expect(envConfig).toContain('VITE_APP_URL=https://crm.example.com');
+      expect(envConfig).toContain('VITE_BACKEND_URL=https://api.crm.example.com');
+      expect(envConfig).toContain('VITE_WEBSOCKET_URL=wss://api.crm.example.com');
+      expect(envConfig).toContain('VITE_FRONTEND_URL=https://crm.example.com');
     });
 
     it('should correctly convert HTTPS to WSS', () => {
-      const workerUrl = 'https://test.workers.dev';
-      const pagesUrl = 'https://test.pages.dev';
+      const resources: CloudflareResources = {
+        workerUrl: 'https://test.workers.dev',
+        pagesUrl: 'https://test.pages.dev'
+      };
 
-      const envConfig = generator.generateFrontendEnv(workerUrl, pagesUrl);
+      const envConfig = generator.generateFrontendEnv(resources, mockConfig);
 
       expect(envConfig).toContain('wss://test.workers.dev');
-      // WS URL should be in a different line than API URL
+      // WS URL should be in a different line than BACKEND URL
       const lines = envConfig.split('\n');
-      const apiLine = lines.find(l => l.includes('VITE_API_BASE_URL'));
-      const wsLine = lines.find(l => l.includes('VITE_WS_BASE_URL'));
+      const backendLine = lines.find(l => l.includes('VITE_BACKEND_URL'));
+      const wsLine = lines.find(l => l.includes('VITE_WEBSOCKET_URL'));
 
-      expect(apiLine).toContain('https://test.workers.dev');
+      expect(backendLine).toContain('https://test.workers.dev');
       expect(wsLine).toContain('wss://test.workers.dev');
     });
   });
@@ -259,7 +278,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://test-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       // Basic TOML validation checks
       // 1. Should not have syntax errors (balanced quotes)
@@ -290,7 +309,7 @@ describe('ConfigGenerator Service - Integration Tests', () => {
         pagesUrl: 'https://test-crm.pages.dev'
       };
 
-      const config = generator.generateWranglerConfig(projectName, resources);
+      const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       // Should handle hyphens in project name
       expect(config).toContain('test-crm-v2-worker');

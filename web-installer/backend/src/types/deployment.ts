@@ -5,17 +5,38 @@
  */
 
 export interface DeploymentConfig {
+  // ===== Basic Configuration =====
   projectName: string;
   adminEmail: string;
   customDomain?: string;
   oauthToken: string;
   accountId: string;
-  // LINE OA Integration (optional - can configure later)
+
+  // ===== URL Configuration (Phase 1 Enhancement) =====
+  /** Backend Worker URL (if using custom domain) */
+  backendUrl?: string;
+  /** Frontend Pages URL (if using custom domain) */
+  frontendUrl?: string;
+  /** R2 custom domain for file access (e.g., https://files.yourdomain.com) */
+  r2PublicUrl?: string;
+
+  // ===== LINE OA Integration (Enhanced) =====
+  /** LINE Channel Access Token (optional - can configure later) */
   lineChannelAccessToken?: string;
+  /** LINE Channel Secret (optional - can configure later) */
   lineChannelSecret?: string;
-  // Facebook Integration (optional - future feature)
+  /** LINE Bot Basic ID (e.g., @110xsqef) - Required for QR Code generation */
+  lineBotId?: string;
+  /** LINE LIFF ID (e.g., 2008756115-vWtFyDMA) - Required for team binding feature */
+  lineLiffId?: string;
+
+  // ===== Facebook Integration (Future Feature) =====
   facebookPageAccessToken?: string;
   facebookAppSecret?: string;
+
+  // ===== System Configuration (Phase 1 Enhancement) =====
+  /** Log level for Worker console output */
+  logLevel?: 'debug' | 'info' | 'warn' | 'error' | 'silent';
 }
 
 export interface CloudflareResources {
