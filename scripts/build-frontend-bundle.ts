@@ -12,11 +12,13 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Environment detection for Bun compatibility
+const isUsingBun = typeof Bun !== 'undefined';
 
 interface BundledAsset {
   path: string;
@@ -74,34 +76,55 @@ async function buildFrontendBundle(): Promise<void> {
       console.log('📦 Running Vite build...');
       console.log(`   Working directory: ${config.frontendDir}\n`);
 
-      // Use spawnSync for safety - runs npm with fixed arguments
-      const isWindows = process.platform === 'win32';
-      const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+      if (isUsingBun) {
+        // Bun environment - use Bun.spawn
+        const proc = Bun.spawn(['npm', 'run', 'build'], {
+          cwd: config.frontendDir,
+          stdout: 'inherit',
+          stderr: 'inherit',
+          env: {
+            ...Bun.env,
+            NODE_ENV: 'production',
+          },
+        });
 
-      const buildResult = spawnSync(npmCmd, ['run', 'build'], {
-        cwd: config.frontendDir,
-        stdio: 'inherit',
-        shell: isWindows, // Use shell on Windows for better compatibility
-        env: {
-          ...process.env,
-          NODE_ENV: 'production',
-        },
-      });
+        const exitCode = await proc.exited;
+        if (exitCode !== 0) {
+          throw new Error(`Frontend build failed with exit code ${exitCode}`);
+        }
 
-      if (buildResult.error) {
-        throw new Error(`Frontend build spawn error: ${buildResult.error.message}`);
+        console.log('\n✓ Frontend build completed');
+      } else {
+        // Node.js environment - use spawnSync
+        const { spawnSync } = await import('child_process');
+        const isWindows = process.platform === 'win32';
+        const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+
+        const buildResult = spawnSync(npmCmd, ['run', 'build'], {
+          cwd: config.frontendDir,
+          stdio: 'inherit',
+          shell: isWindows,
+          env: {
+            ...process.env,
+            NODE_ENV: 'production',
+          },
+        });
+
+        if (buildResult.error) {
+          throw new Error(`Frontend build spawn error: ${buildResult.error.message}`);
+        }
+
+        if (buildResult.status !== 0 && buildResult.status !== null) {
+          throw new Error(`Frontend build failed with exit code ${buildResult.status}`);
+        }
+
+        // If status is null but no error, the build likely succeeded (Windows quirk)
+        if (buildResult.status === null && !buildResult.error) {
+          console.log('   ℹ️ Build completed (status check skipped on Windows)');
+        }
+
+        console.log('\n✓ Frontend build completed');
       }
-
-      if (buildResult.status !== 0 && buildResult.status !== null) {
-        throw new Error(`Frontend build failed with exit code ${buildResult.status}`);
-      }
-
-      // If status is null but no error, the build likely succeeded (Windows quirk)
-      if (buildResult.status === null && !buildResult.error) {
-        console.log('   ℹ️ Build completed (status check skipped on Windows)');
-      }
-
-      console.log('\n✓ Frontend build completed');
     } else {
       console.log('⏭️ Skipping build (--skip-build flag)');
     }

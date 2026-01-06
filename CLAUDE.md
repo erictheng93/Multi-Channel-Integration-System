@@ -129,6 +129,99 @@ npm run deploy:pages     # Deploy to Cloudflare Pages
 npm run verify:deployment # Verify production deployment
 ```
 
+## Bun Support (Optional - Faster Development)
+
+> 🚀 **NEW**: This project now supports **Bun** as an alternative to npm for faster local development. All npm commands remain fully functional.
+
+### Why Bun?
+- **3x faster dependency installation** (10 min → 3 min)
+- **2x faster test execution** (20s → 10s)
+- **50% faster script startup times**
+- **Native TypeScript execution** without transpilation
+
+### Quick Start with Bun
+
+**Installation:**
+```bash
+# Windows
+powershell -c "irm bun.sh/install.ps1|iex"
+
+# Verify installation
+bun --version  # Should show 1.2.20 or higher
+```
+
+**Environment Switching:**
+```bash
+# Switch to Bun (< 3 minutes)
+.\scripts\switch-to-bun.ps1
+
+# Switch back to npm (< 3 minutes)
+.\scripts\switch-to-npm.ps1
+```
+
+### Bun Command Reference
+
+**Backend (Root Directory):**
+```bash
+# Development
+bun run dev              # Wrangler dev server (via bunx)
+bun run bun:build        # TypeScript compilation
+
+# Build Scripts (Faster)
+bun run build:worker-bundle:bun      # Worker bundle (2.99s vs ~4s)
+bun run build:frontend-bundle:bun    # Frontend bundle (1.42s vs ~2s)
+bun run build:installer-bundles:bun  # Both bundles
+```
+
+**Frontend (frontend/ directory):**
+```bash
+# Development (Faster startup)
+bun run bun:dev          # Vite dev server with Bun
+bun run bun:build        # Production build with Bun
+bun run bun:test         # Vitest with Bun runtime
+```
+
+**Web Installer:**
+```bash
+# Backend
+cd web-installer/backend
+bun run dev:bun          # Wrangler dev with Bun
+
+# Frontend
+cd web-installer/frontend
+bun run dev:bun          # Vite dev with Bun
+bun run build:bun        # Production build (hybrid: npx + bun)
+```
+
+### Compatibility Notes
+
+**✅ Fully Compatible:**
+- Vite development and builds
+- Wrangler CLI (via `bunx wrangler`)
+- TypeScript compilation
+- Most npm scripts
+- Build bundle scripts (migrated in Phase 4)
+
+**⚠️ Known Limitations:**
+- `vue-tsc` requires npx (hybrid approach used)
+- `better-sqlite3` uses `bun:sqlite` adapter for tests
+- Husky hooks remain on npx (stability)
+
+**📖 Complete Guide:** See [`docs/BUN_MIGRATION_GUIDE.md`](docs/BUN_MIGRATION_GUIDE.md) for:
+- Complete API migration patterns
+- Rollback procedures (< 5 minutes)
+- Troubleshooting guide
+- Performance benchmarks
+
+### CI/CD Policy
+
+> ⚠️ **IMPORTANT**: All CI/CD pipelines use **npm + Node.js 20** for production stability. Bun is **optional for local development only**.
+
+**Files that remain npm-only:**
+- `.github/workflows/` - All GitHub Actions
+- `.husky/pre-commit` - Git hooks for stability
+- Production deployments via `wrangler deploy`
+
 ## Key Technologies & Integrations
 
 ### Database & ORM

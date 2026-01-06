@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "dev:bun": "bunx wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
+    "test:bun": "bun test",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",

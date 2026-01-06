@@ -13,7 +13,11 @@ export default defineConfig({
       '@modules': path.resolve(__dirname, '../src/modules'),
       '@real-time': path.resolve(__dirname, '../src/modules/realtime'),
       '@tests': path.resolve(__dirname, './'),
-      '@helpers': path.resolve(__dirname, './helpers')
+      '@helpers': path.resolve(__dirname, './helpers'),
+      // Bun SQLite adapter - use bun:sqlite when running with Bun
+      'better-sqlite3': typeof Bun !== 'undefined'
+        ? path.resolve(__dirname, './helpers/bun-sqlite-adapter.ts')
+        : 'better-sqlite3'
     }
   },
   test: {

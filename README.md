@@ -288,11 +288,75 @@ cd Multi_Channel_Integration_System
 wrangler login
 ```
 
-### 2.
+### 2. 開發環境選擇：npm 或 Bun
 
-#### ()
+本專案支援兩種開發環境：**npm** (穩定) 和 **Bun** (快速)。你可以根據需求自由選擇或切換。
+
+#### 🚀 Bun 優勢
+- **3x 更快的依賴安裝速度** (10 分鐘 → 3 分鐘)
+- **2x 更快的測試執行速度** (20 秒 → 10 秒)
+- **內建 TypeScript 支持** (無需額外編譯器)
+- **50% 更快的腳本啟動時間**
+
+#### 📋 環境對照表
+
+| 功能 | npm 命令 | Bun 命令 |
+|------|----------|----------|
+| **安裝依賴** | `npm install` | `bun install` |
+| **後端開發** | `npm run dev` | `bun run dev` |
+| **前端開發** | `cd frontend && npm run dev` | `cd frontend && bun run bun:dev` |
+| **執行測試** | `npm test` | `bun test` |
+| **TypeScript 編譯** | `npm run build` | `bun run build` |
+
+#### 🔄 安裝 Bun (可選)
+
+**Windows:**
+```powershell
+powershell -c "irm bun.sh/install.ps1|iex"
+bun --version  # 驗證安裝
+```
+
+**macOS/Linux:**
 ```bash
-# (2)
+curl -fsSL https://bun.sh/install | bash
+bun --version  # 驗證安裝
+```
+
+#### 🔀 環境切換
+
+**切換到 Bun 開發環境：**
+```powershell
+.\scripts\switch-to-bun.ps1
+```
+
+**切換回 npm 開發環境：**
+```powershell
+.\scripts\switch-to-npm.ps1
+```
+
+#### ⚠️ 重要說明
+- **CI/CD 環境保持使用 npm** - 確保生產環境穩定性
+- **兩種環境可以共存** - 團隊成員可自由選擇
+- **快速回滾** - 遇到問題可在 3 分鐘內切回 npm
+- **生產部署不受影響** - 所有部署仍使用 npm + Wrangler
+
+#### 🆚 使用建議
+
+**推薦使用 Bun 的情況：**
+- ✅ 本地開發和測試（速度優勢明顯）
+- ✅ 頻繁安裝依賴（節省大量時間）
+- ✅ 執行 TypeScript 腳本（內建支持）
+
+**建議保持 npm 的情況：**
+- ✅ CI/CD 流程（生產穩定性）
+- ✅ 需要完全相容性（某些工具可能尚未支持 Bun）
+- ✅ 團隊協作規範要求使用 npm
+
+### 3. 部署方式
+
+#### 開發者部署 ()
+```bash
+# 開發者快速部署 (2 步驟)
 .\scripts\developer-deploy.ps1
 
 
