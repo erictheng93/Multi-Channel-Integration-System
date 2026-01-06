@@ -16,11 +16,12 @@
 import * as esbuild from 'esbuild';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Note: This script is already Bun-compatible (uses esbuild, not child_process)
 
 interface BuildConfig {
   entryPoint: string;

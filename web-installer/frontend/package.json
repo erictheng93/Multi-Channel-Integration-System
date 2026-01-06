@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:bun": "bun vite",
     "build": "vue-tsc --noEmit && vite build",
+    "build:bun": "npx vue-tsc --noEmit && bun vite build",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
-    "deploy:pages": "npm run build && wrangler pages deploy dist --project-name=crm-installer-frontend"
+    "deploy:pages": "npm run build && wrangler pages deploy dist --project-name=crm-installer-frontend",
+    "deploy:pages:bun": "bun run build:bun && bunx wrangler pages deploy dist --project-name=crm-installer-frontend"
   },
   "dependencies": {
     "pinia": "^2.1.7",

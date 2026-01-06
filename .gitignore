@@ -14,6 +14,8 @@ dist/
 # deps
 node_modules/
 .wrangler
+bun.lockb  # Bun lockfile (混合環境階段暫不提交)
+bun.lock   # Bun lockfile variant
 
 # env - 所有環境變數檔案
 .env
