@@ -1,95 +1,79 @@
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="visible"
-        class="modal-overlay"
-        @click.self="$emit('update:visible', false)"
+  <Modal
+    :show="visible"
+    :title="isEdit ? '編輯標籤' : '新增標籤'"
+    size="md"
+    @close="$emit('update:visible', false)"
+  >
+    <!-- Tag Name -->
+    <div class="form-group">
+      <label
+        for="tag-name"
+        class="form-label"
+      >標籤名稱 *</label>
+      <input
+        id="tag-name"
+        :value="formData.name"
+        type="text"
+        class="form-input"
+        placeholder="輸入標籤名稱..."
+        maxlength="50"
+        @input="$emit('update:formData', { ...formData, name: ($event.target as HTMLInputElement).value })"
       >
-        <div class="modal-container">
-          <header class="modal-header">
-            <h2>{{ isEdit ? '編輯標籤' : '新增標籤' }}</h2>
-            <button
-              class="modal-close"
-              @click="$emit('update:visible', false)"
-            >
-              <XIcon />
-            </button>
-          </header>
+    </div>
 
-          <div class="modal-body">
-            <!-- Tag Name -->
-            <div class="form-group">
-              <label
-                for="tag-name"
-                class="form-label"
-              >標籤名稱 *</label>
-              <input
-                id="tag-name"
-                :value="formData.name"
-                type="text"
-                class="form-input"
-                placeholder="輸入標籤名稱..."
-                maxlength="50"
-                @input="$emit('update:formData', { ...formData, name: ($event.target as HTMLInputElement).value })"
-              >
-            </div>
-
-            <!-- Color Picker -->
-            <div class="form-group">
-              <label class="form-label">標籤顏色</label>
-              <div class="color-picker">
-                <div
-                  v-for="color in predefinedColors"
-                  :key="color"
-                  class="color-option"
-                  :class="{ 'color-selected': formData.color === color }"
-                  :style="{ background: color }"
-                  @click="$emit('update:formData', { ...formData, color })"
-                />
-              </div>
-            </div>
-
-            <!-- Description -->
-            <div class="form-group">
-              <label
-                for="tag-desc"
-                class="form-label"
-              >描述 (選填)</label>
-              <textarea
-                id="tag-desc"
-                :value="formData.description"
-                class="form-textarea"
-                placeholder="輸入標籤描述..."
-                rows="3"
-                maxlength="200"
-                @input="$emit('update:formData', { ...formData, description: ($event.target as HTMLTextAreaElement).value })"
-              />
-            </div>
-          </div>
-
-          <footer class="modal-footer">
-            <button
-              class="btn btn-secondary"
-              @click="$emit('update:visible', false)"
-            >
-              取消
-            </button>
-            <button
-              class="btn btn-primary"
-              @click="$emit('save')"
-            >
-              {{ isEdit ? '更新' : '創建' }}
-            </button>
-          </footer>
-        </div>
+    <!-- Color Picker -->
+    <div class="form-group">
+      <label class="form-label">標籤顏色</label>
+      <div class="color-picker">
+        <div
+          v-for="color in predefinedColors"
+          :key="color"
+          class="color-option"
+          :class="{ 'color-selected': formData.color === color }"
+          :style="{ background: color }"
+          @click="$emit('update:formData', { ...formData, color })"
+        />
       </div>
-    </Transition>
-  </Teleport>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label
+        for="tag-desc"
+        class="form-label"
+      >描述 (選填)</label>
+      <textarea
+        id="tag-desc"
+        :value="formData.description"
+        class="form-textarea"
+        placeholder="輸入標籤描述..."
+        rows="3"
+        maxlength="200"
+        @input="$emit('update:formData', { ...formData, description: ($event.target as HTMLTextAreaElement).value })"
+      />
+    </div>
+
+    <!-- Footer Actions -->
+    <template #footer>
+      <button
+        class="btn btn-secondary"
+        @click="$emit('update:visible', false)"
+      >
+        取消
+      </button>
+      <button
+        class="btn btn-primary"
+        @click="$emit('save')"
+      >
+        {{ isEdit ? '更新' : '創建' }}
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
-import { XIcon } from '@/components/icons'
+import Modal from '@/components/ui/Modal.vue'
 
 defineProps<{
   visible: boolean
@@ -110,69 +94,6 @@ defineEmits<{
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--space-4);
-}
-
-.modal-container {
-  width: 100%;
-  max-width: 500px;
-  background: white;
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-2xl);
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--gray-200);
-}
-
-.modal-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: var(--gray-500);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.modal-close:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.modal-body {
-  padding: var(--space-6);
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
 .form-group {
   margin-bottom: var(--space-5);
 }
@@ -237,14 +158,6 @@ defineEmits<{
   box-shadow: 0 0 0 2px white, 0 0 0 4px var(--gray-900);
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
-  border-top: 1px solid var(--gray-200);
-}
-
 .btn {
   display: inline-flex;
   align-items: center;
@@ -275,20 +188,5 @@ defineEmits<{
 
 .btn-secondary:hover {
   background: var(--gray-200);
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: all 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-container,
-.modal-leave-to .modal-container {
-  transform: scale(0.95) translateY(20px);
 }
 </style>

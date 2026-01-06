@@ -82,231 +82,212 @@
     </div>
 
     <!-- Edit Member Modal -->
-    <Teleport to="body">
-      <div
-        v-if="showEditModal"
-        class="modal-overlay"
-        tabindex="-1"
-        @keydown.esc="closeEditModal"
-        @click="closeEditModal"
+    <Modal
+      :show="showEditModal"
+      title="編輯成員資訊"
+      size="md"
+      @close="closeEditModal"
+    >
+      <form
+        class="edit-member-form"
+        @submit.prevent="submitEdit"
       >
-        <div
-          class="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-title"
-          @click.stop
-        >
-          <div class="modal-header">
-            <h2 id="modal-title">
-              編輯成員資訊
-            </h2>
-            <button
-              class="close-btn"
-              aria-label="關閉對話框"
-              type="button"
-              @click="closeEditModal"
-            >
-              &times;
-            </button>
-          </div>
-          <form
-            class="modal-body"
-            @submit.prevent="submitEdit"
+        <div class="form-group">
+          <label for="editName">姓名</label>
+          <input
+            id="editName"
+            v-model="editForm.name"
+            type="text"
+            placeholder="請輸入成員姓名"
           >
-            <div class="form-group">
-              <label for="editName">姓名</label>
-              <input
-                id="editName"
-                v-model="editForm.name"
-                type="text"
-                placeholder="請輸入成員姓名"
-              >
+        </div>
+        <div class="form-group">
+          <label for="editEmail">電子郵件</label>
+          <input
+            id="editEmail"
+            v-model="editForm.email"
+            type="email"
+            placeholder="請輸入電子郵件地址"
+          >
+        </div>
+        <div class="form-group">
+          <label for="editRole">角色</label>
+          <select
+            id="editRole"
+            v-model="editForm.role"
+            :disabled="isCurrentUser"
+          >
+            <option value="agent">
+              🎧 客服
+            </option>
+            <option value="admin">
+              👑 管理員
+            </option>
+          </select>
+          <div
+            v-if="editForm.role"
+            class="role-permissions-info"
+          >
+            <div
+              v-if="editForm.role === 'admin'"
+              class="permission-warning"
+            >
+              <strong>⚠️ 管理員權限包括：</strong>
+              <ul>
+                <li>管理所有團隊成員</li>
+                <li>修改系統設定</li>
+                <li>查看所有對話紀錄</li>
+                <li>刪除資料</li>
+              </ul>
             </div>
-            <div class="form-group">
-              <label for="editEmail">電子郵件</label>
-              <input
-                id="editEmail"
-                v-model="editForm.email"
-                type="email"
-                placeholder="請輸入電子郵件地址"
-              >
+            <div
+              v-else-if="editForm.role === 'agent'"
+              class="permission-info"
+            >
+              <strong>ℹ️ 客服權限包括：</strong>
+              <ul>
+                <li>查看對話</li>
+                <li>回覆訊息</li>
+                <li>標記客戶</li>
+              </ul>
             </div>
-            <div class="form-group">
-              <label for="editRole">角色</label>
-              <select
-                id="editRole"
-                v-model="editForm.role"
-                :disabled="isCurrentUser"
-              >
-                <option value="agent">
-                  🎧 客服
-                </option>
-                <option value="admin">
-                  👑 管理員
-                </option>
-              </select>
-              <div
-                v-if="editForm.role"
-                class="role-permissions-info"
-              >
+          </div>
+        </div>
+        <!-- Multi-Team Selector (支援多團隊) -->
+        <div class="form-group">
+          <label>所屬群組</label>
+          <div class="multi-team-selector">
+            <!-- 已加入的團隊列表 (Chips) -->
+            <div class="team-chips-container">
+              <TransitionGroup name="chip">
                 <div
-                  v-if="editForm.role === 'admin'"
-                  class="permission-warning"
+                  v-for="membership in memberTeams"
+                  :key="membership.teamId"
+                  class="team-chip"
+                  :class="{ 'is-primary': membership.isPrimary }"
                 >
-                  <strong>⚠️ 管理員權限包括：</strong>
-                  <ul>
-                    <li>管理所有團隊成員</li>
-                    <li>修改系統設定</li>
-                    <li>查看所有對話紀錄</li>
-                    <li>刪除資料</li>
-                  </ul>
-                </div>
-                <div
-                  v-else-if="editForm.role === 'agent'"
-                  class="permission-info"
-                >
-                  <strong>ℹ️ 客服權限包括：</strong>
-                  <ul>
-                    <li>查看對話</li>
-                    <li>回覆訊息</li>
-                    <li>標記客戶</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            <!-- Multi-Team Selector (支援多團隊) -->
-            <div class="form-group">
-              <label>所屬群組</label>
-              <div class="multi-team-selector">
-                <!-- 已加入的團隊列表 (Chips) -->
-                <div class="team-chips-container">
-                  <TransitionGroup name="chip">
-                    <div
-                      v-for="membership in memberTeams"
-                      :key="membership.teamId"
-                      class="team-chip"
-                      :class="{ 'is-primary': membership.isPrimary }"
-                    >
-                      <span class="chip-icon">{{ membership.isPrimary ? '⭐' : '👥' }}</span>
-                      <span class="chip-name">{{ membership.teamName || `團隊 #${membership.teamId}` }}</span>
-                      <span
-                        v-if="membership.roleInTeam !== 'member'"
-                        class="chip-role"
-                      >
-                        {{ getRoleInTeamText(membership.roleInTeam) }}
-                      </span>
-                      <button
-                        type="button"
-                        class="chip-remove"
-                        :disabled="teamOperationLoading"
-                        :title="`從「${membership.teamName}」移除`"
-                        @click="removeFromTeam(membership.teamId)"
-                      >
-                        ×
-                      </button>
-                      <button
-                        v-if="!membership.isPrimary && memberTeams.length > 1"
-                        type="button"
-                        class="chip-star"
-                        :disabled="teamOperationLoading"
-                        title="設為主要團隊"
-                        @click="setPrimaryTeam(membership.teamId)"
-                      >
-                        ☆
-                      </button>
-                    </div>
-                  </TransitionGroup>
-
-                  <!-- Empty State -->
-                  <div
-                    v-if="memberTeams.length === 0"
-                    class="no-teams-message"
+                  <span class="chip-icon">{{ membership.isPrimary ? '⭐' : '👥' }}</span>
+                  <span class="chip-name">{{ membership.teamName || `團隊 #${membership.teamId}` }}</span>
+                  <span
+                    v-if="membership.roleInTeam !== 'member'"
+                    class="chip-role"
                   >
-                    <span class="empty-icon">📭</span>
-                    <span>尚未加入任何群組</span>
-                  </div>
-                </div>
-
-                <!-- 添加團隊下拉選單 -->
-                <div class="add-team-section">
-                  <select
-                    v-model="selectedTeamToAdd"
-                    class="team-add-select"
-                    :disabled="availableTeamsToJoin.length === 0 || teamOperationLoading"
-                  >
-                    <option
-                      :value="null"
-                      disabled
-                    >
-                      {{ availableTeamsToJoin.length === 0 ? '已加入所有可用群組' : '+ 選擇群組加入...' }}
-                    </option>
-                    <option
-                      v-for="team in availableTeamsToJoin"
-                      :key="team.id"
-                      :value="team.id"
-                    >
-                      {{ team.name }}
-                    </option>
-                  </select>
+                    {{ getRoleInTeamText(membership.roleInTeam) }}
+                  </span>
                   <button
                     type="button"
-                    class="btn btn-add-team"
-                    :disabled="!selectedTeamToAdd || teamOperationLoading"
-                    @click="addToTeam"
+                    class="chip-remove"
+                    :disabled="teamOperationLoading"
+                    :title="`從「${membership.teamName}」移除`"
+                    @click="removeFromTeam(membership.teamId)"
                   >
-                    <span
-                      v-if="teamOperationLoading"
-                      class="loading-spinner"
-                    >⏳</span>
-                    <span v-else>加入</span>
+                    ×
+                  </button>
+                  <button
+                    v-if="!membership.isPrimary && memberTeams.length > 1"
+                    type="button"
+                    class="chip-star"
+                    :disabled="teamOperationLoading"
+                    title="設為主要團隊"
+                    @click="setPrimaryTeam(membership.teamId)"
+                  >
+                    ☆
                   </button>
                 </div>
+              </TransitionGroup>
 
-                <!-- Team Operation Status -->
-                <div
-                  v-if="teamOperationStatus"
-                  class="team-operation-status"
-                  :class="teamOperationStatus.type"
-                >
-                  {{ teamOperationStatus.message }}
-                </div>
+              <!-- Empty State -->
+              <div
+                v-if="memberTeams.length === 0"
+                class="no-teams-message"
+              >
+                <span class="empty-icon">📭</span>
+                <span>尚未加入任何群組</span>
               </div>
             </div>
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input
-                  v-model="editForm.isActive"
-                  type="checkbox"
+
+            <!-- 添加團隊下拉選單 -->
+            <div class="add-team-section">
+              <select
+                v-model="selectedTeamToAdd"
+                class="team-add-select"
+                :disabled="availableTeamsToJoin.length === 0 || teamOperationLoading"
+              >
+                <option
+                  :value="null"
+                  disabled
                 >
-                帳戶啟用狀態
-              </label>
-            </div>
-            <div class="modal-actions">
+                  {{ availableTeamsToJoin.length === 0 ? '已加入所有可用群組' : '+ 選擇群組加入...' }}
+                </option>
+                <option
+                  v-for="team in availableTeamsToJoin"
+                  :key="team.id"
+                  :value="team.id"
+                >
+                  {{ team.name }}
+                </option>
+              </select>
               <button
                 type="button"
-                class="btn btn-secondary"
-                @click="closeEditModal"
+                class="btn btn-add-team"
+                :disabled="!selectedTeamToAdd || teamOperationLoading"
+                @click="addToTeam"
               >
-                取消
-              </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="editLoading"
-              >
-                {{ editLoading ? '更新中...' : '更新' }}
+                <span
+                  v-if="teamOperationLoading"
+                  class="loading-spinner"
+                >⏳</span>
+                <span v-else>加入</span>
               </button>
             </div>
-          </form>
+
+            <!-- Team Operation Status -->
+            <div
+              v-if="teamOperationStatus"
+              class="team-operation-status"
+              :class="teamOperationStatus.type"
+            >
+              {{ teamOperationStatus.message }}
+            </div>
+          </div>
         </div>
-      </div>
-    </Teleport>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              v-model="editForm.isActive"
+              type="checkbox"
+            >
+            帳戶啟用狀態
+          </label>
+        </div>
+      </form>
+
+      <template #footer>
+        <div class="modal-footer-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="closeEditModal"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :disabled="editLoading"
+            @click="submitEdit"
+          >
+            {{ editLoading ? '更新中...' : '更新' }}
+          </button>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, watch, nextTick, onUnmounted } from 'vue'
+import { computed, ref, reactive, watch, nextTick } from 'vue'
+import Modal from '@/components/ui/Modal.vue'
 import type { TeamMember, AgentTeamMembership } from '@/types'
 import { teamApi } from '@/api/team'
 import { useTeamStore } from '@/stores/team'
@@ -575,32 +556,6 @@ const openEditModal = (event: Event) => {
 const closeEditModal = () => {
   showEditModal.value = false
 }
-
-
-// Keyboard event handler for ESC key
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && showEditModal.value) {
-    closeEditModal()
-  }
-}
-
-// Add global keyboard listener when modal is open
-watch(showEditModal, (isOpen) => {
-  if (isOpen) {
-    document.addEventListener('keydown', handleKeydown)
-    // Prevent body scroll when modal is open
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.removeEventListener('keydown', handleKeydown)
-    document.body.style.overflow = ''
-  }
-})
-
-// Cleanup on unmount
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown)
-  document.body.style.overflow = ''
-})
 
 // Submit edit form
 const submitEdit = async () => {
@@ -926,98 +881,18 @@ const formatDate = (date: string | Date) => {
   transform: translateY(-1px);
 }
 
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+/* Edit Member Form Styles */
+.edit-member-form {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: var(--space-4);
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease-out;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.modal {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 600px;
+.modal-footer-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideIn 0.3s ease-out;
-  transform-origin: center;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 28px;
-  border-bottom: 1px solid #e2e8f0;
-  background: white;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #1e293b;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.close-btn {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  font-size: 1.5rem;
-  color: #64748b;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  color: #475569;
-  background-color: #e2e8f0;
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-}
-
-.modal-body {
-  padding: 28px;
-  background: #f8fafc;
 }
 
 .form-group {
@@ -1120,13 +995,6 @@ const formatDate = (date: string | Date) => {
   font-size: 0.7rem;
 }
 
-.modal-actions {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  margin-top: var(--space-6);
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .member-card {
@@ -1152,34 +1020,12 @@ const formatDate = (date: string | Date) => {
     min-width: 80px;
   }
 
-  .modal-overlay {
-    padding: var(--space-2);
-    align-items: flex-end;
-  }
-
-  .modal {
-    margin: 0;
-    max-width: none;
-    max-height: 85vh;
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-    animation: slideUp 0.3s ease-out;
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
-    }
-  }
-
-  .modal-actions {
+  .modal-footer-actions {
     flex-direction: column;
     gap: var(--space-3);
   }
 
-  .modal-actions .btn {
+  .modal-footer-actions .btn {
     width: 100%;
     justify-content: center;
   }

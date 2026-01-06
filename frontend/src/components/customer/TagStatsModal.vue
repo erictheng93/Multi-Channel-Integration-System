@@ -1,359 +1,138 @@
 <template>
-  <Teleport to="body">
-    <div
-      v-if="show"
-      class="modal-overlay"
-      @click="$emit('close')"
-    >
-      <div
-        class="modal-content"
-        @click.stop
+  <Modal
+    :show="show"
+    size="lg"
+    :show-header="false"
+    :no-padding="true"
+    @close="$emit('close')"
+  >
+    <!-- Custom Header with Tag Info -->
+    <div class="modal-header">
+      <div class="modal-title-section">
+        <div
+          class="tag-color-indicator"
+          :style="{ backgroundColor: tag.color }"
+        />
+        <div>
+          <h2 class="modal-title">
+            {{ tag.name }}
+          </h2>
+          <p class="modal-subtitle">
+            標籤使用統計
+          </p>
+        </div>
+      </div>
+      <button
+        class="modal-close-btn"
+        @click="$emit('close')"
       >
-        <!-- Header -->
-        <div class="modal-header">
-          <div class="modal-title-section">
-            <div
-              class="tag-color-indicator"
-              :style="{ backgroundColor: tag.color }"
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-header">
+      <button
+        class="tab-button"
+        :class="{ active: activeTab === 'stats' }"
+        @click="activeTab = 'stats'"
+      >
+        <svg
+          class="tab-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+        統計數據
+      </button>
+      <button
+        class="tab-button"
+        :class="{ active: activeTab === 'customers' }"
+        @click="switchToCustomersTab"
+      >
+        <svg
+          class="tab-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
+        </svg>
+        客戶列表
+        <span
+          v-if="stats"
+          class="tab-badge"
+        >{{ stats.customers.total }}</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+      <!-- Stats Tab -->
+      <div
+        v-if="activeTab === 'stats'"
+        class="tab-content"
+      >
+        <HamsterLoader
+          v-if="loading"
+          message="載入統計數據中..."
+        />
+
+        <div
+          v-else-if="error"
+          class="error-state"
+        >
+          <svg
+            class="error-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
-            <div>
-              <h2 class="modal-title">
-                {{ tag.name }}
-              </h2>
-              <p class="modal-subtitle">
-                標籤使用統計
-              </p>
-            </div>
-          </div>
-          <button
-            class="modal-close-btn"
-            @click="$emit('close')"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+          </svg>
+          <p class="error-message">
+            {{ error }}
+          </p>
         </div>
 
-        <!-- Tabs -->
-        <div class="tabs-header">
-          <button
-            class="tab-button"
-            :class="{ active: activeTab === 'stats' }"
-            @click="activeTab = 'stats'"
-          >
-            <svg
-              class="tab-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            統計數據
-          </button>
-          <button
-            class="tab-button"
-            :class="{ active: activeTab === 'customers' }"
-            @click="switchToCustomersTab"
-          >
-            <svg
-              class="tab-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            客戶列表
-            <span
-              v-if="stats"
-              class="tab-badge"
-            >{{ stats.customers.total }}</span>
-          </button>
-        </div>
-
-        <!-- Body -->
-        <div class="modal-body">
-          <!-- Stats Tab -->
+        <div v-else-if="stats">
+          <!-- Stats Overview -->
           <div
-            v-if="activeTab === 'stats'"
-            class="tab-content"
+            class="stats-grid"
+            :class="{ 'single-column': !ENABLE_CONVERSATION_TAGS }"
           >
-            <HamsterLoader
-              v-if="loading"
-              message="載入統計數據中..."
-            />
-
-            <div
-              v-else-if="error"
-              class="error-state"
-            >
-              <svg
-                class="error-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <p class="error-message">
-                {{ error }}
-              </p>
-            </div>
-
-            <div v-else-if="stats">
-              <!-- Stats Overview -->
-              <div
-                class="stats-grid"
-                :class="{ 'single-column': !ENABLE_CONVERSATION_TAGS }"
-              >
-                <!-- 已標記客戶卡片 -->
-                <div class="stat-card">
-                  <div class="stat-icon customers">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-value">
-                      {{ stats.customers.total }}
-                    </div>
-                    <div class="stat-label">
-                      已標記客戶
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 已標記對話卡片 (暫時隱藏，保留未來擴展) -->
-                <div
-                  v-if="ENABLE_CONVERSATION_TAGS"
-                  class="stat-card"
-                >
-                  <div class="stat-icon conversations">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                      />
-                    </svg>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-value">
-                      {{ stats.conversations.total }}
-                    </div>
-                    <div class="stat-label">
-                      已標記對話
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Platform Distribution -->
-              <div
-                v-if="stats.customers.total > 0"
-                class="section"
-              >
-                <h3 class="section-title">
-                  客戶平台分布
-                </h3>
-                <div class="platform-stats">
-                  <div class="platform-item">
-                    <div class="platform-info">
-                      <svg
-                        class="platform-icon line"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.771.039 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
-                      </svg>
-                      <span class="platform-name">LINE OA</span>
-                    </div>
-                    <div class="platform-count">
-                      {{ stats.customers.byPlatform.line }} 位
-                      <span class="platform-percentage">({{ calculatePercentage(stats.customers.byPlatform.line, stats.customers.total) }}%)</span>
-                    </div>
-                  </div>
-                  <div class="platform-item">
-                    <div class="platform-info">
-                      <svg
-                        class="platform-icon facebook"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                      </svg>
-                      <span class="platform-name">Facebook</span>
-                    </div>
-                    <div class="platform-count">
-                      {{ stats.customers.byPlatform.facebook }} 位
-                      <span class="platform-percentage">({{ calculatePercentage(stats.customers.byPlatform.facebook, stats.customers.total) }}%)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Conversation Status (暫時隱藏，保留未來擴展) -->
-              <div
-                v-if="ENABLE_CONVERSATION_TAGS && stats.conversations.total > 0"
-                class="section"
-              >
-                <h3 class="section-title">
-                  對話狀態分布
-                </h3>
-                <div class="conversation-stats">
-                  <div class="conversation-item active">
-                    <div class="conversation-label">
-                      進行中
-                    </div>
-                    <div class="conversation-count">
-                      {{ stats.conversations.active }} 則
-                    </div>
-                  </div>
-                  <div class="conversation-item closed">
-                    <div class="conversation-label">
-                      已關閉
-                    </div>
-                    <div class="conversation-count">
-                      {{ stats.conversations.closed }} 則
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Usage Trend (Last 30 Days) -->
-              <div
-                v-if="stats.usageTrend && stats.usageTrend.length > 0"
-                class="section"
-              >
-                <h3 class="section-title">
-                  使用趨勢（最近30天）
-                </h3>
-                <div class="usage-trend">
-                  <div
-                    v-for="trend in stats.usageTrend.slice(0, 7)"
-                    :key="trend.date"
-                    class="trend-item"
-                  >
-                    <div class="trend-date">
-                      {{ formatTrendDate(trend.date) }}
-                    </div>
-                    <div class="trend-bar-container">
-                      <div
-                        class="trend-bar"
-                        :style="{
-                          width: calculateBarWidth(trend.assignments, stats.usageTrend) + '%'
-                        }"
-                      />
-                    </div>
-                    <div class="trend-count">
-                      {{ trend.assignments }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Top Assigners -->
-              <div
-                v-if="stats.topAssigners && stats.topAssigners.length > 0"
-                class="section"
-              >
-                <h3 class="section-title">
-                  最活躍使用者（最近30天）
-                </h3>
-                <div class="assigners-list">
-                  <div
-                    v-for="(assigner, index) in stats.topAssigners.slice(0, 5)"
-                    :key="index"
-                    class="assigner-item"
-                  >
-                    <div class="assigner-rank">
-                      #{{ index + 1 }}
-                    </div>
-                    <div class="assigner-info">
-                      <div class="assigner-name">
-                        {{ assigner.name }}
-                      </div>
-                      <div class="assigner-count">
-                        標記了 {{ assigner.assignments }} 次
-                      </div>
-                    </div>
-                    <div class="assigner-badge">
-                      <svg
-                        v-if="index === 0"
-                        class="badge-icon gold"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                      </svg>
-                      <svg
-                        v-else-if="index === 1"
-                        class="badge-icon silver"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                      </svg>
-                      <svg
-                        v-else-if="index === 2"
-                        class="badge-icon bronze"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Empty State -->
-              <div
-                v-if="stats.customers.total === 0 && stats.conversations.total === 0"
-                class="empty-stats"
-              >
+            <!-- 已標記客戶卡片 -->
+            <div class="stat-card">
+              <div class="stat-icon customers">
                 <svg
-                  class="empty-icon"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -362,160 +141,377 @@
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                   />
                 </svg>
-                <p class="empty-message">
-                  此標籤尚未被使用
-                </p>
-                <p class="empty-description">
-                  開始為客戶或對話添加此標籤來追蹤使用情況
-                </p>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ stats.customers.total }}
+                </div>
+                <div class="stat-label">
+                  已標記客戶
+                </div>
+              </div>
+            </div>
+
+            <!-- 已標記對話卡片 (暫時隱藏，保留未來擴展) -->
+            <div
+              v-if="ENABLE_CONVERSATION_TAGS"
+              class="stat-card"
+            >
+              <div class="stat-icon conversations">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  />
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ stats.conversations.total }}
+                </div>
+                <div class="stat-label">
+                  已標記對話
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Customers Tab -->
+          <!-- Platform Distribution -->
           <div
-            v-if="activeTab === 'customers'"
-            class="tab-content"
+            v-if="stats.customers.total > 0"
+            class="section"
           >
-            <HamsterLoader
-              v-if="loadingCustomers"
-              message="載入客戶列表中..."
-            />
-
-            <div
-              v-else-if="customersError"
-              class="error-state"
-            >
-              <svg
-                class="error-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <p class="error-message">
-                {{ customersError }}
-              </p>
-            </div>
-
-            <div
-              v-else-if="customers.length === 0"
-              class="empty-stats"
-            >
-              <svg
-                class="empty-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <p class="empty-message">
-                尚無客戶使用此標籤
-              </p>
-              <p class="empty-description">
-                為客戶添加此標籤後，列表將會顯示在這裡
-              </p>
-            </div>
-
-            <div
-              v-else
-              class="customers-list"
-            >
-              <div
-                v-for="customer in customers"
-                :key="customer.id"
-                class="customer-row"
-              >
-                <div class="customer-avatar">
-                  <img
-                    v-if="customer.avatar_url"
-                    :src="customer.avatar_url"
-                    :alt="customer.display_name"
+            <h3 class="section-title">
+              客戶平台分布
+            </h3>
+            <div class="platform-stats">
+              <div class="platform-item">
+                <div class="platform-info">
+                  <svg
+                    class="platform-icon line"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                   >
+                    <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.771.039 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+                  </svg>
+                  <span class="platform-name">LINE OA</span>
+                </div>
+                <div class="platform-count">
+                  {{ stats.customers.byPlatform.line }} 位
+                  <span class="platform-percentage">({{ calculatePercentage(stats.customers.byPlatform.line, stats.customers.total) }}%)</span>
+                </div>
+              </div>
+              <div class="platform-item">
+                <div class="platform-info">
+                  <svg
+                    class="platform-icon facebook"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                  <span class="platform-name">Facebook</span>
+                </div>
+                <div class="platform-count">
+                  {{ stats.customers.byPlatform.facebook }} 位
+                  <span class="platform-percentage">({{ calculatePercentage(stats.customers.byPlatform.facebook, stats.customers.total) }}%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conversation Status (暫時隱藏，保留未來擴展) -->
+          <div
+            v-if="ENABLE_CONVERSATION_TAGS && stats.conversations.total > 0"
+            class="section"
+          >
+            <h3 class="section-title">
+              對話狀態分布
+            </h3>
+            <div class="conversation-stats">
+              <div class="conversation-item active">
+                <div class="conversation-label">
+                  進行中
+                </div>
+                <div class="conversation-count">
+                  {{ stats.conversations.active }} 則
+                </div>
+              </div>
+              <div class="conversation-item closed">
+                <div class="conversation-label">
+                  已關閉
+                </div>
+                <div class="conversation-count">
+                  {{ stats.conversations.closed }} 則
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Usage Trend (Last 30 Days) -->
+          <div
+            v-if="stats.usageTrend && stats.usageTrend.length > 0"
+            class="section"
+          >
+            <h3 class="section-title">
+              使用趨勢（最近30天）
+            </h3>
+            <div class="usage-trend">
+              <div
+                v-for="trend in stats.usageTrend.slice(0, 7)"
+                :key="trend.date"
+                class="trend-item"
+              >
+                <div class="trend-date">
+                  {{ formatTrendDate(trend.date) }}
+                </div>
+                <div class="trend-bar-container">
                   <div
-                    v-else
-                    class="avatar-placeholder"
-                  >
-                    {{ customer.display_name.charAt(0).toUpperCase() }}
-                  </div>
+                    class="trend-bar"
+                    :style="{
+                      width: calculateBarWidth(trend.assignments, stats.usageTrend) + '%'
+                    }"
+                  />
                 </div>
-                <div class="customer-info">
-                  <div class="customer-name">
-                    {{ customer.display_name }}
-                  </div>
-                  <div class="customer-meta">
-                    <span
-                      class="platform-badge"
-                      :class="customer.platform"
-                    >
-                      {{ customer.platform === 'line' ? 'LINE' : 'Facebook' }}
-                    </span>
-                    <span class="meta-separator">•</span>
-                    <span class="assigned-date">
-                      標記於 {{ formatDate(customer.assigned_at) }}
-                    </span>
-                  </div>
+                <div class="trend-count">
+                  {{ trend.assignments }}
                 </div>
-              </div>
-
-              <!-- Pagination -->
-              <div
-                v-if="pagination && pagination.totalPages > 1"
-                class="pagination"
-              >
-                <button
-                  class="pagination-btn"
-                  :disabled="pagination.page === 1"
-                  @click="loadCustomers(pagination.page - 1)"
-                >
-                  上一頁
-                </button>
-                <span class="pagination-info">
-                  第 {{ pagination.page }} / {{ pagination.totalPages }} 頁
-                </span>
-                <button
-                  class="pagination-btn"
-                  :disabled="pagination.page === pagination.totalPages"
-                  @click="loadCustomers(pagination.page + 1)"
-                >
-                  下一頁
-                </button>
               </div>
             </div>
+          </div>
+
+          <!-- Top Assigners -->
+          <div
+            v-if="stats.topAssigners && stats.topAssigners.length > 0"
+            class="section"
+          >
+            <h3 class="section-title">
+              最活躍使用者（最近30天）
+            </h3>
+            <div class="assigners-list">
+              <div
+                v-for="(assigner, index) in stats.topAssigners.slice(0, 5)"
+                :key="index"
+                class="assigner-item"
+              >
+                <div class="assigner-rank">
+                  #{{ index + 1 }}
+                </div>
+                <div class="assigner-info">
+                  <div class="assigner-name">
+                    {{ assigner.name }}
+                  </div>
+                  <div class="assigner-count">
+                    標記了 {{ assigner.assignments }} 次
+                  </div>
+                </div>
+                <div class="assigner-badge">
+                  <svg
+                    v-if="index === 0"
+                    class="badge-icon gold"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                  </svg>
+                  <svg
+                    v-else-if="index === 1"
+                    class="badge-icon silver"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                  </svg>
+                  <svg
+                    v-else-if="index === 2"
+                    class="badge-icon bronze"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div
+            v-if="stats.customers.total === 0 && stats.conversations.total === 0"
+            class="empty-stats"
+          >
+            <svg
+              class="empty-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+              />
+            </svg>
+            <p class="empty-message">
+              此標籤尚未被使用
+            </p>
+            <p class="empty-description">
+              開始為客戶或對話添加此標籤來追蹤使用情況
+            </p>
           </div>
         </div>
+      </div>
 
-        <!-- Footer -->
-        <div class="modal-footer">
-          <button
-            class="btn btn-secondary"
-            @click="$emit('close')"
+      <!-- Customers Tab -->
+      <div
+        v-if="activeTab === 'customers'"
+        class="tab-content"
+      >
+        <HamsterLoader
+          v-if="loadingCustomers"
+          message="載入客戶列表中..."
+        />
+
+        <div
+          v-else-if="customersError"
+          class="error-state"
+        >
+          <svg
+            class="error-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
           >
-            關閉
-          </button>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <p class="error-message">
+            {{ customersError }}
+          </p>
+        </div>
+
+        <div
+          v-else-if="customers.length === 0"
+          class="empty-stats"
+        >
+          <svg
+            class="empty-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+          <p class="empty-message">
+            尚無客戶使用此標籤
+          </p>
+          <p class="empty-description">
+            為客戶添加此標籤後，列表將會顯示在這裡
+          </p>
+        </div>
+
+        <div
+          v-else
+          class="customers-list"
+        >
+          <div
+            v-for="customer in customers"
+            :key="customer.id"
+            class="customer-row"
+          >
+            <div class="customer-avatar">
+              <img
+                v-if="customer.avatar_url"
+                :src="customer.avatar_url"
+                :alt="customer.display_name"
+              >
+              <div
+                v-else
+                class="avatar-placeholder"
+              >
+                {{ customer.display_name.charAt(0).toUpperCase() }}
+              </div>
+            </div>
+            <div class="customer-info">
+              <div class="customer-name">
+                {{ customer.display_name }}
+              </div>
+              <div class="customer-meta">
+                <span
+                  class="platform-badge"
+                  :class="customer.platform"
+                >
+                  {{ customer.platform === 'line' ? 'LINE' : 'Facebook' }}
+                </span>
+                <span class="meta-separator">•</span>
+                <span class="assigned-date">
+                  標記於 {{ formatDate(customer.assigned_at) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div
+            v-if="pagination && pagination.totalPages > 1"
+            class="pagination"
+          >
+            <button
+              class="pagination-btn"
+              :disabled="pagination.page === 1"
+              @click="loadCustomers(pagination.page - 1)"
+            >
+              上一頁
+            </button>
+            <span class="pagination-info">
+              第 {{ pagination.page }} / {{ pagination.totalPages }} 頁
+            </span>
+            <button
+              class="pagination-btn"
+              :disabled="pagination.page === pagination.totalPages"
+              @click="loadCustomers(pagination.page + 1)"
+            >
+              下一頁
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </Teleport>
+
+    <!-- Footer Actions -->
+    <template #footer>
+      <button
+        class="btn btn-secondary"
+        @click="$emit('close')"
+      >
+        關閉
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import Modal from '@/components/ui/Modal.vue'
 import { getTagUsageStats, getTagCustomers, type Tag, type TagUsageStats, type TagCustomer } from '@/api/tags'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 
@@ -650,37 +646,13 @@ watch(() => props.show, (newValue) => {
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 2000;
-  padding: var(--space-4);
-}
-
-.modal-content {
-  width: 100%;
-  max-width: 700px;
-  max-height: 90vh;
-  background: white;
-  border-radius: var(--radius-2xl);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
-  display: flex;
-  flex-direction: column;
-}
+/* Custom Header with Tag Color */
 
 .modal-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-4);
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -1144,13 +1116,7 @@ watch(() => props.show, (newValue) => {
   font-weight: 500;
 }
 
-.modal-footer {
-  padding: var(--space-6);
-  border-top: 1px solid var(--gray-100);
-  display: flex;
-  justify-content: flex-end;
-}
-
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
