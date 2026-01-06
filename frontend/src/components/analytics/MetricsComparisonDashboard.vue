@@ -156,16 +156,13 @@
     </div>
 
     <!-- 自訂期間選擇 Modal (簡化版) -->
-    <div
-      v-if="showCustomPeriodModal"
-      class="modal-overlay"
-      @click="showCustomPeriodModal = false"
+    <Modal
+      :show="showCustomPeriodModal"
+      title="選擇自訂期間"
+      size="sm"
+      @close="showCustomPeriodModal = false"
     >
-      <div
-        class="modal-content"
-        @click.stop
-      >
-        <h3>選擇自訂期間</h3>
+      <div class="custom-period-content">
         <div class="date-inputs">
           <div class="input-group">
             <label>開始時間</label>
@@ -182,7 +179,10 @@
             >
           </div>
         </div>
-        <div class="modal-actions">
+      </div>
+
+      <template #footer>
+        <div class="custom-period-footer">
           <button
             class="btn-cancel"
             @click="showCustomPeriodModal = false"
@@ -196,13 +196,14 @@
             套用
           </button>
         </div>
-      </div>
-    </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import Modal from '@/components/ui/Modal.vue';
 import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
 import { getBackendUrl } from '@/config/runtime';
@@ -756,23 +757,16 @@ onBeforeUnmount(() => {
   color: #111827;
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+/* Custom Period Modal */
+.custom-period-content {
+  padding: 0;
 }
 
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  max-width: 500px;
-  width: 90%;
+.custom-period-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 100%;
 }
 
 .date-inputs {
@@ -799,13 +793,6 @@ onBeforeUnmount(() => {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
 }
 
 .btn-cancel,

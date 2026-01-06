@@ -4,19 +4,19 @@
       name="dialog-overlay"
       appear
     >
-      <div 
+      <div
         v-if="visible"
+        ref="overlayRef"
         class="dialog-overlay"
-        @click="handleOverlayClick"
       >
         <Transition
           name="dialog"
           appear
         >
-          <div 
+          <div
+            ref="containerRef"
             class="dialog-container"
             :class="dialogClasses"
-            @click.stop
           >
             <!-- Icon -->
             <div class="dialog-icon">
@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 const props = withDefaults(defineProps<ConfirmDialogProps>(), {
   message: undefined,
@@ -86,6 +86,10 @@ const emit = defineEmits<{
 }>()
 
 import HamsterLoader from './HamsterLoader.vue'
+
+// Refs
+const overlayRef = ref<HTMLElement>()
+const containerRef = ref<HTMLElement>()
 
 // Icons
 const QuestionIcon = {
@@ -163,15 +167,23 @@ const close = () => {
   emit('close')
 }
 
-const handleOverlayClick = () => {
-  if (props.closeOnOverlay && !props.loading) {
+// 新方案: 精确的外部点击检测
+const handleClickOutside = (event: MouseEvent) => {
+  if (!props.closeOnOverlay || props.loading || !visible.value) {
+    return
+  }
+
+  const target = event.target
+
+  // 检查点击是否在 dialog-container 外部
+  if (containerRef.value && target instanceof HTMLElement && !containerRef.value.contains(target)) {
     handleCancel()
   }
 }
 
 const handleCancel = () => {
   if (props.loading) {return}
-  
+
   emit('cancel')
   props.onCancel?.()
   close()
@@ -179,18 +191,46 @@ const handleCancel = () => {
 
 const handleConfirm = async () => {
   if (props.loading) {return}
-  
+
   emit('confirm')
-  
+
   if (props.onConfirm) {
     const result = props.onConfirm()
     if (result instanceof Promise) {
       await result
     }
   }
-  
+
   close()
 }
+
+// 监听 visible 变化，管理事件监听器
+watch(() => visible.value, (isVisible) => {
+  if (typeof document !== 'undefined') {
+    if (isVisible) {
+      // Dialog 打开时，延迟添加监听避免立即触发
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside)
+      }, 0)
+    } else {
+      // Dialog 关闭时，移除监听
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }
+})
+
+onMounted(() => {
+  // 如果初始就是可见的，添加监听
+  if (visible.value) {
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
@@ -205,7 +245,7 @@ const handleConfirm = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 10000; /* 新方案: 提升到最高层级 */
   padding: 16px;
 }
 

@@ -2,13 +2,13 @@
   <Teleport to="body">
     <div
       v-if="show"
+      ref="overlayRef"
       class="modal-overlay"
-      @click="handleOverlayClick"
     >
-      <div 
-        class="modal-container" 
+      <div
+        ref="containerRef"
+        class="modal-container"
         :class="[sizeClass, { 'modal-fullscreen': fullscreen }]"
-        @click.stop
       >
         <div
           v-if="showHeader"
@@ -19,23 +19,23 @@
               <h3>{{ title }}</h3>
             </slot>
           </div>
-          <button 
+          <button
             v-if="showCloseButton"
-            class="modal-close-btn" 
+            class="modal-close-btn"
             :aria-label="closeButtonLabel"
             @click="handleClose"
           >
             <XIcon />
           </button>
         </div>
-        
+
         <div
           class="modal-body"
           :class="{ 'no-padding': noPadding }"
         >
           <slot />
         </div>
-        
+
         <div
           v-if="$slots.footer"
           class="modal-footer"
@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { XIcon } from '@/components/icons'
 
 interface Props {
@@ -83,6 +83,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+// Refs
+const overlayRef = ref<HTMLElement>()
+const containerRef = ref<HTMLElement>()
+
 const sizeClass = computed(() => `modal-${props.size}`)
 
 const handleClose = () => {
@@ -90,35 +94,52 @@ const handleClose = () => {
   emit('update:show', false)
 }
 
-const handleOverlayClick = () => {
-  if (props.closeOnOverlay) {
+// 新方案: 精确的外部点击检测
+const handleClickOutside = (event: MouseEvent) => {
+  if (!props.closeOnOverlay || !props.show) {
+    return
+  }
+
+  const target = event.target
+
+  // 检查点击是否在 modal-container 外部
+  if (containerRef.value && target instanceof HTMLElement && !containerRef.value.contains(target)) {
     handleClose()
   }
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.show) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
     handleClose()
   }
 }
 
-// 鎖定body滾動
+// 监听 show 变化，管理事件监听器
 watch(() => props.show, (show) => {
   if (typeof document !== 'undefined') {
     if (show) {
+      // Modal 打开时
       document.body.style.overflow = 'hidden'
+      // 添加 ESC 键监听
+      document.addEventListener('keydown', handleKeydown)
+      // 添加外部点击监听 (延迟添加避免立即触发)
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside)
+      }, 0)
     } else {
+      // Modal 关闭时
       document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleKeydown)
+      document.removeEventListener('click', handleClickOutside)
     }
   }
 })
 
-onMounted(() => {
-  document.addEventListener('keydown', handleKeydown)
-})
-
 onUnmounted(() => {
+  // 组件卸载时清理所有监听器和样式
   document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('click', handleClickOutside)
   // 清理body樣式
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
@@ -137,7 +158,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000; /* 新方案: 提升到最高层级 */
   padding: var(--space-4);
   backdrop-filter: blur(4px);
 }

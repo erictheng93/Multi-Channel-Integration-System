@@ -55,268 +55,175 @@
   </div>
 
   <!-- 團隊詳情 Modal -->
-  <div
-    v-if="showModal"
-    class="modal-overlay"
-    @click="closeModal"
+  <Modal
+    :show="showModal"
+    :title="`${team.name} 詳細資訊`"
+    size="lg"
+    @close="closeModal"
   >
-    <div
-      class="modal-content"
-      @click.stop
-    >
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <h2>{{ team.name }} 詳細資訊</h2>
-        <button 
-          class="close-button" 
-          @click="closeModal"
-        >
-          &times;
-        </button>
-      </div>
-
-      <!-- Modal Body -->
-      <div class="modal-body">
-        <!-- 團隊編輯表單 -->
-        <div
-          v-if="isEditing"
-          class="team-edit-form"
-        >
-          <h3>編輯團隊資訊</h3>
-          <form @submit.prevent="saveTeamEdit">
-            <div class="form-group">
-              <label for="teamName">團隊名稱</label>
-              <input
-                id="teamName"
-                v-model="editForm.name"
-                type="text"
-                placeholder="請輸入團隊名稱"
-                required
-              >
-            </div>
-            <div class="form-group">
-              <label for="teamDescription">團隊描述</label>
-              <textarea
-                id="teamDescription"
-                v-model="editForm.description"
-                rows="3"
-                placeholder="請輸入團隊描述"
-              />
-            </div>
-            <div class="form-actions">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                @click="cancelEdit"
-              >
-                取消
-              </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="editLoading"
-              >
-                {{ editLoading ? '儲存中...' : '儲存變更' }}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- 團隊統計資訊 -->
-        <div
-          v-else
-          class="team-stats"
-        >
-          <div class="section-header">
-            <h3>團隊資訊</h3>
-            <button
-              class="btn btn-sm btn-secondary"
-              @click="startEdit"
+    <div class="team-detail-content">
+      <!-- 團隊編輯表單 -->
+      <div
+        v-if="isEditing"
+        class="team-edit-form"
+      >
+        <h3>編輯團隊資訊</h3>
+        <form @submit.prevent="saveTeamEdit">
+          <div class="form-group">
+            <label for="teamName">團隊名稱</label>
+            <input
+              id="teamName"
+              v-model="editForm.name"
+              type="text"
+              placeholder="請輸入團隊名稱"
+              required
             >
-              ✏️ 編輯
-            </button>
           </div>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-label">團隊名稱</span>
-              <span class="stat-value">{{ team.name }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">團隊描述</span>
-              <span class="stat-value">{{ team.description || '無描述' }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">創建時間</span>
-              <span class="stat-value">{{ formatDate(team.createdAt) }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">最後更新</span>
-              <span class="stat-value">{{ formatDate(team.updatedAt) }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">團隊狀態</span>
-              <span :class="['stat-value', 'status-badge', team.isActive ? 'active' : 'inactive']">
-                {{ team.isActive ? '活躍中' : '已停用' }}
-              </span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">成員數量</span>
-              <span class="stat-value">{{ team.memberCount || 0 }} 位成員</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 成員列表 -->
-        <div class="team-members-section">
-          <div class="section-header">
-            <div class="section-title-group">
-              <h3>團隊成員</h3>
-            </div>
-            <button
-              class="btn btn-sm btn-primary"
-              :disabled="loadingMembers"
-              @click="openAddMemberModal"
-            >
-              + 新增成員
-            </button>
-          </div>
-
-          <div
-            v-if="loadingMembers"
-            class="loading-members"
-          >
-            <HamsterLoader
-              message="載入成員中..."
+          <div class="form-group">
+            <label for="teamDescription">團隊描述</label>
+            <textarea
+              id="teamDescription"
+              v-model="editForm.description"
+              rows="3"
+              placeholder="請輸入團隊描述"
             />
           </div>
-
-          <div
-            v-else-if="members.length === 0"
-            class="no-members"
-          >
-            <EmptyIcon />
-            <span>此團隊暫無成員</span>
-          </div>
-
-          <div
-            v-else
-            class="members-grid"
-          >
-            <div
-              v-for="member in members"
-              :key="member.id"
-              class="member-item"
-            >
-              <div class="member-avatar">
-                {{ getInitials(member) }}
-              </div>
-              <div class="member-info">
-                <span class="member-name">{{ member.name || member.loginId }}</span>
-                <span class="member-role">{{ getRoleDisplayName(member.role) }}</span>
-              </div>
-              <button
-                class="btn-remove"
-                :disabled="removingMemberId === member.id"
-                title="從團隊移除"
-                @click.stop="handleRemoveMember(member)"
-              >
-                {{ removingMemberId === member.id ? '移除中...' : '✕' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- QR Code 資訊區塊 -->
-        <div class="qr-code-section">
-          <div class="section-header">
-            <div class="section-title-group">
-              <h3>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="section-icon"
-                >
-                  <rect
-                    x="3"
-                    y="3"
-                    width="7"
-                    height="7"
-                  />
-                  <rect
-                    x="14"
-                    y="3"
-                    width="7"
-                    height="7"
-                  />
-                  <rect
-                    x="3"
-                    y="14"
-                    width="7"
-                    height="7"
-                  />
-                  <rect
-                    x="14"
-                    y="14"
-                    width="3"
-                    height="3"
-                  />
-                  <rect
-                    x="18"
-                    y="14"
-                    width="3"
-                    height="3"
-                  />
-                  <rect
-                    x="14"
-                    y="18"
-                    width="3"
-                    height="3"
-                  />
-                  <rect
-                    x="18"
-                    y="18"
-                    width="3"
-                    height="3"
-                  />
-                </svg>
-                QR Code 資訊
-              </h3>
-            </div>
+          <div class="form-actions">
             <button
-              v-if="!currentQRCode && !loadingQRCode"
-              class="btn btn-sm btn-primary"
-              :disabled="generatingQR"
-              @click="handleGenerateQR"
+              type="button"
+              class="btn btn-secondary"
+              @click="cancelEdit"
             >
-              {{ generatingQR ? '生成中...' : '+ 生成 QR Code' }}
+              取消
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              :disabled="editLoading"
+            >
+              {{ editLoading ? '儲存中...' : '儲存變更' }}
             </button>
           </div>
+        </form>
+      </div>
 
-          <!-- Loading State -->
-          <div
-            v-if="loadingQRCode"
-            class="qr-loading"
+      <!-- 團隊統計資訊 -->
+      <div
+        v-else
+        class="team-stats"
+      >
+        <div class="section-header">
+          <h3>團隊資訊</h3>
+          <button
+            class="btn btn-sm btn-secondary"
+            @click="startEdit"
           >
-            <HamsterLoader message="載入 QR Code 中..." />
+            ✏️ 編輯
+          </button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">團隊名稱</span>
+            <span class="stat-value">{{ team.name }}</span>
           </div>
+          <div class="stat-item">
+            <span class="stat-label">團隊描述</span>
+            <span class="stat-value">{{ team.description || '無描述' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">創建時間</span>
+            <span class="stat-value">{{ formatDate(team.createdAt) }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">最後更新</span>
+            <span class="stat-value">{{ formatDate(team.updatedAt) }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">團隊狀態</span>
+            <span :class="['stat-value', 'status-badge', team.isActive ? 'active' : 'inactive']">
+              {{ team.isActive ? '活躍中' : '已停用' }}
+            </span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">成員數量</span>
+            <span class="stat-value">{{ team.memberCount || 0 }} 位成員</span>
+          </div>
+        </div>
+      </div>
 
-          <!-- No QR Code State -->
-          <div
-            v-else-if="!currentQRCode"
-            class="qr-empty-state"
+      <!-- 成員列表 -->
+      <div class="team-members-section">
+        <div class="section-header">
+          <div class="section-title-group">
+            <h3>團隊成員</h3>
+          </div>
+          <button
+            class="btn btn-sm btn-primary"
+            :disabled="loadingMembers"
+            @click="openAddMemberModal"
           >
-            <div class="empty-qr-icon">
+            + 新增成員
+          </button>
+        </div>
+
+        <div
+          v-if="loadingMembers"
+          class="loading-members"
+        >
+          <HamsterLoader
+            message="載入成員中..."
+          />
+        </div>
+
+        <div
+          v-else-if="members.length === 0"
+          class="no-members"
+        >
+          <EmptyIcon />
+          <span>此團隊暫無成員</span>
+        </div>
+
+        <div
+          v-else
+          class="members-grid"
+        >
+          <div
+            v-for="member in members"
+            :key="member.id"
+            class="member-item"
+          >
+            <div class="member-avatar">
+              {{ getInitials(member) }}
+            </div>
+            <div class="member-info">
+              <span class="member-name">{{ member.name || member.loginId }}</span>
+              <span class="member-role">{{ getRoleDisplayName(member.role) }}</span>
+            </div>
+            <button
+              class="btn-remove"
+              :disabled="removingMemberId === member.id"
+              title="從團隊移除"
+              @click.stop="handleRemoveMember(member)"
+            >
+              {{ removingMemberId === member.id ? '移除中...' : '✕' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Code 資訊區塊 -->
+      <div class="qr-code-section">
+        <div class="section-header">
+          <div class="section-title-group">
+            <h3>
               <svg
-                width="48"
-                height="48"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="1.5"
+                stroke-width="2"
+                class="section-icon"
               >
                 <rect
                   x="3"
@@ -361,179 +268,256 @@
                   height="3"
                 />
               </svg>
-            </div>
-            <p>此團隊尚未生成 QR Code</p>
-            <span class="empty-hint">點擊上方按鈕生成專屬 QR Code，讓客戶輕鬆加入 LINE 官方帳號</span>
+              QR Code 資訊
+            </h3>
           </div>
-
-          <!-- QR Code Display - Flex Bubble Design -->
-          <div
-            v-else
-            class="qr-display"
+          <button
+            v-if="!currentQRCode && !loadingQRCode"
+            class="btn btn-sm btn-primary"
+            :disabled="generatingQR"
+            @click="handleGenerateQR"
           >
-            <div class="qr-flex-layout">
-              <!-- Left: Flex Bubble Card (QRcodeDesign.html Style) -->
-              <div class="flex-bubble">
-                <div class="bubble-body">
-                  <!-- LIFF QR Code Image -->
-                  <div class="qr-image-wrapper">
-                    <img
-                      :src="currentQRCode.qrCodeUrl"
-                      alt="LINE LIFF QR Code"
-                      class="qr-image"
-                      @error="handleQRImageError"
-                    >
-                  </div>
-                  <!-- Text Content -->
-                  <h2 class="bubble-title">
-                    {{ team.name }}
-                  </h2>
-                  <p class="bubble-subtitle">
-                    掃描加入 LINE 官方帳號
-                  </p>
-                </div>
-                <div class="bubble-footer">
-                  <button
-                    class="bubble-btn"
-                    @click="downloadQRCode"
+            {{ generatingQR ? '生成中...' : '+ 生成 QR Code' }}
+          </button>
+        </div>
+
+        <!-- Loading State -->
+        <div
+          v-if="loadingQRCode"
+          class="qr-loading"
+        >
+          <HamsterLoader message="載入 QR Code 中..." />
+        </div>
+
+        <!-- No QR Code State -->
+        <div
+          v-else-if="!currentQRCode"
+          class="qr-empty-state"
+        >
+          <div class="empty-qr-icon">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <rect
+                x="3"
+                y="3"
+                width="7"
+                height="7"
+              />
+              <rect
+                x="14"
+                y="3"
+                width="7"
+                height="7"
+              />
+              <rect
+                x="3"
+                y="14"
+                width="7"
+                height="7"
+              />
+              <rect
+                x="14"
+                y="14"
+                width="3"
+                height="3"
+              />
+              <rect
+                x="18"
+                y="14"
+                width="3"
+                height="3"
+              />
+              <rect
+                x="14"
+                y="18"
+                width="3"
+                height="3"
+              />
+              <rect
+                x="18"
+                y="18"
+                width="3"
+                height="3"
+              />
+            </svg>
+          </div>
+          <p>此團隊尚未生成 QR Code</p>
+          <span class="empty-hint">點擊上方按鈕生成專屬 QR Code，讓客戶輕鬆加入 LINE 官方帳號</span>
+        </div>
+
+        <!-- QR Code Display - Flex Bubble Design -->
+        <div
+          v-else
+          class="qr-display"
+        >
+          <div class="qr-flex-layout">
+            <!-- Left: Flex Bubble Card (QRcodeDesign.html Style) -->
+            <div class="flex-bubble">
+              <div class="bubble-body">
+                <!-- LIFF QR Code Image -->
+                <div class="qr-image-wrapper">
+                  <img
+                    :src="currentQRCode.qrCodeUrl"
+                    alt="LINE LIFF QR Code"
+                    class="qr-image"
+                    @error="handleQRImageError"
                   >
-                    下載 QR Code
+                </div>
+                <!-- Text Content -->
+                <h2 class="bubble-title">
+                  {{ team.name }}
+                </h2>
+                <p class="bubble-subtitle">
+                  掃描加入 LINE 官方帳號
+                </p>
+              </div>
+              <div class="bubble-footer">
+                <button
+                  class="bubble-btn"
+                  @click="downloadQRCode"
+                >
+                  下載 QR Code
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Info Panel -->
+            <div class="qr-info-panel">
+              <div class="qr-info-header">
+                <h4>LINE 官方帳號連結</h4>
+                <div class="qr-actions">
+                  <button
+                    class="btn-icon-sm"
+                    title="重新生成 QR Code"
+                    :disabled="generatingQR"
+                    @click="handleGenerateQR"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M21 2v6h-6" />
+                      <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                      <path d="M3 22v-6h6" />
+                      <path d="M21 12a9 9 0 01-15 6.7L3 16" />
+                    </svg>
                   </button>
                 </div>
               </div>
 
-              <!-- Right: Info Panel -->
-              <div class="qr-info-panel">
-                <div class="qr-info-header">
-                  <h4>LINE 官方帳號連結</h4>
-                  <div class="qr-actions">
-                    <button
-                      class="btn-icon-sm"
-                      title="重新生成 QR Code"
-                      :disabled="generatingQR"
-                      @click="handleGenerateQR"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path d="M21 2v6h-6" />
-                        <path d="M3 12a9 9 0 0115-6.7L21 8" />
-                        <path d="M3 22v-6h6" />
-                        <path d="M21 12a9 9 0 01-15 6.7L3 16" />
-                      </svg>
-                    </button>
-                  </div>
+              <!-- LIFF URL -->
+              <div class="url-display">
+                <div class="url-text">
+                  <span class="url-label">LIFF 連結</span>
+                  <code class="url-value">{{ currentQRCode.liffUrl }}</code>
                 </div>
-
-                <!-- LIFF URL -->
-                <div class="url-display">
-                  <div class="url-text">
-                    <span class="url-label">LIFF 連結</span>
-                    <code class="url-value">{{ currentQRCode.liffUrl }}</code>
-                  </div>
-                  <button
-                    class="btn-copy"
-                    :class="{ 'copied': urlCopied }"
-                    @click="copyLiffUrl"
+                <button
+                  class="btn-copy"
+                  :class="{ 'copied': urlCopied }"
+                  @click="copyLiffUrl"
+                >
+                  <svg
+                    v-if="!urlCopied"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
                   >
-                    <svg
-                      v-if="!urlCopied"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <rect
-                        x="9"
-                        y="9"
-                        width="13"
-                        height="13"
-                        rx="2"
-                        ry="2"
-                      />
-                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                    </svg>
-                    <svg
-                      v-else
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {{ urlCopied ? '已複製' : '複製' }}
-                  </button>
-                </div>
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    />
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                  </svg>
+                  <svg
+                    v-else
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {{ urlCopied ? '已複製' : '複製' }}
+                </button>
+              </div>
 
-                <!-- Stats Grid -->
-                <div class="qr-stats-mini">
-                  <div class="qr-stat-item">
-                    <span class="qr-stat-label">掃描次數</span>
-                    <span class="qr-stat-value">
-                      {{ qrStats?.scanCount || 0 }}
-                      <span class="qr-stat-max">次</span>
-                    </span>
-                  </div>
-                  <div class="qr-stat-item">
-                    <span class="qr-stat-label">成功分配</span>
-                    <span class="qr-stat-value">
-                      {{ qrStats?.assignmentCount || 0 }}
-                      <span class="qr-stat-max">人</span>
-                    </span>
-                  </div>
-                  <div class="qr-stat-item">
-                    <span class="qr-stat-label">建立時間</span>
-                    <span class="qr-stat-value">{{ formatDate(currentQRCode.createdAt) }}</span>
-                  </div>
-                  <div class="qr-stat-item">
-                    <span class="qr-stat-label">類型</span>
-                    <span class="qr-stat-value">
-                      <span style="color: #06c755; font-weight: 500;">LIFF永久</span>
-                    </span>
-                  </div>
+              <!-- Stats Grid -->
+              <div class="qr-stats-mini">
+                <div class="qr-stat-item">
+                  <span class="qr-stat-label">掃描次數</span>
+                  <span class="qr-stat-value">
+                    {{ qrStats?.scanCount || 0 }}
+                    <span class="qr-stat-max">次</span>
+                  </span>
+                </div>
+                <div class="qr-stat-item">
+                  <span class="qr-stat-label">成功分配</span>
+                  <span class="qr-stat-value">
+                    {{ qrStats?.assignmentCount || 0 }}
+                    <span class="qr-stat-max">人</span>
+                  </span>
+                </div>
+                <div class="qr-stat-item">
+                  <span class="qr-stat-label">建立時間</span>
+                  <span class="qr-stat-value">{{ formatDate(currentQRCode.createdAt) }}</span>
+                </div>
+                <div class="qr-stat-item">
+                  <span class="qr-stat-label">類型</span>
+                  <span class="qr-stat-value">
+                    <span style="color: #06c755; font-weight: 500;">LIFF永久</span>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- 新增成員 Modal -->
-      <AddMemberModal
-        :visible="memberOps.addMemberModal.value"
-        :form="memberOps.addMemberForm"
-        :loading="memberOps.addMemberLoading.value"
-        :show-password="memberOps.showAddPassword.value"
-        @close="closeAddMemberModal"
-        @submit="handleMemberAdded"
-        @toggle-password="memberOps.toggleAddPasswordVisibility"
-      />
-
-      <!-- Modal Footer -->
-      <div class="modal-footer">
-        <button 
-          class="btn btn-secondary" 
-          @click="closeModal"
-        >
-          關閉
-        </button>
-      </div>
     </div>
-  </div>
+
+    <!-- 新增成員 Modal -->
+    <AddMemberModal
+      :visible="memberOps.addMemberModal.value"
+      :form="memberOps.addMemberForm"
+      :loading="memberOps.addMemberLoading.value"
+      :show-password="memberOps.showAddPassword.value"
+      @close="closeAddMemberModal"
+      @submit="handleMemberAdded"
+      @toggle-password="memberOps.toggleAddPasswordVisibility"
+    />
+
+    <template #footer>
+      <button
+        class="btn btn-secondary"
+        @click="closeModal"
+      >
+        關閉
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, reactive, computed } from 'vue'
+import Modal from '@/components/ui/Modal.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import AddMemberModal from '@/components/team/AddMemberModal.vue'
 import { teamApi } from '@/api/team'
@@ -1291,98 +1275,11 @@ watch(() => props.team.id, () => {
   flex-wrap: wrap;
 }
 
-/* Modal 樣式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+/* Team Detail Content */
+.team-detail-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.modal-content {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 700px;
-  width: 90%;
-  max-height: 85vh;
-  overflow: hidden;
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 28px;
-  border-bottom: 1px solid #e2e8f0;
-  background: white;
-}
-
-.modal-header h2 {
-  color: #1e293b;
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.close-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  border-radius: 8px;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 1.5rem;
-  font-weight: normal;
-  line-height: 1;
-}
-
-.close-button:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  color: #475569;
-  transform: translateY(-1px);
-}
-
-.modal-body {
-  padding: 28px;
-  max-height: 65vh;
-  overflow-y: auto;
-  background: #f8fafc;
+  flex-direction: column;
+  gap: 28px;
 }
 
 /* 團隊編輯表單 */
@@ -1654,14 +1551,6 @@ watch(() => props.team.id, () => {
   font-size: 0.75rem;
 }
 
-.modal-footer {
-  padding: 20px 28px;
-  border-top: 1px solid #e2e8f0;
-  background: white;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1774,17 +1663,6 @@ watch(() => props.team.id, () => {
     min-width: 80px;
   }
 
-  .modal-content {
-    width: 95%;
-    max-height: 90vh;
-  }
-
-  .modal-header,
-  .modal-body,
-  .modal-footer {
-    padding: 16px;
-  }
-
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -1816,14 +1694,6 @@ watch(() => props.team.id, () => {
 
   .team-actions {
     flex-wrap: wrap;
-  }
-
-  .modal-header h2 {
-    font-size: 1.125rem;
-  }
-
-  .modal-body {
-    max-height: 70vh;
   }
 
   .team-stats h3,

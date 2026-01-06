@@ -1,131 +1,119 @@
 <template>
-  <div
-    class="modal-overlay"
-    @click="$emit('close')"
+  <Modal
+    :show="true"
+    :title="modalState.title"
+    size="xl"
+    @close="$emit('close')"
   >
-    <div
-      class="modal"
-      @click.stop
-    >
-      <div class="modal-header">
-        <h2>{{ modalState.title }}</h2>
-        <button
-          class="close-btn"
-          @click="$emit('close')"
+    <div class="api-detail-content">
+      <div class="stat-detail-summary">
+        <div class="summary-item">
+          <span class="summary-label">總數量:</span>
+          <span class="summary-value">{{ modalState.apis.length }}</span>
+        </div>
+        <div
+          v-if="modalState.type !== 'all'"
+          class="summary-item"
         >
-          &times;
-        </button>
+          <span class="summary-label">佔比:</span>
+          <span class="summary-value">{{ percentage }}%</span>
+        </div>
       </div>
 
-      <div class="modal-content">
-        <div class="stat-detail-summary">
-          <div class="summary-item">
-            <span class="summary-label">總數量:</span>
-            <span class="summary-value">{{ modalState.apis.length }}</span>
-          </div>
-          <div
-            v-if="modalState.type !== 'all'"
-            class="summary-item"
-          >
-            <span class="summary-label">佔比:</span>
-            <span class="summary-value">{{ percentage }}%</span>
-          </div>
+      <div
+        v-if="modalState.apis.length === 0"
+        class="empty-stat-detail"
+      >
+        <div class="empty-icon">
+          📊
         </div>
+        <p>目前沒有{{ modalState.title }}的API端點</p>
+      </div>
 
+      <div
+        v-else
+        class="stat-detail-list"
+      >
         <div
-          v-if="modalState.apis.length === 0"
-          class="empty-stat-detail"
+          v-for="api in modalState.apis"
+          :key="api.id"
+          class="stat-detail-item"
+          :class="`status-${api.status}`"
         >
-          <div class="empty-icon">
-            📊
-          </div>
-          <p>目前沒有{{ modalState.title }}的API端點</p>
-        </div>
-
-        <div
-          v-else
-          class="stat-detail-list"
-        >
-          <div
-            v-for="api in modalState.apis"
-            :key="api.id"
-            class="stat-detail-item"
-            :class="`status-${api.status}`"
-          >
-            <div class="detail-item-header">
-              <div
-                class="api-method-badge"
-                :class="api.method.toLowerCase()"
-              >
-                {{ api.method }}
-              </div>
-              <div class="api-endpoint-text">
-                {{ api.endpoint }}
-              </div>
-              <div
-                class="api-status-indicator"
-                :class="api.status"
-              >
-                <span class="status-dot" />
-                {{ getStatusText(api.status) }}
-              </div>
+          <div class="detail-item-header">
+            <div
+              class="api-method-badge"
+              :class="api.method.toLowerCase()"
+            >
+              {{ api.method }}
             </div>
+            <div class="api-endpoint-text">
+              {{ api.endpoint }}
+            </div>
+            <div
+              class="api-status-indicator"
+              :class="api.status"
+            >
+              <span class="status-dot" />
+              {{ getStatusText(api.status) }}
+            </div>
+          </div>
 
-            <div class="detail-item-info">
-              <div class="info-row">
-                <span class="info-label">描述:</span>
-                <span class="info-value">{{ api.description }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">分類:</span>
-                <span class="info-value">{{ getCategoryText(api.category) }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">響應時間:</span>
-                <span
-                  class="info-value"
-                  :class="getResponseTimeClass(api.responseTime)"
-                >
-                  {{ api.responseTime }}ms
-                </span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">成功率:</span>
-                <span
-                  class="info-value"
-                  :class="getSuccessRateClass(api.successRate)"
-                >
-                  {{ api.successRate }}%
-                </span>
-              </div>
-              <div
-                v-if="api.error"
-                class="info-row error-row"
+          <div class="detail-item-info">
+            <div class="info-row">
+              <span class="info-label">描述:</span>
+              <span class="info-value">{{ api.description }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">分類:</span>
+              <span class="info-value">{{ getCategoryText(api.category) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">響應時間:</span>
+              <span
+                class="info-value"
+                :class="getResponseTimeClass(api.responseTime)"
               >
-                <span class="info-label">錯誤原因:</span>
-                <span class="info-value error-text">{{ api.error }}</span>
-              </div>
-              <div
-                v-if="api.errorTime"
-                class="info-row"
+                {{ api.responseTime }}ms
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">成功率:</span>
+              <span
+                class="info-value"
+                :class="getSuccessRateClass(api.successRate)"
               >
-                <span class="info-label">錯誤時間:</span>
-                <span class="info-value">{{ formatTime(api.errorTime) }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">最後檢查:</span>
-                <span class="info-value">{{ formatTime(api.lastCheck) }}</span>
-              </div>
+                {{ api.successRate }}%
+              </span>
+            </div>
+            <div
+              v-if="api.error"
+              class="info-row error-row"
+            >
+              <span class="info-label">錯誤原因:</span>
+              <span class="info-value error-text">{{ api.error }}</span>
+            </div>
+            <div
+              v-if="api.errorTime"
+              class="info-row"
+            >
+              <span class="info-label">錯誤時間:</span>
+              <span class="info-value">{{ formatTime(api.errorTime) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">最後檢查:</span>
+              <span class="info-value">{{ formatTime(api.lastCheck) }}</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import Modal from '@/components/ui/Modal.vue'
 import type { ModalState, ApiStatus } from '@/types/api-monitor'
 
 interface Props {
@@ -196,90 +184,8 @@ function formatTime(date: Date): string {
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  backdrop-filter: blur(4px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 900px;
-  width: 100%;
-  margin: 40px auto;
-  animation: modalSlideIn 0.3s ease-out;
-  position: relative;
-  max-height: calc(100vh - 80px);
-  display: flex;
-  flex-direction: column;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px 16px 0 0;
-  color: white;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: white;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: white;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-}
-
-.close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.modal-content {
-  padding: 2rem;
-  overflow-y: auto;
-  flex: 1;
-  max-height: calc(80vh - 120px);
+.api-detail-content {
+  padding: 0;
 }
 
 .stat-detail-summary {
@@ -453,23 +359,6 @@ function formatTime(date: Date): string {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .modal-overlay {
-    padding: 12px;
-  }
-
-  .modal {
-    margin: 20px auto;
-  }
-
-  .modal-header {
-    padding: 1.5rem;
-  }
-
-  .modal-content {
-    padding: 1.5rem;
-    max-height: calc(90vh - 120px);
-  }
-
   .stat-detail-summary {
     flex-direction: column;
     gap: 12px;
@@ -487,27 +376,6 @@ function formatTime(date: Date): string {
 
   .detail-item-info {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .modal-header {
-    padding: 1rem;
-  }
-
-  .modal-header h2 {
-    font-size: 1.125rem;
-  }
-
-  .modal-content {
-    padding: 1rem;
-  }
-}
-
-/* Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  .modal {
-    animation: none !important;
   }
 }
 </style>
