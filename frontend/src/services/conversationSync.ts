@@ -1,6 +1,13 @@
+// ⚠️ DEPRECATED: 此文件已废弃，逻辑已整合到 conversationsStore.ts
 // 對話數據混合同步服務 - WebSocket + 智能輪詢備份
 // Phase 3 Migration: SSE → WebSocket (2025-10-17)
 // 專案名稱：Multi-Channel Support MVP
+//
+// 📌 迁移说明：
+// - 新实现：frontend/src/stores/conversations.ts (方案 B 阶段 2)
+// - 使用方式：conversationsStore.initializeRealtime() / conversationsStore.cleanup()
+// - 此文件仍然保留以支持旧组件，但建议迁移到新 API
+//
 /* eslint-disable no-unused-vars */
 
 import { ref, type Ref } from 'vue'

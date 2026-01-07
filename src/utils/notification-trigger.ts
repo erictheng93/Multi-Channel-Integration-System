@@ -790,36 +790,19 @@ export async function triggerCustomerFollowedNotification(
       ? (typeof options.conversationId === 'string' ? parseInt(options.conversationId, 10) : options.conversationId)
       : undefined;
 
-    // 創建批量通知
+    // 創建批量通知 - 使用 try-catch 包裝每個通知創建，確保一個失敗不影響其他
     const notificationIds: string[] = [];
+    const errors: Array<{ userId: string; error: string }> = [];
+
     for (const userId of targetUserIds) {
-      const notificationId = await service.create({
-        userId,
-        type: 'customer_followed',
-        title: '🎉 新客戶加入',
-        content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
-        data: {
-          customerName: options.customerName,
-          platform: options.platform,
-          source: options.source,
-          teamId: options.teamId,
-          teamName: options.teamName,
-          conversationId
-        },
-        priority: 'high',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      });
+      try {
+        console.log(`🔄 [Notification] Creating customer_followed notification for user ${userId}...`);
 
-      if (notificationId) {
-        notificationIds.push(notificationId);
-
-        // 透過 WebSocket 即時推送通知
-        await broadcastNotificationViaWebSocket(env, userId, {
-          id: notificationId,
+        const notificationId = await service.create({
+          userId,
           type: 'customer_followed',
           title: '🎉 新客戶加入',
           content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
-          priority: 'high',
           data: {
             customerName: options.customerName,
             platform: options.platform,
@@ -827,9 +810,42 @@ export async function triggerCustomerFollowedNotification(
             teamId: options.teamId,
             teamName: options.teamName,
             conversationId
-          }
+          },
+          priority: 'high',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         });
+
+        if (notificationId) {
+          console.log(`✅ [Notification] Created customer_followed notification ${notificationId} for user ${userId}`);
+          notificationIds.push(notificationId);
+
+          // 透過 WebSocket 即時推送通知
+          await broadcastNotificationViaWebSocket(env, userId, {
+            id: notificationId,
+            type: 'customer_followed',
+            title: '🎉 新客戶加入',
+            content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
+            priority: 'high',
+            data: {
+              customerName: options.customerName,
+              platform: options.platform,
+              source: options.source,
+              teamId: options.teamId,
+              teamName: options.teamName,
+              conversationId
+            }
+          });
+        }
+      } catch (userError) {
+        const errorMsg = userError instanceof Error ? userError.message : String(userError);
+        console.error(`❌ [Notification] Failed to create customer_followed notification for user ${userId}:`, errorMsg);
+        errors.push({ userId: String(userId), error: errorMsg });
       }
+    }
+
+    // 記錄錯誤摘要（如果有）
+    if (errors.length > 0) {
+      console.warn(`⚠️ [Notification] Failed to create customer_followed notifications for ${errors.length}/${targetUserIds.length} users:`, errors);
     }
 
     console.log('✅ [Notification] Customer followed notifications created:', {
@@ -882,42 +898,62 @@ export async function triggerNewConversationNotification(
       ? `: ${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`
       : '';
 
-    // 創建批量通知
+    // 創建批量通知 - 使用 try-catch 包裝每個通知創建，確保一個失敗不影響其他
     const notificationIds: string[] = [];
-    for (const userId of targetUserIds) {
-      const notificationId = await service.create({
-        userId,
-        type: 'new_conversation',
-        title: '💬 新對話',
-        content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
-        data: {
-          conversationId,
-          customerName: options.customerName,
-          platform: options.platform,
-          messagePreview: options.messagePreview
-        },
-        priority: 'high',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      });
+    const errors: Array<{ userId: string; error: string }> = [];
 
-      if (notificationId) {
-        notificationIds.push(notificationId);
+    console.log(`🔁 [Notification] Starting loop for ${targetUserIds.length} users:`, targetUserIds);
 
-        // 透過 WebSocket 即時推送通知
-        await broadcastNotificationViaWebSocket(env, userId, {
-          id: notificationId,
+    for (let i = 0; i < targetUserIds.length; i++) {
+      const userId = targetUserIds[i];
+      try {
+        console.log(`📍 [Notification] Loop iteration ${i + 1}/${targetUserIds.length}, userId: ${userId}`);
+        console.log(`🔄 [Notification] Creating notification for user ${userId}...`);
+
+        const notificationId = await service.create({
+          userId,
           type: 'new_conversation',
           title: '💬 新對話',
           content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
-          priority: 'high',
           data: {
             conversationId,
             customerName: options.customerName,
             platform: options.platform,
             messagePreview: options.messagePreview
-          }
+          },
+          priority: 'high',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         });
+
+        if (notificationId) {
+          console.log(`✅ [Notification] Created notification ${notificationId} for user ${userId}`);
+          notificationIds.push(notificationId);
+
+          // 透過 WebSocket 即時推送通知
+          await broadcastNotificationViaWebSocket(env, userId, {
+            id: notificationId,
+            type: 'new_conversation',
+            title: '💬 新對話',
+            content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
+            priority: 'high',
+            data: {
+              conversationId,
+              customerName: options.customerName,
+              platform: options.platform,
+              messagePreview: options.messagePreview
+            }
+          });
+        }
+      } catch (userError) {
+        const errorMsg = userError instanceof Error ? userError.message : String(userError);
+        console.error(`❌ [Notification] Failed to create notification for user ${userId}:`, errorMsg);
+        errors.push({ userId: String(userId), error: errorMsg });
       }
+    }
+
+    // 記錄錯誤摘要（如果有）
+    if (errors.length > 0) {
+      console.warn(`⚠️ [Notification] Failed to create notifications for ${errors.length}/${targetUserIds.length} users:`, errors);
     }
 
     console.log('✅ [Notification] New conversation notifications created:', {

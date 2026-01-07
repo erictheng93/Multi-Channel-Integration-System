@@ -4,19 +4,31 @@
     <button
       ref="triggerRef"
       class="notification-trigger"
-      :class="{ 'notification-trigger-active': isOpen }"
+      :class="{
+        'notification-trigger-active': isOpen,
+        'notification-trigger-has-unread': unreadCount > 0,
+        'notification-trigger-ring': shouldRing
+      }"
       :aria-expanded="isOpen"
       aria-haspopup="true"
-      aria-label="通知中心"
+      :aria-label="unreadCount > 0 ? `通知中心 (${unreadCount} 則未讀)` : '通知中心'"
+      :title="unreadCount > 0 ? `${unreadCount} 則未讀通知` : '通知中心'"
       @click="toggle"
     >
-      <BellIcon class="notification-icon" />
+      <BellIcon
+        :class="unreadCount > 0 ? 'notification-icon notification-icon-pulse' : 'notification-icon'"
+      />
       <NotificationBadge
         v-if="unreadCount > 0"
         :count="unreadCount"
         size="sm"
         :pulse="hasUrgent"
         class="notification-trigger-badge"
+      />
+      <!-- 紅點指示器 -->
+      <span
+        v-if="unreadCount > 0"
+        class="notification-trigger-dot"
       />
     </button>
 
@@ -150,6 +162,83 @@
   </div>
 </template>
 
+/**
+ * NotificationCenter - Real-time Notification Panel Component
+ *
+ * @component
+ * @description Comprehensive notification system with:
+ * - **Real-time polling** - 30-second auto-refresh for new notifications
+ * - **Badge indicators** - Visual unread count with pulse animation
+ * - **Tab filtering** - All/Unread notification views
+ * - **Infinite scroll** - Load more notifications on scroll
+ * - **Smart positioning** - Teleport to body with viewport-aware placement
+ * - **Bell animations** - Ring animation on new notifications
+ *
+ * @example Basic Integration
+ * ```vue
+ * <template>
+ *   <AppLayout>
+ *     <NotificationCenter @notification-click="handleNotificationClick" />
+ *   </AppLayout>
+ * </template>
+ *
+ * <script setup>
+ * const handleNotificationClick = (notification) => {
+ *   // Navigate based on notification type
+ *   if (notification.type === 'new_message') {
+ *     router.push(`/conversations/${notification.data.conversationId}`)
+ *   }
+ * }
+ * </script>
+ * ```
+ *
+ * @example Programmatic Control
+ * ```vue
+ * <template>
+ *   <NotificationCenter ref="notifCenter" />
+ *   <button @click="openNotifications">View Notifications</button>
+ * </template>
+ *
+ * <script setup>
+ * const notifCenter = ref()
+ *
+ * const openNotifications = () => {
+ *   notifCenter.value.open()
+ * }
+ * </script>
+ * ```
+ *
+ * Events:
+ * - **notification-click** - Emitted when user clicks a notification (receives Notification object)
+ *
+ * Features:
+ * - **Auto-polling** - Fetches unread count every 30s via Pinia store
+ * - **Mark all as read** - Bulk operation with single button
+ * - **Manual refresh** - Reload button with loading state
+ * - **Scroll detection** - Auto-loads more when scrolling near bottom
+ * - **Tab counts** - Real-time count badges on All/Unread tabs
+ * - **Bell ring animation** - Visual feedback when new notifications arrive
+ * - **Responsive design** - Full-width on mobile (max 480px)
+ *
+ * Notification Types Supported:
+ * - `new_message` - New customer message
+ * - `customer_responded` - Customer replied
+ * - `conversation_assigned` - Conversation assigned to agent
+ * - `conversation_transferred` - Conversation transferred
+ * - `priority_changed` - Conversation priority updated
+ * - `mention` - Agent mentioned in internal note
+ * - `system` - System announcements
+ * - `task_reminder` - Task reminders
+ *
+ * Exposed Methods (via template ref):
+ * - **open()** - Open notification panel
+ * - **close()** - Close notification panel
+ * - **toggle()** - Toggle panel state
+ * - **isOpen** - Readonly panel state
+ *
+ * @see {@link frontend/src/stores/notifications.ts} for notification store management
+ */
+
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useNotificationsStore, type Notification } from '@/stores/notifications'
@@ -170,6 +259,7 @@ const panelRef = ref<HTMLElement>()
 const isOpen = ref(false)
 const activeTab = ref<'all' | 'unread'>('all')
 const panelStyles = ref({})
+const shouldRing = ref(false)
 
 // Computed
 const notifications = computed(() => store.notifications)
@@ -329,6 +419,12 @@ watch(() => store.unreadCount, (newCount, oldCount) => {
   if (newCount > oldCount && !isOpen.value) {
     // 可以在這裡觸發桌面通知或音效
     console.log(`🔔 New notifications: ${newCount - oldCount}`)
+
+    // 觸發搖鈴動畫
+    shouldRing.value = true
+    setTimeout(() => {
+      shouldRing.value = false
+    }, 1000)
   }
 })
 
@@ -366,15 +462,83 @@ defineExpose({ open, close, toggle, isOpen })
   color: var(--primary-600);
 }
 
+/* 有未讀通知時的樣式 */
+.notification-trigger-has-unread {
+  color: var(--primary-600);
+}
+
+.notification-trigger-has-unread:hover {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
 .notification-icon {
   width: 20px;
   height: 20px;
+  transition: all var(--transition-fast);
+}
+
+/* 鈴鐺圖標脈動動畫 */
+.notification-icon-pulse {
+  animation: bellPulse 2s ease-in-out infinite;
+}
+
+@keyframes bellPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+/* 搖鈴動畫 */
+.notification-trigger-ring .notification-icon {
+  animation: bellRing 0.5s ease-in-out;
+}
+
+@keyframes bellRing {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: rotate(-15deg);
+  }
+  20%, 40%, 60%, 80% {
+    transform: rotate(15deg);
+  }
 }
 
 .notification-trigger-badge {
   position: absolute;
   top: 4px;
   right: 4px;
+  pointer-events: none;
+}
+
+/* 紅點指示器 */
+.notification-trigger-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: var(--red-500);
+  border: 2px solid white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
 }
 
 /* 面板 */

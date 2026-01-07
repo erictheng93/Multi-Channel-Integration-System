@@ -495,19 +495,16 @@ export const useAuthStore = defineStore('auth', () => {
 
         authApi.setAuthHeader(response.data.token, response.data.refreshToken);
 
-        // 🔌 FIX: Reconnect WebSocket with new token
+        // 🔌 Phase B4: Reconnect WebSocket with new token
         // The WebSocket connection uses the token from the URL, so we need to reconnect
         // after token refresh to ensure the new token is used
         try {
-          const { reconnectGlobalWebSocket } = await import('@/services/globalWebSocket');
-          console.log('[Auth] Token refreshed, reconnecting WebSocket with new token...');
-          reconnectGlobalWebSocket().then(connected => {
-            if (connected) {
-              console.log('[Auth] WebSocket reconnected successfully after token refresh');
-            } else {
-              console.warn('[Auth] WebSocket reconnection deferred after token refresh');
-            }
-          }).catch(err => {
+          const { useWebSocketStore } = await import('@/stores/websocket');
+          const wsStore = useWebSocketStore();
+          console.log('[Auth] Token refreshed, reconnecting global WebSocket Store with new token...');
+          wsStore.reconnect().then(() => {
+            console.log('[Auth] Global WebSocket Store reconnected successfully after token refresh');
+          }).catch((err: Error) => {
             console.warn('[Auth] WebSocket reconnection failed after token refresh:', err);
           });
         } catch (wsError) {

@@ -1,11 +1,14 @@
 // Conversation-Specific WebSocket Composable
 // Project: Multi-Channel Support MVP
 // Created by: WebSocket Migration Developer
+// Phase B5: Migrated to Global WebSocket Store Architecture
 
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, type Ref } from 'vue'
-import { useWebSocket } from './useWebSocket'
+import { useWebSocketStore, type SubscriptionId } from '@/stores/websocket'
+import type { WebSocketMessage } from '@/services/websocketClient'
 import { useMessages } from './useMessages'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAuthStore } from '@/stores/auth'
 import type { Message, Conversation } from '@/types'
 
 export interface UseConversationWebSocketOptions {
@@ -37,11 +40,9 @@ export function useConversationWebSocket(
     ? ref(conversationId)
     : conversationId
 
-  // Core composables
-  const webSocket = useWebSocket({
-    autoConnect: true,
-    reconnectOnAuth: true
-  })
+  // Core composables - Phase B5: Using Global WebSocket Store
+  const wsStore = useWebSocketStore()
+  const authStore = useAuthStore()
 
   const messagesComposable = useMessages(conversationIdRef.value, {
     enablePagination: true,
@@ -50,6 +51,9 @@ export function useConversationWebSocket(
 
   const conversationsStore = useConversationsStore()
 
+  // Phase B5: Subscription tracking
+  let conversationSubscriptionId: SubscriptionId | null = null
+
   // Local state
   const isJoined = ref(false)
   const newMessagesCount = ref(0)
@@ -57,6 +61,10 @@ export function useConversationWebSocket(
   const isTypingLocally = ref(false)
   const typingTimeout: Ref<NodeJS.Timeout | null> = ref(null)
   const messageQueue: Ref<Message[]> = ref([])
+
+  // Phase B5: Presence tracking (replacing old webSocket.onlineUsers)
+  const typingUsers = ref<string[]>([])
+  const activeUsers = ref<string[]>([])
 
   // Computed properties
   const currentConversationId = computed(() => conversationIdRef.value)
@@ -71,10 +79,11 @@ export function useConversationWebSocket(
       }
     }
 
+    // Phase B5: Using local presence tracking
     return {
-      activeUsers: webSocket.onlineUsers.value,
-      typingUsers: webSocket.getTypingUsers(conversationId),
-      isUserTyping: webSocket.getTypingUsers(conversationId).length > 0
+      activeUsers: activeUsers.value,
+      typingUsers: typingUsers.value,
+      isUserTyping: typingUsers.value.length > 0
     }
   })
 
@@ -82,7 +91,7 @@ export function useConversationWebSocket(
 
   const conversationStats = computed(() => {
     const conversationId = currentConversationId.value
-    if (!conversationId || !webSocket.isConnected.value) {
+    if (!conversationId || !wsStore.isConnected) {
       return null
     }
 
@@ -95,10 +104,55 @@ export function useConversationWebSocket(
     }
   })
 
+  // Phase B5: Message handler for conversation-specific channel
+  const handleConversationMessage = (message: WebSocketMessage): void => {
+    const conversationId = currentConversationId.value
+    if (!conversationId) return
+
+    console.log(`[useConversationWebSocket] Received message:`, message.type)
+
+    switch (message.type) {
+      case 'new_message':
+        if (message.conversationId === conversationId && message.data) {
+          handleNewMessage(conversationId, message.data as Message)
+        }
+        break
+
+      case 'conversation_updated':
+        if (message.conversationId === conversationId && message.data) {
+          handleConversationUpdate(conversationId, message.data as Conversation)
+        }
+        break
+
+      case 'typing_start':
+        if (message.conversationId === conversationId && message.userId) {
+          handleTypingStart(conversationId, message.userId)
+        }
+        break
+
+      case 'typing_stop':
+        if (message.conversationId === conversationId && message.userId) {
+          handleTypingStop(conversationId, message.userId)
+        }
+        break
+
+      case 'presence_update':
+        if (message.conversationId === conversationId && message.data) {
+          // Update active users list
+          const presenceData = message.data as { activeUsers?: string[] }
+          activeUsers.value = presenceData.activeUsers || []
+        }
+        break
+
+      default:
+        console.log(`[useConversationWebSocket] Unhandled message type: ${message.type}`)
+    }
+  }
+
   // Methods
   const joinConversation = async (): Promise<void> => {
     const conversationId = currentConversationId.value
-    if (!conversationId || !webSocket.isConnected.value) {
+    if (!conversationId || !wsStore.isConnected) {
       console.warn('[useConversationWebSocket] Cannot join: no conversation ID or not connected')
       return
     }
@@ -109,7 +163,22 @@ export function useConversationWebSocket(
     }
 
     try {
-      webSocket.joinConversation(conversationId)
+      // Phase B5: Subscribe to conversation-specific channel
+      const channel = `conversation:${conversationId}`
+      conversationSubscriptionId = wsStore.subscribe(channel, handleConversationMessage)
+
+      console.log(`[useConversationWebSocket] Subscribed to channel: ${channel} (ID: ${conversationSubscriptionId})`)
+
+      // Send join message to backend
+      wsStore.send({
+        type: 'conversation_join',
+        conversationId,
+        userId: authStore.currentAgent?.id,
+        data: {
+          agentId: authStore.currentAgent?.id
+        }
+      })
+
       isJoined.value = true
       newMessagesCount.value = 0
 
@@ -120,8 +189,16 @@ export function useConversationWebSocket(
         await messagesComposable.fetchMessages()
       }
 
-      // Mark as current conversation for presence
-      webSocket.updatePresence('online', conversationId)
+      // Send presence update
+      wsStore.send({
+        type: 'presence_update',
+        conversationId,
+        userId: authStore.currentAgent?.id,
+        data: {
+          status: 'online',
+          agentId: authStore.currentAgent?.id
+        }
+      })
 
     } catch (error) {
       console.error('[useConversationWebSocket] Failed to join conversation:', error)
@@ -133,7 +210,23 @@ export function useConversationWebSocket(
     const conversationId = currentConversationId.value
     if (!conversationId) {return}
 
-    webSocket.leaveConversation(conversationId)
+    // Phase B5: Unsubscribe from conversation channel
+    if (conversationSubscriptionId) {
+      wsStore.unsubscribe(conversationSubscriptionId)
+      console.log(`[useConversationWebSocket] Unsubscribed from conversation: ${conversationId} (ID: ${conversationSubscriptionId})`)
+      conversationSubscriptionId = null
+    }
+
+    // Send leave message to backend
+    wsStore.send({
+      type: 'conversation_leave',
+      conversationId,
+      userId: authStore.currentAgent?.id,
+      data: {
+        agentId: authStore.currentAgent?.id
+      }
+    })
+
     isJoined.value = false
     stopTyping()
 
@@ -150,12 +243,22 @@ export function useConversationWebSocket(
     // Stop typing when sending message
     stopTyping()
 
-    if (webSocket.isConnected.value && isJoined.value) {
-      // Send via WebSocket
-      const success = webSocket.sendMessage(conversationId, content, messageType)
-      if (success) {
+    if (wsStore.isConnected && isJoined.value) {
+      // Phase B5: Send via global WebSocket Store
+      try {
+        wsStore.send({
+          type: 'send_message',
+          conversationId,
+          data: {
+            content,
+            messageType,
+            agentId: authStore.currentAgent?.id
+          }
+        })
         console.log('[useConversationWebSocket] Message sent via WebSocket')
         return true
+      } catch (error) {
+        console.error('[useConversationWebSocket] WebSocket send failed:', error)
       }
     }
 
@@ -188,7 +291,15 @@ export function useConversationWebSocket(
 
     // Send typing start if not already typing
     if (!isTypingLocally.value) {
-      webSocket.startTyping(conversationId)
+      // Phase B5: Send via global WebSocket Store
+      wsStore.send({
+        type: 'typing_start',
+        conversationId,
+        userId: authStore.currentAgent?.id,
+        data: {
+          agentId: authStore.currentAgent?.id
+        }
+      })
       isTypingLocally.value = true
     }
 
@@ -212,7 +323,15 @@ export function useConversationWebSocket(
 
     // Send typing stop if currently typing
     if (isTypingLocally.value) {
-      webSocket.stopTyping(conversationId)
+      // Phase B5: Send via global WebSocket Store
+      wsStore.send({
+        type: 'typing_stop',
+        conversationId,
+        userId: authStore.currentAgent?.id,
+        data: {
+          agentId: authStore.currentAgent?.id
+        }
+      })
       isTypingLocally.value = false
     }
   }
@@ -273,11 +392,22 @@ export function useConversationWebSocket(
   const handleTypingStart = (receivedConversationId: string, userId: string): void => {
     if (receivedConversationId !== currentConversationId.value) {return}
     console.log(`[useConversationWebSocket] User ${userId} started typing`)
+
+    // Phase B5: Update local typing users
+    if (!typingUsers.value.includes(userId)) {
+      typingUsers.value.push(userId)
+    }
   }
 
   const handleTypingStop = (receivedConversationId: string, userId: string): void => {
     if (receivedConversationId !== currentConversationId.value) {return}
     console.log(`[useConversationWebSocket] User ${userId} stopped typing`)
+
+    // Phase B5: Update local typing users
+    const index = typingUsers.value.indexOf(userId)
+    if (index > -1) {
+      typingUsers.value.splice(index, 1)
+    }
   }
 
   const handleConnectionStateChange = (state: string): void => {
@@ -294,32 +424,16 @@ export function useConversationWebSocket(
     }
   }
 
-  // Setup event callbacks
-  const setupEventHandlers = (): void => {
-    webSocket.setEventCallbacks({
-      onConversationMessage: handleNewMessage,
-      onConversationUpdate: handleConversationUpdate,
-      onTypingStart: handleTypingStart,
-      onTypingStop: handleTypingStop,
-      onConnectionStateChange: handleConnectionStateChange,
-      onError: (error: Error) => {
-        console.error('[useConversationWebSocket] WebSocket error:', error)
-      }
-    })
-  }
-
   // Watch conversation ID changes
   watch(
     currentConversationId,
     async (newId, oldId) => {
       if (oldId && oldId !== newId) {
         // Leave old conversation
-        webSocket.leaveConversation(oldId)
-        isJoined.value = false
-        stopTyping()
+        leaveConversation()
       }
 
-      if (newId && autoJoin && webSocket.isConnected.value) {
+      if (newId && autoJoin && wsStore.isConnected) {
         // Join new conversation
         await joinConversation()
       }
@@ -329,11 +443,14 @@ export function useConversationWebSocket(
 
   // Watch connection state
   watch(
-    () => webSocket.isConnected.value,
+    () => wsStore.isConnected,
     async (isConnected) => {
       if (isConnected && currentConversationId.value && autoJoin && !isJoined.value) {
         // Auto-join when connection is established
         await joinConversation()
+      } else if (!isConnected) {
+        // Handle disconnection
+        handleConnectionStateChange('disconnected')
       }
     }
   )
@@ -342,9 +459,8 @@ export function useConversationWebSocket(
   onMounted(async () => {
     console.log('[useConversationWebSocket] Mounted for conversation:', currentConversationId.value)
 
-    setupEventHandlers()
-
-    if (currentConversationId.value && autoJoin && webSocket.isConnected.value) {
+    // Phase B5: Auto-join if conditions are met
+    if (currentConversationId.value && autoJoin && wsStore.isConnected) {
       await joinConversation()
     }
   })
@@ -352,13 +468,16 @@ export function useConversationWebSocket(
   onUnmounted(() => {
     console.log('[useConversationWebSocket] Unmounting for conversation:', currentConversationId.value)
 
-    // Clean up
+    // Phase B5: Clean up subscription
     if (currentConversationId.value) {
       leaveConversation()
     }
 
     stopTyping()
-    webSocket.clearEventCallbacks()
+
+    // Clear local state
+    typingUsers.value = []
+    activeUsers.value = []
   })
 
   return {
@@ -370,10 +489,10 @@ export function useConversationWebSocket(
     presence: readonly(presence),
     conversationStats: readonly(conversationStats),
 
-    // Connection state from WebSocket
-    isConnected: webSocket.isConnected,
-    connectionState: webSocket.connectionState,
-    connectionQuality: webSocket.connectionQuality,
+    // Phase B5: Connection state from global WebSocket Store
+    isConnected: computed(() => wsStore.isConnected),
+    connectionState: computed(() => wsStore.connectionState),
+    connectionQuality: computed(() => 'good' as const), // Simplified for Phase B5
 
     // Messages from useMessages composable
     messages: messagesComposable.messages,
@@ -394,9 +513,14 @@ export function useConversationWebSocket(
     refreshMessages,
     loadMoreMessages,
 
-    // Utilities
-    getTypingUsers: (conversationId: string) => webSocket.getTypingUsers(conversationId),
-    isUserTyping: (userId: string) => webSocket.isUserTyping(currentConversationId.value || '', userId)
+    // Phase B5: Updated utilities using local state
+    getTypingUsers: (conversationId: string) => {
+      if (conversationId === currentConversationId.value) {
+        return typingUsers.value
+      }
+      return []
+    },
+    isUserTyping: (userId: string) => typingUsers.value.includes(userId)
   }
 }
 

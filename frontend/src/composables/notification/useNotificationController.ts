@@ -10,12 +10,13 @@
  * - Keyboard navigation
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationsStore, type Notification } from '@/stores/notifications'
 import { notificationApi } from '@/api/notifications'
 import { useToast } from '@/composables/useToast'
-import { useWebSocket } from '@/composables/useWebSocket'
+import { useWebSocketStore, type SubscriptionId } from '@/stores/websocket'
+import type { WebSocketMessage } from '@/services/websocketClient'
 import { useNotificationFilters } from './useNotificationFilters'
 import { useNotificationActions } from './useNotificationActions'
 import { useNotificationSettings } from './useNotificationSettings'
@@ -25,11 +26,10 @@ export function useNotificationController() {
   const router = useRouter()
   const store = useNotificationsStore()
   const { showSuccess } = useToast()
-  const {
-    isConnected: wsConnected,
-    setEventCallbacks,
-    clearEventCallbacks
-  } = useWebSocket({ autoConnect: true })
+  const wsStore = useWebSocketStore()
+
+  // WebSocket subscription management
+  let notificationSubscriptionId: SubscriptionId | null = null
 
   // ==================== Sub-composables ====================
 
@@ -64,26 +64,34 @@ export function useNotificationController() {
 
   // ==================== WebSocket ====================
 
-  const handleNewNotification = (data: unknown) => {
-    console.log('🔔 [NotificationController] New notification received via WebSocket:', data)
+  /**
+   * Handle real-time notification updates from global WebSocket
+   * Phase B3: Using global WebSocket Store with subscription pattern
+   */
+  const handleRealtimeNotification = (message: WebSocketMessage) => {
+    console.log('🔔 [NotificationController] Real-time notification received:', message.type)
 
-    // Add to store (will update UI automatically)
-    if (data && typeof data === 'object') {
-      if ('notification' in data && data.notification) {
-        store.addNotification(data.notification as Notification)
-      } else {
-        // If data itself is the notification
-        store.addNotification(data as Notification)
+    // Handle notification message
+    if (message.type === 'notification') {
+      if (message.data && typeof message.data === 'object') {
+        if ('notification' in message.data && message.data.notification) {
+          store.addNotification(message.data.notification as Notification)
+        } else {
+          // If data itself is the notification
+          store.addNotification(message.data as Notification)
+        }
       }
-    }
 
-    // Refresh stats
-    store.fetchStats()
+      // Refresh stats
+      store.fetchStats()
+    }
   }
 
   // ==================== Lifecycle ====================
 
   const initialize = async () => {
+    console.log('🚀 [NotificationController] Initializing (Phase B3)...')
+
     // Load initial data
     await Promise.all([
       store.fetchNotifications(),
@@ -91,20 +99,22 @@ export function useNotificationController() {
       settings.loadSettings()
     ])
 
-    // Setup WebSocket event callbacks for real-time updates
-    if (setEventCallbacks) {
-      setEventCallbacks({
-        onNotification: (notification: unknown) => {
-          console.log('🔔 [NotificationController] New notification received via WebSocket:', notification)
-          handleNewNotification(notification)
-        }
-      })
-      console.log('✅ [NotificationController] WebSocket event callbacks registered')
+    // Ensure global WebSocket is connected
+    if (!wsStore.isConnected) {
+      console.log('📡 [NotificationController] Connecting to global WebSocket...')
+      await wsStore.connect()
     }
+
+    // Subscribe to notifications channel for real-time updates
+    notificationSubscriptionId = wsStore.subscribe('notifications', (message) => {
+      handleRealtimeNotification(message)
+    })
+
+    console.log(`✅ [NotificationController] Subscribed to notifications (ID: ${notificationSubscriptionId?.substring(0, 8)})`)
 
     // Reduce polling frequency since we have WebSocket
     // Only poll every 2 minutes as a fallback
-    if (!wsConnected.value) {
+    if (!wsStore.isConnected) {
       store.startPolling(120000) // 2 minutes instead of 30 seconds
       console.log('📡 [NotificationController] Fallback polling enabled (WebSocket disconnected)')
     }
@@ -115,10 +125,13 @@ export function useNotificationController() {
   }
 
   const cleanup = () => {
-    // Cleanup WebSocket event callbacks
-    if (clearEventCallbacks) {
-      clearEventCallbacks()
-      console.log('🧹 [NotificationController] WebSocket event callbacks cleared')
+    console.log('🛑 [NotificationController] Cleaning up...')
+
+    // Unsubscribe from notifications channel
+    if (notificationSubscriptionId) {
+      wsStore.unsubscribe(notificationSubscriptionId)
+      notificationSubscriptionId = null
+      console.log('✅ [NotificationController] Unsubscribed from notifications')
     }
 
     // Remove keyboard event listener
@@ -127,6 +140,11 @@ export function useNotificationController() {
     // Stop polling
     store.stopPolling()
   }
+
+  // Automatic cleanup on component unmount
+  onUnmounted(() => {
+    cleanup()
+  })
 
   // ==================== Return API ====================
 

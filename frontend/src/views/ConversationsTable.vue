@@ -269,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 // REMOVED: useActivityStream (SSE-based, replaced by WebSocket in Phase 1 cleanup)
@@ -283,10 +283,6 @@ import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
-
-// REMOVED: SSE-based Activity Stream (Phase 1 cleanup)
-// TODO: Replace with WebSocket-based real-time updates
-// const activityStreamData = useActivityStream()
 
 const filters = ref<ConversationFilters>({
   status: '', // 預設為空字串以顯示「所有狀態」
@@ -353,18 +349,6 @@ const performSmoothUpdate = async () => {
     isUpdating.value = false
   }
 }
-
-// REMOVED: SSE activity stream watcher (Phase 1 cleanup)
-// TODO: Replace with WebSocket event handler for real-time updates
-/* ORIGINAL CODE (SSE-based, removed in Phase 1):
-// 監聽 SSE 活動更新，使用平滑更新
-watch(() => activityStreamData.activities.value, (newActivities, oldActivities) => {
-  if (newActivities.length !== oldActivities?.length) {
-    console.log('📢 [ConversationsTable] Received SSE update, performing smooth refresh...')
-    performSmoothUpdate()
-  }
-}, { deep: true })
-*/
 
 // 刷新對話列表的函數
 const refreshConversations = () => {
@@ -442,6 +426,17 @@ onMounted(async () => {
     // 即使載入失敗，也不要讓頁面白屏
     // conversationsStore 已經有自己的錯誤處理
   }
+
+  // ✅ 方案 B 阶段 1: 启动实时同步
+  // Store 层统一管理 WebSocket 连接，所有使用 store 的组件自动获得实时更新
+  console.log('🔌 [ConversationsTable] Initializing real-time sync from Store...')
+  conversationsStore.initializeRealtime()
+})
+
+// ✅ 清理实时同步资源
+onUnmounted(() => {
+  console.log('👋 [ConversationsTable] Component unmounting, cleaning up...')
+  conversationsStore.cleanup()
 })
 </script>
 
