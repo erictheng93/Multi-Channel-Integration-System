@@ -1,10 +1,10 @@
 <template>
-  <div class="date-separator">
-    <div class="separator-line" />
-    <div class="separator-label">
+  <div class="flex items-center my-6 mb-4 gap-3 md:my-4 md:mb-3 md:gap-2">
+    <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
+    <div class="py-2 px-4 bg-gray-100 border border-gray-300 rounded-full text-xs font-semibold text-gray-600 whitespace-nowrap text-center min-w-[80px] md:py-1 md:px-3 md:text-[0.7rem] md:min-w-[60px] dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
       {{ formattedDate }}
     </div>
-    <div class="separator-line" />
+    <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
   </div>
 </template>
 
@@ -49,56 +49,5 @@ const formattedDate = computed(() => {
 </script>
 
 <style scoped>
-.date-separator {
-  display: flex;
-  align-items: center;
-  margin: var(--space-6) 0 var(--space-4) 0;
-  gap: var(--space-3);
-}
-
-.separator-line {
-  flex: 1;
-  height: 1px;
-  background: var(--gray-300);
-}
-
-.separator-label {
-  padding: var(--space-2) var(--space-4);
-  background: var(--gray-100);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--gray-600);
-  white-space: nowrap;
-  text-align: center;
-  min-width: 80px;
-}
-
-/* 深色主題支持 */
-@media (prefers-color-scheme: dark) {
-  .separator-line {
-    background: var(--gray-600);
-  }
-  
-  .separator-label {
-    background: var(--gray-800);
-    border-color: var(--gray-600);
-    color: var(--gray-300);
-  }
-}
-
-/* 移動端優化 */
-@media (max-width: 768px) {
-  .date-separator {
-    margin: var(--space-4) 0 var(--space-3) 0;
-    gap: var(--space-2);
-  }
-  
-  .separator-label {
-    padding: var(--space-1) var(--space-3);
-    font-size: 0.7rem;
-    min-width: 60px;
-  }
-}
+/* All styles converted to Tailwind utilities */
 </style>

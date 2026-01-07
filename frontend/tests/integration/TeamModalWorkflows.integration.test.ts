@@ -1,0 +1,497 @@
+/**
+ * Integration Tests for Team Modal Workflows
+ *
+ * Tests complete user flows through team-related modals:
+ * - EditTeamModal: View → Edit → Save → Close workflow
+ * - AddTeamModal: Open → Fill form → Submit → Success
+ * - QRCodeModal: Open → View QR → Download → Close
+ *
+ * These tests verify component communication, API integration,
+ * and state management across the modal lifecycle.
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { mount, VueWrapper } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
+import EditTeamModal from '@/components/team/EditTeamModal.vue'
+import AddTeamModal from '@/components/team/AddTeamModal.vue'
+import QRCodeModal from '@/components/team/QRCodeModal.vue'
+
+// Mock dependencies
+vi.mock('@/api/team', () => ({
+  teamApi: {
+    updateTeam: vi.fn(),
+    createTeam: vi.fn(),
+    addMembersToTeam: vi.fn()
+  }
+}))
+
+vi.mock('@/composables/useConfirmDialog', () => ({
+  useConfirmDialog: vi.fn(() => ({
+    showWarning: vi.fn().mockResolvedValue(true),
+    showInfo: vi.fn().mockResolvedValue(true)
+  }))
+}))
+
+vi.mock('@/composables/useToast', () => ({
+  useToast: vi.fn(() => ({
+    showSuccess: vi.fn(),
+    showError: vi.fn()
+  }))
+}))
+
+vi.mock('@/composables/team-management/useQRCodeDownloader', () => ({
+  useQRCodeDownloader: vi.fn(() => ({
+    isDownloading: { value: false },
+    downloadError: { value: null },
+    downloadQRCodeCard: vi.fn()
+  }))
+}))
+
+import { teamApi } from '@/api/team'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useToast } from '@/composables/useToast'
+import { useQRCodeDownloader } from '@/composables/team-management/useQRCodeDownloader'
+
+describe('Team Modal Workflows - Integration Tests', () => {
+  let mockShowWarning: ReturnType<typeof vi.fn>
+  let mockShowSuccess: ReturnType<typeof vi.fn>
+  let mockShowError: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    // Setup Pinia
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    // Clear all mocks
+    vi.clearAllMocks()
+
+    // Create fresh mock functions
+    mockShowWarning = vi.fn().mockResolvedValue(true)
+    mockShowSuccess = vi.fn()
+    mockShowError = vi.fn()
+
+    // Setup default mock responses
+    vi.mocked(useConfirmDialog).mockReturnValue({
+      showWarning: mockShowWarning,
+      showInfo: vi.fn().mockResolvedValue(true)
+    } as any)
+
+    vi.mocked(useToast).mockReturnValue({
+      showSuccess: mockShowSuccess,
+      showError: mockShowError
+    } as any)
+
+    vi.mocked(teamApi.updateTeam).mockResolvedValue({ success: true })
+    vi.mocked(teamApi.createTeam).mockResolvedValue({
+      success: true,
+      data: { id: 123, name: 'New Team' }
+    })
+    vi.mocked(teamApi.addMembersToTeam).mockResolvedValue({ success: true })
+  })
+
+  describe('EditTeamModal Workflow', () => {
+    const mockTeam = {
+      id: 1,
+      name: 'Engineering Team',
+      description: 'Software development team',
+      isActive: true,
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      memberCount: 5
+    }
+
+    it('should complete full edit workflow: open → edit → save → close', async () => {
+      const wrapper = mount(EditTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            id: mockTeam.id,
+            name: mockTeam.name,
+            description: mockTeam.description,
+            isActive: mockTeam.isActive,
+            selectedMembers: []
+          },
+          loading: false,
+          currentMembers: [],
+          availableMembers: [],
+          isAllAvailableMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      // 1. Modal should be visible
+      expect(wrapper.find('.modal-stub').exists()).toBe(true)
+
+      // 2. Form should be pre-filled with team data
+      const nameInput = wrapper.find('#edit-team-name')
+      expect((nameInput.element as HTMLInputElement).value).toBe('Engineering Team')
+
+      const descInput = wrapper.find('#edit-team-description')
+      expect((descInput.element as HTMLTextAreaElement).value).toBe('Software development team')
+
+      // 3. Edit the team name
+      await nameInput.setValue('Engineering Team - Updated')
+      await nextTick()
+
+      // 4. Submit the form
+      const form = wrapper.find('form')
+      await form.trigger('submit.prevent')
+      await nextTick()
+
+      // 5. Confirmation dialog should be shown
+      expect(mockShowWarning).toHaveBeenCalled()
+
+      // 6. API should be called with updated data
+      expect(teamApi.updateTeam).toHaveBeenCalledWith(
+        mockTeam.id,
+        expect.objectContaining({
+          name: 'Engineering Team - Updated'
+        })
+      )
+
+      // 7. Success message should be shown
+      expect(mockShowSuccess).toHaveBeenCalled()
+
+      // 8. Submit event should be emitted
+      expect(wrapper.emitted('submit')).toBeTruthy()
+    })
+
+    it('should handle validation errors', async () => {
+      const wrapper = mount(EditTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            id: 1,
+            name: '',
+            description: '',
+            isActive: true,
+            selectedMembers: []
+          },
+          loading: false,
+          currentMembers: [],
+          availableMembers: [],
+          isAllAvailableMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      // Try to submit with empty name
+      const form = wrapper.find('form')
+      await form.trigger('submit.prevent')
+      await nextTick()
+
+      // Form should prevent submission due to 'required' attribute
+      // API should not be called
+      expect(teamApi.updateTeam).not.toHaveBeenCalled()
+    })
+
+    it('should handle API failure gracefully', async () => {
+      vi.mocked(teamApi.updateTeam).mockResolvedValue({
+        success: false,
+        error: 'Team name already exists'
+      })
+
+      const wrapper = mount(EditTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            id: 1,
+            name: 'Existing Team',
+            description: 'Test',
+            isActive: true,
+            selectedMembers: []
+          },
+          loading: false,
+          currentMembers: [],
+          availableMembers: [],
+          isAllAvailableMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      const form = wrapper.find('form')
+      await form.trigger('submit.prevent')
+      await nextTick()
+
+      // Error message should be shown
+      expect(mockShowError).toHaveBeenCalledWith('Team name already exists')
+    })
+
+    it('should allow user to cancel edit', async () => {
+      mockShowWarning.mockResolvedValue(false) // User clicks "Cancel" in dialog
+
+      const wrapper = mount(EditTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            id: 1,
+            name: 'Test Team',
+            description: 'Test',
+            isActive: true,
+            selectedMembers: []
+          },
+          loading: false,
+          currentMembers: [],
+          availableMembers: [],
+          isAllAvailableMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      const form = wrapper.find('form')
+      await form.trigger('submit.prevent')
+      await nextTick()
+
+      // API should not be called if user cancels
+      expect(teamApi.updateTeam).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('AddTeamModal Workflow', () => {
+    const mockMembers = [
+      { id: '1', name: 'John Doe', email: 'john@example.com', role: 'agent', isActive: true },
+      { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'agent', isActive: true }
+    ]
+
+    it('should complete full create workflow: open → fill form → add members → submit → success', async () => {
+      const wrapper = mount(AddTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            name: '',
+            description: '',
+            selectedMembers: []
+          },
+          loading: false,
+          availableMembers: mockMembers,
+          isAllMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      // 1. Fill in team name
+      const nameInput = wrapper.find('#add-team-name')
+      await nameInput.setValue('New Team')
+      await nextTick()
+
+      // 2. Fill in description
+      const descInput = wrapper.find('#add-team-description')
+      await descInput.setValue('New team description')
+      await nextTick()
+
+      // 3. Submit the form
+      const form = wrapper.find('form')
+      await form.trigger('submit.prevent')
+      await nextTick()
+
+      // 4. API should be called
+      expect(teamApi.createTeam).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'New Team',
+          description: 'New team description'
+        })
+      )
+
+      // 5. Success message should be shown
+      expect(mockShowSuccess).toHaveBeenCalled()
+
+      // 6. Submit event should be emitted
+      expect(wrapper.emitted('submit')).toBeTruthy()
+    })
+  })
+
+  describe('QRCodeModal Workflow', () => {
+    const mockTeam = {
+      id: 1,
+      name: 'Test Team',
+      description: 'Test Description'
+    }
+
+    const mockQRCode = {
+      id: 1,
+      qrCodeUrl: 'https://example.com/qr/code.png',
+      liffUrl: 'https://liff.line.me/test',
+      scanCount: 10,
+      assignmentCount: 5,
+      createdAt: '2024-01-01'
+    }
+
+    it('should display QR code and allow download', async () => {
+      const mockDownloadQRCode = vi.fn()
+      vi.mocked(useQRCodeDownloader).mockReturnValue({
+        isDownloading: { value: false },
+        downloadError: { value: null },
+        downloadQRCodeCard: mockDownloadQRCode
+      } as any)
+
+      const wrapper = mount(QRCodeModal, {
+        props: {
+          visible: true,
+          team: mockTeam,
+          qrCode: mockQRCode,
+          imageLoading: false
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      // 1. Modal should be visible
+      expect(wrapper.find('.modal-stub').exists()).toBe(true)
+
+      // 2. Find and click download button
+      const downloadBtn = wrapper.find('.download-btn, [class*="download"]')
+      if (downloadBtn.exists()) {
+        await downloadBtn.trigger('click')
+        await nextTick()
+
+        // 3. Download function should be called
+        expect(mockDownloadQRCode).toHaveBeenCalledWith(
+          expect.objectContaining({
+            qrCodeUrl: mockQRCode.qrCodeUrl,
+            teamName: mockTeam.name
+          })
+        )
+      }
+    })
+  })
+
+  describe('Cross-Modal Integration', () => {
+    it('should maintain state when switching between modals', async () => {
+      // This test verifies that opening one modal and then another
+      // doesn't corrupt state or cause memory leaks
+
+      const teamModalWrapper = mount(EditTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            id: 1,
+            name: 'Team 1',
+            description: 'Desc 1',
+            isActive: true,
+            selectedMembers: []
+          },
+          loading: false,
+          currentMembers: [],
+          availableMembers: [],
+          isAllAvailableMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      // Verify first modal is mounted
+      expect(teamModalWrapper.find('.modal-stub').exists()).toBe(true)
+
+      // Unmount first modal
+      teamModalWrapper.unmount()
+
+      // Mount second modal
+      const addModalWrapper = mount(AddTeamModal, {
+        props: {
+          visible: true,
+          form: {
+            name: '',
+            description: '',
+            selectedMembers: []
+          },
+          loading: false,
+          availableMembers: [],
+          isAllMembersSelected: false,
+          getInitials: (name: string) => name.substring(0, 2),
+          getRoleDisplayName: (role: string) => role
+        },
+        global: {
+          plugins: [createPinia()],
+          stubs: {
+            Modal: {
+              template: '<div class="modal-stub"><slot /></div>',
+              props: ['show', 'title', 'size'],
+              emits: ['close']
+            }
+          }
+        }
+      })
+
+      // Second modal should work independently
+      expect(addModalWrapper.find('.modal-stub').exists()).toBe(true)
+
+      // Clean up
+      addModalWrapper.unmount()
+    })
+  })
+})

@@ -1,8 +1,8 @@
 <template>
-  <div 
+  <div
     v-if="showActions"
-    class="quick-assign-actions"
-    :class="{ 'compact': compactMode }"
+    class="flex items-center mt-3 pt-3 border-t border-gray-200 md:flex-col md:items-stretch md:gap-2"
+    :class="compactMode ? 'gap-1 mt-2 pt-2' : 'gap-2'"
   >
     <!-- 快速指派給我 -->
     <button
@@ -12,62 +12,62 @@
       @click="handleAssignToMe"
       @click.stop
     >
-      <UserPlusIcon class="action-icon" />
-      <span class="action-text">{{ isAssigning ? '指派中...' : '指派給我' }}</span>
+      <UserPlusIcon class="w-3.5 h-3.5 flex-shrink-0" />
+      <span class="text-xs">{{ isAssigning ? '指派中...' : '指派給我' }}</span>
     </button>
 
     <!-- 指派給其他人 -->
-    <div 
+    <div
       v-if="canAssignToOthers"
-      class="assign-others-wrapper"
+      class="relative"
     >
       <button
-        class="quick-action-btn assign-others-btn"
+        class="quick-action-btn"
         :disabled="isAssigning || loadingTeamMembers"
         @click="toggleAssignMenu"
         @click.stop
       >
-        <TeamIcon class="action-icon" />
-        <span class="action-text">指派他人</span>
-        <ChevronDownIcon 
-          :class="`dropdown-icon ${showAssignMenu ? 'rotated' : ''}`"
+        <TeamIcon class="w-3.5 h-3.5 flex-shrink-0" />
+        <span class="text-xs">指派他人</span>
+        <ChevronDownIcon
+          :class="`w-3 h-3 ml-1 transition-transform duration-200 ${showAssignMenu ? 'rotate-180' : ''}`"
         />
       </button>
 
       <!-- 指派選單 -->
-      <div 
+      <div
         v-if="showAssignMenu"
         class="assign-menu"
         @click.stop
       >
-        <div class="assign-menu-header">
+        <div class="flex items-center justify-between py-3 px-4 bg-gray-50 border-b border-gray-200 text-sm font-semibold text-gray-800">
           <span>選擇指派對象</span>
-          <button 
-            class="close-menu-btn"
+          <button
+            class="p-1 border-none bg-transparent text-gray-500 cursor-pointer rounded-sm transition-all hover:bg-gray-200 hover:text-gray-700"
             @click="closeAssignMenu"
           >
             <XIcon />
           </button>
         </div>
-        
-        <div 
+
+        <div
           v-if="loadingTeamMembers"
-          class="menu-loading"
+          class="flex items-center justify-center gap-2 p-4 text-gray-600 text-sm"
         >
           <HamsterLoader message="指派中..." />
           <span>載入團隊成員中...</span>
         </div>
 
-        <div 
+        <div
           v-else-if="teamMembers.length === 0"
-          class="menu-empty"
+          class="flex items-center justify-center gap-2 p-4 text-gray-600 text-sm"
         >
           <span>暫無可指派的成員</span>
         </div>
 
-        <div 
+        <div
           v-else
-          class="team-members-list"
+          class="max-h-[200px] overflow-y-auto"
         >
           <button
             v-for="member in teamMembers"
@@ -79,17 +79,17 @@
             <div class="member-avatar">
               {{ getInitials(member.name || member.loginId) }}
             </div>
-            <div class="member-info">
-              <div class="member-name">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900 mb-0.5">
                 {{ member.name || member.loginId }}
               </div>
-              <div class="member-role">
+              <div class="text-xs text-gray-600">
                 {{ getRoleDisplayName(member.role) }}
               </div>
             </div>
-            <div 
+            <div
               v-if="member.id === conversation.assignedAgentId"
-              class="current-assignee"
+              class="text-green-600 flex-shrink-0"
             >
               <CheckIcon />
             </div>
@@ -101,10 +101,10 @@
     <!-- 已指派狀態顯示 -->
     <div
       v-if="conversation.status === CONVERSATION_STATUS.IN_PROGRESS && conversation.assignedAgent"
-      class="assigned-status"
+      class="flex items-center gap-2 py-2 px-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-xs font-medium"
     >
-      <UserCheckIcon class="status-icon" />
-      <span class="status-text">{{ conversation.assignedAgent.name }}</span>
+      <UserCheckIcon class="w-3.5 h-3.5 flex-shrink-0" />
+      <span class="text-xs">{{ conversation.assignedAgent.name }}</span>
     </div>
   </div>
 </template>
@@ -323,230 +323,61 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.quick-assign-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--gray-200);
-}
-
-.quick-assign-actions.compact {
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-}
-
+/* Quick Action Button - Base styles with Tailwind @apply */
 .quick-action-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
-  background: white;
-  color: var(--gray-700);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
+  @apply flex items-center gap-1 py-2 px-3 border border-gray-300 rounded-md;
+  @apply bg-white text-gray-700 text-xs font-medium cursor-pointer whitespace-nowrap;
+  @apply md:justify-center md:py-3;
+  transition: all 0.15s ease;
 }
 
 .quick-action-btn:hover:not(:disabled) {
-  border-color: var(--primary-400);
-  background: var(--primary-50);
-  color: var(--primary-700);
+  @apply border-primary-400 bg-primary-50 text-primary-700;
 }
 
 .quick-action-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  @apply opacity-60 cursor-not-allowed;
 }
 
+/* Assign Me Button - Specific hover state */
 .assign-me-btn:hover:not(:disabled) {
-  border-color: var(--green-400);
-  background: var(--green-50);
-  color: var(--green-700);
+  @apply border-green-400 bg-green-50 text-green-700;
 }
 
-.action-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.action-text {
-  font-size: 0.75rem;
-}
-
-.assign-others-wrapper {
-  position: relative;
-}
-
-.dropdown-icon {
-  width: 12px;
-  height: 12px;
-  margin-left: var(--space-1);
-  transition: transform var(--transition-fast);
-}
-
-.dropdown-icon.rotated {
-  transform: rotate(180deg);
-}
-
+/* Assign Menu - Dropdown positioning with animation */
 .assign-menu {
-  position: absolute;
-  top: calc(100% + var(--space-1));
+  @apply absolute min-w-[240px] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden;
+  top: calc(100% + 0.25rem);
   left: 0;
-  min-width: 240px;
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: 50;
-  overflow: hidden;
+  animation: menu-appear 0.2s ease-out;
 }
 
-.assign-menu-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: var(--gray-50);
-  border-bottom: 1px solid var(--gray-200);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--gray-800);
-}
-
-.close-menu-btn {
-  padding: var(--space-1);
-  border: none;
-  background: none;
-  color: var(--gray-500);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
-}
-
-.close-menu-btn:hover {
-  background: var(--gray-200);
-  color: var(--gray-700);
-}
-
-.menu-loading,
-.menu-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  color: var(--gray-600);
-  font-size: 0.875rem;
-}
-
-.team-members-list {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
+/* Team Member Item - List item with gradient hover effect */
 .team-member-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: none;
-  background: white;
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  @apply flex items-center gap-3 w-full py-3 px-4 border-none bg-white cursor-pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.15s ease;
 }
 
 .team-member-item:hover:not(:disabled) {
-  background: var(--gray-50);
+  @apply bg-gray-50;
 }
 
 .team-member-item:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  @apply opacity-60 cursor-not-allowed;
 }
 
+/* Member Avatar - Gradient background */
 .member-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
+  @apply w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-semibold flex-shrink-0;
   background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  flex-shrink: 0;
 }
 
-.member-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.member-name {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-900);
-  margin-bottom: 2px;
-}
-
-.member-role {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-}
-
-.current-assignee {
-  color: var(--green-600);
-  flex-shrink: 0;
-}
-
-.assigned-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--green-50);
-  border: 1px solid var(--green-200);
-  border-radius: var(--radius-md);
-  color: var(--green-700);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.status-text {
-  font-size: 0.75rem;
-}
-
-/* 移動端優化 */
+/* Responsive - Mobile optimization */
 @media (max-width: 768px) {
-  .quick-assign-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-  }
-
-  .quick-action-btn {
-    justify-content: center;
-    padding: var(--space-3);
-  }
-
   .assign-menu {
-    position: fixed;
+    @apply fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -555,11 +386,7 @@ onUnmounted(() => {
   }
 }
 
-/* 動畫效果 */
-.assign-menu {
-  animation: menu-appear 0.2s ease-out;
-}
-
+/* Animations */
 @keyframes menu-appear {
   from {
     opacity: 0;
@@ -571,11 +398,7 @@ onUnmounted(() => {
   }
 }
 
-.team-member-item {
-  position: relative;
-  overflow: hidden;
-}
-
+/* Gradient hover effect for team member items */
 .team-member-item::before {
   content: '';
   position: absolute;

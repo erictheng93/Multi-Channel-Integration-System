@@ -101,6 +101,19 @@ export interface PaginatedResponse<T> {
   hasMore?: boolean;
 }
 
+// 團隊類型定義
+export interface Team {
+  id: number
+  name: string
+  description?: string
+  qrCode?: string
+  lineUrl?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  memberCount?: number
+}
+
 // 客服所屬團隊資訊 (多團隊支援)
 export interface AgentTeamMembership {
   teamId: number;

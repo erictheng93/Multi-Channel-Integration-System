@@ -1,144 +1,129 @@
 <template>
-  <div
-    v-if="visible"
-    class="modal-overlay"
+  <Modal
+    :show="visible"
+    title="新增系統人員"
+    size="md"
+    @close="handleClose"
   >
-    <div
-      class="modal"
-      @click.stop
-    >
-      <!-- Header -->
-      <div class="modal-header">
-        <h2>新增系統人員</h2>
-        <button
-          class="close-btn"
-          @click="handleClose"
+    <!-- Form Content -->
+    <form @submit.prevent="handleSubmit">
+      <!-- 姓名 -->
+      <div class="form-group">
+        <label for="add-member-name">
+          姓名 <span class="required">*</span>
+        </label>
+        <input
+          id="add-member-name"
+          v-model="form.name"
+          type="text"
+          placeholder="請輸入姓名"
+          required
         >
-          &times;
-        </button>
       </div>
 
-      <!-- Form -->
-      <form @submit.prevent="handleSubmit">
-        <div class="modal-body">
-          <!-- 姓名 -->
-          <div class="form-group">
-            <label for="add-member-name">
-              姓名 <span class="required">*</span>
-            </label>
-            <input
-              id="add-member-name"
-              v-model="form.name"
-              type="text"
-              placeholder="請輸入姓名"
-              required
-            >
-          </div>
+      <!-- Email -->
+      <div class="form-group">
+        <label for="add-member-email">
+          Email <span class="required">*</span>
+        </label>
+        <input
+          id="add-member-email"
+          v-model="form.email"
+          type="email"
+          placeholder="請輸入 Email"
+          required
+        >
+        <small class="form-hint">將作為登入帳號</small>
+      </div>
 
-          <!-- Email -->
-          <div class="form-group">
-            <label for="add-member-email">
-              Email <span class="required">*</span>
-            </label>
-            <input
-              id="add-member-email"
-              v-model="form.email"
-              type="email"
-              placeholder="請輸入 Email"
-              required
-            >
-            <small class="form-hint">將作為登入帳號</small>
-          </div>
-
-          <!-- 密碼 -->
-          <div class="form-group">
-            <label for="add-member-password">
-              密碼 <span class="required">*</span>
-            </label>
-            <div class="password-input">
-              <input
-                id="add-member-password"
-                v-model="form.password"
-                :type="showPassword ? 'text' : 'password'"
-                placeholder="請輸入密碼"
-                required
-              >
-              <button
-                type="button"
-                class="password-toggle"
-                @click="togglePassword"
-              >
-                {{ showPassword ? '隱藏' : '顯示' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- 角色 -->
-          <div class="form-group">
-            <label for="add-member-role">
-              角色 <span class="required">*</span>
-            </label>
-            <select
-              id="add-member-role"
-              v-model="form.role"
-              required
-            >
-              <option :value="ROLES.AGENT">
-                客服人員
-              </option>
-              <option :value="ROLES.ADMIN">
-                管理員
-              </option>
-            </select>
-          </div>
-
-          <!-- 部門/群組 -->
-          <div class="form-group">
-            <label for="add-member-group">部門/群組</label>
-            <input
-              id="add-member-group"
-              v-model="form.group"
-              type="text"
-              placeholder="請輸入部門或群組名稱（選填）"
-            >
-          </div>
-
-          <!-- 狀態 -->
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input
-                v-model="form.isActive"
-                type="checkbox"
-              >
-              <span>帳號啟用</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="modal-actions">
+      <!-- 密碼 -->
+      <div class="form-group">
+        <label for="add-member-password">
+          密碼 <span class="required">*</span>
+        </label>
+        <div class="password-input">
+          <input
+            id="add-member-password"
+            v-model="form.password"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="請輸入密碼"
+            required
+          >
           <button
             type="button"
-            class="btn btn-secondary"
-            @click="handleClose"
+            class="password-toggle"
+            @click="togglePassword"
           >
-            取消
-          </button>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="loading"
-          >
-            {{ loading ? '新增中...' : '新增成員' }}
+            {{ showPassword ? '隱藏' : '顯示' }}
           </button>
         </div>
-      </form>
-    </div>
-  </div>
+      </div>
+
+      <!-- 角色 -->
+      <div class="form-group">
+        <label for="add-member-role">
+          角色 <span class="required">*</span>
+        </label>
+        <select
+          id="add-member-role"
+          v-model="form.role"
+          required
+        >
+          <option :value="ROLES.AGENT">
+            客服人員
+          </option>
+          <option :value="ROLES.ADMIN">
+            管理員
+          </option>
+        </select>
+      </div>
+
+      <!-- 部門/群組 -->
+      <div class="form-group">
+        <label for="add-member-group">部門/群組</label>
+        <input
+          id="add-member-group"
+          v-model="form.group"
+          type="text"
+          placeholder="請輸入部門或群組名稱（選填）"
+        >
+      </div>
+
+      <!-- 狀態 -->
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input
+            v-model="form.isActive"
+            type="checkbox"
+          >
+          <span>帳號啟用</span>
+        </label>
+      </div>
+    </form>
+
+    <!-- Footer Actions -->
+    <template #footer>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="handleClose"
+      >
+        取消
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        :disabled="loading"
+        @click="handleSubmit"
+      >
+        {{ loading ? '新增中...' : '新增成員' }}
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
- 
+import Modal from '@/components/ui/Modal.vue'
 import { ROLES } from '@/constants/roles'
 import type { AddMemberFormData } from '@/composables/team-management'
 
@@ -172,75 +157,6 @@ function togglePassword() {
 </script>
 
 <style scoped>
-/* Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-/* Modal Container */
-.modal {
-  background: white;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-/* Modal Header */
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* Modal Body */
-.modal-body {
-  padding: 1.5rem;
-}
-
 /* Form Groups */
 .form-group {
   margin-bottom: 1.25rem;
@@ -332,15 +248,6 @@ function togglePassword() {
   cursor: pointer;
 }
 
-/* Modal Actions */
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
 /* Buttons */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -375,20 +282,5 @@ function togglePassword() {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .modal {
-    max-width: 100%;
-    border-radius: 12px 12px 0 0;
-    margin-top: auto;
-  }
-
-  .modal-header,
-  .modal-body,
-  .modal-actions {
-    padding: 1rem;
-  }
 }
 </style>

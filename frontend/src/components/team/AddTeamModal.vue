@@ -1,139 +1,123 @@
 <template>
-  <div
-    v-if="visible"
-    class="modal-overlay"
+  <Modal
+    :show="visible"
+    title="新增團隊"
+    size="lg"
+    @close="handleClose"
   >
-    <div
-      class="modal large"
-      @click.stop
-    >
-      <!-- Header -->
-      <div class="modal-header">
-        <h2>新增團隊</h2>
-        <button
-          class="close-btn"
-          @click="handleClose"
+    <!-- Form Content -->
+    <form @submit.prevent="handleSubmit">
+      <!-- 團隊名稱 -->
+      <div class="form-group">
+        <label for="team-name">
+          團隊名稱 <span class="required">*</span>
+        </label>
+        <input
+          id="team-name"
+          v-model="form.name"
+          type="text"
+          placeholder="請輸入團隊名稱"
+          required
         >
-          &times;
-        </button>
       </div>
 
-      <!-- Form -->
-      <form
-        class="modal-body"
-        @submit.prevent="handleSubmit"
-      >
-        <!-- 團隊名稱 -->
-        <div class="form-group">
-          <label for="team-name">
-            團隊名稱 <span class="required">*</span>
+      <!-- 團隊描述 -->
+      <div class="form-group">
+        <label for="team-description">團隊描述</label>
+        <textarea
+          id="team-description"
+          v-model="form.description"
+          rows="3"
+          placeholder="請輸入團隊描述（選填）"
+        />
+      </div>
+
+      <!-- 成員選擇 -->
+      <div class="form-group">
+        <label>
+          選擇成員
+          <span class="member-count">({{ form.selectedMembers.length }} / {{ availableMembers.length }})</span>
+        </label>
+
+        <!-- 全選控制 -->
+        <div class="select-all-section">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              :checked="isAllMembersSelected"
+              @change="toggleSelectAll"
+            >
+            <span>全選</span>
           </label>
-          <input
-            id="team-name"
-            v-model="form.name"
-            type="text"
-            placeholder="請輸入團隊名稱"
-            required
+        </div>
+
+        <!-- 成員列表 -->
+        <div
+          v-if="availableMembers.length > 0"
+          class="member-selection-list"
+        >
+          <div
+            v-for="member in availableMembers"
+            :key="member.id"
+            class="member-item"
           >
-        </div>
-
-        <!-- 團隊描述 -->
-        <div class="form-group">
-          <label for="team-description">團隊描述</label>
-          <textarea
-            id="team-description"
-            v-model="form.description"
-            rows="3"
-            placeholder="請輸入團隊描述（選填）"
-          />
-        </div>
-
-        <!-- 成員選擇 -->
-        <div class="form-group">
-          <label>
-            選擇成員
-            <span class="member-count">({{ form.selectedMembers.length }} / {{ availableMembers.length }})</span>
-          </label>
-
-          <!-- 全選控制 -->
-          <div class="select-all-section">
-            <label class="checkbox-label">
+            <label class="member-label">
               <input
                 type="checkbox"
-                :checked="isAllMembersSelected"
-                @change="toggleSelectAll"
+                :value="member.id"
+                :checked="form.selectedMembers.includes(member.id)"
+                @change="handleMemberToggle(member.id)"
               >
-              <span>全選</span>
-            </label>
-          </div>
-
-          <!-- 成員列表 -->
-          <div
-            v-if="availableMembers.length > 0"
-            class="member-selection-list"
-          >
-            <div
-              v-for="member in availableMembers"
-              :key="member.id"
-              class="member-item"
-            >
-              <label class="member-label">
-                <input
-                  type="checkbox"
-                  :value="member.id"
-                  :checked="form.selectedMembers.includes(member.id)"
-                  @change="handleMemberToggle(member.id)"
-                >
-                <div class="member-info">
-                  <div class="member-avatar">
-                    {{ getInitials(member.name || '') }}
+              <div class="member-info">
+                <div class="member-avatar">
+                  {{ getInitials(member.name || '') }}
+                </div>
+                <div class="member-details">
+                  <div class="member-name">
+                    {{ member.name }}
                   </div>
-                  <div class="member-details">
-                    <div class="member-name">
-                      {{ member.name }}
-                    </div>
-                    <div class="member-meta">
-                      {{ member.email }} • {{ getRoleDisplayName(member.role) }}
-                    </div>
+                  <div class="member-meta">
+                    {{ member.email }} • {{ getRoleDisplayName(member.role) }}
                   </div>
                 </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- 無可用成員 -->
-          <div
-            v-else
-            class="no-members"
-          >
-            無可用成員
+              </div>
+            </label>
           </div>
         </div>
 
-        <!-- Actions -->
-        <div class="modal-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="handleClose"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="loading"
-          >
-            {{ loading ? '新增中...' : '新增團隊' }}
-          </button>
+        <!-- 無可用成員 -->
+        <div
+          v-else
+          class="no-members"
+        >
+          無可用成員
         </div>
-      </form>
-    </div>
-  </div>
+      </div>
+    </form>
+
+    <!-- Footer Actions -->
+    <template #footer>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="handleClose"
+      >
+        取消
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        :disabled="loading"
+        @click="handleSubmit"
+      >
+        {{ loading ? '新增中...' : '新增團隊' }}
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
- 
+import Modal from '@/components/ui/Modal.vue'
 import type { AddTeamFormData } from '@/composables/team-management'
 import type { TeamMember } from '@/types'
 
@@ -175,79 +159,6 @@ function toggleSelectAll() {
 </script>
 
 <style scoped>
-/* Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-/* Modal Container */
-.modal {
-  background: white;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal.large {
-  max-width: 600px;
-}
-
-/* Modal Header */
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* Modal Body */
-.modal-body {
-  padding: 1.5rem;
-}
-
 /* Form Groups */
 .form-group {
   margin-bottom: 1.25rem;
@@ -408,16 +319,6 @@ function toggleSelectAll() {
   font-size: 0.875rem;
 }
 
-/* Modal Actions */
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding-top: 1.5rem;
-  margin-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
 /* Buttons */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -452,23 +353,5 @@ function toggleSelectAll() {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .modal {
-    max-width: 100%;
-    border-radius: 12px 12px 0 0;
-    margin-top: auto;
-  }
-
-  .modal-header,
-  .modal-body {
-    padding: 1rem;
-  }
-
-  .member-selection-list {
-    max-height: 250px;
-  }
 }
 </style>

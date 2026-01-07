@@ -27,6 +27,7 @@
       <!-- Member Management Section -->
       <MemberListSection
         :members="members"
+        :all-teams="teams"
         :loading="loading"
         :current-user-id="currentUserId"
         @add-member="controller.member.openAddMemberModal"

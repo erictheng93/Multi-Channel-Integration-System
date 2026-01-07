@@ -1,18 +1,18 @@
 <template>
   <div
     class="typing-indicator"
-    :class="{ 'typing-active': isActive }"
+    :class="{ 'typing-active': isActive, 'compact': compact }"
   >
     <div class="typing-content">
       <!-- Typing animation -->
-      <div class="typing-animation">
+      <div class="flex items-center gap-0.5">
         <div class="typing-dot" />
         <div class="typing-dot" />
         <div class="typing-dot" />
       </div>
 
       <!-- Typing text -->
-      <div class="typing-text">
+      <div class="font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] md:max-w-[120px]">
         {{ typingText }}
       </div>
     </div>
@@ -77,45 +77,37 @@ const typingText = computed(() => {
 </script>
 
 <style scoped>
+/* Typing Indicator - Fade-in transition */
 .typing-indicator {
-  display: flex;
-  align-items: center;
-  opacity: 0;
+  @apply flex items-center opacity-0 pointer-events-none;
   transform: translateY(4px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
 }
 
 .typing-active {
-  opacity: 1;
+  @apply opacity-100 pointer-events-auto;
   transform: translateY(0);
-  pointer-events: auto;
 }
 
+/* Typing Content - Base styles */
 .typing-content {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  @apply flex items-center gap-2 py-1 px-2 rounded-full text-xs text-blue-700;
+  @apply md:py-0.5 md:px-1 md:text-[0.625rem] md:gap-1;
+  @apply dark:text-blue-300;
   background: rgba(59, 130, 246, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  color: var(--blue-700);
 }
 
-/* Typing Animation */
-.typing-animation {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+@media (prefers-color-scheme: dark) {
+  .typing-content {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
 }
 
+/* Typing Dot - Animated dots */
 .typing-dot {
-  width: 3px;
-  height: 3px;
-  background-color: var(--blue-500);
-  border-radius: 50%;
+  @apply w-[3px] h-[3px] bg-blue-500 rounded-full md:w-0.5 md:h-0.5 dark:bg-blue-400;
   animation: typing-pulse 1.4s infinite ease-in-out;
 }
 
@@ -131,15 +123,20 @@ const typingText = computed(() => {
   animation-delay: 0.4s;
 }
 
-.typing-text {
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
+/* Compact variant */
+.typing-indicator.compact .typing-content {
+  @apply py-0.5 px-1 text-[0.625rem] gap-1;
 }
 
-/* Animations */
+.typing-indicator.compact .typing-dot {
+  @apply w-0.5 h-0.5;
+}
+
+.typing-indicator.compact .font-medium {
+  max-width: 150px;
+}
+
+/* Animation */
 @keyframes typing-pulse {
   0%, 60%, 100% {
     transform: scale(1);
@@ -148,53 +145,6 @@ const typingText = computed(() => {
   30% {
     transform: scale(1.2);
     opacity: 1;
-  }
-}
-
-/* Compact variant */
-.typing-indicator.compact .typing-content {
-  padding: 2px var(--space-1);
-  font-size: 0.625rem;
-  gap: var(--space-1);
-}
-
-.typing-indicator.compact .typing-dot {
-  width: 2px;
-  height: 2px;
-}
-
-.typing-indicator.compact .typing-text {
-  max-width: 150px;
-}
-
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .typing-content {
-    padding: 2px var(--space-1);
-    font-size: 0.625rem;
-    gap: var(--space-1);
-  }
-
-  .typing-dot {
-    width: 2px;
-    height: 2px;
-  }
-
-  .typing-text {
-    max-width: 120px;
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .typing-content {
-    background: rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: var(--blue-300);
-  }
-
-  .typing-dot {
-    background-color: var(--blue-400);
   }
 }
 </style>

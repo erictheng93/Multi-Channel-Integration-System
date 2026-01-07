@@ -14,11 +14,11 @@
   />
 -->
 <template>
-  <div class="filters-section">
-    <div class="filters">
+  <div class="flex items-center justify-between gap-6 mt-6 lg:flex-col lg:items-stretch lg:gap-4">
+    <div class="flex gap-4 md:flex-col md:gap-3">
       <!-- 状态筛选 -->
-      <div class="filter-group">
-        <label class="filter-label">狀態篩選</label>
+      <div class="flex flex-col gap-1 md:w-full">
+        <label class="text-xs font-medium text-gray-700 uppercase tracking-wider">狀態篩選</label>
         <select
           :value="filters.status"
           class="form-select"
@@ -40,8 +40,8 @@
       </div>
 
       <!-- 平台筛选 -->
-      <div class="filter-group">
-        <label class="filter-label">平台篩選</label>
+      <div class="flex flex-col gap-1 md:w-full">
+        <label class="text-xs font-medium text-gray-700 uppercase tracking-wider">平台篩選</label>
         <select
           :value="filters.platform"
           class="form-select"
@@ -66,8 +66,8 @@
       </div>
 
       <!-- 指派状态筛选 -->
-      <div class="filter-group">
-        <label class="filter-label">指派狀態</label>
+      <div class="flex flex-col gap-1 md:w-full">
+        <label class="text-xs font-medium text-gray-700 uppercase tracking-wider">指派狀態</label>
         <select
           :value="filters.assignedTo"
           class="form-select"
@@ -86,9 +86,9 @@
       </div>
 
       <!-- 标签筛选 -->
-      <div class="filter-group tag-filter-group">
-        <label class="filter-label">標籤篩選</label>
-        <div class="tag-filter-wrapper">
+      <div class="flex flex-col gap-1 relative">
+        <label class="text-xs font-medium text-gray-700 uppercase tracking-wider">標籤篩選</label>
+        <div class="relative">
           <button
             class="tag-filter-btn"
             :class="{ 'has-selection': selectedTagIds.length > 0 }"
@@ -97,8 +97,8 @@
             <span v-if="selectedTagIds.length === 0">選擇標籤</span>
             <span v-else>已選 {{ selectedTagIds.length }} 個</span>
             <svg
-              class="dropdown-chevron"
-              :class="{ 'rotated': showTagDropdown }"
+              class="w-4 h-4 ml-auto transition-transform duration-200"
+              :class="{ 'rotate-180': showTagDropdown }"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -115,7 +115,7 @@
           >
             <div
               v-if="availableTags.length === 0"
-              class="no-tags-message"
+              class="p-4 text-center text-gray-500 text-sm"
             >
               暫無可用標籤
             </div>
@@ -123,18 +123,18 @@
               v-for="tag in availableTags"
               v-else
               :key="tag.id"
-              class="tag-option"
-              :class="{ 'selected': selectedTagIds.includes(tag.id) }"
+              class="flex items-center gap-3 py-3 px-4 cursor-pointer transition-colors hover:bg-gray-50"
+              :class="{ 'bg-primary-50': selectedTagIds.includes(tag.id) }"
               @click="toggleTag(tag.id)"
             >
               <div
-                class="tag-color-dot"
+                class="w-3 h-3 rounded-full flex-shrink-0"
                 :style="{ backgroundColor: tag.color }"
               />
-              <span class="tag-name">{{ tag.name }}</span>
+              <span class="flex-1 text-sm text-gray-800">{{ tag.name }}</span>
               <svg
                 v-if="selectedTagIds.includes(tag.id)"
-                class="check-icon"
+                class="w-4 h-4 text-primary-600"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -145,7 +145,7 @@
             </div>
             <div
               v-if="selectedTagIds.length > 0"
-              class="clear-tags-btn"
+              class="py-3 px-4 text-center text-red-600 text-sm cursor-pointer border-t border-gray-200 hover:bg-red-50 transition-colors"
               @click="clearTags"
             >
               清除篩選
@@ -156,14 +156,14 @@
     </div>
 
     <!-- 统计信息 -->
-    <div class="quick-stats">
-      <div class="stat-item">
-        <span class="stat-number">{{ totalConversations }}</span>
-        <span class="stat-label">總對話</span>
+    <div class="flex gap-6 lg:justify-center sm:flex-col sm:gap-3">
+      <div class="flex flex-col items-center text-center sm:flex-row sm:justify-between sm:p-3 sm:bg-gray-50 sm:rounded-lg">
+        <span class="text-2xl font-bold text-primary-600 leading-none">{{ totalConversations }}</span>
+        <span class="text-xs text-gray-600 font-medium mt-1 sm:mt-0">總對話</span>
       </div>
-      <div class="stat-item">
-        <span class="stat-number">{{ unreadCount }}</span>
-        <span class="stat-label">未讀</span>
+      <div class="flex flex-col items-center text-center sm:flex-row sm:justify-between sm:p-3 sm:bg-gray-50 sm:rounded-lg">
+        <span class="text-2xl font-bold text-primary-600 leading-none">{{ unreadCount }}</span>
+        <span class="text-xs text-gray-600 font-medium mt-1 sm:mt-0">未讀</span>
       </div>
     </div>
   </div>
@@ -233,117 +233,26 @@ function clearTags() {
 </script>
 
 <style scoped>
-.filters-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-  margin-top: var(--space-6);
-}
-
-.filters {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.filter-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--gray-700);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.quick-stats {
-  display: flex;
-  gap: var(--space-6);
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary-600);
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  font-weight: 500;
-  margin-top: var(--space-1);
-}
-
-/* 标签筛选样式 */
-.tag-filter-group {
-  position: relative;
-}
-
-.tag-filter-wrapper {
-  position: relative;
-}
-
+/* Tag Filter Button - Complex styles */
 .tag-filter-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: white;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary, #6b7280);
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 120px;
+  @apply flex items-center gap-2 py-2 px-3 bg-white border border-gray-200;
+  @apply rounded-lg text-sm text-gray-600 cursor-pointer transition-all min-w-[120px];
 }
 
 .tag-filter-btn:hover {
-  border-color: var(--primary-color, #6366f1);
-  color: var(--primary-color, #6366f1);
+  @apply border-primary-600 text-primary-600;
 }
 
 .tag-filter-btn.has-selection {
-  background: var(--primary-50, #eef2ff);
-  border-color: var(--primary-color, #6366f1);
-  color: var(--primary-color, #6366f1);
+  @apply bg-primary-50 border-primary-600 text-primary-600;
 }
 
-.dropdown-chevron {
-  width: 16px;
-  height: 16px;
-  transition: transform 0.2s;
-  margin-left: auto;
-}
-
-.dropdown-chevron.rotated {
-  transform: rotate(180deg);
-}
-
+/* Tag Filter Dropdown - Positioning and animation */
 .tag-filter-dropdown {
-  position: absolute;
+  @apply absolute z-50 min-w-[200px] max-h-[300px] overflow-y-auto;
+  @apply bg-white border border-gray-200 rounded-xl shadow-xl;
   top: calc(100% + 0.5rem);
   left: 0;
-  z-index: 50;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   animation: dropdown-appear 0.2s ease-out;
 }
 
@@ -355,101 +264,6 @@ function clearTags() {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-.no-tags-message {
-  padding: 1rem;
-  text-align: center;
-  color: var(--text-secondary, #6b7280);
-  font-size: 0.875rem;
-}
-
-.tag-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.tag-option:hover {
-  background: var(--hover-color, #f9fafb);
-}
-
-.tag-option.selected {
-  background: var(--primary-50, #eef2ff);
-}
-
-.tag-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tag-name {
-  flex: 1;
-  font-size: 0.875rem;
-  color: var(--text-primary, #374151);
-}
-
-.check-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--primary-color, #6366f1);
-}
-
-.clear-tags-btn {
-  padding: 0.75rem 1rem;
-  text-align: center;
-  color: var(--error-color, #ef4444);
-  font-size: 0.875rem;
-  cursor: pointer;
-  border-top: 1px solid var(--border-color, #e5e7eb);
-}
-
-.clear-tags-btn:hover {
-  background: var(--error-50, #fef2f2);
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .filters-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-4);
-  }
-
-  .quick-stats {
-    justify-content: center;
-  }
-}
-
-@media (max-width: 768px) {
-  .filters {
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .filter-group {
-    width: 100%;
-  }
-}
-
-@media (max-width: 640px) {
-  .quick-stats {
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .stat-item {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: var(--space-3);
-    background-color: var(--gray-50);
-    border-radius: var(--radius-lg);
   }
 }
 </style>
