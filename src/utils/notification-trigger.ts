@@ -898,63 +898,63 @@ export async function triggerNewConversationNotification(
       ? `: ${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`
       : '';
 
-    // 創建批量通知 - 使用 try-catch 包裝每個通知創建，確保一個失敗不影響其他
-    const notificationIds: string[] = [];
-    const errors: Array<{ userId: string; error: string }> = [];
+    console.log(`🚀 [Notification] Creating bulk notifications for ${targetUserIds.length} users`);
 
-    console.log(`🔁 [Notification] Starting loop for ${targetUserIds.length} users:`, targetUserIds);
+    // 準備批量通知請求
+    const bulkRequests = targetUserIds.map(userId => ({
+      userId,
+      type: 'new_conversation' as const,
+      title: '💬 新對話',
+      content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
+      data: {
+        conversationId,
+        customerName: options.customerName,
+        platform: options.platform,
+        messagePreview: options.messagePreview
+      },
+      priority: 'high' as const,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }));
 
-    for (let i = 0; i < targetUserIds.length; i++) {
-      const userId = targetUserIds[i];
-      try {
-        console.log(`📍 [Notification] Loop iteration ${i + 1}/${targetUserIds.length}, userId: ${userId}`);
-        console.log(`🔄 [Notification] Creating notification for user ${userId}...`);
+    // 使用批量創建 API（一次性創建所有通知）
+    const bulkResult = await service.createBulk({ notifications: bulkRequests });
+    const notificationIds = bulkResult.successful;
 
-        const notificationId = await service.create({
-          userId,
-          type: 'new_conversation',
-          title: '💬 新對話',
-          content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
-          data: {
-            conversationId,
-            customerName: options.customerName,
-            platform: options.platform,
-            messagePreview: options.messagePreview
-          },
-          priority: 'high',
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        });
+    console.log(`✅ [Notification] Bulk create completed:`, {
+      successful: bulkResult.successful.length,
+      failed: bulkResult.failed.length,
+      total: targetUserIds.length
+    });
 
-        if (notificationId) {
-          console.log(`✅ [Notification] Created notification ${notificationId} for user ${userId}`);
-          notificationIds.push(notificationId);
+    // 如果有失敗，記錄詳細信息
+    if (bulkResult.failed.length > 0) {
+      console.warn(`⚠️ [Notification] Some notifications failed:`, bulkResult.failed);
+    }
 
-          // 透過 WebSocket 即時推送通知
-          await broadcastNotificationViaWebSocket(env, userId, {
-            id: notificationId,
-            type: 'new_conversation',
-            title: '💬 新對話',
-            content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
-            priority: 'high',
-            data: {
-              conversationId,
-              customerName: options.customerName,
-              platform: options.platform,
-              messagePreview: options.messagePreview
-            }
-          });
+    // 批量廣播 WebSocket 通知（不阻塞）
+    const broadcastPromises = notificationIds.map((notificationId, index) =>
+      broadcastNotificationViaWebSocket(env, targetUserIds[index], {
+        id: notificationId,
+        type: 'new_conversation',
+        title: '💬 新對話',
+        content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
+        priority: 'high',
+        data: {
+          conversationId,
+          customerName: options.customerName,
+          platform: options.platform,
+          messagePreview: options.messagePreview
         }
-      } catch (userError) {
-        const errorMsg = userError instanceof Error ? userError.message : String(userError);
-        console.error(`❌ [Notification] Failed to create notification for user ${userId}:`, errorMsg);
-        errors.push({ userId: String(userId), error: errorMsg });
-      }
-    }
+      })
+    );
 
-    // 記錄錯誤摘要（如果有）
-    if (errors.length > 0) {
-      console.warn(`⚠️ [Notification] Failed to create notifications for ${errors.length}/${targetUserIds.length} users:`, errors);
-    }
+    // 並行執行 WebSocket 廣播（不等待結果）
+    Promise.allSettled(broadcastPromises).then(results => {
+      const failedBroadcasts = results.filter(r => r.status === 'rejected').length;
+      if (failedBroadcasts > 0) {
+        console.warn(`⚠️ [Notification] ${failedBroadcasts} WebSocket broadcasts failed`);
+      }
+    });
 
     console.log('✅ [Notification] New conversation notifications created:', {
       notificationIds,
