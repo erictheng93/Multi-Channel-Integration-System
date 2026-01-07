@@ -14,6 +14,37 @@ const TOKEN_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 分鐘
 // 會話恢復狀態類型
 type SessionStatus = 'pending' | 'authenticated' | 'unauthenticated' | 'restored';
 
+/**
+ * UTF-8 安全的 Base64 URL 解碼
+ * 使用 TextDecoder 支持所有 Unicode 字符（包括中文、emoji 等）
+ * 符合 RFC 7519 (JWT) 標準
+ */
+function base64UrlDecode(str: string): string {
+  try {
+    // 將 URL 安全格式轉回標準 Base64
+    const base64 = str
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(str.length + (4 - str.length % 4) % 4, '=');
+
+    // Base64 解碼為二進制字符串
+    const binaryString = atob(base64);
+
+    // 轉為 Uint8Array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // UTF-8 解碼
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+  } catch (error) {
+    console.error('[base64UrlDecode] Decoding failed:', error);
+    throw error;
+  }
+}
+
 // Utility functions for auth management
 function clearAuthStorage() {
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -319,8 +350,8 @@ export const useAuthStore = defineStore('auth', () => {
       const parts = token.value.split('.');
       if (parts.length !== 3 || !parts[1]) {return false;}
 
-      // 嘗試解析 payload
-      const payload = JSON.parse(atob(parts[1]));
+      // ✅ 使用 UTF-8 安全的解碼函數解析 payload
+      const payload = JSON.parse(base64UrlDecode(parts[1]));
       if (!payload.userId || !payload.role) {return false;}
 
       // 檢查 Token 是否過期

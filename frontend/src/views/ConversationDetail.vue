@@ -108,7 +108,7 @@
       <!-- 新消息提醒 Component with WebSocket enhancements -->
       <NewMessageNotification
         :is-visible="notification.isVisible.value"
-        :count="newMessageCount"
+        :count="newMessageCount ?? 0"
         :is-realtime="currentProtocol === 'websocket'"
         @click="notification.scrollToNewest"
         @dismiss="notification.dismiss"

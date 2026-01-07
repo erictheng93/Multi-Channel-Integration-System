@@ -60,8 +60,13 @@ export const initializeSecurity = async (): Promise<void> => {
 const setupGlobalErrorHandling = (securityConfig: { ERROR: { SHOW_DETAILED_ERRORS: boolean }; checks: { checkCSPSupport: () => boolean } }) => {
   // 處理未捕獲的錯誤
   window.addEventListener('error', (event) => {
+    // 忽略 null 错误（通常由浏览器扩展或第三方脚本触发）
+    if (event.error === null || event.error === undefined) {
+      return
+    }
+
     console.error('Global error:', event.error)
-    
+
     // 在生產環境中不顯示詳細錯誤
     if (!securityConfig.ERROR.SHOW_DETAILED_ERRORS) {
       event.preventDefault()

@@ -53,6 +53,18 @@ export interface MessageStickerProps {
  * ```
  */
 export function useMessageSticker(props: Ref<MessageStickerProps>) {
+  // ==================== Debug Helper ====================
+
+  /**
+   * 调试日志辅助函数
+   * 仅在开发模式下输出日志，避免污染生产环境控制台
+   */
+  const debugLog = (message: string, ...args: any[]) => {
+    if (import.meta.env.DEV) {
+      console.log(message, ...args)
+    }
+  }
+
   // ==================== State Management ====================
 
   /**
@@ -79,13 +91,16 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    * Handles both JSON string and object formats
    */
   const stickerMetadata = computed<StickerMetadata | null>(() => {
-    // Debug logs for sticker metadata parsing
-    console.log('🔍 [Sticker Debug] Message type:', props.value.message.messageType)
-    console.log('🔍 [Sticker Debug] Message content:', props.value.message.content)
-    console.log('🔍 [Sticker Debug] Raw metadata:', props.value.message.metadata)
+    // 仅在贴图消息时记录调试日志，减少控制台噪音
+    const isSticker = props.value.message.messageType === 'sticker'
 
-    if (props.value.message.messageType !== 'sticker' || !props.value.message.metadata) {
-      console.log('🔍 [Sticker Debug] Condition failed - messageType or metadata missing')
+    if (isSticker) {
+      debugLog('🔍 [Sticker Debug] Message type:', props.value.message.messageType)
+      debugLog('🔍 [Sticker Debug] Message content:', props.value.message.content)
+      debugLog('🔍 [Sticker Debug] Raw metadata:', props.value.message.metadata)
+    }
+
+    if (!isSticker || !props.value.message.metadata) {
       return null
     }
 
@@ -94,14 +109,14 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
         ? JSON.parse(props.value.message.metadata)
         : props.value.message.metadata
 
-      console.log('🔍 [Sticker Debug] Parsed metadata:', metadata)
+      debugLog('🔍 [Sticker Debug] Parsed metadata:', metadata)
 
       const result: StickerMetadata = {
         packageId: metadata.packageId,
         stickerId: metadata.stickerId
       }
 
-      console.log('🔍 [Sticker Debug] Final sticker metadata:', result)
+      debugLog('🔍 [Sticker Debug] Final sticker metadata:', result)
       return result
     } catch (error) {
       console.error('❌ [Sticker Debug] Failed to parse sticker metadata:', error)
@@ -141,19 +156,17 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    * Returns the URL at the current index in the CDN fallback chain
    */
   const stickerImageUrl = computed(() => {
-    console.log('🔍 [Sticker Debug] Computing sticker image URL...')
-    console.log('🔍 [Sticker Debug] stickerMetadata.value:', stickerMetadata.value)
-
     if (!stickerUrls.value.length) {
-      console.log('🔍 [Sticker Debug] No sticker URLs available')
       return null
     }
 
     const currentUrl = stickerUrls.value[currentStickerUrlIndex.value]
-    console.log('🔍 [Sticker Debug] Current URL index:', currentStickerUrlIndex.value)
-    console.log('🔍 [Sticker Debug] Generated sticker URL:', currentUrl)
-    console.log('🔍 [Sticker Debug] PackageId:', stickerMetadata.value?.packageId)
-    console.log('🔍 [Sticker Debug] StickerId:', stickerMetadata.value?.stickerId)
+
+    debugLog('🔍 [Sticker Debug] Computing sticker image URL...')
+    debugLog('🔍 [Sticker Debug] Current URL index:', currentStickerUrlIndex.value)
+    debugLog('🔍 [Sticker Debug] Generated sticker URL:', currentUrl)
+    debugLog('🔍 [Sticker Debug] PackageId:', stickerMetadata.value?.packageId)
+    debugLog('🔍 [Sticker Debug] StickerId:', stickerMetadata.value?.stickerId)
 
     return currentUrl
   })
@@ -167,7 +180,7 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    */
   const onStickerLoadStart = () => {
     stickerLoading.value = true
-    console.log('🔄 [Sticker Debug] Starting to load sticker...')
+    debugLog('🔄 [Sticker Debug] Starting to load sticker...')
   }
 
   /**
@@ -180,21 +193,20 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    */
   const onStickerError = () => {
     const currentUrl = stickerUrls.value[currentStickerUrlIndex.value]
-    console.warn('❌ [Sticker Debug] Failed to load sticker from URL:', currentUrl)
-    console.warn('❌ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
 
     // 嘗試下一個 CDN 源
     if (currentStickerUrlIndex.value < stickerUrls.value.length - 1) {
+      debugLog('❌ [Sticker Debug] Failed to load from URL:', currentUrl)
+      debugLog('🔄 [Sticker Debug] Trying fallback URL index:', currentStickerUrlIndex.value + 1)
+
       currentStickerUrlIndex.value++
-      console.log('🔄 [Sticker Debug] Trying fallback URL index:', currentStickerUrlIndex.value)
-      console.log('🔄 [Sticker Debug] Next URL:', stickerUrls.value[currentStickerUrlIndex.value])
 
       // 重新觸發載入（透過重設 key 強制重新渲染）
       nextTick(() => {
         stickerLoading.value = true
       })
     } else {
-      // 所有 URL 都失敗了
+      // 所有 URL 都失敗了 - 这是真实错误，保留 console.error
       console.error('💥 [Sticker Debug] All CDN sources failed for sticker:', stickerMetadata.value?.stickerId)
       stickerLoadError.value = true
       stickerLoading.value = false
@@ -207,9 +219,9 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    * Clears error and loading states, logs success
    */
   const onStickerLoad = () => {
-    console.log('✅ [Sticker Debug] Sticker loaded successfully from URL index:', currentStickerUrlIndex.value)
-    console.log('✅ [Sticker Debug] Loaded URL:', stickerImageUrl.value)
-    console.log('✅ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
+    debugLog('✅ [Sticker Debug] Sticker loaded successfully from URL index:', currentStickerUrlIndex.value)
+    debugLog('✅ [Sticker Debug] Loaded URL:', stickerImageUrl.value)
+    debugLog('✅ [Sticker Debug] Sticker ID:', stickerMetadata.value?.stickerId)
 
     stickerLoadError.value = false
     stickerLoading.value = false

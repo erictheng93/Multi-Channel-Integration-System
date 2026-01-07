@@ -9,6 +9,48 @@ import type { DbUser } from '@/types';
  * JWT 認證工具函數
  */
 
+/**
+ * UTF-8 安全的 Base64 URL 編碼
+ * 使用 TextEncoder 支持所有 Unicode 字符（包括中文、emoji 等）
+ * 符合 RFC 7519 (JWT) 標準
+ */
+function base64UrlEncode(str: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  // 將 Uint8Array 轉為二進制字符串
+  const binaryString = String.fromCharCode(...data);
+  // Base64 編碼並轉換為 URL 安全格式
+  return btoa(binaryString)
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+/**
+ * UTF-8 安全的 Base64 URL 解碼
+ * 使用 TextDecoder 支持所有 Unicode 字符
+ */
+function base64UrlDecode(str: string): string {
+  // 將 URL 安全格式轉回標準 Base64
+  const base64 = str
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(str.length + (4 - str.length % 4) % 4, '=');
+
+  // Base64 解碼為二進制字符串
+  const binaryString = atob(base64);
+
+  // 轉為 Uint8Array
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // UTF-8 解碼
+  const decoder = new TextDecoder();
+  return decoder.decode(bytes);
+}
+
 // JWT 簽名和驗證
 export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: string, expiresIn: number = 24 * 60 * 60): Promise<string> {
   const header = {
@@ -23,11 +65,13 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
     exp: now + expiresIn
   };
 
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const payloadB64 = btoa(JSON.stringify(jwtPayload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  // ✅ 使用 UTF-8 安全的編碼函數
+  const headerB64 = base64UrlEncode(JSON.stringify(header));
+  const payloadB64 = base64UrlEncode(JSON.stringify(jwtPayload));
 
   const data = `${headerB64}.${payloadB64}`;
+
+  const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
     encoder.encode(secret),
@@ -37,6 +81,8 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
   );
 
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+
+  // ✅ 使用安全的二進制數據編碼
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
@@ -67,20 +113,20 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
       ['verify']
     );
 
-    const signature = Uint8Array.from(
-      atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/').padEnd(signatureB64.length + (4 - signatureB64.length % 4) % 4, '=')),
-      c => c.charCodeAt(0)
-    );
+    // ✅ 解碼簽名（二進制數據）
+    const signatureBase64 = signatureB64
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(signatureB64.length + (4 - signatureB64.length % 4) % 4, '=');
+    const signature = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0));
 
     const isValid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(data));
     if (!isValid) {
       throw new Error('Invalid JWT signature');
     }
 
-    // 解析 payload
-    const payload = JSON.parse(
-      atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/').padEnd(payloadB64.length + (4 - payloadB64.length % 4) % 4, '='))
-    );
+    // ✅ 使用 UTF-8 安全的解碼函數解析 payload
+    const payload = JSON.parse(base64UrlDecode(payloadB64));
 
     // 檢查過期時間
     const now = Math.floor(Date.now() / 1000);

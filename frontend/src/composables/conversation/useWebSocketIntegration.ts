@@ -261,10 +261,13 @@ export function useWebSocketIntegration(
 
   /**
    * 新消息數量
+   * 添加双重保护避免 undefined 导致的 Race Condition
    */
   const newMessageCount = computed(() => {
     const conn = unifiedConnection.value
-    return conn ? ((conn.messageCount as unknown) as Ref<number>).value : 0
+    if (!conn || !conn.messageCount) return 0
+    const count = ((conn.messageCount as unknown) as Ref<number>).value
+    return count ?? 0  // 双重保护：确保返回值永远是数字
   })
 
   // ===== 返回接口 =====
