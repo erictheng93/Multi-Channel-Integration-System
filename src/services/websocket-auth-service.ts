@@ -8,6 +8,31 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { conversations } from '../db/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
 
+/**
+ * UTF-8 安全的 Base64 編碼
+ * 使用 TextEncoder 支持所有 Unicode 字符
+ */
+function base64Encode(str: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const binaryString = String.fromCharCode(...data);
+  return btoa(binaryString);
+}
+
+/**
+ * UTF-8 安全的 Base64 解碼
+ * 使用 TextDecoder 支持所有 Unicode 字符
+ */
+function base64Decode(str: string): string {
+  const binaryString = atob(str);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  const decoder = new TextDecoder();
+  return decoder.decode(bytes);
+}
+
 export interface WebSocketAuthChallenge {
   challengeId: string;
   expiresAt: number;
@@ -159,8 +184,8 @@ export class WebSocketAuthService {
       exp: Math.floor(Date.now() / 1000) + 60 // 1 minute
     };
 
-    // Create a simple base64 encoded payload for URL safety
-    return btoa(JSON.stringify(payload));
+    // ✅ 使用 UTF-8 安全的編碼函數
+    return base64Encode(JSON.stringify(payload));
   }
 
   /**
@@ -172,7 +197,8 @@ export class WebSocketAuthService {
     challengeId?: string;
   }> {
     try {
-      const payload = JSON.parse(atob(token));
+      // ✅ 使用 UTF-8 安全的解碼函數
+      const payload = JSON.parse(base64Decode(token));
 
       if (payload.exp < Math.floor(Date.now() / 1000)) {
         return { isValid: false };
