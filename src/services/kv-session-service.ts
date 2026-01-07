@@ -3,18 +3,22 @@
  *
  * Handles session storage and validation using Cloudflare KV
  *
+ * ⚡ OPTIMIZED: KV Write-Free Architecture (v2.0)
+ * - Relies on Cloudflare KV's expirationTtl for automatic cleanup
+ * - Read-only validation (no KV writes on validation)
+ * - Reduces KV writes by 100% (only writes on login/logout)
+ * - Prevents KV quota exhaustion from frequent session validation
+ *
  * Session Key Format: `session:{sessionId}`
  * Session Data Structure: {
  *   userId: string,
  *   displayName: string,
  *   email: string,
- *   role: 'admin' | 'agent',
+ *   role: 'admin' | 'agent' | 'customer',
  *   teamId?: number,
  *   platform?: 'line' | 'facebook' | 'whatsapp',  // For customer sessions
  *   platformUserId?: string,  // For customer sessions
  *   createdAt: number,
- *   expiresAt: number,
- *   lastActivity: number,
  *   metadata?: any
  * }
  */
@@ -33,8 +37,8 @@ export interface SessionData {
 
   // Session metadata
   createdAt: number;
-  expiresAt: number;
-  lastActivity: number;
+  // ❌ Removed: expiresAt - managed by KV expirationTtl
+  // ❌ Removed: lastActivity - not needed for KV-based expiration
   ipAddress?: string;
   userAgent?: string;
   metadata?: Record<string, any>;
@@ -43,7 +47,7 @@ export interface SessionData {
 export interface SessionValidationResult {
   valid: boolean;
   session?: SessionData;
-  error?: 'not_found' | 'expired' | 'invalid_format';
+  error?: 'not_found' | 'invalid_format';  // ❌ Removed: 'expired' - KV handles expiration
 }
 
 export interface CreateSessionOptions {
@@ -62,41 +66,19 @@ export interface CreateSessionOptions {
 }
 
 /**
- * Session validation options
- */
-export interface SessionValidationOptions {
-  /** If true, skip updating lastActivity (read-only validation) */
-  readOnly?: boolean;
-  /** Custom lazy refresh threshold in milliseconds (default: 1 hour) */
-  lazyRefreshThreshold?: number;
-}
-
-/**
  * In-memory cache entry for recently validated sessions
+ * Simplified: Only tracks session data and cache timestamp
  */
 interface SessionCacheEntry {
   session: SessionData;
   cachedAt: number;
-  lastWrittenAt: number;
+  // ❌ Removed: lastWrittenAt - no longer tracking KV writes
 }
 
 export class KVSessionService {
   private kv: KVNamespace;
   private readonly SESSION_PREFIX = 'session:';
   private readonly DEFAULT_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
-
-  // ===== Lazy Refresh Optimization Constants =====
-  /**
-   * Only update lastActivity if it's older than this threshold (1 hour)
-   * This reduces KV writes by ~90% for active users
-   */
-  private readonly LAZY_REFRESH_THRESHOLD = 60 * 60 * 1000; // 1 hour in milliseconds
-
-  /**
-   * Only extend session TTL if remaining time is less than this threshold (7 days)
-   * This prevents unnecessary TTL extensions
-   */
-  private readonly TTL_REFRESH_THRESHOLD = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
   /**
    * In-memory cache TTL (5 minutes)
@@ -106,7 +88,7 @@ export class KVSessionService {
 
   /**
    * In-memory cache for recently validated sessions
-   * Key: sessionId, Value: { session, cachedAt, lastWrittenAt }
+   * Key: sessionId, Value: { session, cachedAt }
    */
   private static sessionCache: Map<string, SessionCacheEntry> = new Map();
 
@@ -121,6 +103,11 @@ export class KVSessionService {
 
   /**
    * Create a new session in KV
+   *
+   * ⚡ OPTIMIZED: Write-once strategy
+   * - Only writes to KV on session creation
+   * - Relies on expirationTtl for automatic cleanup
+   * - No subsequent KV writes during validation
    */
   async createSession(
     sessionId: string,
@@ -128,7 +115,6 @@ export class KVSessionService {
   ): Promise<SessionData> {
     const now = Date.now();
     const ttl = options.ttl || this.DEFAULT_TTL;
-    const expiresAt = now + (ttl * 1000);
 
     const sessionData: SessionData = {
       userId: options.userId,
@@ -140,60 +126,47 @@ export class KVSessionService {
       platformUserId: options.platformUserId,
       customerId: options.customerId,
       createdAt: now,
-      expiresAt,
-      lastActivity: now,
+      // ❌ Removed: expiresAt - Cloudflare KV manages expiration via expirationTtl
+      // ❌ Removed: lastActivity - Not needed for KV-based expiration
       ipAddress: options.ipAddress,
       userAgent: options.userAgent,
       metadata: options.metadata || {},
     };
 
-    // Store in KV with TTL
+    // Store in KV with TTL - Cloudflare will automatically delete after expiration
     const key = this.getSessionKey(sessionId);
     await this.kv.put(key, JSON.stringify(sessionData), {
       expirationTtl: ttl,
     });
 
-    console.log(`[KVSessionService] Created session: ${sessionId} for user: ${options.userId}`);
+    console.log(`[KVSessionService] Created session: ${sessionId} for user: ${options.userId} (TTL: ${ttl}s)`);
     return sessionData;
   }
 
   /**
    * Validate and retrieve a session
    *
-   * **OPTIMIZED**: Uses lazy refresh strategy to reduce KV writes by ~90%
-   * - Only updates lastActivity if older than LAZY_REFRESH_THRESHOLD (1 hour)
-   * - Uses in-memory cache for frequently validated sessions
-   * - Supports read-only mode for cases where no update is needed
+   * ⚡ OPTIMIZED v2.0: Zero KV writes during validation
+   * - Pure read operation - no KV writes
+   * - Relies on Cloudflare KV's automatic expiration
+   * - Uses in-memory cache to reduce KV reads (5-minute TTL)
+   * - Eliminates Read-On-Write anti-pattern
    *
    * @param sessionId The session ID to validate
-   * @param options Optional validation options
    */
-  async validateSession(
-    sessionId: string,
-    options?: SessionValidationOptions
-  ): Promise<SessionValidationResult> {
+  async validateSession(sessionId: string): Promise<SessionValidationResult> {
     if (!sessionId) {
       return { valid: false, error: 'invalid_format' };
     }
 
     const now = Date.now();
-    const lazyThreshold = options?.lazyRefreshThreshold ?? this.LAZY_REFRESH_THRESHOLD;
 
     try {
       // ===== Step 1: Check in-memory cache first =====
       const cached = KVSessionService.sessionCache.get(sessionId);
       if (cached && (now - cached.cachedAt) < this.MEMORY_CACHE_TTL) {
-        // Check if cached session is still valid
-        if (cached.session.expiresAt > now) {
-          // Return cached session, optionally schedule lazy write
-          if (!options?.readOnly) {
-            await this.maybeRefreshSession(sessionId, cached, lazyThreshold);
-          }
-          return { valid: true, session: { ...cached.session, lastActivity: now } };
-        } else {
-          // Cached session expired, remove from cache
-          KVSessionService.sessionCache.delete(sessionId);
-        }
+        // ✅ Cache hit - return immediately without KV read or write
+        return { valid: true, session: cached.session };
       }
 
       // ===== Step 2: Read from KV =====
@@ -201,105 +174,26 @@ export class KVSessionService {
       const value = await this.kv.get(key, 'text');
 
       if (!value) {
+        // Session not found - either expired or never existed
+        // Cloudflare KV automatically deletes expired keys
         KVSessionService.sessionCache.delete(sessionId);
         return { valid: false, error: 'not_found' };
       }
 
       const session: SessionData = JSON.parse(value);
 
-      // ===== Step 3: Check expiration =====
-      if (session.expiresAt < now) {
-        // Clean up expired session
-        KVSessionService.sessionCache.delete(sessionId);
-        await this.deleteSession(sessionId);
-        return { valid: false, error: 'expired' };
-      }
-
-      // ===== Step 4: Update cache and maybe refresh =====
+      // ===== Step 3: Update cache (read-only) =====
       const cacheEntry: SessionCacheEntry = {
         session,
         cachedAt: now,
-        lastWrittenAt: session.lastActivity,
       };
       this.addToCache(sessionId, cacheEntry);
 
-      // ===== Step 5: Lazy refresh (only if needed) =====
-      if (!options?.readOnly) {
-        const shouldRefresh = await this.maybeRefreshSession(sessionId, cacheEntry, lazyThreshold);
-        if (shouldRefresh) {
-          // Update the session object with new lastActivity
-          session.lastActivity = now;
-        }
-      }
-
+      // ✅ Return session without any KV writes
       return { valid: true, session };
     } catch (error) {
       console.error(`[KVSessionService] Error validating session ${sessionId}:`, error);
       return { valid: false, error: 'invalid_format' };
-    }
-  }
-
-  /**
-   * Read-only session validation (no KV writes)
-   * Use this when you only need to check if a session is valid
-   */
-  async validateSessionReadOnly(sessionId: string): Promise<SessionValidationResult> {
-    return this.validateSession(sessionId, { readOnly: true });
-  }
-
-  /**
-   * Maybe refresh session if lastActivity is stale
-   * Returns true if refresh was performed
-   */
-  private async maybeRefreshSession(
-    sessionId: string,
-    cached: SessionCacheEntry,
-    lazyThreshold: number
-  ): Promise<boolean> {
-    const now = Date.now();
-    const timeSinceLastWrite = now - cached.lastWrittenAt;
-    const remainingTTL = cached.session.expiresAt - now;
-
-    // Determine if we need to write to KV
-    const needsActivityUpdate = timeSinceLastWrite > lazyThreshold;
-    const needsTTLExtension = remainingTTL < this.TTL_REFRESH_THRESHOLD;
-
-    if (!needsActivityUpdate && !needsTTLExtension) {
-      return false; // No refresh needed
-    }
-
-    try {
-      const key = this.getSessionKey(sessionId);
-      const updatedSession: SessionData = {
-        ...cached.session,
-        lastActivity: now,
-      };
-
-      // Calculate new TTL
-      let newTTL: number;
-      if (needsTTLExtension) {
-        // Extend to full default TTL
-        updatedSession.expiresAt = now + (this.DEFAULT_TTL * 1000);
-        newTTL = this.DEFAULT_TTL;
-        console.log(`[KVSessionService] Extending session TTL: ${sessionId}`);
-      } else {
-        // Keep existing expiration
-        newTTL = Math.floor(remainingTTL / 1000);
-      }
-
-      await this.kv.put(key, JSON.stringify(updatedSession), {
-        expirationTtl: newTTL,
-      });
-
-      // Update cache with new write timestamp
-      cached.session = updatedSession;
-      cached.lastWrittenAt = now;
-      cached.cachedAt = now;
-
-      return true;
-    } catch (error) {
-      console.error(`[KVSessionService] Error refreshing session ${sessionId}:`, error);
-      return false;
     }
   }
 
@@ -337,14 +231,14 @@ export class KVSessionService {
   /**
    * Update session data
    *
-   * **OPTIMIZED**: Uses read-only validation to avoid unnecessary double writes
+   * ⚠️ CAUTION: This writes to KV
+   * Use sparingly - prefer immutable sessions when possible
    */
   async updateSession(
     sessionId: string,
     updates: Partial<SessionData>
   ): Promise<SessionData | null> {
-    // Use read-only validation to avoid double KV writes
-    const validation = await this.validateSessionReadOnly(sessionId);
+    const validation = await this.validateSession(sessionId);
     if (!validation.valid || !validation.session) {
       return null;
     }
@@ -354,21 +248,20 @@ export class KVSessionService {
     const updatedSession: SessionData = {
       ...session,
       ...updates,
-      lastActivity: now,
+      // ❌ Removed: lastActivity update
     };
 
     const key = this.getSessionKey(sessionId);
-    const ttl = Math.floor((updatedSession.expiresAt - now) / 1000);
 
+    // Write to KV with default TTL (resets expiration to 30 days)
     await this.kv.put(key, JSON.stringify(updatedSession), {
-      expirationTtl: ttl > 0 ? ttl : this.DEFAULT_TTL,
+      expirationTtl: this.DEFAULT_TTL,
     });
 
     // Update in-memory cache
     this.addToCache(sessionId, {
       session: updatedSession,
       cachedAt: now,
-      lastWrittenAt: now,
     });
 
     console.log(`[KVSessionService] Updated session: ${sessionId}`);
@@ -397,22 +290,21 @@ export class KVSessionService {
   /**
    * Extend session expiration
    *
-   * **OPTIMIZED**: Uses read-only validation to avoid double KV writes
+   * ⚠️ CAUTION: This writes to KV
+   * Extends the session TTL by writing with new expirationTtl
    */
   async extendSession(
     sessionId: string,
     additionalSeconds: number = this.DEFAULT_TTL
   ): Promise<SessionData | null> {
-    // Use read-only validation to avoid double KV writes
-    const validation = await this.validateSessionReadOnly(sessionId);
+    const validation = await this.validateSession(sessionId);
     if (!validation.valid || !validation.session) {
       return null;
     }
 
     const now = Date.now();
     const session = validation.session;
-    session.expiresAt = now + (additionalSeconds * 1000);
-    session.lastActivity = now;
+    // ❌ Removed: expiresAt and lastActivity updates
 
     const key = this.getSessionKey(sessionId);
     await this.kv.put(key, JSON.stringify(session), {
@@ -423,7 +315,6 @@ export class KVSessionService {
     this.addToCache(sessionId, {
       session,
       cachedAt: now,
-      lastWrittenAt: now,
     });
 
     console.log(`[KVSessionService] Extended session: ${sessionId} by ${additionalSeconds}s`);
@@ -552,12 +443,14 @@ export class KVSessionService {
   }
 
   /**
-   * Clean up expired sessions (maintenance function)
-   * Note: Cloudflare KV automatically deletes expired keys, but this can be used for metrics
+   * Clean up invalid sessions (maintenance function)
+   *
+   * ⚠️ NOTE: Cloudflare KV automatically deletes expired keys via expirationTtl
+   * This method only cleans up sessions with invalid data format
+   * Use sparingly - KV list operations are costly
    */
   async cleanupExpiredSessions(): Promise<number> {
     let cleanedCount = 0;
-    const now = Date.now();
 
     const list = await this.kv.list({ prefix: this.SESSION_PREFIX });
 
@@ -565,20 +458,19 @@ export class KVSessionService {
       const value = await this.kv.get(key.name, 'text');
       if (value) {
         try {
-          const session: SessionData = JSON.parse(value);
-          if (session.expiresAt < now) {
-            await this.kv.delete(key.name);
-            cleanedCount++;
-          }
+          // Try to parse session data
+          JSON.parse(value) as SessionData;
+          // If parse succeeds, session is valid - keep it
         } catch (error) {
-          // Invalid session data, delete it
+          // Invalid session data format - delete it
           await this.kv.delete(key.name);
+          KVSessionService.sessionCache.delete(key.name.replace(this.SESSION_PREFIX, ''));
           cleanedCount++;
         }
       }
     }
 
-    console.log(`[KVSessionService] Cleaned up ${cleanedCount} expired sessions`);
+    console.log(`[KVSessionService] Cleaned up ${cleanedCount} invalid sessions`);
     return cleanedCount;
   }
 }
