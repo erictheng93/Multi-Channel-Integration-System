@@ -52,6 +52,7 @@
           v-for="member in members"
           :key="member.id"
           :member="member"
+          :all-teams="allTeams"
           :current-user-id="currentUserId"
           :loading="loading"
           @update-role="(memberId: string, role: string) => emit('update-role', memberId, role)"
@@ -65,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TeamMember } from '@/types'
+import type { TeamMember, Team } from '@/types'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
@@ -75,6 +76,7 @@ import PlusIcon from '@/components/icons/PlusIcon.vue'
 
 interface Props {
   members: TeamMember[]
+  allTeams: Team[]
   loading: boolean
   currentUserId?: string
 }

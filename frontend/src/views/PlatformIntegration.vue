@@ -248,140 +248,120 @@
       </div>
 
       <!-- Platform Settings Modal -->
-      <div
-        v-if="showSettingsModal"
-        class="modal-overlay"
-        @click="closeSettingsModal"
+      <Modal
+        :show="showSettingsModal"
+        :title="`${currentPlatform === 'line' ? 'LINE' : 'Facebook'} 設定`"
+        size="md"
+        @close="closeSettingsModal"
       >
-        <div
-          class="settings-modal"
-          @click.stop
-        >
-          <div class="modal-header">
-            <h3>{{ currentPlatform === 'line' ? 'LINE' : 'Facebook' }} 設定</h3>
-            <button
-              class="modal-close"
-              @click="closeSettingsModal"
-            >
-              <XIcon />
-            </button>
-          </div>
-
-          <div class="modal-content">
-            <div
-              v-if="currentPlatform === 'line'"
-              class="platform-config"
-            >
-              <div class="config-group">
-                <label class="config-label">Channel ID</label>
-                <input
-                  v-model="lineConfig.channelId"
-                  type="text"
-                  class="config-input"
-                  placeholder="輸入 LINE Channel ID"
-                >
-              </div>
-
-              <div class="config-group">
-                <label class="config-label">Channel Secret</label>
-                <input
-                  v-model="lineConfig.channelSecret"
-                  type="password"
-                  class="config-input"
-                  placeholder="輸入 LINE Channel Secret"
-                >
-              </div>
-
-              <div class="config-group">
-                <label class="config-label">Access Token</label>
-                <input
-                  v-model="lineConfig.accessToken"
-                  type="password"
-                  class="config-input"
-                  placeholder="輸入 LINE Access Token"
-                >
-              </div>
+        <div class="platform-config">
+          <div v-if="currentPlatform === 'line'">
+            <div class="config-group">
+              <label class="config-label">Channel ID</label>
+              <input
+                v-model="lineConfig.channelId"
+                type="text"
+                class="config-input"
+                placeholder="輸入 LINE Channel ID"
+              >
             </div>
 
-            <div
-              v-else
-              class="platform-config"
-            >
-              <div class="config-group">
-                <label class="config-label">App ID</label>
-                <input
-                  v-model="facebookConfig.appId"
-                  type="text"
-                  class="config-input"
-                  placeholder="輸入 Facebook App ID"
-                >
-              </div>
+            <div class="config-group">
+              <label class="config-label">Channel Secret</label>
+              <input
+                v-model="lineConfig.channelSecret"
+                type="password"
+                class="config-input"
+                placeholder="輸入 LINE Channel Secret"
+              >
+            </div>
 
-              <div class="config-group">
-                <label class="config-label">App Secret</label>
-                <input
-                  v-model="facebookConfig.appSecret"
-                  type="password"
-                  class="config-input"
-                  placeholder="輸入 Facebook App Secret"
-                >
-              </div>
-
-              <div class="config-group">
-                <label class="config-label">Page ID</label>
-                <input
-                  v-model="facebookConfig.pageId"
-                  type="text"
-                  class="config-input"
-                  placeholder="輸入 Facebook Page ID"
-                >
-              </div>
-
-              <div class="config-group">
-                <label class="config-label">Page Access Token</label>
-                <input
-                  v-model="facebookConfig.pageToken"
-                  type="password"
-                  class="config-input"
-                  placeholder="輸入 Page Access Token"
-                >
-              </div>
+            <div class="config-group">
+              <label class="config-label">Access Token</label>
+              <input
+                v-model="lineConfig.accessToken"
+                type="password"
+                class="config-input"
+                placeholder="輸入 LINE Access Token"
+              >
             </div>
           </div>
 
-          <div class="modal-actions">
-            <button
-              class="btn btn-secondary"
-              @click="closeSettingsModal"
-            >
-              取消
-            </button>
-            <button
-              :disabled="testingConfig"
-              class="btn btn-outline"
-              @click="testPlatformConfig"
-            >
-              <HamsterLoader
-                v-if="testingConfig"
-                message="測試中..."
-              />
-              <TestIcon v-else />
-              測試設定
-            </button>
-            <button
-              :disabled="savingConfig"
-              class="btn btn-primary"
-              @click="savePlatformConfig"
-            >
-              <HamsterLoader
-                v-if="savingConfig"
-                message="保存中..."
-              />
-              儲存設定
-            </button>
+          <div v-else>
+            <div class="config-group">
+              <label class="config-label">App ID</label>
+              <input
+                v-model="facebookConfig.appId"
+                type="text"
+                class="config-input"
+                placeholder="輸入 Facebook App ID"
+              >
+            </div>
+
+            <div class="config-group">
+              <label class="config-label">App Secret</label>
+              <input
+                v-model="facebookConfig.appSecret"
+                type="password"
+                class="config-input"
+                placeholder="輸入 Facebook App Secret"
+              >
+            </div>
+
+            <div class="config-group">
+              <label class="config-label">Page ID</label>
+              <input
+                v-model="facebookConfig.pageId"
+                type="text"
+                class="config-input"
+                placeholder="輸入 Facebook Page ID"
+              >
+            </div>
+
+            <div class="config-group">
+              <label class="config-label">Page Access Token</label>
+              <input
+                v-model="facebookConfig.pageToken"
+                type="password"
+                class="config-input"
+                placeholder="輸入 Page Access Token"
+              >
+            </div>
           </div>
         </div>
-      </div>
+
+        <template #footer>
+          <button
+            class="btn btn-secondary"
+            @click="closeSettingsModal"
+          >
+            取消
+          </button>
+          <button
+            :disabled="testingConfig"
+            class="btn btn-outline"
+            @click="testPlatformConfig"
+          >
+            <HamsterLoader
+              v-if="testingConfig"
+              message="測試中..."
+            />
+            <TestIcon v-else />
+            測試設定
+          </button>
+          <button
+            :disabled="savingConfig"
+            class="btn btn-primary"
+            @click="savePlatformConfig"
+          >
+            <HamsterLoader
+              v-if="savingConfig"
+              message="保存中..."
+            />
+            儲存設定
+          </button>
+        </template>
+      </Modal>
     </div>
   </AppLayout>
 </template>
@@ -392,6 +372,7 @@ import { systemApi } from '@/api/system'
 import { useToast } from '@/composables/useToast'
 import { getBackendUrl } from '@/config/runtime'
 import AppLayout from '@/components/ui/AppLayout.vue'
+import Modal from '@/components/ui/Modal.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import PlatformStatus from '@/components/platform/PlatformStatus.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
@@ -404,7 +385,6 @@ import {
   ChatIcon,
   ClockIcon,
   CheckCircleIcon,
-  XIcon,
   TestIcon
 } from '@/components/icons'
 
@@ -941,72 +921,7 @@ onMounted(() => {
   background-color: #1877F2;
 }
 
-/* Settings Modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.settings-modal {
-  background: white;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
-  width: 90vw;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-6);
-  border-bottom: 1px solid var(--gray-200);
-}
-
-.modal-header h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin: 0;
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--gray-500);
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.modal-close:hover {
-  background-color: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.modal-content {
-  flex: 1;
-  padding: var(--space-6);
-  overflow-y: auto;
-}
-
+/* Platform Config Styles (保留業務樣式) */
 .platform-config {
   display: flex;
   flex-direction: column;
@@ -1036,21 +951,6 @@ onMounted(() => {
   outline: none;
   border-color: var(--primary-500);
   box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  border-top: 1px solid var(--gray-200);
-}
-
-.modal-actions .btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 /* Responsive */

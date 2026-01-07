@@ -61,8 +61,8 @@
       <!-- Create/Edit Modal -->
       <TagFormModal
         v-model:visible="showFormModal"
+        v-model:form-data="formData"
         :is-edit="showEditModal"
-        :form-data="formData"
         :predefined-colors="predefinedColors"
         @save="actions.saveTag"
       />

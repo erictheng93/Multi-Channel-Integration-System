@@ -8,14 +8,25 @@
 -->
 <template>
   <div
-    class="sync-status-indicator"
-    :class="`status-${status}`"
+    class="flex items-center gap-2 py-2 px-3 border rounded-md text-xs font-medium whitespace-nowrap"
+    :class="{
+      'bg-green-50 border-green-200 text-green-700': status === 'connected',
+      'bg-yellow-50 border-yellow-200 text-yellow-700': status === 'polling',
+      'bg-blue-50 border-blue-200 text-blue-700': status === 'connecting',
+      'bg-red-50 border-red-200 text-red-700': status === 'error'
+    }"
   >
     <div
-      class="sync-dot"
-      :class="{ 'syncing': isSyncing }"
+      class="sync-dot flex-shrink-0"
+      :class="{
+        'bg-green-500': status === 'connected' && !isSyncing,
+        'bg-yellow-500': status === 'polling' && !isSyncing,
+        'bg-blue-500': status === 'connecting' || isSyncing,
+        'bg-red-500': status === 'error' && !isSyncing,
+        'syncing': isSyncing || status === 'connecting'
+      }"
     />
-    <span class="sync-text">
+    <span>
       <template v-if="status === 'connected'">SSE連線</template>
       <template v-else-if="status === 'polling'">輪詢模式</template>
       <template v-else-if="status === 'connecting'">連線中</template>
@@ -42,65 +53,15 @@ withDefaults(defineProps<SyncStatusIndicatorProps>(), {
 </script>
 
 <style scoped>
-.sync-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.sync-status-indicator.status-connected {
-  background-color: var(--green-50);
-  border-color: var(--green-200);
-  color: var(--green-700);
-}
-
-.sync-status-indicator.status-polling {
-  background-color: var(--yellow-50);
-  border-color: var(--yellow-200);
-  color: var(--yellow-700);
-}
-
-.sync-status-indicator.status-connecting {
-  background-color: var(--blue-50);
-  border-color: var(--blue-200);
-  color: var(--blue-700);
-}
-
-.sync-status-indicator.status-error {
-  background-color: var(--red-50);
-  border-color: var(--red-200);
-  color: var(--red-700);
-}
-
+/* Sync dot - Size and animation */
 .sync-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  flex-shrink: 0;
 }
 
-.status-connected .sync-dot {
-  background-color: var(--green-500);
-}
-
-.status-polling .sync-dot {
-  background-color: var(--yellow-500);
-}
-
-.status-connecting .sync-dot,
 .sync-dot.syncing {
-  background-color: var(--blue-500);
   animation: pulse 1.5s ease-in-out infinite;
-}
-
-.status-error .sync-dot {
-  background-color: var(--red-500);
 }
 
 @keyframes pulse {

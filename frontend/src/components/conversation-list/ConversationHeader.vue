@@ -1,16 +1,16 @@
 <template>
-  <div class="conversation-header">
-    <div class="header-content">
-      <div class="header-info">
-        <h1 class="page-title">
+  <div class="bg-white border-b border-gray-200 p-6">
+    <div class="flex items-start justify-between md:flex-col md:gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 m-0 mb-2 md:text-2xl">
           對話管理
         </h1>
-        <p class="page-subtitle">
+        <p class="text-base text-gray-600 m-0">
           管理所有客戶對話，快速回應客戶需求
         </p>
       </div>
 
-      <div class="header-actions">
+      <div class="flex items-center gap-3 md:w-full">
         <!-- 智能快取狀態指示器 -->
         <CacheStatusIndicator
           v-if="cacheHitRate > 0"
@@ -66,50 +66,5 @@ function onRefresh() {
 </script>
 
 <style scoped>
-.conversation-header {
-  background-color: white;
-  border-bottom: 1px solid var(--gray-200);
-  padding: var(--space-6);
-}
-
-.header-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.page-title {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-2) 0;
-}
-
-.page-subtitle {
-  font-size: 1rem;
-  color: var(--gray-600);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .header-actions {
-    width: 100%;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-}
+/* All styles converted to Tailwind utilities */
 </style>

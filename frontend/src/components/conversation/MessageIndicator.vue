@@ -1,14 +1,14 @@
 <template>
-  <div class="message-indicator">
+  <div class="flex flex-col p-3 bg-white/70 backdrop-blur-md rounded-lg border border-gray-200/60 text-sm md:p-2 md:text-[0.8125rem]">
     <!-- 消息統計 -->
-    <div class="message-stats">
-      <div class="stat-item">
-        <span class="stat-label">總消息數</span>
-        <span class="stat-value">{{ totalMessages }}</span>
+    <div class="flex gap-4 md:gap-3">
+      <div class="flex flex-col gap-1 flex-1">
+        <span class="text-xs text-gray-500 font-medium md:text-xs">總消息數</span>
+        <span class="text-sm text-gray-700 font-semibold">{{ totalMessages }}</span>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">時間跨度</span>
-        <span class="stat-value">{{ timeSpan }}</span>
+      <div class="flex flex-col gap-1 flex-1">
+        <span class="text-xs text-gray-500 font-medium md:text-xs">時間跨度</span>
+        <span class="text-sm text-gray-700 font-semibold">{{ timeSpan }}</span>
       </div>
     </div>
   </div>
@@ -55,54 +55,5 @@ const timeSpan = computed(() => {
 </script>
 
 <style scoped>
-.message-indicator {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-3);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(226, 232, 240, 0.6);
-  font-size: 0.875rem;
-}
-
-.message-stats {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 1;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  font-weight: 500;
-}
-
-.stat-value {
-  font-size: 0.875rem;
-  color: var(--gray-700);
-  font-weight: 600;
-}
-
-@media (max-width: 768px) {
-  .message-indicator {
-    padding: var(--space-2);
-    font-size: 0.8125rem;
-  }
-  
-  .marker-text,
-  .marker-time {
-    font-size: 0.75rem;
-  }
-  
-  .message-stats {
-    gap: var(--space-3);
-  }
-}
+/* All styles converted to Tailwind utilities */
 </style>

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="conversation-list">
+    <div class="h-full flex flex-col">
       <!-- Header with Actions -->
       <ConversationHeader
         :cache-hit-rate="controller.cache.cacheHitRate.value"
@@ -22,12 +22,12 @@
       />
 
       <!-- Content -->
-      <div class="list-content">
+      <div class="flex-1 overflow-hidden flex flex-col">
         <!-- Skeleton Loading -->
         <SkeletonLoader
           v-if="showSkeleton"
           :count="8"
-          class="skeleton-fade-in"
+          class="animate-fade-in-up"
         />
 
         <!-- Empty State -->
@@ -58,7 +58,7 @@
         <!-- Conversations List with Virtual Scrolling -->
         <div
           v-else
-          class="conversations-container"
+          class="flex-1 p-6 overflow-hidden"
         >
           <SmartVirtualScrollList
             :items="controller.conversations.value"
@@ -89,14 +89,14 @@
             </template>
 
             <template #loading>
-              <div class="virtual-loading">
+              <div class="flex items-center justify-center gap-2 p-6 text-gray-600 text-sm">
                 <HamsterLoader message="刷新中..." />
                 <span>智能載入更多對話中...</span>
               </div>
             </template>
 
             <template #end>
-              <div class="virtual-end">
+              <div class="flex justify-center p-6">
                 <div class="end-stats">
                   <span>✨ 已顯示全部 {{ controller.totalConversations.value }} 個對話</span>
                 </div>
@@ -109,7 +109,7 @@
       <!-- Pagination -->
       <div
         v-if="controller.totalPages.value > 1"
-        class="pagination"
+        class="flex items-center justify-between p-6 bg-white border-t border-gray-200 md:flex-col md:gap-4"
       >
         <button
           :disabled="controller.currentPage.value === 1"
@@ -120,9 +120,9 @@
           上一頁
         </button>
 
-        <div class="page-info">
-          <span class="page-text">第 {{ controller.currentPage.value }} / {{ controller.totalPages.value }} 頁</span>
-          <span class="total-text">共 {{ controller.totalConversations.value }} 個對話</span>
+        <div class="flex flex-col items-center gap-1">
+          <span class="font-semibold text-gray-900">第 {{ controller.currentPage.value }} / {{ controller.totalPages.value }} 頁</span>
+          <span class="text-sm text-gray-600">共 {{ controller.totalConversations.value }} 個對話</span>
         </div>
 
         <button
@@ -243,75 +243,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.conversation-list {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+/* ============================================
+   Complex CSS (Cannot use Tailwind)
+   ============================================ */
 
-.list-content {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.conversations-container {
-  flex: 1;
-  padding: var(--space-6);
-  overflow: hidden;
-}
-
-.skeleton-fade-in {
-  animation: skeleton-appear 0.6s ease-out;
-}
-
-@keyframes skeleton-appear {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-6);
-  background-color: white;
-  border-top: 1px solid var(--gray-200);
-}
-
-.page-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.page-text {
-  font-weight: 600;
-  color: var(--gray-900);
-}
-
-.total-text {
-  font-size: 0.875rem;
-  color: var(--gray-600);
-}
-
-/* Virtual scrolling styles */
+/* Virtual scrolling - exact height calculation */
 .smart-virtual-conversations {
   height: calc(100vh - 300px);
   min-height: 400px;
 }
 
+/* Virtual conversation wrapper - Performance optimizations */
 .virtual-conversation-wrapper {
-  padding: var(--space-2);
-  transition: all 0.2s ease;
+  @apply p-2 transition-all duration-200;
   transform: translateZ(0);
   will-change: transform;
   backface-visibility: hidden;
@@ -322,44 +266,19 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.virtual-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-6);
-  color: var(--gray-600);
-  font-size: 0.875rem;
-}
-
-.virtual-end {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-6);
-}
-
+/* End stats - Gradient background */
 .end-stats {
-  padding: var(--space-3) var(--space-6);
+  @apply py-3 px-6 text-gray-700 rounded-full border border-sky-200 text-sm font-medium;
   background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-  color: var(--gray-700);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--sky-200);
-  font-size: 0.875rem;
-  font-weight: 500;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .pagination {
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-}
+/* ============================================
+   Accessibility
+   ============================================ */
 
 /* Reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  .skeleton-fade-in,
   .virtual-conversation-wrapper {
     animation: none !important;
     transition: none !important;

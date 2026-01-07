@@ -1,106 +1,91 @@
 <template>
-  <div
-    v-if="visible"
-    class="modal-overlay"
+  <Modal
+    :show="visible"
+    title="設定密碼"
+    size="sm"
+    @close="handleClose"
   >
-    <div
-      class="modal"
-      @click.stop
-    >
-      <!-- Header -->
-      <div class="modal-header">
-        <h2>設定密碼</h2>
-        <button
-          class="close-btn"
-          @click="handleClose"
-        >
-          &times;
-        </button>
+    <!-- Form Content -->
+    <form @submit.prevent="handleSubmit">
+      <!-- 成員信息 -->
+      <div
+        v-if="member"
+        class="member-info-section"
+      >
+        <div class="member-avatar">
+          {{ member.name?.charAt(0)?.toUpperCase() || 'U' }}
+        </div>
+        <div class="member-details">
+          <div class="member-name">
+            {{ member.name }}
+          </div>
+          <div class="member-email">
+            {{ member.email }}
+          </div>
+        </div>
       </div>
 
-      <!-- Form -->
-      <form @submit.prevent="handleSubmit">
-        <div class="modal-body">
-          <!-- 成員信息 -->
-          <div
-            v-if="member"
-            class="member-info-section"
-          >
-            <div class="member-avatar">
-              {{ member.name?.charAt(0)?.toUpperCase() || 'U' }}
-            </div>
-            <div class="member-details">
-              <div class="member-name">
-                {{ member.name }}
-              </div>
-              <div class="member-email">
-                {{ member.email }}
-              </div>
-            </div>
-          </div>
+      <!-- 新密碼 -->
+      <div class="form-group">
+        <label for="new-password">
+          新密碼 <span class="required">*</span>
+        </label>
+        <input
+          id="new-password"
+          v-model="form.newPassword"
+          type="password"
+          placeholder="請輸入新密碼（至少 6 個字元）"
+          required
+          minlength="6"
+        >
+        <small class="form-hint">密碼長度至少 6 個字元</small>
+      </div>
 
-          <!-- 新密碼 -->
-          <div class="form-group">
-            <label for="new-password">
-              新密碼 <span class="required">*</span>
-            </label>
-            <input
-              id="new-password"
-              v-model="form.newPassword"
-              type="password"
-              placeholder="請輸入新密碼（至少 6 個字元）"
-              required
-              minlength="6"
-            >
-            <small class="form-hint">密碼長度至少 6 個字元</small>
-          </div>
-
-          <!-- 確認密碼 -->
-          <div class="form-group">
-            <label for="confirm-password">
-              確認密碼 <span class="required">*</span>
-            </label>
-            <input
-              id="confirm-password"
-              v-model="form.confirmPassword"
-              type="password"
-              placeholder="請再次輸入新密碼"
-              required
-              minlength="6"
-            >
-            <div
-              v-if="passwordMismatch"
-              class="error-message"
-            >
-              密碼不一致，請重新輸入
-            </div>
-          </div>
+      <!-- 確認密碼 -->
+      <div class="form-group">
+        <label for="confirm-password">
+          確認密碼 <span class="required">*</span>
+        </label>
+        <input
+          id="confirm-password"
+          v-model="form.confirmPassword"
+          type="password"
+          placeholder="請再次輸入新密碼"
+          required
+          minlength="6"
+        >
+        <div
+          v-if="passwordMismatch"
+          class="error-message"
+        >
+          密碼不一致，請重新輸入
         </div>
+      </div>
+    </form>
 
-        <!-- Actions -->
-        <div class="modal-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="handleClose"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="loading || !isPasswordFormValid"
-          >
-            {{ loading ? '設定中...' : '設定密碼' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <!-- Footer Actions -->
+    <template #footer>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="handleClose"
+      >
+        取消
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        :disabled="loading || !isPasswordFormValid"
+        @click="handleSubmit"
+      >
+        {{ loading ? '設定中...' : '設定密碼' }}
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
- 
+import Modal from '@/components/ui/Modal.vue'
 import type { PasswordResetFormData } from '@/composables/team-management'
 import type { TeamMember } from '@/types'
 
@@ -131,75 +116,6 @@ function handleSubmit() {
 </script>
 
 <style scoped>
-/* Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-/* Modal Container */
-.modal {
-  background: white;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 450px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-/* Modal Header */
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* Modal Body */
-.modal-body {
-  padding: 1.5rem;
-}
-
 /* Member Info Section */
 .member-info-section {
   display: flex;
@@ -297,15 +213,6 @@ function handleSubmit() {
   font-weight: 500;
 }
 
-/* Modal Actions */
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
 /* Buttons */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -340,20 +247,5 @@ function handleSubmit() {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .modal {
-    max-width: 100%;
-    border-radius: 12px 12px 0 0;
-    margin-top: auto;
-  }
-
-  .modal-header,
-  .modal-body,
-  .modal-actions {
-    padding: 1rem;
-  }
 }
 </style>

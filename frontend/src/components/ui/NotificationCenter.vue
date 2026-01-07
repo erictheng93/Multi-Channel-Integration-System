@@ -146,13 +146,6 @@
           </div>
         </div>
       </Transition>
-
-      <!-- 背景遮罩 -->
-      <div
-        v-if="isOpen"
-        class="notification-overlay"
-        @click="close"
-      />
     </Teleport>
   </div>
 </template>
@@ -257,7 +250,7 @@ const calculatePosition = () => {
     position: 'fixed',
     left: `${left}px`,
     top: `${top}px`,
-    zIndex: 1001
+    zIndex: 10000 // 新方案: 提升到最高层级
   }
 }
 
@@ -587,17 +580,6 @@ defineExpose({ open, close, toggle, isOpen })
 .notification-view-all:hover {
   color: var(--primary-700);
   text-decoration: underline;
-}
-
-/* 遮罩 */
-.notification-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  background: transparent;
 }
 
 /* 動畫 */

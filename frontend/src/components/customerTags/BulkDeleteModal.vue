@@ -1,83 +1,74 @@
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
+  <Modal
+    :show="visible"
+    size="md"
+    :show-header="false"
+    @close="$emit('update:visible', false)"
+  >
+    <!-- Warning Content -->
+    <div class="warning-content">
+      <div class="warning-icon">
+        <AlertTriangleIcon />
+      </div>
+      <h2 class="warning-title">
+        確認批量刪除
+      </h2>
+      <p class="warning-text">
+        您確定要刪除 <strong>{{ selectedCount }}</strong> 個標籤嗎？
+      </p>
+      <p class="warning-subtext">
+        此操作無法復原。這些標籤將從所有相關的客戶和對話中移除。
+      </p>
+
+      <!-- Preview of tags being deleted -->
       <div
-        v-if="visible"
-        class="modal-overlay"
-        @click.self="$emit('update:visible', false)"
+        v-if="selectedTags.length > 0"
+        class="tags-preview"
       >
-        <div class="modal-container modal-danger">
-          <header class="modal-header">
-            <h2>確認批量刪除</h2>
-            <button
-              class="modal-close"
-              @click="$emit('update:visible', false)"
-            >
-              <XIcon />
-            </button>
-          </header>
-
-          <div class="modal-body">
-            <div class="warning-icon">
-              <AlertTriangleIcon />
-            </div>
-            <p class="warning-text">
-              您確定要刪除 <strong>{{ selectedCount }}</strong> 個標籤嗎？
-            </p>
-            <p class="warning-subtext">
-              此操作無法復原。這些標籤將從所有相關的客戶和對話中移除。
-            </p>
-
-            <!-- Preview of tags being deleted -->
-            <div
-              v-if="selectedTags.length > 0"
-              class="tags-preview"
-            >
-              <div class="preview-title">
-                將要刪除的標籤：
-              </div>
-              <div class="preview-tags">
-                <span
-                  v-for="tag in previewTags"
-                  :key="tag.id"
-                  class="preview-tag"
-                  :style="{ borderColor: tag.color, color: tag.color }"
-                >
-                  {{ tag.name }}
-                </span>
-                <span
-                  v-if="remainingCount > 0"
-                  class="preview-more"
-                >
-                  及其他 {{ remainingCount }} 個標籤
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <footer class="modal-footer">
-            <button
-              class="btn btn-secondary"
-              @click="$emit('update:visible', false)"
-            >
-              取消
-            </button>
-            <button
-              class="btn btn-danger"
-              @click="$emit('confirm')"
-            >
-              確認刪除全部
-            </button>
-          </footer>
+        <div class="preview-title">
+          將要刪除的標籤：
+        </div>
+        <div class="preview-tags">
+          <span
+            v-for="tag in previewTags"
+            :key="tag.id"
+            class="preview-tag"
+            :style="{ borderColor: tag.color, color: tag.color }"
+          >
+            {{ tag.name }}
+          </span>
+          <span
+            v-if="remainingCount > 0"
+            class="preview-more"
+          >
+            及其他 {{ remainingCount }} 個標籤
+          </span>
         </div>
       </div>
-    </Transition>
-  </Teleport>
+    </div>
+
+    <!-- Footer Actions -->
+    <template #footer>
+      <button
+        class="btn btn-secondary"
+        @click="$emit('update:visible', false)"
+      >
+        取消
+      </button>
+      <button
+        class="btn btn-danger"
+        @click="$emit('confirm')"
+      >
+        確認刪除全部
+      </button>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { XIcon, AlertTriangleIcon } from '@/components/icons'
+import Modal from '@/components/ui/Modal.vue'
+import { AlertTriangleIcon } from '@/components/icons'
 import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
@@ -97,71 +88,9 @@ const remainingCount = computed(() => Math.max(0, props.selectedCount - 5))
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--space-4);
-}
-
-.modal-container {
-  width: 100%;
-  max-width: 500px;
-  background: white;
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-2xl);
-  overflow: hidden;
-}
-
-.modal-danger {
-  border-top: 4px solid var(--red-500);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--gray-200);
-}
-
-.modal-header h2 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--red-700);
-}
-
-.modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: var(--gray-500);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.modal-close:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.modal-body {
-  padding: var(--space-6);
+.warning-content {
   text-align: center;
+  padding: var(--space-2) 0;
 }
 
 .warning-icon {
@@ -179,6 +108,13 @@ const remainingCount = computed(() => Math.max(0, props.selectedCount - 5))
 .warning-icon svg {
   width: 32px;
   height: 32px;
+}
+
+.warning-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-4);
+  color: var(--red-700);
 }
 
 .warning-text {
@@ -244,14 +180,6 @@ const remainingCount = computed(() => Math.max(0, props.selectedCount - 5))
   border-radius: var(--radius-md);
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
-  border-top: 1px solid var(--gray-200);
-}
-
 .btn {
   display: inline-flex;
   align-items: center;
@@ -282,20 +210,5 @@ const remainingCount = computed(() => Math.max(0, props.selectedCount - 5))
 
 .btn-secondary:hover {
   background: var(--gray-200);
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: all 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-container,
-.modal-leave-to .modal-container {
-  transform: scale(0.95) translateY(20px);
 }
 </style>

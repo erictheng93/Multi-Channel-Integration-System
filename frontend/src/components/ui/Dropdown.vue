@@ -66,13 +66,6 @@
         </div>
       </div>
     </Teleport>
-
-    <!-- 背景遮罩 -->
-    <div
-      v-if="isOpen && showOverlay"
-      class="dropdown-overlay"
-      @click="close"
-    />
   </div>
 </template>
 
@@ -85,7 +78,6 @@ interface Props {
   disabled?: boolean
   placement?: 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end' | 'left' | 'right'
   fullWidth?: boolean
-  showOverlay?: boolean
   closeOnClick?: boolean
   offset?: number
 }
@@ -103,7 +95,6 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   placement: 'bottom-start',
   fullWidth: false,
-  showOverlay: false,
   closeOnClick: true,
   offset: 8
 })
@@ -211,7 +202,7 @@ const calculatePosition = () => {
     position: 'fixed',
     left: `${left}px`,
     top: `${top}px`,
-    zIndex: 1000,
+    zIndex: 10000, // 新方案: 提升到最高层级
     minWidth: props.fullWidth ? `${trigger.width}px` : 'auto'
   }
 }
@@ -366,16 +357,6 @@ defineExpose({
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--gray-200);
   background: var(--gray-50);
-}
-
-.dropdown-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 999;
-  background: transparent;
 }
 
 /* 位置相關樣式 */

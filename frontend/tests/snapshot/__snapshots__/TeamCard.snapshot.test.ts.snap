@@ -1,0 +1,85 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TeamCard.vue - Snapshot Tests (Before Refactoring) > should match snapshot - basic card render (closed modal) 1`] = `
+"<div data-v-58b3eafb="" class="team-card">
+  <!-- 主要卡片內容 -->
+  <div data-v-58b3eafb="" class="team-info">
+    <div data-v-58b3eafb="" class="team-avatar">
+      <div data-v-58b3eafb="" class="avatar-placeholder">測</div>
+    </div>
+    <div data-v-58b3eafb="" class="team-details">
+      <h3 data-v-58b3eafb="">測試團隊</h3>
+      <p data-v-58b3eafb="" class="description">這是一個測試團隊的描述</p>
+      <div data-v-58b3eafb="" class="team-meta"><span data-v-58b3eafb="" class="status active">活躍</span><span data-v-58b3eafb="" class="member-count">5 成員</span></div>
+    </div>
+  </div><!-- 操作按鈕區 -->
+  <div data-v-58b3eafb="" class="team-actions"><button data-v-58b3eafb="" class="btn btn-sm btn-warning">停用</button><button data-v-58b3eafb="" class="btn btn-sm btn-secondary"> QR 碼 </button><button data-v-58b3eafb="" class="btn btn-sm btn-danger"> 刪除團隊 </button></div>
+</div>
+<!-- 團隊詳情 Modal -->
+<modal-stub data-v-2590a5c6="" data-v-58b3eafb="" show="false" title="測試團隊 詳細資訊" size="lg" fullscreen="false" closeonoverlay="true" showheader="true" showclosebutton="true" nopadding="false" closebuttonlabel="關閉"></modal-stub>
+<!-- 新增成員 Modal -->
+<add-member-modal-stub data-v-58b3eafb="" form="[object Object]" visible="false" loading="false" showpassword="false"></add-member-modal-stub>"
+`;
+
+exports[`TeamCard.vue - Snapshot Tests (Before Refactoring) > should match snapshot - card with loading state 1`] = `
+"<div data-v-58b3eafb="" class="team-card">
+  <!-- 主要卡片內容 -->
+  <div data-v-58b3eafb="" class="team-info">
+    <div data-v-58b3eafb="" class="team-avatar">
+      <div data-v-58b3eafb="" class="avatar-placeholder">測</div>
+    </div>
+    <div data-v-58b3eafb="" class="team-details">
+      <h3 data-v-58b3eafb="">測試團隊</h3>
+      <p data-v-58b3eafb="" class="description">這是一個測試團隊的描述</p>
+      <div data-v-58b3eafb="" class="team-meta"><span data-v-58b3eafb="" class="status active">活躍</span><span data-v-58b3eafb="" class="member-count">5 成員</span></div>
+    </div>
+  </div><!-- 操作按鈕區 -->
+  <div data-v-58b3eafb="" class="team-actions"><button data-v-58b3eafb="" class="btn btn-sm btn-warning" disabled="">停用</button><button data-v-58b3eafb="" class="btn btn-sm btn-secondary" disabled=""> QR 碼 </button><button data-v-58b3eafb="" class="btn btn-sm btn-danger" disabled=""> 刪除團隊 </button></div>
+</div>
+<!-- 團隊詳情 Modal -->
+<modal-stub data-v-2590a5c6="" data-v-58b3eafb="" show="false" title="測試團隊 詳細資訊" size="lg" fullscreen="false" closeonoverlay="true" showheader="true" showclosebutton="true" nopadding="false" closebuttonlabel="關閉"></modal-stub>
+<!-- 新增成員 Modal -->
+<add-member-modal-stub data-v-58b3eafb="" form="[object Object]" visible="false" loading="false" showpassword="false"></add-member-modal-stub>"
+`;
+
+exports[`TeamCard.vue - Snapshot Tests (Before Refactoring) > should match snapshot - inactive team 1`] = `
+"<div data-v-58b3eafb="" class="team-card">
+  <!-- 主要卡片內容 -->
+  <div data-v-58b3eafb="" class="team-info">
+    <div data-v-58b3eafb="" class="team-avatar">
+      <div data-v-58b3eafb="" class="avatar-placeholder">測</div>
+    </div>
+    <div data-v-58b3eafb="" class="team-details">
+      <h3 data-v-58b3eafb="">測試團隊</h3>
+      <p data-v-58b3eafb="" class="description">這是一個測試團隊的描述</p>
+      <div data-v-58b3eafb="" class="team-meta"><span data-v-58b3eafb="" class="status inactive">停用</span><span data-v-58b3eafb="" class="member-count">5 成員</span></div>
+    </div>
+  </div><!-- 操作按鈕區 -->
+  <div data-v-58b3eafb="" class="team-actions"><button data-v-58b3eafb="" class="btn btn-sm btn-success">啟用</button><button data-v-58b3eafb="" class="btn btn-sm btn-secondary"> QR 碼 </button><button data-v-58b3eafb="" class="btn btn-sm btn-danger"> 刪除團隊 </button></div>
+</div>
+<!-- 團隊詳情 Modal -->
+<modal-stub data-v-2590a5c6="" data-v-58b3eafb="" show="false" title="測試團隊 詳細資訊" size="lg" fullscreen="false" closeonoverlay="true" showheader="true" showclosebutton="true" nopadding="false" closebuttonlabel="關閉"></modal-stub>
+<!-- 新增成員 Modal -->
+<add-member-modal-stub data-v-58b3eafb="" form="[object Object]" visible="false" loading="false" showpassword="false"></add-member-modal-stub>"
+`;
+
+exports[`TeamCard.vue - Snapshot Tests (Before Refactoring) > should match snapshot - team with no description 1`] = `
+"<div data-v-58b3eafb="" class="team-card">
+  <!-- 主要卡片內容 -->
+  <div data-v-58b3eafb="" class="team-info">
+    <div data-v-58b3eafb="" class="team-avatar">
+      <div data-v-58b3eafb="" class="avatar-placeholder">測</div>
+    </div>
+    <div data-v-58b3eafb="" class="team-details">
+      <h3 data-v-58b3eafb="">測試團隊</h3>
+      <p data-v-58b3eafb="" class="description">無描述</p>
+      <div data-v-58b3eafb="" class="team-meta"><span data-v-58b3eafb="" class="status active">活躍</span><span data-v-58b3eafb="" class="member-count">5 成員</span></div>
+    </div>
+  </div><!-- 操作按鈕區 -->
+  <div data-v-58b3eafb="" class="team-actions"><button data-v-58b3eafb="" class="btn btn-sm btn-warning">停用</button><button data-v-58b3eafb="" class="btn btn-sm btn-secondary"> QR 碼 </button><button data-v-58b3eafb="" class="btn btn-sm btn-danger"> 刪除團隊 </button></div>
+</div>
+<!-- 團隊詳情 Modal -->
+<modal-stub data-v-2590a5c6="" data-v-58b3eafb="" show="false" title="測試團隊 詳細資訊" size="lg" fullscreen="false" closeonoverlay="true" showheader="true" showclosebutton="true" nopadding="false" closebuttonlabel="關閉"></modal-stub>
+<!-- 新增成員 Modal -->
+<add-member-modal-stub data-v-58b3eafb="" form="[object Object]" visible="false" loading="false" showpassword="false"></add-member-modal-stub>"
+`;

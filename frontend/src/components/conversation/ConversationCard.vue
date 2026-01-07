@@ -15,27 +15,27 @@
     @keydown.space.prevent="handleSelect"
     @mouseenter="handleHover"
   >
-    <div class="card-header">
-      <div class="customer-info">
+    <div class="flex items-start justify-between mb-3">
+      <div class="flex items-center gap-3 flex-1 min-w-0">
         <div class="customer-avatar">
           {{ customerInitials }}
         </div>
-        <div class="customer-details">
-          <h3 class="customer-name">
+        <div class="flex-1 min-w-0">
+          <h3 class="text-base font-semibold text-gray-900 m-0 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
             {{ conversation.customer?.name || conversation.user?.name || '未知用戶' }}
           </h3>
-          <div class="customer-meta">
+          <div class="flex items-center gap-2">
             <PlatformBadge
               v-if="conversation.platform || conversation.user?.platform"
               :platform="conversation.platform || conversation.user?.platform || 'line'"
               show-icon
             />
-            <span class="customer-id">{{ conversation.customer?.platformUserId || conversation.user?.platformUserId || '' }}</span>
+            <span class="text-xs text-gray-500">{{ conversation.customer?.platformUserId || conversation.user?.platformUserId || '' }}</span>
           </div>
         </div>
       </div>
-      
-      <div class="conversation-status">
+
+      <div class="flex items-center gap-2 flex-shrink-0">
         <StatusBadge
           :status="effectiveStatus"
           :text="statusText"
@@ -49,25 +49,25 @@
       </div>
     </div>
 
-    <div class="card-body">
-      <div class="last-message">
-        <p class="message-content">
+    <div class="flex flex-col gap-2">
+      <div class="flex justify-between items-start gap-2">
+        <p class="text-sm text-gray-600 m-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
           {{ lastMessageText }}
         </p>
-        <time class="message-time">
+        <time class="text-xs text-gray-400 flex-shrink-0">
           {{ formatTime(conversation.updatedAt) }}
         </time>
       </div>
-      
+
       <div
         v-if="assignedToDisplay"
-        class="assigned-agent"
+        class="flex items-center gap-1 text-xs text-gray-500"
       >
-        <UserIcon />
+        <UserIcon class="w-3 h-3" />
         <span>{{ assignedToDisplay }}</span>
       </div>
     </div>
-    
+
     <!-- 快速指派操作區域 -->
     <QuickAssignActions
       :conversation="conversation"
@@ -222,85 +222,55 @@ const formatTime = (date: Date | string | number) => {
 </script>
 
 <style scoped>
+/* ============================================
+   Complex CSS (Cannot use Tailwind)
+   ============================================ */
+
+/* Conversation Card - Main container with GPU acceleration */
 .conversation-card {
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  position: relative;
-  /* 第五階段：GPU 加速 */
+  @apply bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transition-all relative;
   transform: translateZ(0);
   will-change: transform, box-shadow;
   backface-visibility: hidden;
 }
 
 .conversation-card:hover {
-  border-color: var(--primary-300);
-  box-shadow: var(--shadow-md);
-  /* 簡單平滑的懸浮效果 */
+  @apply border-primary-300 shadow-md;
   transform: translateY(-2px) translateZ(0);
 }
 
 .conversation-card.selected {
-  border-color: var(--primary-500);
+  @apply border-primary-500;
   box-shadow: 0 0 0 3px var(--primary-100);
 }
 
 .conversation-card.unread {
-  border-left: 4px solid var(--primary-500);
+  @apply border-l-4 border-l-primary-500;
 }
 
-/* 🆕 Closed conversation styles */
+/* Closed conversation - Gradient background */
 .conversation-card.is-closed {
-  opacity: 0.7;
+  @apply opacity-70 border-gray-300;
   background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-color: #d1d5db;
 }
 
 .conversation-card.is-closed:hover {
-  opacity: 0.85;
-  border-color: #9ca3af;
+  @apply opacity-85 border-gray-400;
 }
 
-.conversation-card.is-closed .customer-name,
-.conversation-card.is-closed .message-content {
-  color: #6b7280;
+.conversation-card.is-closed h3,
+.conversation-card.is-closed p {
+  @apply text-gray-500;
 }
 
 .conversation-card.is-closed .customer-avatar {
   background: linear-gradient(135deg, #9ca3af, #6b7280);
 }
 
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-}
-
-.customer-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex: 1;
-  min-width: 0;
-}
-
+/* Customer Avatar - Gradient background with scale animation */
 .customer-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-full);
+  @apply w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold text-sm flex-shrink-0;
   background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.875rem;
-  flex-shrink: 0;
-  /* 第五階段：簡單的縮放動畫 */
   transition: transform 0.2s ease;
 }
 
@@ -308,52 +278,11 @@ const formatTime = (date: Date | string | number) => {
   transform: scale(1.05) translateZ(0);
 }
 
-.customer-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.customer-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin: 0 0 var(--space-1) 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.customer-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.customer-id {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-}
-
-.conversation-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
-
+/* Unread Badge - Pulsing animation */
 .unread-badge {
-  background: var(--primary-500);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* 第五階段：微妙的脈動效果 */
+  @apply bg-primary-500 text-white text-xs font-semibold px-1.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center;
+  padding-top: 2px;
+  padding-bottom: 2px;
   animation: subtle-pulse 2s ease-in-out infinite;
 }
 
@@ -368,70 +297,24 @@ const formatTime = (date: Date | string | number) => {
   }
 }
 
-.card-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.last-message {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.message-content {
-  font-size: 0.875rem;
-  color: var(--gray-600);
-  margin: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.message-time {
-  font-size: 0.75rem;
-  color: var(--gray-400);
-  flex-shrink: 0;
-}
-
-.assigned-agent {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 0.75rem;
-  color: var(--gray-500);
-}
-
-.assigned-agent svg {
-  width: 12px;
-  height: 12px;
-}
+/* ============================================
+   Responsive Design
+   ============================================ */
 
 @media (max-width: 768px) {
   .conversation-card {
-    padding: var(--space-3);
+    @apply p-3;
   }
-  
+
   .customer-avatar {
-    width: 36px;
-    height: 36px;
-  }
-  
-  .customer-name {
-    font-size: 0.875rem;
-  }
-  
-  .last-message {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-1);
+    @apply w-9 h-9;
   }
 }
 
-/* 第五階段：尊重用戶的動畫偏好設置 */
+/* ============================================
+   Accessibility - Reduced Motion
+   ============================================ */
+
 @media (prefers-reduced-motion: reduce) {
   .conversation-card,
   .customer-avatar,
@@ -439,11 +322,8 @@ const formatTime = (date: Date | string | number) => {
     animation: none !important;
     transition: none !important;
   }
-  
-  .conversation-card:hover {
-    transform: none !important;
-  }
-  
+
+  .conversation-card:hover,
   .conversation-card:hover .customer-avatar {
     transform: none !important;
   }

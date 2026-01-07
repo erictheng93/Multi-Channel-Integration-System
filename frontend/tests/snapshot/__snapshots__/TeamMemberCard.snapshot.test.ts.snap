@@ -1,0 +1,121 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TeamMemberCard.vue - Snapshot Tests (Before Phase 4 Refactoring) > should match snapshot - admin member card 1`] = `
+"<div data-v-13b30d11="" class="member-card">
+  <div data-v-13b30d11="" class="member-info">
+    <div data-v-13b30d11="" class="member-avatar" style="width: 48px; height: 48px;">
+      <div data-v-13b30d11="" class="avatar-placeholder">A</div>
+    </div>
+    <div data-v-13b30d11="" class="member-details">
+      <h3 data-v-13b30d11="">Admin User</h3>
+      <p data-v-13b30d11="" class="email">john.doe@example.com</p>
+      <div data-v-13b30d11="" class="member-meta"><span data-v-13b30d11="" class="role admin"><span data-v-13b30d11="" class="role-icon">👑</span> 管理員</span><span data-v-13b30d11="" class="status active">活躍</span>
+        <!--v-if-->
+      </div>
+    </div>
+  </div>
+  <div data-v-13b30d11="" class="member-actions"><button data-v-13b30d11="" class="btn btn-sm btn-warning">停用</button><button data-v-13b30d11="" class="btn btn-sm btn-secondary"> 重設密碼 </button><button data-v-13b30d11="" class="btn btn-sm btn-danger"> 移除 </button></div><!-- Edit Member Modal -->
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
+
+exports[`TeamMemberCard.vue - Snapshot Tests (Before Phase 4 Refactoring) > should match snapshot - basic member card render 1`] = `
+"<div data-v-13b30d11="" class="member-card">
+  <div data-v-13b30d11="" class="member-info">
+    <div data-v-13b30d11="" class="member-avatar" style="width: 48px; height: 48px;">
+      <div data-v-13b30d11="" class="avatar-placeholder">J</div>
+    </div>
+    <div data-v-13b30d11="" class="member-details">
+      <h3 data-v-13b30d11="">John Doe</h3>
+      <p data-v-13b30d11="" class="email">john.doe@example.com</p>
+      <div data-v-13b30d11="" class="member-meta"><span data-v-13b30d11="" class="role agent"><span data-v-13b30d11="" class="role-icon">🎧</span> 客服</span><span data-v-13b30d11="" class="status active">活躍</span>
+        <!--v-if-->
+      </div>
+    </div>
+  </div>
+  <div data-v-13b30d11="" class="member-actions"><button data-v-13b30d11="" class="btn btn-sm btn-warning">停用</button><button data-v-13b30d11="" class="btn btn-sm btn-secondary"> 重設密碼 </button><button data-v-13b30d11="" class="btn btn-sm btn-danger"> 移除 </button></div><!-- Edit Member Modal -->
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
+
+exports[`TeamMemberCard.vue - Snapshot Tests (Before Phase 4 Refactoring) > should match snapshot - inactive member 1`] = `
+"<div data-v-13b30d11="" class="member-card">
+  <div data-v-13b30d11="" class="member-info">
+    <div data-v-13b30d11="" class="member-avatar" style="width: 48px; height: 48px;">
+      <div data-v-13b30d11="" class="avatar-placeholder">J</div>
+    </div>
+    <div data-v-13b30d11="" class="member-details">
+      <h3 data-v-13b30d11="">John Doe</h3>
+      <p data-v-13b30d11="" class="email">john.doe@example.com</p>
+      <div data-v-13b30d11="" class="member-meta"><span data-v-13b30d11="" class="role agent"><span data-v-13b30d11="" class="role-icon">🎧</span> 客服</span><span data-v-13b30d11="" class="status inactive">停用</span>
+        <!--v-if-->
+      </div>
+    </div>
+  </div>
+  <div data-v-13b30d11="" class="member-actions"><button data-v-13b30d11="" class="btn btn-sm btn-success">啟用</button><button data-v-13b30d11="" class="btn btn-sm btn-secondary"> 重設密碼 </button><button data-v-13b30d11="" class="btn btn-sm btn-danger"> 移除 </button></div><!-- Edit Member Modal -->
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
+
+exports[`TeamMemberCard.vue - Snapshot Tests (Before Phase 4 Refactoring) > should match snapshot - member with loading state 1`] = `
+"<div data-v-13b30d11="" class="member-card">
+  <div data-v-13b30d11="" class="member-info">
+    <div data-v-13b30d11="" class="member-avatar" style="width: 48px; height: 48px;">
+      <div data-v-13b30d11="" class="avatar-placeholder">J</div>
+    </div>
+    <div data-v-13b30d11="" class="member-details">
+      <h3 data-v-13b30d11="">John Doe</h3>
+      <p data-v-13b30d11="" class="email">john.doe@example.com</p>
+      <div data-v-13b30d11="" class="member-meta"><span data-v-13b30d11="" class="role agent"><span data-v-13b30d11="" class="role-icon">🎧</span> 客服</span><span data-v-13b30d11="" class="status active">活躍</span>
+        <!--v-if-->
+      </div>
+    </div>
+  </div>
+  <div data-v-13b30d11="" class="member-actions"><button data-v-13b30d11="" class="btn btn-sm btn-warning" disabled="">停用</button><button data-v-13b30d11="" class="btn btn-sm btn-secondary" disabled=""> 重設密碼 </button><button data-v-13b30d11="" class="btn btn-sm btn-danger" disabled=""> 移除 </button></div><!-- Edit Member Modal -->
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
+
+exports[`TeamMemberCard.vue - Snapshot Tests (Before Phase 4 Refactoring) > should match snapshot - member with no teams 1`] = `
+"<div data-v-13b30d11="" class="member-card">
+  <div data-v-13b30d11="" class="member-info">
+    <div data-v-13b30d11="" class="member-avatar" style="width: 48px; height: 48px;">
+      <div data-v-13b30d11="" class="avatar-placeholder">J</div>
+    </div>
+    <div data-v-13b30d11="" class="member-details">
+      <h3 data-v-13b30d11="">John Doe</h3>
+      <p data-v-13b30d11="" class="email">john.doe@example.com</p>
+      <div data-v-13b30d11="" class="member-meta"><span data-v-13b30d11="" class="role agent"><span data-v-13b30d11="" class="role-icon">🎧</span> 客服</span><span data-v-13b30d11="" class="status active">活躍</span>
+        <!--v-if-->
+      </div>
+    </div>
+  </div>
+  <div data-v-13b30d11="" class="member-actions"><button data-v-13b30d11="" class="btn btn-sm btn-warning">停用</button><button data-v-13b30d11="" class="btn btn-sm btn-secondary"> 重設密碼 </button><button data-v-13b30d11="" class="btn btn-sm btn-danger"> 移除 </button></div><!-- Edit Member Modal -->
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
+
+exports[`TeamMemberCard.vue - Snapshot Tests (Before Phase 4 Refactoring) > should match snapshot - member with single team 1`] = `
+"<div data-v-13b30d11="" class="member-card">
+  <div data-v-13b30d11="" class="member-info">
+    <div data-v-13b30d11="" class="member-avatar" style="width: 48px; height: 48px;">
+      <div data-v-13b30d11="" class="avatar-placeholder">J</div>
+    </div>
+    <div data-v-13b30d11="" class="member-details">
+      <h3 data-v-13b30d11="">John Doe</h3>
+      <p data-v-13b30d11="" class="email">john.doe@example.com</p>
+      <div data-v-13b30d11="" class="member-meta"><span data-v-13b30d11="" class="role agent"><span data-v-13b30d11="" class="role-icon">🎧</span> 客服</span><span data-v-13b30d11="" class="status active">活躍</span>
+        <!--v-if-->
+      </div>
+    </div>
+  </div>
+  <div data-v-13b30d11="" class="member-actions"><button data-v-13b30d11="" class="btn btn-sm btn-warning">停用</button><button data-v-13b30d11="" class="btn btn-sm btn-secondary"> 重設密碼 </button><button data-v-13b30d11="" class="btn btn-sm btn-danger"> 移除 </button></div><!-- Edit Member Modal -->
+  <!--teleport start-->
+  <!--teleport end-->
+</div>"
+`;
