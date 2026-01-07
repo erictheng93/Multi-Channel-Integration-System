@@ -34,8 +34,8 @@ interface BrowserSecurityCheck {
  */
 export const validateSecurityEnvironment = (): void => {
   // 檢查必要的環境變數
-  const requiredEnvVars = ['VITE_API_BASE_URL']
-  
+  const requiredEnvVars = ['VITE_BACKEND_URL']
+
   for (const envVar of requiredEnvVars) {
     if (!import.meta.env[envVar]) {
       throw new Error(`Missing required environment variable: ${envVar}`)

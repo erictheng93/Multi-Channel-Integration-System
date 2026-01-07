@@ -1,9 +1,5 @@
 <template>
-  <!-- 🛡️ FOUC 防護：v-cloak 確保 Vue 完全接管後才顯示內容 -->
-  <div
-    v-cloak
-    id="app"
-  >
+  <div id="app">
     <router-view :key="routeKey" />
     
     <!-- 賬戶停權警示模態框 -->
