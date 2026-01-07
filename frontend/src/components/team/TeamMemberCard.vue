@@ -92,58 +92,6 @@
   </div>
 </template>
 
-/**
- * TeamMemberCard - Team Member Display and Management Card
- *
- * @component
- * @description Member card component with:
- * - **Member information** - Avatar, name, email, role, status
- * - **Edit modal** - Click card to open member edit dialog
- * - **Quick actions** - Toggle status, reset password, remove member
- * - **Multi-team support** - Displays team count and allows team management
- * - **Protection** - Current user cannot disable/remove themselves
- *
- * @example Basic Usage
- * ```vue
- * <template>
- *   <TeamMemberCard
- *     :member="member"
- *     :current-user-id="authStore.currentAgent.id"
- *     :all-teams="teams"
- *     :loading="operationLoading"
- *     @toggle-status="handleToggleStatus"
- *     @reset-password="handleResetPassword"
- *     @remove-member="handleRemoveMember"
- *   />
- * </template>
- * ```
- *
- * Props:
- * - **member** - TeamMember object with id, name, email, role, status, teams
- * - **currentUserId** - Current logged-in user ID (for protection)
- * - **loading** - Disable actions during operations
- * - **allTeams** - List of all teams for multi-team selection in edit modal
- *
- * Events:
- * - **toggleStatus** - Member status toggled (receives member object)
- * - **resetPassword** - Password reset requested (receives member object)
- * - **removeMember** - Member removal requested (receives member object)
- *
- * Features:
- * - **Role icons** - Admin 👑, Team Lead 👥, Agent 🎧
- * - **Status badges** - Active (green), Inactive (red), Pending (yellow)
- * - **Last login display** - Shows formatted last login time if available
- * - **Click-to-edit** - Entire card clickable to open edit modal
- * - **Self-protection** - Current user cannot disable/remove own account
- * - **Responsive design** - Stacks vertically on mobile (≤768px)
- *
- * Roles Supported:
- * - **admin** - System administrator (full access)
- * - **agent** - Customer service agent (limited access)
- *
- * @see {@link frontend/src/components/team/member-edit/MemberEditModal.vue} for edit functionality
- */
-
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import MemberEditModal from '@/components/team/member-edit/MemberEditModal.vue'

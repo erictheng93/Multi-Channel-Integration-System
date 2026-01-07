@@ -134,62 +134,6 @@
   </Modal>
 </template>
 
-/**
- * AccountDisabledModal - Account Disabled Warning Component
- *
- * @component
- * @description System modal displayed when user account is disabled:
- * - **Auto-logout** - Automatic logout with countdown timer
- * - **Non-dismissible** - Cannot be closed by user (overlay disabled)
- * - **Visual warning** - Clear error icon and messaging
- * - **Countdown display** - Shows remaining seconds before auto-logout
- *
- * @example Basic Usage
- * ```vue
- * <template>
- *   <AccountDisabledModal v-if="accountDisabled" />
- * </template>
- *
- * <script setup>
- * const accountDisabled = ref(false)
- *
- * // Trigger when API returns account disabled error
- * watchEffect(() => {
- *   if (authStore.accountStatus === 'disabled') {
- *     accountDisabled.value = true
- *   }
- * })
- * </script>
- * ```
- *
- * @example Custom Logout Delay
- * ```vue
- * <template>
- *   <!-- Give user 15 seconds before auto-logout -->
- *   <AccountDisabledModal :auto-logout-delay="15" />
- * </template>
- * ```
- *
- * Props:
- * - **autoLogoutDelay** - Seconds before automatic logout (default: 10)
- *
- * Features:
- * - **Countdown timer** - Visual countdown from specified delay
- * - **Manual logout** - User can click button to logout immediately
- * - **Auto-cleanup** - Timer cleared on component unmount
- * - **Professional styling** - Gradient error icon with shadow
- * - **Responsive design** - Optimized for mobile and desktop
- *
- * Behavior:
- * - Modal opens immediately when component mounts
- * - Countdown starts automatically
- * - Calls `logout()` from `useAuth` when timer reaches 0
- * - User can click "確認登出" button to logout before timer ends
- * - Non-dismissible (closeOnOverlay: false, no close button)
- *
- * @see {@link frontend/src/composables/useAuth.ts} for authentication logic
- */
-
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import Modal from '@/components/ui/Modal.vue'

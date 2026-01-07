@@ -105,62 +105,6 @@
   />
 </template>
 
-/**
- * TeamCard - Team Management Card Component
- *
- * @component
- * @description Complex team card with integrated management features:
- * - **Team details modal** - View/edit team information
- * - **Member management** - Add, edit, remove team members
- * - **QR code system** - Generate/view LIFF QR codes for team assignment
- * - **Status toggle** - Enable/disable team
- * - **Multi-modal support** - Coordinated modal states
- *
- * @example Basic Usage
- * ```vue
- * <template>
- *   <TeamCard
- *     :team="team"
- *     :loading="loading"
- *     @toggle-status="handleToggleStatus"
- *     @view-qr="handleViewQR"
- *     @remove-team="handleRemoveTeam"
- *     @member-updated="loadTeams"
- *     @team-updated="loadTeams"
- *   />
- * </template>
- * ```
- *
- * Props:
- * - **team** - Team object with id, name, description, isActive, memberCount
- * - **loading** - Disable buttons during async operations
- *
- * Events:
- * - **toggle-status** - Team activation toggled (receives team object)
- * - **view-qr** - QR code button clicked (receives team object)
- * - **prefetch-qr** - Mouse hover for QR code prefetch (receives team object)
- * - **remove-team** - Delete team button clicked (receives team object)
- * - **member-updated** - Member added/removed (no payload)
- * - **team-updated** - Team details updated (no payload)
- *
- * Features:
- * - **Lazy loading** - Members/QR loaded only when detail modal opens
- * - **QR code management** - Integrated with Pinia store for caching
- * - **Confirmation dialogs** - Dangerous actions (regenerate QR, delete) require confirmation
- * - **Activity logging** - QR generation/regeneration logged to console
- * - **Multi-team API** - Uses `agent_teams` table for consistency
- * - **Hover prefetch** - QR code can be prefetched on hover for performance
- *
- * Internal Modals:
- * - **TeamDetailModal** - Team info with edit mode
- * - **AddMemberModal** - Add new member form
- * - **TeamQRSection** - QR code display/generation (within detail modal)
- * - **TeamMemberSection** - Member list with actions (within detail modal)
- *
- * @see {@link frontend/src/composables/team-management/useTeamModal.ts} for modal state management
- * @see {@link frontend/src/stores/qrcode.ts} for QR code caching
- */
-
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import AddMemberModal from '@/components/team/AddMemberModal.vue'
