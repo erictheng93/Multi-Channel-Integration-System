@@ -7,8 +7,14 @@ import { useAuthStore } from './auth'
 import { translateError } from '@/utils/error-handler'
 import { conversationCache, cacheManager } from '@/services/cacheManager'
 import { CONVERSATION_STATUS } from '@/constants/conversation-status'
+import { useWebSocketStore, type SubscriptionId } from './websocket'
+import type { WebSocketMessage } from '@/services/websocketClient'
 
 // Interface removed as it's not used
+
+// ✅ 方案 B 阶段 3: 使用全局 WebSocket Store
+// 同步状态类型（向后兼容）
+type SyncStatus = 'disconnected' | 'connecting' | 'connected' | 'polling' | 'error'
 
 export const useConversationsStore = defineStore('conversations', () => {
   // State
@@ -30,6 +36,18 @@ export const useConversationsStore = defineStore('conversations', () => {
   // Performance tracking
   const lastUpdateTime = ref<Date | null>(null)
   const updateCount = ref(0)
+
+  // ✅ 方案 B 阶段 3: 全局 WebSocket 订阅
+  const wsStore = useWebSocketStore()
+  let conversationsSubscriptionId: SubscriptionId | null = null
+  const syncStatus = computed<SyncStatus>(() => {
+    // 映射全局 WebSocket 状态到本地状态（向后兼容）
+    const globalState = wsStore.connectionState
+    if (globalState === 'connected') return 'connected'
+    if (globalState === 'connecting' || globalState === 'reconnecting') return 'connecting'
+    if (globalState === 'error') return 'error'
+    return 'disconnected'
+  })
 
   // Filters and Pagination
   const filters = ref<ConversationFilters>({
@@ -1186,6 +1204,122 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ✅ 方案 B 阶段 2: WebSocket 实时同步完整实现
+  // 直接在 Store 内部管理 WebSocket，无需外部服务
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 实时更新处理（阶段 3 - 使用全局 WebSocket Store）
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * 处理实时更新事件（阶段 3）
+   * 从全局 WebSocket Store 接收事件并更新本地状态
+   */
+  const handleRealtimeUpdate = (message: WebSocketMessage) => {
+    console.log('📥 [ConversationsStore] Real-time update:', message.type)
+
+    switch (message.type) {
+      case 'conversations_update':
+      case 'conversation_updated':
+      case 'new_message':
+      case 'message_updated':
+        // 对话列表更新 - 触发轮询获取最新数据
+        lastUpdateTime.value = new Date()
+        pollConversations()
+        break
+
+      default:
+        console.warn('[ConversationsStore] Unhandled message type:', message.type)
+    }
+  }
+
+  /**
+   * 轮询对话数据（HTTP 备份机制）
+   */
+  const pollConversations = async () => {
+    try {
+      const response = await conversationApi.list({
+        page: 1,
+        pageSize: 50
+      })
+
+      if (response.success && response.data) {
+        const conversationList = Array.isArray(response.data)
+          ? response.data
+          : response.data.items || []
+
+        // 使用智能增量更新
+        updateConversationsIncrementally(conversationList, true)
+        lastUpdateTime.value = new Date()
+
+        // 更新统计信息
+        stats.value = {
+          total: conversationList.length,
+          open: conversationList.filter(c =>
+            c.status === CONVERSATION_STATUS.PENDING ||
+            c.status === CONVERSATION_STATUS.ACTIVE
+          ).length,
+          assigned: conversationList.filter(c =>
+            c.status === CONVERSATION_STATUS.IN_PROGRESS
+          ).length,
+          closed: conversationList.filter(c =>
+            c.status === CONVERSATION_STATUS.CLOSED ||
+            c.status === CONVERSATION_STATUS.RESOLVED
+          ).length,
+          unreadCount: conversationList.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
+        }
+      }
+
+    } catch (err) {
+      console.error('❌ [ConversationsStore] Polling failed:', err)
+      error.value = '数据同步失败'
+    }
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 公共 API
+  // ═══════════════════════════════════════════════════════════════════
+
+  // ✅ 方案 B 阶段 3: 使用全局 WebSocket Store 的新实现
+  const initializeRealtime = async () => {
+    console.log('🚀 [ConversationsStore] Initializing real-time sync (Phase B3)...')
+
+    updating.value = true
+
+    // 确保全局 WebSocket 已连接
+    if (!wsStore.isConnected) {
+      console.log('📡 [ConversationsStore] Connecting to global WebSocket...')
+      await wsStore.connect()
+    }
+
+    // 订阅 conversations channel
+    conversationsSubscriptionId = wsStore.subscribe('conversations', (message) => {
+      handleRealtimeUpdate(message)
+    })
+
+    updating.value = false
+
+    console.log(`✅ [ConversationsStore] Subscribed to conversations (ID: ${conversationsSubscriptionId?.substring(0, 8)})`)
+  }
+
+  const cleanup = () => {
+    console.log('🛑 [ConversationsStore] Cleaning up real-time sync...')
+
+    // 取消订阅
+    if (conversationsSubscriptionId) {
+      wsStore.unsubscribe(conversationsSubscriptionId)
+      conversationsSubscriptionId = null
+      console.log('✅ [ConversationsStore] Unsubscribed from conversations')
+    }
+
+    // 清理状态
+    error.value = null
+    updating.value = false
+  }
+
   return {
     // State
     conversations,
@@ -1200,6 +1334,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     filters,
     pagination,
     stats,
+    syncStatus, // ✅ 阶段 2: 暴露 WebSocket 连接状态
 
     // Computed
     allMessages,
@@ -1242,6 +1377,10 @@ export const useConversationsStore = defineStore('conversations', () => {
     loadStats,
 
     // Utilities
-    updateConversationInList
+    updateConversationInList,
+
+    // Real-time sync (Phase B1)
+    initializeRealtime,
+    cleanup
   }
 })

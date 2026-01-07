@@ -1,13 +1,15 @@
 /**
  * Activity Stream Composable
  * WebSocket-based实时活动流 - Dashboard活动动态展示
+ *
+ * Phase B3: Migrated to use global WebSocket Store with subscription pattern
  */
 
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
-import { useWebSocket } from './useWebSocket'
+import { useWebSocketStore, type SubscriptionId } from '@/stores/websocket'
+import type { WebSocketMessage } from '@/services/websocketClient'
 import type { Activity, ActivityType, ActivityPriority } from '@/types/activity'
 import type { Message } from '@/types'
-import { getWebSocketManager } from '@/services/websocketManager'
 
 export interface UseActivityStreamOptions {
   maxActivities?: number
@@ -22,11 +24,11 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
     priorityFilter = []
   } = options
 
-  // WebSocket connection
-  const { isConnected, connect, disconnect } = useWebSocket({
-    autoConnect,
-    reconnectOnAuth: true
-  })
+  // Global WebSocket Store (Phase B3)
+  const wsStore = useWebSocketStore()
+
+  // Subscription management
+  let activitySubscriptionId: SubscriptionId | null = null
 
   // State
   const activities: Ref<Activity[]> = ref([])
@@ -185,17 +187,81 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
   }
 
   /**
-   * 初始化 WebSocket 事件监听
+   * 处理实时活动更新 (Phase B3)
+   * Handles WebSocket messages from the 'activity' channel
    */
-  function setupWebSocketListeners() {
-    const manager = getWebSocketManager()
+  function handleRealtimeActivity(message: WebSocketMessage) {
+    console.log('📊 [ActivityStream] Real-time activity:', message.type)
 
-    manager.setEventCallbacks({
-      onConversationMessage: handleNewMessage,
-      onConversationUpdate: handleConversationUpdate,
-      onNotification: handleNotification,
-      onError: handleError
+    try {
+      switch (message.type) {
+        case 'new_message':
+          if (message.conversationId && message.data) {
+            handleNewMessage(message.conversationId, message.data as Message)
+          }
+          break
+
+        case 'conversation_updated':
+          if (message.conversationId && message.data) {
+            handleConversationUpdate(message.conversationId, message.data)
+          }
+          break
+
+        case 'notification':
+          if (message.data) {
+            handleNotification(message.data)
+          }
+          break
+
+        case 'activity':
+          // Generic activity event
+          if (message.data) {
+            const activityData = message.data as {
+              type: ActivityType
+              title: string
+              description: string
+              priority?: ActivityPriority
+            }
+            const activity = createActivity(
+              activityData.type,
+              activityData.title,
+              activityData.description
+            )
+            if (activityData.priority) {
+              activity.priority = activityData.priority
+            }
+            addActivity(activity)
+          }
+          break
+
+        default:
+          console.warn('[ActivityStream] Unhandled message type:', message.type)
+      }
+    } catch (err) {
+      console.error('[ActivityStream] Error handling activity:', err)
+      if (err instanceof Error) {
+        handleError(err)
+      }
+    }
+  }
+
+  /**
+   * 初始化 WebSocket 订阅 (Phase B3)
+   */
+  async function setupWebSocketListeners() {
+    console.log('🚀 [ActivityStream] Initializing WebSocket subscription...')
+
+    // Ensure global WebSocket is connected
+    if (!wsStore.isConnected) {
+      await wsStore.connect()
+    }
+
+    // Subscribe to activity channel
+    activitySubscriptionId = wsStore.subscribe('activity', (message) => {
+      handleRealtimeActivity(message)
     })
+
+    console.log(`✅ [ActivityStream] Subscribed to activity channel (ID: ${activitySubscriptionId?.substring(0, 8)})`)
   }
 
   /**
@@ -222,9 +288,9 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
   }
 
   // Lifecycle
-  onMounted(() => {
+  onMounted(async () => {
     if (autoConnect) {
-      setupWebSocketListeners()
+      await setupWebSocketListeners()
 
       // 添加一个欢迎活动
       addActivity(createActivity(
@@ -237,9 +303,13 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
   })
 
   onUnmounted(() => {
-    // 清理资源
-    if (isConnected.value) {
-      disconnect()
+    console.log('🛑 [ActivityStream] Cleaning up...')
+
+    // Unsubscribe from activity channel
+    if (activitySubscriptionId) {
+      wsStore.unsubscribe(activitySubscriptionId)
+      activitySubscriptionId = null
+      console.log('✅ [ActivityStream] Unsubscribed from activity channel')
     }
   })
 
@@ -249,7 +319,7 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
     allActivities: activities,
     loading,
     error,
-    isConnected,
+    isConnected: computed(() => wsStore.isConnected),
 
     // Computed
     highPriorityActivities,
@@ -257,8 +327,13 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
     recentActivities,
 
     // Methods
-    connect,
-    disconnect,
+    connect: () => wsStore.connect(),
+    disconnect: () => {
+      if (activitySubscriptionId) {
+        wsStore.unsubscribe(activitySubscriptionId)
+        activitySubscriptionId = null
+      }
+    },
     clearActivities,
     addManualActivity,
     setupWebSocketListeners

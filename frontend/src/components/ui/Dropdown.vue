@@ -69,16 +69,123 @@
   </div>
 </template>
 
+/**
+ * Dropdown - Reusable Dropdown Component with Advanced Positioning
+ *
+ * @component
+ * @description A flexible dropdown component with:
+ * - **Teleport to body** - Prevents z-index and overflow issues
+ * - **Smart positioning** - Auto-adjusts to viewport boundaries
+ * - **Keyboard navigation** - Full arrow key, Enter, Esc support
+ * - **Accessibility** - ARIA attributes and focus management
+ * - **Custom trigger slot** - Use any element as trigger
+ *
+ * @example Basic Usage
+ * ```vue
+ * <template>
+ *   <Dropdown label="Options">
+ *     <div role="menuitem" @click="handleAction">Action 1</div>
+ *     <div role="menuitem" @click="handleAction">Action 2</div>
+ *   </Dropdown>
+ * </template>
+ * ```
+ *
+ * @example Custom Trigger with Named Slot
+ * ```vue
+ * <template>
+ *   <Dropdown>
+ *     <template #trigger="{ isOpen, toggle }">
+ *       <button @click="toggle" :class="{ active: isOpen }">
+ *         <UserIcon />
+ *         User Menu
+ *       </button>
+ *     </template>
+ *
+ *     <div role="menuitem">Profile</div>
+ *     <div role="menuitem">Settings</div>
+ *   </Dropdown>
+ * </template>
+ * ```
+ *
+ * @example With Header and Footer Slots
+ * ```vue
+ * <template>
+ *   <Dropdown label="Notifications" placement="bottom-end">
+ *     <template #header>
+ *       <h4>Recent Notifications</h4>
+ *     </template>
+ *
+ *     <div v-for="notif in notifications" :key="notif.id">
+ *       {{ notif.message }}
+ *     </div>
+ *
+ *     <template #footer>
+ *       <router-link to="/notifications">View All</router-link>
+ *     </template>
+ *   </Dropdown>
+ * </template>
+ * ```
+ *
+ * Props:
+ * - **label** - Text for default trigger button
+ * - **disabled** - Disable dropdown interaction
+ * - **placement** - Menu position: 'bottom-start', 'bottom-end', 'top-start', 'top-end', 'left', 'right'
+ * - **fullWidth** - Match menu width to trigger width
+ * - **closeOnClick** - Auto-close when clicking inside menu (default: true)
+ * - **offset** - Pixel spacing between trigger and menu (default: 8)
+ *
+ * Slots:
+ * - **trigger** - Custom trigger (receives `{ isOpen, toggle }`)
+ * - **default** - Menu content (receives `{ close, isOpen }`)
+ * - **header** - Optional menu header
+ * - **footer** - Optional menu footer
+ *
+ * Events:
+ * - **open** - Emitted when dropdown opens
+ * - **close** - Emitted when dropdown closes
+ * - **select** - Emitted when menu item selected (if implemented by content)
+ *
+ * Features:
+ * - **Viewport boundary detection** - Menu repositions to stay visible
+ * - **Scroll/resize handling** - Menu position updates dynamically
+ * - **Click outside detection** - Auto-close on external clicks
+ * - **Keyboard shortcuts**:
+ *   - Arrow Down/Up: Navigate menu items
+ *   - Home/End: Jump to first/last item
+ *   - Enter/Space: Open dropdown
+ *   - Escape: Close dropdown
+ *   - Tab: Close and move focus
+ *
+ * Exposed Methods (via template ref):
+ * - **open()** - Programmatically open dropdown
+ * - **close()** - Programmatically close dropdown
+ * - **toggle()** - Toggle dropdown state
+ * - **isOpen** - Readonly state
+ *
+ * @see Uses Teleport for portal rendering to avoid z-index conflicts
+ */
+
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ChevronDownIcon } from '@/components/icons'
 
 interface Props {
+  /** Text for default trigger button */
   label?: string
+
+  /** Disable dropdown interaction */
   disabled?: boolean
+
+  /** Menu placement relative to trigger */
   placement?: 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end' | 'left' | 'right'
+
+  /** Match menu width to trigger width */
   fullWidth?: boolean
+
+  /** Auto-close when clicking inside menu */
   closeOnClick?: boolean
+
+  /** Pixel spacing between trigger and menu */
   offset?: number
 }
 

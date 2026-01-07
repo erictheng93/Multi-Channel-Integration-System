@@ -17,8 +17,9 @@ import { swManager } from '@/services/serviceWorkerManager'
 // 🚀 数据预加载服务
 import { preloadService } from '@/services/preloadService'
 
-// 🔌 Global WebSocket Service - Real-time communication
-import { setupGlobalWebSocketWatcher, initializeGlobalWebSocket } from '@/services/globalWebSocket'
+// 🔌 Global WebSocket Service - Real-time communication (Phase B4)
+// Using global WebSocket Store for unified real-time communication
+import { useWebSocketStore } from '@/stores/websocket'
 
 const startApp = async () => {
   const startTime = performance.now()
@@ -54,22 +55,18 @@ const startApp = async () => {
         await authStore.initializeSession()
         console.log(`✅ App startup: Session completed in ${(performance.now() - startTime).toFixed(2)}ms, status: ${authStore.sessionStatus}`)
 
-        // 🔌 Global WebSocket: Setup watcher for auth state changes
-        // This ensures WebSocket connects/disconnects with login/logout
-        setupGlobalWebSocketWatcher()
-        console.log('🔌 App startup: WebSocket watcher initialized')
-
-        // 🔌 Global WebSocket: Initialize connection if already authenticated
+        // 🔌 Phase B4: Initialize global WebSocket Store for real-time communication
         if (authStore.isAuthenticated) {
-          console.log('🔌 App startup: User authenticated, initializing WebSocket...')
-          initializeGlobalWebSocket().then(connected => {
-            if (connected) {
-              console.log(`✅ App startup: WebSocket connected in ${(performance.now() - startTime).toFixed(2)}ms`)
-            } else {
-              console.warn('⚠️ App startup: WebSocket connection deferred (will retry)')
-            }
+          console.log('🔌 App startup: User authenticated, initializing global WebSocket Store...')
+
+          const wsStore = useWebSocketStore()
+
+          // Connect to global WebSocket Store (unified real-time communication)
+          wsStore.connect().then(() => {
+            console.log(`✅ App startup: Global WebSocket Store connected in ${(performance.now() - startTime).toFixed(2)}ms`)
+            console.log(`📊 WebSocket Stats: ${wsStore.subscriptionCount} subscriptions, ${wsStore.channelCount} channels`)
           }).catch(err => {
-            console.warn('⚠️ App startup: WebSocket initialization failed (non-critical):', err)
+            console.warn('⚠️ App startup: WebSocket connection failed (will retry):', err)
           })
         }
 

@@ -267,6 +267,65 @@
   </div>
 </template>
 
+/**
+ * AppLayout - Main Application Layout Component
+ *
+ * @component
+ * @description Master layout component providing the core application structure with:
+ * - **Responsive sidebar** with role-based navigation menu
+ * - **Collapsible navigation** (auto-collapse on tablets, manual on desktop)
+ * - **User profile section** with logout, settings dropdown
+ * - **Notification center** integration with real-time updates
+ * - **Mobile-first design** with hamburger menu and overlay
+ *
+ * @example Basic Usage
+ * ```vue
+ * <template>
+ *   <AppLayout>
+ *     <YourPageContent />
+ *   </AppLayout>
+ * </template>
+ * ```
+ *
+ * @example With Top Bar Stats Slot
+ * ```vue
+ * <template>
+ *   <AppLayout>
+ *     <template #top-bar-stats>
+ *       <div class="stats">
+ *         <span>Total: 150</span>
+ *         <span>Active: 42</span>
+ *       </div>
+ *     </template>
+ *
+ *     <YourPageContent />
+ *   </AppLayout>
+ * </template>
+ * ```
+ *
+ * Slots:
+ * - **default** - Main page content area
+ * - **top-bar-stats** - Optional stats display in top bar (used in conversation detail)
+ *
+ * Features:
+ * - **Role-based menus** - Admin sees extended navigation items (team, channels, API monitor)
+ * - **Responsive breakpoints**:
+ *   - Desktop (1025px+): Full sidebar with manual collapse
+ *   - Tablet (769-1024px): Auto-collapsed sidebar, icons only
+ *   - Mobile (≤768px): Slide-out sidebar with overlay
+ * - **Reports submenu** - Expandable navigation for report sections
+ * - **Notification routing** - Handles notification clicks and routes to appropriate pages
+ * - **Logout confirmation** - Uses promise-based confirmation dialog
+ *
+ * Responsive Behavior:
+ * - Sidebar auto-collapses on tablet screens (769-1024px)
+ * - Mobile uses slide-out sidebar with backdrop overlay
+ * - Navigation text hidden when collapsed
+ * - User menu adapts to sidebar state
+ *
+ * @see {@link frontend/src/components/ui/NotificationCenter.vue} for notification system
+ */
+
 <script setup lang="ts">
   import { ref, shallowRef, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
   import { useRoute, useRouter } from 'vue-router'

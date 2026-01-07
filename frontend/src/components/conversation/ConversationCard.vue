@@ -43,9 +43,15 @@
         <div
           v-if="conversation.unreadCount && conversation.unreadCount > 0"
           class="unread-badge"
+          :title="`${conversation.unreadCount} 則未讀訊息`"
         >
           {{ conversation.unreadCount }}
         </div>
+        <!-- 红点指示器 - 更醒目 -->
+        <span
+          v-if="conversation.unreadCount && conversation.unreadCount > 0"
+          class="unread-dot"
+        />
       </div>
     </div>
 
@@ -284,6 +290,7 @@ const formatTime = (date: Date | string | number) => {
   padding-top: 2px;
   padding-bottom: 2px;
   animation: subtle-pulse 2s ease-in-out infinite;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 @keyframes subtle-pulse {
@@ -294,6 +301,21 @@ const formatTime = (date: Date | string | number) => {
   50% {
     transform: scale(1.05) translateZ(0);
     opacity: 0.9;
+  }
+}
+
+/* 红点指示器 - 更醒目的提示 */
+.unread-dot {
+  @apply w-2 h-2 bg-red-500 rounded-full flex-shrink-0;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
   }
 }
 

@@ -1,19 +1,36 @@
 /**
+ * ⚠️ DEPRECATED: 此 Composable 已废弃
+ *
  * Conversation Sync Composable
  *
  * 负责管理对话列表的混合同步机制（SSE → WebSocket → Polling）
  *
+ * @deprecated 请使用 conversationsStore.initializeRealtime() 替代
+ * @see frontend/src/stores/conversations.ts (方案 B 阶段 2)
+ *
  * @module composables/conversation/useConversationSync
  *
- * @example
+ * @example 旧用法（已废弃）:
  * ```ts
  * const { syncStatus, isConnected, lastUpdate, startSync, stopSync } = useConversationSync()
- *
- * // 启动同步
  * await startSync()
- *
- * // 停止同步
  * stopSync()
+ * ```
+ *
+ * @example 新用法（推荐）:
+ * ```ts
+ * import { useConversationsStore } from '@/stores/conversations'
+ *
+ * const store = useConversationsStore()
+ *
+ * // 在 onMounted 中
+ * store.initializeRealtime()
+ *
+ * // 在 onUnmounted 中
+ * store.cleanup()
+ *
+ * // 访问状态
+ * console.log(store.syncStatus) // 'connected' | 'disconnected' | 'connecting' | 'polling' | 'error'
  * ```
  */
 
