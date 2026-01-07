@@ -39,58 +39,6 @@
   </Modal>
 </template>
 
-/**
- * DeleteConfirmModal - Single Tag Deletion Confirmation Modal
- *
- * @component
- * @description Simple confirmation dialog for single tag deletion:
- * - **Tag name display** - Shows specific tag being deleted
- * - **Warning message** - Clear irreversible action warning
- * - **Minimal design** - Focused confirmation without distractions
- *
- * @example Basic Usage
- * ```vue
- * <template>
- *   <DeleteConfirmModal
- *     v-model:visible="showDeleteModal"
- *     :tag="tagToDelete"
- *     @confirm="handleDelete"
- *   />
- * </template>
- *
- * <script setup>
- * const tagToDelete = ref(null)
- * const showDeleteModal = ref(false)
- *
- * const confirmDelete = (tag) => {
- *   tagToDelete.value = tag
- *   showDeleteModal.value = true
- * }
- *
- * const handleDelete = async () => {
- *   await tagApi.delete(tagToDelete.value.id)
- *   showDeleteModal.value = false
- * }
- * </script>
- * ```
- *
- * Props:
- * - **visible** - Modal visibility (supports v-model)
- * - **tag** - Tag object to delete (can be null)
- *
- * Events:
- * - **update:visible** - Visibility changed (for v-model support)
- * - **confirm** - User confirmed deletion
- *
- * Features:
- * - **Null-safe** - Modal only renders when tag is not null
- * - **Name highlighting** - Tag name shown in bold red
- * - **Warning icon** - Red alert triangle
- * - **Simple actions** - Cancel and confirm buttons only
- *
- * @see {@link frontend/src/views/CustomerTags.vue} for usage context
- */
-
 <script setup lang="ts">
 import Modal from '@/components/ui/Modal.vue'
 import { AlertTriangleIcon } from '@/components/icons'

@@ -122,64 +122,6 @@
   </Modal>
 </template>
 
-/**
- * AddMemberModal - Add New Team Member Form Modal
- *
- * @component
- * @description Modal for creating new system members (agents/admins):
- * - **Form validation** - Required fields enforced
- * - **Role selection** - Agent or Admin role
- * - **Password visibility toggle** - Show/hide password field
- * - **Account activation** - Optional immediate activation checkbox
- *
- * @example Basic Usage
- * ```vue
- * <template>
- *   <AddMemberModal
- *     :visible="showModal"
- *     :form="addMemberForm"
- *     :loading="isCreating"
- *     :show-password="showPassword"
- *     @close="handleClose"
- *     @submit="handleSubmit"
- *     @toggle-password="togglePassword"
- *   />
- * </template>
- *
- * <script setup>
- * const addMemberForm = reactive({
- *   name: '',
- *   email: '',
- *   password: '',
- *   role: 'agent',
- *   group: '',
- *   isActive: true
- * })
- * </script>
- * ```
- *
- * Props:
- * - **visible** - Control modal visibility
- * - **form** - AddMemberFormData object (reactive form data)
- * - **loading** - Disable submit during API call
- * - **showPassword** - Password field visibility state
- *
- * Events:
- * - **close** - Modal close requested
- * - **submit** - Form submission (form data validated by browser)
- * - **toggle-password** - Password visibility toggle clicked
- *
- * Form Fields:
- * - **name** (required) - Member full name
- * - **email** (required) - Used as login username
- * - **password** (required) - Initial password
- * - **role** (required) - Agent or Admin
- * - **group** (optional) - Department/team assignment
- * - **isActive** (checkbox) - Account enabled on creation
- *
- * @see {@link frontend/src/composables/team-management/useMemberOperations.ts} for form management
- */
-
 <script setup lang="ts">
 import Modal from '@/components/ui/Modal.vue'
 import { ROLES } from '@/constants/roles'

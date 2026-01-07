@@ -65,46 +65,6 @@
   </Modal>
 </template>
 
-/**
- * BulkDeleteModal - Bulk Tag Deletion Confirmation Modal
- *
- * @component
- * @description Confirmation dialog for bulk tag deletion with:
- * - **Count display** - Shows number of tags to delete
- * - **Tag preview** - Displays first 5 tags being deleted
- * - **Warning message** - Clear irreversible action warning
- * - **Color-coded tags** - Preview maintains tag colors
- *
- * @example Basic Usage
- * ```vue
- * <template>
- *   <BulkDeleteModal
- *     v-model:visible="showBulkDeleteModal"
- *     :selected-tags="selectedTags"
- *     :selected-count="selectedTags.length"
- *     @confirm="handleBulkDelete"
- *   />
- * </template>
- * ```
- *
- * Props:
- * - **visible** - Modal visibility (supports v-model)
- * - **selectedTags** - Array of Tag objects to delete
- * - **selectedCount** - Total count of tags being deleted
- *
- * Events:
- * - **update:visible** - Visibility changed (for v-model support)
- * - **confirm** - User confirmed deletion
- *
- * Features:
- * - **Preview limit** - Shows max 5 tags, displays "及其他 X 個標籤" for remainder
- * - **Color preservation** - Tag colors shown in preview
- * - **Warning icon** - Red alert triangle icon
- * - **Irreversible warning** - Clear message about permanent deletion
- *
- * @see {@link frontend/src/views/CustomerTags.vue} for usage context
- */
-
 <script setup lang="ts">
 import { computed } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
