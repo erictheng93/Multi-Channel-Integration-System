@@ -125,6 +125,8 @@
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  opacity: 1 !important;
+  transform: none !important;
   transition:
     background-color var(--duration-normal) ease,
     color var(--duration-normal) ease;
