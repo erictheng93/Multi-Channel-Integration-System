@@ -63,6 +63,9 @@ import websocketMainHandler from './handlers/websocket-main';
 import delayedMessageBufferHandler from './handlers/delayed-message-buffer';
 import { feedbackHandler } from './handlers/feedback-main';
 
+// 🆕 KV Optimization Monitoring (P0 - 2025-01-08)
+import kvOptimizationMonitoringHandler from './handlers/kv-optimization-monitoring';
+
 // Import system functions (grouped by functionality)
 import {
   getSystemInfo,
@@ -302,6 +305,19 @@ app.options('/api/activities/stream', (c) => {
 app.route('/api/analytics/comparison', comparisonAPI);
 log.info('Analytics Comparison API registered', {
   endpoints: ['/api/analytics/comparison/* (with internal OPTIONS handler)']
+});
+
+// 🔧 Pre-register KV Optimization Monitoring BEFORE unified route system
+// P0 Priority: Real-time monitoring for KV write optimization
+app.route('/api/monitoring/kv', kvOptimizationMonitoringHandler);
+log.info('KV Optimization Monitoring registered', {
+  endpoints: [
+    'GET /api/monitoring/kv/activity-cache (admin only)',
+    'GET /api/monitoring/kv/request-frequency (admin only)',
+    'GET /api/monitoring/kv/savings (admin only)',
+    'GET /api/monitoring/kv/health (admin only)',
+    'POST /api/monitoring/kv/reset (admin only)'
+  ]
 });
 
 // ==================== 🔧 CRITICAL: PRE-REGISTER CORS 監控端點 ====================

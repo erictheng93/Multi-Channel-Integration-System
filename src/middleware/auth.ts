@@ -4,6 +4,7 @@ import type { DbUser } from '../types';
 import { verifyJWT, getUserById, getSession, updateUserActivityDebounced } from '../utils/auth';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
+import { incrementRequestCounter, trackTheoreticalKVSavings } from '../handlers/kv-optimization-monitoring';
 import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
 import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, UpdateCustomerData, CustomerFilters, CustomerTagOperation, CustomerSearchQuery } from '@modules/customer/types/customer-types';
 import type { CreateSessionData, UpdateSessionData, SessionListQuery, SessionSearchQuery } from '@modules/session/types/session-types';
@@ -110,16 +111,25 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     // 將用戶信息和 JWT payload 添加到 context
     c.set('user', user);
     c.set('jwtPayload', payload);
-    
-    // ⚡ OPTIMIZED: 更新用戶的最後活動時間（去重優化，15分鐘間隔）
-    // Reduces D1 writes by 95%+ using KV-based debouncing
+
+    // ⚡ OPTIMIZED v3.0: 更新用戶的最後活動時間（純記憶體去重，15分鐘間隔）
+    // - Zero KV operations (100% quota savings)
+    // - Faster performance (no network calls)
+    // - Tracks theoretical KV savings for monitoring
     // agents 表使用字符串 ID
     if (typeof user.id === 'string') {
-      updateUserActivityDebounced(user.id, c.env.DB, c.env.SESSIONS).catch(() => {
+      // 📊 P0 Monitoring: Track request frequency
+      incrementRequestCounter(user.id);
+
+      // Update activity with pure in-memory debouncing
+      updateUserActivityDebounced(user.id, c.env.DB, c.env.SESSIONS).then((wasUpdated) => {
+        // 📊 P0 Monitoring: Track theoretical KV savings
+        trackTheoreticalKVSavings(!wasUpdated);
+      }).catch(() => {
         // 靜默失敗，不影響請求處理
       });
     }
-    
+
     await next();
   } catch (error) {
     log.error('JWT authentication failed', { error: error instanceof Error ? error.message : String(error) });
