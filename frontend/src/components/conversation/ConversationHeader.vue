@@ -154,20 +154,7 @@
           @change="handleTagsChange"
         />
       </div>
-      <button
-        v-if="conversation?.status !== CONVERSATION_STATUS.CLOSED"
-        class="close-conversation-btn"
-        :class="{ 'is-closing': closing }"
-        :disabled="closing"
-        @click="$emit('close')"
-      >
-        <AlertCircleIcon
-          :size="20"
-          class="btn-icon"
-        />
-        <span class="btn-text">{{ closing ? '結束中...' : '結束對話' }}</span>
-        <span class="btn-warning">隨時可重新打開</span>
-      </button>
+      <!-- 結束對話按鈕 - 暫時移除，未來有需求再加入 -->
 
       <button
         class="btn btn-secondary"
@@ -182,7 +169,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ArrowLeftIcon, AlertCircleIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon } from '@/components/icons'
+import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -196,14 +183,14 @@ import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 interface Props {
   conversation?: Conversation
   loading?: boolean
-  closing?: boolean
+  // closing?: boolean  // 暫時移除 - 結束對話功能未來再加入
 }
 
 const props = defineProps<Props>()
 
 defineEmits<{
   back: []
-  close: []
+  // close: []  // 暫時移除 - 結束對話功能未來再加入
   refresh: []
   search: []
 }>()
@@ -501,154 +488,7 @@ onMounted(() => {
   border-color: var(--primary-color, #6366f1);
 }
 
-/* ====== 漸進式警示按鈕設計 (Progressive Alert Design) ====== */
-.close-conversation-btn {
-  /* 佈局與間距 */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  position: relative;
-  overflow: hidden;
-
-  /* 文字樣式 */
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.25rem;
-  white-space: nowrap;
-  user-select: none;
-
-  /* Level 1: 默認警告狀態 (Mint Green Warning) - 方案 D */
-  color: #064e3b; /* green-900 */
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); /* green-100 to green-200 */
-  border: 2px solid #10b981; /* green-500 */
-  border-radius: 0.5rem;
-
-  /* 陰影與過渡 */
-  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 圖標樣式 */
-.close-conversation-btn .btn-icon {
-  flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 主文字 */
-.close-conversation-btn .btn-text {
-  transition: opacity 0.3s ease;
-}
-
-/* 警告文字 (默認隱藏) */
-.close-conversation-btn .btn-warning {
-  position: absolute;
-  bottom: -1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-
-  padding: 0.25rem 0.75rem;
-  background: rgba(239, 68, 68, 0.95); /* red-500 with opacity */
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border-radius: 0.375rem;
-  white-space: nowrap;
-
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-
-  /* 小箭頭 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.close-conversation-btn .btn-warning::before {
-  content: '';
-  position: absolute;
-  top: -0.25rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 0.25rem solid transparent;
-  border-right: 0.25rem solid transparent;
-  border-bottom: 0.25rem solid rgba(239, 68, 68, 0.95);
-}
-
-/* Level 2: Hover 警示狀態 (Red Alert) */
-.close-conversation-btn:hover:not(:disabled) {
-  /* 顏色漸變到紅色 */
-  color: #991b1b; /* red-900 */
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); /* red-100 to red-200 */
-  border-color: #ef4444; /* red-500 */
-
-  /* 增強陰影 */
-  box-shadow:
-    0 4px 12px rgba(239, 68, 68, 0.2),
-    0 2px 4px rgba(239, 68, 68, 0.1);
-
-  /* 輕微上浮 */
-  transform: translateY(-2px);
-}
-
-/* Hover 時圖標震動效果 */
-.close-conversation-btn:hover:not(:disabled) .btn-icon {
-  animation: icon-shake 0.5s ease-in-out;
-}
-
-/* Hover 時顯示警告文字 */
-.close-conversation-btn:hover:not(:disabled) .btn-warning {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0.25rem);
-}
-
-/* Active 按下狀態 */
-.close-conversation-btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
-  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15);
-}
-
-/* Disabled/Loading 狀態 */
-.close-conversation-btn:disabled,
-.close-conversation-btn.is-closing {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  background: #e5e7eb; /* gray-200 */
-  border-color: #d1d5db; /* gray-300 */
-  color: #6b7280; /* gray-500 */
-  box-shadow: none;
-}
-
-.close-conversation-btn:disabled .btn-warning,
-.close-conversation-btn.is-closing .btn-warning {
-  display: none;
-}
-
-/* 圖標震動動畫 */
-@keyframes icon-shake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-8deg); }
-  50% { transform: rotate(8deg); }
-  75% { transform: rotate(-8deg); }
-}
-
-/* 移動端優化 */
-@media (max-width: 768px) {
-  .close-conversation-btn {
-    padding: 0.625rem 1rem;
-    font-size: 0.8125rem;
-  }
-
-  .close-conversation-btn .btn-warning {
-    bottom: -1.25rem;
-    font-size: 0.6875rem;
-    padding: 0.2rem 0.625rem;
-  }
-}
+/* 結束對話按鈕樣式 - 暫時移除，未來有需求再加入 */
 
 .btn {
   display: flex;
