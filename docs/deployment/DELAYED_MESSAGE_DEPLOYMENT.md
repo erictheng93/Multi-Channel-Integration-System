@@ -91,7 +91,7 @@ ENVIRONMENT=production
 #### 5.1 API
 ```bash
 
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/delayed-messages/send \
+curl -X POST https://your-api-domain.example.com/api/delayed-messages/send \
  -H "Content-Type: application/json" \
  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
  -d '{
@@ -101,7 +101,7 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/delayed-messages
  }'
 
 
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/delayed-messages/recall \
+curl -X POST https://your-api-domain.example.com/api/delayed-messages/recall \
  -H "Content-Type: application/json" \
  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
  -d '{

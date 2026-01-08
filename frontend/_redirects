@@ -3,4 +3,6 @@
 /*    /index.html   200
 
 # API 代理到後端 Worker
-/api/*  https://multi-channel.imfinethankyouandyou.com/api/:splat  200
+# ⚠️ IMPORTANT: Configure this via Cloudflare Pages Functions or proxy settings
+# The backend URL should be set in Cloudflare Dashboard
+# /api/*  https://YOUR_BACKEND_URL/api/:splat  200

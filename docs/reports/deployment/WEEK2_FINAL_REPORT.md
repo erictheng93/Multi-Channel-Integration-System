@@ -154,8 +154,8 @@
 1. ** 100% Rollout**
  ```bash
  # ( 24-48 )
- curl "https://multi-channel.imfinethankyouandyou.com/api/websocket/health"
- curl "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status"
+ curl "https://your-api-domain.example.com/api/websocket/health"
+ curl "https://your-api-domain.example.com/api/websocket/migration-status"
  ```
 
 2. ** **

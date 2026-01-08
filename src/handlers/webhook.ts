@@ -26,6 +26,7 @@ import {
   handleApiError
 } from '../utils/api-response';
 import { ActivityService } from '../services/activity-service';
+import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 import { createContextLogger } from '../utils/logger';
 
 // Context logger for webhook handler
@@ -664,112 +665,37 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       }
     }
 
-    // 🚀 WebSocket Real-time Broadcast: Notify CustomerConversationDO
-    // This triggers instant UI updates for all connected agents viewing this conversation
+    // 🚀 Phase B4: Unified Broadcast for Conversation List & Detail Updates
+    // Uses WebSocketBroadcastService.broadcastNewMessage() for both:
+    // 1. CustomerConversationDO - conversation detail page real-time updates
+    // 2. MessageBroadcaster global - conversation list page lastMessage updates
     try {
-      // Construct complete message object for broadcasting
-      // 🔧 FIX: Include senderId and file_attachments for frontend compatibility
-      const broadcastMessage = {
-        id: messageId,
+      const broadcastService = new WebSocketBroadcastService(env);
+      const broadcastResult = await broadcastService.broadcastNewMessage({
         conversationId: conversation!.id,
-        senderType: 'customer' as const,
-        customerSenderId: user.id,
-        agentSenderId: null as string | null,
-        senderId: user.id,  // 🔧 FIX: Add senderId for frontend
-        content: messageContent,
-        messageType: messageType,
-        platformMessageId: message.id,
-        isRecalled: false,
-        recallDeadline: null as string | null,
-        recalledAt: null as string | null,
-        isSent: true,
-        sentAt: null as string | null,
-        deliveryStatus: 'delivered' as const,
-        replyToMessageId: null as string | null,
-        threadId: null as string | null,
-        sessionId: null as string | null,
-        sessionSequence: 1,
-        metadata: mediaData ? JSON.stringify(mediaData) : null,
-        createdAt: timestamp,
-        file_attachments: fileAttachmentData  // 🔧 FIX: Include file attachments
-      };
-
-      // Get CustomerConversationDO instance
-      const conversationDOId = env.CUSTOMER_CONVERSATION_DO.idFromName(conversation!.id);
-      const conversationDO = env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
-
-      console.log(`📡 [LINE Webhook] Preparing to notify CustomerConversationDO for conversation: ${conversation!.id}`);
-
-      // Use fetch() to send notification to CustomerConversationDO
-      const notifyRequest = new Request('https://fake-host/notify-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: conversation!.id,
-          message: broadcastMessage
-        })
-      });
-
-      const response = await conversationDO.fetch(notifyRequest);
-
-      if (response.ok) {
-        log.debug('LINE Webhook: Notified CustomerConversationDO for WebSocket broadcast');
-      } else {
-        const errorText = await response.text();
-        log.error('LINE Webhook: CustomerConversationDO returned error', { error: errorText });
-      }
-    } catch (broadcastError) {
-      log.error('LINE Webhook: Failed to broadcast via WebSocket', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
-      // Don't fail webhook processing - message is saved to database
-    }
-
-    // 🚀 Phase B4: Global Broadcast for Conversation List Updates
-    // This notifies all connected agents viewing the conversation list
-    try {
-      if (env.MESSAGE_BROADCASTER) {
-        const broadcasterId = env.MESSAGE_BROADCASTER.idFromName('global');
-        const broadcasterStub = env.MESSAGE_BROADCASTER.get(broadcasterId);
-
-        // Broadcast new_message event globally for conversation list updates
-        const globalEvent = {
-          id: crypto.randomUUID(),
-          type: 'new_message',
-          source: 'webhook',
+        message: {
+          id: messageId,
+          content: messageContent,
+          messageType: messageType,
+          senderType: 'customer',
+          senderId: String(user.id),
+          platform: 'line',
           timestamp: Date.now(),
-          conversationId: conversation!.id,
-          data: {
-            conversationId: conversation!.id,
-            content: messageContent,
-            messageType: messageType,
-            senderType: 'customer',
-            senderId: user.id,
-            platform: 'line',
-            timestamp: Date.now()
-          },
-          priority: 'normal'
-        };
-
-        // Use /broadcast-global endpoint for global broadcasts
-        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event: globalEvent,
-            target: { type: 'global', targets: ['all'] }
-          })
-        }));
-
-        if (globalResponse.ok) {
-          console.log('✅ [LINE Webhook] Global broadcast sent for conversation list updates');
-        } else {
-          log.warn('LINE Webhook: Global broadcast returned non-OK status');
-        }
-      }
-    } catch (globalBroadcastError) {
-      log.warn('LINE Webhook: Global broadcast failed (non-critical)', {
-        error: globalBroadcastError instanceof Error ? globalBroadcastError.message : String(globalBroadcastError)
+          deliveryStatus: 'delivered'
+        },
+        source: 'webhook'
       });
-      // Non-critical - conversation list will still update on next poll
+
+      console.log(`✅ [LINE Webhook] Unified broadcast completed`, {
+        conversationId: conversation!.id,
+        conversationBroadcast: broadcastResult.conversationBroadcast,
+        globalBroadcast: broadcastResult.globalBroadcast
+      });
+    } catch (broadcastError) {
+      log.error('LINE Webhook: Unified broadcast failed (non-critical)', {
+        error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+      });
+      // Don't fail webhook processing - message is saved to database
     }
 
     // 記錄活動以觸發 SSE 更新
@@ -922,7 +848,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           const drizzleDb = createDbClient(env.DB);
 
           // Extract R2 key from the proxy URL
-          // URL format: https://multi-channel.imfinethankyouandyou.com/api/files/public/{r2Key}
+          // URL format: https://{BACKEND_URL}/api/files/public/{r2Key}
           const r2Key = mediaFile.url.includes('/api/files/public/')
             ? mediaFile.url.split('/api/files/public/')[1]
             : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;

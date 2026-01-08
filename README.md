@@ -182,42 +182,42 @@
 - ** **:
 
 
-- Node.js 16+ 和 npm
-- Wrangler CLI (Cloudflare 部署工具)
+- Node.js 16+ ??npm
+- Wrangler CLI (Cloudflare ?�署工具)
 - Cloudflare API Token
-- LINE Developer 帳號(如需 LINE OA 整合)
+- LINE Developer 帳�?(如�? LINE OA ?��?)
 
-## 環境配置系統 (Environment Configuration)
+## ?��??�置系統 (Environment Configuration)
 
-本系統採用 **3 層架構模式** 進行環境配置管理，實現生產/開發環境的無縫切換：
+?�系統採??**3 層架構模�?* ?��??��??�置管�?，實?��????�發?��??�無縫�??��?
 
-### 配置架構層級
+### ?�置?��?層�?
 ```
-第 1 層：環境變數 (.env 檔案)
-    ↓
-第 2 層：運行時配置層 (runtime.ts)
-    ↓
-第 3 層：業務邏輯程式碼
+�?1 層�??��?變數 (.env 檔�?)
+    ??
+�?2 層�??��??��?置層 (runtime.ts)
+    ??
+�?3 層�?業�??�輯程�?�?
 ```
 
-### 前端環境變數
-配置檔案位置：`frontend/`
-- `.env.development` - 開發環境配置
-- `.env.production` - 生產環境配置
-- `.env.example` - 環境變數範本（含完整說明）
+### ?�端?��?變數
+?�置檔�?位置：`frontend/`
+- `.env.development` - ?�發?��??�置
+- `.env.production` - ?�產?��??�置
+- `.env.example` - ?��?變數範本（含完整說�?�?
 
-**核心環境變數：**
+**?��??��?變數�?*
 ```bash
-VITE_BACKEND_URL=https://multi-channel.imfinethankyouandyou.com
+VITE_BACKEND_URL=https://your-api-domain.example.com
 VITE_FRONTEND_URL=http://localhost:3000
-VITE_WEBSOCKET_URL=wss://multi-channel.imfinethankyouandyou.com/ws
-VITE_STORAGE_PUBLIC_URL=https://s3.imfinethankyouandyou.com
+VITE_WEBSOCKET_URL=wss://your-api-domain.example.com/ws
+VITE_STORAGE_PUBLIC_URL=https://your-storage-domain.example.com
 VITE_ENV=development
 VITE_DEBUG=true
 ```
 
-### 後端環境變數
-配置檔案：`.dev.vars`（開發環境）
+### 後端?��?變數
+?�置檔�?：`.dev.vars`（�??�環境�?
 ```bash
 BACKEND_URL=http://localhost:8787
 FRONTEND_URL=http://localhost:3000
@@ -225,20 +225,20 @@ JWT_SECRET=your-secret-key
 ENVIRONMENT=development
 ```
 
-### 運行時配置函數
-系統提供統一的配置存取介面：
+### ?��??��?置函??
+系統?��?統�??��?置�??��??��?
 
-**前端 (`frontend/src/config/runtime.ts`):**
+**?�端 (`frontend/src/config/runtime.ts`):**
 ```typescript
 import { getBackendUrl, getWebSocketUrl, getApiEndpoint } from '@/config/runtime';
 
-// 獲取後端 API URL
+// ?��?後端 API URL
 const apiUrl = getBackendUrl();
 
-// 獲取 WebSocket URL（自動協議轉換）
+// ?��? WebSocket URL（自?��?議�??��?
 const wsUrl = getWebSocketUrl();
 
-// 獲取完整 API 端點
+// ?��?完整 API 端�?
 const endpoint = getApiEndpoint('/api/messages');
 ```
 
@@ -246,7 +246,7 @@ const endpoint = getApiEndpoint('/api/messages');
 ```typescript
 import { getBackendUrl, getFrontendUrl } from './config/runtime';
 
-// 在 Handler 中使用
+// ??Handler 中使??
 export default {
   async fetch(request: Request, env: WorkerEnv) {
     const backendUrl = getBackendUrl(env);
@@ -255,25 +255,25 @@ export default {
 }
 ```
 
-### 環境切換指南
-**切換到開發環境：**
-1. 複製 `frontend/.env.development` 為 `frontend/.env`
-2. 修改 URL 為本地地址
-3. 執行 `npm run dev`
+### ?��??��??��?
+**?��??��??�環境�?**
+1. 複製 `frontend/.env.development` ??`frontend/.env`
+2. 修改 URL ?�本?�地?�
+3. ?��? `npm run dev`
 
-**切換到生產環境：**
-1. 複製 `frontend/.env.production` 為 `frontend/.env`
-2. 執行 `npm run build && npm run deploy`
+**?��??��??�環境�?**
+1. 複製 `frontend/.env.production` ??`frontend/.env`
+2. ?��? `npm run build && npm run deploy`
 
-### 優勢
-✅ **快速切換** - 5-10 分鐘完成環境切換（相較傳統 4-6 小時）
-✅ **型別安全** - 完整的 TypeScript 類型定義
-✅ **零硬編碼** - 所有 URL 統一管理
-✅ **自動驗證** - 運行時配置驗證與錯誤處理
+### ?�勢
+??**快速�???* - 5-10 ?��?完�??��??��?（相較傳�?4-6 小�?�?
+??**?�別安全** - 完整??TypeScript 類�?定義
+??**?�硬編碼** - ?�??URL 統�?管�?
+??**?��?驗�?** - ?��??��?置�?證�??�誤?��?
 
 ---
 
-## 前置需求
+## ?�置?��?
 
 ### 1. (5)
 ```bash
@@ -288,75 +288,75 @@ cd Multi_Channel_Integration_System
 wrangler login
 ```
 
-### 2. 開發環境選擇：npm 或 Bun
+### 2. ?�發?��??��?：npm ??Bun
 
-本專案支援兩種開發環境：**npm** (穩定) 和 **Bun** (快速)。你可以根據需求自由選擇或切換。
+?��?案支?�兩種�??�環境�?**npm** (穩�?) ??**Bun** (快�??��??�以?��??�求自?�選?��??��???
 
-#### 🚀 Bun 優勢
-- **3x 更快的依賴安裝速度** (10 分鐘 → 3 分鐘)
-- **2x 更快的測試執行速度** (20 秒 → 10 秒)
-- **內建 TypeScript 支持** (無需額外編譯器)
-- **50% 更快的腳本啟動時間**
+#### ?? Bun ?�勢
+- **3x ?�快?��?賴�?裝速度** (10 ?��? ??3 ?��?)
+- **2x ?�快?�測試執行速度** (20 �???10 �?
+- **?�建 TypeScript ?��?** (?��?額�?編譯??
+- **50% ?�快?�腳?��??��???*
 
-#### 📋 環境對照表
+#### ?? ?��?對照�?
 
-| 功能 | npm 命令 | Bun 命令 |
+| ?�能 | npm ?�令 | Bun ?�令 |
 |------|----------|----------|
-| **安裝依賴** | `npm install` | `bun install` |
-| **後端開發** | `npm run dev` | `bun run dev` |
-| **前端開發** | `cd frontend && npm run dev` | `cd frontend && bun run bun:dev` |
-| **執行測試** | `npm test` | `bun test` |
+| **安�?依賴** | `npm install` | `bun install` |
+| **後端?�發** | `npm run dev` | `bun run dev` |
+| **?�端?�發** | `cd frontend && npm run dev` | `cd frontend && bun run bun:dev` |
+| **?��?測試** | `npm test` | `bun test` |
 | **TypeScript 編譯** | `npm run build` | `bun run build` |
 
-#### 🔄 安裝 Bun (可選)
+#### ?? 安�? Bun (?�選)
 
 **Windows:**
 ```powershell
 powershell -c "irm bun.sh/install.ps1|iex"
-bun --version  # 驗證安裝
+bun --version  # 驗�?安�?
 ```
 
 **macOS/Linux:**
 ```bash
 curl -fsSL https://bun.sh/install | bash
-bun --version  # 驗證安裝
+bun --version  # 驗�?安�?
 ```
 
-#### 🔀 環境切換
+#### ?? ?��??��?
 
-**切換到 Bun 開發環境：**
+**?��???Bun ?�發?��?�?*
 ```powershell
 .\scripts\switch-to-bun.ps1
 ```
 
-**切換回 npm 開發環境：**
+**?��???npm ?�發?��?�?*
 ```powershell
 .\scripts\switch-to-npm.ps1
 ```
 
-#### ⚠️ 重要說明
-- **CI/CD 環境保持使用 npm** - 確保生產環境穩定性
-- **兩種環境可以共存** - 團隊成員可自由選擇
-- **快速回滾** - 遇到問題可在 3 分鐘內切回 npm
-- **生產部署不受影響** - 所有部署仍使用 npm + Wrangler
+#### ?��? ?��?說�?
+- **CI/CD ?��?保�?使用 npm** - 確�??�產?��?穩�???
+- **?�種?��??�以?��?** - ?��??�員?�自?�選??
+- **快速�?�?* - ?�到?��??�在 3 ?��??��???npm
+- **?�產?�署不�?影響** - ?�?�部署�?使用 npm + Wrangler
 
-#### 🆚 使用建議
+#### ?? 使用建議
 
-**推薦使用 Bun 的情況：**
-- ✅ 本地開發和測試（速度優勢明顯）
-- ✅ 頻繁安裝依賴（節省大量時間）
-- ✅ 執行 TypeScript 腳本（內建支持）
+**?�薦使用 Bun ?��?況�?**
+- ???�地?�發?�測試�??�度?�勢?�顯�?
+- ???��?安�?依賴（�??�大?��??��?
+- ???��? TypeScript ?�本（內建支?��?
 
-**建議保持 npm 的情況：**
-- ✅ CI/CD 流程（生產穩定性）
-- ✅ 需要完全相容性（某些工具可能尚未支持 Bun）
-- ✅ 團隊協作規範要求使用 npm
+**建議保�? npm ?��?況�?**
+- ??CI/CD 流�?（�??�穩定性�?
+- ???�要�??�相容性�??��?工具?�能尚未?��? Bun�?
+- ???��??��?規�?要�?使用 npm
 
-### 3. 部署方式
+### 3. ?�署?��?
 
-#### 開發者部署 ()
+#### ?�發?�部�?()
 ```bash
-# 開發者快速部署 (2 步驟)
+# ?�發?�快?�部�?(2 步�?)
 .\scripts\developer-deploy.ps1
 
 
@@ -386,7 +386,7 @@ $env:TF_VAR_admin_password = "secure-password"
 ```
 
 ### 3.
-- ** API**: https://multi-channel.imfinethankyouandyou.com
+- ** API**: https://your-api-domain.example.com
 - ****: https://multi-channel-platform-frontend.pages.dev
 - **API **: API
 
@@ -593,7 +593,7 @@ ENCRYPTION_KEY=your-encryption-key
 
 ** (Cloudflare Pages)**:
 ```bash
-VITE_API_BASE_URL=https://multi-channel.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://your-api-domain.example.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 VITE_ENABLE_PERFORMANCE_MONITORING=true
@@ -673,32 +673,32 @@ MIT License - [LICENSE](LICENSE)
 
 ---
 
-## 文檔導航
+## ?��?導航
 
-### 核心文檔
-- [文檔總索引](docs/DOCUMENTATION_INDEX.md) - 完整的文檔架構導航
-- [Claude 開發指南](CLAUDE.md) - Claude Code 專用開發指南
-- [使用者指南](docs/USER_GUIDE.md) - 完整使用者操作手冊
-- [快速開始](docs/guides/QUICK_START.md) - 5 分鐘快速上手
+### ?��??��?
+- [?��?總索引](docs/DOCUMENTATION_INDEX.md) - 完整?��?檔架構�???
+- [Claude ?�發?��?](CLAUDE.md) - Claude Code 專用?�發?��?
+- [使用?��??�](docs/USER_GUIDE.md) - 完整使用?��?作�???
+- [快速�?始](docs/guides/QUICK_START.md) - 5 ?��?快速�???
 
-### 系統架構
-- [WebSocket 最終架構](docs/architecture/WEBSOCKET_FINAL_ARCHITECTURE.md) - WebSocket 系統架構設計
-- [路由註冊順序](docs/architecture/ROUTE_REGISTRATION_ORDER.md) - 關鍵路由配置指南
-- [模組依賴關係](docs/architecture/MODULE_DEPENDENCY_DIAGRAM.md) - 系統模組依賴圖
+### 系統?��?
+- [WebSocket ?�終架構](docs/architecture/WEBSOCKET_FINAL_ARCHITECTURE.md) - WebSocket 系統?��?設�?
+- [路由註�??��?](docs/architecture/ROUTE_REGISTRATION_ORDER.md) - ?�鍵路由?�置?��?
+- [模�?依賴?��?](docs/architecture/MODULE_DEPENDENCY_DIAGRAM.md) - 系統模�?依賴??
 
-### API 參考
-- [API 端點總覽](docs/api/api-endpoints.md) - 所有 API 端點文檔
+### API ?��?
+- [API 端�?總覽](docs/api/api-endpoints.md) - ?�??API 端�??��?
 - [訊息 API](docs/api/MESSAGING_API_REFERENCE.md) - 完整訊息系統 API
-- [模組化 API](docs/api/MODULAR_API_REFERENCE.md) - 模組化架構 API
+- [模�???API](docs/api/MODULAR_API_REFERENCE.md) - 模�??�架�?API
 
-### 部署與運維
-- [部署指南](docs/guides/DEPLOYMENT_GUIDE.md) - 完整部署流程
-- [Cloudflare Pages 部署](docs/guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) - 前端部署指南
-- [WebSocket 遷移報告](docs/deployment/WEBSOCKET_MIGRATION_COMPLETE.md) - WebSocket 系統上線報告
+### ?�署?��?�?
+- [?�署?��?](docs/guides/DEPLOYMENT_GUIDE.md) - 完整?�署流�?
+- [Cloudflare Pages ?�署](docs/guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) - ?�端?�署?��?
+- [WebSocket ?�移?��?](docs/deployment/WEBSOCKET_MIGRATION_COMPLETE.md) - WebSocket 系統上�??��?
 
-### 測試與優化
-- [測試指南](docs/testing/testing-guide.md) - 完整測試策略
-- [效能優化指南](docs/PERFORMANCE_OPTIMIZATION_GUIDE.md) - 系統效能優化方案
-- [負載測試](docs/performance/LOAD_TESTING_GUIDE.md) - 負載測試方法
+### 測試?�優??
+- [測試?��?](docs/testing/testing-guide.md) - 完整測試策略
+- [?�能?��??��?](docs/PERFORMANCE_OPTIMIZATION_GUIDE.md) - 系統?�能?��??��?
+- [負�?測試](docs/performance/LOAD_TESTING_GUIDE.md) - 負�?測試?��?
 
-**感謝使用本系統！如果覺得有幫助，請給個 Star**
+**?��?使用?�系統�?如�?覺�??�幫?��?請給??Star**

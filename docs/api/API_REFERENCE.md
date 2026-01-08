@@ -3,11 +3,11 @@
 **Version:** 2.0.0
 **Last Updated:** 2025-01-28
 **Base URL (Development):** `http://localhost:8787`
-**Base URL (Production):** `https://multi-channel.imfinethankyouandyou.com`
+**Base URL (Production):** `https://your-api-domain.example.com`
 
 ---
 
-## ğŸ“š Table of Contents
+## ?? Table of Contents
 
 - [Overview](#overview)
 - [Authentication](#authentication)
@@ -20,57 +20,57 @@
 
 ---
 
-## ğŸŒŸ Overview
+## ?? Overview
 
 The Multi-Channel Integration System provides a comprehensive REST API for managing customer support operations across multiple messaging platforms (LINE, Facebook, etc.). This API is built on Cloudflare Workers for edge computing performance and uses modern web standards.
 
 ### Key Features
 
-- **ğŸ” JWT Authentication** - Secure token-based authentication
-- **ğŸŒ Multi-Platform Support** - LINE OA, Facebook Messenger integration
-- **âš¡ Real-time Communication** - WebSocket and SSE support
-- **ğŸ“Š Analytics & Reporting** - Comprehensive data analytics
-- **ğŸ¤ Collaboration Tools** - Real-time presence and typing indicators
-- **ğŸ“ File Management** - R2-based file storage with 10MB limit
-- **ğŸ·ï¸ Tagging System** - Flexible message and customer tagging
-- **ğŸ”„ Bulk Operations** - Efficient batch processing (up to 100 items)
+- **?? JWT Authentication** - Secure token-based authentication
+- **?? Multi-Platform Support** - LINE OA, Facebook Messenger integration
+- **??Real-time Communication** - WebSocket and SSE support
+- **?? Analytics & Reporting** - Comprehensive data analytics
+- **?? Collaboration Tools** - Real-time presence and typing indicators
+- **?? File Management** - R2-based file storage with 10MB limit
+- **?·ï¸?Tagging System** - Flexible message and customer tagging
+- **?? Bulk Operations** - Efficient batch processing (up to 100 items)
 
 ### Architecture
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                    API Gateway Layer                     â”‚
-â”‚           (Cloudflare Workers + Hono Framework)          â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                    â”‚
-        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-        â”‚                       â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  HTTP/REST API â”‚    â”‚  WebSocket API   â”‚
-â”‚   (Standard)   â”‚    â”‚  (Real-time)     â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-        â”‚                      â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚          Module Layer                   â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
-â”‚  â”‚ Auth â”‚ Conversations â”‚ Messages  â”‚  â”‚
-â”‚  â”‚ Teams â”‚ Customers â”‚ Analytics   â”‚  â”‚
-â”‚  â”‚ Collaboration â”‚ Files â”‚ Webhooks â”‚  â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-            â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚         Data Layer                       â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
-â”‚  â”‚ D1 Database â”‚ KV Store â”‚ R2 Storageâ”‚ â”‚
-â”‚  â”‚ Queues â”‚ Durable Objects         â”‚  â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+??                   API Gateway Layer                     ??
+??          (Cloudflare Workers + Hono Framework)          ??
+?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+                    ??
+        ?Œâ??€?€?€?€?€?€?€?€?€?€?´â??€?€?€?€?€?€?€?€?€?€??
+        ??                      ??
+?Œâ??€?€?€?€?€?€?¼â??€?€?€?€?€?€?€??   ?Œâ??€?€?€?€?€?€?€?¼â??€?€?€?€?€?€?€?€??
+?? HTTP/REST API ??   ?? WebSocket API   ??
+??  (Standard)   ??   ?? (Real-time)     ??
+?”â??€?€?€?€?€?€?¬â??€?€?€?€?€?€?€??   ?”â??€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€??
+        ??                     ??
+?Œâ??€?€?€?€?€?€?´â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?´â??€?€?€?€?€?€?€?€??
+??         Module Layer                   ??
+?? ?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?? ??
+?? ??Auth ??Conversations ??Messages  ?? ??
+?? ??Teams ??Customers ??Analytics   ?? ??
+?? ??Collaboration ??Files ??Webhooks ?? ??
+?? ?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?? ??
+?”â??€?€?€?€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+            ??
+?Œâ??€?€?€?€?€?€?€?€?€?€?¼â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+??        Data Layer                       ??
+?? ?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?? ??
+?? ??D1 Database ??KV Store ??R2 Storage????
+?? ??Queues ??Durable Objects         ?? ??
+?? ?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?? ??
+?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
 ```
 
 ---
 
-## ğŸ” Authentication
+## ?? Authentication
 
 All authenticated endpoints require a JWT token in the `Authorization` header:
 
@@ -122,11 +122,11 @@ Authorization: Bearer <your_jwt_token>
 
 Tokens expire after 24 hours. Use the refresh token to obtain a new access token without re-authentication.
 
-**ğŸ“– Full Documentation:** [Authentication API Reference](./modules/AUTH_API.md)
+**?? Full Documentation:** [Authentication API Reference](./modules/AUTH_API.md)
 
 ---
 
-## ğŸ“‹ Response Standards
+## ?? Response Standards
 
 ### Standard Response Format
 
@@ -202,7 +202,7 @@ List endpoints include pagination metadata:
 
 ---
 
-## âš ï¸ Error Handling
+## ? ï? Error Handling
 
 ### Error Response Format
 
@@ -295,11 +295,11 @@ List endpoints include pagination metadata:
 
 ---
 
-## ğŸ—‚ï¸ API Modules
+## ??ï¸?API Modules
 
 The API is organized into the following modules:
 
-### ğŸ” Authentication & Authorization
+### ?? Authentication & Authorization
 
 - **[Authentication API](./modules/AUTH_API.md)** - Login, logout, token management
   - `POST /api/auth/login` - User login
@@ -308,7 +308,7 @@ The API is organized into the following modules:
   - `GET /api/auth/me` - Get current user information
   - `POST /api/auth/change-password` - Change password
 
-### ğŸ’¬ Conversation Management
+### ?’¬ Conversation Management
 
 - **[Conversations API](./modules/CONVERSATIONS_API.md)** - Conversation lifecycle and assignment
   - `GET /api/conversations` - List conversations
@@ -320,9 +320,9 @@ The API is organized into the following modules:
   - `POST /api/conversations/:id/transfer` - Transfer conversation
   - `POST /api/conversations/:id/close` - Close conversation
 
-### ğŸ“¨ Messaging
+### ?“¨ Messaging
 
-- **[Messaging API](./modules/MESSAGING_API.md)** - Complete messaging system (âœ… Already documented)
+- **[Messaging API](./modules/MESSAGING_API.md)** - Complete messaging system (??Already documented)
   - Message CRUD operations
   - Bulk operations (create/delete up to 100 messages)
   - File attachments (R2 integration, 10MB limit)
@@ -331,7 +331,7 @@ The API is organized into the following modules:
   - Message recall functionality
   - Data export (JSON/CSV formats)
 
-### ğŸ‘¥ Customer Management
+### ?‘¥ Customer Management
 
 - **[Customer API](./modules/CUSTOMER_API.md)** - Customer profiles and data
   - `GET /api/customers` - List customers
@@ -342,7 +342,7 @@ The API is organized into the following modules:
   - `GET /api/customers/:id/conversations` - Get customer conversations
   - `GET /api/customers/search` - Search customers
 
-### ğŸ·ï¸ Tag Management
+### ?·ï¸?Tag Management
 
 - **[Tag API](./modules/TAG_API.md)** - Customer and conversation tagging
   - `GET /api/tags` - List all tags
@@ -354,7 +354,7 @@ The API is organized into the following modules:
   - `DELETE /api/tags/bulk-delete` - Bulk delete tags
   - `GET /api/tags/stats` - Get tag usage statistics
 
-### ğŸ‘¨â€ğŸ’¼ Team Management
+### ?‘¨?ğ??Team Management
 
 - **[Teams API](./modules/TEAMS_API.md)** - Team and member management
   - Team CRUD operations
@@ -363,9 +363,9 @@ The API is organized into the following modules:
   - Role assignment
   - Team statistics
 
-### ğŸ“Š Analytics & Reporting
+### ?? Analytics & Reporting
 
-- **[Analytics API](./modules/ANALYTICS_API.md)** - âš ï¸ **NEW - Previously Undocumented!**
+- **[Analytics API](./modules/ANALYTICS_API.md)** - ? ï? **NEW - Previously Undocumented!**
   - `GET /api/analytics/conversations` - Conversation analytics
   - `GET /api/analytics/messages` - Message analytics
   - `GET /api/analytics/users` - User activity analytics
@@ -376,9 +376,9 @@ The API is organized into the following modules:
   - `POST /api/analytics/metrics` - Collect metrics
   - `GET /api/analytics/metrics/:name` - Query specific metrics
 
-### ğŸ¤ Collaboration & Real-time
+### ?? Collaboration & Real-time
 
-- **[Collaboration API](./modules/COLLABORATION_API.md)** - âš ï¸ **NEW - Previously Undocumented!**
+- **[Collaboration API](./modules/COLLABORATION_API.md)** - ? ï? **NEW - Previously Undocumented!**
   - `GET /api/collaboration/conversations/:id/state` - Get collaboration state
   - `GET /api/collaboration/conversations/:id/viewers` - Get active viewers
   - `POST /api/collaboration/conversations/:id/join` - Join conversation
@@ -388,9 +388,9 @@ The API is organized into the following modules:
   - `GET /api/collaboration/stats` - Get collaboration statistics
   - `POST /api/collaboration/cleanup` - Cleanup expired states
 
-### ğŸ”Œ WebSocket & Real-time Communication
+### ?? WebSocket & Real-time Communication
 
-- **[WebSocket API](./modules/WEBSOCKET_API.md)** - âš ï¸ **Newly Unified Documentation!**
+- **[WebSocket API](./modules/WEBSOCKET_API.md)** - ? ï? **Newly Unified Documentation!**
   - Connection management
   - Real-time message delivery
   - Presence tracking
@@ -399,7 +399,7 @@ The API is organized into the following modules:
   - Dashboard metrics
   - Durable Objects integration
 
-### ğŸ“ File Management
+### ?? File Management
 
 - **[File Management API](./modules/FILE_MANAGEMENT_API.md)** - File upload and storage
   - File upload to R2 storage
@@ -409,7 +409,7 @@ The API is organized into the following modules:
   - File type validation
   - Storage quota management
 
-### ğŸ”” Notifications
+### ?? Notifications
 
 - **[Notifications API](./modules/NOTIFICATIONS_API.md)** - System notifications
   - Push notifications
@@ -418,7 +418,7 @@ The API is organized into the following modules:
   - Notification preferences
   - Notification history
 
-### ğŸ“ Activity Logging
+### ?? Activity Logging
 
 - **[Activities API](./modules/ACTIVITIES_API.md)** - Audit trail and activity logs
   - `GET /api/activities` - List activities
@@ -426,7 +426,7 @@ The API is organized into the following modules:
   - Activity filtering and search
   - Audit trail export
 
-### ğŸ‘¤ Agents & Users
+### ?‘¤ Agents & Users
 
 - **[Agents API](./modules/AGENTS_API.md)** - Agent management
   - Agent CRUD operations
@@ -434,7 +434,7 @@ The API is organized into the following modules:
   - Agent availability status
   - Agent assignment rules
 
-### âš™ï¸ System Configuration
+### ?™ï? System Configuration
 
 - **[System API](./modules/SYSTEM_API.md)** - System settings and health
   - `GET /api/system/health` - System health check
@@ -445,7 +445,7 @@ The API is organized into the following modules:
   - Cache management
   - Backup and restore
 
-### ğŸ”— Integration & Webhooks
+### ?? Integration & Webhooks
 
 - **[Integration API](./modules/INTEGRATION_API.md)** - Platform integrations
   - `POST /api/webhooks/line` - LINE webhook endpoint
@@ -455,7 +455,7 @@ The API is organized into the following modules:
   - Webhook verification
   - Channel management
 
-### ğŸ“Š QR Code Management
+### ?? QR Code Management
 
 - **[QRCode API](./modules/QRCODE_API.md)** - QR code generation and tracking
   - `POST /api/qrcode/generate` - Generate QR code
@@ -465,7 +465,7 @@ The API is organized into the following modules:
   - `DELETE /api/qrcode/:id` - Delete QR code
   - `GET /api/qrcode` - List QR codes
 
-### ğŸ” CORS & Monitoring
+### ?? CORS & Monitoring
 
 - **[CORS Monitoring API](./modules/CORS_MONITORING_API.md)** - CORS configuration and analytics
   - `GET /api/cors/health` - CORS health check (Public)
@@ -477,7 +477,7 @@ The API is organized into the following modules:
 
 ---
 
-## ğŸš¦ Rate Limiting
+## ?š¦ Rate Limiting
 
 To ensure fair usage and system stability, rate limiting is applied:
 
@@ -515,7 +515,7 @@ X-RateLimit-Reset: 1706432400
 
 ---
 
-## ğŸ”„ Versioning
+## ?? Versioning
 
 The API uses URL versioning for major changes:
 
@@ -531,20 +531,20 @@ The API uses URL versioning for major changes:
 
 ### Breaking Changes Policy
 
-- Major version changes (v1 â†’ v2) may include breaking changes
+- Major version changes (v1 ??v2) may include breaking changes
 - Minor changes are backward compatible
 - 6-month deprecation notice for breaking changes
 - Changelog available at `/api/changelog`
 
 ---
 
-## ğŸš€ Quick Start Guide
+## ?? Quick Start Guide
 
 ### 1. Authentication
 
 ```bash
 # Login to get access token
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+curl -X POST https://your-api-domain.example.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@example.com",
@@ -558,14 +558,14 @@ TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ### 2. List Conversations
 
 ```bash
-curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/conversations?page=1&limit=20" \
+curl -X GET "https://your-api-domain.example.com/api/conversations?page=1&limit=20" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ### 3. Create a Message
 
 ```bash
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/messages" \
+curl -X POST "https://your-api-domain.example.com/api/messages" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -578,7 +578,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/messages" \
 ### 4. Get Analytics
 
 ```bash
-curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/analytics/conversations?timeRange=7d" \
+curl -X GET "https://your-api-domain.example.com/api/analytics/conversations?timeRange=7d" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -586,7 +586,7 @@ curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/analytics/conver
 
 ```javascript
 const ws = new WebSocket(
-  'wss://multi-channel.imfinethankyouandyou.com/api/websocket?token=' + TOKEN
+  'wss://your-api-domain.example.com/api/websocket?token=' + TOKEN
 );
 
 ws.onopen = () => {
@@ -605,7 +605,7 @@ ws.onmessage = (event) => {
 
 ---
 
-## ğŸ“š Additional Resources
+## ?? Additional Resources
 
 ### Developer Tools
 
@@ -630,17 +630,17 @@ ws.onmessage = (event) => {
 
 ---
 
-## ğŸ“ Changelog
+## ?? Changelog
 
 ### Version 2.0.0 (2025-01-28)
 
 **New Features:**
-- âœ… Analytics API (9 endpoints)
-- âœ… Collaboration API (8 endpoints)
-- âœ… Unified WebSocket API documentation
-- âœ… File Management API
-- âœ… Tag Management API with bulk operations
-- âœ… CORS Monitoring API
+- ??Analytics API (9 endpoints)
+- ??Collaboration API (8 endpoints)
+- ??Unified WebSocket API documentation
+- ??File Management API
+- ??Tag Management API with bulk operations
+- ??CORS Monitoring API
 
 **Improvements:**
 - Enhanced error responses with detailed codes
@@ -661,7 +661,7 @@ ws.onmessage = (event) => {
 
 ---
 
-## ğŸ”’ Security Best Practices
+## ?? Security Best Practices
 
 1. **Never expose your JWT token** in client-side code or public repositories
 2. **Use HTTPS** for all API requests in production
@@ -674,18 +674,18 @@ ws.onmessage = (event) => {
 
 ---
 
-## ğŸ“Š API Status
+## ?? API Status
 
 Current system status: [https://status.multi-channel.com](https://status.multi-channel.com)
 
 | Service              | Status    | Uptime   |
 |----------------------|-----------|----------|
-| API Gateway          | âœ… Operational | 99.9%  |
-| WebSocket Service    | âœ… Operational | 99.8%  |
-| Database (D1)        | âœ… Operational | 99.9%  |
-| File Storage (R2)    | âœ… Operational | 99.9%  |
-| Message Queue        | âœ… Operational | 99.7%  |
-| Analytics Service    | âœ… Operational | 99.5%  |
+| API Gateway          | ??Operational | 99.9%  |
+| WebSocket Service    | ??Operational | 99.8%  |
+| Database (D1)        | ??Operational | 99.9%  |
+| File Storage (R2)    | ??Operational | 99.9%  |
+| Message Queue        | ??Operational | 99.7%  |
+| Analytics Service    | ??Operational | 99.5%  |
 
 ---
 

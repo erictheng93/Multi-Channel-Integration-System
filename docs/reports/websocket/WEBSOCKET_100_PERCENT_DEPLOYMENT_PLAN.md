@@ -90,10 +90,10 @@
 **1. (30)**
 ```bash
 # 1.1
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status > backup_50_percent_config.json
+curl -s https://your-api-domain.example.com/api/websocket/migration-status > backup_50_percent_config.json
 
 # 1.2
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health | python -m json.tool
+curl -s https://your-api-domain.example.com/api/websocket/health | python -m json.tool
 
 # 1.3
 # Slack/Email: " 75% rollout "
@@ -331,10 +331,10 @@ Medium: Slack #monitoring
 
 ```bash
 
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl -s https://your-api-domain.example.com/api/websocket/health
 
 
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl -s https://your-api-domain.example.com/api/websocket/migration-status
 
 
 wrangler tail multi-channel-platform --format=pretty

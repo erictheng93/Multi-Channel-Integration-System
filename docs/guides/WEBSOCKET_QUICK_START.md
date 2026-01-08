@@ -17,10 +17,10 @@
 
 ```bash
 # 1.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # 2.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 
 # 3.
 bash test-websocket-migration.sh
@@ -43,7 +43,7 @@ bash test-websocket-migration.sh
 
 ```bash
 # Admin Token
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -91,20 +91,20 @@ Day 10: 100%
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health | jq
+curl https://your-api-domain.example.com/api/websocket/health | jq
 
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status | jq
+curl https://your-api-domain.example.com/api/websocket/migration-status | jq
 
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/metrics | jq
+curl https://your-api-domain.example.com/api/websocket/metrics | jq
 ```
 
 
 ```bash
 
 export ADMIN_TOKEN="your-admin-jwt-token"
-export API_URL="https://multi-channel.imfinethankyouandyou.com/api"
+export API_URL="https://your-api-domain.example.com/api"
 
 # WebSocket (10% )
 curl -X POST $API_URL/websocket/migration-config \

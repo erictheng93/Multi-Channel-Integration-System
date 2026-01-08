@@ -200,7 +200,7 @@ async function connectSSE() {
  try {
  const authStore = useAuthStore()
  const baseUrl = import.meta.env.VITE_API_BASE_URL ||
- 'https://multi-channel.imfinethankyouandyou.com'
+ 'https://your-api-domain.example.com'
 
  // SSE
  const sseUrl = conversationId.value
@@ -334,7 +334,7 @@ async function connectSSE() {
 
 **WebSocket Health Check**:
 ```bash
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl -s https://your-api-domain.example.com/api/websocket/health
 ```
 
 **Response**:

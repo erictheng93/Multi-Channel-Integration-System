@@ -5,7 +5,7 @@
 
 
 1. Cloudflare
-2. Worker `multi-channel.imfinethankyouandyou.com`
+2. Worker `your-api-domain.example.com`
 3.
 
 
@@ -55,7 +55,7 @@ wrangler pages deploy dist --project-name=multi-channel-platform-frontend
 
 #### Production
 ```
-VITE_API_BASE_URL=https://multi-channel.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://your-api-domain.example.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 VITE_ENABLE_PERFORMANCE_MONITORING=true
@@ -63,7 +63,7 @@ VITE_ENABLE_PERFORMANCE_MONITORING=true
 
 #### Preview
 ```
-VITE_API_BASE_URL=https://multi-channel.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://your-api-domain.example.com
 VITE_DEV_MODE=true
 VITE_ENABLE_DEBUG_LOGS=true
 VITE_ENABLE_PERFORMANCE_MONITORING=false
@@ -83,7 +83,7 @@ VITE_ENABLE_PERFORMANCE_MONITORING=false
 /* /index.html 200
 
 # API Worker
-/api/* https://multi-channel.imfinethankyouandyou.com/api/:splat 200
+/api/* https://your-api-domain.example.com/api/:splat 200
 ```
 
 ### `functions/_middleware.ts`

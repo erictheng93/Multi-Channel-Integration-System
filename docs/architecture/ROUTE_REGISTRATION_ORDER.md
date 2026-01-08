@@ -45,13 +45,13 @@ Our application uses a **Unified Route Registry System** (`src/core/route-regist
 
 **Before Fix** (Version < d51fc6c8):
 ```bash
-$ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
+$ curl https://your-api-domain.example.com/api/cors/health
 {"error":"Missing or invalid authorization header"} # 401 Error
 ```
 
 **After Fix** (Version d51fc6c8+):
 ```bash
-$ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
+$ curl https://your-api-domain.example.com/api/cors/health
 {"status":"healthy","timestamp":"...","service":"cors-monitoring"} # 200 OK
 ```
 
@@ -401,7 +401,7 @@ In October 2025, we implemented a unified CORS monitoring system with endpoints 
 After deployment, public endpoints returned 401 errors:
 
 ```bash
-$ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
+$ curl https://your-api-domain.example.com/api/cors/health
 {"error":"Missing or invalid authorization header"} # Should be public!
 ```
 
@@ -446,7 +446,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 ```bash
 # After fix
-$ curl https://multi-channel.imfinethankyouandyou.com/api/cors/health
+$ curl https://your-api-domain.example.com/api/cors/health
 {"status":"healthy","timestamp":"2025-10-14T07:54:49.695Z"} # 200 OK
 
 # E2E tests

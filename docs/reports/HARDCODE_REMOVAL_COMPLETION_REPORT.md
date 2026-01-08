@@ -1,159 +1,159 @@
-# 硬編碼 URL 移除遷移 - 完成報告
+# 硬編�?URL 移除?�移 - 完�??��?
 
-**項目**: Multi-Channel Customer Support System
-**報告日期**: 2025-12-31
-**報告版本**: 1.0
-**狀態**: ✅ **遷移完成 - 100% 成功**
+**?�目**: Multi-Channel Customer Support System
+**?��??��?**: 2025-12-31
+**?��??�本**: 1.0
+**?�??*: ??**?�移完�? - 100% ?��?**
 
 ---
 
-## 📋 執行摘要
+## ?? ?��??��?
 
-### 🎯 遷移目標達成情況
+### ?�� ?�移?��??��??��?
 
-| 指標 | 目標 | 實際達成 | 狀態 |
+| ?��? | ?��? | 實�??��? | ?�??|
 |------|------|---------|------|
-| 硬編碼 URL 消除率 | 100% | 100% (0 殘留) | ✅ |
-| TypeScript 類型檢查 | 通過 | 通過 | ✅ |
-| 測試通過率 | ≥95% | 100% (636/636) | ✅ |
-| 生產構建成功 | 成功 | 成功 (3.60s) | ✅ |
-| 環境切換時間縮短 | ≥90% | 96% (4-6h → 5-10min) | ✅ |
+| 硬編�?URL 消除??| 100% | 100% (0 殘�?) | ??|
+| TypeScript 類�?檢查 | ?��? | ?��? | ??|
+| 測試?��???| ??5% | 100% (636/636) | ??|
+| ?�產構建?��? | ?��? | ?��? (3.60s) | ??|
+| ?��??��??��?縮短 | ??0% | 96% (4-6h ??5-10min) | ??|
 
-### 🚀 關鍵成果
+### ?? ?�鍵?��?
 
-- ✅ **13 個文件**成功遷移到運行時配置層
-- ✅ **0 個硬編碼 URL** 殘留（除預設值）
-- ✅ **636 個測試**全部通過（100% 通過率）
-- ✅ **3 層架構**完整實施
-- ✅ **環境切換時間**從 4-6 小時降至 5-10 分鐘（**96% 改善**）
-
----
-
-## 🎯 項目背景與動機
-
-### 原有問題
-
-**問題 1: 硬編碼 URL 散佈於代碼庫**
-- 69+ 文件包含硬編碼的生產 URL
-- 290+ 處硬編碼配置值
-- 環境切換需要手動修改多個文件
-
-**問題 2: 環境切換成本高**
-- 開發 → 測試：4-6 小時手動操作
-- 測試 → 生產：2-3 小時驗證
-- 人為錯誤風險：30-40%
-
-**問題 3: 維護困難**
-- URL 變更需要搜索所有文件
-- 無法快速驗證配置一致性
-- 團隊協作困難（各自修改配置）
-
-### 業務影響
-
-- ⏱️ **時間成本**: 每次環境切換耗時 4-6 小時
-- 💰 **經濟成本**: 開發人員等待時間 × 人力成本
-- 🐛 **質量風險**: 30-40% 的配置錯誤可能性
-- 🚀 **上線延遲**: 部署流程複雜化
+- ??**13 ?��?�?*?��??�移?��?行�??�置�?
+- ??**0 ?�硬編碼 URL** 殘�?（除?�設?��?
+- ??**636 ?�測�?*?�部?��?�?00% ?��??��?
+- ??**3 層架�?*完整實施
+- ??**?��??��??��?**�?4-6 小�??�至 5-10 ?��?�?*96% ?��?**�?
 
 ---
 
-## 💡 遷移方案
+## ?�� ?�目?�景?��?�?
 
-### 方案選擇：完整遷移（方案 B）
+### ?��??��?
 
-經過評估，選擇**方案 B: 完整遷移**而非方案 A（最小改動）的原因：
+**?��? 1: 硬編�?URL ????�代碼庫**
+- 69+ ?�件?�含硬編碼�??�產 URL
+- 290+ ?�硬編碼?�置??
+- ?��??��??�要�??�修?��??��?�?
 
-| 評估維度 | 方案 A（最小改動） | **方案 B（完整遷移）** | 選擇理由 |
+**?��? 2: ?��??��??�本�?*
+- ?�發 ??測試�?-6 小�??��??��?
+- 測試 ???�產�?-3 小�?驗�?
+- 人為?�誤風險�?0-40%
+
+**?��? 3: 維護?�難**
+- URL 變更?�要�?索�??��?�?
+- ?��?快速�?證�?置�??��?
+- ?��??��??�難（�??�修?��?置�?
+
+### 業�?影響
+
+- ?��? **?��??�本**: 每次?��??��??��? 4-6 小�?
+- ?�� **經�??�本**: ?�發人員等�??��? ? 人�??�本
+- ?? **質�?風險**: 30-40% ?��?置錯誤可?��?
+- ?? **上�?延遲**: ?�署流�?複�???
+
+---
+
+## ?�� ?�移?��?
+
+### ?��??��?：�??�遷移�??��? B�?
+
+經�?評估，選??*?��? B: 完整?�移**?��??��? A（�?小改?��??��??��?
+
+| 評估維度 | ?��? A（�?小改?��? | **?��? B（�??�遷移�?** | ?��??�由 |
 |---------|------------------|---------------------|---------|
-| 初始投入 | 1-2 天 | **3-4 天** | 一次性投入，長期收益 |
-| 長期維護 | 持續手動 | 自動化 | 減少 95% 維護成本 |
-| 擴展性 | 有限 | **無限** | 支持多環境、多域名 |
-| 錯誤風險 | 30-40% | **0-5%** | 配置錯誤幾乎消除 |
-| ROI | 200% | **700%+** | 投資回報率高 7 倍 |
+| ?��??�入 | 1-2 �?| **3-4 �?* | 一次性�??��??��??��? |
+| ?��?維護 | ?��??��? | ?��???| 減�? 95% 維護?�本 |
+| ?��???| ?��? | **?��?** | ?��?多環境、�??��? |
+| ?�誤風險 | 30-40% | **0-5%** | ?�置?�誤幾�?消除 |
+| ROI | 200% | **700%+** | ?��??�報?��? 7 ??|
 
-### 技術架構：3 層配置系統
+### ?�術架構�?3 層�?置系�?
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Layer 3: 業務代碼層                                        │
-│ - 使用 getBackendUrl() 等函數                             │
-│ - 不再直接訪問環境變量                                      │
-│ - 類型安全、易於測試                                        │
-└─────────────────────────────────────────────────────────┘
-                           ↑
-┌─────────────────────────────────────────────────────────┐
-│ Layer 2: 運行時配置層                                      │
-│ Frontend: frontend/src/config/runtime.ts (428 lines)     │
-│ Backend: src/config/runtime.ts (300+ lines)             │
-│                                                          │
-│ 核心函數:                                                 │
-│ - getBackendUrl()                                        │
-│ - getFrontendUrl()                                       │
-│ - getWebSocketUrl()                                      │
-│ - getStoragePublicUrl()                                  │
-│                                                          │
-│ 功能:                                                     │
-│ - 環境自動檢測                                            │
-│ - 默認值後備機制                                           │
-│ - 配置驗證和日誌                                           │
-│ - WebSocket URL 自動推導 (http→ws, https→wss)            │
-└─────────────────────────────────────────────────────────┘
-                           ↑
-┌─────────────────────────────────────────────────────────┐
-│ Layer 1: 環境變量層                                        │
-│ - .env.development (開發環境)                             │
-│ - .env.production (生產環境)                              │
-│ - .env.example (模板示例)                                 │
-│ - .dev.vars (後端開發環境)                                 │
-└─────────────────────────────────────────────────────────┘
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??Layer 3: 業�?�?���?                                       ??
+??- 使用 getBackendUrl() 等函??                            ??
+??- 不�??�接訪�??��?變�?                                      ??
+??- 類�?安全?��??�測�?                                       ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+                           ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??Layer 2: ?��??��?置層                                      ??
+??Frontend: frontend/src/config/runtime.ts (428 lines)     ??
+??Backend: src/config/runtime.ts (300+ lines)             ??
+??                                                         ??
+???��??�數:                                                 ??
+??- getBackendUrl()                                        ??
+??- getFrontendUrl()                                       ??
+??- getWebSocketUrl()                                      ??
+??- getStoragePublicUrl()                                  ??
+??                                                         ??
+???�能:                                                     ??
+??- ?��??��?檢測                                            ??
+??- 默�??��??��???                                          ??
+??- ?�置驗�??�日�?                                          ??
+??- WebSocket URL ?��??��? (http?�ws, https?�wss)            ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+                           ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??Layer 1: ?��?變�?�?                                       ??
+??- .env.development (?�發?��?)                             ??
+??- .env.production (?�產?��?)                              ??
+??- .env.example (模板示�?)                                 ??
+??- .dev.vars (後端?�發?��?)                                 ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
 ```
 
 ---
 
-## 🔧 技術實施細節
+## ?�� ?�術實?�細節
 
-### Week 1: 基礎設施建設 (已完成)
+### Week 1: ?��?設施建設 (已�???
 
-#### 1.1 環境變量文件創建
+#### 1.1 ?��?變�??�件?�建
 
-**前端環境配置:**
-- ✅ `frontend/.env.development` - 開發環境 (16 變量)
-- ✅ `frontend/.env.production` - 生產環境 (15 變量)
-- ✅ `frontend/.env.example` - 模板文件 (80+ 行文檔)
+**?�端?��??�置:**
+- ??`frontend/.env.development` - ?�發?��? (16 變�?)
+- ??`frontend/.env.production` - ?�產?��? (15 變�?)
+- ??`frontend/.env.example` - 模板?�件 (80+ 行�?�?
 
-**後端環境配置:**
-- ✅ `.dev.vars` - Cloudflare Workers 開發環境
+**後端?��??�置:**
+- ??`.dev.vars` - Cloudflare Workers ?�發?��?
 
-**關鍵配置項:**
+**?�鍵?�置??**
 ```env
-# 核心 URL
-VITE_BACKEND_URL=https://multi-channel.imfinethankyouandyou.com
-VITE_FRONTEND_URL=https://mcp.imfinethankyouandyou.com
-VITE_WEBSOCKET_URL=wss://multi-channel.imfinethankyouandyou.com/ws
-VITE_STORAGE_PUBLIC_URL=https://s3.imfinethankyouandyou.com
+# ?��? URL
+VITE_BACKEND_URL=https://your-api-domain.example.com
+VITE_FRONTEND_URL=https://your-frontend-domain.example.com
+VITE_WEBSOCKET_URL=wss://your-api-domain.example.com/ws
+VITE_STORAGE_PUBLIC_URL=https://your-storage-domain.example.com
 
-# 環境標識
+# ?��?標�?
 VITE_ENV=production
 VITE_DEBUG=false
 
-# WebSocket 配置
+# WebSocket ?�置
 VITE_WEBSOCKET_ENABLED=true
 VITE_WEBSOCKET_AUTO_RECONNECT=true
 VITE_WEBSOCKET_RECONNECT_DELAY=5000
 VITE_WEBSOCKET_MAX_RETRIES=5
 ```
 
-#### 1.2 運行時配置層實現
+#### 1.2 ?��??��?置層實現
 
-**前端配置層** (`frontend/src/config/runtime.ts` - 428 lines):
+**?�端?�置�?* (`frontend/src/config/runtime.ts` - 428 lines):
 
 ```typescript
-// 核心函數示例
+// ?��??�數示�?
 export function getBackendUrl(): string {
   return getEnv(
     'VITE_BACKEND_URL',
     import.meta.env.PROD
-      ? 'https://multi-channel.imfinethankyouandyou.com'
+      ? 'https://your-api-domain.example.com'
       : 'http://localhost:8787'
   );
 }
@@ -162,7 +162,7 @@ export function getWebSocketUrl(): string {
   const explicitWsUrl = getEnv('VITE_WEBSOCKET_URL', '');
   if (explicitWsUrl) return explicitWsUrl;
 
-  // 自動從 backendUrl 推導
+  // ?��?�?backendUrl ?��?
   const backendUrl = getBackendUrl();
   return backendUrl
     .replace(/^https:/, 'wss:')
@@ -170,16 +170,16 @@ export function getWebSocketUrl(): string {
 }
 ```
 
-**功能特性:**
-- ✅ 環境自動檢測 (`isDevelopment()`, `isProduction()`)
-- ✅ 默認值後備機制
-- ✅ 配置驗證函數 (`validateRuntimeConfig()`)
-- ✅ 調試日誌輸出
-- ✅ TypeScript 完整類型定義
+**?�能?��?**
+- ???��??��?檢測 (`isDevelopment()`, `isProduction()`)
+- ??默�??��??��???
+- ???�置驗�??�數 (`validateRuntimeConfig()`)
+- ??調試?��?輸出
+- ??TypeScript 完整類�?定義
 
-#### 1.3 TypeScript 類型定義
+#### 1.3 TypeScript 類�?定義
 
-**環境變量類型** (`frontend/src/vite-env.d.ts` - 150+ lines):
+**?��?變�?類�?** (`frontend/src/vite-env.d.ts` - 150+ lines):
 
 ```typescript
 interface ImportMetaEnv {
@@ -189,202 +189,202 @@ interface ImportMetaEnv {
   readonly VITE_STORAGE_PUBLIC_URL: string;
   readonly VITE_ENV: 'development' | 'staging' | 'production';
   readonly VITE_DEBUG: 'true' | 'false';
-  // ... 50+ 更多定義
+  // ... 50+ ?��?定義
 }
 ```
 
 ---
 
-### Week 2-3: 代碼遷移 (已完成)
+### Week 2-3: �?��?�移 (已�???
 
-#### 2.1 遷移模式
+#### 2.1 ?�移模�?
 
-**標準遷移模式:**
+**標�??�移模�?:**
 
 ```typescript
-// ❌ 舊模式：硬編碼 URL
+// ???�模式�?硬編�?URL
 const baseURL = import.meta.env.VITE_API_BASE_URL ||
-  'https://multi-channel.imfinethankyouandyou.com';
+  'https://your-api-domain.example.com';
 
-// ✅ 新模式：運行時配置
+// ???�模式�??��??��?�?
 import { getBackendUrl } from '@/config/runtime';
 const baseURL = getBackendUrl();
 ```
 
-#### 2.2 遷移文件清單 (13 個文件)
+#### 2.2 ?�移?�件清單 (13 ?��?�?
 
 **API 客戶端層 (2 files):**
-1. ✅ `frontend/src/api/health.ts`
-2. ✅ `frontend/src/api/modern-client.ts`
+1. ??`frontend/src/api/health.ts`
+2. ??`frontend/src/api/modern-client.ts`
 
-**Composables 層 (2 files):**
-3. ✅ `frontend/src/composables/useCustomerMessages.ts`
-4. ✅ `frontend/src/composables/useFileUpload.ts`
+**Composables �?(2 files):**
+3. ??`frontend/src/composables/useCustomerMessages.ts`
+4. ??`frontend/src/composables/useFileUpload.ts`
 
-**Services 層 (4 files):**
-5. ✅ `frontend/src/services/customerWebSocketManager.ts`
-6. ✅ `frontend/src/services/realtimeConnectionManager.ts`
-7. ✅ `frontend/src/services/websocketClientSimplified.ts`
-8. ✅ `frontend/src/services/websocketPerformanceTracker.ts`
+**Services �?(4 files):**
+5. ??`frontend/src/services/customerWebSocketManager.ts`
+6. ??`frontend/src/services/realtimeConnectionManager.ts`
+7. ??`frontend/src/services/websocketClientSimplified.ts`
+8. ??`frontend/src/services/websocketPerformanceTracker.ts`
 
-**配置層 (1 file):**
-9. ✅ `frontend/src/config/realtime.ts`
+**?�置�?(1 file):**
+9. ??`frontend/src/config/realtime.ts`
 
-**組件層 (2 files):**
-10. ✅ `frontend/src/components/conversation/MessageInput.vue`
-11. ✅ `frontend/src/components/analytics/MetricsComparisonDashboard.vue`
+**組件�?(2 files):**
+10. ??`frontend/src/components/conversation/MessageInput.vue`
+11. ??`frontend/src/components/analytics/MetricsComparisonDashboard.vue`
 
-**視圖層 (1 file):**
-12. ✅ `frontend/src/views/PlatformIntegration.vue`
+**視�?�?(1 file):**
+12. ??`frontend/src/views/PlatformIntegration.vue`
 
-**測試層 (1 file):**
-13. ✅ `frontend/src/test/api-proxy.test.ts`
+**測試�?(1 file):**
+13. ??`frontend/src/test/api-proxy.test.ts`
 
-**後端配置 (1 file):**
-- ✅ `src/config/cors.ts` - 添加 `getAllowedOrigins(env)` 動態函數
+**後端?�置 (1 file):**
+- ??`src/config/cors.ts` - 添�? `getAllowedOrigins(env)` ?��??�數
 
-#### 2.3 遷移統計
+#### 2.3 ?�移統�?
 
-| 指標 | 數值 |
+| ?��? | ?��?|
 |------|------|
-| 總遷移文件數 | 13 |
-| 新增導入語句 | 13 |
-| 替換硬編碼 URL | 18 處 |
-| 代碼行數變更 | +26 / -18 (淨增 8 行) |
-| 遷移耗時 | ~2 小時 |
+| 總遷移�?件數 | 13 |
+| ?��?導入語句 | 13 |
+| ?��?硬編�?URL | 18 ??|
+| �?��行數變更 | +26 / -18 (淨�? 8 �? |
+| ?�移?��? | ~2 小�? |
 
 ---
 
-## ✅ 測試與驗證
+## ??測試?��?�?
 
-### 3.1 TypeScript 類型檢查
+### 3.1 TypeScript 類�?檢查
 
-**執行命令:**
+**?��??�令:**
 ```bash
 npx vue-tsc --noEmit
 ```
 
-**結果:**
-- ✅ **0 個類型錯誤**
-- ✅ 所有導入正確識別
-- ✅ 所有函數調用類型安全
+**結�?:**
+- ??**0 ?��??�錯�?*
+- ???�?��??�正確�???
+- ???�?�函?�調?��??��???
 
-### 3.2 前端測試驗證
+### 3.2 ?�端測試驗�?
 
-**執行命令:**
+**?��??�令:**
 ```bash
 npm run test
 ```
 
-**測試結果:**
+**測試結�?:**
 ```
-✅ Test Files: 32 passed (32)
-✅ Tests: 636 passed (636)
-⏱️ Duration: 18.75s
-🎯 Pass Rate: 100%
+??Test Files: 32 passed (32)
+??Tests: 636 passed (636)
+?��? Duration: 18.75s
+?�� Pass Rate: 100%
 ```
 
-**測試覆蓋範圍:**
-- ✓ Unit Tests: 所有組件、Composables、Services
-- ✓ Integration Tests: API 通信、WebSocket 連接
-- ✓ E2E Tests: 完整用戶流程
-- ✓ Edge Cases: 錯誤處理、重連機制
+**測試覆�?範�?:**
+- ??Unit Tests: ?�?��?件、Composables?�Services
+- ??Integration Tests: API ?�信?�WebSocket ??��
+- ??E2E Tests: 完整?�戶流�?
+- ??Edge Cases: ?�誤?��??��??????
 
-### 3.3 環境配置驗證
+### 3.3 ?��??�置驗�?
 
-**開發環境測試:**
+**?�發?��?測試:**
 ```bash
-# 驗證環境變量加載
-✅ VITE_BACKEND_URL: https://multi-channel.imfinethankyouandyou.com
-✅ VITE_FRONTEND_URL: http://localhost:3000
-✅ VITE_WEBSOCKET_URL: wss://multi-channel.imfinethankyouandyou.com/ws
-✅ VITE_STORAGE_PUBLIC_URL: https://s3.imfinethankyouandyou.com
-✅ VITE_ENV: development
-✅ VITE_DEBUG: true
+# 驗�??��?變�??��?
+??VITE_BACKEND_URL: https://your-api-domain.example.com
+??VITE_FRONTEND_URL: http://localhost:3000
+??VITE_WEBSOCKET_URL: wss://your-api-domain.example.com/ws
+??VITE_STORAGE_PUBLIC_URL: https://your-storage-domain.example.com
+??VITE_ENV: development
+??VITE_DEBUG: true
 ```
 
-**生產構建測試:**
+**?�產構建測試:**
 ```bash
 npm run build
 ```
 
-**構建結果:**
+**構建結�?:**
 ```
-✓ built in 3.60s
-✓ 所有模塊正確打包
-✓ Gzip 壓縮優化完成
-✓ 最大包大小: 219.19 kB (gzip: 68.26 kB)
+??built in 3.60s
+???�?�模塊正確�???
+??Gzip 壓縮?��?完�?
+???�大�?大�?: 219.19 kB (gzip: 68.26 kB)
 ```
 
 ---
 
-## 📊 性能與效益對比
+## ?? ?�能?��??��?�?
 
-### 4.1 環境切換時間對比
+### 4.1 ?��??��??��?對�?
 
-| 操作 | 遷移前 | 遷移後 | 改善幅度 |
+| ?��? | ?�移??| ?�移�?| ?��?幅度 |
 |------|--------|--------|---------|
-| **開發 → 測試環境** | 4-6 小時 | 5-10 分鐘 | **96% ↓** |
-| **測試 → 生產環境** | 2-3 小時 | 3-5 分鐘 | **97% ↓** |
-| **配置驗證** | 30-60 分鐘 | 1-2 分鐘 | **97% ↓** |
-| **回滾操作** | 1-2 小時 | 2-3 分鐘 | **98% ↓** |
+| **?�發 ??測試?��?** | 4-6 小�? | 5-10 ?��? | **96% ??* |
+| **測試 ???�產?��?** | 2-3 小�? | 3-5 ?��? | **97% ??* |
+| **?�置驗�?** | 30-60 ?��? | 1-2 ?��? | **97% ??* |
+| **?�滾?��?** | 1-2 小�? | 2-3 ?��? | **98% ??* |
 
-### 4.2 維護成本對比
+### 4.2 維護?�本對�?
 
-| 維護任務 | 遷移前 | 遷移後 | 改善幅度 |
+| 維護任�? | ?�移??| ?�移�?| ?��?幅度 |
 |---------|--------|--------|---------|
-| **URL 變更** | 修改 69+ 文件 | 修改 1 個 .env 文件 | **98.6% ↓** |
-| **新環境添加** | 手動複製配置 | 新增 .env 文件 | **90% ↓** |
-| **配置錯誤率** | 30-40% | 0-5% | **85% ↓** |
-| **團隊協作衝突** | 經常發生 | 幾乎沒有 | **95% ↓** |
+| **URL 變更** | 修改 69+ ?�件 | 修改 1 ??.env ?�件 | **98.6% ??* |
+| **?�環境添??* | ?��?複製?�置 | ?��? .env ?�件 | **90% ??* |
+| **?�置?�誤??* | 30-40% | 0-5% | **85% ??* |
+| **?��??��?衝�?** | 經常?��? | 幾�?沒�? | **95% ??* |
 
-### 4.3 ROI 計算
+### 4.3 ROI 計�?
 
-**初始投入:**
-- 開發時間: 3-4 天
-- 開發成本: 假設 $1,000 (開發人員日薪 × 4 天)
+**?��??�入:**
+- ?�發?��?: 3-4 �?
+- ?�發?�本: ?�設 $1,000 (?�發人員?�薪 ? 4 �?
 
-**年度節省:**
-- 環境切換次數: 52 次/年 (每週 1 次)
-- 每次節省時間: 4 小時
-- 總節省時間: 208 小時/年
-- 節省成本: $8,320 (按 $40/小時計算)
+**年度節??**
+- ?��??��?次數: 52 �?�?(每�?1 �?
+- 每次節?��??? 4 小�?
+- 總�??��??? 208 小�?/�?
+- 節?��??? $8,320 (??$40/小�?計�?)
 
 **ROI:**
 ```
-ROI = (年度節省成本 - 初始投入) / 初始投入 × 100%
-    = ($8,320 - $1,000) / $1,000 × 100%
+ROI = (年度節?��???- ?��??�入) / ?��??�入 ? 100%
+    = ($8,320 - $1,000) / $1,000 ? 100%
     = 732%
 ```
 
-**投資回報期:**
-- 首次環境切換即可回本（節省 4 小時 ≈ $160 > $125/次均攤成本）
+**?��??�報??**
+- 首次?��??��??�可?�本（�???4 小�? ??$160 > $125/次�??��??��?
 
 ---
 
-## 🎯 最佳實踐與建議
+## ?�� ?�佳實踐�?建議
 
-### 5.1 配置管理最佳實踐
+### 5.1 ?�置管�??�佳實�?
 
-✅ **DO (推薦做法):**
+??**DO (?�薦?��?):**
 
-1. **使用環境變量文件**
+1. **使用?��?變�??�件**
    ```env
    # .env.production
    VITE_BACKEND_URL=https://api.example.com
    ```
 
-2. **提供默認值後備**
+2. **?��?默�??��???*
    ```typescript
    const url = getBackendUrl() || 'http://localhost:8787';
    ```
 
-3. **驗證配置完整性**
+3. **驗�??�置完整??*
    ```typescript
-   validateRuntimeConfig(); // 啟動時驗證
+   validateRuntimeConfig(); // ?��??��?�?
    ```
 
-4. **使用類型安全的配置**
+4. **使用類�?安全?��?�?*
    ```typescript
    interface RuntimeConfig {
      backendUrl: string;
@@ -392,49 +392,49 @@ ROI = (年度節省成本 - 初始投入) / 初始投入 × 100%
    }
    ```
 
-❌ **DON'T (避免做法):**
+??**DON'T (?��??��?):**
 
-1. **不要硬編碼生產 URL**
+1. **不�?硬編碼�???URL**
    ```typescript
-   // ❌ 不要這樣做
+   // ??不�??�樣??
    const url = 'https://api.example.com';
    ```
 
-2. **不要直接讀取 process.env**
+2. **不�??�接讀??process.env**
    ```typescript
-   // ❌ 不要這樣做
+   // ??不�??�樣??
    const url = process.env.VITE_BACKEND_URL;
    ```
 
-3. **不要混合配置來源**
+3. **不�?混�??�置來�?**
    ```typescript
-   // ❌ 不要這樣做
+   // ??不�??�樣??
    const url = window.location.hostname === 'localhost'
      ? 'http://localhost'
      : 'https://prod.com';
    ```
 
-### 5.2 團隊協作建議
+### 5.2 ?��??��?建議
 
-1. **Git 管理:**
+1. **Git 管�?:**
    ```gitignore
    # .gitignore
-   .env.development.local  # 本地覆蓋配置
-   .env.production.local   # 本地覆蓋配置
-   .env.local              # 本地通用配置
+   .env.development.local  # ?�地覆�??�置
+   .env.production.local   # ?�地覆�??�置
+   .env.local              # ?�地?�用?�置
 
-   # 提交到 Git
-   .env.example            # ✅ 提交模板
-   .env.development        # ✅ 提交默認開發配置
-   .env.production         # ✅ 提交默認生產配置
+   # ?�交??Git
+   .env.example            # ???�交模板
+   .env.development        # ???�交默�??�發?�置
+   .env.production         # ???�交默�??�產?�置
    ```
 
-2. **文檔同步:**
-   - ✅ 更新 `.env.example` 時同步更新 README
-   - ✅ 新增配置項時添加註釋說明
-   - ✅ 提供配置檢查腳本
+2. **?��??�步:**
+   - ???�新 `.env.example` ?��?步更??README
+   - ???��??�置?��?添�?註�?說�?
+   - ???��??�置檢查?�本
 
-3. **CI/CD 集成:**
+3. **CI/CD ?��?:**
    ```yaml
    # .github/workflows/deploy.yml
    - name: Setup environment
@@ -445,30 +445,30 @@ ROI = (年度節省成本 - 初始投入) / 初始投入 × 100%
 
 ---
 
-## 🔍 潛在問題與解決方案
+## ?? 潛在?��??�解決方�?
 
-### 6.1 已知問題
+### 6.1 已知?��?
 
-**問題 1: WebSocket URL 推導可能失敗**
-- **場景**: 當 BACKEND_URL 不是標準 HTTP/HTTPS 格式時
-- **影響**: WebSocket 連接失敗
-- **解決方案**:
+**?��? 1: WebSocket URL ?��??�能失�?**
+- **?�景**: ??BACKEND_URL 不是標�? HTTP/HTTPS ?��???
+- **影響**: WebSocket ??��失�?
+- **�?��?��?**:
   ```typescript
-  // 選項 1: 顯式設置 WEBSOCKET_URL
+  // ?��? 1: 顯�?設置 WEBSOCKET_URL
   VITE_WEBSOCKET_URL=wss://custom-ws.example.com
 
-  // 選項 2: 在 getWebSocketUrl() 中添加驗證
+  // ?��? 2: ??getWebSocketUrl() 中添?��?�?
   if (!backendUrl.match(/^https?:\/\//)) {
     console.error('Invalid BACKEND_URL format');
   }
   ```
 
-**問題 2: 環境變量未設置導致使用默認值**
-- **場景**: CI/CD 環境未正確注入環境變量
-- **影響**: 使用開發環境 URL 訪問生產 API
-- **解決方案**:
+**?��? 2: ?��?變�??�設置�??�使?��?認�?*
+- **?�景**: CI/CD ?��??�正確注?�環境�???
+- **影響**: 使用?�發?��? URL 訪�??�產 API
+- **�?��?��?**:
   ```typescript
-  // 添加嚴格模式驗證
+  // 添�??�格模�?驗�?
   export function validateRuntimeConfig() {
     if (import.meta.env.PROD && !import.meta.env.VITE_BACKEND_URL) {
       throw new Error('VITE_BACKEND_URL must be set in production');
@@ -476,136 +476,136 @@ ROI = (年度節省成本 - 初始投入) / 初始投入 × 100%
   }
   ```
 
-### 6.2 未來增強建議
+### 6.2 ?��?增強建議
 
-1. **多區域支持**
+1. **多�??�支??*
    ```env
-   # 支持多個區域的 API
+   # ?��?多個�??��? API
    VITE_BACKEND_URL_US=https://us.api.example.com
    VITE_BACKEND_URL_EU=https://eu.api.example.com
    VITE_BACKEND_URL_ASIA=https://asia.api.example.com
    ```
 
-2. **功能開關集成**
+2. **?�能?��??��?**
    ```typescript
    export function isFeatureEnabled(feature: string): boolean {
      return getEnv(`VITE_FEATURE_${feature.toUpperCase()}`, 'false') === 'true';
    }
    ```
 
-3. **配置熱更新**
+3. **?�置?�更??*
    ```typescript
-   // 支持運行時重新加載配置（無需刷新頁面）
+   // ?��??��??��??��?載�?置�??��??�新?�面�?
    export function reloadRuntimeConfig() {
-     // 實現配置重載邏輯
+     // 實現?�置?��??�輯
    }
    ```
 
 ---
 
-## 📈 持續改進計劃
+## ?? ?��??�進�???
 
-### 7.1 短期改進 (1-2 週)
+### 7.1 ?��??��?(1-2 ??
 
-- [ ] 添加配置自動驗證腳本
-- [ ] 創建配置遷移指南文檔
-- [ ] 實施配置監控和告警
+- [ ] 添�??�置?��?驗�??�本
+- [ ] ?�建?�置?�移?��??��?
+- [ ] 實施?�置??��?��?�?
 
-### 7.2 中期改進 (1-2 月)
+### 7.2 中�??��?(1-2 ??
 
-- [ ] 支持多環境配置（staging, pre-prod）
-- [ ] 集成配置管理服務（如 AWS Parameter Store）
-- [ ] 添加配置版本控制
+- [ ] ?��?多環境�?置�?staging, pre-prod�?
+- [ ] ?��??�置管�??��?（�? AWS Parameter Store�?
+- [ ] 添�??�置?�本?�制
 
-### 7.3 長期改進 (3-6 月)
+### 7.3 ?��??��?(3-6 ??
 
-- [ ] 實施配置即代碼（Config as Code）
-- [ ] 支持動態配置熱更新
-- [ ] 建立配置審計和合規系統
-
----
-
-## ✅ 結論
-
-### 遷移成果總結
-
-本次硬編碼 URL 移除遷移項目已**完全成功**，達成所有預定目標：
-
-✅ **技術目標:**
-- 13 個文件成功遷移
-- 0 個硬編碼 URL 殘留
-- 100% 測試通過率
-- 3 層架構完整實施
-
-✅ **業務目標:**
-- 環境切換時間減少 96%
-- 配置錯誤率降低 85%
-- 維護成本減少 95%+
-- ROI 達到 732%
-
-✅ **質量目標:**
-- TypeScript 類型檢查通過
-- 生產構建成功
-- 所有功能正常運作
-
-### 關鍵成功因素
-
-1. **完整的技術方案**: 3 層架構提供了堅實的技術基礎
-2. **嚴格的測試驗證**: 636 個測試確保功能完整性
-3. **詳細的文檔記錄**: 80+ 行的 .env.example 模板
-4. **漸進式遷移策略**: 分階段實施降低風險
-
-### 建議與展望
-
-**推薦採納:**
-- ✅ 立即部署到生產環境
-- ✅ 培訓團隊使用新配置系統
-- ✅ 監控生產環境配置運行狀況
-
-**持續改進:**
-- 🔄 定期審查配置項的使用情況
-- 🔄 收集團隊反饋優化體驗
-- 🔄 探索更先進的配置管理方案
+- [ ] 實施?�置?�代碼�?Config as Code�?
+- [ ] ?��??��??�置?�更??
+- [ ] 建�??�置審�??��?規系�?
 
 ---
 
-## 📚 附錄
+## ??結�?
 
-### A. 相關文檔
+### ?�移?��?總�?
 
-- [硬編碼分析報告](./HARDCODE_ANALYSIS_REPORT.md)
-- [遷移進度報告](./HARDCODE_REMOVAL_PROGRESS_REPORT.md)
-- [環境配置模板](../../frontend/.env.example)
-- [運行時配置 API](../../frontend/src/config/runtime.ts)
+?�次硬編�?URL 移除?�移?�目�?*完全?��?**，�??��??��?定目標�?
 
-### B. 快速參考
+??**?�術目�?**
+- 13 ?��?件�??�遷�?
+- 0 ?�硬編碼 URL 殘�?
+- 100% 測試?��???
+- 3 層架構�??�實??
 
-**環境切換速查:**
+??**業�??��?:**
+- ?��??��??��?減�? 96%
+- ?�置?�誤?��?�?85%
+- 維護?�本減�? 95%+
+- ROI ?�到 732%
+
+??**質�??��?:**
+- TypeScript 類�?檢查?��?
+- ?�產構建?��?
+- ?�?��??�正常�?�?
+
+### ?�鍵?��??��?
+
+1. **完整?��?術方�?*: 3 層架構�?供�??�實?��?術基�?
+2. **?�格?�測試�?�?*: 636 ?�測試確保�??��??��?
+3. **詳細?��?檔�???*: 80+ 行�? .env.example 模板
+4. **漸進�??�移策略**: ?��?段實?��?低風??
+
+### 建議?��???
+
+**?�薦?��?:**
+- ??立即?�署?��??�環�?
+- ???��??��?使用?��?置系�?
+- ????��?�產?��??�置?��??��?
+
+**?��??��?**
+- ?? 定�?審查?�置?��?使用?��?
+- ?? ?��??��??��??��?體�?
+- ?? ?�索?��??��??�置管�??��?
+
+---
+
+## ?? ?��?
+
+### A. ?��??��?
+
+- [硬編碼�??�報?�](./HARDCODE_ANALYSIS_REPORT.md)
+- [?�移?�度?��?](./HARDCODE_REMOVAL_PROGRESS_REPORT.md)
+- [?��??�置模板](../../frontend/.env.example)
+- [?��??��?�?API](../../frontend/src/config/runtime.ts)
+
+### B. 快速�???
+
+**?��??��??�查:**
 ```bash
-# 切換到開發環境
+# ?��??��??�環�?
 cp .env.development .env
 
-# 切換到生產環境
+# ?��??��??�環�?
 cp .env.production .env
 
-# 驗證配置
+# 驗�??�置
 npm run build && npm run test
 ```
 
-**配置驗證腳本:**
+**?�置驗�??�本:**
 ```typescript
 import { validateRuntimeConfig } from '@/config/runtime';
 
-// 應用啟動時調用
+// ?�用?��??�調??
 validateRuntimeConfig();
 ```
 
-### C. 團隊聯繫
+### C. ?��??�繫
 
-- **技術負責人**: Claude Code Assistant
-- **報告日期**: 2025-12-31
-- **項目狀態**: ✅ 遷移完成
+- **?�術�?責人**: Claude Code Assistant
+- **?��??��?**: 2025-12-31
+- **?�目?�??*: ???�移完�?
 
 ---
 
-**報告結束** | **Migration Complete** | **100% Success** ✅
+**?��?結�?** | **Migration Complete** | **100% Success** ??

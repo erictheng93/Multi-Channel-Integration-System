@@ -430,7 +430,7 @@ notifications :
 #### 1:
 
 ****:
-- URL: `https://multi-channel-platform.imfinethankyouandyou.com`
+- URL: `https://multi-channel-platform.example.com`
 - : `fetch failed`
 - :
 
@@ -443,13 +443,13 @@ notifications :
 ****:
 ```bash
 # 1.
-curl https://multi-channel-platform.imfinethankyouandyou.com/api/system/health
+curl https://multi-channel-platform.example.com/api/system/health
 
 # 2. Cloudflare Workers
 npm run deploy
 
 # 3. DNS
-nslookup multi-channel-platform.imfinethankyouandyou.com
+nslookup multi-channel-platform.example.com
 
 # 4. Cloudflare
 wrangler deployments list
@@ -566,7 +566,7 @@ npm run deploy
 npm run db:migrate:prod
 
 # 6.
-curl https://multi-channel-platform.imfinethankyouandyou.com/api/notifications/health
+curl https://multi-channel-platform.example.com/api/notifications/health
 ```
 
 ---
@@ -684,7 +684,7 @@ curl -H "Authorization: Bearer <token>" \
 LOCAL_TEST_TOKEN=<jwt-token>
 
 
-REMOTE_API_URL=https://multi-channel-platform.imfinethankyouandyou.com
+REMOTE_API_URL=https://multi-channel-platform.example.com
 REMOTE_TEST_TOKEN=<jwt-token>
 
 # JWT Secret

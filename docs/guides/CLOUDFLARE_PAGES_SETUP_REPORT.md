@@ -3,13 +3,13 @@
 
  ** Cloudflare Pages**
  ** Worker **
- ** URL `multi-channel.imfinethankyouandyou.com`**
+ ** URL `your-api-domain.example.com`**
 
 
 ### 1.
 - `frontend/.env.production` -
 - `frontend/.env.development` -
-- `https://multi-channel.imfinethankyouandyou.com`
+- `https://your-api-domain.example.com`
 
 ### 2. Cloudflare Pages
 - `frontend/_redirects` - SPA API
@@ -29,7 +29,7 @@
 ## API
 
 ```
- : https://multi-channel.imfinethankyouandyou.com/api/health
+ : https://your-api-domain.example.com/api/health
  : connected
  API : 1.0.0
  CORS :
@@ -94,20 +94,20 @@ frontend/
 ### Dashboard
 ```
 # Production
-VITE_API_BASE_URL=https://multi-channel.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://your-api-domain.example.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 VITE_ENABLE_PERFORMANCE_MONITORING=true
 
 # Preview
-VITE_API_BASE_URL=https://multi-channel.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://your-api-domain.example.com
 VITE_DEV_MODE=true
 VITE_ENABLE_DEBUG_LOGS=true
 VITE_ENABLE_PERFORMANCE_MONITORING=false
 ```
 
 
-1. **URL **: `line-bot.imfinethankyouandyou.com` `multi-channel.imfinethankyouandyou.com`
+1. **URL **: `line-bot.example.com` `your-api-domain.example.com`
 2. **TypeScript **: auth store ConversationList
 3. ****: Vite Cloudflare Pages
 4. **CORS **: CORS

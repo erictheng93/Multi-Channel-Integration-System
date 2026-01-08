@@ -154,31 +154,44 @@ export function getCurrentEnvironment(): Environment {
 /**
  * 獲取後端 API URL
  * @returns 後端 URL
+ * @throws Error 如果生產環境未設置 VITE_BACKEND_URL
  */
 export function getBackendUrl(): string {
-  const url = getEnv(
-    'VITE_BACKEND_URL',
-    import.meta.env.PROD
-      ? 'https://multi-channel.imfinethankyouandyou.com'
-      : 'http://localhost:8787'
-  );
+  if (import.meta.env.PROD) {
+    const url = import.meta.env.VITE_BACKEND_URL;
+    if (!url) {
+      throw new Error(
+        'VITE_BACKEND_URL environment variable is required in production. ' +
+        'Please set it in .env.production or build environment.'
+      );
+    }
+    return url.replace(/\/$/, '');
+  }
 
-  // 移除尾部斜線
+  // Development: use localhost default
+  const url = getEnv('VITE_BACKEND_URL', 'http://localhost:8787');
   return url.replace(/\/$/, '');
 }
 
 /**
  * 獲取前端 URL
  * @returns 前端 URL
+ * @throws Error 如果生產環境未設置 VITE_FRONTEND_URL
  */
 export function getFrontendUrl(): string {
-  const url = getEnv(
-    'VITE_FRONTEND_URL',
-    import.meta.env.PROD
-      ? 'https://mcp.imfinethankyouandyou.com'
-      : 'http://localhost:3000'
-  );
+  if (import.meta.env.PROD) {
+    const url = import.meta.env.VITE_FRONTEND_URL;
+    if (!url) {
+      throw new Error(
+        'VITE_FRONTEND_URL environment variable is required in production. ' +
+        'Please set it in .env.production or build environment.'
+      );
+    }
+    return url.replace(/\/$/, '');
+  }
 
+  // Development: use localhost default
+  const url = getEnv('VITE_FRONTEND_URL', 'http://localhost:3000');
   return url.replace(/\/$/, '');
 }
 
@@ -206,15 +219,22 @@ export function getWebSocketUrl(): string {
 /**
  * 獲取 R2 存儲公開 URL
  * @returns R2 公開 URL
+ * @throws Error 如果生產環境未設置 VITE_STORAGE_PUBLIC_URL
  */
 export function getStoragePublicUrl(): string {
-  const url = getEnv(
-    'VITE_STORAGE_PUBLIC_URL',
-    import.meta.env.PROD
-      ? 'https://s3.imfinethankyouandyou.com'
-      : 'http://localhost:8787/files'
-  );
+  if (import.meta.env.PROD) {
+    const url = import.meta.env.VITE_STORAGE_PUBLIC_URL;
+    if (!url) {
+      throw new Error(
+        'VITE_STORAGE_PUBLIC_URL environment variable is required in production. ' +
+        'Please set it in .env.production or build environment.'
+      );
+    }
+    return url.replace(/\/$/, '');
+  }
 
+  // Development: use localhost default
+  const url = getEnv('VITE_STORAGE_PUBLIC_URL', 'http://localhost:8787/files');
   return url.replace(/\/$/, '');
 }
 
@@ -262,7 +282,8 @@ export function isDebugEnabled(): boolean {
  * @example
  * ```ts
  * const url = getApiEndpoint('/api/conversations');
- * // => 'https://multi-channel.imfinethankyouandyou.com/api/conversations'
+ * // => 'https://your-api-domain.example.com/api/conversations' (production)
+ * // => 'http://localhost:8787/api/conversations' (development)
  * ```
  */
 export function getApiEndpoint(path: string): string {
@@ -279,7 +300,8 @@ export function getApiEndpoint(path: string): string {
  * @example
  * ```ts
  * const url = getWebSocketEndpoint('/conversation/123');
- * // => 'wss://multi-channel.imfinethankyouandyou.com/ws/conversation/123'
+ * // => 'wss://your-api-domain.example.com/ws/conversation/123' (production)
+ * // => 'ws://localhost:8787/ws/conversation/123' (development)
  * ```
  */
 export function getWebSocketEndpoint(path: string): string {
@@ -296,7 +318,8 @@ export function getWebSocketEndpoint(path: string): string {
  * @example
  * ```ts
  * const url = getFileUrl('avatars/user123.jpg');
- * // => 'https://s3.imfinethankyouandyou.com/avatars/user123.jpg'
+ * // => 'https://your-storage-domain.example.com/avatars/user123.jpg' (production)
+ * // => 'http://localhost:8787/files/avatars/user123.jpg' (development)
  * ```
  */
 export function getFileUrl(fileKey: string): string {

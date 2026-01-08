@@ -66,16 +66,16 @@ if (isWebSocketEnabled) {
 
 ****:
 ```
-connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://multi-channel.imfinethankyouandyou.com;
+connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://your-api-domain.example.com;
 ```
 
 ****:
 ```
-connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://multi-channel.imfinethankyouandyou.com wss://multi-channel.imfinethankyouandyou.com;
+connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://your-api-domain.example.com wss://your-api-domain.example.com;
 ```
 
 ****:
-- `wss://multi-channel.imfinethankyouandyou.com` `connect-src`
+- `wss://your-api-domain.example.com` `connect-src`
 - WebSocket
 -
 
@@ -100,7 +100,7 @@ connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://
 
 #### 2. WebSocket
 ```
-[WebSocketClient] Connecting to WebSocket: wss://multi-channel.imfinethankyouandyou.com/...
+[WebSocketClient] Connecting to WebSocket: wss://your-api-domain.example.com/...
 [WebSocketClient] Connection state changed to: connecting
 [WebSocketClient] WebSocket connected successfully
 [WebSocketClient] Connection state changed to: connected
@@ -203,8 +203,8 @@ Content-Security-Policy:
  img-src 'self' data: https:;
  font-src 'self' data:;
  connect-src 'self' https://*.workers.dev https://cloudflareinsights.com
- https://multi-channel.imfinethankyouandyou.com
- wss://multi-channel.imfinethankyouandyou.com;
+ https://your-api-domain.example.com
+ wss://your-api-domain.example.com;
  frame-src 'none';
  object-src 'none';
  base-uri 'self';

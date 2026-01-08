@@ -7,7 +7,7 @@
 
 ---
 
-## 📋 Table of Contents
+## ?? Table of Contents
 
 1. [Overview](#overview)
 2. [Pre-Testing Preparation](#pre-testing-preparation)
@@ -23,16 +23,16 @@
 
 ---
 
-## 🎯 Overview
+## ?�� Overview
 
 ### Testing Objectives
 
 This guide will help you validate that:
-- ✅ Web Installer successfully collects all required configuration
-- ✅ Generated configuration files are correct
-- ✅ UI/UX enhancements work as designed
-- ✅ Deployment process completes successfully
-- ✅ Deployed application functions correctly
+- ??Web Installer successfully collects all required configuration
+- ??Generated configuration files are correct
+- ??UI/UX enhancements work as designed
+- ??Deployment process completes successfully
+- ??Deployed application functions correctly
 
 ### What We're Testing
 
@@ -50,7 +50,7 @@ This guide will help you validate that:
 
 ---
 
-## 🛠️ Pre-Testing Preparation
+## ??�?Pre-Testing Preparation
 
 ### Required Accounts & Credentials
 
@@ -107,7 +107,7 @@ npm run dev
 
 ---
 
-## 🧪 Testing Environment Setup
+## ?�� Testing Environment Setup
 
 ### Test Data Preparation
 
@@ -139,7 +139,7 @@ Open Browser DevTools (F12) and:
 
 ---
 
-## 📝 Phase 1 Testing: Core Configuration
+## ?? Phase 1 Testing: Core Configuration
 
 ### Test Scenario 1: Valid Configuration Flow (Happy Path)
 
@@ -256,11 +256,11 @@ Open Browser DevTools (F12) and:
    - [ ] Monitor Network tab for API requests
 
 **Expected Results**:
-- ✅ All fields accept valid input
-- ✅ Validation works correctly
-- ✅ Navigation flows smoothly
-- ✅ No console errors
-- ✅ API requests succeed
+- ??All fields accept valid input
+- ??Validation works correctly
+- ??Navigation flows smoothly
+- ??No console errors
+- ??API requests succeed
 
 ### Test Scenario 2: Validation Error Handling
 
@@ -294,7 +294,7 @@ Open Browser DevTools (F12) and:
 
 5. **LINE Bot ID Validation**
    - [ ] Enter: `110xsqef` (no @)
-   - [ ] Verify error: "LINE Bot ID must start with @ followed by lowercase letters and numbers (e.g., @110xsqef). Find it in Channel Settings → Basic settings"
+   - [ ] Verify error: "LINE Bot ID must start with @ followed by lowercase letters and numbers (e.g., @110xsqef). Find it in Channel Settings ??Basic settings"
    - [ ] Enter: `@Test123` (uppercase)
    - [ ] Verify error shows pattern requirement
 
@@ -304,10 +304,10 @@ Open Browser DevTools (F12) and:
    - [ ] Verify character counter shows red danger state
 
 **Expected Results**:
-- ✅ All validation errors show actionable messages
-- ✅ Error messages include examples
-- ✅ Error messages include where to find values
-- ✅ Users understand how to fix errors
+- ??All validation errors show actionable messages
+- ??Error messages include examples
+- ??Error messages include where to find values
+- ??Users understand how to fix errors
 
 ### Test Scenario 3: Smart Default Suggestions
 
@@ -328,7 +328,7 @@ Open Browser DevTools (F12) and:
 
 3. **Backend URL Suggestion**
    - [ ] Verify suggested value: `https://api.crm.example.com`
-   - [ ] Click ✕ button to dismiss
+   - [ ] Click ??button to dismiss
    - [ ] Verify: Suggestion box disappears
    - [ ] Clear custom domain and re-enter
    - [ ] Verify: Dismissed suggestion does NOT reappear
@@ -339,15 +339,15 @@ Open Browser DevTools (F12) and:
    - [ ] Verify: R2 Public URL field auto-fills
 
 **Expected Results**:
-- ✅ Suggestions appear automatically when custom domain entered
-- ✅ "Use Suggestion" button populates field correctly
-- ✅ Dismiss (✕) button hides suggestion
-- ✅ Dismissed suggestions don't reappear
-- ✅ Suggestions follow smart derivation logic
+- ??Suggestions appear automatically when custom domain entered
+- ??"Use Suggestion" button populates field correctly
+- ??Dismiss (?? button hides suggestion
+- ??Dismissed suggestions don't reappear
+- ??Suggestions follow smart derivation logic
 
 ---
 
-## 🎨 Phase 2 Testing: UI/UX Features
+## ?�� Phase 2 Testing: UI/UX Features
 
 ### Test Scenario 4: Visual Polish Elements
 
@@ -407,11 +407,11 @@ Open Browser DevTools (F12) and:
    - [ ] Watch for any janky or stuttering animations
 
 **Expected Results**:
-- ✅ All badges display correctly with proper colors
-- ✅ Success indicators appear when validation passes
-- ✅ Character counters update in real-time with color changes
-- ✅ Focus states are visible and smooth
-- ✅ All animations are smooth (60fps feel)
+- ??All badges display correctly with proper colors
+- ??Success indicators appear when validation passes
+- ??Character counters update in real-time with color changes
+- ??Focus states are visible and smooth
+- ??All animations are smooth (60fps feel)
 
 ### Test Scenario 5: Inline Help Documentation
 
@@ -446,15 +446,15 @@ Open Browser DevTools (F12) and:
    - [ ] Verify: "Learn more" link to official docs
 
 **Expected Results**:
-- ✅ All help sections expand/collapse smoothly
-- ✅ Step-by-step guides are clear and actionable
-- ✅ Examples are shown with code styling
-- ✅ External links work correctly
-- ✅ Users can find information without leaving form
+- ??All help sections expand/collapse smoothly
+- ??Step-by-step guides are clear and actionable
+- ??Examples are shown with code styling
+- ??External links work correctly
+- ??Users can find information without leaving form
 
 ---
 
-## ✅ Deployment Validation
+## ??Deployment Validation
 
 ### Test Scenario 6: Full Deployment Process
 
@@ -501,11 +501,11 @@ Open Browser DevTools (F12) and:
    - [ ] Note: Worker URL, Pages URL, Database ID
 
 **Expected Results**:
-- ✅ OAuth flow completes successfully
-- ✅ All deployment steps execute without errors
-- ✅ All Cloudflare resources created
-- ✅ Configuration files generated correctly
-- ✅ Deployment summary provided
+- ??OAuth flow completes successfully
+- ??All deployment steps execute without errors
+- ??All Cloudflare resources created
+- ??Configuration files generated correctly
+- ??Deployment summary provided
 
 ### Test Scenario 7: Verify Deployed Application
 
@@ -533,31 +533,31 @@ Open Browser DevTools (F12) and:
    - [ ] Verify: All basic features work
 
 4. **Database Verification**
-   - [ ] Check Cloudflare Dashboard → D1
+   - [ ] Check Cloudflare Dashboard ??D1
    - [ ] Verify: Database created with correct name
    - [ ] Verify: Tables created (26+ tables)
    - [ ] Verify: Initial data populated
 
 5. **KV Namespaces Verification**
-   - [ ] Check Cloudflare Dashboard → KV
+   - [ ] Check Cloudflare Dashboard ??KV
    - [ ] Verify: 2 KV namespaces created
    - [ ] Names: `{project}-session`, `{project}-cache`
 
 6. **R2 Bucket Verification**
-   - [ ] Check Cloudflare Dashboard → R2
+   - [ ] Check Cloudflare Dashboard ??R2
    - [ ] Verify: Bucket created with correct name
    - [ ] Name: `{project}-uploads`
 
 **Expected Results**:
-- ✅ Deployed application accessible via provided URL
-- ✅ Admin login works with provided credentials
-- ✅ Basic CRM features functional
-- ✅ All Cloudflare resources visible in dashboard
-- ✅ Database properly initialized
+- ??Deployed application accessible via provided URL
+- ??Admin login works with provided credentials
+- ??Basic CRM features functional
+- ??All Cloudflare resources visible in dashboard
+- ??Database properly initialized
 
 ---
 
-## 🌐 Browser Compatibility Testing
+## ?? Browser Compatibility Testing
 
 ### Test Matrix
 
@@ -565,10 +565,10 @@ Test the Web Installer in the following browsers:
 
 | Browser | Version | Desktop | Mobile | Status |
 |---------|---------|---------|--------|--------|
-| Chrome | Latest | ✅ Test | ✅ Test | ⏳ |
-| Firefox | Latest | ✅ Test | ✅ Test | ⏳ |
-| Safari | Latest | ✅ Test | ✅ Test | ⏳ |
-| Edge | Latest | ✅ Test | ⏳ Skip | ⏳ |
+| Chrome | Latest | ??Test | ??Test | ??|
+| Firefox | Latest | ??Test | ??Test | ??|
+| Safari | Latest | ??Test | ??Test | ??|
+| Edge | Latest | ??Test | ??Skip | ??|
 
 ### Browser-Specific Tests
 
@@ -619,7 +619,7 @@ Screenshot: [If applicable]
 
 ---
 
-## 📱 Mobile Testing
+## ?�� Mobile Testing
 
 ### Devices to Test
 
@@ -674,7 +674,7 @@ Screenshot: [If applicable]
 
 ---
 
-## ♿ Accessibility Testing
+## ??Accessibility Testing
 
 ### Keyboard Navigation Test
 
@@ -762,7 +762,7 @@ Fix Needed: [Yes/No]
 
 ---
 
-## 🐛 Issue Reporting
+## ?? Issue Reporting
 
 ### Issue Template
 
@@ -812,25 +812,25 @@ When you find an issue, record it using this template:
 
 ### Severity Guidelines
 
-**Critical** (🔴):
+**Critical** (?��):
 - Application crashes
 - Data loss
 - Deployment fails completely
 - Cannot proceed with testing
 
-**High** (🟠):
+**High** (??):
 - Major feature not working
 - Validation incorrect
 - UI severely broken
 - Affects multiple users
 
-**Medium** (🟡):
+**Medium** (?��):
 - Minor feature not working
 - UI slightly broken
 - Workaround available
 - Affects some users
 
-**Low** (🟢):
+**Low** (?��):
 - Cosmetic issue
 - Typo or minor text issue
 - Enhancement suggestion
@@ -838,76 +838,76 @@ When you find an issue, record it using this template:
 
 ---
 
-## ✅ Success Criteria
+## ??Success Criteria
 
 ### Phase 1 Success Criteria
 
 The Phase 1 implementation is considered successful if:
 
-- ✅ All 15+ configuration fields accept valid input
-- ✅ Validation prevents invalid input with clear error messages
-- ✅ Smart URL derivation works correctly (3 URL suggestions)
-- ✅ Resource preview shows all 7 resources with correct names
-- ✅ Configuration can be saved and submitted
-- ✅ Generated `wrangler.toml` is valid TOML
-- ✅ Generated frontend `.env` contains all required variables
-- ✅ No hardcoded `imfinethankyouandyou.com` domains in generated files
+- ??All 15+ configuration fields accept valid input
+- ??Validation prevents invalid input with clear error messages
+- ??Smart URL derivation works correctly (3 URL suggestions)
+- ??Resource preview shows all 7 resources with correct names
+- ??Configuration can be saved and submitted
+- ??Generated `wrangler.toml` is valid TOML
+- ??Generated frontend `.env` contains all required variables
+- ??No hardcoded `example.com` domains in generated files
 
 ### Phase 2 Success Criteria
 
 The Phase 2 implementation is considered successful if:
 
-- ✅ All 8 form fields have appropriate badges (Required/Optional)
-- ✅ Success indicators (green checkmarks) appear when validation passes
-- ✅ Character counters update in real-time with color-coded states
-- ✅ Suggestion boxes appear and work correctly
-- ✅ Help sections provide clear, actionable guidance
-- ✅ Quick Reference cards are helpful and well-designed
-- ✅ All animations are smooth (no stuttering or lag)
-- ✅ Enhanced error messages include examples and guidance
+- ??All 8 form fields have appropriate badges (Required/Optional)
+- ??Success indicators (green checkmarks) appear when validation passes
+- ??Character counters update in real-time with color-coded states
+- ??Suggestion boxes appear and work correctly
+- ??Help sections provide clear, actionable guidance
+- ??Quick Reference cards are helpful and well-designed
+- ??All animations are smooth (no stuttering or lag)
+- ??Enhanced error messages include examples and guidance
 
 ### Deployment Success Criteria
 
 The deployment is considered successful if:
 
-- ✅ OAuth authentication completes without errors
-- ✅ All Cloudflare resources created successfully:
+- ??OAuth authentication completes without errors
+- ??All Cloudflare resources created successfully:
   - Worker deployed
   - D1 database created with 26+ tables
   - 2 KV namespaces created
   - R2 bucket created
   - Queue created
   - Pages frontend deployed
-- ✅ Deployed application is accessible via provided URL
-- ✅ Admin can log in with provided credentials
-- ✅ Basic CRM features are functional (teams, agents, conversations)
-- ✅ No console errors in deployed application
+- ??Deployed application is accessible via provided URL
+- ??Admin can log in with provided credentials
+- ??Basic CRM features are functional (teams, agents, conversations)
+- ??No console errors in deployed application
 
 ### Browser Compatibility Success Criteria
 
 Browser compatibility is considered successful if:
 
-- ✅ All features work in Chrome (latest)
-- ✅ All features work in Firefox (latest)
-- ✅ All features work in Safari (latest)
-- ✅ All features work in Edge (latest)
-- ✅ Mobile Safari (iOS 15+) works correctly
-- ✅ Chrome Mobile (Android 11+) works correctly
-- ✅ No browser-specific bugs or visual issues
+- ??All features work in Chrome (latest)
+- ??All features work in Firefox (latest)
+- ??All features work in Safari (latest)
+- ??All features work in Edge (latest)
+- ??Mobile Safari (iOS 15+) works correctly
+- ??Chrome Mobile (Android 11+) works correctly
+- ??No browser-specific bugs or visual issues
 
 ### Accessibility Success Criteria
 
 Accessibility is considered successful if:
 
-- ✅ All form fields can be navigated with keyboard only
-- ✅ Focus indicators are visible on all interactive elements
-- ✅ Screen reader announces all labels, errors, and help text
-- ✅ All text meets WCAG AA color contrast (4.5:1)
-- ✅ All interactive elements meet minimum size (44x44px on mobile)
+- ??All form fields can be navigated with keyboard only
+- ??Focus indicators are visible on all interactive elements
+- ??Screen reader announces all labels, errors, and help text
+- ??All text meets WCAG AA color contrast (4.5:1)
+- ??All interactive elements meet minimum size (44x44px on mobile)
 
 ---
 
-## 📊 Testing Progress Tracker
+## ?? Testing Progress Tracker
 
 Use this checklist to track your testing progress:
 
@@ -949,7 +949,7 @@ Use this checklist to track your testing progress:
 
 ---
 
-## 🎯 Next Steps After Testing
+## ?�� Next Steps After Testing
 
 ### If Testing Succeeds (All success criteria met)
 
@@ -998,30 +998,30 @@ Use this checklist to track your testing progress:
 
 ```
 Day 1: Preparation & Phase 1 Testing (2-3 hours)
-├─ Setup test environment (30 min)
-├─ Run Test Scenarios 1-3 (90 min)
-└─ Document findings (30 min)
+?��? Setup test environment (30 min)
+?��? Run Test Scenarios 1-3 (90 min)
+?��? Document findings (30 min)
 
 Day 2: Phase 2 & Deployment Testing (2-3 hours)
-├─ Run Test Scenarios 4-5 (60 min)
-├─ Run Test Scenarios 6-7 (90 min)
-└─ Document findings (30 min)
+?��? Run Test Scenarios 4-5 (60 min)
+?��? Run Test Scenarios 6-7 (90 min)
+?��? Document findings (30 min)
 
 Day 3: Browser & Mobile Testing (2-3 hours)
-├─ Browser compatibility (90 min)
-├─ Mobile testing (60 min)
-└─ Document findings (30 min)
+?��? Browser compatibility (90 min)
+?��? Mobile testing (60 min)
+?��? Document findings (30 min)
 
 Day 4: Accessibility & Reporting (1-2 hours)
-├─ Accessibility testing (60 min)
-└─ Create final test report (60 min)
+?��? Accessibility testing (60 min)
+?��? Create final test report (60 min)
 
 Total Estimated Time: 7-11 hours
 ```
 
 ---
 
-## 📝 Test Report Template
+## ?? Test Report Template
 
 After completing all testing, create a test report using this template:
 
@@ -1102,7 +1102,7 @@ After completing all testing, create a test report using this template:
 
 ---
 
-## 🎓 Tips for Effective Testing
+## ?? Tips for Effective Testing
 
 1. **Take Your Time**: Don't rush through tests. Thorough testing saves time later.
 2. **Document Everything**: Record every issue, no matter how small.
@@ -1115,7 +1115,7 @@ After completing all testing, create a test report using this template:
 
 ---
 
-## ❓ Frequently Asked Questions
+## ??Frequently Asked Questions
 
 **Q: How long should testing take?**
 A: Expect 7-11 hours total for comprehensive testing across all categories.
@@ -1137,6 +1137,6 @@ A: Stop testing, document the bug thoroughly, and fix it before continuing.
 
 ---
 
-**Ready to Start Testing?** 🚀
+**Ready to Start Testing?** ??
 
 Begin with [Pre-Testing Preparation](#pre-testing-preparation) and work through each section systematically. Good luck!

@@ -170,10 +170,10 @@ interface MigrationConfig {
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 
 # ( Admin Token)
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -245,7 +245,7 @@ BASE_URL=https://your-domain.com bash test-websocket-migration.sh
 
 #### 1.
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 ```
 
 ****:
@@ -264,7 +264,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
 
 #### 2.
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 ```
 
 ****:
@@ -308,7 +308,7 @@ ls -l frontend/src/views/WebSocketMonitoring.vue
 bash test-websocket-migration.sh
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 ```
 
 #### 2: (Day 1)
@@ -329,7 +329,7 @@ curl https://your-frontend-domain.com
 
 ```bash
 # 1. 5% WebSocket
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -d '{"enableWebSocket": true, "rolloutPercentage": 5}'
 
@@ -337,7 +337,7 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migrat
 # Dashboard
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/metrics
+curl https://your-api-domain.example.com/api/websocket/metrics
 ```
 
 #### 4: (Day 4-14)
@@ -373,7 +373,7 @@ curl -X POST ... -d '{"enableSSE": false, "rolloutPercentage": 100}'
 ****:
 ```bash
 # 1.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # 2. Durable Objects
 wrangler tail --format pretty
@@ -394,7 +394,7 @@ console.log(realtimeConfig)
 ****:
 ```bash
 # 1.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 
 # 2. KV ()
 wrangler kv:key delete websocket_migration_config --binding=SESSIONS
@@ -410,7 +410,7 @@ curl -X POST ... -d '{"enableWebSocket": true}'
 ****:
 ```bash
 # 1.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/metrics
+curl https://your-api-domain.example.com/api/websocket/metrics
 
 # 2. Durable Objects
 wrangler tail --format pretty
@@ -447,7 +447,7 @@ curl -X POST ... -d '{"rolloutPercentage": 5}'
 
 ```bash
 # 1. WebSocket
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -d '{
  "enableWebSocket": false,
@@ -456,7 +456,7 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migrat
  }'
 
 # 2.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # 3.
 ```

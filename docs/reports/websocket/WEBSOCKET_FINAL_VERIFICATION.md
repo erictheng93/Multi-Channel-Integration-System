@@ -237,13 +237,13 @@ Line 450+: ()
 npm install -g wscat
 
 # JWT token
-TOKEN=$(curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+TOKEN=$(curl -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{"username":"your_admin","password":"your_password"}' \
  | python -c "import sys, json; print(json.load(sys.stdin)['token'])")
 
 # WebSocket
-wscat -c "wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect?userId=1&conversationId=test_room&token=$TOKEN&role=admin"
+wscat -c "wss://your-api-domain.example.com/api/websocket/connect?userId=1&conversationId=test_room&token=$TOKEN&role=admin"
 ```
 
 ****:
@@ -261,7 +261,7 @@ cat > monitor-websocket.sh << 'EOF'
 #!/bin/bash
 while true; do
  echo "=== $(date) ==="
- curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health | python -m json.tool
+ curl -s https://your-api-domain.example.com/api/websocket/health | python -m json.tool
  echo ""
  sleep 30
 done
@@ -277,11 +277,11 @@ chmod +x monitor-websocket.sh
 ```bash
 # 10 WebSocket
 for i in {1..10}; do
- (wscat -c "wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect?userId=$i&token=$TOKEN&role=agent" &)
+ (wscat -c "wss://your-api-domain.example.com/api/websocket/connect?userId=$i&token=$TOKEN&role=agent" &)
 done
 
 
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health | grep activeConnections
+curl -s https://your-api-domain.example.com/api/websocket/health | grep activeConnections
 ```
 
 ### (: )
@@ -393,40 +393,40 @@ curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health | gr
 
 ```bash
 # WebSocket
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 
 
-curl https://multi-channel.imfinethankyouandyou.com/api/system/health
+curl https://your-api-domain.example.com/api/system/health
 ```
 
 ### WebSocket
 ```bash
 # wscat
-wscat -c "wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect?userId=1&conversationId=test&token=YOUR_JWT&role=agent"
+wscat -c "wss://your-api-domain.example.com/api/websocket/connect?userId=1&conversationId=test&token=YOUR_JWT&role=agent"
 
 # curl (HTTP upgrade test)
 curl -i -N \
  -H "Connection: Upgrade" \
  -H "Upgrade: websocket" \
- "https://multi-channel.imfinethankyouandyou.com/api/websocket/connect?userId=1&token=YOUR_JWT"
+ "https://your-api-domain.example.com/api/websocket/connect?userId=1&token=YOUR_JWT"
 ```
 
 
 ```bash
 
-watch -n 5 'curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health'
+watch -n 5 'curl -s https://your-api-domain.example.com/api/websocket/health'
 
 
-curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health | grep activeConnections
+curl -s https://your-api-domain.example.com/api/websocket/health | grep activeConnections
 ```
 
 ### ( Admin )
 ```bash
 # rollout
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{"rolloutPercentage": 75}'

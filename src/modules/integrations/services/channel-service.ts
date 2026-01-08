@@ -742,7 +742,8 @@ export class ChannelService implements IChannelIntegrationService {
    * Internal webhook URL generation
    */
   private generateWebhookUrlInternal(platform: ChannelPlatform, teamId: number, token: string): string {
-    const baseUrl = this.bindings.R2_PUBLIC_URL?.replace('s3.', 'multi-channel.') || 'https://multi-channel.imfinethankyouandyou.com';
+    // Use BACKEND_URL from environment, falling back to localhost for development
+    const baseUrl = this.bindings.BACKEND_URL || 'http://localhost:8787';
     return `${baseUrl}/api/webhooks/${platform}/${teamId}/${token}`;
   }
 

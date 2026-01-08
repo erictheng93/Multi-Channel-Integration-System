@@ -82,7 +82,7 @@ npm run lint:check
 npm run deploy:sse:staging
 
 # Verify staging functionality
-curl https://staging-multi-channel.imfinethankyouandyou.com/api/system/health
+curl https://staging-your-api-domain.example.com/api/system/health
 ```
 
 ### Step 3: Production Deployment
@@ -91,7 +91,7 @@ curl https://staging-multi-channel.imfinethankyouandyou.com/api/system/health
 npm run deploy:sse:production
 
 # Immediate verification
-curl https://multi-channel.imfinethankyouandyou.com/api/system/health
+curl https://your-api-domain.example.com/api/system/health
 ```
 
 ### Step 4: Post-Deployment Validation
@@ -200,10 +200,10 @@ After successful deployment, verify:
  ```bash
  # Test SSE endpoint
  curl -N -H "Authorization: Bearer $TOKEN" \
- "https://multi-channel.imfinethankyouandyou.com/api/conversations/test/messages/stream"
+ "https://your-api-domain.example.com/api/conversations/test/messages/stream"
 
  # Verify health
- curl https://multi-channel.imfinethankyouandyou.com/api/system/health
+ curl https://your-api-domain.example.com/api/system/health
  ```
 
 2. **User Experience Validation**

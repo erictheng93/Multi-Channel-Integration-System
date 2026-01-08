@@ -4,24 +4,21 @@
  * ============================================================================
  * 集中管理所有允許的 origins，支持動態環境配置
  *
- * 📋 注意: 本文件現在支持兩種模式：
- * 1. 靜態模式: 使用硬編碼的 ALLOWED_ORIGINS (向後兼容)
- * 2. 動態模式: 使用 getAllowedOrigins(env) 函數 (推薦)
+ * 📋 設計原則:
+ * 1. 生產環境: 必須通過環境變量顯式配置 (FRONTEND_URL, BACKEND_URL)
+ * 2. 開發環境: 自動包含 localhost 相關域名
+ * 3. 動態擴展: 支持通過 ADDITIONAL_ALLOWED_ORIGINS 添加額外域名
+ *
+ * @see getAllowedOrigins(env) - 推薦使用的動態配置函數
  */
+
+import { getCurrentEnvironment, type WorkerEnv } from './runtime';
 
 /**
- * ⚠️ 已棄用: 靜態 origins 列表 (僅向後兼容)
- * 推薦使用 getAllowedOrigins(env) 函數獲取動態配置
- *
- * @deprecated 請使用 getAllowedOrigins(env) 以支持環境動態配置
+ * 開發環境專用 origins 列表
+ * 這些域名僅在非生產環境自動包含
  */
-export const ALLOWED_ORIGINS = [
-  // 生產環境 (默認值 - 實際值應從環境變量讀取)
-  'https://multi-channel.imfinethankyouandyou.com',        // Backend API
-  'https://multi-channel-platform-frontend.pages.dev',     // Frontend Cloudflare Pages
-  'https://mcp.imfinethankyouandyou.com',                  // MCP Frontend Domain
-
-  // 開發環境 (本地開發)
+export const DEVELOPMENT_ORIGINS = [
   'http://localhost:3000',                                  // Vite dev server
   'http://localhost:3001',                                  // Vite dev server (alt port)
   'https://localhost:3000',                                 // Vite dev server (SSL)
@@ -30,6 +27,12 @@ export const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3001',                                  // Local IP (alt port)
   'http://localhost:8787',                                  // Wrangler dev server
 ] as const;
+
+/**
+ * @deprecated 請使用 getAllowedOrigins(env) 以支持環境動態配置
+ * 保留此常量僅為向後兼容，生產環境中不應直接使用
+ */
+export const ALLOWED_ORIGINS = DEVELOPMENT_ORIGINS;
 
 /**
  * ✅ 動態獲取允許的 origins (推薦)
@@ -46,58 +49,82 @@ export const ALLOWED_ORIGINS = [
  * }
  * ```
  */
-export function getAllowedOrigins(env?: any): string[] {
-  if (!env) {
-    // 無環境對象，返回靜態列表
-    return [...ALLOWED_ORIGINS];
+export function getAllowedOrigins(env?: WorkerEnv): string[] {
+  const origins = new Set<string>();
+
+  // 確定當前環境
+  const currentEnv = env ? getCurrentEnvironment(env) : 'development';
+
+  // 非生產環境: 自動包含開發 origins
+  if (currentEnv !== 'production') {
+    DEVELOPMENT_ORIGINS.forEach(origin => origins.add(origin));
   }
 
-  const origins: string[] = [];
+  if (env) {
+    // 從環境變量讀取配置的 URLs (生產環境必需)
+    if (env.FRONTEND_URL) {
+      origins.add(env.FRONTEND_URL);
+    }
+    if (env.BACKEND_URL) {
+      origins.add(env.BACKEND_URL);
+    }
+    if (env.STORAGE_PUBLIC_URL) {
+      origins.add(env.STORAGE_PUBLIC_URL);
+    }
+    // 相容性: 也檢查 R2_PUBLIC_URL
+    const r2Url = (env as Record<string, unknown>).R2_PUBLIC_URL as string;
+    if (r2Url) {
+      origins.add(r2Url);
+    }
 
-  // 從環境變量讀取生產 URLs
-  const backendUrl = env.BACKEND_URL || 'https://multi-channel.imfinethankyouandyou.com';
-  const frontendUrl = env.FRONTEND_URL || 'https://mcp.imfinethankyouandyou.com';
+    // 支持額外的允許 origins (逗號分隔)
+    const additionalOrigins = (env as Record<string, unknown>).ADDITIONAL_ALLOWED_ORIGINS as string;
+    if (additionalOrigins) {
+      additionalOrigins
+        .split(',')
+        .map(o => o.trim())
+        .filter(o => o)
+        .forEach(origin => origins.add(origin));
+    }
 
-  // 添加生產環境 URLs
-  origins.push(backendUrl);
-  origins.push(frontendUrl);
+    // 支持 Cloudflare Pages 預覽部署
+    const cfPagesUrl = (env as Record<string, unknown>).CF_PAGES_URL as string;
+    if (cfPagesUrl) {
+      origins.add(cfPagesUrl);
+    }
+  }
 
-  // 添加備用前端 URL
-  origins.push('https://multi-channel-platform-frontend.pages.dev');
+  // 生產環境驗證: 確保至少配置了 FRONTEND_URL
+  if (currentEnv === 'production' && origins.size === 0) {
+    console.warn(
+      '[CORS] Warning: No allowed origins configured in production. ' +
+      'Please set FRONTEND_URL, BACKEND_URL in environment variables.'
+    );
+  }
 
-  // 開發環境 URLs (總是包含)
-  origins.push(
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://localhost:3000',
-    'https://localhost:3001',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://localhost:8787'
-  );
-
-  // 去重並返回
-  return [...new Set(origins)];
+  return Array.from(origins);
 }
 
 /**
  * 檢查給定的 origin 是否被允許
  * @param origin - 要檢查的 origin
+ * @param env - Cloudflare Workers 環境對象 (可選，用於動態配置)
  * @returns 如果允許則返回 true
  */
-export function isOriginAllowed(origin: string | undefined): boolean {
+export function isOriginAllowed(origin: string | undefined, env?: WorkerEnv): boolean {
   if (!origin) {
     return false;
   }
 
-  // 檢查是否在白名單中
-  if (ALLOWED_ORIGINS.includes(origin as any)) {
+  // 使用動態配置檢查
+  const allowedOrigins = getAllowedOrigins(env);
+  if (allowedOrigins.includes(origin)) {
     return true;
   }
 
-  // 檢查是否為 Cloudflare Pages preview 域名
-  // 例如：abc123.multi-channel-platform-frontend.pages.dev
-  if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) {
+  // 支持 Cloudflare Pages 預覽部署模式
+  // 格式: https://{commit-hash}.{project-name}.pages.dev
+  if (origin.match(/^https:\/\/[a-f0-9]+\.[a-z0-9-]+\.pages\.dev$/)) {
     return true;
   }
 

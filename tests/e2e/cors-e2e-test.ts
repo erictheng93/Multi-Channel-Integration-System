@@ -1,20 +1,20 @@
 // CORS E2E 測試
-// 測試統一 CORS 配置的完整功能
+// 測試統�? CORS ?�置?��??��???
 
 import { describe, it, expect, beforeAll } from 'vitest';
 
-// 測試配置
-const BASE_URL = process.env.TEST_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
+// 測試?�置
+const BASE_URL = process.env.TEST_BASE_URL || 'https://your-api-domain.example.com';
 const ADMIN_TOKEN = process.env.TEST_ADMIN_TOKEN || '';
 
-// 允許的測試 origins
+// ?�許?�測�?origins
 const ALLOWED_ORIGINS = [
-  'https://multi-channel.imfinethankyouandyou.com',
+  'https://your-api-domain.example.com',
   'https://multi-channel-platform-frontend.pages.dev',
-  'https://mcp.imfinethankyouandyou.com',
+  'https://your-frontend-domain.example.com',
 ];
 
-// 不允許的測試 origins
+// 不�?許�?測試 origins
 const BLOCKED_ORIGINS = [
   'https://malicious-site.com',
   'http://suspicious-origin.example',
@@ -24,11 +24,11 @@ const BLOCKED_ORIGINS = [
 describe('CORS E2E Testing', () => {
   beforeAll(() => {
     if (!ADMIN_TOKEN) {
-      console.warn('⚠️ TEST_ADMIN_TOKEN not set. Some tests will be skipped.');
+      console.warn('?��? TEST_ADMIN_TOKEN not set. Some tests will be skipped.');
     }
   });
 
-  describe('1. 允許的 Origin 測試', () => {
+  describe('1. ?�許??Origin 測試', () => {
     it('should allow requests from whitelisted origins', async () => {
       for (const origin of ALLOWED_ORIGINS) {
         const response = await fetch(`${BASE_URL}/api/system/health`, {
@@ -47,7 +47,7 @@ describe('CORS E2E Testing', () => {
         expect(corsOrigin).toBe(origin);
         expect(corsCredentials).toBe('true');
 
-        console.log(`✅ [CORS Test] Allowed origin: ${origin}`);
+        console.log(`??[CORS Test] Allowed origin: ${origin}`);
       }
     });
 
@@ -69,11 +69,11 @@ describe('CORS E2E Testing', () => {
       expect(corsOrigin).toBe(previewOrigin);
       expect(corsCredentials).toBe('true');
 
-      console.log(`✅ [CORS Test] Cloudflare Pages preview domain allowed`);
+      console.log(`??[CORS Test] Cloudflare Pages preview domain allowed`);
     });
   });
 
-  describe('2. 被拒絕的 Origin 測試', () => {
+  describe('2. 被�?絕�? Origin 測試', () => {
     it('should reject requests from non-whitelisted origins', async () => {
       for (const origin of BLOCKED_ORIGINS) {
         const response = await fetch(`${BASE_URL}/api/system/health`, {
@@ -83,15 +83,15 @@ describe('CORS E2E Testing', () => {
           },
         });
 
-        // 請求本身應該成功（HTTP 狀態碼），但不應有 CORS headers
-        // 注意：瀏覽器會阻止請求，但在伺服器端測試中請求會到達
+        // 請�??�身?�該?��?（HTTP ?�?�碼）�?但�??��? CORS headers
+        // 注�?：瀏覽?��??�止請�?，�??�伺?�器端測試中請�??�到??
 
         const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
 
-        // 被拒絕的 origin 不應該返回該 origin
+        // 被�?絕�? origin 不�?該�??�該 origin
         expect(corsOrigin).not.toBe(origin);
 
-        console.log(`✅ [CORS Test] Rejected origin: ${origin}`);
+        console.log(`??[CORS Test] Rejected origin: ${origin}`);
       }
     });
   });
@@ -123,7 +123,7 @@ describe('CORS E2E Testing', () => {
       expect(corsHeaders).toContain('Authorization');
       expect(corsMaxAge).toBe('86400'); // 24 hours
 
-      console.log(`✅ [CORS Test] OPTIONS preflight successful`);
+      console.log(`??[CORS Test] OPTIONS preflight successful`);
     });
 
     it('should reject OPTIONS from blocked origins', async () => {
@@ -137,18 +137,18 @@ describe('CORS E2E Testing', () => {
         },
       });
 
-      // Blocked origin 的 OPTIONS 請求應該返回 403 或不包含 CORS headers
+      // Blocked origin ??OPTIONS 請�??�該返�? 403 ?��??�含 CORS headers
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
       expect(corsOrigin).not.toBe(origin);
 
-      console.log(`✅ [CORS Test] OPTIONS blocked for unauthorized origin`);
+      console.log(`??[CORS Test] OPTIONS blocked for unauthorized origin`);
     });
   });
 
-  describe('4. Credentials 支援測試', () => {
+  describe('4. Credentials ?�援測試', () => {
     it('should support credentials for allowed origins', async () => {
       if (!ADMIN_TOKEN) {
-        console.log('⏭️ Skipping credentials test (no token)');
+        console.log('?��? Skipping credentials test (no token)');
         return;
       }
 
@@ -171,15 +171,15 @@ describe('CORS E2E Testing', () => {
       expect(corsOrigin).toBe(origin);
       expect(corsCredentials).toBe('true');
 
-      console.log(`✅ [CORS Test] Credentials support verified`);
+      console.log(`??[CORS Test] Credentials support verified`);
     });
   });
 
-  describe('5. SSE 端點 CORS 測試', () => {
+  describe('5. SSE 端�? CORS 測試', () => {
     it('should handle SSE endpoints with proper CORS', async () => {
       const origin = ALLOWED_ORIGINS[0];
 
-      // 測試 SSE 端點的 CORS headers
+      // 測試 SSE 端�???CORS headers
       const response = await fetch(`${BASE_URL}/api/cors/health`, {
         method: 'GET',
         headers: {
@@ -192,10 +192,10 @@ describe('CORS E2E Testing', () => {
 
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
 
-      // SSE 端點應該返回允許的 origin 或 wildcard
+      // SSE 端�??�該返�??�許??origin ??wildcard
       expect(corsOrigin).toBeTruthy();
 
-      console.log(`✅ [CORS Test] SSE endpoint CORS verified`);
+      console.log(`??[CORS Test] SSE endpoint CORS verified`);
     });
 
     it('should use wildcard for unknown origins in SSE', async () => {
@@ -211,15 +211,15 @@ describe('CORS E2E Testing', () => {
 
       expect(response.ok).toBe(true);
 
-      // SSE 應該允許連接（可能使用 wildcard），但不支援 credentials
+      // SSE ?�該?�許??��（可?�使??wildcard）�?但�??�援 credentials
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
-      expect(corsOrigin).toBeTruthy(); // 可能是 '*' 或該 origin
+      expect(corsOrigin).toBeTruthy(); // ?�能??'*' ?�該 origin
 
-      console.log(`✅ [CORS Test] SSE wildcard fallback verified`);
+      console.log(`??[CORS Test] SSE wildcard fallback verified`);
     });
   });
 
-  describe('6. CORS 監控端點測試', () => {
+  describe('6. CORS ??��端�?測試', () => {
     it('should access CORS config endpoint without auth', async () => {
       const response = await fetch(`${BASE_URL}/api/cors/config`, {
         method: 'GET',
@@ -235,12 +235,12 @@ describe('CORS E2E Testing', () => {
       expect(data.data.allowedOrigins).toBeDefined();
       expect(Array.isArray(data.data.allowedOrigins)).toBe(true);
 
-      console.log(`✅ [CORS Test] CORS config endpoint accessible`);
+      console.log(`??[CORS Test] CORS config endpoint accessible`);
     });
 
     it('should require admin for stats endpoint', async () => {
       if (!ADMIN_TOKEN) {
-        console.log('⏭️ Skipping admin test (no token)');
+        console.log('?��? Skipping admin test (no token)');
         return;
       }
 
@@ -260,13 +260,13 @@ describe('CORS E2E Testing', () => {
       expect(data.data.allowed).toBeDefined();
       expect(data.data.rejected).toBeDefined();
 
-      console.log(`✅ [CORS Test] CORS stats retrieved successfully`);
+      console.log(`??[CORS Test] CORS stats retrieved successfully`);
       console.log(`   Total: ${data.data.total}, Allowed: ${data.data.allowed}, Rejected: ${data.data.rejected}`);
     });
 
     it('should return rejected origins list for admin', async () => {
       if (!ADMIN_TOKEN) {
-        console.log('⏭️ Skipping admin test (no token)');
+        console.log('?��? Skipping admin test (no token)');
         return;
       }
 
@@ -285,12 +285,12 @@ describe('CORS E2E Testing', () => {
       expect(data.data.rejectedOrigins).toBeDefined();
       expect(Array.isArray(data.data.rejectedOrigins)).toBe(true);
 
-      console.log(`✅ [CORS Test] Rejected origins list retrieved`);
+      console.log(`??[CORS Test] Rejected origins list retrieved`);
       console.log(`   Rejected count: ${data.data.rejectedOrigins.length}`);
     });
   });
 
-  describe('7. 多端點一致性測試', () => {
+  describe('7. 多端點�??�性測�?, () => {
     const endpoints = [
       '/api/system/health',
       '/api/cors/health',
@@ -313,25 +313,25 @@ describe('CORS E2E Testing', () => {
         const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
         expect(corsOrigin).toBe(origin);
 
-        console.log(`✅ [CORS Test] Consistent policy for ${endpoint}`);
+        console.log(`??[CORS Test] Consistent policy for ${endpoint}`);
       }
     });
   });
 
-  describe('8. 邊界情況測試', () => {
+  describe('8. ?��??��?測試', () => {
     it('should handle missing Origin header gracefully', async () => {
       const response = await fetch(`${BASE_URL}/api/system/health`, {
         method: 'GET',
-        // 不發送 Origin header
+        // 不發??Origin header
       });
 
       expect(response.ok).toBe(true);
 
-      // 沒有 Origin header 時，不應該設置 CORS headers
+      // 沒�? Origin header ?��?不�?該設�?CORS headers
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
       expect(corsOrigin).toBeNull();
 
-      console.log(`✅ [CORS Test] Missing Origin header handled correctly`);
+      console.log(`??[CORS Test] Missing Origin header handled correctly`);
     });
 
     it('should handle empty Origin header', async () => {
@@ -344,11 +344,11 @@ describe('CORS E2E Testing', () => {
 
       expect(response.ok).toBe(true);
 
-      // Empty Origin 應該被拒絕
+      // Empty Origin ?�該被�?�?
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
       expect(corsOrigin).not.toBe('');
 
-      console.log(`✅ [CORS Test] Empty Origin header handled correctly`);
+      console.log(`??[CORS Test] Empty Origin header handled correctly`);
     });
 
     it('should handle malformed Origin header', async () => {
@@ -366,21 +366,21 @@ describe('CORS E2E Testing', () => {
           },
         });
 
-        // 請求應該被處理，但 CORS 應該拒絕
+        // 請�??�該被�??��?�?CORS ?�該?��?
         expect(response.ok).toBe(true);
 
         const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
         expect(corsOrigin).not.toBe(origin);
 
-        console.log(`✅ [CORS Test] Malformed origin rejected: ${origin}`);
+        console.log(`??[CORS Test] Malformed origin rejected: ${origin}`);
       }
     });
   });
 });
 
-// 運行測試的主函數
+// ?��?測試?�主?�數
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log('🧪 Running CORS E2E Tests...\n');
+  console.log('?�� Running CORS E2E Tests...\n');
   console.log(`Base URL: ${BASE_URL}`);
-  console.log(`Admin Token: ${ADMIN_TOKEN ? '✅ Set' : '❌ Not set'}\n`);
+  console.log(`Admin Token: ${ADMIN_TOKEN ? '??Set' : '??Not set'}\n`);
 }

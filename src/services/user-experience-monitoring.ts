@@ -181,8 +181,10 @@ export class UserExperienceMonitoringService {
         reason = 'High error rate detected';
       }
 
+      // Survey URL should be configured via FRONTEND_URL environment variable
+      const frontendUrl = this.env?.FRONTEND_URL || 'http://localhost:3000';
       const invitationUrl = shouldInvite ?
-        `https://multi-channel.imfinethankyouandyou.com/survey?userId=${userId}&sessionId=${sessionId}` :
+        `${frontendUrl}/survey?userId=${userId}&sessionId=${sessionId}` :
         '';
 
       return {

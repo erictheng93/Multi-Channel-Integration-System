@@ -1,6 +1,6 @@
 /**
- * R2 自定義域名驗證腳本
- * 驗證 R2 bucket 的自定義域名配置是否正常工作
+ * R2 ?��?義�??��?證腳??
+ * 驗�? R2 bucket ?�自定義?��??�置?�否�?��工�?
  */
 
 import { execSync } from 'child_process';
@@ -16,18 +16,18 @@ const R2_CONFIGS: R2DomainConfig[] = [
   {
     environment: 'development',
     bucketName: 'multi-channel-platform-attachments-dev',
-    customDomain: 's3-dev.imfinethankyouandyou.com',
-    expectedUrl: 'https://s3-dev.imfinethankyouandyou.com'
+    customDomain: 's3-dev.example.com',
+    expectedUrl: 'https://s3-dev.example.com'
   },
   {
     environment: 'production',
     bucketName: 'multi-channel-platform-attachments',
-    customDomain: 's3.imfinethankyouandyou.com',
-    expectedUrl: 'https://s3.imfinethankyouandyou.com'
+    customDomain: 'your-storage-domain.example.com',
+    expectedUrl: 'https://your-storage-domain.example.com'
   }
 ];
 
-// 顏色輸出函數
+// 顏色輸出?�數
 const colors = {
   green: (text: string) => `\x1b[32m${text}\x1b[0m`,
   red: (text: string) => `\x1b[31m${text}\x1b[0m`,
@@ -41,98 +41,98 @@ function log(message: string, color: keyof typeof colors = 'cyan'): void {
   console.log(colors[color](message));
 }
 
-// 檢查 Cloudflare CLI 認證
+// 檢查 Cloudflare CLI 認�?
 function checkCloudflareAuth(): boolean {
   try {
     execSync('wrangler whoami', { stdio: 'pipe' });
-    log('✅ Cloudflare 認證已設定', 'green');
+    log('??Cloudflare 認�?已設�?, 'green');
     return true;
   } catch (error) {
-    log('❌ Cloudflare 認證未設定，請先執行: wrangler login', 'red');
+    log('??Cloudflare 認�??�設定�?請�??��?: wrangler login', 'red');
     return false;
   }
 }
 
-// 檢查 R2 bucket 是否存在
+// 檢查 R2 bucket ?�否存在
 function checkR2Bucket(bucketName: string): boolean {
   try {
     const output = execSync(`wrangler r2 bucket list`, { encoding: 'utf8' });
     const bucketExists = output.includes(bucketName);
 
     if (bucketExists) {
-      log(`✅ R2 Bucket ${bucketName} 存在`, 'green');
+      log(`??R2 Bucket ${bucketName} 存在`, 'green');
       return true;
     } else {
-      log(`❌ R2 Bucket ${bucketName} 不存在`, 'red');
+      log(`??R2 Bucket ${bucketName} 不�??�`, 'red');
       return false;
     }
   } catch (error) {
-    log(`❌ 檢查 R2 Bucket 失敗: ${error}`, 'red');
+    log(`??檢查 R2 Bucket 失�?: ${error}`, 'red');
     return false;
   }
 }
 
-// 測試自定義域名解析
+// 測試?��?義�??�解??
 async function testDomainResolution(domain: string): Promise<boolean> {
   try {
-    log(`🔍 測試域名解析: ${domain}`, 'blue');
+    log(`?? 測試?��?�??: ${domain}`, 'blue');
 
-    // 使用 fetch 測試域名是否可達
+    // 使用 fetch 測試?��??�否?��?
     const testUrl = `https://${domain}`;
     const response = await fetch(testUrl, {
       method: 'HEAD',
-      signal: AbortSignal.timeout(10000) // 10秒超時
+      signal: AbortSignal.timeout(10000) // 10秒�???
     });
 
     if (response.ok || response.status === 404) {
-      // 404 是正常的，因為我們只是測試域名解析
-      log(`✅ 域名 ${domain} 解析正常`, 'green');
+      // 404 ?�正常�?，�??��??�只?�測試�??�解??
+      log(`???��? ${domain} �??�?��`, 'green');
       return true;
     } else {
-      log(`⚠️  域名 ${domain} 回應狀態: ${response.status}`, 'yellow');
-      return true; // 非 404 狀態也可能是正常的
+      log(`?��?  ?��? ${domain} ?��??�?? ${response.status}`, 'yellow');
+      return true; // ??404 ?�?��??�能?�正常�?
     }
   } catch (error: any) {
     if (error.name === 'TimeoutError') {
-      log(`❌ 域名 ${domain} 解析超時`, 'red');
+      log(`???��? ${domain} �??超�?`, 'red');
     } else {
-      log(`❌ 域名 ${domain} 解析失敗: ${error.message}`, 'red');
+      log(`???��? ${domain} �??失�?: ${error.message}`, 'red');
     }
     return false;
   }
 }
 
-// 上傳測試檔案
+// 上傳測試檔�?
 function uploadTestFile(bucketName: string): string | null {
   try {
-    const testContent = `R2 域名測試檔案 - ${new Date().toISOString()}`;
+    const testContent = `R2 ?��?測試檔�? - ${new Date().toISOString()}`;
     const testFileName = `test-${Date.now()}.txt`;
     const testFilePath = `/tmp/${testFileName}`;
 
-    // 創建測試檔案
+    // ?�建測試檔�?
     require('fs').writeFileSync(testFilePath, testContent);
 
-    // 上傳到 R2
+    // 上傳??R2
     execSync(`wrangler r2 object put ${bucketName}/test/${testFileName} --file ${testFilePath}`, {
       stdio: 'pipe'
     });
 
-    // 清理本地檔案
+    // 清�??�地檔�?
     require('fs').unlinkSync(testFilePath);
 
-    log(`✅ 測試檔案上傳成功: test/${testFileName}`, 'green');
+    log(`??測試檔�?上傳?��?: test/${testFileName}`, 'green');
     return `test/${testFileName}`;
   } catch (error) {
-    log(`❌ 測試檔案上傳失敗: ${error}`, 'red');
+    log(`??測試檔�?上傳失�?: ${error}`, 'red');
     return null;
   }
 }
 
-// 測試檔案存取
+// 測試檔�?存�?
 async function testFileAccess(customDomain: string, filePath: string): Promise<boolean> {
   try {
     const fileUrl = `https://${customDomain}/${filePath}`;
-    log(`🔍 測試檔案存取: ${fileUrl}`, 'blue');
+    log(`?? 測試檔�?存�?: ${fileUrl}`, 'blue');
 
     const response = await fetch(fileUrl, {
       signal: AbortSignal.timeout(10000)
@@ -140,36 +140,36 @@ async function testFileAccess(customDomain: string, filePath: string): Promise<b
 
     if (response.ok) {
       const content = await response.text();
-      if (content.includes('R2 域名測試檔案')) {
-        log(`✅ 檔案存取成功`, 'green');
+      if (content.includes('R2 ?��?測試檔�?')) {
+        log(`??檔�?存�??��?`, 'green');
         return true;
       } else {
-        log(`❌ 檔案內容不正確`, 'red');
+        log(`??檔�??�容不正確`, 'red');
         return false;
       }
     } else {
-      log(`❌ 檔案存取失敗: ${response.status} ${response.statusText}`, 'red');
+      log(`??檔�?存�?失�?: ${response.status} ${response.statusText}`, 'red');
       return false;
     }
   } catch (error: any) {
-    log(`❌ 檔案存取測試失敗: ${error.message}`, 'red');
+    log(`??檔�?存�?測試失�?: ${error.message}`, 'red');
     return false;
   }
 }
 
-// 清理測試檔案
+// 清�?測試檔�?
 function cleanupTestFile(bucketName: string, filePath: string): void {
   try {
     execSync(`wrangler r2 object delete ${bucketName}/${filePath}`, { stdio: 'pipe' });
-    log(`✅ 測試檔案已清理: ${filePath}`, 'green');
+    log(`??測試檔�?已�??? ${filePath}`, 'green');
   } catch (error) {
-    log(`⚠️  清理測試檔案失敗: ${error}`, 'yellow');
+    log(`?��?  清�?測試檔�?失�?: ${error}`, 'yellow');
   }
 }
 
-// 驗證單個 R2 配置
+// 驗�??��?R2 ?�置
 async function verifyR2Config(config: R2DomainConfig): Promise<boolean> {
-  log(`\n🔧 驗證 ${config.environment} 環境配置`, 'magenta');
+  log(`\n?�� 驗�? ${config.environment} ?��??�置`, 'magenta');
   log(`   Bucket: ${config.bucketName}`, 'cyan');
   log(`   Domain: ${config.customDomain}`, 'cyan');
 
@@ -180,46 +180,46 @@ async function verifyR2Config(config: R2DomainConfig): Promise<boolean> {
     success = false;
   }
 
-  // 2. 測試域名解析
+  // 2. 測試?��?�??
   if (!await testDomainResolution(config.customDomain)) {
     success = false;
   }
 
-  // 3. 上傳測試檔案
+  // 3. 上傳測試檔�?
   const testFilePath = uploadTestFile(config.bucketName);
   if (!testFilePath) {
     success = false;
   } else {
-    // 4. 測試檔案存取
+    // 4. 測試檔�?存�?
     if (!await testFileAccess(config.customDomain, testFilePath)) {
       success = false;
     }
 
-    // 5. 清理測試檔案
+    // 5. 清�?測試檔�?
     cleanupTestFile(config.bucketName, testFilePath);
   }
 
   if (success) {
-    log(`✅ ${config.environment} 環境配置驗證通過`, 'green');
+    log(`??${config.environment} ?��??�置驗�??��?`, 'green');
   } else {
-    log(`❌ ${config.environment} 環境配置驗證失敗`, 'red');
+    log(`??${config.environment} ?��??�置驗�?失�?`, 'red');
   }
 
   return success;
 }
 
-// 主驗證函數
+// 主�?證函??
 async function main(): Promise<void> {
-  log('🚀 開始驗證 R2 自定義域名配置', 'cyan');
+  log('?? ?��?驗�? R2 ?��?義�??��?�?, 'cyan');
 
-  // 檢查 Cloudflare 認證
+  // 檢查 Cloudflare 認�?
   if (!checkCloudflareAuth()) {
     process.exit(1);
   }
 
   let allSuccess = true;
 
-  // 驗證所有配置
+  // 驗�??�?��?�?
   for (const config of R2_CONFIGS) {
     const success = await verifyR2Config(config);
     if (!success) {
@@ -227,22 +227,22 @@ async function main(): Promise<void> {
     }
   }
 
-  // 總結
-  log('\n📊 驗證結果總結', 'magenta');
+  // 總�?
+  log('\n?? 驗�?結�?總�?', 'magenta');
   if (allSuccess) {
-    log('✅ 所有 R2 自定義域名配置驗證通過', 'green');
-    log('\n🎉 您的 R2 存儲已準備就緒！', 'green');
+    log('???�??R2 ?��?義�??��?置�?證通�?', 'green');
+    log('\n?? ?��? R2 存儲已�??�就緒�?', 'green');
   } else {
-    log('❌ 部分 R2 配置驗證失敗', 'red');
-    log('\n🔧 請檢查以下項目:', 'yellow');
-    log('   1. Cloudflare R2 bucket 是否已創建', 'yellow');
-    log('   2. 自定義域名 DNS 設定是否正確', 'yellow');
-    log('   3. 域名是否已綁定到對應的 R2 bucket', 'yellow');
+    log('???��? R2 ?�置驗�?失�?', 'red');
+    log('\n?�� 請檢?�以下�???', 'yellow');
+    log('   1. Cloudflare R2 bucket ?�否已創�?, 'yellow');
+    log('   2. ?��?義�???DNS 設�??�否�?��', 'yellow');
+    log('   3. ?��??�否已�?定到對�???R2 bucket', 'yellow');
     process.exit(1);
   }
 }
 
-// 執行腳本
+// ?��??�本
 if (require.main === module) {
   main().catch(console.error);
 }

@@ -1,46 +1,46 @@
-# 密码重置功能修复验证报告
+# 密�??�置?�能修�?验�??��?
 
-## 问题描述
-管理员重置用户密码时，前端调用了错误的 API 路径，导致 404 错误：
+## ?��??�述
+管�??��?置用?��??�时，�?端�??��??�误??API 路�?，导??404 ?�误�?
 ```
 POST /api/team/members/agent-001/reset-password-policy 404 (Not Found)
 ```
 
-## 修复内容
+## 修�??�容
 
-### 1. 前端 API 路径修复
-**文件**: `frontend/src/api/team.ts`
+### 1. ?�端 API 路�?修�?
+**?�件**: `frontend/src/api/team.ts`
 
-修复了所有团队成员管理的 API 路径：
+修�?了�??�团?��??�管?��? API 路�?�?
 
-| 功能 | 旧路径 | 新路径 | 状态 |
+| ?�能 | ?�路�?| ?�路�?| ?��?|
 |------|--------|--------|------|
-| 删除成员 | `/team/members/:id` | `/teams/members/:id` | ✅ 已修复 |
-| 更新角色 | `/team/members/:id/role` | `/teams/members/:id/role` | ✅ 已修复 |
-| 更新状态 | `/team/members/:id/status` | `/teams/members/:id/status` | ✅ 已修复 |
-| 重置密码（简单） | `/team/members/:id/reset-password` | `/teams/members/:id/reset-password` | ✅ 已修复 |
-| **重置密码（带策略）** | `/team/members/:id/reset-password-policy` | `/teams/members/:id/reset` | ✅ 已修复 |
-| 获取密码 | `/team/members/:id/password` | `/teams/members/:id/password` | ✅ 已修复 |
-| 更新成员信息 | `/team/members/:id` | `/teams/members/:id` | ✅ 已修复 |
+| ?�除?��? | `/team/members/:id` | `/teams/members/:id` | ??已修�?|
+| ?�新角色 | `/team/members/:id/role` | `/teams/members/:id/role` | ??已修�?|
+| ?�新?��?| `/team/members/:id/status` | `/teams/members/:id/status` | ??已修�?|
+| ?�置密�?（�??��? | `/team/members/:id/reset-password` | `/teams/members/:id/reset-password` | ??已修�?|
+| **?�置密�?（带策略�?* | `/team/members/:id/reset-password-policy` | `/teams/members/:id/reset` | ??已修�?|
+| ?��?密�? | `/team/members/:id/password` | `/teams/members/:id/password` | ??已修�?|
+| ?�新?��?信息 | `/team/members/:id` | `/teams/members/:id` | ??已修�?|
 
-### 2. 后端处理器增强
-**文件**: `src/modules/teams/handlers/password.ts`
+### 2. ?�端处�??��?�?
+**?�件**: `src/modules/teams/handlers/password.ts`
 
-增强了密码重置处理器：
-- ✅ 添加对 `policy` 参数的支持（changeable / unchangeable / must_change）
-- ✅ 同时更新 `passwordHash` 和 `passwordPolicy` 字段
-- ✅ 返回更新后的策略信息
+增强了�??��?置�??�器�?
+- ??添�?�?`policy` ?�数?�支?��?changeable / unchangeable / must_change�?
+- ???�时?�新 `passwordHash` ??`passwordPolicy` 字段
+- ??返�??�新?��?策略信息
 
-**处理器路径**: `POST /api/teams/members/:memberId/reset`
+**处�??�路�?*: `POST /api/teams/members/:memberId/reset`
 
 ```typescript
-// 请求体
+// 请�?�?
 {
   "newPassword": "string",
-  "policy": "changeable" | "unchangeable" | "must_change"  // 可选
+  "policy": "changeable" | "unchangeable" | "must_change"  // ?��?
 }
 
-// 响应
+// ?��?
 {
   "success": true,
   "message": "Password reset successfully",
@@ -50,23 +50,23 @@ POST /api/team/members/agent-001/reset-password-policy 404 (Not Found)
 }
 ```
 
-## API 端点验证
+## API 端点验�?
 
-### 测试 1: 端点可达性测试 ✅
+### 测�? 1: 端点?�达?��?�???
 ```bash
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/members/agent-001/reset
+curl -X POST https://your-api-domain.example.com/api/teams/members/agent-001/reset
 ```
 
-**结果**:
-- HTTP Status: `401 Unauthorized` ✅
-- **说明**: 返回 401 认证错误（而非 404），证明端点已正确注册
+**结�?**:
+- HTTP Status: `401 Unauthorized` ??
+- **说�?**: 返�? 401 认�??�误（而�? 404）�?证�?端点已正确注??
 
-### 测试 2: Teams 模块健康检查 ✅
+### 测�? 2: Teams 模�??�康检????
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/teams/health
+curl https://your-api-domain.example.com/api/teams/health
 ```
 
-**结果**:
+**结�?**:
 ```json
 {
   "status": "healthy",
@@ -75,75 +75,75 @@ curl https://multi-channel.imfinethankyouandyou.com/api/teams/health
   "version": "1.0.0"
 }
 ```
-- HTTP Status: `200 OK` ✅
+- HTTP Status: `200 OK` ??
 
-### 测试 3: 路径对比测试
-| 路径 | 预期状态 | 实际状态 | 结果 |
+### 测�? 3: 路�?对�?测�?
+| 路�? | 预�??��?| 实�??��?| 结�? |
 |------|----------|----------|------|
-| `/api/team/members/.../reset-password-policy` | 404 Not Found | 401 Unauthorized | ✅ 路径已弃用 |
-| `/api/teams/members/.../reset` | 401 Unauthorized | 401 Unauthorized | ✅ 新路径可用 |
+| `/api/team/members/.../reset-password-policy` | 404 Not Found | 401 Unauthorized | ??路�?已�???|
+| `/api/teams/members/.../reset` | 401 Unauthorized | 401 Unauthorized | ???�路径可??|
 
-## 前端变更文件清单
+## ?�端?�更?�件清�?
 
-以下文件已更新 API 路径（`/team/` → `/teams/`）：
+以�??�件已更??API 路�?（`/team/` ??`/teams/`）�?
 
-1. ✅ `frontend/src/api/team.ts` - API 客户端（7 个方法）
-2. ✅ `frontend/src/stores/team.ts` - Pinia Store
-3. ✅ `frontend/src/components/team/TeamMemberCard.vue` - 团队成员卡片
-4. ✅ `frontend/src/views/TeamManagement.vue` - 团队管理页面
+1. ??`frontend/src/api/team.ts` - API 客户端�?7 个方法�?
+2. ??`frontend/src/stores/team.ts` - Pinia Store
+3. ??`frontend/src/components/team/TeamMemberCard.vue` - ?��??��??��?
+4. ??`frontend/src/views/TeamManagement.vue` - ?��?管�?页面
 
-## 后端变更文件清单
+## ?�端?�更?�件清�?
 
-1. ✅ `src/modules/teams/handlers/password.ts` - 密码管理处理器
-2. ✅ `src/modules/teams/handlers/index.ts` - Teams 模块路由配置
-3. ✅ `src/index.ts` - 主路由注册
+1. ??`src/modules/teams/handlers/password.ts` - 密�?管�?处�???
+2. ??`src/modules/teams/handlers/index.ts` - Teams 模�?路由?�置
+3. ??`src/index.ts` - 主路?�注??
 
-## 如何验证修复
+## 如�?验�?修�?
 
-### 方式 1: 浏览器端测试（推荐）
+### ?��? 1: 浏�??�端测�?（推?��?
 
-1. **刷新浏览器页面** (Ctrl+F5 强制刷新)
-2. 打开 **团队管理** 页面
-3. 选择一个用户，点击 **"重设密码"** 按钮
-4. 设置新密码并选择密码策略
-5. 点击确认
+1. **?�新浏�??�页??* (Ctrl+F5 强制?�新)
+2. ?��? **?��?管�?** 页面
+3. ?�择一个用?��??�击 **"?�设密�?"** ?�钮
+4. 设置?��??�并?�择密�?策略
+5. ?�击确认
 
-**预期结果**:
-- ✅ 密码重置成功
-- ✅ 看到成功提示消息
-- ✅ DevTools Network 标签显示 `POST /api/teams/members/xxx/reset` 返回 `200 OK`
+**预�?结�?**:
+- ??密�??�置?��?
+- ???�到?��??�示消息
+- ??DevTools Network ?�签?�示 `POST /api/teams/members/xxx/reset` 返�? `200 OK`
 
-### 方式 2: DevTools 监控
+### ?��? 2: DevTools ?�控
 
-打开浏览器 DevTools (F12):
+?��?浏�???DevTools (F12):
 
-1. 切换到 **Network** 标签
-2. 筛选 `XHR` 请求
-3. 执行密码重置操作
-4. 观察请求：
+1. ?�换??**Network** ?�签
+2. 筛�?`XHR` 请�?
+3. ?��?密�??�置?��?
+4. 观�?请�?�?
 
-**修复前** (❌ 错误):
+**修�???* (???�误):
 ```
 POST /api/team/members/agent-001/reset-password-policy
 Status: 404 Not Found
 ```
 
-**修复后** (✅ 正确):
+**修�???* (??�?��):
 ```
 POST /api/teams/members/agent-001/reset
 Status: 200 OK
 ```
 
-### 方式 3: 控制台验证
+### ?��? 3: ?�制?��?�?
 
-在浏览器控制台 (F12 > Console) 执行：
+?��?览器?�制??(F12 > Console) ?��?�?
 
 ```javascript
-// 获取 token
+// ?��? token
 const token = localStorage.getItem('token');
 
-// 测试新端点
-fetch('https://multi-channel.imfinethankyouandyou.com/api/teams/members/agent-001/reset', {
+// 测�??�端??
+fetch('https://your-api-domain.example.com/api/teams/members/agent-001/reset', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ fetch('https://multi-channel.imfinethankyouandyou.com/api/teams/members/agent-00
 .catch(console.error);
 ```
 
-**预期输出**:
+**预�?输出**:
 ```json
 {
   "success": true,
@@ -170,35 +170,35 @@ fetch('https://multi-channel.imfinethankyouandyou.com/api/teams/members/agent-00
 }
 ```
 
-## TypeScript 类型检查 ✅
+## TypeScript 类�?检????
 
-所有类型定义已更新并通过检查：
+?�?�类?��?义已?�新并通�?检?��?
 ```bash
 cd frontend && npm run type-check
 ```
 
-**结果**: ✅ 无类型错误
+**结�?**: ???�类?��?�?
 
-## 部署建议
+## ?�署建议
 
-### 前端部署
+### ?�端?�署
 ```bash
 cd frontend
 npm run build
 npm run deploy:pages
 ```
 
-### 后端部署
+### ?�端?�署
 ```bash
 npm run deploy
 ```
 
-### 验证部署
+### 验�??�署
 ```bash
-# 检查 Teams 模块健康状态
-curl https://multi-channel.imfinethankyouandyou.com/api/teams/health
+# 检??Teams 模�??�康?��?
+curl https://your-api-domain.example.com/api/teams/health
 
-# 预期输出
+# 预�?输出
 {
   "status": "healthy",
   "module": "teams",
@@ -206,31 +206,31 @@ curl https://multi-channel.imfinethankyouandyou.com/api/teams/health
 }
 ```
 
-## 相关文档
+## ?�关?�档
 
-- 🔗 [Teams 模块文档](./src/modules/teams/README.md)
-- 🔗 [密码管理 API](./src/modules/teams/handlers/password.ts)
-- 🔗 [路由注册顺序说明](./CLAUDE.md#route-registration-order)
+- ?? [Teams 模�??�档](./src/modules/teams/README.md)
+- ?? [密�?管�? API](./src/modules/teams/handlers/password.ts)
+- ?? [路由注�?顺�?说�?](./CLAUDE.md#route-registration-order)
 
-## 总结
+## ?��?
 
-✅ **修复状态**: 完成并验证通过
+??**修�??��?*: 完�?并�?证通�?
 
-✅ **影响范围**:
-- 7 个前端 API 方法路径更新
-- 1 个后端处理器功能增强
-- 0 个破坏性变更（向后兼容）
+??**影�??�围**:
+- 7 个�?�?API ?��?路�??�新
+- 1 个�?端�??�器?�能增强
+- 0 个破?�性�??��??��??�容�?
 
-✅ **测试状态**:
-- API 端点可达性测试通过
-- Teams 模块健康检查通过
-- TypeScript 类型检查通过
+??**测�??��?*:
+- API 端点?�达?��?试通�?
+- Teams 模�??�康检?�通�?
+- TypeScript 类�?检?�通�?
 
-⚠️ **注意事项**:
-- 需要刷新浏览器以加载新的前端代码
-- 旧的 API 路径 (`/team/`) 已弃用，建议清除缓存
+?��? **注�?事项**:
+- ?�要刷?��?览器以�?载新?��?端代??
+- ?��? API 路�? (`/team/`) 已�??��?建议清除缓�?
 
 ---
 
-**生成时间**: 2025-10-20
-**测试环境**: Production (multi-channel.imfinethankyouandyou.com)
+**?��??�间**: 2025-10-20
+**测�??��?**: Production (your-api-domain.example.com)

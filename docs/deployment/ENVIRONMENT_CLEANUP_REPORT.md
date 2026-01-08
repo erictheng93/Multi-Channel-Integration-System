@@ -19,7 +19,7 @@
 ### 3. R2
 - ****: `multi-channel-platform-attachments`
 - ~~~~: `multi-channel-platform-attachments-dev` ()
-- ** URL**: https://s3.imfinethankyouandyou.com
+- ** URL**: https://your-storage-domain.example.com
 
 ### 4. KV Namespaces
 - **SESSIONS**: ace3f7202e6a4dd8b98c50e9b91b2431
@@ -53,7 +53,7 @@
  -
 
 3. **scripts/setup-env.ps1**
- - s3dev.imfinethankyouandyou.com
+ - s3dev.example.com
  - R2 URL
 
 
@@ -70,8 +70,8 @@
 
 ```
  ENVIRONMENT = "production"
- R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
- VITE_API_BASE_URL = "https://multi-channel.imfinethankyouandyou.com"
+ R2_PUBLIC_URL = "https://your-storage-domain.example.com"
+ VITE_API_BASE_URL = "https://your-api-domain.example.com"
 ```
 
 

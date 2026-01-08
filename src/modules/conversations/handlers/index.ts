@@ -10,11 +10,10 @@ const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
 
 // ✅ CORS 處理已移至 src/index.ts 統一管理
 // 不再需要模組級別的 CORS middleware 和 OPTIONS handler
-// 全局 CORS 已涵蓋所有生產環境域名：
-// - https://multi-channel.imfinethankyouandyou.com
-// - https://multi-channel-platform-frontend.pages.dev
-// - https://mcp.imfinethankyouandyou.com
-// - *.multi-channel-platform-frontend.pages.dev (preview 分支)
+// 全局 CORS 使用 getAllowedOrigins(env) 動態配置，來源包括：
+// - FRONTEND_URL 環境變數 (生產環境必須設置)
+// - BACKEND_URL 環境變數 (生產環境必須設置)
+// - *.pages.dev (Cloudflare Pages preview 分支)
 // - localhost:3000, 127.0.0.1:3000, localhost:8787 (開發環境)
 //
 // 全局 CORS middleware 在 src/index.ts (Line 106) 提供：

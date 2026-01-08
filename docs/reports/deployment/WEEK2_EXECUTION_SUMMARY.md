@@ -88,7 +88,7 @@
 
 #### 1: ()
 
-1. https://multi-channel.imfinethankyouandyou.com
+1. https://your-api-domain.example.com
 2.
 3. F12 DevTools
 4. Application Local Storage `auth_token`
@@ -102,7 +102,7 @@
 
 ```powershell
 
-$response = Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/auth/login" `
+$response = Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/auth/login" `
  -Method Post `
  -ContentType "application/json" `
  -Body '{"email":"admin@dacit.net","password":""}'
@@ -135,22 +135,22 @@ echo $env:ADMIN_TOKEN
 $TOKEN = $env:ADMIN_TOKEN
 
 # Step 1: 75%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" `
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" `
  -H "Authorization: Bearer $TOKEN" `
  -H "Content-Type: application/json" `
  -d '{"rolloutPercentage": 75}'
 
 # Step 2:
-curl "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status"
+curl "https://your-api-domain.example.com/api/websocket/migration-status"
 
 # Step 3: 2-4 100%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" `
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" `
  -H "Authorization: Bearer $TOKEN" `
  -H "Content-Type: application/json" `
  -d '{"rolloutPercentage": 100, "migrationStrategy": "complete"}'
 
 # Step 4:
-curl "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status"
+curl "https://your-api-domain.example.com/api/websocket/migration-status"
 ```
 
 ---
@@ -164,8 +164,8 @@ curl "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-sta
 
 ```powershell
 
-Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/websocket/health" | ConvertTo-Json
-Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status" | ConvertTo-Json
+Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/websocket/health" | ConvertTo-Json
+Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/websocket/migration-status" | ConvertTo-Json
 ```
 
 
@@ -255,13 +255,13 @@ Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/webso
 
 ```powershell
 # Rollout 50%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" `
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" `
  -H "Authorization: Bearer $ADMIN_TOKEN" `
  -H "Content-Type: application/json" `
  -d '{"rolloutPercentage": 50}'
 
 
-curl "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status"
+curl "https://your-api-domain.example.com/api/websocket/migration-status"
 ```
 
 

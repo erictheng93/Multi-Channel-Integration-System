@@ -6,13 +6,16 @@ compatibility_date = "2025-10-27"
 compatibility_flags = ["nodejs_compat"]
 
 # Default production variables
+# ⚠️ IMPORTANT: The following URLs must be configured for production deployment
+# These are placeholder examples - replace with your actual domain
 [vars]
 ENVIRONMENT = "production"
-R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+# R2_PUBLIC_URL = "https://your-storage-domain.example.com"  # REQUIRED: Set in Cloudflare Dashboard
 # LINE OA Basic ID for QR Code generation
 LINE_BOT_ID = "@110xsqef"
 # Frontend URL for LIFF redirect (QR Code team binding)
-FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
+# FRONTEND_URL = "https://your-frontend-domain.example.com"  # REQUIRED: Set in Cloudflare Dashboard
+# BACKEND_URL = "https://your-api-domain.example.com"  # REQUIRED: Set in Cloudflare Dashboard
 # LIFF ID for team QR Code onboarding
 LINE_LIFF_ID = "2008756115-vWtFyDMA"
 # Logging Configuration (P2-6)
@@ -28,9 +31,10 @@ LOG_LEVEL = "info"
 # R2_ACCOUNT_ID and R2_BUCKET_NAME are stored as secrets (wrangler secret put)
 
 # Production routes
-[[routes]]
-pattern = "multi-channel.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
+# ⚠️ Configure these routes based on your domain setup
+# [[routes]]
+# pattern = "your-api-domain.example.com/*"
+# zone_name = "example.com"
 
 # Observability
 [observability]
@@ -203,7 +207,7 @@ new_sqlite_classes = ["RateLimiterDO"]
 # Production Deployment:
 #   - Use `wrangler deploy` or `npm run deploy`
 #   - Deploys to production resources defined above
-#   - Domain: multi-channel.imfinethankyouandyou.com
+#   - Domain: Configure your own domain in the [[routes]] section above
 #
 # Database Operations:
 #   - `npm run db:migrate` - Apply migrations to REMOTE D1

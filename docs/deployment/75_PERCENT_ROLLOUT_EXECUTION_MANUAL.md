@@ -60,18 +60,18 @@
 
 ```bash
 # 1. API
-curl https://multi-channel.imfinethankyouandyou.com/api/health/health
+curl https://your-api-domain.example.com/api/health/health
 
 # 2. WebSocket
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # 3. rollout
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config
+ https://your-api-domain.example.com/api/websocket/dashboard/migration-config
 
 # 4.
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/analytics/connections
+ https://your-api-domain.example.com/api/websocket/analytics/connections
 ```
 
 ****:
@@ -92,11 +92,11 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ```bash
 
 curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/backup-config
+ https://your-api-domain.example.com/api/websocket/dashboard/backup-config
 
 
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/backup-config/latest
+ https://your-api-domain.example.com/api/websocket/dashboard/backup-config/latest
 ```
 
 ****:
@@ -154,9 +154,9 @@ node scripts/websocket-load-test.cjs 200 90
 ****: T-25
 
 **** ():
-1. : `https://multi-channel.imfinethankyouandyou.com/websocket-monitoring`
-2. Analytics : `https://multi-channel.imfinethankyouandyou.com/websocket-analytics`
-3. : `https://multi-channel.imfinethankyouandyou.com/api/health/health`
+1. : `https://your-api-domain.example.com/websocket-monitoring`
+2. Analytics : `https://your-api-domain.example.com/websocket-analytics`
+3. : `https://your-api-domain.example.com/api/health/health`
 4. Cloudflare Analytics: `https://dash.cloudflare.com`
 
 ****:
@@ -218,14 +218,14 @@ bash scripts/emergency-rollback.sh safe --dry-run
 ```bash
 # Token
 TOKEN=$(curl -s -X POST \
- https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+ https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{"email":"admin@dacit.net","password":"16011587DaC"}' \
  | grep -o '"token":"[^"]*' | sed 's/"token":"//')
 
 # Rollout 75%
 curl -X PUT \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config \
+ https://your-api-domain.example.com/api/websocket/dashboard/migration-config \
  -H "Authorization: Bearer $TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -248,7 +248,7 @@ curl -X PUT \
 ****:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config \
+ https://your-api-domain.example.com/api/websocket/dashboard/migration-config \
  | grep rolloutPercentage
 ```
 
@@ -274,16 +274,16 @@ curl -H "Authorization: Bearer $TOKEN" \
 ** 30 ** ( 5 ):
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/health/health | jq '.status'
+curl https://your-api-domain.example.com/api/health/health | jq '.status'
 
 
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/analytics/metrics?period=1m \
+ https://your-api-domain.example.com/api/websocket/analytics/metrics?period=1m \
  | jq '.errorRate'
 
 
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/analytics/connections \
+ https://your-api-domain.example.com/api/websocket/analytics/connections \
  | jq '.activeConnections'
 ```
 
@@ -310,7 +310,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 1. ****
  ```bash
  curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/analytics/metrics?period=5m
+ https://your-api-domain.example.com/api/websocket/analytics/metrics?period=5m
  ```
  - : 95%
  - : < 95%
@@ -422,7 +422,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ** 2: API **
 ```bash
 curl -X PUT \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config \
+ https://your-api-domain.example.com/api/websocket/dashboard/migration-config \
  -H "Authorization: Bearer $TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -445,14 +445,14 @@ curl -X PUT \
 ```bash
 # 1.
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config
+ https://your-api-domain.example.com/api/websocket/dashboard/migration-config
 
 # 2.
-curl https://multi-channel.imfinethankyouandyou.com/api/health/health
+curl https://your-api-domain.example.com/api/health/health
 
 # 3.
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/analytics/metrics?period=1m
+ https://your-api-domain.example.com/api/websocket/analytics/metrics?period=1m
 ```
 
 **** ( 15 ):
@@ -590,7 +590,7 @@ Rollback Level: [safe/emergency]
 - ****: `WEBSOCKET_100_PERCENT_DEPLOYMENT_PLAN.md`
 - ****: `scripts/LOAD_TESTING_GUIDE.md`
 - ****: `config/alert-thresholds.json`
-- ****: https://multi-channel.imfinethankyouandyou.com/websocket-monitoring
+- ****: https://your-api-domain.example.com/websocket-monitoring
 
 ---
 

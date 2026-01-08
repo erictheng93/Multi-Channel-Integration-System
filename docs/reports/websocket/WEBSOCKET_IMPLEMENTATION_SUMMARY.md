@@ -388,7 +388,7 @@ D:\Code\Multi_Channel_Integration_System\
 ### API
 
 ```
-https://multi-channel.imfinethankyouandyou.com/api/
+https://your-api-domain.example.com/api/
 
 :
  GET /websocket/health

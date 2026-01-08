@@ -62,7 +62,7 @@ describe('API Proxy Configuration', () => {
   it('should support both local and remote development', () => {
     // 測試本地和遠程開發的支援
     const localURL = 'http://localhost:8787'
-    const remoteURL = 'https://multi-channel.imfinethankyouandyou.com'
+    const remoteURL = 'https://your-api-domain.example.com'
 
     // 驗證 URL 格式
     expect(localURL).toMatch(/^http:\/\/localhost:\d+$/)

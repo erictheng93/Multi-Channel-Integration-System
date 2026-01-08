@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-API_BASE="${API_BASE:-https://multi-channel.imfinethankyouandyou.com}"
+API_BASE="${API_BASE:-https://your-api-domain.example.com}"
 TOKEN="${ADMIN_TOKEN:-}"
 DATE=$(date +%Y-%m-%d)
 REPORT_DIR="logs/daily-reports"
@@ -22,9 +22,9 @@ NC='\033[0m'
 mkdir -p "$REPORT_DIR"
 
 echo ""
-echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-echo "â•‘         Daily Health Check - $DATE            â•‘"
-echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+echo "?”â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
+echo "??        Daily Health Check - $DATE            ??
+echo "?šâ??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
 echo ""
 
 # Check 1: System Health
@@ -33,9 +33,9 @@ HEALTH=$(curl -s "$API_BASE/api/websocket/health")
 HEALTH_STATUS=$(echo "$HEALTH" | python -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))" 2>/dev/null || echo "unknown")
 
 if [ "$HEALTH_STATUS" = "healthy" ]; then
-  echo -e "${GREEN}âœ… System is healthy${NC}"
+  echo -e "${GREEN}??System is healthy${NC}"
 else
-  echo -e "${RED}âŒ System status: $HEALTH_STATUS${NC}"
+  echo -e "${RED}??System status: $HEALTH_STATUS${NC}"
 fi
 echo ""
 
@@ -53,7 +53,7 @@ if [ -n "$TOKEN" ]; then
   TOTAL_CONNS=$(echo "$METRICS" | python -c "import sys, json; data=json.load(sys.stdin); print(data.get('connections',{}).get('totalConnections',0))" 2>/dev/null || echo "0")
   echo "Total connections: $TOTAL_CONNS"
 else
-  echo -e "${YELLOW}âš ï¸  Skipped (no admin token)${NC}"
+  echo -e "${YELLOW}? ï?  Skipped (no admin token)${NC}"
 fi
 echo ""
 
@@ -61,9 +61,9 @@ echo ""
 echo -e "${BLUE}[Check 4/7]${NC} Database Connectivity"
 DB_STATUS=$(echo "$HEALTH" | python -c "import sys, json; data=json.load(sys.stdin); comps=data.get('components',{}); print(comps.get('database',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
 if [ "$DB_STATUS" = "healthy" ]; then
-  echo -e "${GREEN}âœ… Database is operational${NC}"
+  echo -e "${GREEN}??Database is operational${NC}"
 else
-  echo -e "${RED}âŒ Database status: $DB_STATUS${NC}"
+  echo -e "${RED}??Database status: $DB_STATUS${NC}"
 fi
 echo ""
 
@@ -71,9 +71,9 @@ echo ""
 echo -e "${BLUE}[Check 5/7]${NC} KV Storage Status"
 KV_STATUS=$(echo "$HEALTH" | python -c "import sys, json; data=json.load(sys.stdin); comps=data.get('components',{}); print(comps.get('kv',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
 if [ "$KV_STATUS" = "healthy" ]; then
-  echo -e "${GREEN}âœ… KV storage is operational${NC}"
+  echo -e "${GREEN}??KV storage is operational${NC}"
 else
-  echo -e "${RED}âŒ KV storage status: $KV_STATUS${NC}"
+  echo -e "${RED}??KV storage status: $KV_STATUS${NC}"
 fi
 echo ""
 
@@ -81,9 +81,9 @@ echo ""
 echo -e "${BLUE}[Check 6/7]${NC} Durable Objects Availability"
 DO_STATUS=$(echo "$HEALTH" | python -c "import sys, json; data=json.load(sys.stdin); comps=data.get('components',{}); print(comps.get('durableObjects',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
 if [ "$DO_STATUS" = "healthy" ]; then
-  echo -e "${GREEN}âœ… Durable Objects are available${NC}"
+  echo -e "${GREEN}??Durable Objects are available${NC}"
 else
-  echo -e "${RED}âŒ Durable Objects status: $DO_STATUS${NC}"
+  echo -e "${RED}??Durable Objects status: $DO_STATUS${NC}"
 fi
 echo ""
 
@@ -91,9 +91,9 @@ echo ""
 echo -e "${BLUE}[Check 7/7]${NC} SSE Fallback Availability"
 SSE_STATUS=$(echo "$HEALTH" | python -c "import sys, json; data=json.load(sys.stdin); comps=data.get('components',{}); print(comps.get('sse',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
 if [ "$SSE_STATUS" = "healthy" ]; then
-  echo -e "${GREEN}âœ… SSE fallback is available${NC}"
+  echo -e "${GREEN}??SSE fallback is available${NC}"
 else
-  echo -e "${YELLOW}âš ï¸  SSE fallback status: $SSE_STATUS${NC}"
+  echo -e "${YELLOW}? ï?  SSE fallback status: $SSE_STATUS${NC}"
 fi
 echo ""
 
@@ -123,9 +123,9 @@ Migration Config:
 $CONFIG
 EOF
 
-echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
-echo -e "${GREEN}âœ… Daily health check completed${NC}"
-echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+echo "?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?"
+echo -e "${GREEN}??Daily health check completed${NC}"
+echo "?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?"
 echo ""
 echo "Report saved to: $REPORT_FILE"
 echo ""

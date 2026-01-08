@@ -12,18 +12,22 @@
 const WebSocket = require('ws');
 
 // =================== 配置參數 ===================
+// IMPORTANT: Set these environment variables before running:
+// - BACKEND_URL: Your API domain (e.g., https://your-api-domain.example.com)
+// - TEST_EMAIL: Admin email for authentication
+// - TEST_PASSWORD: Admin password for authentication
 const CONFIG = {
-  // 生產環境 WebSocket URL
-  WS_URL: 'wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect',
+  // WebSocket URL (derived from BACKEND_URL)
+  WS_URL: (process.env.BACKEND_URL || 'http://localhost:8787').replace(/^http/, 'ws') + '/api/websocket/connect',
 
   // 測試參數
   CONCURRENT_CONNECTIONS: parseInt(process.argv[2]) || 100,
   TEST_DURATION_SECONDS: parseInt(process.argv[3]) || 60,
 
-  // 認證資訊
-  AUTH_EMAIL: 'admin@dacit.net',
-  AUTH_PASSWORD: '16011587DaC',
-  API_BASE: 'https://multi-channel.imfinethankyouandyou.com',
+  // 認證資訊 (from environment variables)
+  AUTH_EMAIL: process.env.TEST_EMAIL || 'admin@example.com',
+  AUTH_PASSWORD: process.env.TEST_PASSWORD || 'your-password',
+  API_BASE: process.env.BACKEND_URL || 'http://localhost:8787',
 
   // 性能參數
   CONNECTION_TIMEOUT: 10000,  // 10 秒連接超時
@@ -56,9 +60,10 @@ async function getAuthToken() {
   });
 
   return new Promise((resolve, reject) => {
+    const apiUrl = new URL(CONFIG.API_BASE);
     const options = {
-      hostname: 'multi-channel.imfinethankyouandyou.com',
-      port: 443,
+      hostname: apiUrl.hostname,
+      port: apiUrl.port || (apiUrl.protocol === 'https:' ? 443 : 80),
       path: '/api/auth/login',
       method: 'POST',
       headers: {

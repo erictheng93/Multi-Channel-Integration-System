@@ -545,6 +545,9 @@ export class MessageBroadcaster implements DurableObject {
 
       this.activeConnections++;
 
+      // 🔧 Phase B4 Fix: Persist connection IDs after registration
+      await this.persistConnectionIds();
+
       console.log(`📝 [MessageBroadcaster] Registered ${type} connection: ${id}`);
 
       return new Response(JSON.stringify({
@@ -569,6 +572,9 @@ export class MessageBroadcaster implements DurableObject {
 
       this.activeConnections = Math.max(0, this.activeConnections - 1);
 
+      // 🔧 Phase B4 Fix: Persist connection IDs after unregistration
+      await this.persistConnectionIds();
+
       console.log(`📝 [MessageBroadcaster] Unregistered ${type} connection: ${id}`);
 
       return new Response(JSON.stringify({
@@ -578,6 +584,21 @@ export class MessageBroadcaster implements DurableObject {
     } catch (error) {
       log.error('❌ [MessageBroadcaster] Connection unregistration error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Unregistration failed' }), { status: 500 });
+    }
+  }
+
+  /**
+   * 🔧 Phase B4 Fix: Persist only connection IDs (lightweight operation)
+   * Called after connection registration/unregistration for faster persistence
+   */
+  private async persistConnectionIds(): Promise<void> {
+    try {
+      const userConnectionIds = Array.from(this.userConnections.keys());
+      const conversationRoomIds = Array.from(this.conversationRooms.keys());
+      await this.state.storage.put('userConnectionIds', userConnectionIds);
+      await this.state.storage.put('conversationRoomIds', conversationRoomIds);
+    } catch (error) {
+      log.error('❌ [MessageBroadcaster] Error persisting connection IDs:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -645,6 +666,12 @@ export class MessageBroadcaster implements DurableObject {
       await this.state.storage.put('eventQueue', this.eventQueue);
       await this.state.storage.put('highPriorityQueue', this.highPriorityQueue);
       await this.state.storage.put('distributionStats', this.distributionStats);
+
+      // 🔧 Phase B4 Fix: Persist connection IDs for restoration after DO restart
+      const userConnectionIds = Array.from(this.userConnections.keys());
+      const conversationRoomIds = Array.from(this.conversationRooms.keys());
+      await this.state.storage.put('userConnectionIds', userConnectionIds);
+      await this.state.storage.put('conversationRoomIds', conversationRoomIds);
     } catch (error) {
       log.error('❌ [MessageBroadcaster] Error persisting queue state:', { error: error instanceof Error ? error.message : String(error) });
     }
@@ -661,7 +688,39 @@ export class MessageBroadcaster implements DurableObject {
       const distributionStats = await this.state.storage.get('distributionStats') as any;
       if (distributionStats) this.distributionStats = { ...this.distributionStats, ...distributionStats };
 
-      console.log(`📂 [MessageBroadcaster] State restored: ${this.eventQueue.length} events in queue`);
+      // 🔧 Phase B4 Fix: Restore connection stubs from persisted IDs
+      const userConnectionIds = await this.state.storage.get('userConnectionIds') as string[];
+      if (userConnectionIds && Array.isArray(userConnectionIds) && this.env.USER_CONNECTION) {
+        for (const userId of userConnectionIds) {
+          try {
+            const doId = this.env.USER_CONNECTION.idFromName(userId);
+            const stub = this.env.USER_CONNECTION.get(doId);
+            this.userConnections.set(userId, stub);
+          } catch (error) {
+            log.warn('Failed to restore user connection stub', { userId, error: error instanceof Error ? error.message : String(error) });
+          }
+        }
+        console.log(`📂 [MessageBroadcaster] Restored ${this.userConnections.size} user connections`);
+      }
+
+      const conversationRoomIds = await this.state.storage.get('conversationRoomIds') as string[];
+      if (conversationRoomIds && Array.isArray(conversationRoomIds) && this.env.CONVERSATION_ROOM) {
+        for (const conversationId of conversationRoomIds) {
+          try {
+            const doId = this.env.CONVERSATION_ROOM.idFromName(conversationId);
+            const stub = this.env.CONVERSATION_ROOM.get(doId);
+            this.conversationRooms.set(conversationId, stub);
+          } catch (error) {
+            log.warn('Failed to restore conversation room stub', { conversationId, error: error instanceof Error ? error.message : String(error) });
+          }
+        }
+        console.log(`📂 [MessageBroadcaster] Restored ${this.conversationRooms.size} conversation rooms`);
+      }
+
+      // Update activeConnections count
+      this.activeConnections = this.userConnections.size + this.conversationRooms.size;
+
+      console.log(`📂 [MessageBroadcaster] State restored: ${this.eventQueue.length} events in queue, ${this.activeConnections} connections`);
     } catch (error) {
       log.error('❌ [MessageBroadcaster] State restoration error:', { error: error instanceof Error ? error.message : String(error) });
     }

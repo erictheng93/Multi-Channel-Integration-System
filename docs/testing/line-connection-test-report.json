@@ -1,7 +1,7 @@
 {
   "timestamp": "2025-08-13T07:02:44.525Z",
   "config": {
-    "webhookUrl": "https://multi-channel.imfinethankyouandyou.com/api/webhook",
+    "webhookUrl": "https://your-api-domain.example.com/api/webhook",
     "hasAccessToken": true,
     "hasChannelSecret": true,
     "timeout": 15000
@@ -15,7 +15,7 @@
     {
       "test": "system-health",
       "success": true,
-      "message": "系統健康狀態正常",
+      "message": "系統?�康?�?�正�?,
       "responseTime": 1090,
       "details": {
         "status": 200,
@@ -30,7 +30,7 @@
     {
       "test": "webhook-reachability",
       "success": true,
-      "message": "Webhook 端點可達 (200)",
+      "message": "Webhook 端�??��? (200)",
       "responseTime": 151,
       "details": {
         "status": 200,
@@ -54,7 +54,7 @@
     {
       "test": "webhook-event-processing",
       "success": true,
-      "message": "Webhook 事件處理成功 (200)",
+      "message": "Webhook 事件?��??��? (200)",
       "responseTime": 152,
       "details": {
         "status": 200,
@@ -65,7 +65,7 @@
               "type": "message",
               "message": {
                 "type": "text",
-                "text": "LINE 連接測試訊息",
+                "text": "LINE ??��測試訊息",
                 "id": "test-message-1755068564047"
               },
               "source": {
@@ -82,13 +82,13 @@
     {
       "test": "line-api-connection",
       "success": true,
-      "message": "LINE API 連接成功 - Bot: Peninsula 服務中心",
+      "message": "LINE API ??��?��? - Bot: Peninsula ?��?中�?",
       "responseTime": 324,
       "details": {
         "botInfo": {
           "userId": "U5a5359357b93b33dba988dba6d7380e6",
           "basicId": "@110xsqef",
-          "displayName": "Peninsula 服務中心",
+          "displayName": "Peninsula ?��?中�?",
           "chatMode": "chat",
           "markAsReadMode": "manual"
         },
@@ -98,7 +98,7 @@
     {
       "test": "push-message",
       "success": false,
-      "message": "跳過推送訊息測試 - 未提供測試用戶 ID",
+      "message": "跳�??�送�??�測�?- ?��?供測試用??ID",
       "details": {
         "reason": "no-user-id"
       }

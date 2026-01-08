@@ -1,36 +1,36 @@
 # Environment Configuration System
 
-æœ¬å°ˆæ¡ˆæ¡ç”¨ **3 å±¤æ¶æ§‹æ¨¡å¼** é€²è¡Œç’°å¢ƒé…ç½®ç®¡ç†ï¼Œå¯¦ç¾äº†ç”Ÿç”¢/é–‹ç™¼ç’°å¢ƒçš„ç„¡ç¸«åˆ‡æ›ï¼Œä¸¦å®Œå…¨æ¶ˆé™¤ç¡¬ç·¨ç¢¼ URLã€‚
+?¬å?æ¡ˆæ¡??**3 å±¤æ¶æ§‹æ¨¡å¼?* ?²è??°å??ç½®ç®¡ç?ï¼Œå¯¦?¾ä??Ÿç”¢/?‹ç™¼?°å??„ç„¡ç¸«å??›ï?ä¸¦å??¨æ??¤ç¡¬ç·¨ç¢¼ URL??
 
 ## Architecture Pattern: 3-Layer Configuration
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Layer 3: Business Logic Code                           â”‚
-â”‚  â”œâ”€ Components, Services, Handlers                      â”‚
-â”‚  â””â”€ Uses: getBackendUrl(), getWebSocketUrl(), etc.      â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                        â†‘
-                        â”‚ (Imports configuration functions)
-                        â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Layer 2: Runtime Configuration Layer                   â”‚
-â”‚  â”œâ”€ frontend/src/config/runtime.ts (428 lines)          â”‚
-â”‚  â”œâ”€ src/config/runtime.ts (300+ lines)                  â”‚
-â”‚  â””â”€ Functions: getBackendUrl(), getWebSocketUrl()       â”‚
-â”‚     getFrontendUrl(), getStoragePublicUrl()              â”‚
-â”‚     validateRuntimeConfig(), etc.                        â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                        â†‘
-                        â”‚ (Reads from environment variables)
-                        â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Layer 1: Environment Variables                         â”‚
-â”‚  â”œâ”€ .env.development / .env.production (Frontend)       â”‚
-â”‚  â”œâ”€ .dev.vars (Backend development)                     â”‚
-â”‚  â”œâ”€ wrangler.toml [vars] (Backend production)           â”‚
-â”‚  â””â”€ Cloudflare Dashboard secrets (Production secrets)   â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+?? Layer 3: Business Logic Code                           ??
+?? ?œâ? Components, Services, Handlers                      ??
+?? ?”â? Uses: getBackendUrl(), getWebSocketUrl(), etc.      ??
+?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+                        ??
+                        ??(Imports configuration functions)
+                        ??
+?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+?? Layer 2: Runtime Configuration Layer                   ??
+?? ?œâ? frontend/src/config/runtime.ts (428 lines)          ??
+?? ?œâ? src/config/runtime.ts (300+ lines)                  ??
+?? ?”â? Functions: getBackendUrl(), getWebSocketUrl()       ??
+??    getFrontendUrl(), getStoragePublicUrl()              ??
+??    validateRuntimeConfig(), etc.                        ??
+?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+                        ??
+                        ??(Reads from environment variables)
+                        ??
+?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+?? Layer 1: Environment Variables                         ??
+?? ?œâ? .env.development / .env.production (Frontend)       ??
+?? ?œâ? .dev.vars (Backend development)                     ??
+?? ?œâ? wrangler.toml [vars] (Backend production)           ??
+?? ?”â? Cloudflare Dashboard secrets (Production secrets)   ??
+?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
 ```
 
 ## Key Configuration Functions
@@ -42,23 +42,23 @@ import { getBackendUrl, getWebSocketUrl, getApiEndpoint } from '@/config/runtime
 
 // Get backend API base URL
 const apiUrl = getBackendUrl();
-// Returns: 'https://multi-channel.imfinethankyouandyou.com' (production)
+// Returns: 'https://your-api-domain.example.com' (production)
 //       or 'http://localhost:8787' (development)
 
 // Get WebSocket URL (auto protocol conversion)
 const wsUrl = getWebSocketUrl();
-// Automatically converts: https: â†’ wss:, http: â†’ ws:
-// Returns: 'wss://multi-channel.imfinethankyouandyou.com/ws' (production)
+// Automatically converts: https: ??wss:, http: ??ws:
+// Returns: 'wss://your-api-domain.example.com/ws' (production)
 //       or 'ws://localhost:8787/ws' (development)
 
 // Get full API endpoint
 const endpoint = getApiEndpoint('/api/messages');
-// Returns: 'https://multi-channel.imfinethankyouandyou.com/api/messages'
+// Returns: 'https://your-api-domain.example.com/api/messages'
 
 // Get storage public URL
 import { getStoragePublicUrl } from '@/config/runtime';
 const storageUrl = getStoragePublicUrl();
-// Returns: 'https://s3.imfinethankyouandyou.com'
+// Returns: 'https://your-storage-domain.example.com'
 
 // Validate runtime configuration
 import { validateRuntimeConfig } from '@/config/runtime';
@@ -198,31 +198,31 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 ## Migration Benefits
 
 **Before Migration (Hardcoded URLs):**
-- âŒ 69+ files with hardcoded URLs
-- âŒ 4-6 hours to switch environments
-- âŒ Manual find-and-replace prone to errors
-- âŒ No type safety for configuration
-- âŒ Difficult to maintain consistency
+- ??69+ files with hardcoded URLs
+- ??4-6 hours to switch environments
+- ??Manual find-and-replace prone to errors
+- ??No type safety for configuration
+- ??Difficult to maintain consistency
 
 **After Migration (3-Layer Architecture):**
-- âœ… 0 hardcoded URLs (except defaults in runtime.ts)
-- âœ… 5-10 minutes to switch environments
-- âœ… Single `.env` file change
-- âœ… Full TypeScript type safety
-- âœ… Automatic validation and error handling
-- âœ… 96% reduction in switching time
-- âœ… 732% ROI (Return on Investment)
+- ??0 hardcoded URLs (except defaults in runtime.ts)
+- ??5-10 minutes to switch environments
+- ??Single `.env` file change
+- ??Full TypeScript type safety
+- ??Automatic validation and error handling
+- ??96% reduction in switching time
+- ??732% ROI (Return on Investment)
 
 ## Configuration Best Practices
 
 1. **Always use configuration functions:**
    ```typescript
-   // âœ… GOOD
+   // ??GOOD
    import { getBackendUrl } from '@/config/runtime';
    const url = getBackendUrl();
 
-   // âŒ BAD - Never hardcode URLs
-   const url = 'https://multi-channel.imfinethankyouandyou.com';
+   // ??BAD - Never hardcode URLs
+   const url = 'https://your-api-domain.example.com';
    ```
 
 2. **Validate configuration on startup:**
@@ -244,7 +244,7 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 4. **TypeScript support:**
    ```typescript
    // frontend/src/vite-env.d.ts provides full autocomplete
-   const url = import.meta.env.VITE_BACKEND_URL; // âœ… Type-safe
+   const url = import.meta.env.VITE_BACKEND_URL; // ??Type-safe
    ```
 
 5. **Never commit sensitive data:**

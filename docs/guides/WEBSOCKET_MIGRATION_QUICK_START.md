@@ -52,7 +52,7 @@
 
 ```bash
 # 1: API
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/auth/login" \
+curl -X POST "https://your-api-domain.example.com/api/auth/login" \
  -H "Content-Type: application/json" \
  -d "{\"username\":\"test-admin\",\"password\":\"Admin123!@#\"}"
 
@@ -62,7 +62,7 @@ export ADMIN_TOKEN="<your-jwt-token-here>"
 
 ****:
 
-1. https://multi-channel.imfinethankyouandyou.com
+1. https://your-api-domain.example.com
 2. Application Local Storage
 3. `auth_token`
 4. : `export ADMIN_TOKEN="<token>"`
@@ -90,7 +90,7 @@ TEST_TOKEN=$ADMIN_TOKEN bash scripts/test-websocket-do.sh
 ** **: rollout 0%
 
 ```bash
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -108,7 +108,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
  }'
 
 
-curl -s "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status" | python -m json.tool
+curl -s "https://your-api-domain.example.com/api/websocket/migration-status" | python -m json.tool
 ```
 
 ****:
@@ -131,7 +131,7 @@ curl -s "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-
 
 #### Option A:
 
-1. : https://multi-channel.imfinethankyouandyou.com
+1. : https://your-api-domain.example.com
 2.
 3. DevTools Console
 4. :
@@ -483,10 +483,10 @@ curl -X POST "$API_BASE/api/websocket/migration-config" \
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 
 # rollout
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -d '{"rolloutPercentage": 20}'
 
@@ -494,7 +494,7 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migrat
 ./scripts/emergency-rollback.sh
 
 # :
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -d '{"enableWebSocket": false, "enableSSE": true, "rolloutPercentage": 0}'
 ```
@@ -503,15 +503,15 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migrat
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # WebSocket
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/metrics
+ https://your-api-domain.example.com/api/websocket/metrics
 
 # DO
 curl -H "Authorization: Bearer $TOKEN" \
- "https://multi-channel.imfinethankyouandyou.com/api/websocket/test-connection?userId=test&conversationId=test"
+ "https://your-api-domain.example.com/api/websocket/test-connection?userId=test&conversationId=test"
 ```
 
 ### ****
@@ -555,7 +555,7 @@ wrangler tail --format pretty > logs/websocket-$(date +%Y%m%d).log
 ./scripts/emergency-rollback.sh
 
 # 2.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 # : rolloutPercentage: 0, enableWebSocket: false
 
 # 3.

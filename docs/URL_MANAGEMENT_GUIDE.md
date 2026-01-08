@@ -19,17 +19,17 @@ import { getWebhookUrl, getAllWebhookUrls } from '@/services/webhook-url-service
 // Get LINE webhook URL
 const lineWebhookUrl = getWebhookUrl(env, 'line');
 // Development: http://localhost:8787/webhooks/line
-// Production: https://multi-channel.imfinethankyouandyou.com/webhooks/line
+// Production: https://your-api-domain.example.com/webhooks/line
 
 // Get all webhook URLs
 const allWebhooks = getAllWebhookUrls(env);
 console.log(allWebhooks);
 // {
-//   line: 'https://multi-channel.imfinethankyouandyou.com/webhooks/line',
-//   facebook: 'https://multi-channel.imfinethankyouandyou.com/webhooks/facebook',
-//   whatsapp: 'https://multi-channel.imfinethankyouandyou.com/webhooks/whatsapp',
-//   telegram: 'https://multi-channel.imfinethankyouandyou.com/webhooks/telegram',
-//   instagram: 'https://multi-channel.imfinethankyouandyou.com/webhooks/instagram'
+//   line: 'https://your-api-domain.example.com/webhooks/line',
+//   facebook: 'https://your-api-domain.example.com/webhooks/facebook',
+//   whatsapp: 'https://your-api-domain.example.com/webhooks/whatsapp',
+//   telegram: 'https://your-api-domain.example.com/webhooks/telegram',
+//   instagram: 'https://your-api-domain.example.com/webhooks/instagram'
 // }
 ```
 
@@ -74,7 +74,7 @@ Get the webhook URL for a specific platform.
 import { getWebhookUrl } from '@/services/webhook-url-service';
 
 const lineWebhook = getWebhookUrl(c.env, 'line');
-// => 'https://multi-channel.imfinethankyouandyou.com/webhooks/line'
+// => 'https://your-api-domain.example.com/webhooks/line'
 ```
 
 #### `getWebhookConfig(env, platform)`
@@ -94,9 +94,9 @@ import { getWebhookConfig } from '@/services/webhook-url-service';
 const config = getWebhookConfig(c.env, 'line');
 console.log(config);
 // {
-//   baseUrl: 'https://multi-channel.imfinethankyouandyou.com',
+//   baseUrl: 'https://your-api-domain.example.com',
 //   path: '/webhooks/line',
-//   fullUrl: 'https://multi-channel.imfinethankyouandyou.com/webhooks/line',
+//   fullUrl: 'https://your-api-domain.example.com/webhooks/line',
 //   environment: 'production'
 // }
 ```
@@ -138,7 +138,7 @@ const url = buildWebhookUrlWithParams(c.env, 'facebook', {
   verify_token: 'my_secret_token',
   mode: 'subscribe'
 });
-// => 'https://multi-channel.imfinethankyouandyou.com/webhooks/facebook?verify_token=my_secret_token&mode=subscribe'
+// => 'https://your-api-domain.example.com/webhooks/facebook?verify_token=my_secret_token&mode=subscribe'
 ```
 
 #### `isValidWebhookUrl(url)`
@@ -309,7 +309,7 @@ const results = await checkUrlsReachabilityBatch(urls, {
 });
 
 results.forEach((result, url) => {
-  console.log(`${url}: ${result.reachable ? `✓ (${result.responseTime}ms)` : `✗ ${result.error}`}`);
+  console.log(`${url}: ${result.reachable ? `??(${result.responseTime}ms)` : `??${result.error}`}`);
 });
 ```
 
@@ -482,20 +482,20 @@ getWebhookUrl(env, 'line')  // => 'http://localhost:8787/webhooks/line'
 ### Production Environment
 ```typescript
 // Backend URL
-getBackendUrl(env)  // => 'https://multi-channel.imfinethankyouandyou.com'
+getBackendUrl(env)  // => 'https://your-api-domain.example.com'
 
 // Webhook URLs
-getWebhookUrl(env, 'line')  // => 'https://multi-channel.imfinethankyouandyou.com/webhooks/line'
+getWebhookUrl(env, 'line')  // => 'https://your-api-domain.example.com/webhooks/line'
 ```
 
 ## Best Practices
 
 1. **Always use service functions instead of hardcoding URLs**
    ```typescript
-   // ❌ Bad
-   const webhookUrl = 'https://multi-channel.imfinethankyouandyou.com/webhooks/line';
+   // ??Bad
+   const webhookUrl = 'https://your-api-domain.example.com/webhooks/line';
 
-   // ✅ Good
+   // ??Good
    const webhookUrl = getWebhookUrl(c.env, 'line');
    ```
 
@@ -566,7 +566,7 @@ getWebhookUrl(env, 'line')  // => 'https://multi-channel.imfinethankyouandyou.co
 
 **Before:**
 ```typescript
-const webhookUrl = 'https://multi-channel.imfinethankyouandyou.com/webhooks/line';
+const webhookUrl = 'https://your-api-domain.example.com/webhooks/line';
 ```
 
 **After:**

@@ -1,6 +1,5 @@
 /**
- * 完整的客戶資料收集流程測試
- * 這個腳本模擬完整的 LINE 訊息處理流程
+ * 完整?�客?��??�收?��?程測�? * ?�個腳?�模?��??��? LINE 訊息?��?流�?
  */
 
 interface StepData {
@@ -10,58 +9,58 @@ interface StepData {
   data: any;
 }
 
-console.log('🧪 LINE Bot 客戶資料收集流程測試\n');
+console.log('?�� LINE Bot 客戶資�??��?流�?測試\n');
 
-// 模擬流程步驟
+// 模擬流�?步�?
 const steps: StepData[] = [
   {
     step: 1,
-    title: '📱 客戶發送訊息到 LINE',
-    description: '客戶在 LINE 中發送訊息給你的 Bot',
+    title: '?�� 客戶?�送�??�到 LINE',
+    description: '客戶??LINE 中發?��??�給你�? Bot',
     data: {
       lineUserId: 'U1234567890abcdef1234567890abcdef1',
-      message: '你好，我想了解你們的服務',
+      message: '你好，�??��?�???��??��?',
       timestamp: new Date().toISOString()
     }
   },
   {
     step: 2,
-    title: '🔗 LINE 平台發送 Webhook',
-    description: 'LINE 平台將訊息事件發送到你的 Worker',
+    title: '?? LINE 平台?��?Webhook',
+    description: 'LINE 平台將�??��?件發?�到你�? Worker',
     data: {
-      webhook_url: 'https://multi-channel.imfinethankyouandyou.com/api/webhook',
+      webhook_url: 'https://your-api-domain.example.com/api/webhook',
       event_type: 'message',
       message_type: 'text'
     }
   },
   {
     step: 3,
-    title: '🔍 獲取用戶資料',
-    description: 'Worker 調用 LINE Profile API 獲取用戶詳細資訊',
+    title: '?? ?��??�戶資�?',
+    description: 'Worker 調用 LINE Profile API ?��??�戶詳細資�?',
     data: {
       api_call: 'GET https://api.line.me/v2/bot/profile/{userId}',
       response: {
         userId: 'U1234567890abcdef1234567890abcdef1',
-        displayName: '張小明',
+        displayName: '張�???,
         pictureUrl: 'https://profile.line-scdn.net/xxx',
-        statusMessage: '今天天氣真好'
+        statusMessage: '今天天氣?�好'
       }
     }
   },
   {
     step: 4,
-    title: '💾 儲存客戶資料到 D1',
-    description: '將客戶資訊儲存到 Cloudflare D1 資料庫',
+    title: '?�� ?��?客戶資�???D1',
+    description: '將客?��?訊儲存到 Cloudflare D1 資�?�?,
     data: {
       table: 'customers',
       action: 'INSERT or UPDATE',
       fields: {
         platform: 'line',
         platform_user_id: 'U1234567890abcdef1234567890abcdef1',
-        display_name: '張小明',
+        display_name: '張�???,
         avatar_url: 'https://profile.line-scdn.net/xxx',
         metadata: {
-          statusMessage: '今天天氣真好',
+          statusMessage: '今天天氣?�好',
           lastProfileUpdate: new Date().toISOString(),
           messageCount: 1
         }
@@ -70,8 +69,8 @@ const steps: StepData[] = [
   },
   {
     step: 5,
-    title: '💬 建立或更新對話',
-    description: '在 conversations 表中建立或更新對話記錄',
+    title: '?�� 建�??�更?��?�?,
+    description: '??conversations 表中建�??�更?��?話�???,
     data: {
       table: 'conversations',
       fields: {
@@ -83,14 +82,14 @@ const steps: StepData[] = [
   },
   {
     step: 6,
-    title: '📝 儲存訊息',
-    description: '將訊息內容儲存到 messages 表',
+    title: '?? ?��?訊息',
+    description: '將�??�內容儲存到 messages �?,
     data: {
       table: 'messages',
       fields: {
         conversation_id: 1,
         sender_type: 'customer',
-        content: '你好，我想了解你們的服務',
+        content: '你好，�??��?�???��??��?',
         message_type: 'text',
         direction: 'inbound'
       }
@@ -98,23 +97,23 @@ const steps: StepData[] = [
   },
   {
     step: 7,
-    title: '🤖 生成並發送回覆',
-    description: 'Bot 生成回覆並發送回 LINE 平台',
+    title: '?? ?��?並發?��?�?,
+    description: 'Bot ?��??��?並發?��? LINE 平台',
     data: {
-      reply: '您好！很高興為您服務，請問有什麼可以幫助您的嗎？',
+      reply: '?�好！�?高�??�您?��?，�??��?什麼可以幫?�您?��?�?,
       api_call: 'POST https://api.line.me/v2/bot/message/reply'
     }
   },
   {
     step: 8,
-    title: '💾 儲存回覆訊息',
-    description: '將 Bot 的回覆也儲存到資料庫',
+    title: '?�� ?��??��?訊息',
+    description: '�?Bot ?��?覆�??��??��??�庫',
     data: {
       table: 'messages',
       fields: {
         conversation_id: 1,
         sender_type: 'agent',
-        content: '您好！很高興為您服務，請問有什麼可以幫助您的嗎？',
+        content: '?�好！�?高�??�您?��?，�??��?什麼可以幫?�您?��?�?,
         direction: 'outbound',
         reply_to_message_id: 'original_message_id'
       }
@@ -122,33 +121,33 @@ const steps: StepData[] = [
   }
 ];
 
-// 顯示流程步驟
+// 顯示流�?步�?
 steps.forEach(({ step, title, description, data }) => {
   console.log(`${title}`);
   console.log(`   ${description}`);
-  console.log(`   資料: ${JSON.stringify(data, null, 6)}`);
+  console.log(`   資�?: ${JSON.stringify(data, null, 6)}`);
   console.log('');
 });
 
-console.log('🎯 完成後你可以透過以下方式查詢客戶資料:\n');
+console.log('?�� 完�?後�??�以?��?以�??��??�詢客戶資�?:\n');
 
-console.log('📊 API 查詢範例:');
-console.log('1. 查詢所有客戶:');
+console.log('?? API ?�詢範�?:');
+console.log('1. ?�詢?�?�客??');
 console.log('   GET /api/customers\n');
 
-console.log('2. 查詢特定 LINE 用戶:');
+console.log('2. ?�詢?��? LINE ?�戶:');
 console.log('   GET /api/customers/platform/line/U1234567890abcdef1234567890abcdef1\n');
 
-console.log('3. 查詢系統統計:');
+console.log('3. ?�詢系統統�?:');
 console.log('   GET /api/stats\n');
 
-console.log('4. 查詢客戶的對話記錄:');
-console.log('   GET /api/customers/1 (會包含對話列表)\n');
+console.log('4. ?�詢客戶?��?話�???');
+console.log('   GET /api/customers/1 (?��??��?話�?�?\n');
 
-console.log('💡 測試建議:');
-console.log('1. 使用 test-webhook.ps1 或 test-webhook.sh 發送測試訊息');
-console.log('2. 使用 query-customers.ts 查詢儲存的客戶資料');
-console.log('3. 檢查 D1 資料庫中的 customers 表');
-console.log('4. 監控 Worker 的日誌輸出');
+console.log('?�� 測試建議:');
+console.log('1. 使用 test-webhook.ps1 ??test-webhook.sh ?�送測試�???);
+console.log('2. 使用 query-customers.ts ?�詢?��??�客?��???);
+console.log('3. 檢查 D1 資�?庫中??customers �?);
+console.log('4. ??�� Worker ?�日誌輸??);
 
-console.log('\n✅ 客戶資料收集功能已完整實現！');
+console.log('\n??客戶資�??��??�能已�??�實?��?');

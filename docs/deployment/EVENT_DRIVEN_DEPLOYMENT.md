@@ -80,7 +80,7 @@ wrangler tail --env production
 
 # SSE
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/realtime/conversation/1/status
+ https://your-api-domain.example.com/api/realtime/conversation/1/status
 ```
 
 

@@ -43,7 +43,7 @@ export function generateRandomString(length: number = 32): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length)); // ❌ Weak PRNG
+    result += chars.charAt(Math.floor(Math.random() * chars.length)); // ??Weak PRNG
   }
   return result;
 }
@@ -81,7 +81,7 @@ export function generateRandomString(length: number = 32): string {
 export async function signJWT(
   payload: Omit<JWTPayload, 'iat' | 'exp'>,
   secret: string,
-  expiresIn: number = 24 * 60 * 60  // ❌ 24 hours default
+  expiresIn: number = 24 * 60 * 60  // ??24 hours default
 ): Promise<string>
 ```
 
@@ -115,7 +115,7 @@ const TOKEN_EXPIRATION = {
 if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data); // ❌ No salt
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data); // ??No salt
   // ...
 }
 ```
@@ -142,7 +142,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
   // Parses header but doesn't validate algorithm
   const parts = token.split('.');
   const [headerB64, payloadB64, signatureB64] = parts;
-  // ❌ No check for header.alg === 'HS256'
+  // ??No check for header.alg === 'HS256'
 ```
 
 **Issue:**
@@ -216,10 +216,10 @@ private static roleHierarchy = {
 
 ```typescript
 if (!db) {
-  console.log('⚠️  No database provided, returning mock data');
+  console.log('?��?  No database provided, returning mock data');
   return {
     id: typeof userId === 'string' ? parseInt(userId) : userId,
-    role: 'agent',  // ❌ Defaults to 'agent' role
+    role: 'agent',  // ??Defaults to 'agent' role
     teamId: 1,
     isActive: true
   };
@@ -249,7 +249,7 @@ static async checkPermission(
   userId: string | number,
   resource: string,
   action: string,
-  context?: PermissionContext,  // ❌ Optional context
+  context?: PermissionContext,  // ??Optional context
   db?: D1Database
 ): Promise<boolean>
 ```
@@ -292,7 +292,7 @@ const query = `
   SELECT id, email, password_hash, display_name, role, team_id,
          is_active, password_policy, created_at, updated_at
   FROM agents
-  WHERE email = ?  // ✅ Parameterized
+  WHERE email = ?  // ??Parameterized
 `;
 const result = await db.prepare(query).bind(email).first();
 ```
@@ -306,7 +306,7 @@ While this is currently secure, mixing raw SQL with Drizzle ORM increases risk. 
 // POTENTIALLY VULNERABLE
 const attachment = await drizzleDb.get(sql`
   SELECT * FROM file_attachments
-  WHERE id = ${attachmentId}  // ❌ Template literal injection risk
+  WHERE id = ${attachmentId}  // ??Template literal injection risk
 `) as any;
 ```
 
@@ -357,7 +357,7 @@ const sanitizeHtml = (html: string): string => {
 
 ```vue
 <div v-if="message.content && !isFileOnlyContent" class="media-caption">
-  {{ message.content }}  <!-- ✅ Safe template interpolation -->
+  {{ message.content }}  <!-- ??Safe template interpolation -->
 </div>
 ```
 
@@ -396,7 +396,7 @@ const sanitizeHtml = (html: string): string => {
 private async handleWebSocketUpgrade(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const userId = url.searchParams.get('userId');
-  const token = url.searchParams.get('token');  // ❌ Token in URL
+  const token = url.searchParams.get('token');  // ??Token in URL
   const role = url.searchParams.get('role');
 ```
 
@@ -484,7 +484,7 @@ async handleWebSocketUpgrade(request: Request): Promise<Response> {
 
 ```typescript
 private async handleWebSocketUpgrade(request: Request): Promise<Response> {
-  // ❌ No Origin header validation
+  // ??No Origin header validation
   const url = new URL(request.url);
 ```
 
@@ -524,9 +524,9 @@ Good architecture with:
 
 ```typescript
 export const ALLOWED_ORIGINS = [
-  'https://multi-channel.imfinethankyouandyou.com',
+  'https://your-api-domain.example.com',
   'https://multi-channel-platform-frontend.pages.dev',
-  'https://mcp.imfinethankyouandyou.com',
+  'https://your-frontend-domain.example.com',
   'http://localhost:3000',
   // ...
 ] as const;
@@ -544,7 +544,7 @@ export const ALLOWED_ORIGINS = [
 **File:** `src/config/cors.ts:16-20`
 
 ```typescript
-// 開發環境
+// ?�發?��?
 'http://localhost:3000',
 'https://localhost:3000',
 'http://127.0.0.1:3000',
@@ -560,8 +560,8 @@ export const ALLOWED_ORIGINS = [
 ```typescript
 // Separate configs for environments
 const PRODUCTION_ORIGINS = [
-  'https://multi-channel.imfinethankyouandyou.com',
-  'https://mcp.imfinethankyouandyou.com',
+  'https://your-api-domain.example.com',
+  'https://your-frontend-domain.example.com',
 ];
 
 const DEVELOPMENT_ORIGINS = [
@@ -583,7 +583,7 @@ export const ALLOWED_ORIGINS =
 
 ```typescript
 if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) {
-  return true;  // ❌ Allows all subdomains
+  return true;  // ??Allows all subdomains
 }
 ```
 
@@ -612,7 +612,7 @@ const ALLOWED_MIME_TYPES = {
   image: [
     'image/jpeg', 'image/png', 'image/gif',
     'image/webp',
-    'image/svg+xml'  // ❌ SVG can contain JavaScript
+    'image/svg+xml'  // ??SVG can contain JavaScript
   ],
   document: [
     'application/pdf',
@@ -624,7 +624,7 @@ const ALLOWED_MIME_TYPES = {
 
 // Validation only checks MIME type
 const isValidType = messageType === 'image'
-  ? ALLOWED_MIME_TYPES.image.includes(file.type)  // ❌ MIME type can be spoofed
+  ? ALLOWED_MIME_TYPES.image.includes(file.type)  // ??MIME type can be spoofed
   : ALLOWED_MIME_TYPES.document.includes(file.type);
 ```
 
@@ -654,7 +654,7 @@ const ALLOWED_MIME_TYPES = {
     'image/png',
     'image/gif',
     'image/webp'
-    // ❌ Remove SVG
+    // ??Remove SVG
   ]
 };
 
@@ -724,8 +724,8 @@ const storedFilename = `${attachmentId}.${fileExtension}`;
 ```typescript
 await c.env.R2_BUCKET.put(storagePath, fileContent, {
   httpMetadata: {
-    contentType: file.type,  // ❌ User-controlled MIME type
-    contentDisposition: `attachment; filename="${file.name}"`  // ❌ Filename injection
+    contentType: file.type,  // ??User-controlled MIME type
+    contentDisposition: `attachment; filename="${file.name}"`  // ??Filename injection
   }
 });
 ```
@@ -861,7 +861,7 @@ async function verifyJWTWithRotation(token: string, config: JWTSecretConfig) {
 
 ## 8. OWASP Top 10 (2021) Compliance
 
-### A01:2021 – Broken Access Control
+### A01:2021 ??Broken Access Control
 **Status:** PARTIAL COMPLIANCE
 
 **Strengths:**
@@ -878,7 +878,7 @@ async function verifyJWTWithRotation(token: string, config: JWTSecretConfig) {
 
 ---
 
-### A02:2021 – Cryptographic Failures
+### A02:2021 ??Cryptographic Failures
 **Status:** NON-COMPLIANT
 
 **Critical Issues:**
@@ -890,7 +890,7 @@ async function verifyJWTWithRotation(token: string, config: JWTSecretConfig) {
 
 ---
 
-### A03:2021 – Injection
+### A03:2021 ??Injection
 **Status:** COMPLIANT
 
 **Strengths:**
@@ -906,7 +906,7 @@ async function verifyJWTWithRotation(token: string, config: JWTSecretConfig) {
 
 ---
 
-### A04:2021 – Insecure Design
+### A04:2021 ??Insecure Design
 **Status:** PARTIAL COMPLIANCE
 
 **Issues:**
@@ -918,7 +918,7 @@ async function verifyJWTWithRotation(token: string, config: JWTSecretConfig) {
 
 ---
 
-### A05:2021 – Security Misconfiguration
+### A05:2021 ??Security Misconfiguration
 **Status:** PARTIAL COMPLIANCE
 
 **Issues:**
@@ -930,7 +930,7 @@ async function verifyJWTWithRotation(token: string, config: JWTSecretConfig) {
 
 ---
 
-### A06:2021 – Vulnerable and Outdated Components
+### A06:2021 ??Vulnerable and Outdated Components
 **Status:** REQUIRES ASSESSMENT
 
 **Action Required:**
@@ -944,7 +944,7 @@ npm audit fix
 
 ---
 
-### A07:2021 – Identification and Authentication Failures
+### A07:2021 ??Identification and Authentication Failures
 **Status:** PARTIAL COMPLIANCE
 
 **Issues:**
@@ -957,7 +957,7 @@ npm audit fix
 
 ---
 
-### A08:2021 – Software and Data Integrity Failures
+### A08:2021 ??Software and Data Integrity Failures
 **Status:** PARTIAL COMPLIANCE
 
 **Strengths:**
@@ -972,7 +972,7 @@ npm audit fix
 
 ---
 
-### A09:2021 – Security Logging and Monitoring Failures
+### A09:2021 ??Security Logging and Monitoring Failures
 **Status:** PARTIAL COMPLIANCE
 
 **Observations:**
@@ -985,7 +985,7 @@ npm audit fix
 
 ---
 
-### A10:2021 – Server-Side Request Forgery (SSRF)
+### A10:2021 ??Server-Side Request Forgery (SSRF)
 **Status:** NOT APPLICABLE
 
 No server-side HTTP requests to user-controlled URLs detected.

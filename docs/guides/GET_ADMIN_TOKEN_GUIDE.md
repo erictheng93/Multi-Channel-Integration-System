@@ -19,7 +19,7 @@
 
 ```bash
 # token
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+curl -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{
  "email": "admin@dacit.net",
@@ -68,7 +68,7 @@ console.log('Token:', authStore.token);
 
 ```bash
 
-TOKEN=$(curl -s -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+TOKEN=$(curl -s -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{"email":"admin@dacit.net","password":"YOUR_PASSWORD"}' \
  | jq -r '.data.token')
@@ -82,11 +82,11 @@ echo "Token: $TOKEN"
 ```bash
 
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/health
+ https://your-api-domain.example.com/api/collaboration/health
 
 
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/stats
+ https://your-api-domain.example.com/api/collaboration/stats
 ```
 
 ---
@@ -95,7 +95,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```powershell
 # Step 1: Token
-$response = Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/auth/login" `
+$response = Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/auth/login" `
  -Method POST `
  -Headers @{"Content-Type"="application/json"} `
  -Body '{"email":"admin@dacit.net","password":"YOUR_PASSWORD"}'
@@ -110,11 +110,11 @@ $headers = @{
 }
 
 
-Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/collaboration/health" `
+Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/collaboration/health" `
  -Headers $headers
 
 
-Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/collaboration/stats" `
+Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/collaboration/stats" `
  -Headers $headers
 ```
 
@@ -124,7 +124,7 @@ Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/colla
 
 #### Step 1:
 
-1. https://multi-channel.imfinethankyouandyou.com
+1. https://your-api-domain.example.com
 2.
  - Email: `admin@dacit.net`
  - Password:
@@ -183,7 +183,7 @@ wrangler d1 execute multi-channel-platform --remote \
 
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/health
+ https://your-api-domain.example.com/api/collaboration/health
 
 # :
 {
@@ -204,7 +204,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/stats
+ https://your-api-domain.example.com/api/collaboration/stats
 
 # :
 {
@@ -228,7 +228,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 curl -X POST \
  -H "Authorization: Bearer YOUR_TOKEN" \
  -H "Content-Type: application/json" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/conversations/123/join
+ https://your-api-domain.example.com/api/collaboration/conversations/123/join
 
 # :
 {
@@ -241,7 +241,7 @@ curl -X POST \
 
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/conversations/123/state
+ https://your-api-domain.example.com/api/collaboration/conversations/123/state
 
 # :
 {
@@ -263,7 +263,7 @@ curl -X POST \
  -H "Authorization: Bearer YOUR_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{"conversationId": 123, "status": "start"}' \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/typing
+ https://your-api-domain.example.com/api/collaboration/typing
 
 # :
 {
@@ -280,16 +280,16 @@ curl -X POST \
 
 ```bash
 # 1. WebSocket
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # 2. WebSocket
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/readiness
+curl https://your-api-domain.example.com/api/websocket/readiness
 
 # 4.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/liveness
+curl https://your-api-domain.example.com/api/websocket/liveness
 ```
 
 ---
@@ -309,7 +309,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/websocket/liveness
  token
 
 ```bash
-TOKEN=$(curl -s -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+TOKEN=$(curl -s -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{"email":"admin@dacit.net","password":"YOUR_PASSWORD"}' \
  | jq -r '.data.token')
@@ -430,7 +430,7 @@ curl -H "Authorization: Bearer $env:API_TOKEN" https://api-url
 #!/bin/bash
 
 
-API_URL="https://multi-channel.imfinethankyouandyou.com"
+API_URL="https://your-api-domain.example.com"
 EMAIL="admin@dacit.net"
 PASSWORD="YOUR_PASSWORD"
 
@@ -485,7 +485,7 @@ chmod +x test-api.sh
 
 ```powershell
 
-$API_URL = "https://multi-channel.imfinethankyouandyou.com"
+$API_URL = "https://your-api-domain.example.com"
 $EMAIL = "admin@dacit.net"
 $PASSWORD = "YOUR_PASSWORD"
 

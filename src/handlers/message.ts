@@ -487,104 +487,34 @@ export const messageHandler = {
                 console.warn('⚠️ [WebSocket] Message broadcast failed, continuing with fallback:', broadcastError);
             }
 
-            // 🔧 FIX: 通知 CustomerConversationDO 進行即時 WebSocket 廣播
-            // 這讓所有查看同一對話的客服都能即時收到訊息更新
+            // 🚀 Phase B4: Unified Broadcast for Conversation List & Detail Updates
+            // Uses WebSocketBroadcastService.broadcastNewMessage() for both:
+            // 1. CustomerConversationDO - conversation detail page real-time updates
+            // 2. MessageBroadcaster global - conversation list page lastMessage updates
             try {
-                if (c.env.CUSTOMER_CONVERSATION_DO) {
-                    const conversationDOId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
-                    const conversationDO = c.env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
-
-                    // 🔧 FIX: 構建完整的訊息物件，格式必須與前端 Message 介面完全一致
-                    // 參考: shared/types/entities.ts - Message interface
-                    const timestamp = new Date(sentAt).getTime();
-                    const broadcastMessage = {
-                        // 必填欄位
+                const unifiedBroadcastService = new WebSocketBroadcastService(c.env);
+                const broadcastResult = await unifiedBroadcastService.broadcastNewMessage({
+                    conversationId: conversationId,
+                    message: {
                         id: messageId,
-                        conversationId: conversationId,
-                        senderType: 'agent' as const,
-                        senderId: agent.id,
                         content: content || '',
-                        messageType: mediaType || 'text',  // 保持 messageType (不是 mediaType)
+                        messageType: mediaType || 'text',
+                        senderType: 'agent',
+                        senderId: agent.id,
+                        senderName: agent.displayName,
                         platform: conversationWithCustomer.platform,
-                        timestamp: timestamp,  // Unix timestamp for sorting
-                        createdAt: sentAt,     // ISO string for display
-
-                        // 可選欄位
-                        mediaUrl: mediaUrl || undefined,
-                        deliveryStatus: isAsyncLineMessage ? 'sending' : (sendResult ? 'sent' : 'failed'),
-                        updatedAt: sentAt,
-                        senderName: agent.displayName || undefined,
-
-                        // 附件相關
-                        metadata: hasAttachments ? { attachmentIds: attachmentIds } : undefined,
-                        file_attachments: [] // 前端會單獨獲取
-                    };
-
-                    const notifyRequest = new Request('https://fake-host/notify-message', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            conversationId,
-                            message: broadcastMessage
-                        })
-                    });
-
-                    const response = await conversationDO.fetch(notifyRequest);
-                    if (response.ok) {
-                        console.log(`✅ [CustomerConversationDO] Real-time broadcast sent for message ${messageId}`);
-                    } else {
-                        console.warn(`⚠️ [CustomerConversationDO] Broadcast returned error:`, await response.text());
-                    }
-                }
-            } catch (customerDOError) {
-                console.warn('⚠️ [CustomerConversationDO] Failed to notify, continuing:', customerDOError);
-            }
-
-            // 🚀 Phase B4: Global Broadcast for Conversation List Updates
-            // This notifies all connected agents viewing the conversation list
-            try {
-                if (c.env.MESSAGE_BROADCASTER) {
-                    const broadcasterId = c.env.MESSAGE_BROADCASTER.idFromName('global');
-                    const broadcasterStub = c.env.MESSAGE_BROADCASTER.get(broadcasterId);
-
-                    // Broadcast new_message event globally for conversation list updates
-                    const globalEvent = {
-                        id: crypto.randomUUID(),
-                        type: 'new_message',
-                        source: 'api',
                         timestamp: Date.now(),
-                        conversationId: conversationId,
-                        data: {
-                            conversationId: conversationId,
-                            content: content,
-                            messageType: mediaType || 'text',
-                            senderType: 'agent',
-                            senderId: agent.id,
-                            senderName: agent.displayName,
-                            platform: conversationWithCustomer.platform,
-                            timestamp: Date.now()
-                        },
-                        priority: 'normal'
-                    };
-
-                    // Use /broadcast-global endpoint for global broadcasts
-                    const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            event: globalEvent,
-                            target: { type: 'global', targets: ['all'] }
-                        })
-                    }));
-
-                    if (globalResponse.ok) {
-                        console.log('✅ [Agent Message] Global broadcast sent for conversation list updates');
-                    } else {
-                        console.warn('⚠️ [Agent Message] Global broadcast returned non-OK status');
-                    }
-                }
-            } catch (globalBroadcastError) {
-                console.warn('⚠️ [Agent Message] Global broadcast failed (non-critical):', globalBroadcastError);
+                        deliveryStatus: isAsyncLineMessage ? 'sending' : (sendResult ? 'sent' : 'failed')
+                    },
+                    source: 'api'
+                });
+                console.log(`✅ [Agent Message] Unified broadcast completed`, {
+                    messageId,
+                    conversationBroadcast: broadcastResult.conversationBroadcast,
+                    globalBroadcast: broadcastResult.globalBroadcast
+                });
+            } catch (broadcastError) {
+                console.warn('⚠️ [Agent Message] Unified broadcast failed (non-critical):', broadcastError);
                 // Non-critical - conversation list will still update on next poll
             }
 

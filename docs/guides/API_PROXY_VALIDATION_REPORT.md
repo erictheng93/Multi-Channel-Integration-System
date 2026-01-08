@@ -121,7 +121,7 @@ VITE_ENABLE_DEBUG_LOGS=true
 
 **** (`frontend/.env.production`):
 ```env
-VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://multi-channel-platform.example.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 ```
@@ -131,7 +131,7 @@ VITE_ENABLE_DEBUG_LOGS=false
 ```ini
 # frontend/_redirects
 /* /index.html 200
-/api/* https://multi-channel-platform.imfinethankyouandyou.com/api/:splat 200
+/api/* https://multi-channel-platform.example.com/api/:splat 200
 ```
 
 ### 4. CORS
@@ -206,7 +206,7 @@ npm run lint:check
 ```
 : https://your-pages-domain.pages.dev/api/auth/login
  (Cloudflare Pages )
-: https://multi-channel-platform.imfinethankyouandyou.com/api/auth/login
+: https://multi-channel-platform.example.com/api/auth/login
  (Worker )
 : 200 OK + JSON
 ```
@@ -243,7 +243,7 @@ npm run lint:check
 - [ ] API `curl http://localhost:3000/api/health`
 
 
-- [ ] Worker `https://multi-channel-platform.imfinethankyouandyou.com`
+- [ ] Worker `https://multi-channel-platform.example.com`
 - [ ] Cloudflare Pages `VITE_API_BASE_URL`
 - [ ] `_redirects`
 - [ ] API `curl https://your-pages-domain.pages.dev/api/health`

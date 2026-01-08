@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// üöÄ Phase 2: SSE System Production Deployment Script
+// ?? Phase 2: SSE System Production Deployment Script
 // Production deployment script for SSE messaging system
 
 import { execSync } from 'child_process'
@@ -21,16 +21,16 @@ const DEPLOYMENT_CONFIGS: Record<string, DeploymentConfig> = {
     enableSSE: true,
     enableWebSocket: false, // Disabled in Phase 2
     rolloutPercentage: 100, // 100% SSE rollout
-    healthCheckUrl: 'https://multi-channel.imfinethankyouandyou.com/api/system/health',
-    domain: 'multi-channel.imfinethankyouandyou.com'
+    healthCheckUrl: 'https://your-api-domain.example.com/api/system/health',
+    domain: 'your-api-domain.example.com'
   },
   staging: {
     environment: 'staging',
     enableSSE: true,
     enableWebSocket: false,
     rolloutPercentage: 100,
-    healthCheckUrl: 'https://staging-multi-channel.imfinethankyouandyou.com/api/system/health',
-    domain: 'staging-multi-channel.imfinethankyouandyou.com'
+    healthCheckUrl: 'https://staging-your-api-domain.example.com/api/system/health',
+    domain: 'staging-your-api-domain.example.com'
   }
 }
 
@@ -48,102 +48,102 @@ class SSEDeploymentManager {
     this.deploymentId = `sse-deploy-${Date.now()}`
     this.startTime = Date.now()
 
-    console.log(`üöÄ [SSE Deploy] Starting deployment: ${this.deploymentId}`)
-    console.log(`üåç [SSE Deploy] Environment: ${this.config.environment}`)
-    console.log(`üì° [SSE Deploy] SSE Enabled: ${this.config.enableSSE}`)
-    console.log(`üîå [SSE Deploy] WebSocket Enabled: ${this.config.enableWebSocket}`)
+    console.log(`?? [SSE Deploy] Starting deployment: ${this.deploymentId}`)
+    console.log(`?? [SSE Deploy] Environment: ${this.config.environment}`)
+    console.log(`?ì° [SSE Deploy] SSE Enabled: ${this.config.enableSSE}`)
+    console.log(`?? [SSE Deploy] WebSocket Enabled: ${this.config.enableWebSocket}`)
   }
 
   // Phase 1: Pre-deployment checks
   async runPreDeploymentChecks(): Promise<boolean> {
-    console.log('\nüìã [SSE Deploy] Phase 1: Pre-deployment checks')
+    console.log('\n?? [SSE Deploy] Phase 1: Pre-deployment checks')
 
     try {
       // Check 1: Verify wrangler authentication
-      console.log('üîê Checking Wrangler authentication...')
+      console.log('?? Checking Wrangler authentication...')
       const whoami = execSync('wrangler whoami', { encoding: 'utf-8' })
-      console.log(`‚úÖ Authenticated as: ${whoami.trim()}`)
+      console.log(`??Authenticated as: ${whoami.trim()}`)
 
       // Check 2: Verify project build
-      console.log('üî® Building project...')
+      console.log('?î® Building project...')
       execSync('npm run build', { encoding: 'utf-8', stdio: 'inherit' })
-      console.log('‚úÖ Project build successful')
+      console.log('??Project build successful')
 
       // Check 3: Run TypeScript checks
-      console.log('üîç Running TypeScript checks...')
+      console.log('?? Running TypeScript checks...')
       execSync('npm run type-check', { encoding: 'utf-8', stdio: 'inherit' })
-      console.log('‚úÖ TypeScript checks passed')
+      console.log('??TypeScript checks passed')
 
       // Check 4: Verify SSE endpoints
-      console.log('üß™ Verifying SSE endpoints in code...')
+      console.log('?ß™ Verifying SSE endpoints in code...')
       const conversationHandlerPath = join(process.cwd(), 'src/handlers/conversation-main.ts')
       const handlerContent = readFileSync(conversationHandlerPath, 'utf-8')
 
       if (!handlerContent.includes('/:conversationId/messages/stream')) {
         throw new Error('SSE endpoint not found in conversation handler')
       }
-      console.log('‚úÖ SSE endpoints verified')
+      console.log('??SSE endpoints verified')
 
       // Check 5: Database migration check
-      console.log('üóÑÔ∏è Checking database migrations...')
+      console.log('??Ô∏?Checking database migrations...')
       try {
         execSync('wrangler d1 list', { encoding: 'utf-8', stdio: 'pipe' })
-        console.log('‚úÖ Database connection verified')
+        console.log('??Database connection verified')
       } catch (error) {
-        console.warn('‚ö†Ô∏è Database check failed, but continuing...')
+        console.warn('?†Ô? Database check failed, but continuing...')
       }
 
       return true
 
     } catch (error) {
-      console.error(`‚ùå [SSE Deploy] Pre-deployment check failed:`, error)
+      console.error(`??[SSE Deploy] Pre-deployment check failed:`, error)
       return false
     }
   }
 
   // Phase 2: Deploy to Cloudflare Workers
   async deployToCloudflare(): Promise<boolean> {
-    console.log('\nüöÄ [SSE Deploy] Phase 2: Deploying to Cloudflare Workers')
+    console.log('\n?? [SSE Deploy] Phase 2: Deploying to Cloudflare Workers')
 
     try {
       // Update feature flags for SSE deployment
-      console.log('üè∑Ô∏è Updating feature flags...')
+      console.log('?è∑Ô∏?Updating feature flags...')
       await this.updateFeatureFlags()
 
       // Deploy the main worker
-      console.log('üì¶ Deploying main worker...')
+      console.log('?ì¶ Deploying main worker...')
       const deployOutput = execSync('wrangler deploy --minify', {
         encoding: 'utf-8',
         stdio: 'pipe'
       })
 
-      console.log('‚úÖ Worker deployment successful')
+      console.log('??Worker deployment successful')
 
       // Extract deployment URL from output
       const urlMatch = deployOutput.match(/https:\/\/[^\s]+/)
       if (urlMatch) {
-        console.log(`üìç Deployment URL: ${urlMatch[0]}`)
+        console.log(`?? Deployment URL: ${urlMatch[0]}`)
       }
 
       return true
 
     } catch (error) {
-      console.error(`‚ùå [SSE Deploy] Deployment failed:`, error)
+      console.error(`??[SSE Deploy] Deployment failed:`, error)
       return false
     }
   }
 
   // Phase 3: Health checks and validation
   async runHealthChecks(): Promise<boolean> {
-    console.log('\nüè• [SSE Deploy] Phase 3: Health checks and validation')
+    console.log('\n?è• [SSE Deploy] Phase 3: Health checks and validation')
 
     try {
       // Wait for deployment to propagate
-      console.log('‚è±Ô∏è Waiting for deployment to propagate (30 seconds)...')
+      console.log('?±Ô? Waiting for deployment to propagate (30 seconds)...')
       await this.sleep(30000)
 
       // Health check 1: Basic health endpoint
-      console.log('üîç Checking basic health endpoint...')
+      console.log('?? Checking basic health endpoint...')
       const healthResponse = await fetch(this.config.healthCheckUrl)
 
       if (!healthResponse.ok) {
@@ -151,65 +151,65 @@ class SSEDeploymentManager {
       }
 
       const healthData = await healthResponse.json()
-      console.log('‚úÖ Basic health check passed:', healthData)
+      console.log('??Basic health check passed:', healthData)
 
       // Health check 2: SSE endpoint availability
-      console.log('üîç Testing SSE endpoint availability...')
+      console.log('?? Testing SSE endpoint availability...')
       const sseTestUrl = `${this.config.healthCheckUrl.replace('/api/system/health', '')}/api/conversations/test/messages/stream`
 
       try {
         // This should return 401 (unauthorized) which means the endpoint exists
         const sseResponse = await fetch(sseTestUrl)
         if (sseResponse.status === 401) {
-          console.log('‚úÖ SSE endpoint is accessible (authentication required as expected)')
+          console.log('??SSE endpoint is accessible (authentication required as expected)')
         } else {
-          console.warn(`‚ö†Ô∏è SSE endpoint returned unexpected status: ${sseResponse.status}`)
+          console.warn(`?†Ô? SSE endpoint returned unexpected status: ${sseResponse.status}`)
         }
       } catch (error) {
-        console.warn('‚ö†Ô∏è SSE endpoint test failed, but continuing...', error)
+        console.warn('?†Ô? SSE endpoint test failed, but continuing...', error)
       }
 
       // Health check 3: Database connectivity
-      console.log('üîç Checking database connectivity...')
+      console.log('?? Checking database connectivity...')
       try {
         const dbTestUrl = `${this.config.healthCheckUrl.replace('/health', '/api-status')}`
         const dbResponse = await fetch(dbTestUrl)
         if (dbResponse.ok) {
-          console.log('‚úÖ Database connectivity verified')
+          console.log('??Database connectivity verified')
         }
       } catch (error) {
-        console.warn('‚ö†Ô∏è Database connectivity test failed:', error)
+        console.warn('?†Ô? Database connectivity test failed:', error)
       }
 
       return true
 
     } catch (error) {
-      console.error(`‚ùå [SSE Deploy] Health checks failed:`, error)
+      console.error(`??[SSE Deploy] Health checks failed:`, error)
       return false
     }
   }
 
   // Phase 4: Configure SSE system
   async configureSSESystem(): Promise<boolean> {
-    console.log('\n‚öôÔ∏è [SSE Deploy] Phase 4: Configuring SSE system')
+    console.log('\n?ôÔ? [SSE Deploy] Phase 4: Configuring SSE system')
 
     try {
       // Create SSE monitoring configuration
-      console.log('üìä Setting up SSE monitoring...')
+      console.log('?? Setting up SSE monitoring...')
       await this.createMonitoringConfig()
 
       // Update migration settings
-      console.log('üîÑ Updating migration settings...')
+      console.log('?? Updating migration settings...')
       await this.updateMigrationSettings()
 
       // Setup performance baselines
-      console.log('üìè Setting up performance baselines...')
+      console.log('?? Setting up performance baselines...')
       await this.setupPerformanceBaselines()
 
       return true
 
     } catch (error) {
-      console.error(`‚ùå [SSE Deploy] SSE configuration failed:`, error)
+      console.error(`??[SSE Deploy] SSE configuration failed:`, error)
       return false
     }
   }
@@ -224,13 +224,13 @@ class SSEDeploymentManager {
       deployedAt: new Date().toISOString()
     }
 
-    console.log('üè∑Ô∏è Feature flags:', flagsConfig)
+    console.log('?è∑Ô∏?Feature flags:', flagsConfig)
 
     // In a real deployment, this would update KV storage
     // For now, we'll create a deployment info file
     const deployInfoPath = join(process.cwd(), 'deployment-info.json')
     writeFileSync(deployInfoPath, JSON.stringify(flagsConfig, null, 2))
-    console.log(`üìÑ Deployment info saved to: ${deployInfoPath}`)
+    console.log(`?? Deployment info saved to: ${deployInfoPath}`)
   }
 
   // Helper: Create monitoring configuration
@@ -257,7 +257,7 @@ class SSEDeploymentManager {
 
     const monitoringConfigPath = join(process.cwd(), 'sse-monitoring.json')
     writeFileSync(monitoringConfigPath, JSON.stringify(monitoringConfig, null, 2))
-    console.log(`üìä Monitoring config created: ${monitoringConfigPath}`)
+    console.log(`?? Monitoring config created: ${monitoringConfigPath}`)
   }
 
   // Helper: Update migration settings
@@ -273,7 +273,7 @@ class SSEDeploymentManager {
       }
     }
 
-    console.log('üîÑ Migration settings updated:', migrationSettings)
+    console.log('?? Migration settings updated:', migrationSettings)
   }
 
   // Helper: Setup performance baselines
@@ -286,7 +286,7 @@ class SSEDeploymentManager {
       memoryUsage: 50 * 1024 * 1024 // 50MB
     }
 
-    console.log('üìè Performance baselines:', baselines)
+    console.log('?? Performance baselines:', baselines)
   }
 
   // Helper: Sleep utility
@@ -304,36 +304,36 @@ class SSEDeploymentManager {
     ]
 
     for (const phase of phases) {
-      console.log(`\nüîÑ [SSE Deploy] Starting: ${phase.name}`)
+      console.log(`\n?? [SSE Deploy] Starting: ${phase.name}`)
       const success = await phase.fn()
 
       if (!success) {
-        console.error(`‚ùå [SSE Deploy] Failed at: ${phase.name}`)
+        console.error(`??[SSE Deploy] Failed at: ${phase.name}`)
         await this.rollback()
         return false
       }
 
-      console.log(`‚úÖ [SSE Deploy] Completed: ${phase.name}`)
+      console.log(`??[SSE Deploy] Completed: ${phase.name}`)
     }
 
     const deploymentTime = Date.now() - this.startTime
-    console.log(`\nüéâ [SSE Deploy] Deployment successful!`)
-    console.log(`‚è±Ô∏è Total time: ${Math.round(deploymentTime / 1000)} seconds`)
-    console.log(`üåç Domain: https://${this.config.domain}`)
-    console.log(`üÜî Deployment ID: ${this.deploymentId}`)
+    console.log(`\n?? [SSE Deploy] Deployment successful!`)
+    console.log(`?±Ô? Total time: ${Math.round(deploymentTime / 1000)} seconds`)
+    console.log(`?? Domain: https://${this.config.domain}`)
+    console.log(`?? Deployment ID: ${this.deploymentId}`)
 
     return true
   }
 
   // Emergency rollback
   private async rollback(): Promise<void> {
-    console.log('\nüîÑ [SSE Deploy] Initiating rollback...')
+    console.log('\n?? [SSE Deploy] Initiating rollback...')
 
     try {
       // This would implement rollback logic
-      console.log('‚ö†Ô∏è Rollback not implemented - manual intervention required')
+      console.log('?†Ô? Rollback not implemented - manual intervention required')
     } catch (error) {
-      console.error('‚ùå [SSE Deploy] Rollback failed:', error)
+      console.error('??[SSE Deploy] Rollback failed:', error)
     }
   }
 }
@@ -347,7 +347,7 @@ async function main() {
     const success = await deploymentManager.deploy()
     process.exit(success ? 0 : 1)
   } catch (error) {
-    console.error('üí• [SSE Deploy] Deployment crashed:', error)
+    console.error('?í• [SSE Deploy] Deployment crashed:', error)
     process.exit(1)
   }
 }

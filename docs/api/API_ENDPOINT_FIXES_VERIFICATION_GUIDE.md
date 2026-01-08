@@ -15,13 +15,13 @@
 
 ```bash
 # 1:
-# 1. https://multi-channel.imfinethankyouandyou.com
+# 1. https://your-api-domain.example.com
 # 2. (F12)
 # 3. Console tab
 # 4. : localStorage.getItem('auth_token')
 
 # 2: API
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+curl -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{
  "loginId": "admin-001",
@@ -33,11 +33,11 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
 
 ```bash
 # Windows PowerShell
-$env:API_URL="https://multi-channel.imfinethankyouandyou.com/api"
+$env:API_URL="https://your-api-domain.example.com/api"
 $env:TEST_AUTH_TOKEN="your-jwt-token-here"
 
 # Linux/Mac
-export API_URL="https://multi-channel.imfinethankyouandyou.com/api"
+export API_URL="https://your-api-domain.example.com/api"
 export TEST_AUTH_TOKEN="your-jwt-token-here"
 ```
 
@@ -58,7 +58,7 @@ export TEST_AUTH_TOKEN="your-jwt-token-here"
 #### Step 1: QR
 
 ```bash
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-code \
+curl -X POST https://your-api-domain.example.com/api/teams/1/qr-code \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -91,7 +91,7 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-code 
 # Step 1 QR Code ID
 QR_CODE_ID="qr-code-uuid-from-step-1"
 
-curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes/$QR_CODE_ID/deactivate \
+curl -X PUT https://your-api-domain.example.com/api/teams/1/qr-codes/$QR_CODE_ID/deactivate \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json"
 ```
@@ -108,7 +108,7 @@ curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes/
 #### Step 3: QR
 
 ```bash
-curl -X GET https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes \
+curl -X GET https://your-api-domain.example.com/api/teams/1/qr-codes \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN"
 ```
 
@@ -122,7 +122,7 @@ curl -X GET https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes 
 #### 1:
 
 ```bash
-curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes/test-id/deactivate \
+curl -X PUT https://your-api-domain.example.com/api/teams/1/qr-codes/test-id/deactivate \
  -H "Content-Type: application/json"
 ```
 
@@ -131,7 +131,7 @@ curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes/
 #### 2: ID
 
 ```bash
-curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/invalid/qr-codes/test-id/deactivate \
+curl -X PUT https://your-api-domain.example.com/api/teams/invalid/qr-codes/test-id/deactivate \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json"
 ```
@@ -141,7 +141,7 @@ curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/invalid/qr-
 #### 3: QR ID
 
 ```bash
-curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes/non-existent-id/deactivate \
+curl -X PUT https://your-api-domain.example.com/api/teams/1/qr-codes/non-existent-id/deactivate \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json"
 ```
@@ -168,7 +168,7 @@ curl -X PUT https://multi-channel.imfinethankyouandyou.com/api/teams/1/qr-codes/
 # ID ()
 MEMBER_ID="admin-001"
 
-curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/$MEMBER_ID \
+curl -X GET https://your-api-domain.example.com/api/team/members/$MEMBER_ID \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json"
 ```
@@ -215,7 +215,7 @@ curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/$MEM
 # status === 'inactive' isActive === false
 
 # jq ()
-curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/$MEMBER_ID \
+curl -X GET https://your-api-domain.example.com/api/team/members/$MEMBER_ID \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  | jq '{status: .data.status, isActive: .data.isActive}'
 ```
@@ -225,7 +225,7 @@ curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/$MEM
 #### 1:
 
 ```bash
-curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/admin-001 \
+curl -X GET https://your-api-domain.example.com/api/team/members/admin-001 \
  -H "Content-Type: application/json"
 ```
 
@@ -234,7 +234,7 @@ curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/admi
 #### 2: ID
 
 ```bash
-curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/non-existent-member \
+curl -X GET https://your-api-domain.example.com/api/team/members/non-existent-member \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json"
 ```
@@ -292,7 +292,7 @@ isInvitationEnabled: (): boolean => {
 
 ```bash
 # 1:
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/invite \
+curl -X POST https://your-api-domain.example.com/api/teams/invite \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -301,15 +301,15 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/invite \
  }'
 
 # 2:
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/team/invitations/test-id/resend \
+curl -X POST https://your-api-domain.example.com/api/team/invitations/test-id/resend \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN"
 
 # 3:
-curl -X DELETE https://multi-channel.imfinethankyouandyou.com/api/team/invitations/test-id \
+curl -X DELETE https://your-api-domain.example.com/api/team/invitations/test-id \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN"
 
 # 4: QR
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/qr-invite \
+curl -X POST https://your-api-domain.example.com/api/teams/qr-invite \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -342,7 +342,7 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/teams/qr-invite 
 npm install
 
 
-export API_URL="https://multi-channel.imfinethankyouandyou.com/api"
+export API_URL="https://your-api-domain.example.com/api"
 export TEST_AUTH_TOKEN="your-jwt-token-here"
 
 
@@ -408,7 +408,7 @@ npm run test:coverage -- tests/api-endpoint-fixes-verification.test.ts
 ****:
 ```bash
 
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+curl -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{
  "loginId": "admin-001",
@@ -434,7 +434,7 @@ export TEST_AUTH_TOKEN="new-token-here"
 ****:
 ```bash
 # ID
-curl -X GET https://multi-channel.imfinethankyouandyou.com/api/team/members/admin-001 \
+curl -X GET https://your-api-domain.example.com/api/team/members/admin-001 \
  -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
  | jq '.data.teamId'
 

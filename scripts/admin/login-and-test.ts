@@ -1,22 +1,22 @@
 /**
- * ç™»å…¥ä¸¦ç²å– JWT Tokenï¼Œç„¶å¾Œé€²è¡Œå®Œæ•´æ¸¬è©¦
+ * ?»å…¥ä¸¦ç²??JWT Tokenï¼Œç„¶å¾Œé€²è?å®Œæ•´æ¸¬è©¦
  */
 
-const REMOTE_URL = 'https://multi-channel.imfinethankyouandyou.com';
+const REMOTE_URL = 'https://your-api-domain.example.com';
 
-// æ‚¨çš„ç™»å…¥æ†‘è­‰ - è«‹å¡«å…¥å¯†ç¢¼
+// ?¨ç??»å…¥?‘è? - è«‹å¡«?¥å?ç¢?
 const credentials = {
-  email: 'admin@dacit.net',  // æˆ–ä½¿ç”¨ 'dacagent@dacit.net' æˆ– 'test@dacit.net'
-  password: ''  // âš ï¸ è«‹å¡«å…¥æ‚¨çš„å¯†ç¢¼
+  email: 'admin@dacit.net',  // ?–ä½¿??'dacagent@dacit.net' ??'test@dacit.net'
+  password: ''  // ? ï? è«‹å¡«?¥æ‚¨?„å?ç¢?
 };
 
 async function login() {
-  console.log('ğŸ” æ­£åœ¨ç™»å…¥...\n');
+  console.log('?? æ­?œ¨?»å…¥...\n');
   console.log(`Email: ${credentials.email}\n`);
 
   if (!credentials.password) {
-    console.error('âŒ éŒ¯èª¤: è«‹åœ¨è…³æœ¬ä¸­è¨­ç½®æ‚¨çš„å¯†ç¢¼');
-    console.log('\nè«‹ç·¨è¼¯ login-and-test.ts ä¸¦è¨­ç½® credentials.password\n');
+    console.error('???¯èª¤: è«‹åœ¨?³æœ¬ä¸­è¨­ç½®æ‚¨?„å?ç¢?);
+    console.log('\nè«‹ç·¨è¼?login-and-test.ts ä¸¦è¨­ç½?credentials.password\n');
     return null;
   }
 
@@ -30,45 +30,45 @@ async function login() {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(`âŒ ç™»å…¥å¤±æ•—: ${data.error || data.message}`);
+      console.error(`???»å…¥å¤±æ?: ${data.error || data.message}`);
       return null;
     }
 
-    console.log('âœ… ç™»å…¥æˆåŠŸï¼\n');
-    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-    console.log('ğŸ« JWT Token:');
-    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+    console.log('???»å…¥?å?ï¼\n');
+    console.log('?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?');
+    console.log('?« JWT Token:');
+    console.log('?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?');
     console.log(data.token);
-    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n');
+    console.log('?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?\n');
 
     if (data.user) {
-      console.log('ğŸ‘¤ ç”¨æˆ¶è³‡è¨Š:');
+      console.log('?‘¤ ?¨æˆ¶è³‡è?:');
       console.log(`   ID: ${data.user.id}`);
       console.log(`   Email: ${data.user.email}`);
       console.log(`   è§’è‰²: ${data.user.role}`);
-      console.log(`   åœ˜éšŠID: ${data.user.teamId || 'N/A'}\n`);
+      console.log(`   ?˜é?ID: ${data.user.teamId || 'N/A'}\n`);
     }
 
-    console.log('ğŸ“‹ ä½¿ç”¨æ­¤ Token çš„æ–¹æ³•:\n');
-    console.log('1ï¸âƒ£  è¨­ç½®ç’°å¢ƒè®Šæ•¸ä¸¦é‡æ–°åŸ·è¡Œæ¸¬è©¦:');
+    console.log('?? ä½¿ç”¨æ­?Token ?„æ–¹æ³?\n');
+    console.log('1ï¸âƒ£  è¨­ç½®?°å?è®Šæ•¸ä¸¦é??°åŸ·è¡Œæ¸¬è©?');
     console.log('   PowerShell:');
     console.log(`   $env:TEST_JWT_TOKEN="${data.token}"`);
     console.log('   npx tsx test-messaging-dual.ts\n');
 
-    console.log('2ï¸âƒ£  ç›´æ¥åœ¨ curl ä¸­ä½¿ç”¨:');
-    console.log(`   curl -H "Authorization: Bearer ${data.token.substring(0, 50)}..." https://multi-channel.imfinethankyouandyou.com/api/messages/stats\n`);
+    console.log('2ï¸âƒ£  ?´æ¥??curl ä¸­ä½¿??');
+    console.log(`   curl -H "Authorization: Bearer ${data.token.substring(0, 50)}..." https://your-api-domain.example.com/api/messages/stats\n`);
 
     return data.token;
 
   } catch (error) {
-    console.error('âŒ é€£æ¥éŒ¯èª¤:', error instanceof Error ? error.message : String(error));
+    console.error('????¥?¯èª¤:', error instanceof Error ? error.message : String(error));
     return null;
   }
 }
 
-// æ¸¬è©¦ token æ˜¯å¦æœ‰æ•ˆ
+// æ¸¬è©¦ token ?¯å¦?‰æ?
 async function testToken(token: string) {
-  console.log('\nğŸ§ª æ¸¬è©¦ Token æœ‰æ•ˆæ€§...\n');
+  console.log('\n?§ª æ¸¬è©¦ Token ?‰æ???..\n');
 
   const testEndpoints = [
     { name: 'Stats', url: '/api/messages/stats', method: 'GET' },
@@ -87,51 +87,51 @@ async function testToken(token: string) {
       });
 
       const data = await response.json();
-      const status = response.ok ? 'âœ…' : 'âŒ';
+      const status = response.ok ? '?? : '??;
 
       console.log(`${status} ${endpoint.name}: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
-        console.log(`   éŒ¯èª¤: ${data.error || data.message || JSON.stringify(data)}`);
+        console.log(`   ?¯èª¤: ${data.error || data.message || JSON.stringify(data)}`);
       }
 
     } catch (error) {
-      console.log(`âŒ ${endpoint.name}: é€£æ¥å¤±æ•—`);
+      console.log(`??${endpoint.name}: ??¥å¤±æ?`);
     }
   }
 
   console.log('');
 }
 
-// ä¸»ç¨‹åº
+// ä¸»ç?åº?
 (async () => {
   const token = await login();
 
   if (token) {
     await testToken(token);
 
-    console.log('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-    console.log('âœ… Token ç²å–æˆåŠŸï¼');
-    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n');
+    console.log('\n?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?');
+    console.log('??Token ?²å??å?ï¼?);
+    console.log('?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?\n');
 
-    console.log('ğŸ’¡ ä¸‹ä¸€æ­¥: ä½¿ç”¨æ­¤ token é€²è¡Œå®Œæ•´æ¸¬è©¦\n');
-    console.log('è¤‡è£½ä¸Šé¢çš„ç’°å¢ƒè®Šæ•¸è¨­ç½®å‘½ä»¤ä¸¦åŸ·è¡Œæ¸¬è©¦è…³æœ¬ã€‚\n');
+    console.log('?’¡ ä¸‹ä?æ­? ä½¿ç”¨æ­?token ?²è?å®Œæ•´æ¸¬è©¦\n');
+    console.log('è¤‡è£½ä¸Šé¢?„ç’°å¢ƒè??¸è¨­ç½®å‘½ä»¤ä¸¦?·è?æ¸¬è©¦?³æœ¬?‚\n');
 
     process.exit(0);
   } else {
-    console.log('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-    console.log('âŒ ç„¡æ³•ç²å– Token');
-    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n');
+    console.log('\n?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?');
+    console.log('???¡æ??²å? Token');
+    console.log('?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?\n');
 
-    console.log('è«‹æª¢æŸ¥:');
-    console.log('  1. å¯†ç¢¼æ˜¯å¦æ­£ç¢º');
-    console.log('  2. ç”¨æˆ¶æ˜¯å¦å­˜åœ¨');
-    console.log('  3. ç¶²çµ¡é€£æ¥æ˜¯å¦æ­£å¸¸\n');
+    console.log('è«‹æª¢??');
+    console.log('  1. å¯†ç¢¼?¯å¦æ­?¢º');
+    console.log('  2. ?¨æˆ¶?¯å¦å­˜åœ¨');
+    console.log('  3. ç¶²çµ¡??¥?¯å¦æ­?¸¸\n');
 
-    console.log('å¯ç”¨çš„ç”¨æˆ¶ email:');
-    console.log('  â€¢ admin@dacit.net (ç®¡ç†å“¡)');
-    console.log('  â€¢ dacagent@dacit.net (å®¢æœ)');
-    console.log('  â€¢ test@dacit.net (æ¸¬è©¦ç”¨æˆ¶)\n');
+    console.log('?¯ç”¨?„ç”¨??email:');
+    console.log('  ??admin@dacit.net (ç®¡ç???');
+    console.log('  ??dacagent@dacit.net (å®¢æ?)');
+    console.log('  ??test@dacit.net (æ¸¬è©¦?¨æˆ¶)\n');
 
     process.exit(1);
   }

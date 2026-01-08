@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 param(
-    [string]$WebhookUrl = "https://multi-channel.imfinethankyouandyou.com/api/webhook"
+    [string]$WebhookUrl = "https://your-api-domain.example.com/api/webhook"
 )
 
 function Write-ColorOutput {

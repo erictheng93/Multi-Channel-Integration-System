@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
     Emergency Rollback Script - WebSocket Deployment
-    ç·Šæ€¥å›žæ»¾è…³æœ¬ - WebSocket éƒ¨ç½²
+    ç·Šæ€¥å?æ»¾è…³??- WebSocket ?¨ç½²
 
 .DESCRIPTION
     Quickly rollback WebSocket deployment in case of critical issues
-    åœ¨å‡ºç¾åš´é‡å•é¡Œæ™‚å¿«é€Ÿå›žæ»¾ WebSocket éƒ¨ç½²
+    ?¨å‡º?¾åš´?å?é¡Œæ?å¿«é€Ÿå?æ»?WebSocket ?¨ç½²
 
 .PARAMETER RollbackLevel
     Level of rollback: safe, partial, or emergency
@@ -38,7 +38,7 @@ param(
     [string]$RollbackLevel = "safe",
 
     [Parameter(Mandatory=$false)]
-    [string]$ApiBaseUrl = "https://multi-channel.imfinethankyouandyou.com",
+    [string]$ApiBaseUrl = "https://your-api-domain.example.com",
 
     [Parameter(Mandatory=$false)]
     [string]$AdminEmail = "admin@dacit.net",
@@ -98,7 +98,7 @@ function Confirm-Action {
     )
 
     Write-Host ""
-    Write-Host "âš ï¸  CONFIRMATION REQUIRED" -ForegroundColor Yellow
+    Write-Host "? ï?  CONFIRMATION REQUIRED" -ForegroundColor Yellow
     Write-Host $Prompt -ForegroundColor Yellow
     Write-Host ""
 
@@ -265,7 +265,7 @@ function Send-RollbackNotification {
     Write-Log -Level INFO -Message "Sending rollback notifications..."
 
     $Message = @"
-ðŸš¨ EMERGENCY ROLLBACK EXECUTED ðŸš¨
+?š¨ EMERGENCY ROLLBACK EXECUTED ?š¨
 
 Rollback Level: $RollbackLevel
 Previous Rollout: $OldPercentage%
@@ -299,15 +299,15 @@ function Invoke-Rollback {
     )
 
     Write-Host ""
-    Write-Host "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-    Write-Host "â•‘                                                           â•‘"
-    Write-Host "â•‘        ðŸš¨ EMERGENCY ROLLBACK SCRIPT ðŸš¨                    â•‘"
-    Write-Host "â•‘                                                           â•‘"
-    Write-Host "â•‘  WebSocket Deployment Rollback Tool                      â•‘"
-    Write-Host "â•‘  Version: 1.0.0                                           â•‘"
-    Write-Host "â•‘  Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')              â•‘"
-    Write-Host "â•‘                                                           â•‘"
-    Write-Host "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+    Write-Host "?”â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
+    Write-Host "??                                                          ??
+    Write-Host "??       ?š¨ EMERGENCY ROLLBACK SCRIPT ?š¨                    ??
+    Write-Host "??                                                          ??
+    Write-Host "?? WebSocket Deployment Rollback Tool                      ??
+    Write-Host "?? Version: 1.0.0                                           ??
+    Write-Host "?? Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')              ??
+    Write-Host "??                                                          ??
+    Write-Host "?šâ??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
     Write-Host ""
 
     # Determine target percentage
@@ -396,15 +396,15 @@ This action CANNOT be undone automatically.
         -Reason $RollbackReason
 
     Write-Host ""
-    Write-Host "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-    Write-Host "â•‘                                                           â•‘"
-    Write-Host "â•‘        âœ… ROLLBACK COMPLETED SUCCESSFULLY âœ…              â•‘"
-    Write-Host "â•‘                                                           â•‘"
-    Write-Host "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+    Write-Host "?”â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
+    Write-Host "??                                                          ??
+    Write-Host "??       ??ROLLBACK COMPLETED SUCCESSFULLY ??             ??
+    Write-Host "??                                                          ??
+    Write-Host "?šâ??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
     Write-Host ""
 
     Write-Log -Level SUCCESS -Message "Rollback Summary:"
-    Write-Log -Level SUCCESS -Message "  - Rollout changed from $CurrentPercentage% â†’ $TargetPercentage%"
+    Write-Log -Level SUCCESS -Message "  - Rollout changed from $CurrentPercentage% ??$TargetPercentage%"
     Write-Log -Level SUCCESS -Message "  - WebSocket: $(if ($TargetPercentage -gt 0) { "Enabled ($TargetPercentage%)" } else { "Disabled" })"
     Write-Log -Level SUCCESS -Message "  - SSE Fallback: Enabled"
     Write-Log -Level SUCCESS -Message "  - Log file: $LogFile"
@@ -451,6 +451,6 @@ try {
 } catch {
     Write-Log -Level ERROR -Message "Rollback script failed: $_"
     Write-Host ""
-    Write-Host "âŒ Rollback failed. Check the log file for details: $LogFile" -ForegroundColor Red
+    Write-Host "??Rollback failed. Check the log file for details: $LogFile" -ForegroundColor Red
     exit 1
 }

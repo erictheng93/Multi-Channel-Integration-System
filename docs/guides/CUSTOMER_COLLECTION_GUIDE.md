@@ -117,7 +117,7 @@ node query-customers.js #
  `config.cjs` Worker URL
 ```javascript
 const CONFIG = {
- WORKER_URL: 'https://multi-channel.imfinethankyouandyou.com',
+ WORKER_URL: 'https://your-api-domain.example.com',
  // ...
 };
 ```
@@ -140,17 +140,17 @@ node customer-manager.js
 
 ### LINE
 ```bash
-curl "https://multi-channel.imfinethankyouandyou.com/api/customers/platform/line/U1234567890abcdef"
+curl "https://your-api-domain.example.com/api/customers/platform/line/U1234567890abcdef"
 ```
 
 
 ```bash
-curl "https://multi-channel.imfinethankyouandyou.com/api/customers"
+curl "https://your-api-domain.example.com/api/customers"
 ```
 
 
 ```bash
-curl "https://multi-channel.imfinethankyouandyou.com/api/stats"
+curl "https://your-api-domain.example.com/api/stats"
 ```
 
 

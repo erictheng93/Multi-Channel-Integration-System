@@ -157,8 +157,16 @@ export function getCorsOrigins(env: Record<string, any>): string[] {
     ];
   }
 
-  // Production origins
-  const origins = ['https://multi-channel.imfinethankyouandyou.com'];
+  // Production origins - 從環境變量讀取
+  const origins: string[] = [];
+
+  // 添加配置的 URLs
+  if (env.FRONTEND_URL) {
+    origins.push(env.FRONTEND_URL);
+  }
+  if (env.BACKEND_URL) {
+    origins.push(env.BACKEND_URL);
+  }
 
   // Add custom origins if specified
   if (env.CORS_ORIGINS) {

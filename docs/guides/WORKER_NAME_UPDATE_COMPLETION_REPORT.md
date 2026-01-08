@@ -51,11 +51,11 @@
 ## URL
 
 
-- `https://line-bot.imfinethankyouandyou.com` `https://multi-channel-platform.imfinethankyouandyou.com`
+- `https://line-bot.example.com` `https://multi-channel-platform.example.com`
 
 ### Worker
 - "multi-channel-platform"
-- "line-bot.imfinethankyouandyou.com/*" "multi-channel-platform.imfinethankyouandyou.com/*"
+- "line-bot.example.com/*" "multi-channel-platform.example.com/*"
 
 
 ### URL

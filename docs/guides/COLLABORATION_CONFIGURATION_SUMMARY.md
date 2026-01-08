@@ -137,7 +137,7 @@ Body: { "protocol": "websocket" }
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/collaboration/health | jq
+curl https://your-api-domain.example.com/api/collaboration/health | jq
 
 # (WebSocket ):
 {
@@ -175,7 +175,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/collaboration/health | j
 ```bash
 
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/stats | jq
+ https://your-api-domain.example.com/api/collaboration/stats | jq
 
 # :
 {
@@ -256,8 +256,8 @@ wrangler tail | grep -E "Collaboration|WebSocket|fallback"
 
 Cloudflare Workers :
  Workers : $5.00/
- Durable Objects : 300,000 × $0.15/ = $0.045/
- WebSocket : ~3,000,000 × $12.50/ = $37.50/
+ Durable Objects : 300,000 ? $0.15/ = $0.045/
+ WebSocket : ~3,000,000 ? $12.50/ = $37.50/
  : ~$42.55/
 
 SSE only ():

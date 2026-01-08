@@ -237,12 +237,12 @@ max_batch_timeout = 5
 **Environment Variables**:
 ```toml
 [vars]
-R2_PUBLIC_URL = "https://s3dev.imfinethankyouandyou.com"
+R2_PUBLIC_URL = "https://s3dev.example.com"
 ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
 ```
 
 #### 3.2.2 Production Environment
-**API Endpoint**: `https://multi-channel.imfinethankyouandyou.com`
+**API Endpoint**: `https://your-api-domain.example.com`
 **Frontend**: Cloudflare Pages deployment
 **Database**: Production D1 database with backup
 **File Storage**: Production R2 bucket with custom domain
@@ -252,15 +252,15 @@ ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
 ```toml
 [env.production.vars]
 ENVIRONMENT = "production"
-R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+R2_PUBLIC_URL = "https://your-storage-domain.example.com"
 ENCRYPTION_KEY = "production-encryption-key-change-me"
 ```
 
 **Custom Domain Configuration**:
 ```toml
 [[routes]]
-pattern = "multi-channel.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
+pattern = "your-api-domain.example.com/*"
+zone_name = "example.com"
 ```
 
 ---
@@ -1259,10 +1259,10 @@ cd frontend && npm run deploy:pages # Frontend
 **Deployment Verification**:
 ```bash
 # Health check after deployment
-curl https://multi-channel.imfinethankyouandyou.com/api/health
+curl https://your-api-domain.example.com/api/health
 
 # Frontend verification
-curl https://frontend.imfinethankyouandyou.com
+curl https://frontend.example.com
 
 # Database migration verification
 npm run db:migrate:prod --dry-run

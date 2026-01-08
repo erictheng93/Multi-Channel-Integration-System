@@ -488,7 +488,7 @@ wrangler deploy
 wrangler queues list | grep realtime-events
 
 
-curl https://multi-channel.imfinethankyouandyou.com/api/system/health
+curl https://your-api-domain.example.com/api/system/health
 ```
 
 **Step 4: **

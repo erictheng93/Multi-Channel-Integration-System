@@ -1,10 +1,10 @@
-# CORS 手動測試腳本 (PowerShell)
-# 測試統一 CORS 配置的完整功能
+# CORS ?��?測試?�本 (PowerShell)
+# 測試統�? CORS ?�置?��??��???
 
-$BASE_URL = if ($env:TEST_BASE_URL) { $env:TEST_BASE_URL } else { "https://multi-channel.imfinethankyouandyou.com" }
+$BASE_URL = if ($env:TEST_BASE_URL) { $env:TEST_BASE_URL } else { "https://your-api-domain.example.com" }
 $TOKEN = if ($env:TEST_ADMIN_TOKEN) { $env:TEST_ADMIN_TOKEN } else { "" }
 
-Write-Host "🧪 CORS E2E Manual Testing" -ForegroundColor Cyan
+Write-Host "?�� CORS E2E Manual Testing" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host "Base URL: $BASE_URL"
 Write-Host ""
@@ -24,18 +24,18 @@ function Run-Test {
     try {
         $result = & $TestBlock
         if ($result -match $ExpectedPattern) {
-            Write-Host "✅ PASSED" -ForegroundColor Green
+            Write-Host "??PASSED" -ForegroundColor Green
             $script:PASSED++
             return $true
         } else {
-            Write-Host "❌ FAILED" -ForegroundColor Red
+            Write-Host "??FAILED" -ForegroundColor Red
             Write-Host "   Expected pattern: $ExpectedPattern" -ForegroundColor Yellow
             Write-Host "   Got: $result" -ForegroundColor Yellow
             $script:FAILED++
             return $false
         }
     } catch {
-        Write-Host "❌ FAILED (Exception)" -ForegroundColor Red
+        Write-Host "??FAILED (Exception)" -ForegroundColor Red
         Write-Host "   Error: $_" -ForegroundColor Yellow
         $script:FAILED++
         return $false
@@ -47,9 +47,9 @@ Write-Host "----------------------------"
 
 # Test 1: Allowed origin
 Run-Test "Allowed origin (main domain)" {
-    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://multi-channel.imfinethankyouandyou.com"} -UseBasicParsing
+    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://your-api-domain.example.com"} -UseBasicParsing
     $response.Headers["Access-Control-Allow-Origin"]
-} "https://multi-channel.imfinethankyouandyou.com"
+} "https://your-api-domain.example.com"
 
 # Test 2: Cloudflare Pages domain
 Run-Test "Allowed origin (Cloudflare Pages)" {
@@ -96,7 +96,7 @@ Write-Host "----------------------------"
 # Test 6: OPTIONS request
 Run-Test "OPTIONS preflight (allowed origin)" {
     $response = Invoke-WebRequest -Uri "$BASE_URL/api/conversations" -Method OPTIONS -Headers @{
-        "Origin" = "https://multi-channel.imfinethankyouandyou.com"
+        "Origin" = "https://your-api-domain.example.com"
         "Access-Control-Request-Method" = "POST"
     } -UseBasicParsing
     $response.StatusCode
@@ -124,7 +124,7 @@ Write-Host "----------------------------"
 
 # Test 8: Credentials header
 Run-Test "Credentials support" {
-    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://multi-channel.imfinethankyouandyou.com"} -UseBasicParsing
+    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://your-api-domain.example.com"} -UseBasicParsing
     $response.Headers["Access-Control-Allow-Credentials"]
 } "true"
 
@@ -157,7 +157,7 @@ if ($TOKEN) {
         $response.success
     } "True"
 } else {
-    Write-Host "⏭️  Skipping admin tests (no token)" -ForegroundColor Yellow
+    Write-Host "?��?  Skipping admin tests (no token)" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -167,7 +167,7 @@ Write-Host "----------------------------"
 # Test 13: SSE with allowed origin
 Run-Test "SSE endpoint CORS (allowed)" {
     $response = Invoke-WebRequest -Uri "$BASE_URL/api/cors/health" -Headers @{
-        "Origin" = "https://multi-channel.imfinethankyouandyou.com"
+        "Origin" = "https://your-api-domain.example.com"
         "Accept" = "text/event-stream"
     } -UseBasicParsing
     $response.Headers["Access-Control-Allow-Origin"]
@@ -189,7 +189,7 @@ Run-Test "Missing Origin header" {
 } "no cors headers"
 
 Write-Host ""
-Write-Host "📊 Test Results" -ForegroundColor Cyan
+Write-Host "?? Test Results" -ForegroundColor Cyan
 Write-Host "==============="
 Write-Host "Passed: " -NoNewline
 Write-Host "$PASSED" -ForegroundColor Green
@@ -199,9 +199,9 @@ Write-Host "Total:  $($PASSED + $FAILED)"
 Write-Host ""
 
 if ($FAILED -eq 0) {
-    Write-Host "🎉 All tests passed!" -ForegroundColor Green
+    Write-Host "?? All tests passed!" -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "❌ Some tests failed." -ForegroundColor Red
+    Write-Host "??Some tests failed." -ForegroundColor Red
     exit 1
 }

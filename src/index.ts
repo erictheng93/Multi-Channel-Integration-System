@@ -1,7 +1,7 @@
 // 主要入口點 - Handler-based 架構 + 統一路由管理
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { ALLOWED_ORIGINS, isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
+import { getAllowedOrigins, isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
 import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
 import { logger, createContextLogger, configureLogger } from './utils/logger';
@@ -268,20 +268,12 @@ log.info('R2 Public Proxy endpoint registered', {
 // This prevents auth middleware from being applied (SSE uses query token)
 app.options('/api/activities/stream', (c) => {
   const origin = c.req.header('Origin') || '';
-  const allowedOrigins = [
-    'https://multi-channel.imfinethankyouandyou.com',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8787',
-  ];
-
-  // Check if origin matches Cloudflare Pages preview domains
-  const isPagesPreview = origin.endsWith('.multi-channel-platform-frontend.pages.dev');
+  // 使用集中式 CORS 配置 (動態從環境變量讀取)
+  const isAllowed = isOriginAllowed(origin, c.env);
 
   const response = new Response(null, { status: 204 });
 
-  if ((allowedOrigins.includes(origin) || isPagesPreview) && origin) {
+  if (isAllowed && origin) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
   }

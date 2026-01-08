@@ -201,17 +201,17 @@ jobs:
           # Wait for deployment to be ready
           sleep 30
           # Health check (replace with your actual health check endpoint)
-          curl -f https://multi-channel.imfinethankyouandyou.com/api/health || exit 1
+          curl -f https://your-api-domain.example.com/api/health || exit 1
 
       - name: 12. Notify deployment success
         if: success()
         run: |
-          echo "✅ Deployment successful! Previous version: ${{ env.PREVIOUS_DEPLOYMENT }}"
+          echo "??Deployment successful! Previous version: ${{ env.PREVIOUS_DEPLOYMENT }}"
 
       - name: 13. Rollback on failure
         if: failure()
         run: |
           if [ "${{ env.PREVIOUS_DEPLOYMENT }}" != "none" ]; then
-            echo "🔄 Rolling back to previous deployment: ${{ env.PREVIOUS_DEPLOYMENT }}"
+            echo "?? Rolling back to previous deployment: ${{ env.PREVIOUS_DEPLOYMENT }}"
             wrangler rollback --name multi-channel-platform --version-id ${{ env.PREVIOUS_DEPLOYMENT }}
           fi

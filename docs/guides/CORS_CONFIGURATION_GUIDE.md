@@ -67,9 +67,9 @@
 ```typescript
 export const ALLOWED_ORIGINS = [
  //
- 'https://multi-channel.imfinethankyouandyou.com', // Backend API
+ 'https://your-api-domain.example.com', // Backend API
  'https://multi-channel-platform-frontend.pages.dev', // Frontend Cloudflare Pages
- 'https://mcp.imfinethankyouandyou.com', // MCP Frontend Domain
+ 'https://your-frontend-domain.example.com', // MCP Frontend Domain
 
  //
  'http://localhost:3000', // Vite dev server
@@ -137,7 +137,7 @@ export function getSSECorsHeaders(
  "sseConnections": 456,
  "credentialsUsed": 14123,
  "topOrigins": [
- { "origin": "https://multi-channel.imfinethankyouandyou.com", "count": 8234 },
+ { "origin": "https://your-api-domain.example.com", "count": 8234 },
  { "origin": "http://localhost:3000", "count": 5432 }
  ],
  "topRejectedOrigins": [

@@ -1,83 +1,83 @@
-# R2 Bucket CORS 配置完整指南
+# R2 Bucket CORS ?�置完整?��?
 
-## 📋 目錄
-1. [問題診斷](#問題診斷)
-2. [解決方案總覽](#解決方案總覽)
-3. [方法 1: Cloudflare Dashboard 配置（推薦）](#方法-1-cloudflare-dashboard-配置推薦)
-4. [方法 2: 使用 Wrangler CLI](#方法-2-使用-wrangler-cli)
-5. [方法 3: 透過 Worker 設置 CORS Headers](#方法-3-透過-worker-設置-cors-headers)
-6. [驗證與測試](#驗證與測試)
-7. [故障排除](#故障排除)
+## ?? ?��?
+1. [?��?診斷](#?��?診斷)
+2. [�?��?��?總覽](#�?��?��?總覽)
+3. [?��? 1: Cloudflare Dashboard ?�置（推?��?](#?��?-1-cloudflare-dashboard-?�置?�薦)
+4. [?��? 2: 使用 Wrangler CLI](#?��?-2-使用-wrangler-cli)
+5. [?��? 3: ?��? Worker 設置 CORS Headers](#?��?-3-?��?-worker-設置-cors-headers)
+6. [驗�??�測試](#驗�??�測�?
+7. [?��??�除](#?��??�除)
 
 ---
 
-## 問題診斷
+## ?��?診斷
 
-### 當前狀況
+### ?��??��?
 - **Bucket Name:** `multi-channel-platform-attachments`
-- **Public URL:** `https://s3.imfinethankyouandyou.com`
-- **錯誤:** `net::ERR_FAILED` - 無法載入 QR Code 圖片
-- **影響:** QR Code 下載功能無法使用
+- **Public URL:** `https://your-storage-domain.example.com`
+- **?�誤:** `net::ERR_FAILED` - ?��?載入 QR Code ?��?
+- **影響:** QR Code 下�??�能?��?使用
 
-### 根本原因
-R2 bucket 缺少以下配置：
-1. ❌ **CORS Headers** - 瀏覽器跨域請求被阻止
-2. ❌ **Public Access** - 圖片 URL 無法公開訪問
-3. ⚠️ **Custom Domain** - 可能未正確綁定
-
----
-
-## 解決方案總覽
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  修復流程（3 個步驟）                                      │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  Step 1: 配置 CORS Policy                               │
-│    ↓                                                    │
-│  Step 2: 啟用 Public Access                             │
-│    ↓                                                    │
-│  Step 3: 驗證 Custom Domain                             │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+### ?�本?��?
+R2 bucket 缺�?以�??�置�?
+1. ??**CORS Headers** - ?�覽?�跨?��?求被?�止
+2. ??**Public Access** - ?��? URL ?��??��?訪�?
+3. ?��? **Custom Domain** - ?�能?�正確�?�?
 
 ---
 
-## 方法 1: Cloudflare Dashboard 配置（推薦）
+## �?��?��?總覽
 
-### Step 1: 配置 CORS Policy
+```
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+?? 修復流�?�? ?�步驟�?                                      ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+??                                                        ??
+?? Step 1: ?�置 CORS Policy                               ??
+??   ??                                                   ??
+?? Step 2: ?�用 Public Access                             ??
+??   ??                                                   ??
+?? Step 3: 驗�? Custom Domain                             ??
+??                                                        ??
+?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
+```
 
-1. **登入 Cloudflare Dashboard**
+---
+
+## ?��? 1: Cloudflare Dashboard ?�置（推?��?
+
+### Step 1: ?�置 CORS Policy
+
+1. **?�入 Cloudflare Dashboard**
    ```
    https://dash.cloudflare.com/
    ```
 
-2. **導航到 R2**
+2. **導航??R2**
    ```
-   Home → R2 Object Storage → Buckets
+   Home ??R2 Object Storage ??Buckets
    ```
 
-3. **選擇你的 Bucket**
+3. **?��?你�? Bucket**
    ```
    multi-channel-platform-attachments
    ```
 
-4. **配置 CORS**
-   - 點擊 **Settings** 標籤
-   - 找到 **CORS Policy** 部分
-   - 點擊 **Add CORS Policy** 或 **Edit**
+4. **?�置 CORS**
+   - 點�? **Settings** 標籤
+   - ?�到 **CORS Policy** ?��?
+   - 點�? **Add CORS Policy** ??**Edit**
 
-5. **添加以下 CORS 規則**
+5. **添�?以�? CORS 規�?**
 
    ```json
    [
      {
        "AllowedOrigins": [
          "http://localhost:3000",
-         "https://mcp.imfinethankyouandyou.com",
-         "https://multi-channel.imfinethankyouandyou.com"
+         "https://your-frontend-domain.example.com",
+         "https://your-api-domain.example.com"
        ],
        "AllowedMethods": [
          "GET",
@@ -96,60 +96,60 @@ R2 bucket 缺少以下配置：
    ]
    ```
 
-   **說明:**
-   - `AllowedOrigins`: 允許的來源域名
-   - `AllowedMethods`: 允許 GET 和 HEAD 請求
-   - `AllowedHeaders`: 允許所有請求頭
-   - `ExposeHeaders`: 暴露的響應頭
-   - `MaxAgeSeconds`: CORS 預檢結果快取時間（1小時）
+   **說�?:**
+   - `AllowedOrigins`: ?�許?��?源�???
+   - `AllowedMethods`: ?�許 GET ??HEAD 請�?
+   - `AllowedHeaders`: ?�許?�?��?求頭
+   - `ExposeHeaders`: ?�露?�響?�頭
+   - `MaxAgeSeconds`: CORS ?�檢結�?快�??��?�?小�?�?
 
-6. **保存配置**
-
----
-
-### Step 2: 啟用 Public Access
-
-1. **在同一個 Bucket Settings 頁面**
-   - 找到 **Public Access** 部分
-
-2. **選擇 Public Access 選項**
-
-   **選項 A: 完全公開 Bucket（最簡單）**
-   ```
-   ☑️ Allow public access to all objects
-   ```
-
-   **選項 B: 使用 Custom Domain（推薦）**
-   ```
-   1. 點擊 "Connect Custom Domain"
-   2. 輸入: s3.imfinethankyouandyou.com
-   3. Cloudflare 會自動配置 DNS 記錄
-   4. 等待 DNS 傳播（通常 1-5 分鐘）
-   ```
-
-3. **保存配置**
+6. **保�??�置**
 
 ---
 
-### Step 3: 驗證 Custom Domain
+### Step 2: ?�用 Public Access
 
-1. **檢查 DNS 記錄**
+1. **?��?一??Bucket Settings ?�面**
+   - ?�到 **Public Access** ?��?
+
+2. **?��? Public Access ?��?**
+
+   **?��? A: 完全?��? Bucket（�?簡單�?*
+   ```
+   ?��? Allow public access to all objects
+   ```
+
+   **?��? B: 使用 Custom Domain（推?��?**
+   ```
+   1. 點�? "Connect Custom Domain"
+   2. 輸入: your-storage-domain.example.com
+   3. Cloudflare ?�自?��?�?DNS 記�?
+   4. 等�? DNS ?�播（通常 1-5 ?��?�?
+   ```
+
+3. **保�??�置**
+
+---
+
+### Step 3: 驗�? Custom Domain
+
+1. **檢查 DNS 記�?**
    ```bash
-   nslookup s3.imfinethankyouandyou.com
+   nslookup your-storage-domain.example.com
    ```
 
-   **預期輸出:**
+   **?��?輸出:**
    ```
-   Name:    s3.imfinethankyouandyou.com
+   Name:    your-storage-domain.example.com
    Address: <Cloudflare R2 IP>
    ```
 
-2. **測試域名解析**
+2. **測試?��?�??**
    ```bash
-   curl -I https://s3.imfinethankyouandyou.com
+   curl -I https://your-storage-domain.example.com
    ```
 
-   **預期輸出:**
+   **?��?輸出:**
    ```
    HTTP/2 200
    access-control-allow-origin: *
@@ -158,11 +158,11 @@ R2 bucket 缺少以下配置：
 
 ---
 
-## 方法 2: 使用 Wrangler CLI
+## ?��? 2: 使用 Wrangler CLI
 
-### Step 1: 創建 CORS 配置文件
+### Step 1: ?�建 CORS ?�置?�件
 
-創建文件: `r2-cors-config.json`
+?�建?�件: `r2-cors-config.json`
 
 ```json
 {
@@ -170,8 +170,8 @@ R2 bucket 缺少以下配置：
     {
       "AllowedOrigins": [
         "http://localhost:3000",
-        "https://mcp.imfinethankyouandyou.com",
-        "https://multi-channel.imfinethankyouandyou.com"
+        "https://your-frontend-domain.example.com",
+        "https://your-api-domain.example.com"
       ],
       "AllowedMethods": [
         "GET",
@@ -193,20 +193,20 @@ R2 bucket 缺少以下配置：
 
 ### Step 2: 使用 Wrangler 設置 CORS
 
-**⚠️ 注意:** Wrangler CLI 目前**不直接支持** CORS 配置命令。
-你需要使用 **Cloudflare API** 或 **Dashboard**。
+**?��? 注�?:** Wrangler CLI ?��?**不直?�支??* CORS ?�置?�令??
+你�?要使??**Cloudflare API** ??**Dashboard**??
 
-如果要使用 API，請參考下一步。
+如�?要使??API，�??�考�?一步�?
 
 ---
 
 ### Step 3: 使用 Cloudflare API 設置 CORS
 
 ```bash
-# 獲取 Cloudflare Account ID
+# ?��? Cloudflare Account ID
 wrangler whoami
 
-# 使用 API 設置 CORS（需要 API Token）
+# 使用 API 設置 CORS（�?�?API Token�?
 curl -X PUT \
   "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/r2/buckets/multi-channel-platform-attachments/cors" \
   -H "Authorization: Bearer {API_TOKEN}" \
@@ -214,23 +214,23 @@ curl -X PUT \
   --data @r2-cors-config.json
 ```
 
-**獲取 API Token:**
-1. 前往: https://dash.cloudflare.com/profile/api-tokens
-2. 創建 Token with **R2 Edit** 權限
+**?��? API Token:**
+1. ?��?: https://dash.cloudflare.com/profile/api-tokens
+2. ?�建 Token with **R2 Edit** 權�?
 3. 複製 Token
 
 ---
 
-## 方法 3: 透過 Worker 設置 CORS Headers
+## ?��? 3: ?��? Worker 設置 CORS Headers
 
-**如果 R2 原生 CORS 無法使用**，可以在 Worker 中添加 CORS headers。
+**如�? R2 ?��? CORS ?��?使用**，可以在 Worker 中添??CORS headers??
 
-### Step 1: 修改 Worker 代碼
+### Step 1: 修改 Worker �?��
 
-在 `src/index.ts` 中添加 R2 代理路由:
+??`src/index.ts` 中添??R2 �??路由:
 
 ```typescript
-// 添加 R2 公共訪問路由（帶 CORS）
+// 添�? R2 ?�共訪�?路由（帶 CORS�?
 app.get('/r2-public/:folder/:filename', async (c) => {
   const { folder, filename } = c.req.param()
   const objectKey = `${folder}/${filename}`
@@ -260,7 +260,7 @@ app.get('/r2-public/:folder/:filename', async (c) => {
   }
 })
 
-// 處理 CORS 預檢請求
+// ?��? CORS ?�檢請�?
 app.options('/r2-public/:folder/:filename', async (c) => {
   const headers = new Headers()
   headers.set('Access-Control-Allow-Origin', '*')
@@ -272,19 +272,19 @@ app.options('/r2-public/:folder/:filename', async (c) => {
 })
 ```
 
-### Step 2: 更新 QR Code URL
+### Step 2: ?�新 QR Code URL
 
-修改 QR Code 生成代碼，使用 Worker 路由而非直接 R2 URL:
+修改 QR Code ?��?�?��，使??Worker 路由?��??�接 R2 URL:
 
 ```typescript
-// 舊的 URL (直接 R2)
-const oldUrl = `https://s3.imfinethankyouandyou.com/qr-codes/${filename}`
+// ?��? URL (?�接 R2)
+const oldUrl = `https://your-storage-domain.example.com/qr-codes/${filename}`
 
-// 新的 URL (透過 Worker)
-const newUrl = `https://multi-channel.imfinethankyouandyou.com/r2-public/qr-codes/${filename}`
+// ?��? URL (?��? Worker)
+const newUrl = `https://your-api-domain.example.com/r2-public/qr-codes/${filename}`
 ```
 
-### Step 3: 部署更新
+### Step 3: ?�署?�新
 
 ```bash
 npm run deploy
@@ -292,16 +292,16 @@ npm run deploy
 
 ---
 
-## 驗證與測試
+## 驗�??�測�?
 
 ### Test 1: CORS Headers 檢查
 
 ```bash
 curl -I -H "Origin: http://localhost:3000" \
-  https://s3.imfinethankyouandyou.com/qr-codes/team-14-1767146927377.svg
+  https://your-storage-domain.example.com/qr-codes/team-14-1767146927377.svg
 ```
 
-**預期輸出:**
+**?��?輸出:**
 ```
 HTTP/2 200
 access-control-allow-origin: *
@@ -310,100 +310,100 @@ access-control-expose-headers: ETag, Content-Length, Content-Type
 ...
 ```
 
-### Test 2: 瀏覽器訪問測試
+### Test 2: ?�覽?�訪?�測�?
 
-直接在瀏覽器打開:
+?�接?�瀏覽?��???
 ```
-https://s3.imfinethankyouandyou.com/qr-codes/team-14-1767146927377.svg
+https://your-storage-domain.example.com/qr-codes/team-14-1767146927377.svg
 ```
 
-**預期:** 應該能看到 SVG QR Code 圖片
+**?��?:** ?�該?��???SVG QR Code ?��?
 
-### Test 3: E2E 下載測試
+### Test 3: E2E 下�?測試
 
-1. 前往團隊管理頁面
-2. 點擊任一團隊的 "QR 碼" 按鈕
-3. 點擊 "下載 QR Code" 按鈕
-4. **預期:** 成功下載 PNG 文件
+1. ?��??��?管�??�面
+2. 點�?任�??��???"QR �? ?��?
+3. 點�? "下�? QR Code" ?��?
+4. **?��?:** ?��?下�? PNG ?�件
 
 ### Test 4: JavaScript Console 測試
 
-在瀏覽器 Console 執行:
+?�瀏覽??Console ?��?:
 
 ```javascript
-// 測試 CORS 圖片載入
+// 測試 CORS ?��?載入
 const img = new Image()
 img.crossOrigin = 'anonymous'
-img.onload = () => console.log('✅ Image loaded successfully')
-img.onerror = (e) => console.error('❌ Image load failed:', e)
-img.src = 'https://s3.imfinethankyouandyou.com/qr-codes/team-14-1767146927377.svg'
+img.onload = () => console.log('??Image loaded successfully')
+img.onerror = (e) => console.error('??Image load failed:', e)
+img.src = 'https://your-storage-domain.example.com/qr-codes/team-14-1767146927377.svg'
 ```
 
-**預期輸出:** `✅ Image loaded successfully`
+**?��?輸出:** `??Image loaded successfully`
 
 ---
 
-## 故障排除
+## ?��??�除
 
-### 問題 1: CORS 錯誤仍然存在
+### ?��? 1: CORS ?�誤仍然存在
 
-**症狀:**
+**?��?:**
 ```
 Access to image at '...' from origin '...' has been blocked by CORS policy
 ```
 
-**解決方案:**
-1. 清除瀏覽器快取
-2. 等待 CDN 快取過期（最多 1 小時）
-3. 檢查 CORS 配置中的 `AllowedOrigins` 是否包含你的域名
-4. 使用 `curl` 命令驗證 CORS headers
+**�?��?��?:**
+1. 清除?�覽?�快??
+2. 等�? CDN 快�??��?（�?�?1 小�?�?
+3. 檢查 CORS ?�置中�? `AllowedOrigins` ?�否?�含你�??��?
+4. 使用 `curl` ?�令驗�? CORS headers
 
-### 問題 2: 圖片無法載入
+### ?��? 2: ?��??��?載入
 
-**症狀:**
+**?��?:**
 ```
 Failed to load resource: net::ERR_FAILED
 ```
 
 **檢查清單:**
-- [ ] R2 Bucket 是否存在
-- [ ] 文件是否已上傳到 R2
-- [ ] Custom Domain DNS 是否正確配置
-- [ ] Public Access 是否已啟用
+- [ ] R2 Bucket ?�否存在
+- [ ] ?�件?�否已�??�到 R2
+- [ ] Custom Domain DNS ?�否�?��?�置
+- [ ] Public Access ?�否已�???
 
-**診斷命令:**
+**診斷?�令:**
 ```bash
 # 檢查 bucket
 wrangler r2 bucket list
 
 # 檢查 DNS
-nslookup s3.imfinethankyouandyou.com
+nslookup your-storage-domain.example.com
 
-# 測試直接訪問
-curl -I https://s3.imfinethankyouandyou.com
+# 測試?�接訪�?
+curl -I https://your-storage-domain.example.com
 ```
 
-### 問題 3: Custom Domain 無法訪問
+### ?��? 3: Custom Domain ?��?訪�?
 
-**症狀:**
-DNS 解析失敗或連接超時
+**?��?:**
+DNS �??失�??��?��超�?
 
-**解決方案:**
-1. **檢查 DNS 記錄**
+**�?��?��?:**
+1. **檢查 DNS 記�?**
    ```bash
-   nslookup s3.imfinethankyouandyou.com
+   nslookup your-storage-domain.example.com
    ```
 
-2. **在 Cloudflare Dashboard 重新綁定 Custom Domain**
-   - R2 → Bucket Settings → Public Access
+2. **??Cloudflare Dashboard ?�新綁�? Custom Domain**
+   - R2 ??Bucket Settings ??Public Access
    - Remove existing custom domain
-   - Add custom domain again: `s3.imfinethankyouandyou.com`
+   - Add custom domain again: `your-storage-domain.example.com`
 
-3. **等待 DNS 傳播**
-   - 通常需要 1-5 分鐘
-   - 最多可能需要 24 小時
+3. **等�? DNS ?�播**
+   - ?�常?��?1-5 ?��?
+   - ?�多可?��?�?24 小�?
 
-4. **清除 DNS 快取**
+4. **清除 DNS 快�?**
    ```bash
    # Windows
    ipconfig /flushdns
@@ -412,35 +412,35 @@ DNS 解析失敗或連接超時
    sudo dscacheutil -flushcache
    ```
 
-### 問題 4: 部分文件可訪問，部分不可訪問
+### ?��? 4: ?��??�件?�訪?��??��?不可訪�?
 
-**症狀:**
-某些 QR Code 可以下載，某些不行
+**?��?:**
+?��? QR Code ?�以下�?，�?些�?�?
 
-**解決方案:**
-1. **檢查文件權限**
-   - 確保所有文件都使用相同的上傳方式
-   - 驗證文件確實存在於 R2
+**�?��?��?:**
+1. **檢查?�件權�?**
+   - 確�??�?��?件都使用?��??��??�方�?
+   - 驗�??�件確實存在??R2
 
-2. **檢查文件命名**
-   - 避免特殊字符
-   - 使用一致的命名規範
+2. **檢查?�件?��?**
+   - ?��??��?字符
+   - 使用一?��??��?規�?
 
-3. **重新上傳問題文件**
+3. **?�新上傳?��??�件**
 
 ---
 
-## 推薦配置總結
+## ?�薦?�置總�?
 
-### 最佳實踐配置
+### ?�佳實踐�?�?
 
 ```json
 {
   "CORS": {
     "AllowedOrigins": [
       "http://localhost:3000",
-      "https://mcp.imfinethankyouandyou.com",
-      "https://multi-channel.imfinethankyouandyou.com"
+      "https://your-frontend-domain.example.com",
+      "https://your-api-domain.example.com"
     ],
     "AllowedMethods": ["GET", "HEAD"],
     "AllowedHeaders": ["*"],
@@ -448,39 +448,39 @@ DNS 解析失敗或連接超時
     "MaxAgeSeconds": 3600
   },
   "PublicAccess": "Enabled",
-  "CustomDomain": "s3.imfinethankyouandyou.com",
+  "CustomDomain": "your-storage-domain.example.com",
   "CacheControl": "public, max-age=31536000"
 }
 ```
 
 ### 安全建議
 
-1. **限制 AllowedOrigins**
-   - 不要使用 `*`（全部允許）
-   - 只列出需要訪問的域名
+1. **?�制 AllowedOrigins**
+   - 不�?使用 `*`（全?��?許�?
+   - ?��??��?要訪?��??��?
 
-2. **限制 AllowedMethods**
-   - 只允許 `GET` 和 `HEAD`
-   - 不要允許 `PUT`、`DELETE` 等修改操作
+2. **?�制 AllowedMethods**
+   - ?��?�?`GET` ??`HEAD`
+   - 不�??�許 `PUT`?�`DELETE` 等修?��?�?
 
-3. **設置適當的 Cache-Control**
-   - QR Code 是靜態資源，可以長期快取
-   - 建議: `public, max-age=31536000` (1年)
-
----
-
-## 下一步
-
-完成 R2 CORS 配置後：
-
-1. ✅ **測試 QR Code 下載功能**
-2. ✅ **驗證所有團隊的 QR Code 都能下載**
-3. ✅ **檢查瀏覽器 Console 無 CORS 錯誤**
-4. ✅ **更新文檔記錄配置**
+3. **設置?�當??Cache-Control**
+   - QR Code ?��??��?源�??�以?��?快�?
+   - 建議: `public, max-age=31536000` (1�?
 
 ---
 
-## 參考資源
+## 下�?�?
+
+完�? R2 CORS ?�置後�?
+
+1. ??**測試 QR Code 下�??�能**
+2. ??**驗�??�?��??��? QR Code ?�能下�?**
+3. ??**檢查?�覽??Console ??CORS ?�誤**
+4. ??**?�新?��?記�??�置**
+
+---
+
+## ?�考�?�?
 
 - [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
 - [CORS 詳解](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
@@ -488,6 +488,6 @@ DNS 解析失敗或連接超時
 
 ---
 
-**最後更新:** 2025-12-31
-**作者:** Claude Code Assistant
-**版本:** 1.0
+**?�後更??** 2025-12-31
+**作�?** Claude Code Assistant
+**?�本:** 1.0

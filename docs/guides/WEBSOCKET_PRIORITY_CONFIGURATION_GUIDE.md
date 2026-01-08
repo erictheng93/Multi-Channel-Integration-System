@@ -134,7 +134,7 @@ SSE ()
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/collaboration/health
+curl https://your-api-domain.example.com/api/collaboration/health
 
 # (WebSocket ):
 {
@@ -186,7 +186,7 @@ wrangler tail
 ```bash
 
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/stats
+ https://your-api-domain.example.com/api/collaboration/stats
 
 # :
 {
@@ -286,14 +286,14 @@ WebSocket Durable Objects ()
 : 1000 10
 
 SSE :
- Workers : 1000 × 10 × 30 = 300,000 /
+ Workers : 1000 ? 10 ? 30 = 300,000 /
  : $5.00 () + $0.15 ()
  : ~$5.15/
 
 WebSocket :
  Workers : 300,000 /
- Durable Objects : 300,000 × $0.15/
- WebSocket : 3,000,000 × $12.50/
+ Durable Objects : 300,000 ? $0.15/
+ WebSocket : 3,000,000 ? $12.50/
  : $5.00 () + $0.045 (DO) + $37.50 (WS)
  : ~$42.55/
 
