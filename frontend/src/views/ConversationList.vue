@@ -4,8 +4,8 @@
       <!-- Header with Actions -->
       <ConversationHeader
         :cache-hit-rate="controller.cache.cacheHitRate.value"
-        :sync-status="syncComposable.syncStatus.value"
-        :is-syncing="syncComposable.isSyncing.value"
+        :sync-status="conversationsStore.syncStatus"
+        :is-syncing="isSyncing"
         :is-refreshing="controller.isRefreshing.value"
         @refresh="handleRefresh"
       />
@@ -143,7 +143,7 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
 import {
   useConversationListController,
-  useConversationSync,
+  // useConversationSync, // DEPRECATED - Phase B4: 使用 store.initializeRealtime()
   useConversationVirtualScroll
 } from '@/composables/conversation'
 import type { Conversation, ConversationFilters as ConversationFiltersType } from '@/types'
@@ -171,12 +171,15 @@ const ChevronRightIcon = {
 // Initialize composables
 const conversationsStore = useConversationsStore()
 const controller = useConversationListController()
-const syncComposable = useConversationSync()
+// ⚠️ useConversationSync 已廢棄，改用 store 的 initializeRealtime (Phase B4)
+// const syncComposable = useConversationSync() // DEPRECATED
 const virtualScroll = useConversationVirtualScroll()
 
 // Computed properties
 const showSkeleton = computed(() => conversationsStore.showSkeleton)
 const availableTags = computed(() => tagCacheService.getAllTags())
+// 🚀 Phase B4: 從 store 獲取同步狀態
+const isSyncing = computed(() => conversationsStore.syncStatus === 'connecting' || conversationsStore.syncStatus === 'polling')
 
 /**
  * 处理筛选更新
@@ -190,7 +193,8 @@ function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | 
  */
 async function handleRefresh() {
   await controller.refresh()
-  await syncComposable.refresh()
+  // Phase B4: 使用 store 的輪詢作為備份刷新機制
+  // await syncComposable.refresh() // DEPRECATED
 }
 
 /**
@@ -216,18 +220,16 @@ function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: numbe
 
 // Lifecycle
 onMounted(async () => {
-  console.log('🚀 [ConversationList] Component mounted (refactored)')
+  console.log('🚀 [ConversationList] Component mounted (Phase B4 - Direct Real-time Updates)')
 
   // 初始化控制器
   await controller.initialize()
 
-  // 启动同步服务
-  await syncComposable.startSync((data: Conversation[]) => {
-    console.log('📥 [ConversationList] Sync data received:', data.length)
-    conversationsStore.setConversations(data)
-  })
+  // 🚀 Phase B4: 使用 Store 的 initializeRealtime 啟動 WebSocket 實時更新
+  // 這會訂閱 'conversations' channel 並直接更新對話列表
+  await conversationsStore.initializeRealtime()
 
-  console.log('✅ [ConversationList] Initialized successfully')
+  console.log('✅ [ConversationList] Initialized with real-time updates')
 })
 
 onUnmounted(() => {
@@ -235,7 +237,8 @@ onUnmounted(() => {
 
   // 清理资源
   controller.cleanup()
-  syncComposable.stopSync()
+  // 🚀 Phase B4: 使用 Store 的 cleanup 清理 WebSocket 訂閱
+  conversationsStore.cleanup()
   virtualScroll.resetScroll()
 
   console.log('✨ [ConversationList] Cleanup completed')

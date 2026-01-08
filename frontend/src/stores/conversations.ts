@@ -181,6 +181,172 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // 🚀 Real-Time Direct Update Methods (Phase B4)
+  // 直接更新對話列表，無需 HTTP 輪詢
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * 將對話移動到列表頂部
+   * 用於新訊息到達時的排序
+   */
+  const moveConversationToTop = (conversationId: string) => {
+    const index = conversations.value.findIndex(c => c.id === conversationId)
+    if (index > 0) {
+      // Remove from current position and add to front
+      const removed = conversations.value.splice(index, 1)
+      if (removed.length > 0 && removed[0]) {
+        conversations.value.unshift(removed[0])
+        console.log(`📍 [ConversationsStore] Moved conversation ${conversationId} to top`)
+      }
+    }
+  }
+
+  /**
+   * 從 WebSocket 訊息事件直接更新對話
+   * 避免不必要的 HTTP 請求
+   */
+  const updateConversationFromWebSocketMessage = (
+    conversationId: string,
+    messageData: {
+      content?: string
+      messageType?: string
+      timestamp?: string | number
+      sender?: { id?: string; name?: string; role?: string }
+      senderType?: 'customer' | 'agent'
+      platform?: string
+    },
+    options: { incrementUnread?: boolean; moveToTop?: boolean } = {}
+  ) => {
+    const { incrementUnread = true, moveToTop = true } = options
+    const index = conversations.value.findIndex(c => c.id === conversationId)
+
+    if (index === -1) {
+      console.log(`⚠️ [ConversationsStore] Conversation ${conversationId} not found in list, will fetch via polling`)
+      // 對話不在列表中，可能是新對話，觸發輪詢獲取
+      pollConversations()
+      return false
+    }
+
+    const conversation = conversations.value[index]
+    if (!conversation) {
+      console.log(`⚠️ [ConversationsStore] Conversation object is undefined at index ${index}`)
+      pollConversations()
+      return false
+    }
+
+    // 計算時間戳 (毫秒)
+    const nowTimestamp = messageData.timestamp
+      ? (typeof messageData.timestamp === 'number'
+          ? messageData.timestamp
+          : new Date(messageData.timestamp).getTime())
+      : Date.now()
+
+    // 構建更新後的對話物件
+    const updatedConversation: Conversation = {
+      ...conversation,
+      lastMessageAt: nowTimestamp,
+      updatedAt: nowTimestamp,
+      // 更新 lastMessage（如果有內容）
+      lastMessage: messageData.content ? {
+        id: crypto.randomUUID(), // 臨時 ID
+        conversationId,
+        content: messageData.content,
+        messageType: (messageData.messageType || 'text') as Message['messageType'],
+        senderType: (messageData.senderType || (messageData.sender?.role === 'customer' ? 'customer' : 'agent')) as Message['senderType'],
+        senderId: messageData.sender?.id || '',
+        platform: (messageData.platform || conversation.platform || 'line') as Message['platform'],
+        timestamp: nowTimestamp,
+        createdAt: nowTimestamp,
+        updatedAt: nowTimestamp,
+        deliveryStatus: 'delivered'
+      } : conversation.lastMessage,
+      // 增加未讀計數（僅當訊息來自客戶時）
+      unreadCount: incrementUnread && messageData.senderType === 'customer'
+        ? (conversation.unreadCount || 0) + 1
+        : conversation.unreadCount || 0
+    }
+
+    // 使用 splice 觸發 Vue 響應式更新
+    conversations.value.splice(index, 1, updatedConversation)
+
+    // 更新快取
+    conversationCache.setConversation(updatedConversation)
+
+    // 移動到頂部
+    if (moveToTop) {
+      moveConversationToTop(conversationId)
+    }
+
+    // 更新統計
+    updateStatsFromConversations()
+
+    console.log(`✅ [ConversationsStore] Real-time update applied to conversation ${conversationId}`, {
+      lastMessage: messageData.content?.substring(0, 30),
+      unreadCount: updatedConversation.unreadCount,
+      movedToTop: moveToTop
+    })
+
+    return true
+  }
+
+  /**
+   * 從對話列表計算統計資訊
+   */
+  const updateStatsFromConversations = () => {
+    stats.value = {
+      total: conversations.value.length,
+      open: conversations.value.filter(c =>
+        c.status === CONVERSATION_STATUS.PENDING ||
+        c.status === CONVERSATION_STATUS.ACTIVE
+      ).length,
+      assigned: conversations.value.filter(c =>
+        c.status === CONVERSATION_STATUS.IN_PROGRESS
+      ).length,
+      closed: conversations.value.filter(c =>
+        c.status === CONVERSATION_STATUS.CLOSED ||
+        c.status === CONVERSATION_STATUS.RESOLVED
+      ).length,
+      unreadCount: conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
+    }
+  }
+
+  /**
+   * 更新對話狀態（指派、狀態變更等）
+   */
+  const updateConversationStatus = (
+    conversationId: string,
+    updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'unreadCount'>>
+  ) => {
+    const index = conversations.value.findIndex(c => c.id === conversationId)
+
+    if (index === -1) {
+      console.log(`⚠️ [ConversationsStore] Conversation ${conversationId} not found for status update`)
+      return false
+    }
+
+    const conversation = conversations.value[index]
+    if (!conversation) {
+      console.log(`⚠️ [ConversationsStore] Conversation object is undefined at index ${index}`)
+      return false
+    }
+
+    const updatedConversation: Conversation = {
+      ...conversation,
+      ...updates,
+      updatedAt: Date.now() // Unix timestamp in milliseconds
+    }
+
+    conversations.value.splice(index, 1, updatedConversation)
+    conversationCache.setConversation(updatedConversation)
+    updateStatsFromConversations()
+
+    console.log(`✅ [ConversationsStore] Status update applied to conversation ${conversationId}`, updates)
+    return true
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+
   // 樂觀更新方法 - 立即更新UI，背景同步API
   const optimisticUpdateConversation = async (
     id: string, 
@@ -1214,21 +1380,104 @@ export const useConversationsStore = defineStore('conversations', () => {
   // ═══════════════════════════════════════════════════════════════════
 
   /**
-   * 处理实时更新事件（阶段 3）
-   * 从全局 WebSocket Store 接收事件并更新本地状态
+   * 處理實時更新事件（Phase B4 - 直接更新）
+   * 從全局 WebSocket Store 接收事件並直接更新本地狀態
+   * 避免不必要的 HTTP 輪詢
    */
   const handleRealtimeUpdate = (message: WebSocketMessage) => {
-    console.log('📥 [ConversationsStore] Real-time update:', message.type)
+    console.log('📥 [ConversationsStore] Real-time update:', message.type, message)
+
+    // 提取通用數據
+    const data = message.data as Record<string, unknown> | undefined
+    const conversationId = message.conversationId || (data?.conversationId as string)
 
     switch (message.type) {
-      case 'conversations_update':
-      case 'conversation_updated':
       case 'new_message':
-      case 'message_updated':
-        // 对话列表更新 - 触发轮询获取最新数据
+      case 'message_sent':
+      case 'message_delivered': {
+        // 🚀 Phase B4: 直接更新對話列表，無需 HTTP 輪詢
+        if (conversationId) {
+          const messageContent = data?.content as string
+          const messageType = data?.messageType as string
+          const timestamp = message.timestamp || data?.timestamp as string | number
+          const sender = data?.sender as { id?: string; name?: string; role?: string } | undefined
+          const senderType = data?.senderType as 'customer' | 'agent' | undefined
+          const platform = data?.platform as string | undefined
+
+          const updated = updateConversationFromWebSocketMessage(
+            conversationId,
+            {
+              content: messageContent,
+              messageType,
+              timestamp,
+              sender,
+              senderType,
+              platform
+            },
+            {
+              // 只有客戶發送的訊息才增加未讀計數
+              incrementUnread: senderType === 'customer',
+              moveToTop: true
+            }
+          )
+
+          if (updated) {
+            lastUpdateTime.value = new Date()
+            console.log(`✅ [ConversationsStore] Direct update for new_message in ${conversationId}`)
+          }
+        } else {
+          // 沒有 conversationId，回退到輪詢
+          console.log('⚠️ [ConversationsStore] No conversationId in message, falling back to polling')
+          lastUpdateTime.value = new Date()
+          pollConversations()
+        }
+        break
+      }
+
+      case 'conversation_updated':
+      case 'conversation_status_changed':
+      case 'conversation_assigned':
+      case 'conversation_transferred': {
+        // 對話狀態更新
+        if (conversationId) {
+          const status = data?.status as string | undefined
+          const assignedAgentId = (data?.assignedUserId || data?.assignedAgentId) as string | undefined
+          const assignedTeamId = data?.assignedTeamId as number | undefined
+
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId'>> = {}
+          if (status) updates.status = status as Conversation['status']
+          if (assignedAgentId) updates.assignedAgentId = assignedAgentId
+          if (assignedTeamId !== undefined) updates.assignedTeamId = assignedTeamId
+
+          if (Object.keys(updates).length > 0) {
+            updateConversationStatus(conversationId, updates)
+            lastUpdateTime.value = new Date()
+            console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`)
+          } else {
+            // 沒有具體更新內容，回退到輪詢
+            pollConversations()
+          }
+        } else {
+          pollConversations()
+        }
+        break
+      }
+
+      case 'conversations_update': {
+        // 批量更新，使用輪詢獲取完整數據
+        console.log('📥 [ConversationsStore] Batch update, using polling')
         lastUpdateTime.value = new Date()
         pollConversations()
         break
+      }
+
+      case 'message_updated':
+      case 'message_deleted': {
+        // 訊息更新/刪除，觸發輪詢以同步最新狀態
+        lastUpdateTime.value = new Date()
+        pollConversations()
+        break
+      }
 
       default:
         console.warn('[ConversationsStore] Unhandled message type:', message.type)
@@ -1381,6 +1630,12 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     // Real-time sync (Phase B1)
     initializeRealtime,
-    cleanup
+    cleanup,
+
+    // 🚀 Real-time direct updates (Phase B4)
+    updateConversationFromWebSocketMessage,
+    updateConversationStatus,
+    moveConversationToTop,
+    updateStatsFromConversations
   }
 })
