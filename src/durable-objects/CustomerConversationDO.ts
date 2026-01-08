@@ -433,10 +433,22 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * 🔧 FIX: Now broadcasts to ALL connections, including multiple tabs from same user
    */
   public async notifyNewMessage(conversationId: string, message: any): Promise<void> {
+    // 🔧 FIX: Use lowercase 'new_message' to match frontend WebSocketEventRouter
+    // The frontend expects lowercase event types for routing to channels
     const notification = JSON.stringify({
-      type: 'NEW_MESSAGE',
+      type: 'new_message',
       conversationId,
-      message,
+      // 🔧 FIX: Include message data at top level for frontend compatibility
+      data: {
+        conversationId,
+        content: message.content,
+        messageType: message.messageType,
+        senderType: message.senderType,
+        senderId: message.senderId,
+        platform: message.platform || 'line',
+        timestamp: Date.now()
+      },
+      message, // Keep original message for backward compatibility
       timestamp: Date.now()
     });
 

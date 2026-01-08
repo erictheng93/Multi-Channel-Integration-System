@@ -723,6 +723,55 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       // Don't fail webhook processing - message is saved to database
     }
 
+    // 🚀 Phase B4: Global Broadcast for Conversation List Updates
+    // This notifies all connected agents viewing the conversation list
+    try {
+      if (env.MESSAGE_BROADCASTER) {
+        const broadcasterId = env.MESSAGE_BROADCASTER.idFromName('global');
+        const broadcasterStub = env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+        // Broadcast new_message event globally for conversation list updates
+        const globalEvent = {
+          id: crypto.randomUUID(),
+          type: 'new_message',
+          source: 'webhook',
+          timestamp: Date.now(),
+          conversationId: conversation!.id,
+          data: {
+            conversationId: conversation!.id,
+            content: messageContent,
+            messageType: messageType,
+            senderType: 'customer',
+            senderId: user.id,
+            platform: 'line',
+            timestamp: Date.now()
+          },
+          priority: 'normal'
+        };
+
+        // Use /broadcast-global endpoint for global broadcasts
+        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: globalEvent,
+            target: { type: 'global', targets: ['all'] }
+          })
+        }));
+
+        if (globalResponse.ok) {
+          console.log('✅ [LINE Webhook] Global broadcast sent for conversation list updates');
+        } else {
+          log.warn('LINE Webhook: Global broadcast returned non-OK status');
+        }
+      }
+    } catch (globalBroadcastError) {
+      log.warn('LINE Webhook: Global broadcast failed (non-critical)', {
+        error: globalBroadcastError instanceof Error ? globalBroadcastError.message : String(globalBroadcastError)
+      });
+      // Non-critical - conversation list will still update on next poll
+    }
+
     // 記錄活動以觸發 SSE 更新
     try {
       const activityService = new ActivityService(env.DB);

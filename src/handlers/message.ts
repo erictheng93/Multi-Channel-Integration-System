@@ -540,6 +540,54 @@ export const messageHandler = {
                 console.warn('⚠️ [CustomerConversationDO] Failed to notify, continuing:', customerDOError);
             }
 
+            // 🚀 Phase B4: Global Broadcast for Conversation List Updates
+            // This notifies all connected agents viewing the conversation list
+            try {
+                if (c.env.MESSAGE_BROADCASTER) {
+                    const broadcasterId = c.env.MESSAGE_BROADCASTER.idFromName('global');
+                    const broadcasterStub = c.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+                    // Broadcast new_message event globally for conversation list updates
+                    const globalEvent = {
+                        id: crypto.randomUUID(),
+                        type: 'new_message',
+                        source: 'api',
+                        timestamp: Date.now(),
+                        conversationId: conversationId,
+                        data: {
+                            conversationId: conversationId,
+                            content: content,
+                            messageType: mediaType || 'text',
+                            senderType: 'agent',
+                            senderId: agent.id,
+                            senderName: agent.displayName,
+                            platform: conversationWithCustomer.platform,
+                            timestamp: Date.now()
+                        },
+                        priority: 'normal'
+                    };
+
+                    // Use /broadcast-global endpoint for global broadcasts
+                    const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            event: globalEvent,
+                            target: { type: 'global', targets: ['all'] }
+                        })
+                    }));
+
+                    if (globalResponse.ok) {
+                        console.log('✅ [Agent Message] Global broadcast sent for conversation list updates');
+                    } else {
+                        console.warn('⚠️ [Agent Message] Global broadcast returned non-OK status');
+                    }
+                }
+            } catch (globalBroadcastError) {
+                console.warn('⚠️ [Agent Message] Global broadcast failed (non-critical):', globalBroadcastError);
+                // Non-critical - conversation list will still update on next poll
+            }
+
             // ✅ 記錄活動以觸發 SSE 更新 (為了向後相容性保留)
             try {
                 const { ActivityService } = await import('../services/activity-service');
