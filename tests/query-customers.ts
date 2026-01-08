@@ -1,9 +1,8 @@
 /**
- * 查詢客戶資料的測試腳本
- * 使用這個腳本來測試客戶資料查詢功能
+ * ?�詢客戶資�??�測試腳?? * 使用?�個腳?��?測試客戶資�??�詢?�能
  */
 
-const WORKER_URL: string = 'https://multi-channel.imfinethankyouandyou.com'; // 實際 Worker URL
+const WORKER_URL: string = 'https://your-api-domain.example.com'; // 實�? Worker URL
 
 interface Customer {
   id: string;
@@ -45,29 +44,28 @@ interface StatsResponse {
 }
 
 async function testCustomerQueries(): Promise<void> {
-  console.log('🔍 開始測試客戶資料查詢功能...\n');
+  console.log('?? ?��?測試客戶資�??�詢?�能...\n');
 
   try {
-    // 1. 查詢所有客戶
-    console.log('📊 查詢所有客戶...');
+    // 1. ?�詢?�?�客??    console.log('?? ?�詢?�?�客??..');
     const allCustomersResponse = await fetch(`${WORKER_URL}/api/customers`);
     const allCustomersData: AllCustomersResponse = await allCustomersResponse.json();
     
     if (allCustomersData.success) {
-      console.log(`✅ 找到 ${allCustomersData.data.count} 位客戶`);
+      console.log(`???�到 ${allCustomersData.data.count} 位客?�`);
       allCustomersData.data.customers.forEach((customer: Customer, index: number) => {
-        console.log(`  ${index + 1}. ${customer.display_name || '未知'} (${customer.platform}:${customer.platform_user_id})`);
+        console.log(`  ${index + 1}. ${customer.display_name || '?�知'} (${customer.platform}:${customer.platform_user_id})`);
       });
     } else {
-      console.log('❌ 查詢失敗:', allCustomersData.error);
+      console.log('???�詢失�?:', allCustomersData.error);
     }
 
     console.log('\n');
 
-    // 2. 查詢特定平台的客戶（如果有的話）
+    // 2. ?�詢?��?平台?�客?��?如�??��?話�?
     if (allCustomersData.success && allCustomersData.data.customers.length > 0) {
       const firstCustomer = allCustomersData.data.customers[0];
-      console.log(`🎯 查詢特定客戶: ${firstCustomer.platform}:${firstCustomer.platform_user_id}`);
+      console.log(`?�� ?�詢?��?客戶: ${firstCustomer.platform}:${firstCustomer.platform_user_id}`);
       
       const specificCustomerResponse = await fetch(
         `${WORKER_URL}/api/customers/platform/${firstCustomer.platform}/${firstCustomer.platform_user_id}`
@@ -75,72 +73,69 @@ async function testCustomerQueries(): Promise<void> {
       const specificCustomerData: SpecificCustomerResponse = await specificCustomerResponse.json();
       
       if (specificCustomerData.success) {
-        console.log('✅ 客戶詳細資訊:');
+        console.log('??客戶詳細資�?:');
         console.log(`  ID: ${specificCustomerData.data.customer.id}`);
-        console.log(`  姓名: ${specificCustomerData.data.customer.display_name || '未知'}`);
+        console.log(`  姓�?: ${specificCustomerData.data.customer.display_name || '?�知'}`);
         console.log(`  平台: ${specificCustomerData.data.customer.platform}`);
-        console.log(`  平台用戶ID: ${specificCustomerData.data.customer.platform_user_id}`);
-        console.log(`  頭像: ${specificCustomerData.data.customer.avatar_url || '無'}`);
-        console.log(`  對話數: ${specificCustomerData.data.conversationCount}`);
-        console.log(`  建立時間: ${specificCustomerData.data.customer.created_at}`);
+        console.log(`  平台?�戶ID: ${specificCustomerData.data.customer.platform_user_id}`);
+        console.log(`  ?��?: ${specificCustomerData.data.customer.avatar_url || '??}`);
+        console.log(`  對話?? ${specificCustomerData.data.conversationCount}`);
+        console.log(`  建�??��?: ${specificCustomerData.data.customer.created_at}`);
         
         if (specificCustomerData.data.customer.metadata) {
-          console.log('  額外資訊:');
+          console.log('  額�?資�?:');
           try {
             const metadata = JSON.parse(specificCustomerData.data.customer.metadata);
             Object.entries(metadata).forEach(([key, value]) => {
               console.log(`    ${key}: ${value}`);
             });
           } catch (e) {
-            console.log('    無法解析額外資訊');
+            console.log('    ?��?�??額�?資�?');
           }
         }
       } else {
-        console.log('❌ 查詢特定客戶失敗:', specificCustomerData.error);
+        console.log('???�詢?��?客戶失�?:', specificCustomerData.error);
       }
     }
 
     console.log('\n');
 
-    // 3. 查詢系統統計
-    console.log('📈 查詢系統統計...');
+    // 3. ?�詢系統統�?
+    console.log('?? ?�詢系統統�?...');
     const statsResponse = await fetch(`${WORKER_URL}/api/stats`);
     const statsData: StatsResponse = await statsResponse.json();
     
     if (statsData.success) {
-      console.log('✅ 系統統計:');
-      console.log(`  總客戶數: ${statsData.data.totalCustomers}`);
-      console.log(`  總對話數: ${statsData.data.totalConversations}`);
-      console.log(`  總訊息數: ${statsData.data.totalMessages}`);
-      console.log(`  最近訊息數: ${statsData.data.recentMessages.length}`);
+      console.log('??系統統�?:');
+      console.log(`  總客?�數: ${statsData.data.totalCustomers}`);
+      console.log(`  總�?話數: ${statsData.data.totalConversations}`);
+      console.log(`  總�??�數: ${statsData.data.totalMessages}`);
+      console.log(`  ?�近�??�數: ${statsData.data.recentMessages.length}`);
     } else {
-      console.log('❌ 查詢統計失敗:', statsData.error);
+      console.log('???�詢統�?失�?:', statsData.error);
     }
 
   } catch (error: any) {
-    console.error('❌ 測試過程中發生錯誤:', error.message);
-    console.log('\n💡 請確認:');
-    console.log('1. Worker URL 是否正確');
-    console.log('2. Worker 是否正在運行');
-    console.log('3. 資料庫是否已初始化');
+    console.error('??測試?��?中發?�錯�?', error.message);
+    console.log('\n?�� 請確�?');
+    console.log('1. Worker URL ?�否�?��');
+    console.log('2. Worker ?�否�?��?��?');
+    console.log('3. 資�?庫是?�已?��???);
   }
 
-  console.log('\n🏁 測試完成！');
+  console.log('\n?? 測試完�?�?);
 }
 
-// 如果直接執行這個腳本
-if (typeof window === 'undefined') {
-  // Node.js 環境
-  console.log('⚠️  請先更新 WORKER_URL 變數為你的實際 Worker 網址');
-  console.log('然後執行: node query-customers.ts\n');
+// 如�??�接?��??�個腳??if (typeof window === 'undefined') {
+  // Node.js ?��?
+  console.log('?��?  請�??�新 WORKER_URL 變數?��??�實??Worker 網�?');
+  console.log('?��??��?: node query-customers.ts\n');
   
   if (WORKER_URL !== 'https://your-worker-domain.workers.dev') {
     testCustomerQueries();
   }
 } else {
-  // 瀏覽器環境
-  console.log('🌐 在瀏覽器中執行，請手動調用 testCustomerQueries() 函數');
+  // ?�覽?�環�?  console.log('?? ?�瀏覽?�中?��?，�??��?調用 testCustomerQueries() ?�數');
 }
 
-// 匯出函數供其他地方使用
-export { testCustomerQueries };
+// ?�出?�數供其他地?�使??export { testCustomerQueries };

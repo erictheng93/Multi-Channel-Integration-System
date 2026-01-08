@@ -268,7 +268,7 @@ wrangler pages publish dist --project-name multi-channel-platform-ui
 
 ### 4. LINE Webhook URL
  Webhook URL
-`https://multi-channel-platform.imfinethankyouandyou.com/api/webhook`
+`https://multi-channel-platform.example.com/api/webhook`
 
 
 - [ ] Cloudflare (Workers + D1 + R2)

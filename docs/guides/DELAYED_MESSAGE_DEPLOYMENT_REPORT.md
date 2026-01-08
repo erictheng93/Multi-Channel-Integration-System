@@ -102,7 +102,7 @@ preview_id = "1e78b2edf95446c38a76799cb8cf85f4"
 - ****:
 
 
-- **URL**: https://multi-channel-platform.imfinethankyouandyou.com
+- **URL**: https://multi-channel-platform.example.com
 - ****:
 - ****:
 

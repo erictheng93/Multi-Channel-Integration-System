@@ -520,7 +520,8 @@
     // ========================================
     const CONFIG = {
       LIFF_ID: '2008756115-vWtFyDMA',
-      API_ENDPOINT: 'https://multi-channel.imfinethankyouandyou.com',
+      // API_ENDPOINT is read from URL parameter or window global, set during deployment
+      API_ENDPOINT: new URLSearchParams(window.location.search).get('api') || window.MCIS_API_ENDPOINT || '',
       LINE_OA_ID: '110xsqef', // Without @ symbol
       AUTO_CLOSE_DELAY: 2000, // 2 seconds
     };

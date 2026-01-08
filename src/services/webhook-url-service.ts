@@ -55,9 +55,9 @@ const WEBHOOK_PATHS: Record<WebhookPlatform, string> = {
  * getWebhookUrl(env, 'line')
  * // => 'http://localhost:8787/webhooks/line'
  *
- * // Production
+ * // Production (with BACKEND_URL env var set)
  * getWebhookUrl(env, 'line')
- * // => 'https://multi-channel.imfinethankyouandyou.com/webhooks/line'
+ * // => 'https://your-api-domain.example.com/webhooks/line'
  * ```
  */
 export function getWebhookUrl(env: WorkerEnv, platform: WebhookPlatform): string {
@@ -79,9 +79,9 @@ export function getWebhookUrl(env: WorkerEnv, platform: WebhookPlatform): string
  * const config = getWebhookConfig(env, 'line');
  * console.log(config);
  * // {
- * //   baseUrl: 'https://multi-channel.imfinethankyouandyou.com',
+ * //   baseUrl: 'https://your-api-domain.example.com',
  * //   path: '/webhooks/line',
- * //   fullUrl: 'https://multi-channel.imfinethankyouandyou.com/webhooks/line',
+ * //   fullUrl: 'https://your-api-domain.example.com/webhooks/line',
  * //   environment: 'production'
  * // }
  * ```
@@ -111,8 +111,8 @@ export function getWebhookConfig(env: WorkerEnv, platform: WebhookPlatform): Web
  * const urls = getAllWebhookUrls(env);
  * console.log(urls);
  * // {
- * //   line: 'https://multi-channel.imfinethankyouandyou.com/webhooks/line',
- * //   facebook: 'https://multi-channel.imfinethankyouandyou.com/webhooks/facebook',
+ * //   line: 'https://your-api-domain.example.com/webhooks/line',
+ * //   facebook: 'https://your-api-domain.example.com/webhooks/facebook',
  * //   ...
  * // }
  * ```
@@ -215,7 +215,7 @@ export function extractPlatformFromUrl(url: string): WebhookPlatform | null {
  *   verify_token: 'abc123',
  *   mode: 'subscribe'
  * });
- * // => 'https://multi-channel.imfinethankyouandyou.com/webhooks/line?verify_token=abc123&mode=subscribe'
+ * // => 'https://your-api-domain.example.com/webhooks/line?verify_token=abc123&mode=subscribe'
  * ```
  */
 export function buildWebhookUrlWithParams(

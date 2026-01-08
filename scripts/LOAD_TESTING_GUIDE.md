@@ -126,11 +126,11 @@ node scripts/websocket-load-test.js 300 60
 ****
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # Dashboard metrics
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/metrics
+ https://your-api-domain.example.com/api/websocket/dashboard/metrics
 ```
 
 #### 2.
@@ -157,7 +157,7 @@ wrangler tail multi-channel-platform --format=pretty
 
 # Durable Objects
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/durable-objects
+ https://your-api-domain.example.com/api/websocket/dashboard/durable-objects
 ```
 
 
@@ -217,7 +217,7 @@ node scripts/websocket-load-test.js 500 120
 
 ```javascript
 const CONFIG = {
- WS_URL: 'wss://multi-channel.imfinethankyouandyou.com/ws',
+ WS_URL: 'wss://your-api-domain.example.com/ws',
  CONNECTION_TIMEOUT: 10000, // (ms)
  PING_INTERVAL: 30000, // (ms)
  MESSAGE_INTERVAL: 5000, // (ms)
@@ -235,7 +235,7 @@ const CONFIG = {
 
 - : 100
 - : 60
-- WebSocket URL: wss://multi-channel.imfinethankyouandyou.com/ws
+- WebSocket URL: wss://your-api-domain.example.com/ws
 
 
 - : 98%
@@ -264,7 +264,7 @@ const CONFIG = {
  wrangler tail multi-channel-platform
 
  #
- curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+ curl https://your-api-domain.example.com/api/websocket/health
  ```
 4. ****
 5. ****

@@ -1,5 +1,5 @@
-// 測試智能會話管理功能
-const PRODUCTION_URL: string = 'https://multi-channel.imfinethankyouandyou.com';
+// 測試?�能?�話管�??�能
+const PRODUCTION_URL: string = 'https://your-api-domain.example.com';
 
 interface Message {
   id: string;
@@ -61,161 +61,159 @@ interface SessionMessagesResponse {
 }
 
 async function testSessionManagement(): Promise<void> {
-  console.log('🎯 測試智能會話管理功能');
+  console.log('?�� 測試?�能?�話管�??�能');
   console.log('========================\n');
 
   try {
-    // 1. 獲取當前統計
-    console.log('1. 獲取當前統計資料...');
+    // 1. ?��??��?統�?
+    console.log('1. ?��??��?統�?資�?...');
     const statsResponse = await fetch(`${PRODUCTION_URL}/api/stats`);
     const statsData: StatsResponse = await statsResponse.json();
     
     if (!statsData.success) {
-      console.log('❌ 獲取統計失敗');
+      console.log('???��?統�?失�?');
       return;
     }
 
-    console.log(`✅ 當前統計:`);
-    console.log(`   總訊息數: ${statsData.data.totalMessages}`);
-    console.log(`   總客戶數: ${statsData.data.totalCustomers}`);
-    console.log(`   總對話數: ${statsData.data.totalConversations}\n`);
+    console.log(`???��?統�?:`);
+    console.log(`   總�??�數: ${statsData.data.totalMessages}`);
+    console.log(`   總客?�數: ${statsData.data.totalCustomers}`);
+    console.log(`   總�?話數: ${statsData.data.totalConversations}\n`);
 
-    // 2. 分析最近的訊息會話資訊
-    console.log('2. 分析最近的訊息會話資訊...');
+    // 2. ?��??�近�?訊息?�話資�?
+    console.log('2. ?��??�近�?訊息?�話資�?...');
     const recentMessages = statsData.data.recentMessages;
     
     if (recentMessages && recentMessages.length > 0) {
-      console.log('📋 最近的訊息 (包含會話資訊):');
+      console.log('?? ?�近�?訊息 (?�含?�話資�?):');
       console.log('=' .repeat(90));
       
       recentMessages.slice(0, 6).forEach((msg: Message, index: number) => {
         const time = new Date(msg.created_at).toLocaleString();
-        const senderIcon = msg.sender_type === 'customer' ? '👤' : '🤖';
-        const directionIcon = msg.sender_type === 'customer' ? '📥' : '📤';
+        const senderIcon = msg.sender_type === 'customer' ? '?��' : '??';
+        const directionIcon = msg.sender_type === 'customer' ? '?��' : '?��';
         
         console.log(`${index + 1}. ${senderIcon} [${msg.sender_type.toUpperCase()}] ${directionIcon}`);
-        console.log(`   內容: "${msg.content}"`);
-        console.log(`   時間: ${time}`);
+        console.log(`   ?�容: "${msg.content}"`);
+        console.log(`   ?��?: ${time}`);
         console.log(`   訊息ID: ${msg.id}`);
         console.log(`   對話ID: ${msg.conversation_id}`);
         
-        // 顯示會話資訊
+        // 顯示?�話資�?
         if (msg.session_id) {
-          console.log(`   🎯 會話ID: ${msg.session_id}`);
+          console.log(`   ?�� ?�話ID: ${msg.session_id}`);
         }
         if (msg.session_sequence) {
-          console.log(`   📊 會話順序: ${msg.session_sequence}`);
+          console.log(`   ?? ?�話?��?: ${msg.session_sequence}`);
         }
         if (msg.reply_to_message_id) {
-          console.log(`   🔗 回覆目標: ${msg.reply_to_message_id}`);
+          console.log(`   ?? ?��??��?: ${msg.reply_to_message_id}`);
         }
         if (msg.thread_id) {
-          console.log(`   🧵 線程ID: ${msg.thread_id}`);
+          console.log(`   ?�� 線�?ID: ${msg.thread_id}`);
         }
         
-        // 解析元數據中的會話主題
-        if (msg.metadata) {
+        // �???�數?�中?��?話主�?        if (msg.metadata) {
           try {
             const metadata = JSON.parse(msg.metadata);
             if (metadata.sessionTopic) {
-              console.log(`   🏷️ 會話主題: ${metadata.sessionTopic}`);
+              console.log(`   ?���??�話主�?: ${metadata.sessionTopic}`);
             }
           } catch (e) {
-            // 忽略解析錯誤
+            // 忽略�???�誤
           }
         }
         console.log('');
       });
 
-      // 3. 測試會話統計
-      console.log('3. 測試會話統計...');
+      // 3. 測試?�話統�?
+      console.log('3. 測試?�話統�?...');
       const conversationId = recentMessages[0].conversation_id;
-      console.log(`📊 查詢對話 ${conversationId} 的會話統計...`);
+      console.log(`?? ?�詢對話 ${conversationId} ?��?話統�?..`);
       
       const sessionStatsResponse = await fetch(`${PRODUCTION_URL}/api/conversations/${conversationId}/sessions`);
       const sessionStatsData: SessionStatsResponse = await sessionStatsResponse.json();
       
       if (sessionStatsData.success) {
         const stats = sessionStatsData.data;
-        console.log(`✅ 會話統計:`);
-        console.log(`   總會話數: ${stats.totalSessions}`);
-        console.log(`   活躍會話數: ${stats.activeSessions}`);
-        console.log(`   平均訊息數/會話: ${stats.averageMessagesPerSession}`);
+        console.log(`???�話統�?:`);
+        console.log(`   總�?話數: ${stats.totalSessions}`);
+        console.log(`   活�??�話?? ${stats.activeSessions}`);
+        console.log(`   平�?訊息???�話: ${stats.averageMessagesPerSession}`);
         
         if (stats.sessions && stats.sessions.length > 0) {
-          console.log(`\n📋 會話列表:`);
+          console.log(`\n?? ?�話?�表:`);
           stats.sessions.slice(0, 5).forEach((session: Session, index: number) => {
             const startTime = new Date(session.start_time).toLocaleString();
-            const endTime = session.end_time ? new Date(session.end_time).toLocaleString() : '進行中';
-            const status = session.is_active ? '🟢 活躍' : '🔴 已結束';
+            const endTime = session.end_time ? new Date(session.end_time).toLocaleString() : '?��?�?;
+            const status = session.is_active ? '?�� 活�?' : '?�� 已�???;
             
             console.log(`   ${index + 1}. ${status} ${session.id}`);
-            console.log(`      主題: ${session.topic || '未知'}`);
-            console.log(`      開始: ${startTime}`);
-            console.log(`      結束: ${endTime}`);
-            console.log(`      訊息數: ${session.message_count}`);
+            console.log(`      主�?: ${session.topic || '?�知'}`);
+            console.log(`      ?��?: ${startTime}`);
+            console.log(`      結�?: ${endTime}`);
+            console.log(`      訊息?? ${session.message_count}`);
             console.log('');
           });
         }
       } else {
-        console.log(`❌ 查詢會話統計失敗: ${sessionStatsData.error}`);
+        console.log(`???�詢?�話統�?失�?: ${sessionStatsData.error}`);
       }
 
-      // 4. 測試特定會話的訊息
-      if (sessionStatsData.success && sessionStatsData.data.sessions.length > 0) {
-        console.log('4. 測試特定會話的訊息...');
+      // 4. 測試?��??�話?��???      if (sessionStatsData.success && sessionStatsData.data.sessions.length > 0) {
+        console.log('4. 測試?��??�話?��???..');
         const firstSession = sessionStatsData.data.sessions[0];
-        console.log(`🔍 查詢會話 ${firstSession.id} 的所有訊息...`);
+        console.log(`?? ?�詢?�話 ${firstSession.id} ?��??��???..`);
         
         const sessionMessagesResponse = await fetch(`${PRODUCTION_URL}/api/sessions/${firstSession.id}/messages`);
         const sessionMessagesData: SessionMessagesResponse = await sessionMessagesResponse.json();
         
         if (sessionMessagesData.success) {
-          console.log(`✅ 會話訊息:`);
-          console.log(`   會話ID: ${sessionMessagesData.data.sessionId}`);
+          console.log(`???�話訊息:`);
+          console.log(`   ?�話ID: ${sessionMessagesData.data.sessionId}`);
           console.log(`   訊息總數: ${sessionMessagesData.data.messageCount}`);
           
           if (sessionMessagesData.data.messages.length > 0) {
-            console.log(`\n💬 會話對話流程:`);
+            console.log(`\n?�� ?�話對話流�?:`);
             sessionMessagesData.data.messages.forEach((msg: Message, index: number) => {
               const time = new Date(msg.created_at).toLocaleString();
-              const senderIcon = msg.sender_type === 'customer' ? '👤' : '🤖';
+              const senderIcon = msg.sender_type === 'customer' ? '?��' : '??';
               const sequence = msg.session_sequence || (index + 1);
               
               console.log(`   ${sequence}. ${senderIcon} [${msg.sender_type}] "${msg.content}"`);
-              console.log(`      時間: ${time}`);
+              console.log(`      ?��?: ${time}`);
             });
           }
         } else {
-          console.log(`❌ 查詢會話訊息失敗: ${sessionMessagesData.error}`);
+          console.log(`???�詢?�話訊息失�?: ${sessionMessagesData.error}`);
         }
       }
 
     } else {
-      console.log('   沒有找到訊息');
+      console.log('   沒�??�到訊息');
     }
 
-    console.log('\n🎉 智能會話管理功能測試完成！');
-    console.log('\n📊 功能驗證:');
-    console.log('✅ 智能會話邊界檢測');
-    console.log('✅ 會話主題自動識別');
-    console.log('✅ 會話內訊息順序管理');
-    console.log('✅ 多問一答/一問多答支援');
-    console.log('✅ 時間間隔會話分割');
-    console.log('✅ 會話統計與分析');
-    console.log('✅ 會話訊息查詢 API');
+    console.log('\n?? ?�能?�話管�??�能測試完�?�?);
+    console.log('\n?? ?�能驗�?:');
+    console.log('???�能?�話?��?檢測');
+    console.log('???�話主�??��?識別');
+    console.log('???�話?��??��?序管??);
+    console.log('??多�?一�?一?��?答支??);
+    console.log('???��??��??�話?�割');
+    console.log('???�話統�??��???);
+    console.log('???�話訊息?�詢 API');
     
-    console.log('\n🎯 會話管理策略:');
-    console.log('• 時間間隔 > 30分鐘 → 新會話');
-    console.log('• 訊息數 > 50條 → 新會話');
-    console.log('• 會話持續 > 24小時 → 新會話');
-    console.log('• 檢測到主題變化關鍵詞 → 新會話');
-    console.log('• 智能語義主題變化 → 新會話');
+    console.log('\n?�� ?�話管�?策略:');
+    console.log('???��??��? > 30?��? ???��?�?);
+    console.log('??訊息??> 50�????��?�?);
+    console.log('???�話?��? > 24小�? ???��?�?);
+    console.log('??檢測?�主題�??��??��? ???��?�?);
+    console.log('???�能語義主�?變�? ???��?�?);
 
   } catch (error: any) {
-    console.error('❌ 測試過程中發生錯誤:', error.message);
+    console.error('??測試?��?中發?�錯�?', error.message);
   }
 }
 
-// 執行測試
+// ?��?測試
 testSessionManagement();

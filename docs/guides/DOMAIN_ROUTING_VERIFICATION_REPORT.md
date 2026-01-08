@@ -1,10 +1,10 @@
 
 
- **multi-channel-platform.imfinethankyouandyou.com**
+ **multi-channel-platform.example.com**
 
 
 ### 1.
-**URL**: `https://multi-channel-platform.imfinethankyouandyou.com/`
+**URL**: `https://multi-channel-platform.example.com/`
 ****: (HTTP 200)
 ****:
 ```json
@@ -16,7 +16,7 @@
 ```
 
 ### 2.
-**URL**: `https://multi-channel-platform.imfinethankyouandyou.com/health`
+**URL**: `https://multi-channel-platform.example.com/health`
 ****: (HTTP 200)
 ****:
 ```json
@@ -29,7 +29,7 @@
 ```
 
 ### 3. API
-**URL**: `https://multi-channel-platform.imfinethankyouandyou.com/api/health`
+**URL**: `https://multi-channel-platform.example.com/api/health`
 ****: 404 Not Found
 ****:
 ```json
@@ -83,28 +83,28 @@
 
 ### 1.
  URL
-- `https://multi-channel-platform.imfinethankyouandyou.com/`
-- `https://multi-channel-platform.imfinethankyouandyou.com/health`
+- `https://multi-channel-platform.example.com/`
+- `https://multi-channel-platform.example.com/health`
 
 ### 2.
 ```bash
 
-curl https://multi-channel-platform.imfinethankyouandyou.com/health
+curl https://multi-channel-platform.example.com/health
 
 
-curl https://multi-channel-platform.imfinethankyouandyou.com/
+curl https://multi-channel-platform.example.com/
 
 
-curl -I https://multi-channel-platform.imfinethankyouandyou.com/
+curl -I https://multi-channel-platform.example.com/
 ```
 
 ### 3.
 ```bash
 # ()
-curl https://multi-channel-platform.imfinethankyouandyou.com/admin-dashboard.html
+curl https://multi-channel-platform.example.com/admin-dashboard.html
 
 
-curl https://multi-channel-platform.imfinethankyouandyou.com/system/status
+curl https://multi-channel-platform.example.com/system/status
 ```
 
 ## API
@@ -131,10 +131,10 @@ curl https://multi-channel-platform.imfinethankyouandyou.com/system/status
 
 ****: ****
 
- `multi-channel-platform.imfinethankyouandyou.com` Worker
+ `multi-channel-platform.example.com` Worker
 
 ****:
-1. `https://multi-channel-platform.imfinethankyouandyou.com/health`
+1. `https://multi-channel-platform.example.com/health`
 2. `curl` HTTP 200
 3. JSON
 

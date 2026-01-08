@@ -342,9 +342,10 @@ export class PresignedUrlService {
       return `https://${this.env.R2_CUSTOM_DOMAIN}/${r2Key}`;
     }
 
-    // 回退到 Worker 代理 URL
-    const workerDomain = this.env.WORKER_DOMAIN || 'multi-channel.imfinethankyouandyou.com';
-    return `https://${workerDomain}/api/files/download/${encodeURIComponent(r2Key)}`;
+    // 回退到 Worker 代理 URL (使用 BACKEND_URL 環境變量)
+    const backendUrl = this.env.BACKEND_URL || 'http://localhost:8787';
+    const domain = backendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `https://${domain}/api/files/download/${encodeURIComponent(r2Key)}`;
   }
 }
 

@@ -1,14 +1,14 @@
 # Terraform 輸出定義
-# 部署完成後顯示的重要資訊
+# ?�署完�?後顯示�??��?資�?
 
-# 基本資訊
+# ?�本資�?
 output "project_name" {
-  description = "專案名稱"
+  description = "專�??�稱"
   value       = "${local.base_project_name}${local.env_suffix}"
 }
 
 output "environment" {
-  description = "部署環境"
+  description = "?�署?��?"
   value       = var.environment
 }
 
@@ -17,87 +17,87 @@ output "cloudflare_account_id" {
   value       = local.account_id
 }
 
-# 應用程式 URL
+# ?�用程�? URL
 output "api_url" {
   description = "API 後端 URL"
   value       = var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"
 }
 
 output "frontend_url" {
-  description = "前端應用 URL"
+  description = "?�端?�用 URL"
   value       = var.frontend_custom_domain != "" ? "https://${var.frontend_custom_domain}" : "https://${cloudflare_pages_project.frontend.name}.pages.dev"
 }
 
 output "admin_dashboard_url" {
-  description = "管理後台 URL"
+  description = "管�?後台 URL"
   value       = "${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/admin-dashboard.html"
 }
 
 # Webhook URL
 output "line_webhook_url" {
-  description = "LINE Bot Webhook URL (請在 LINE Developers Console 中設置)"
+  description = "LINE Bot Webhook URL (請在 LINE Developers Console 中設�?"
   value       = "${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/api/webhooks/line"
 }
 
 output "facebook_webhook_url" {
-  description = "Facebook Messenger Webhook URL (請在 Facebook Developers Console 中設置)"
+  description = "Facebook Messenger Webhook URL (請在 Facebook Developers Console 中設�?"
   value       = "${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/api/webhooks/facebook"
 }
 
-# 資料庫資訊
+# 資�?庫�?�?
 output "database_id" {
-  description = "D1 資料庫 ID"
+  description = "D1 資�?�?ID"
   value       = cloudflare_d1_database.main.id
 }
 
 output "database_name" {
-  description = "D1 資料庫名稱"
+  description = "D1 資�?庫�?�?
   value       = cloudflare_d1_database.main.name
 }
 
-# 存儲資訊
+# 存儲資�?
 output "r2_bucket_name" {
-  description = "R2 存儲桶名稱"
+  description = "R2 存儲桶�?�?
   value       = cloudflare_r2_bucket.attachments.name
 }
 
 output "r2_public_url" {
-  description = "R2 公開 URL (已配置自定義域名)"
-  value       = "https://s3.imfinethankyouandyou.com"
+  description = "R2 ?��? URL (已�?置自定義?��?)"
+  value       = "https://your-storage-domain.example.com"
 }
 
-# KV 命名空間
+# KV ?��?空�?
 output "sessions_kv_id" {
-  description = "會話 KV 命名空間 ID"
+  description = "?�話 KV ?��?空�? ID"
   value       = cloudflare_workers_kv_namespace.sessions.id
 }
 
 output "cache_kv_id" {
-  description = "快取 KV 命名空間 ID"
+  description = "快�? KV ?��?空�? ID"
   value       = cloudflare_workers_kv_namespace.cache.id
 }
 
-# Queue 資訊 (已移除 - 使用 Durable Objects 替代)
-# AGENT_QUEUE 和 REALTIME_QUEUE 已在 Phase 1.4b 完全移除
-# 延遲訊息現由 DelayedMessageBuffer Durable Object 處理
-# 實時事件由 MessageBroadcaster 和 LatestMessageCacheCoordinator Durable Objects 處理
+# Queue 資�? (已移??- 使用 Durable Objects ?�代)
+# AGENT_QUEUE ??REALTIME_QUEUE 已在 Phase 1.4b 完全移除
+# 延遲訊息?�由 DelayedMessageBuffer Durable Object ?��?
+# 實�?事件??MessageBroadcaster ??LatestMessageCacheCoordinator Durable Objects ?��?
 
-# 管理員資訊
+# 管�??��?�?
 output "admin_email" {
-  description = "管理員電子郵件"
+  description = "管�??�電子郵�?
   value       = var.admin_email
 }
 
-# 自動生成的密鑰
+# ?��??��??��???
 output "facebook_verify_token" {
-  description = "Facebook Verify Token (請在 Facebook Developers Console 中使用)"
+  description = "Facebook Verify Token (請在 Facebook Developers Console 中使??"
   value       = random_password.facebook_verify_token.result
   sensitive   = true
 }
 
-# 部署狀態
+# ?�署?�??
 output "deployment_status" {
-  description = "部署狀態摘要"
+  description = "?�署?�?��?�?
   value = {
     worker_deployed    = true
     database_created   = true
@@ -107,35 +107,35 @@ output "deployment_status" {
   }
 }
 
-# 下一步指引
+# 下�?步�?�?
 output "next_steps" {
-  description = "部署完成後的下一步操作"
+  description = "?�署完�?後�?下�?步�?�?
   value = [
-    "1. 在 LINE Developers Console 設置 Webhook URL: ${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/api/webhooks/line",
-    "2. 如果使用 Facebook Messenger，在 Facebook Developers Console 設置 Webhook URL 和 Verify Token",
-    "3. 訪問管理後台: ${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/admin-dashboard.html",
-    "4. 使用管理員帳戶登入: ${var.admin_email}",
-    "5. 訪問前端應用: ${var.frontend_custom_domain != "" ? "https://${var.frontend_custom_domain}" : "https://${cloudflare_pages_project.frontend.name}.pages.dev"}",
-    "6. 開始使用多渠道客服系統！"
+    "1. ??LINE Developers Console 設置 Webhook URL: ${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/api/webhooks/line",
+    "2. 如�?使用 Facebook Messenger，在 Facebook Developers Console 設置 Webhook URL ??Verify Token",
+    "3. 訪�?管�?後台: ${var.custom_domain != "" ? "https://${var.custom_domain}" : "https://${local.base_project_name}${local.env_suffix}.${local.account_id}.workers.dev"}/admin-dashboard.html",
+    "4. 使用管�??�帳?�登?? ${var.admin_email}",
+    "5. 訪�??�端?�用: ${var.frontend_custom_domain != "" ? "https://${var.frontend_custom_domain}" : "https://${cloudflare_pages_project.frontend.name}.pages.dev"}",
+    "6. ?��?使用多�??�客?�系統�?"
   ]
 }
 
-# 成本估算 (僅供參考)
+# ?�本估�? (?��??��?
 output "estimated_monthly_cost" {
-  description = "預估月費用 (USD，僅供參考)"
+  description = "?�估?�費??(USD，�?供�???"
   value = {
-    workers_requests = "前 100,000 次請求免費，之後每百萬次 $0.50"
-    d1_database     = "前 25GB 免費，之後每 GB $0.75"
-    r2_storage      = "前 10GB 免費，之後每 GB $0.015"
-    kv_operations   = "前 100,000 次操作免費，之後每百萬次 $0.50"
-    pages_builds    = "每月 500 次建置免費，之後每次 $0.25"
-    total_estimate  = "小型使用量通常在免費額度內"
+    workers_requests = "??100,000 次�?求�?費�?之�?每百?�次 $0.50"
+    d1_database     = "??25GB ?�費，�?後�? GB $0.75"
+    r2_storage      = "??10GB ?�費，�?後�? GB $0.015"
+    kv_operations   = "??100,000 次�?作�?費�?之�?每百?�次 $0.50"
+    pages_builds    = "每�? 500 次建置�?費�?之�?每次 $0.25"
+    total_estimate  = "小�?使用?�通常?��?費�?度內"
   }
 }
 
-# 監控和維護
+# ??��?�維�?
 output "monitoring_urls" {
-  description = "監控和維護相關 URL"
+  description = "??��?�維護相??URL"
   value = {
     cloudflare_dashboard = "https://dash.cloudflare.com/${local.account_id}/workers/services/view/${local.base_project_name}${local.env_suffix}"
     analytics           = "https://dash.cloudflare.com/${local.account_id}/analytics/workers"

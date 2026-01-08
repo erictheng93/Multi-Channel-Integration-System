@@ -13,28 +13,28 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Configuration
-API_BASE="${API_BASE:-https://multi-channel.imfinethankyouandyou.com}"
+API_BASE="${API_BASE:-https://your-api-domain.example.com}"
 TOKEN="${ADMIN_TOKEN:-}"
 
 echo ""
-echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-echo "â•‘                                                       â•‘"
-echo "â•‘   Reset Migration Configuration to 0%                â•‘"
-echo "â•‘   Phase 2.1 - Option B (Full Execution)              â•‘"
-echo "â•‘                                                       â•‘"
-echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+echo "?”â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
+echo "??                                                      ??
+echo "??  Reset Migration Configuration to 0%                ??
+echo "??  Phase 2.1 - Option B (Full Execution)              ??
+echo "??                                                      ??
+echo "?šâ??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â???
 echo ""
 
 # Check if token is provided
 if [ -z "$TOKEN" ]; then
-  echo -e "${RED}âŒ Error: ADMIN_TOKEN environment variable is not set${NC}"
+  echo -e "${RED}??Error: ADMIN_TOKEN environment variable is not set${NC}"
   echo ""
   echo "Please provide admin token:"
   echo "  export ADMIN_TOKEN=\"your-jwt-token-here\""
   echo ""
   echo "To get token:"
-  echo "  1. Login to https://multi-channel.imfinethankyouandyou.com"
-  echo "  2. Open DevTools â†’ Application â†’ Local Storage"
+  echo "  1. Login to https://your-api-domain.example.com"
+  echo "  2. Open DevTools ??Application ??Local Storage"
   echo "  3. Copy 'auth_token' value"
   exit 1
 fi
@@ -47,12 +47,12 @@ echo "Current rollout: $CURRENT_ROLLOUT%"
 echo ""
 
 if [ "$CURRENT_ROLLOUT" = "0" ]; then
-  echo -e "${GREEN}âœ… Migration config is already at 0% rollout${NC}"
+  echo -e "${GREEN}??Migration config is already at 0% rollout${NC}"
   echo "No changes needed."
   exit 0
 fi
 
-echo -e "${YELLOW}âš ï¸  Current rollout is $CURRENT_ROLLOUT%, will reset to 0%${NC}"
+echo -e "${YELLOW}? ï?  Current rollout is $CURRENT_ROLLOUT%, will reset to 0%${NC}"
 echo ""
 
 # Confirmation prompt
@@ -89,10 +89,10 @@ HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
 BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
 
 if [ "$HTTP_STATUS" -eq 200 ]; then
-  echo -e "${GREEN}âœ… Migration config reset successfully${NC}"
+  echo -e "${GREEN}??Migration config reset successfully${NC}"
   echo ""
 else
-  echo -e "${RED}âŒ Failed to reset migration config (HTTP $HTTP_STATUS)${NC}"
+  echo -e "${RED}??Failed to reset migration config (HTTP $HTTP_STATUS)${NC}"
   echo "Response: $BODY"
   exit 1
 fi
@@ -106,13 +106,13 @@ WS_ENABLED=$(echo "$NEW_STATUS" | python -c "import sys, json; print(json.load(s
 SSE_ENABLED=$(echo "$NEW_STATUS" | python -c "import sys, json; print(json.load(sys.stdin).get('sseEnabled', False))" 2>/dev/null || echo "false")
 
 echo "New configuration:"
-echo "  â€¢ Rollout Percentage: $NEW_ROLLOUT%"
-echo "  â€¢ WebSocket Enabled: $WS_ENABLED"
-echo "  â€¢ SSE Enabled: $SSE_ENABLED"
+echo "  ??Rollout Percentage: $NEW_ROLLOUT%"
+echo "  ??WebSocket Enabled: $WS_ENABLED"
+echo "  ??SSE Enabled: $SSE_ENABLED"
 echo ""
 
 if [ "$NEW_ROLLOUT" != "0" ]; then
-  echo -e "${RED}âŒ Verification failed: Rollout is still $NEW_ROLLOUT%${NC}"
+  echo -e "${RED}??Verification failed: Rollout is still $NEW_ROLLOUT%${NC}"
   exit 1
 fi
 
@@ -123,15 +123,15 @@ HEALTH_STATUS=$(echo "$HEALTH_RESPONSE" | python -c "import sys, json; print(jso
 echo "System health: $HEALTH_STATUS"
 echo ""
 
-echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
-echo -e "${GREEN}âœ… Migration Configuration Reset Complete${NC}"
-echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+echo "?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?"
+echo -e "${GREEN}??Migration Configuration Reset Complete${NC}"
+echo "?â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â??â?"
 echo ""
 echo "Summary:"
-echo "  â€¢ Previous rollout: $CURRENT_ROLLOUT%"
-echo "  â€¢ New rollout: 0%"
-echo "  â€¢ All users now using SSE (fallback mode)"
-echo "  â€¢ WebSocket infrastructure ready for gradual rollout"
+echo "  ??Previous rollout: $CURRENT_ROLLOUT%"
+echo "  ??New rollout: 0%"
+echo "  ??All users now using SSE (fallback mode)"
+echo "  ??WebSocket infrastructure ready for gradual rollout"
 echo ""
 echo "Next Steps:"
 echo "  1. Run validation tests: TEST_TOKEN=\$ADMIN_TOKEN bash scripts/test-websocket-do.sh"
@@ -140,6 +140,6 @@ echo "  3. Configure monitoring dashboard"
 echo "  4. Start Week 3 with 5% canary deployment"
 echo ""
 echo "Documentation:"
-echo "  â€¢ Full Plan: PHASE2_MIGRATION_PLAN.md"
-echo "  â€¢ Quick Start: WEBSOCKET_MIGRATION_QUICK_START.md"
+echo "  ??Full Plan: PHASE2_MIGRATION_PLAN.md"
+echo "  ??Quick Start: WEBSOCKET_MIGRATION_QUICK_START.md"
 echo ""

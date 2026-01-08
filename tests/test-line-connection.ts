@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * LINE OA 雙向連接測試工具
- * 測試 LINE OA 與系統的完整連接狀態
- */
+ * LINE OA ?��???��測試工具
+ * 測試 LINE OA ?�系統�?完整??��?�?? */
 
 interface LineConnectionTestConfig {
   webhookUrl: string;
@@ -28,12 +27,11 @@ class LineConnectionTester {
     this.config = config;
   }
 
-  // 測試 1: Webhook 端點可達性
-  async testWebhookReachability(): Promise<TestResult> {
+  // 測試 1: Webhook 端�??��???  async testWebhookReachability(): Promise<TestResult> {
     const startTime = Date.now();
     
     try {
-      console.log('🔗 測試 Webhook 端點可達性...');
+      console.log('?? 測試 Webhook 端�??��???..');
       
       const response = await fetch(this.config.webhookUrl, {
         method: 'POST',
@@ -54,7 +52,7 @@ class LineConnectionTester {
         return {
           test: 'webhook-reachability',
           success: true,
-          message: `Webhook 端點可達 (${response.status})`,
+          message: `Webhook 端�??��? (${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -66,7 +64,7 @@ class LineConnectionTester {
         return {
           test: 'webhook-reachability',
           success: false,
-          message: `Webhook 端點返回錯誤 (${response.status})`,
+          message: `Webhook 端�?返�??�誤 (${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -79,7 +77,7 @@ class LineConnectionTester {
       return {
         test: 'webhook-reachability',
         success: false,
-        message: `Webhook 端點無法連接: ${error.message}`,
+        message: `Webhook 端�??��???��: ${error.message}`,
         responseTime,
         details: { error: error.message }
       };
@@ -91,7 +89,7 @@ class LineConnectionTester {
     const startTime = Date.now();
     
     try {
-      console.log('📨 測試 Webhook 事件處理...');
+      console.log('?�� 測試 Webhook 事件?��?...');
       
       const testEvent = {
         events: [
@@ -99,7 +97,7 @@ class LineConnectionTester {
             type: 'message',
             message: {
               type: 'text',
-              text: 'LINE 連接測試訊息',
+              text: 'LINE ??��測試訊息',
               id: 'test-message-' + Date.now()
             },
             source: {
@@ -112,8 +110,7 @@ class LineConnectionTester {
         destination: 'test-destination'
       };
 
-      // 生成測試簽名（如果有 channel secret）
-      let signature = 'test-signature';
+      // ?��?測試簽�?（�??��? channel secret�?      let signature = 'test-signature';
       if (this.config.lineChannelSecret) {
         signature = await this.generateLineSignature(
           JSON.stringify(testEvent), 
@@ -138,7 +135,7 @@ class LineConnectionTester {
         return {
           test: 'webhook-event-processing',
           success: true,
-          message: `Webhook 事件處理成功 (${response.status})`,
+          message: `Webhook 事件?��??��? (${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -150,7 +147,7 @@ class LineConnectionTester {
         return {
           test: 'webhook-event-processing',
           success: false,
-          message: `Webhook 事件處理失敗 (${response.status})`,
+          message: `Webhook 事件?��?失�? (${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -164,20 +161,19 @@ class LineConnectionTester {
       return {
         test: 'webhook-event-processing',
         success: false,
-        message: `Webhook 事件處理錯誤: ${error.message}`,
+        message: `Webhook 事件?��??�誤: ${error.message}`,
         responseTime,
         details: { error: error.message }
       };
     }
   }
 
-  // 測試 3: LINE API 連接（如果有 access token）
-  async testLineApiConnection(): Promise<TestResult> {
+  // 測試 3: LINE API ??��（�??��? access token�?  async testLineApiConnection(): Promise<TestResult> {
     if (!this.config.lineChannelAccessToken) {
       return {
         test: 'line-api-connection',
         success: false,
-        message: '跳過 LINE API 測試 - 未提供 Channel Access Token',
+        message: '跳�? LINE API 測試 - ?��?�?Channel Access Token',
         details: { reason: 'no-access-token' }
       };
     }
@@ -185,9 +181,9 @@ class LineConnectionTester {
     const startTime = Date.now();
     
     try {
-      console.log('🔑 測試 LINE API 連接...');
+      console.log('?? 測試 LINE API ??��...');
       
-      // 測試 LINE API - 獲取 bot 資訊
+      // 測試 LINE API - ?��? bot 資�?
       const response = await fetch('https://api.line.me/v2/bot/info', {
         method: 'GET',
         headers: {
@@ -203,7 +199,7 @@ class LineConnectionTester {
         return {
           test: 'line-api-connection',
           success: true,
-          message: `LINE API 連接成功 - Bot: ${responseData.displayName}`,
+          message: `LINE API ??��?��? - Bot: ${responseData.displayName}`,
           responseTime,
           details: {
             botInfo: responseData,
@@ -214,7 +210,7 @@ class LineConnectionTester {
         return {
           test: 'line-api-connection',
           success: false,
-          message: `LINE API 連接失敗 (${response.status})`,
+          message: `LINE API ??��失�? (${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -227,20 +223,19 @@ class LineConnectionTester {
       return {
         test: 'line-api-connection',
         success: false,
-        message: `LINE API 連接錯誤: ${error.message}`,
+        message: `LINE API ??��?�誤: ${error.message}`,
         responseTime,
         details: { error: error.message }
       };
     }
   }
 
-  // 測試 4: 測試推送訊息功能（需要真實的 user ID）
-  async testPushMessage(userId?: string): Promise<TestResult> {
+  // 測試 4: 測試?�送�??��??��??�要�?實�? user ID�?  async testPushMessage(userId?: string): Promise<TestResult> {
     if (!this.config.lineChannelAccessToken) {
       return {
         test: 'push-message',
         success: false,
-        message: '跳過推送訊息測試 - 未提供 Channel Access Token',
+        message: '跳�??�送�??�測�?- ?��?�?Channel Access Token',
         details: { reason: 'no-access-token' }
       };
     }
@@ -249,7 +244,7 @@ class LineConnectionTester {
       return {
         test: 'push-message',
         success: false,
-        message: '跳過推送訊息測試 - 未提供測試用戶 ID',
+        message: '跳�??�送�??�測�?- ?��?供測試用??ID',
         details: { reason: 'no-user-id' }
       };
     }
@@ -257,14 +252,14 @@ class LineConnectionTester {
     const startTime = Date.now();
     
     try {
-      console.log('📤 測試推送訊息功能...');
+      console.log('?�� 測試?�送�??��???..');
       
       const pushMessage = {
         to: userId,
         messages: [
           {
             type: 'text',
-            text: `LINE 連接測試 - ${new Date().toLocaleString('zh-TW')}`
+            text: `LINE ??��測試 - ${new Date().toLocaleString('zh-TW')}`
           }
         ]
       };
@@ -286,7 +281,7 @@ class LineConnectionTester {
         return {
           test: 'push-message',
           success: true,
-          message: `推送訊息成功發送到用戶 ${userId.slice(0, 8)}...`,
+          message: `?�送�??��??�發?�到?�戶 ${userId.slice(0, 8)}...`,
           responseTime,
           details: {
             status: response.status,
@@ -298,7 +293,7 @@ class LineConnectionTester {
         return {
           test: 'push-message',
           success: false,
-          message: `推送訊息失敗 (${response.status})`,
+          message: `?�送�??�失??(${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -312,19 +307,18 @@ class LineConnectionTester {
       return {
         test: 'push-message',
         success: false,
-        message: `推送訊息錯誤: ${error.message}`,
+        message: `?�送�??�錯�? ${error.message}`,
         responseTime,
         details: { error: error.message }
       };
     }
   }
 
-  // 測試 5: 檢查系統 API 健康狀態
-  async testSystemHealth(): Promise<TestResult> {
+  // 測試 5: 檢查系統 API ?�康?�??  async testSystemHealth(): Promise<TestResult> {
     const startTime = Date.now();
     
     try {
-      console.log('🏥 測試系統健康狀態...');
+      console.log('?�� 測試系統?�康?�??..');
       
       const baseUrl = this.config.webhookUrl.replace('/api/webhook', '');
       const healthUrl = `${baseUrl}/api/health`;
@@ -341,7 +335,7 @@ class LineConnectionTester {
         return {
           test: 'system-health',
           success: true,
-          message: `系統健康狀態正常`,
+          message: `系統?�康?�?�正常`,
           responseTime,
           details: {
             status: response.status,
@@ -352,7 +346,7 @@ class LineConnectionTester {
         return {
           test: 'system-health',
           success: false,
-          message: `系統健康檢查失敗 (${response.status})`,
+          message: `系統?�康檢查失�? (${response.status})`,
           responseTime,
           details: {
             status: response.status,
@@ -365,14 +359,14 @@ class LineConnectionTester {
       return {
         test: 'system-health',
         success: false,
-        message: `系統健康檢查錯誤: ${error.message}`,
+        message: `系統?�康檢查?�誤: ${error.message}`,
         responseTime,
         details: { error: error.message }
       };
     }
   }
 
-  // 生成 LINE 簽名
+  // ?��? LINE 簽�?
   private async generateLineSignature(body: string, secret: string): Promise<string> {
     try {
       const encoder = new TextEncoder();
@@ -387,25 +381,23 @@ class LineConnectionTester {
       const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
       return btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
     } catch (error) {
-      console.warn('無法生成 LINE 簽名，使用測試簽名');
+      console.warn('?��??��? LINE 簽�?，使?�測試簽??);
       return 'test-signature';
     }
   }
 
-  // 執行所有測試
-  async runAllTests(testUserId?: string): Promise<void> {
-    console.log('🚀 開始 LINE OA 雙向連接測試...\n');
+  // ?��??�?�測�?  async runAllTests(testUserId?: string): Promise<void> {
+    console.log('?? ?��? LINE OA ?��???��測試...\n');
     console.log(`Webhook URL: ${this.config.webhookUrl}`);
-    console.log(`超時設定: ${this.config.timeout}ms`);
-    console.log(`LINE Channel Access Token: ${this.config.lineChannelAccessToken ? '已設定' : '未設定'}`);
-    console.log(`LINE Channel Secret: ${this.config.lineChannelSecret ? '已設定' : '未設定'}`);
+    console.log(`超�?設�?: ${this.config.timeout}ms`);
+    console.log(`LINE Channel Access Token: ${this.config.lineChannelAccessToken ? '已設�? : '?�設�?}`);
+    console.log(`LINE Channel Secret: ${this.config.lineChannelSecret ? '已設�? : '?�設�?}`);
     if (testUserId) {
-      console.log(`測試用戶 ID: ${testUserId.slice(0, 8)}...`);
+      console.log(`測試?�戶 ID: ${testUserId.slice(0, 8)}...`);
     }
     console.log('');
 
-    // 執行所有測試
-    const tests = [
+    // ?��??�?�測�?    const tests = [
       () => this.testSystemHealth(),
       () => this.testWebhookReachability(),
       () => this.testWebhookEventProcessing(),
@@ -418,37 +410,36 @@ class LineConnectionTester {
       this.results.push(result);
       
       if (result.success) {
-        console.log(`✅ ${result.message} (${result.responseTime || 0}ms)`);
+        console.log(`??${result.message} (${result.responseTime || 0}ms)`);
       } else {
-        console.log(`❌ ${result.message} (${result.responseTime || 0}ms)`);
+        console.log(`??${result.message} (${result.responseTime || 0}ms)`);
       }
     }
 
     this.printSummary();
   }
 
-  // 打印測試摘要
+  // ?�印測試?��?
   private printSummary(): void {
     const successful = this.results.filter(r => r.success).length;
     const total = this.results.length;
     
     console.log('\n' + '='.repeat(80));
-    console.log('📊 LINE OA 連接測試摘要');
+    console.log('?? LINE OA ??��測試?��?');
     console.log('='.repeat(80));
     console.log(`總測試數: ${total}`);
-    console.log(`成功: ${successful}`);
-    console.log(`失敗: ${total - successful}`);
-    console.log(`成功率: ${((successful / total) * 100).toFixed(1)}%`);
+    console.log(`?��?: ${successful}`);
+    console.log(`失�?: ${total - successful}`);
+    console.log(`?��??? ${((successful / total) * 100).toFixed(1)}%`);
 
-    // 詳細結果
-    console.log('\n📋 測試詳情:');
+    // 詳細結�?
+    console.log('\n?? 測試詳�?:');
     this.results.forEach(result => {
-      const status = result.success ? '✅' : '❌';
+      const status = result.success ? '?? : '??;
       console.log(`   ${status} ${result.test}: ${result.message}`);
     });
 
-    // 連接狀態評估
-    console.log('\n🔍 連接狀態評估:');
+    // ??��?�?��?�?    console.log('\n?? ??��?�?��?�?');
     
     const webhookTest = this.results.find(r => r.test === 'webhook-reachability');
     const eventTest = this.results.find(r => r.test === 'webhook-event-processing');
@@ -456,56 +447,56 @@ class LineConnectionTester {
     const pushTest = this.results.find(r => r.test === 'push-message');
 
     if (webhookTest?.success && eventTest?.success) {
-      console.log('   📥 接收訊息: ✅ 正常 - 可以接收來自 LINE 的訊息');
+      console.log('   ?�� ?�收訊息: ??�?�� - ?�以?�收來自 LINE ?��???);
     } else {
-      console.log('   📥 接收訊息: ❌ 異常 - 無法正常接收 LINE 訊息');
+      console.log('   ?�� ?�收訊息: ???�常 - ?��?�?��?�收 LINE 訊息');
     }
 
     if (apiTest?.success) {
-      console.log('   📤 發送訊息: ✅ 正常 - 可以發送訊息到 LINE');
+      console.log('   ?�� ?�送�??? ??�?�� - ?�以?�送�??�到 LINE');
       if (pushTest?.success) {
-        console.log('   📤 推送測試: ✅ 成功 - 推送訊息功能正常');
+        console.log('   ?�� ?�送測�? ???��? - ?�送�??��??�正�?);
       } else if (pushTest && !pushTest.success && pushTest.details?.reason !== 'no-user-id') {
-        console.log('   📤 推送測試: ❌ 失敗 - 推送訊息功能異常');
+        console.log('   ?�� ?�送測�? ??失�? - ?�送�??��??�異�?);
       } else {
-        console.log('   📤 推送測試: ⏭️ 跳過 - 未提供測試用戶 ID');
+        console.log('   ?�� ?�送測�? ?��? 跳�? - ?��?供測試用??ID');
       }
     } else if (apiTest && !apiTest.success && apiTest.details?.reason !== 'no-access-token') {
-      console.log('   📤 發送訊息: ❌ 異常 - 無法發送訊息到 LINE');
+      console.log('   ?�� ?�送�??? ???�常 - ?��??�送�??�到 LINE');
     } else {
-      console.log('   📤 發送訊息: ⏭️ 跳過 - 未提供 Channel Access Token');
+      console.log('   ?�� ?�送�??? ?��? 跳�? - ?��?�?Channel Access Token');
     }
 
     // 建議
-    console.log('\n💡 建議:');
+    console.log('\n?�� 建議:');
     if (!webhookTest?.success) {
-      console.log('   • 檢查 Webhook URL 是否正確設定');
-      console.log('   • 確認網域 DNS 設定正確');
-      console.log('   • 檢查 Cloudflare Worker 部署狀態');
+      console.log('   ??檢查 Webhook URL ?�否�?��設�?');
+      console.log('   ??確�?網�? DNS 設�?�?��');
+      console.log('   ??檢查 Cloudflare Worker ?�署?�??);
     }
     
     if (!eventTest?.success && webhookTest?.success) {
-      console.log('   • 檢查 LINE Channel Secret 設定');
-      console.log('   • 確認簽名驗證邏輯正確');
+      console.log('   ??檢查 LINE Channel Secret 設�?');
+      console.log('   ??確�?簽�?驗�??�輯�?��');
     }
     
     if (!apiTest?.success && this.config.lineChannelAccessToken) {
-      console.log('   • 檢查 LINE Channel Access Token 是否有效');
-      console.log('   • 確認 LINE Bot 設定正確');
+      console.log('   ??檢查 LINE Channel Access Token ?�否?��?');
+      console.log('   ??確�? LINE Bot 設�?�?��');
     }
 
     if (!this.config.lineChannelAccessToken) {
-      console.log('   • 設定 LINE Channel Access Token 以測試發送功能');
+      console.log('   ??設�? LINE Channel Access Token 以測試發?��???);
     }
 
     if (!this.config.lineChannelSecret) {
-      console.log('   • 設定 LINE Channel Secret 以進行簽名驗證');
+      console.log('   ??設�? LINE Channel Secret 以進�?簽�?驗�?');
     }
 
     console.log('='.repeat(80));
   }
 
-  // 生成測試報告
+  // ?��?測試?��?
   generateReport(): string {
     const report = {
       timestamp: new Date().toISOString(),
@@ -527,12 +518,10 @@ class LineConnectionTester {
   }
 }
 
-// 主函數
-async function main() {
+// 主函??async function main() {
   const args = process.argv.slice(2);
   
-  // 從命令行參數或環境變數獲取配置
-  const webhookUrl = args[0] || process.env.WEBHOOK_URL || 'https://multi-channel.imfinethankyouandyou.com/api/webhook';
+  // 從命令�??�數?�環境�??�獲?��?�?  const webhookUrl = args[0] || process.env.WEBHOOK_URL || 'https://your-api-domain.example.com/api/webhook';
   const lineChannelAccessToken = args[1] || process.env.LINE_CHANNEL_ACCESS_TOKEN;
   const lineChannelSecret = args[2] || process.env.LINE_CHANNEL_SECRET;
   const testUserId = args[3] || process.env.TEST_USER_ID;
@@ -550,22 +539,21 @@ async function main() {
   try {
     await tester.runAllTests(testUserId);
     
-    // 生成報告文件
+    // ?��??��??�件
     const report = tester.generateReport();
     const fs = await import('fs');
     const { join } = await import('path');
     const reportPath = join(process.cwd(), 'line-connection-test-report.json');
     fs.writeFileSync(reportPath, report);
-    console.log(`\n📄 測試報告已保存到: ${reportPath}`);
+    console.log(`\n?? 測試?��?已�?存到: ${reportPath}`);
     
   } catch (error) {
-    console.error('❌ LINE 連接測試執行失敗:', error);
+    console.error('??LINE ??��測試?��?失�?:', error);
     process.exit(1);
   }
 }
 
-// 如果直接執行此腳本
-if (import.meta.url.endsWith(process.argv[1]) || process.argv[1].includes('test-line-connection.ts')) {
+// 如�??�接?��?此腳??if (import.meta.url.endsWith(process.argv[1]) || process.argv[1].includes('test-line-connection.ts')) {
   main().catch(console.error);
 }
 

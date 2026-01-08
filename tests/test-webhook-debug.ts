@@ -3,7 +3,7 @@ import crypto from 'crypto';
 // WARNING: This is a mock secret for testing purposes only. Do not use this in production.
 // Replace with a real channel secret for actual testing.
 const CHANNEL_SECRET = 'test-channel-secret';
-const WEBHOOK_URL = 'https://multi-channel-dev.imfinethankyouandyou.com/api/webhook';
+const WEBHOOK_URL = 'https://multi-channel-dev.example.com/api/webhook';
 
 async function testWebhookDebug() {
   console.log('Testing LINE webhook with debug information...\n');
@@ -63,7 +63,7 @@ async function testWebhookDebug() {
 
   // Test health check
   console.log('\n4. Testing health check:');
-  const healthResponse = await fetch('https://multi-channel-dev.imfinethankyouandyou.com/api/health');
+  const healthResponse = await fetch('https://multi-channel-dev.example.com/api/health');
   console.log('Health Status:', healthResponse.status);
   console.log('Health Response:', await healthResponse.text());
 }

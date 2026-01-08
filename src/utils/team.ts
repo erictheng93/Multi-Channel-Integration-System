@@ -248,10 +248,11 @@ export async function removeUserFromTeam(
 }
 
 // 生成團隊專屬 QR Code
+// 注意: baseUrl 應從調用方使用 getFrontendUrl(env) 傳入
 export async function generateTeamQRCode(
   db: D1Database,
   teamId: number,
-  baseUrl: string = 'https://multi-channel.imfinethankyouandyou.com'
+  baseUrl: string
 ): Promise<string> {
   // 生成唯一的 QR Code 標識符
   const qrCodeId = `team_${teamId}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;

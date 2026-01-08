@@ -83,8 +83,8 @@ wrangler queues create delayed-messages
  },
  "routes": [
  {
- "pattern": "multi-channel-platform.imfinethankyouandyou.com/*",
- "zone_name": "imfinethankyouandyou.com"
+ "pattern": "multi-channel-platform.example.com/*",
+ "zone_name": "example.com"
  }
  ],
  "d1_databases": [

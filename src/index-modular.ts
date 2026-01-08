@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
 import type { Bindings } from './types';
+import { getAllowedOrigins } from './config/cors';
 
 // 模組導入
 import { authMainHandler } from '@modules/auth';
@@ -31,8 +32,12 @@ const app = new Hono<{ Bindings: Bindings }>();
 // 全域中間件
 app.use('*', logger());
 app.use('*', timing());
+// CORS 使用動態配置 (從環境變量讀取)
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'https://multi-channel.imfinethankyouandyou.com'],
+  origin: (origin, c) => {
+    const allowed = getAllowedOrigins(c.env);
+    return allowed.includes(origin) ? origin : allowed[0] || 'http://localhost:3000';
+  },
   credentials: true,
 }));
 

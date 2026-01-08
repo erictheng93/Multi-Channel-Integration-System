@@ -14,7 +14,7 @@ ite verifies the three critical endpoint fixes:
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-const API_BASE_URL = process.env.API_URL || 'https://multi-channel.imfinethankyouandyou.com/api';
+const API_BASE_URL = process.env.API_URL || 'https://your-api-domain.example.com/api';
 const TEST_TOKEN = process.env.TEST_AUTH_TOKEN || '';
 
 // Test configuration
@@ -28,7 +28,7 @@ describe('API Endpoint Fixes Verification', () => {
 
   beforeAll(() => {
     if (!TEST_TOKEN) {
-      console.warn('тЪая╕П TEST_AUTH_TOKEN not set. Tests will fail if authentication is required.');
+      console.warn('?ая? TEST_AUTH_TOKEN not set. Tests will fail if authentication is required.');
     }
     authHeaders = {
       'Content-Type': 'application/json',
@@ -415,7 +415,7 @@ describe('API Endpoint Fixes Verification', () => {
             method: endpoint.method,
             headers: {
               ...authHeaders,
-              'Origin': 'https://multi-channel.imfinethankyouandyou.com'
+              'Origin': 'https://your-api-domain.example.com'
             }
           }
         );

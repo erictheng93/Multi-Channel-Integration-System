@@ -161,7 +161,7 @@ Start-Sleep -Seconds 10
 # Simple Worker test (optional)
 if (-not $SkipTests) {
     try {
-        $response = Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/system/health" -Method Get -TimeoutSec 30
+        $response = Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/system/health" -Method Get -TimeoutSec 30
         Write-Host "Worker health check passed" -ForegroundColor Green
     } catch {
         Write-Host "Warning: Worker test failed, but continuing frontend deployment: $($_.Exception.Message)" -ForegroundColor Yellow
@@ -208,13 +208,13 @@ Write-Host "=" * 50
 Write-Host "Please verify the following environment variables in Cloudflare Pages Dashboard:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Production environment variables:" -ForegroundColor White
-Write-Host "  VITE_API_BASE_URL = https://multi-channel.imfinethankyouandyou.com" -ForegroundColor Cyan
+Write-Host "  VITE_API_BASE_URL = https://your-api-domain.example.com" -ForegroundColor Cyan
 Write-Host "  VITE_DEV_MODE = false" -ForegroundColor Cyan
 Write-Host "  VITE_ENABLE_DEBUG_LOGS = false" -ForegroundColor Cyan
 Write-Host "  VITE_ENABLE_PERFORMANCE_MONITORING = true" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Preview environment variables:" -ForegroundColor White
-Write-Host "  VITE_API_BASE_URL = https://multi-channel.imfinethankyouandyou.com" -ForegroundColor Cyan
+Write-Host "  VITE_API_BASE_URL = https://your-api-domain.example.com" -ForegroundColor Cyan
 Write-Host "  VITE_DEV_MODE = true" -ForegroundColor Cyan
 Write-Host "  VITE_ENABLE_DEBUG_LOGS = true" -ForegroundColor Cyan
 
@@ -244,7 +244,7 @@ Write-Host "=" * 60
 
 Write-Host ""
 Write-Host "Deployment information:" -ForegroundColor Cyan
-Write-Host "  Backend Worker: https://multi-channel.imfinethankyouandyou.com" -ForegroundColor White
+Write-Host "  Backend Worker: https://your-api-domain.example.com" -ForegroundColor White
 Write-Host "  Frontend Pages: https://$projectName.pages.dev" -ForegroundColor White
 Write-Host "  Deployment time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
 
@@ -264,7 +264,7 @@ Write-Host "  4. Configure monitoring and alerts (recommended)" -ForegroundColor
 Write-Host ""
 Write-Host "Test deployment commands:" -ForegroundColor Yellow
 Write-Host "  # Test Worker API" -ForegroundColor Gray
-Write-Host "  curl https://multi-channel.imfinethankyouandyou.com/api/system/health" -ForegroundColor White
+Write-Host "  curl https://your-api-domain.example.com/api/system/health" -ForegroundColor White
 Write-Host "  # Test frontend" -ForegroundColor Gray
 Write-Host "  curl https://$projectName.pages.dev" -ForegroundColor White
 

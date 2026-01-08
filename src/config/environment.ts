@@ -97,19 +97,21 @@ export const DEVELOPMENT_CONFIG: EnvironmentConfig = {
 
 /**
  * Staging environment configuration
+ * ⚠️ Note: Actual URLs should come from environment variables
+ * These are placeholder values only - set real values via BACKEND_URL, FRONTEND_URL, etc.
  */
 export const STAGING_CONFIG: EnvironmentConfig = {
   name: 'staging',
   frontend: {
-    url: 'https://staging-multi-channel.imfinethankyouandyou.com',
-    wsUrl: 'wss://staging-multi-channel.imfinethankyouandyou.com'
+    url: '', // Set via FRONTEND_URL env var
+    wsUrl: '' // Derived from FRONTEND_URL
   },
   backend: {
-    url: 'https://staging-multi-channel.imfinethankyouandyou.com',
-    wsUrl: 'wss://staging-multi-channel.imfinethankyouandyou.com'
+    url: '', // Set via BACKEND_URL env var
+    wsUrl: '' // Derived from BACKEND_URL
   },
   storage: {
-    publicUrl: 'https://s3-staging.imfinethankyouandyou.com'
+    publicUrl: '' // Set via R2_PUBLIC_URL env var
   },
   features: {
     debug: true,
@@ -120,19 +122,21 @@ export const STAGING_CONFIG: EnvironmentConfig = {
 
 /**
  * Production environment configuration
+ * ⚠️ Note: Actual URLs should come from environment variables
+ * These are placeholder values only - set real values via BACKEND_URL, FRONTEND_URL, etc.
  */
 export const PRODUCTION_CONFIG: EnvironmentConfig = {
   name: 'production',
   frontend: {
-    url: 'https://multi-channel.imfinethankyouandyou.com',
-    wsUrl: 'wss://multi-channel.imfinethankyouandyou.com'
+    url: '', // Set via FRONTEND_URL env var
+    wsUrl: '' // Derived from FRONTEND_URL
   },
   backend: {
-    url: 'https://multi-channel.imfinethankyouandyou.com',
-    wsUrl: 'wss://multi-channel.imfinethankyouandyou.com'
+    url: '', // Set via BACKEND_URL env var
+    wsUrl: '' // Derived from BACKEND_URL
   },
   storage: {
-    publicUrl: 'https://s3.imfinethankyouandyou.com'
+    publicUrl: '' // Set via R2_PUBLIC_URL env var
   },
   features: {
     debug: false,
@@ -143,10 +147,11 @@ export const PRODUCTION_CONFIG: EnvironmentConfig = {
 
 /**
  * Alternative production URLs (for backward compatibility)
+ * ⚠️ Note: Use getAllowedOrigins(env) for dynamic CORS configuration instead
  */
 export const ALTERNATIVE_PRODUCTION_URLS = [
   'https://multi-channel-platform-frontend.pages.dev',
-  'https://mcp.imfinethankyouandyou.com'
+  // Additional URLs should be configured via ADDITIONAL_ALLOWED_ORIGINS env var
 ] as const;
 
 /**

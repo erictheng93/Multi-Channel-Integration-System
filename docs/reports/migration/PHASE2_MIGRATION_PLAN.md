@@ -58,10 +58,10 @@ wrangler d1 list
 wrangler kv namespace list
 
 # 4.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 # 5.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 ```
 
 
@@ -84,7 +84,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-stat
 export TOKEN="<admin-jwt-token>"
 
 # 2. ConversationRoom
-curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/websocket/test-connection?userId=admin-001&conversationId=test-conv-001" \
+curl -X GET "https://your-api-domain.example.com/api/websocket/test-connection?userId=admin-001&conversationId=test-conv-001" \
  -H "Authorization: Bearer $TOKEN"
 
 # :
@@ -103,7 +103,7 @@ curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/websocket/test-c
 
 ```bash
 
-curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/websocket/test-connection?userId=admin-001" \
+curl -X GET "https://your-api-domain.example.com/api/websocket/test-connection?userId=admin-001" \
  -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -113,7 +113,7 @@ curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/websocket/test-c
 
 ```bash
 
-curl -X GET "https://multi-channel.imfinethankyouandyou.com/api/websocket/metrics" \
+curl -X GET "https://your-api-domain.example.com/api/websocket/metrics" \
  -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -130,7 +130,7 @@ echo " Starting WebSocket + Durable Objects Test Suite"
 echo "=================================================="
 
 
-API_BASE="https://multi-channel.imfinethankyouandyou.com"
+API_BASE="https://your-api-domain.example.com"
 TOKEN="${TEST_TOKEN:-your-test-token-here}"
 
 # Test 1: Health Check
@@ -471,7 +471,7 @@ test.describe('WebSocket Real-time Communication', () => {
 
 ```bash
 # (WebSocket rollout 0%)
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -543,7 +543,7 @@ function shouldUserGetWebSocket(rolloutPercentage: number): boolean {
 
 echo " EMERGENCY ROLLBACK: Disabling WebSocket"
 
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -663,7 +663,7 @@ echo " Rollback completed in: $SECONDS seconds"
 
 ```bash
 # 5% Canary ()
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -770,7 +770,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ```bash
 # 20%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -790,7 +790,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ```bash
 # 35%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -816,7 +816,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ```bash
 # 50%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -860,7 +860,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ```bash
 # 70% ( 24 )
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -874,7 +874,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ```bash
 # 85%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -886,7 +886,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ```bash
 # 100%
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{

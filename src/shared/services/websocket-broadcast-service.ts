@@ -479,6 +479,153 @@ export class WebSocketBroadcastService {
   // The fallbackToSSE method has been removed as we are now at 100% WebSocket rollout
   // All events are handled exclusively through WebSocket broadcasting via Durable Objects
 
+  // =================== 🚀 Phase B4: Unified New Message Broadcasting ===================
+
+  /**
+   * 🚀 Phase B4: Unified New Message Broadcast
+   *
+   * This method handles broadcasting new messages to BOTH:
+   * 1. CustomerConversationDO - for conversation detail page real-time updates
+   * 2. MessageBroadcaster (global) - for conversation list page lastMessage updates
+   *
+   * USE THIS METHOD for all new message broadcasts instead of manually broadcasting
+   * to multiple Durable Objects. This ensures consistent behavior and reduces code duplication.
+   *
+   * @param params.conversationId - The conversation ID
+   * @param params.message - Message details (id, content, type, sender info)
+   * @param params.source - Source of the message ('webhook' for customer, 'api' for agent)
+   * @returns Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }>
+   */
+  async broadcastNewMessage(params: {
+    conversationId: string;
+    message: {
+      id: string;
+      content: string;
+      messageType: string;
+      senderType: 'customer' | 'agent';
+      senderId: string;
+      senderName?: string;
+      platform: string;
+      timestamp?: number;
+      deliveryStatus?: string;
+    };
+    source: 'webhook' | 'api';
+  }): Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }> {
+    const { conversationId, message, source } = params;
+    const timestamp = message.timestamp || Date.now();
+
+    console.log('📡 [WebSocket Broadcast] Broadcasting new message', {
+      conversationId,
+      messageId: message.id,
+      senderType: message.senderType,
+      source
+    });
+
+    let conversationBroadcast = false;
+    let globalBroadcast = false;
+
+    // 1. Broadcast to CustomerConversationDO (for conversation detail page)
+    try {
+      if (this.env.CUSTOMER_CONVERSATION_DO) {
+        const conversationDOId = this.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+        const conversationDO = this.env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
+
+        const broadcastMessage = {
+          id: message.id,
+          conversationId,
+          senderType: message.senderType,
+          senderId: message.senderId,
+          content: message.content,
+          messageType: message.messageType,
+          platform: message.platform,
+          timestamp,
+          createdAt: new Date(timestamp).toISOString(),
+          deliveryStatus: message.deliveryStatus || 'delivered',
+          senderName: message.senderName
+        };
+
+        const notifyRequest = new Request('https://customer-conversation-do/notify-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            message: broadcastMessage
+          })
+        });
+
+        const response = await conversationDO.fetch(notifyRequest);
+        conversationBroadcast = response.ok;
+
+        if (conversationBroadcast) {
+          console.log('✅ [WebSocket Broadcast] CustomerConversationDO broadcast successful');
+        } else {
+          console.warn('⚠️ [WebSocket Broadcast] CustomerConversationDO broadcast failed', {
+            status: response.status
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] CustomerConversationDO broadcast error:', error);
+    }
+
+    // 2. Broadcast globally via MessageBroadcaster (for conversation list page)
+    try {
+      if (this.env.MESSAGE_BROADCASTER) {
+        const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
+        const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+        const globalEvent: DurableObjectEvent = {
+          id: crypto.randomUUID(),
+          type: 'new_message',
+          source,
+          timestamp,
+          conversationId,
+          data: {
+            conversationId,
+            content: message.content,
+            messageType: message.messageType,
+            senderType: message.senderType,
+            senderId: message.senderId,
+            senderName: message.senderName,
+            platform: message.platform,
+            timestamp
+          },
+          priority: 'normal'
+        };
+
+        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: globalEvent,
+            target: { type: 'global', targets: ['all'] }
+          })
+        }));
+
+        globalBroadcast = globalResponse.ok;
+
+        if (globalBroadcast) {
+          console.log('✅ [WebSocket Broadcast] MessageBroadcaster global broadcast successful');
+        } else {
+          console.warn('⚠️ [WebSocket Broadcast] MessageBroadcaster global broadcast failed', {
+            status: globalResponse.status
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] MessageBroadcaster global broadcast error:', error);
+    }
+
+    console.log('📡 [WebSocket Broadcast] New message broadcast completed', {
+      conversationId,
+      messageId: message.id,
+      conversationBroadcast,
+      globalBroadcast
+    });
+
+    return { conversationBroadcast, globalBroadcast };
+  }
+
   // =================== Configuration and Health ===================
 
   /**

@@ -13,7 +13,7 @@ param(
 
 if ($Help) {
     Write-Host @"
-üîß Developer One-Click Deployment Script
+?îß Developer One-Click Deployment Script
 
 Usage:
   .\developer-deploy.ps1 [options]
@@ -36,7 +36,7 @@ Examples:
     exit 0
 }
 
-Write-Host "üîß Developer Deployment Starting..." -ForegroundColor Green
+Write-Host "?îß Developer Deployment Starting..." -ForegroundColor Green
 Write-Host "Time: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Gray
 
 # Check Cloudflare login
@@ -60,7 +60,7 @@ if (-not $Force -and -not $BackendOnly -and -not $FrontendOnly) {
 
 # Backend deployment
 if (-not $FrontendOnly) {
-    Write-Host "`nüì¶ Deploying Backend Worker..." -ForegroundColor Cyan
+    Write-Host "`n?ì¶ Deploying Backend Worker..." -ForegroundColor Cyan
     
     Write-Host "Deploying Worker..." -ForegroundColor Yellow
     wrangler deploy --env production
@@ -73,7 +73,7 @@ if (-not $FrontendOnly) {
     # Quick health check
     Start-Sleep -Seconds 3
     try {
-        $response = Invoke-RestMethod -Uri "https://multi-channel.imfinethankyouandyou.com/api/system/health" -Method Get -TimeoutSec 10
+        $response = Invoke-RestMethod -Uri "https://your-api-domain.example.com/api/system/health" -Method Get -TimeoutSec 10
         Write-Host "Backend health check: OK" -ForegroundColor Green
     } catch {
         Write-Host "Warning: Backend health check failed: $($_.Exception.Message)" -ForegroundColor Yellow
@@ -82,7 +82,7 @@ if (-not $FrontendOnly) {
 
 # Frontend deployment  
 if (-not $BackendOnly) {
-    Write-Host "`nüåê Deploying Frontend..." -ForegroundColor Cyan
+    Write-Host "`n?? Deploying Frontend..." -ForegroundColor Cyan
     
     # Build frontend if needed
     if (-not $SkipBuild) {
@@ -125,16 +125,16 @@ if (-not $BackendOnly) {
 }
 
 # Summary
-Write-Host "`n‚úÖ Developer Deployment Complete!" -ForegroundColor Green
+Write-Host "`n??Developer Deployment Complete!" -ForegroundColor Green
 Write-Host "=" * 40
 
 if (-not $BackendOnly -and -not $FrontendOnly) {
-    Write-Host "Backend:  https://multi-channel.imfinethankyouandyou.com" -ForegroundColor Cyan
+    Write-Host "Backend:  https://your-api-domain.example.com" -ForegroundColor Cyan
     Write-Host "Frontend: https://multi-channel-platform-frontend.pages.dev" -ForegroundColor Cyan
 } elseif ($BackendOnly) {
-    Write-Host "Backend:  https://multi-channel.imfinethankyouandyou.com" -ForegroundColor Cyan
+    Write-Host "Backend:  https://your-api-domain.example.com" -ForegroundColor Cyan
 } elseif ($FrontendOnly) {
     Write-Host "Frontend: https://multi-channel-platform-frontend.pages.dev" -ForegroundColor Cyan
 }
 
-Write-Host "`nüöÄ Deployment completed in $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Green
+Write-Host "`n?? Deployment completed in $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Green

@@ -4,7 +4,7 @@
 
 ### LINE Developers Console
 ```
-Webhook URL: https://multi-channel.imfinethankyouandyou.com/api/webhook
+Webhook URL: https://your-api-domain.example.com/api/webhook
 Use webhook:
 Webhook redelivery:
 ```
@@ -12,7 +12,7 @@ Webhook redelivery:
 ### Webhook URL
 ```bash
 # webhook endpoint
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/webhook \
+curl -X POST https://your-api-domain.example.com/api/webhook \
  -H "Content-Type: application/json" \
  -d '{"test": "ping"}'
 ```
@@ -104,7 +104,7 @@ SELECT * FROM conversations ORDER BY created_at DESC LIMIT 10;
 const crypto = require('crypto');
 
 //
-const WEBHOOK_URL = 'https://multi-channel.imfinethankyouandyou.com/api/webhook';
+const WEBHOOK_URL = 'https://your-api-domain.example.com/api/webhook';
 const CHANNEL_SECRET = ' channel secret'; // LINE Developers Console
 
 //

@@ -1,7 +1,7 @@
 # Collaboration API
 
 ****: 2025-10-02
-****: Production (https://multi-channel.imfinethankyouandyou.com)
+****: Production (https://your-api-domain.example.com)
 ****: Automated Testing
 ****: 1.0.0
 
@@ -27,7 +27,7 @@ Collaboration **WebSocket (primary) + SSE (fallback)**
 ****:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/health
+ https://your-api-domain.example.com/api/collaboration/health
 ```
 
 **** (Worker ):
@@ -71,7 +71,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ****:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/collaboration/stats
+ https://your-api-domain.example.com/api/collaboration/stats
 ```
 
 ****:
@@ -109,7 +109,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ****:
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 ```
 
 ****:
@@ -170,7 +170,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
 
 ****:
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 ```
 
 ****:

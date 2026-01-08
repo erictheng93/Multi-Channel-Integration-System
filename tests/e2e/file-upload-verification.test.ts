@@ -1,40 +1,40 @@
 /**
- * 文件上传端到端验证测试
- * 测试实际的文件上传到R2存储功能
+ * ?�件上�?端到端�?证�?�?
+ * 测�?实�??��?件�?传到R2存储?�能
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
 
-// 测试配置
-const API_BASE_URL = 'https://multi-channel.imfinethankyouandyou.com';
-const R2_PUBLIC_URL = 'https://s3.imfinethankyouandyou.com';
+// 测�??�置
+const API_BASE_URL = 'https://your-api-domain.example.com';
+const R2_PUBLIC_URL = 'https://your-storage-domain.example.com';
 
-// 测试用户凭证（需要从环境变量获取或使用测试账号）
+// 测�??�户?��?（�?要�??��??��??��??�使?��?试账?��?
 let authToken: string;
 let testMessageId: string;
 let testConversationId: string;
 
-describe('文件上传到R2存储 - E2E验证', () => {
+describe('?�件上�??�R2存储 - E2E验�?', () => {
 
   beforeAll(async () => {
-    // 注意：这里需要先登录获取token
-    // 或者从环境变量中读取测试token
-    console.log('⚠️  需要设置测试用户token才能运行完整测试');
-    console.log('💡 提示：export TEST_AUTH_TOKEN=your_token');
+    // 注�?：�??��?要�??��??��?token
+    // ?�者�??��??��?中读?��?试token
+    console.log('?��?  ?�要设置�?试用?�token?�能运�?完整测�?');
+    console.log('?�� ?�示：export TEST_AUTH_TOKEN=your_token');
 
     authToken = process.env.TEST_AUTH_TOKEN || '';
 
     if (!authToken) {
-      console.warn('⚠️  警告：未设置TEST_AUTH_TOKEN，将跳过需要认证的测试');
+      console.warn('?��?  警�?：未设置TEST_AUTH_TOKEN，�?跳�??�要认证�?测�?');
     }
   });
 
-  describe('1️⃣ 健康检查 - 验证后端服务可用', () => {
-    it('应该能够访问文件管理健康检查端点', async () => {
+  describe('1️⃣ ?�康检??- 验�??�端?�务?�用', () => {
+    it('应该?��?访问?�件管�??�康检?�端??, async () => {
       const response = await fetch(`${API_BASE_URL}/api/files/health`);
       const data = await response.json();
 
-      console.log('✅ 健康检查响应:', data);
+      console.log('???�康检?��?�?', data);
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
@@ -42,49 +42,49 @@ describe('文件上传到R2存储 - E2E验证', () => {
       expect(data.data?.r2Available).toBe(true);
     });
 
-    it('应该能够访问消息处理健康检查端点', async () => {
+    it('应该?��?访问消息处�??�康检?�端??, async () => {
       const response = await fetch(`${API_BASE_URL}/api/messages/health`);
       const data = await response.json();
 
-      console.log('✅ 消息健康检查响应:', data);
+      console.log('??消息?�康检?��?�?', data);
 
       expect(response.ok).toBe(true);
       expect(data.success).toBe(true);
     });
   });
 
-  describe('2️⃣ R2配置验证', () => {
-    it('R2公开URL应该正确配置', () => {
+  describe('2️⃣ R2?�置验�?', () => {
+    it('R2?��?URL应该�?��?�置', () => {
       expect(R2_PUBLIC_URL).toBeTruthy();
       expect(R2_PUBLIC_URL).toMatch(/^https?:\/\//);
-      console.log('✅ R2公开URL:', R2_PUBLIC_URL);
+      console.log('??R2?��?URL:', R2_PUBLIC_URL);
     });
 
-    it('应该能够访问R2域名', async () => {
+    it('应该?��?访问R2?��?', async () => {
       const response = await fetch(R2_PUBLIC_URL, { method: 'HEAD' });
 
-      // R2 bucket可能返回403（未授权）或404（不存在的key）
-      // 但域名应该是可达的，不应该是网络错误
-      console.log(`✅ R2域名状态: ${response.status} ${response.statusText}`);
+      // R2 bucket?�能返�?403（未?��?）�?404（�?存在?�key�?
+      // 但�??��?该是?�达?��?不�?该是网�??�误
+      console.log(`??R2?��??��? ${response.status} ${response.statusText}`);
 
-      // 只要不是网络错误，就说明域名配置正确
+      // ?��?不是网�??�误，就说�??��??�置�?��
       expect(response).toBeDefined();
     });
   });
 
-  describe('3️⃣ 文件上传端点测试（需要认证）', () => {
-    it.skipIf(!authToken)('应该能够上传文件到通用上传端点', async () => {
-      // 创建测试文件
+  describe('3️⃣ ?�件上�?端点测�?（�?要认证�?', () => {
+    it.skipIf(!authToken)('应该?��?上�??�件?�通用上�?端点', async () => {
+      // ?�建测�??�件
       const testFileContent = 'Test file content for R2 upload verification';
       const blob = new Blob([testFileContent], { type: 'text/plain' });
       const file = new File([blob], 'test-upload.txt', { type: 'text/plain' });
 
-      // 准备FormData
+      // ?��?FormData
       const formData = new FormData();
       formData.append('file', file);
       formData.append('platform', 'system');
 
-      // 发送上传请求
+      // ?�送�?传请�?
       const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
         method: 'POST',
         headers: {
@@ -95,14 +95,14 @@ describe('文件上传到R2存储 - E2E验证', () => {
 
       const result = await response.json();
 
-      console.log('📤 文件上传结果:', result);
+      console.log('?�� ?�件上�?结�?:', result);
 
       expect(response.ok).toBe(true);
       expect(result.success).toBe(true);
       expect(result.data?.url).toBeTruthy();
       expect(result.data?.url).toContain(R2_PUBLIC_URL);
 
-      // 验证文件是否真正存储到R2
+      // 验�??�件?�否?�正存储?�R2
       if (result.data?.url) {
         const fileResponse = await fetch(result.data.url);
         expect(fileResponse.ok).toBe(true);
@@ -110,17 +110,17 @@ describe('文件上传到R2存储 - E2E验证', () => {
         const content = await fileResponse.text();
         expect(content).toBe(testFileContent);
 
-        console.log('✅ 文件成功上传到R2并可访问');
+        console.log('???�件?��?上�??�R2并可访问');
       }
     });
 
-    it.skipIf(!authToken || !testMessageId)('应该能够为消息添加附件', async () => {
+    it.skipIf(!authToken || !testMessageId)('应该?��?为�??�添?��?�?, async () => {
       if (!testMessageId) {
-        console.log('⚠️  跳过：需要先创建测试消息');
+        console.log('?��?  跳�?：�?要�??�建测�?消息');
         return;
       }
 
-      // 创建测试PDF文件（模拟）
+      // ?�建测�?PDF?�件（模?��?
       const pdfContent = '%PDF-1.4 Test PDF Content';
       const blob = new Blob([pdfContent], { type: 'application/pdf' });
       const file = new File([blob], 'contract.pdf', { type: 'application/pdf' });
@@ -141,7 +141,7 @@ describe('文件上传到R2存储 - E2E验证', () => {
 
       const result = await response.json();
 
-      console.log('📎 附件上传结果:', result);
+      console.log('?? ?�件上�?结�?:', result);
 
       expect(response.ok).toBe(true);
       expect(result.success).toBe(true);
@@ -151,23 +151,23 @@ describe('文件上传到R2存储 - E2E验证', () => {
     });
   });
 
-  describe('4️⃣ 配置验证总结', () => {
-    it('应该确认所有关键配置正确', () => {
+  describe('4️⃣ ?�置验�??��?', () => {
+    it('应该确认?�?�关?��?置正�?, () => {
       const configReport = {
-        '后端API地址': API_BASE_URL,
-        'R2公开URL': R2_PUBLIC_URL,
-        '认证token设置': authToken ? '✅ 已设置' : '❌ 未设置',
-        '文件上传端点': [
+        '?�端API?��?': API_BASE_URL,
+        'R2?��?URL': R2_PUBLIC_URL,
+        '认�?token设置': authToken ? '??已设�? : '???�设�?,
+        '?�件上�?端点': [
           `${API_BASE_URL}/api/files/upload`,
           `${API_BASE_URL}/api/messages/:id/attachments`
         ],
-        '健康检查端点': [
+        '?�康检?�端??: [
           `${API_BASE_URL}/api/files/health`,
           `${API_BASE_URL}/api/messages/health`
         ]
       };
 
-      console.log('\n📋 配置验证报告:');
+      console.log('\n?? ?�置验�??��?:');
       console.log(JSON.stringify(configReport, null, 2));
 
       expect(API_BASE_URL).toBeTruthy();
@@ -176,34 +176,34 @@ describe('文件上传到R2存储 - E2E验证', () => {
   });
 });
 
-describe('📊 测试使用说明', () => {
-  it('应该显示如何运行完整测试', () => {
+describe('?? 测�?使用说�?', () => {
+  it('应该?�示如�?运�?完整测�?', () => {
     const instructions = `
-╔════════════════════════════════════════════════════════════╗
-║          文件上传E2E测试使用说明                            ║
-╠════════════════════════════════════════════════════════════╣
-║                                                             ║
-║ 1. 获取测试token                                            ║
-║    - 登录系统获取JWT token                                  ║
-║    - 或使用测试账号的token                                  ║
-║                                                             ║
-║ 2. 设置环境变量                                             ║
-║    export TEST_AUTH_TOKEN=your_jwt_token_here              ║
-║                                                             ║
-║ 3. 运行测试                                                 ║
-║    npm test tests/e2e/file-upload-verification.test.ts     ║
-║                                                             ║
-║ 4. 查看测试结果                                             ║
-║    - ✅ 健康检查通过                                        ║
-║    - ✅ R2配置正确                                          ║
-║    - ✅ 文件上传成功                                        ║
-║    - ✅ 文件可从R2下载                                      ║
-║                                                             ║
-║ 当前配置:                                                   ║
-║ - 后端API: ${API_BASE_URL}                                 ║
-║ - R2存储: ${R2_PUBLIC_URL}                                 ║
-║                                                             ║
-╚════════════════════════════════════════════════════════════╝
+?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?
+??         ?�件上�?E2E测�?使用说�?                            ??
+?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??�╣
+??                                                            ??
+??1. ?��?测�?token                                            ??
+??   - ?��?系�??��?JWT token                                  ??
+??   - ?�使?��?试账?��?token                                  ??
+??                                                            ??
+??2. 设置?��??��?                                             ??
+??   export TEST_AUTH_TOKEN=your_jwt_token_here              ??
+??                                                            ??
+??3. 运�?测�?                                                 ??
+??   npm test tests/e2e/file-upload-verification.test.ts     ??
+??                                                            ??
+??4. ?��?测�?结�?                                             ??
+??   - ???�康检?�通�?                                        ??
+??   - ??R2?�置�?��                                          ??
+??   - ???�件上�??��?                                        ??
+??   - ???�件?��?R2下载                                      ??
+??                                                            ??
+??当�??�置:                                                   ??
+??- ?�端API: ${API_BASE_URL}                                 ??
+??- R2存储: ${R2_PUBLIC_URL}                                 ??
+??                                                            ??
+?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?
     `;
 
     console.log(instructions);

@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 // Test configuration
-const API_BASE_URL = process.env.API_BASE_URL || 'https://multi-channel.imfinethankyouandyou.com';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://your-api-domain.example.com';
 const TEST_TIMEOUT = 30000;
 
 // Helper to get auth token

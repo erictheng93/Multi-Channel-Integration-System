@@ -34,7 +34,7 @@
 
 ****:
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 # : {"error":"Missing or invalid authorization header"}
 ```
 
@@ -92,10 +92,10 @@ app.get('/api/websocket/migration-status', async (c) => {
 
 ****:
 ```bash
- curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+ curl https://your-api-domain.example.com/api/websocket/health
 # : {"status":"healthy","websocketEnabled":true,...}
 
- curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+ curl https://your-api-domain.example.com/api/websocket/migration-status
 # : {"enableWebSocket":true,"enableSSE":true,...}
 ```
 
@@ -178,7 +178,7 @@ app.get('/api/websocket/migration-status', async (c) => {
 
 #### 1.
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/system/health
+curl https://your-api-domain.example.com/api/system/health
 ```
 ****:
 ```json
@@ -193,7 +193,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/system/health
 
 #### 2. WebSocket
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 ```
 ****:
 ```json
@@ -216,7 +216,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
 
 #### 3. WebSocket
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 ```
 ****:
 ```json
@@ -284,7 +284,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-stat
 #### R2 Bucket
 ```
  R2_BUCKET multi-channel-platform-attachments
- R2_PUBLIC_URL https://s3.imfinethankyouandyou.com
+ R2_PUBLIC_URL https://your-storage-domain.example.com
 ```
 
 #### Environment Variables
@@ -393,24 +393,24 @@ console.log(' [Startup] WebSocket routes mounted at /api/websocket');
 #### 1. WebSocket
 ```bash
 # JWT token
-TOKEN=$(curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+TOKEN=$(curl -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{"username":"admin","password":"yourpass"}' | jq -r '.token')
 
 # WebSocket ( WebSocket )
-wscat -c "wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect?userId=1&conversationId=test_123&token=$TOKEN&role=admin"
+wscat -c "wss://your-api-domain.example.com/api/websocket/connect?userId=1&conversationId=test_123&token=$TOKEN&role=admin"
 ```
 
 #### 2.
 ```bash
 # WebSocket
-watch -n 5 "curl -s https://multi-channel.imfinethankyouandyou.com/api/websocket/health | jq"
+watch -n 5 "curl -s https://your-api-domain.example.com/api/websocket/health | jq"
 ```
 
 #### 3. Rollout ()
 ```bash
 # 75% WebSocket
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{"rolloutPercentage": 75}'
@@ -616,13 +616,13 @@ curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migrat
 
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/system/health
+curl https://your-api-domain.example.com/api/system/health
 
 # WebSocket
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health
+curl https://your-api-domain.example.com/api/websocket/health
 
 
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+curl https://your-api-domain.example.com/api/websocket/migration-status
 ```
 
 
@@ -666,12 +666,12 @@ npm run perf:baseline:sse
 ****:
 ```bash
 # token
-TOKEN=$(curl -X POST https://multi-channel.imfinethankyouandyou.com/api/auth/login \
+TOKEN=$(curl -X POST https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
  -d '{"username":"your_user","password":"your_pass"}' | jq -r '.token')
 
 # token
-wscat -c "wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect?userId=1&token=$TOKEN&role=agent"
+wscat -c "wss://your-api-domain.example.com/api/websocket/connect?userId=1&token=$TOKEN&role=agent"
 ```
 
 ### : Durable Objects binding not found

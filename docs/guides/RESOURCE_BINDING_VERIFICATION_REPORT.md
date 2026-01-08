@@ -118,7 +118,7 @@
 
 3. ****
  ```bash
- curl https://multi-channel-platform.imfinethankyouandyou.com/api/health
+ curl https://multi-channel-platform.example.com/api/health
  ```
 
 

@@ -36,6 +36,9 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
 
   return {
     cors: {
+      // 使用動態配置 - 在運行時從環境變量讀取
+      // 開發環境: 只允許 localhost
+      // 生產環境: 從 FRONTEND_URL, BACKEND_URL 環境變量讀取 (使用 getAllowedOrigins)
       allowedOrigins: isDevelopment
         ? [
             'http://localhost:3000',
@@ -43,12 +46,7 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
             'http://localhost:8787',
             'http://127.0.0.1:3000',
           ]
-        : [
-            'https://multi-channel.imfinethankyouandyou.com',
-            'http://localhost:3000',
-            'https://localhost:3000',
-            // Allow development access to production API
-          ],
+        : [], // Production origins are dynamically configured via getAllowedOrigins(env)
       allowCredentials: true,
       maxAge: CACHE_TTL.CORS_MAX_AGE,
     },

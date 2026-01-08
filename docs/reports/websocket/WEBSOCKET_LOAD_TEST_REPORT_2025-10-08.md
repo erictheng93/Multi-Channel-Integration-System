@@ -10,7 +10,7 @@
 
 - ****: 100
 - ****: 60 ( 80.65 )
-- **WebSocket **: `wss://multi-channel.imfinethankyouandyou.com/api/websocket/connect`
+- **WebSocket **: `wss://your-api-domain.example.com/api/websocket/connect`
 - ****: JWT Token ()
 - ****: Node.js + ws (v8.18.3)
 

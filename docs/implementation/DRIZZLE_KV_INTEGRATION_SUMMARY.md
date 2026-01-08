@@ -230,7 +230,7 @@ npm run build
 npm run deploy
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/
+curl https://your-api-domain.example.com/
 ```
 
 

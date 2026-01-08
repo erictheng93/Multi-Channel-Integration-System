@@ -9,7 +9,7 @@
 
 ### Step 1: 75%
 ```bash
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -19,7 +19,7 @@ curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migra
 
 ### Step 2: 100% ()
 ```bash
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{

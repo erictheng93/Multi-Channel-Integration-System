@@ -1,30 +1,30 @@
-# Phase 1: ConfigForm.vue 表單欄位增強指南
+# Phase 1: ConfigForm.vue 表單欄�?增強?��?
 
-## 📋 概述
+## ?? 概述
 
-本文檔提供 `web-installer/frontend/src/views/ConfigForm.vue` 需要添加的新表單欄位。這些欄位對應 Phase 1 核心配置收集功能。
+?��?檔�?�?`web-installer/frontend/src/views/ConfigForm.vue` ?�要添?��??�表?��?位。這�?欄�?對�? Phase 1 ?��??�置?��??�能??
 
-## ✅ 後端已完成的更改
+## ??後端已�??��??�改
 
-- ✅ `DeploymentConfig` 類型已更新 (backend/src/types/deployment.ts)
-- ✅ `ConfigGenerator` 已增強 (backend/src/services/ConfigGenerator.ts)
-- ✅ `DeploymentOrchestrator` 已更新 (backend/src/durable-objects/DeploymentOrchestrator.ts)
-- ✅ Frontend types 已更新 (frontend/src/types/index.ts)
-- ✅ formData 狀態已更新 (frontend/src/views/ConfigForm.vue:344-365)
-- ✅ handleSubmit 邏輯已更新 (frontend/src/views/ConfigForm.vue:500-522)
+- ??`DeploymentConfig` 類�?已更??(backend/src/types/deployment.ts)
+- ??`ConfigGenerator` 已�?�?(backend/src/services/ConfigGenerator.ts)
+- ??`DeploymentOrchestrator` 已更??(backend/src/durable-objects/DeploymentOrchestrator.ts)
+- ??Frontend types 已更??(frontend/src/types/index.ts)
+- ??formData ?�?�已?�新 (frontend/src/views/ConfigForm.vue:344-365)
+- ??handleSubmit ?�輯已更??(frontend/src/views/ConfigForm.vue:500-522)
 
-## 📝 需要添加的表單欄位 (模板部分)
+## ?? ?�要添?��?表單欄�? (模板?��?)
 
-### 方案 A: 完整實施 (推薦)
+### ?��? A: 完整實施 (?�薦)
 
-在 `ConfigForm.vue` 模板中添加以下欄位：
+??`ConfigForm.vue` 模板中添?�以下�?位�?
 
-#### 1. Step 1: 基礎配置 - 添加 R2 Public URL 欄位
+#### 1. Step 1: ?��??�置 - 添�? R2 Public URL 欄�?
 
-**插入位置**: 在 `customDomain` 欄位之後 (約第 108 行後)
+**?�入位置**: ??`customDomain` 欄�?之�? (約第 108 行�?)
 
 ```vue
-<!-- 🆕 Phase 1: R2 Custom Domain -->
+<!-- ?? Phase 1: R2 Custom Domain -->
 <div class="form-group">
   <label for="r2PublicUrl" class="form-label">
     R2 Public URL (Optional)
@@ -48,12 +48,12 @@
 </div>
 ```
 
-#### 2. Step 2: LINE OA 配置 - 添加 LINE Bot ID 和 LIFF ID 欄位
+#### 2. Step 2: LINE OA ?�置 - 添�? LINE Bot ID ??LIFF ID 欄�?
 
-**插入位置**: 在現有 LINE 欄位之前 (約第 127 行前)
+**?�入位置**: ?�現??LINE 欄�?之�? (約第 127 行�?)
 
 ```vue
-<!-- 🆕 Phase 1: LINE Bot ID -->
+<!-- ?? Phase 1: LINE Bot ID -->
 <div class="form-group">
   <label for="lineBotId" class="form-label">
     LINE Bot ID (Basic ID) {{ formData.enableLineIntegration ? '*' : '' }}
@@ -74,11 +74,11 @@
     {{ errors.lineBotId }}
   </div>
   <div class="form-hint">
-    Required for QR Code generation. Find it in LINE Developers Console → Channel Settings → Basic settings
+    Required for QR Code generation. Find it in LINE Developers Console ??Channel Settings ??Basic settings
   </div>
 </div>
 
-<!-- 🆕 Phase 1: LINE LIFF ID -->
+<!-- ?? Phase 1: LINE LIFF ID -->
 <div class="form-group">
   <label for="lineLiffId" class="form-label">
     LINE LIFF ID (Optional)
@@ -97,14 +97,14 @@
     {{ errors.lineLiffId }}
   </div>
   <div class="form-hint">
-    Create a LIFF app in LINE Developers Console → LIFF tab
+    Create a LIFF app in LINE Developers Console ??LIFF tab
   </div>
 </div>
 ```
 
-#### 3. 更新 handleSkipLineChange 函數
+#### 3. ?�新 handleSkipLineChange ?�數
 
-**位置**: Script 部分 (約第 398 行)
+**位置**: Script ?��? (約第 398 �?
 
 ```typescript
 function handleSkipLineChange(): void {
@@ -125,9 +125,9 @@ function handleSkipLineChange(): void {
 }
 ```
 
-#### 4. 更新 Step 1 驗證邏輯 (可選但推薦)
+#### 4. ?�新 Step 1 驗�??�輯 (?�選但推??
 
-**位置**: validateStep 函數內 (約第 414 行)
+**位置**: validateStep ?�數??(約第 414 �?
 
 ```typescript
 if (step === 0) {
@@ -144,9 +144,9 @@ if (step === 0) {
 }
 ```
 
-#### 5. 更新 Step 2 驗證邏輯
+#### 5. ?�新 Step 2 驗�??�輯
 
-**位置**: validateStep 函數內 (約第 447 行)
+**位置**: validateStep ?�數??(約第 447 �?
 
 ```typescript
 if (step === 1 && !skipLineConfig.value) {
@@ -169,66 +169,66 @@ if (step === 1 && !skipLineConfig.value) {
 }
 ```
 
-### 方案 B: 最小化實施 (快速驗證)
+### ?��? B: ?�小�?實施 (快速�?�?
 
-如果想快速測試，只需添加 **最關鍵的兩個欄位**：
+如�??�快?�測試�??��?添�? **?�?�鍵?�兩?��?�?*�?
 
-1. **LINE Bot ID** (必需 - 用於 QR Code)
-2. **R2 Public URL** (可選但重要)
+1. **LINE Bot ID** (必�? - ?�於 QR Code)
+2. **R2 Public URL** (?�選但�?�?
 
-其他欄位 (LINE LIFF ID, logLevel) 可以使用默認值或稍後添加。
+?��?欄�? (LINE LIFF ID, logLevel) ?�以使用默�??��?稍�?添�???
 
-## 🧪 測試步驟
+## ?�� 測試步�?
 
-完成添加後，執行以下測試：
+完�?添�?後�??��?以�?測試�?
 
 ```bash
 # 1. 後端測試
 cd web-installer/backend
 npm install
-npm test  # 應該通過所有測試
+npm test  # ?�該?��??�?�測�?
 
-# 2. 前端開發
+# 2. ?�端?�發
 cd web-installer/frontend
 npm install
-npm run dev  # 啟動開發服務器
+npm run dev  # ?��??�發?��???
 
-# 3. 瀏覽器測試
-# - 訪問 http://localhost:5173 (或顯示的端口)
-# - 測試配置表單：
-#   - 填寫基本信息
-#   - 測試 LINE Bot ID 驗證 (格式: @xxxxxx)
-#   - 測試 R2 URL 驗證 (格式: https://...)
-#   - 測試跳過 LINE 配置功能
-#   - 檢查所有欄位是否正確提交
+# 3. ?�覽?�測�?
+# - 訪�? http://localhost:5173 (?�顯示�?端口)
+# - 測試?�置表單�?
+#   - 填寫?�本信息
+#   - 測試 LINE Bot ID 驗�? (?��?: @xxxxxx)
+#   - 測試 R2 URL 驗�? (?��?: https://...)
+#   - 測試跳�? LINE ?�置?�能
+#   - 檢查?�?��?位是?�正確�?�?
 ```
 
-## 📌 注意事項
+## ?? 注�?事�?
 
-1. **URL 自動推導**: 如果用戶提供了 `customDomain`，`frontendUrl` 和 `backendUrl` 可以自動推導，因此這些欄位可以標記為 "Optional (auto-generated)"
+1. **URL ?��??��?**: 如�??�戶?��?�?`customDomain`，`frontendUrl` ??`backendUrl` ?�以?��??��?，�?此這�?欄�??�以標�???"Optional (auto-generated)"
 
-2. **LINE 配置可選性**: LINE Bot ID 和 LIFF ID 應該：
-   - 如果用戶勾選 "Skip LINE configuration"，則不驗證
-   - 如果用戶要配置 LINE，則 Bot ID 必填，LIFF ID 可選
+2. **LINE ?�置?�選??*: LINE Bot ID ??LIFF ID ?�該�?
+   - 如�??�戶?�選 "Skip LINE configuration"，�?不�?�?
+   - 如�??�戶要�?�?LINE，�? Bot ID 必填，LIFF ID ?�選
 
-3. **字段提示**: 每個欄位都應該有清晰的幫助文本，說明：
-   - 如何獲取該值
-   - 值的格式示例
-   - 是否為可選欄位
+3. **字段?�示**: 每個�?位都?�該?��??��?幫助?�本，說?��?
+   - 如�??��?該�?
+   - ?��??��?示�?
+   - ?�否?�可?��?�?
 
-4. **錯誤處理**: 確保所有欄位都有適當的錯誤提示和驗證
+4. **?�誤?��?**: 確�??�?��?位都?�適?��??�誤?�示?��?�?
 
-## 🎯 完成標誌
+## ?�� 完�?標�?
 
-Phase 1 配置收集功能完成後，應該能夠：
+Phase 1 ?�置?��??�能完�?後�??�該?��?�?
 
-- ✅ 收集完整的 URL 配置 (Backend, Frontend, R2)
-- ✅ 收集 LINE Bot ID 和 LIFF ID
-- ✅ 生成包含所有用戶配置的 wrangler.toml
-- ✅ 生成完整的前端環境變量文件
-- ✅ 第三方部署後不會指向 `imfinethankyouandyou.com`
+- ???��?完整??URL ?�置 (Backend, Frontend, R2)
+- ???��? LINE Bot ID ??LIFF ID
+- ???��??�含?�?�用?��?置�? wrangler.toml
+- ???��?完整?��?端環境�??��?�?
+- ??第�??�部署�?不�??��? `example.com`
 
-## 📖 相關文件
+## ?? ?��??�件
 
 - Backend types: `web-installer/backend/src/types/deployment.ts`
 - Frontend types: `web-installer/frontend/src/types/index.ts`
@@ -238,6 +238,6 @@ Phase 1 配置收集功能完成後，應該能夠：
 
 ---
 
-**最後更新**: 2026-01-05
-**Phase**: Phase 1 - 核心配置收集
-**狀態**: Backend 完成 ✅ | Frontend 待完成 (僅需模板更新)
+**?�後更??*: 2026-01-05
+**Phase**: Phase 1 - ?��??�置?��?
+**?�??*: Backend 完�? ??| Frontend 待�???(?��?模板?�新)

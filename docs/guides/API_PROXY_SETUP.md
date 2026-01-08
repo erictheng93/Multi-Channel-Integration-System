@@ -8,7 +8,7 @@
  `wrangler.toml` Worker API
 
 ```
-https://multi-channel-platform.imfinethankyouandyou.com
+https://multi-channel-platform.example.com
 ```
 
 
@@ -50,7 +50,7 @@ server: {
 
 ****: `frontend/.env.local` ()
 ```env
-VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://multi-channel-platform.example.com
 VITE_DEV_MODE=true
 VITE_ENABLE_DEBUG_LOGS=true
 ```
@@ -72,7 +72,7 @@ proxy: {
 
 **** ( Cloudflare Pages Dashboard ):
 ```env
-VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://multi-channel-platform.example.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 ```
@@ -83,7 +83,7 @@ VITE_ENABLE_DEBUG_LOGS=false
 /* /index.html 200
 
 # API Worker
-/api/* https://multi-channel-platform.imfinethankyouandyou.com/api/:splat 200
+/api/* https://multi-channel-platform.example.com/api/:splat 200
 ```
 
 ## API
@@ -101,7 +101,7 @@ VITE_ENABLE_DEBUG_LOGS=false
 ```
 : https://your-pages-domain.pages.dev/api/auth/login
  (Cloudflare Pages )
-: https://multi-channel-platform.imfinethankyouandyou.com/api/auth/login
+: https://multi-channel-platform.example.com/api/auth/login
  (Worker )
 : 200 OK + JSON
 ```
@@ -112,8 +112,8 @@ VITE_ENABLE_DEBUG_LOGS=false
  `wrangler.toml`:
 ```toml
 [[routes]]
-pattern = "multi-channel-platform.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
+pattern = "multi-channel-platform.example.com/*"
+zone_name = "example.com"
 ```
 
 ### 2:
@@ -125,7 +125,7 @@ VITE_API_BASE_URL=http://localhost:8787
 
 **** (`frontend/.env.production`):
 ```env
-VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
+VITE_API_BASE_URL=https://multi-channel-platform.example.com
 ```
 
 ### 3: _redirects
@@ -133,7 +133,7 @@ VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
 `frontend/_redirects`:
 ```
 /* /index.html 200
-/api/* https://multi-channel-platform.imfinethankyouandyou.com/api/:splat 200
+/api/* https://multi-channel-platform.example.com/api/:splat 200
 ```
 
 ### 4: Cloudflare Pages
@@ -143,7 +143,7 @@ VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
 3. Settings > Environment variables
 4.
  ```
- VITE_API_BASE_URL = https://multi-channel-platform.imfinethankyouandyou.com
+ VITE_API_BASE_URL = https://multi-channel-platform.example.com
  VITE_DEV_MODE = false
  VITE_ENABLE_DEBUG_LOGS = false
  ```
@@ -162,7 +162,7 @@ curl http://localhost:3000/api/health
 
 ```bash
 # Worker
-curl https://multi-channel-platform.imfinethankyouandyou.com/api/health
+curl https://multi-channel-platform.example.com/api/health
 
 # Pages
 curl https://your-pages-domain.pages.dev/api/health
@@ -226,7 +226,7 @@ npm run dev
 cp frontend/.env.local.example frontend/.env.local
 
 # 2. .env.local
-# VITE_API_BASE_URL=https://multi-channel-platform.imfinethankyouandyou.com
+# VITE_API_BASE_URL=https://multi-channel-platform.example.com
 
 # 3.
 cd frontend

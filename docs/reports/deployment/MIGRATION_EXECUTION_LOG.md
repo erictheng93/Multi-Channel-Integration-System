@@ -127,7 +127,7 @@
 
 ****:
 ```bash
-curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -d '{
  "rolloutPercentage": 5,

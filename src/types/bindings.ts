@@ -91,9 +91,12 @@ export interface Bindings {
   // Environment variables - System
   ENVIRONMENT?: string;
   FRONTEND_URL?: string;
+  BACKEND_URL?: string;
+  STORAGE_PUBLIC_URL?: string;
   CURRENT_ENVIRONMENT?: string;
   WORKER_URL?: string;
   ADMIN_TOKEN?: string;
+  ADDITIONAL_ALLOWED_ORIGINS?: string; // Comma-separated list of additional CORS origins
   
   // Environment variables - Cloudflare
   CLOUDFLARE_ACCOUNT_ID?: string;

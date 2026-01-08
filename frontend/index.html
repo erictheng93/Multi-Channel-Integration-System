@@ -8,8 +8,8 @@
 
     <!-- ⚡ LCP 優化：預連接關鍵資源 -->
     <!-- API 端點預連接 - 減少 DNS 查詢和 TLS 握手時間 -->
-    <link rel="preconnect" href="https://multi-channel.imfinethankyouandyou.com" crossorigin />
-    <link rel="dns-prefetch" href="https://multi-channel.imfinethankyouandyou.com" />
+    <!-- Note: Configure VITE_BACKEND_URL in environment for production -->
+    <!-- Preconnect hints will be injected at build time if needed -->
 
     <!-- LINE Sticker CDN 預連接 - 加速貼圖載入 -->
     <link rel="preconnect" href="https://stickershop.line-scdn.net" crossorigin />

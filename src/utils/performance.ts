@@ -218,26 +218,12 @@ export class ResponseOptimizer {
 
   // 設置 CORS 優化標頭（統一配置版本）
   static setCORSHeaders(c: Context): void {
-    // ✅ 使用統一的 CORS 配置，不再使用硬編碼的 wildcard
-    // 動態導入以避免循環依賴
+    // ✅ 使用統一的 CORS 配置，從環境變量動態讀取
     const origin = c.req.header('Origin');
 
-    // 檢查來源是否在允許列表中
-    // 注意：這裡需要手動實現 isOriginAllowed 邏輯以避免循環依賴
-    const allowedOrigins = [
-      'https://multi-channel.imfinethankyouandyou.com',
-      'https://multi-channel-platform-frontend.pages.dev',
-      'https://mcp.imfinethankyouandyou.com',
-      'http://localhost:3000',
-      'https://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://localhost:8787',
-    ];
-
-    const isAllowed = origin && (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.multi-channel-platform-frontend.pages.dev')
-    );
+    // 使用集中式 CORS 配置
+    const { isOriginAllowed } = require('../config/cors');
+    const isAllowed = origin && isOriginAllowed(origin, c.env);
 
     if (isAllowed) {
       c.header('Access-Control-Allow-Origin', origin!);

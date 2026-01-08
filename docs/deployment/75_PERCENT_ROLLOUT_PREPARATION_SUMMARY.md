@@ -82,7 +82,7 @@ bash scripts/emergency-rollback.sh safe
 # 75%
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config
+curl https://your-api-domain.example.com/api/websocket/dashboard/migration-config
 ```
 
 ### 3. frontend/src/services/websocketPerformanceTracker.ts
@@ -270,7 +270,7 @@ const {
 .\scripts\emergency-rollback.ps1 -RollbackLevel safe
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/api/websocket/dashboard/migration-config
+curl https://your-api-domain.example.com/api/websocket/dashboard/migration-config
 
 # 4. 50%
 curl -X PUT ... ()
@@ -482,9 +482,9 @@ node scripts/websocket-load-test.cjs 200 90
 - `frontend/src/composables/useWebSocketPerformance.ts` - Vue Composable
 
 
-- : `https://multi-channel.imfinethankyouandyou.com/websocket-monitoring`
-- Analytics: `https://multi-channel.imfinethankyouandyou.com/websocket-analytics`
-- : `https://multi-channel.imfinethankyouandyou.com/api/health/health`
+- : `https://your-api-domain.example.com/websocket-monitoring`
+- Analytics: `https://your-api-domain.example.com/websocket-analytics`
+- : `https://your-api-domain.example.com/api/health/health`
 
 ---
 

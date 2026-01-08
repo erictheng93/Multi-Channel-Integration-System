@@ -1674,52 +1674,34 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       log.warn('WEBSOCKET: Pending message broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
-    // 🚀 Phase B4: Global Broadcast for Conversation List Updates
-    // This notifies all connected agents viewing the conversation list
+    // 🚀 Phase B4: Unified Broadcast for Conversation List & Detail Updates
+    // Uses WebSocketBroadcastService.broadcastNewMessage() for both:
+    // 1. CustomerConversationDO - conversation detail page real-time updates
+    // 2. MessageBroadcaster global - conversation list page lastMessage updates
     try {
-      if (c.env.MESSAGE_BROADCASTER) {
-        const broadcasterId = c.env.MESSAGE_BROADCASTER.idFromName('global');
-        const broadcasterStub = c.env.MESSAGE_BROADCASTER.get(broadcasterId);
-
-        // Broadcast new_message event globally for conversation list updates
-        const globalEvent = {
-          id: crypto.randomUUID(),
-          type: 'new_message',
-          source: 'api',
+      const unifiedBroadcastService = new WebSocketBroadcastService(c.env);
+      const broadcastResult = await unifiedBroadcastService.broadcastNewMessage({
+        conversationId: request.conversationId,
+        message: {
+          id: result.messageId,
+          content: request.content,
+          messageType: request.messageType || 'text',
+          senderType: 'agent',
+          senderId: String(user.id),
+          senderName: user.displayName,
+          platform: 'line',
           timestamp: Date.now(),
-          conversationId: request.conversationId,
-          data: {
-            conversationId: request.conversationId,
-            content: request.content,
-            messageType: request.messageType || 'text',
-            senderType: 'agent',
-            senderId: user.id,
-            senderName: user.displayName,
-            platform: 'line',
-            timestamp: Date.now()
-          },
-          priority: 'normal'
-        };
-
-        // Use /broadcast-global endpoint for global broadcasts
-        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event: globalEvent,
-            target: { type: 'global', targets: ['all'] }
-          })
-        }));
-
-        if (globalResponse.ok) {
-          log.debug('GLOBAL_BROADCAST: Agent message broadcast sent for conversation list updates');
-        } else {
-          log.warn('GLOBAL_BROADCAST: Agent message broadcast returned non-OK status');
-        }
-      }
-    } catch (globalBroadcastError) {
-      log.warn('GLOBAL_BROADCAST: Agent message broadcast failed (non-critical)', {
-        error: globalBroadcastError instanceof Error ? globalBroadcastError.message : String(globalBroadcastError)
+          deliveryStatus: 'pending'
+        },
+        source: 'api'
+      });
+      log.debug('UNIFIED_BROADCAST: Agent message broadcast completed', {
+        conversationBroadcast: broadcastResult.conversationBroadcast,
+        globalBroadcast: broadcastResult.globalBroadcast
+      });
+    } catch (broadcastError) {
+      log.warn('UNIFIED_BROADCAST: Agent message broadcast failed (non-critical)', {
+        error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
       });
       // Non-critical - conversation list will still update on next poll
     }
@@ -2148,10 +2130,22 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       `;
 
       try {
+        // 🔍 DEBUG: Log conversation IDs being queried (using INFO level for production visibility)
+        log.info('LASTMSG_DEBUG: Starting latest messages query', {
+          conversationIds: conversationIds.slice(0, 5), // Log first 5 for debugging
+          totalCount: conversationIds.length
+        });
+
         // 執行原生 SQL 查詢（參數需要傳遞兩次：一次給子查詢，一次給外層）
         const result = await c.env.DB.prepare(latestMessagesQuery)
           .bind(...conversationIds, ...conversationIds)
           .all();
+
+        // 🔍 DEBUG: Log raw SQL result
+        log.info('LASTMSG_DEBUG: SQL query returned', {
+          success: result.success,
+          resultsCount: result.results?.length || 0
+        });
 
         if (result.results) {
           for (const row of result.results as any[]) {
@@ -2164,10 +2158,39 @@ conversationHandler.get('/', jwtAuth, async (c) => {
             });
           }
         }
+
+        // 🔍 DEBUG: Log which conversations have/don't have messages
+        const conversationsWithMessages = Array.from(lastMessagesMap.keys());
+        const conversationsWithoutMessages = conversationIds.filter(id => !lastMessagesMap.has(id));
+        log.info('LASTMSG_DEBUG: Message mapping complete', {
+          requestedCount: conversationIds.length,
+          foundCount: lastMessagesMap.size,
+          withMessages: conversationsWithMessages.slice(0, 3),
+          withoutMessages: conversationsWithoutMessages.slice(0, 5)
+        });
+
         log.debug('Conversation Handler fetched latest messages from DB', {
           requestedCount: conversationIds.length,
           foundCount: lastMessagesMap.size
         });
+
+        // 🔍 DEBUG: Check if conversations without messages actually have messages in DB
+        if (conversationsWithoutMessages.length > 0) {
+          const debugConvId = conversationsWithoutMessages[0];
+          const debugQuery = await c.env.DB.prepare(
+            'SELECT id, conversation_id, content, created_at, sender_type FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 3'
+          ).bind(debugConvId).all();
+          log.info('LASTMSG_DEBUG: Direct query for conversation without lastMessage', {
+            conversationId: debugConvId,
+            messagesFound: debugQuery.results?.length || 0,
+            messages: debugQuery.results?.map((m: any) => ({
+              id: m.id?.substring(0, 8),
+              content: m.content?.substring(0, 30),
+              createdAt: m.created_at,
+              senderType: m.sender_type
+            }))
+          });
+        }
       } catch (dbError) {
         log.error('Conversation Handler failed to fetch latest messages', {
           error: dbError instanceof Error ? dbError.message : String(dbError)
@@ -2193,6 +2216,23 @@ conversationHandler.get('/', jwtAuth, async (c) => {
         lastMessageContent: lastMsg?.content || null,
         lastMessageAtActual: lastMsg?.createdAt || null
       };
+    });
+
+    // 🔍 DEBUG: Log final response data
+    const conversationsWithLastMsg = combinedData.filter((c: any) => c.lastMessageContent);
+    const conversationsWithoutLastMsg = combinedData.filter((c: any) => !c.lastMessageContent);
+    log.info('LASTMSG_DEBUG: Final response data', {
+      totalConversations: combinedData.length,
+      withLastMessage: conversationsWithLastMsg.length,
+      withoutLastMessage: conversationsWithoutLastMsg.length,
+      sampleWithMsg: conversationsWithLastMsg[0] ? {
+        id: conversationsWithLastMsg[0].id,
+        lastMsgContent: conversationsWithLastMsg[0].lastMessageContent?.substring(0, 30)
+      } : null,
+      sampleWithoutMsg: conversationsWithoutLastMsg[0] ? {
+        id: conversationsWithoutLastMsg[0].id,
+        lastMsgContent: conversationsWithoutLastMsg[0].lastMessageContent
+      } : null
     });
 
     return c.json({

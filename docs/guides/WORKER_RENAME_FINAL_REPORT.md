@@ -18,8 +18,8 @@
 -
 
 ### 3. URL
-- `https://line-bot.imfinethankyouandyou.com`
-- `https://multi-channel-platform.imfinethankyouandyou.com`
+- `https://line-bot.example.com`
+- `https://multi-channel-platform.example.com`
 
 ### 4.
 
@@ -73,12 +73,12 @@
  ```
 
 2. ** LINE Webhook URL**
- - URL: `https://line-bot.imfinethankyouandyou.com/api/webhook`
- - URL: `https://multi-channel-platform.imfinethankyouandyou.com/api/webhook`
+ - URL: `https://line-bot.example.com/api/webhook`
+ - URL: `https://multi-channel-platform.example.com/api/webhook`
 
 3. ****
  ```bash
- curl https://multi-channel-platform.imfinethankyouandyou.com/api/health
+ curl https://multi-channel-platform.example.com/api/health
  ```
 
 

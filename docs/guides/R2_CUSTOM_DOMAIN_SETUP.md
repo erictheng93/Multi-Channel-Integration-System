@@ -5,23 +5,23 @@
 
 
 - **Bucket**: `multi-channel-platform-attachments-develop`
-- ****: `s3dev.imfinethankyouandyou.com`
+- ****: `s3dev.example.com`
 - ****:
 
 
 - **Bucket**: `multi-channel-platform-attachments-production`
-- ****: `s3.imfinethankyouandyou.com`
+- ****: `your-storage-domain.example.com`
 - ****:
 
 
 ### (.env)
 ```env
-R2_PUBLIC_URL=https://s3dev.imfinethankyouandyou.com
+R2_PUBLIC_URL=https://s3dev.example.com
 ```
 
 ### (.env.production)
 ```env
-R2_PUBLIC_URL=https://s3.imfinethankyouandyou.com
+R2_PUBLIC_URL=https://your-storage-domain.example.com
 ```
 
 ## Wrangler
@@ -31,13 +31,13 @@ R2_PUBLIC_URL=https://s3.imfinethankyouandyou.com
 ```toml
 
 [vars]
-R2_PUBLIC_URL = "https://s3dev.imfinethankyouandyou.com"
+R2_PUBLIC_URL = "https://s3dev.example.com"
 
 
 [env.production]
 vars = {
  ENVIRONMENT = "production",
- R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+ R2_PUBLIC_URL = "https://your-storage-domain.example.com"
 }
 
 # R2 -
@@ -57,12 +57,12 @@ bucket_name = "multi-channel-platform-attachments-production"
 3. ****:
 
 
-- [ ] `.env` `R2_PUBLIC_URL` `https://s3dev.imfinethankyouandyou.com`
+- [ ] `.env` `R2_PUBLIC_URL` `https://s3dev.example.com`
 - [ ] `npm run dev`
 - [ ]
 
 
-- [ ] `wrangler.toml` `R2_PUBLIC_URL` `https://s3.imfinethankyouandyou.com`
+- [ ] `wrangler.toml` `R2_PUBLIC_URL` `https://your-storage-domain.example.com`
 - [ ] `npm run deploy`
 - [ ]
 

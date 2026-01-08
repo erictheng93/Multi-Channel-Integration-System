@@ -1,24 +1,24 @@
-# 添加 WebSocket 環境變數到前端配置
+# 添�? WebSocket ?��?變數?��?端�?�?
 $envFile = "D:\Code\Multi_Channel_Integration_System\frontend\.env.development"
 $websocketConfig = @"
 
-# WebSocket 配置 (預設關閉，使用 SSE)
+# WebSocket ?�置 (?�設?��?，使??SSE)
 VITE_WEBSOCKET_ENABLED=false
-VITE_WEBSOCKET_URL=wss://multi-channel.imfinethankyouandyou.com/ws
+VITE_WEBSOCKET_URL=wss://your-api-domain.example.com/ws
 VITE_FALLBACK_TO_SSE=true
 VITE_WEBSOCKET_AUTO_RECONNECT=true
 VITE_WEBSOCKET_DEBUG=true
 "@
 
-# 檢查檔案是否已包含 WebSocket 配置
+# 檢查檔�??�否已�???WebSocket ?�置
 $content = Get-Content $envFile -Raw
 if ($content -notmatch "VITE_WEBSOCKET") {
     Add-Content -Path $envFile -Value $websocketConfig -NoNewline
-    Write-Host "✅ WebSocket 環境變數已添加到 .env.development"
+    Write-Host "??WebSocket ?��?變數已添?�到 .env.development"
 } else {
-    Write-Host "⚠️ WebSocket 環境變數已存在，跳過"
+    Write-Host "?��? WebSocket ?��?變數已�??��?跳�?"
 }
 
-# 顯示最終內容
-Write-Host "`n📄 當前 .env.development 內容:"
+# 顯示?�終內�?
+Write-Host "`n?? ?��? .env.development ?�容:"
 Get-Content $envFile

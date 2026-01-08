@@ -234,12 +234,12 @@ max_batch_timeout = 5
 ****
 ```toml
 [vars]
-R2_PUBLIC_URL = "https://s3dev.imfinethankyouandyou.com"
+R2_PUBLIC_URL = "https://s3dev.example.com"
 ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
 ```
 
 #### 3.2.2
-**API**`https://multi-channel.imfinethankyouandyou.com`
+**API**`https://your-api-domain.example.com`
 ****Cloudflare Pages
 ****D1
 ****R2
@@ -249,15 +249,15 @@ ENCRYPTION_KEY = "dev-encryption-key-32-char-long"
 ```toml
 [env.production.vars]
 ENVIRONMENT = "production"
-R2_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+R2_PUBLIC_URL = "https://your-storage-domain.example.com"
 ENCRYPTION_KEY = "production-encryption-key-change-me"
 ```
 
 ****
 ```toml
 [[routes]]
-pattern = "multi-channel.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
+pattern = "your-api-domain.example.com/*"
+zone_name = "example.com"
 ```
 
 ---
@@ -1297,10 +1297,10 @@ cd frontend && npm run deploy:pages #
 ****
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/health
+curl https://your-api-domain.example.com/api/health
 
 
-curl https://frontend.imfinethankyouandyou.com
+curl https://frontend.example.com
 
 
 npm run db:migrate:prod --dry-run

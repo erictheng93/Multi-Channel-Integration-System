@@ -158,14 +158,24 @@ export function getCurrentEnvironment(env: WorkerEnv): Environment {
  * 獲取後端 URL
  * @param env - Cloudflare Workers env 對象
  * @returns 後端 URL
+ * @throws Error 如果生產環境未設置 BACKEND_URL
  */
 export function getBackendUrl(env: WorkerEnv): string {
   const currentEnv = getCurrentEnvironment(env);
-  const defaultUrl = currentEnv === 'production'
-    ? 'https://multi-channel.imfinethankyouandyou.com'
-    : 'http://localhost:8787';
 
-  const url = getEnv(env, 'BACKEND_URL', defaultUrl);
+  if (currentEnv === 'production') {
+    const url = env.BACKEND_URL;
+    if (!url) {
+      throw new Error(
+        'BACKEND_URL environment variable is required in production. ' +
+        'Please set it in wrangler.toml or Cloudflare dashboard.'
+      );
+    }
+    return url.replace(/\/$/, '');
+  }
+
+  // Development/staging: use localhost default
+  const url = getEnv(env, 'BACKEND_URL', 'http://localhost:8787');
   return url.replace(/\/$/, '');
 }
 
@@ -173,14 +183,24 @@ export function getBackendUrl(env: WorkerEnv): string {
  * 獲取前端 URL
  * @param env - Cloudflare Workers env 對象
  * @returns 前端 URL
+ * @throws Error 如果生產環境未設置 FRONTEND_URL
  */
 export function getFrontendUrl(env: WorkerEnv): string {
   const currentEnv = getCurrentEnvironment(env);
-  const defaultUrl = currentEnv === 'production'
-    ? 'https://mcp.imfinethankyouandyou.com'
-    : 'http://localhost:3000';
 
-  const url = getEnv(env, 'FRONTEND_URL', defaultUrl);
+  if (currentEnv === 'production') {
+    const url = env.FRONTEND_URL;
+    if (!url) {
+      throw new Error(
+        'FRONTEND_URL environment variable is required in production. ' +
+        'Please set it in wrangler.toml or Cloudflare dashboard.'
+      );
+    }
+    return url.replace(/\/$/, '');
+  }
+
+  // Development/staging: use localhost default
+  const url = getEnv(env, 'FRONTEND_URL', 'http://localhost:3000');
   return url.replace(/\/$/, '');
 }
 
@@ -209,14 +229,25 @@ export function getWebSocketUrl(env: WorkerEnv): string {
  * 獲取 R2 存儲公開 URL
  * @param env - Cloudflare Workers env 對象
  * @returns R2 公開 URL
+ * @throws Error 如果生產環境未設置 STORAGE_PUBLIC_URL (或 R2_PUBLIC_URL)
  */
 export function getStoragePublicUrl(env: WorkerEnv): string {
   const currentEnv = getCurrentEnvironment(env);
-  const defaultUrl = currentEnv === 'production'
-    ? 'https://s3.imfinethankyouandyou.com'
-    : 'http://localhost:8787/files';
 
-  const url = getEnv(env, 'STORAGE_PUBLIC_URL', defaultUrl);
+  if (currentEnv === 'production') {
+    // Support both STORAGE_PUBLIC_URL and R2_PUBLIC_URL for compatibility
+    const url = env.STORAGE_PUBLIC_URL || (env as Record<string, unknown>).R2_PUBLIC_URL as string;
+    if (!url) {
+      throw new Error(
+        'STORAGE_PUBLIC_URL (or R2_PUBLIC_URL) environment variable is required in production. ' +
+        'Please set it in wrangler.toml or Cloudflare dashboard.'
+      );
+    }
+    return url.replace(/\/$/, '');
+  }
+
+  // Development/staging: use localhost default
+  const url = getEnv(env, 'STORAGE_PUBLIC_URL', 'http://localhost:8787/files');
   return url.replace(/\/$/, '');
 }
 
@@ -260,7 +291,8 @@ export function isStaging(env: WorkerEnv): boolean {
  * @example
  * ```ts
  * const url = getApiEndpoint(c.env, '/api/conversations');
- * // => 'https://multi-channel.imfinethankyouandyou.com/api/conversations'
+ * // => 'https://your-api-domain.example.com/api/conversations' (production)
+ * // => 'http://localhost:8787/api/conversations' (development)
  * ```
  */
 export function getApiEndpoint(env: WorkerEnv, path: string): string {

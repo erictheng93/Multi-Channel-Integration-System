@@ -31,12 +31,12 @@
 - [x] **WebSocket Health **
  - : `/api/websocket/health`
  - : 200 OK
- - : `curl https://multi-channel.imfinethankyouandyou.com/api/websocket/health`
+ - : `curl https://your-api-domain.example.com/api/websocket/health`
 
 - [x] ** API **
  - : `/api/websocket/migration-status`
  - rolloutPercentage: 50%
- - : `curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status`
+ - : `curl https://your-api-domain.example.com/api/websocket/migration-status`
 
 ### Step 1.2:
 
@@ -44,7 +44,7 @@
  - [ ] 1: DevTools Local Storage `auth_token`
  - [ ] 2: API
  ```bash
- curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/auth/login" \
+ curl -X POST "https://your-api-domain.example.com/api/auth/login" \
  -H "Content-Type: application/json" \
  -d '{"username":"test-admin","password":"Admin123!@#"}'
  ```
@@ -75,7 +75,7 @@
 
 - [ ] ****
  ```bash
- curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+ curl https://your-api-domain.example.com/api/websocket/migration-status
  ```
  :
  ```json
@@ -127,7 +127,7 @@
 
 - [ ] ** 100% Rollout ( WebSocket)**
  ```bash
- curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+ curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -d '{"rolloutPercentage": 100}'
  ```
@@ -138,7 +138,7 @@
 
 - [ ] ** 50% Rollout ()**
  ```bash
- curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+ curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -d '{"rolloutPercentage": 50}'
  ```
  1. [ ]
@@ -147,7 +147,7 @@
 
 - [ ] ** 0% Rollout**
  ```bash
- curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+ curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -d '{"rolloutPercentage": 0}'
  ```
 
@@ -345,7 +345,7 @@
 
 - [ ] ** 5% Rollout**
  ```bash
- curl -X POST "https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config" \
+ curl -X POST "https://your-api-domain.example.com/api/websocket/migration-config" \
  -H "Authorization: Bearer $ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{
@@ -360,7 +360,7 @@
 
 - [ ] ****
  ```bash
- curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+ curl https://your-api-domain.example.com/api/websocket/migration-status
  ```
 
 - [ ] ** 24/7 **

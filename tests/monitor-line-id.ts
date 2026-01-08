@@ -1,11 +1,10 @@
 /**
- * 實時監控 LINE ID 收集
- * 監控新的 LINE ID 收集情況
+ * 實�???�� LINE ID ?��?
+ * ??��?��? LINE ID ?��??��?
  */
 
-const WORKER_URL: string = 'https://multi-channel.imfinethankyouandyou.com'; // 實際 Worker URL
-const CHECK_INTERVAL: number = 10000; // 10秒檢查一次
-
+const WORKER_URL: string = 'https://your-api-domain.example.com'; // 實�? Worker URL
+const CHECK_INTERVAL: number = 10000; // 10秒檢?��?�?
 interface Customer {
   id: string;
   platform: string;
@@ -50,7 +49,7 @@ class LineIdMonitor {
   }
 
   /**
-   * 獲取所有 LINE 客戶
+   * ?��??�??LINE 客戶
    */
   async fetchLineCustomers(): Promise<Customer[]> {
     try {
@@ -62,34 +61,34 @@ class LineIdMonitor {
       }
       return [];
     } catch (error: any) {
-      console.error('❌ 獲取客戶資料失敗:', error.message);
+      console.error('???��?客戶資�?失�?:', error.message);
       return [];
     }
   }
 
   /**
-   * 初始化已知 LINE ID
+   * ?��??�已??LINE ID
    */
   async initialize(): Promise<void> {
-    console.log('🔄 初始化 LINE ID 監控...');
+    console.log('?? ?��???LINE ID ??��...');
     
     const customers = await this.fetchLineCustomers();
     customers.forEach(customer => {
       this.knownLineIds.add(customer.platform_user_id);
     });
     
-    console.log(`✅ 已載入 ${customers.length} 個現有 LINE ID`);
-    console.log(`⏰ 監控間隔: ${this.interval / 1000} 秒`);
-    console.log('🎯 開始監控新 LINE ID 收集...\n');
+    console.log(`??已�???${customers.length} ?�現??LINE ID`);
+    console.log(`????��?��?: ${this.interval / 1000} 秒`);
+    console.log('?�� ?��???��??LINE ID ?��?...\n');
     
     this.showCurrentStats(customers);
   }
 
   /**
-   * 顯示當前統計
+   * 顯示?��?統�?
    */
   showCurrentStats(customers: Customer[]): void {
-    console.log('📊 當前統計:');
+    console.log('?? ?��?統�?:');
     
     let validIds = 0;
     let hasName = 0;
@@ -103,15 +102,15 @@ class LineIdMonitor {
       if (customer.avatar_url) hasAvatar++;
     });
     
-    console.log(`   總 LINE ID: ${customers.length}`);
-    console.log(`   有效格式: ${validIds} (${customers.length > 0 ? ((validIds/customers.length)*100).toFixed(1) : 0}%)`);
-    console.log(`   有顯示名稱: ${hasName} (${customers.length > 0 ? ((hasName/customers.length)*100).toFixed(1) : 0}%)`);
-    console.log(`   有頭像: ${hasAvatar} (${customers.length > 0 ? ((hasAvatar/customers.length)*100).toFixed(1) : 0}%)`);
+    console.log(`   �?LINE ID: ${customers.length}`);
+    console.log(`   ?��??��?: ${validIds} (${customers.length > 0 ? ((validIds/customers.length)*100).toFixed(1) : 0}%)`);
+    console.log(`   ?�顯示�?�? ${hasName} (${customers.length > 0 ? ((hasName/customers.length)*100).toFixed(1) : 0}%)`);
+    console.log(`   ?�頭?? ${hasAvatar} (${customers.length > 0 ? ((hasAvatar/customers.length)*100).toFixed(1) : 0}%)`);
     console.log('');
   }
 
   /**
-   * 檢查新的 LINE ID
+   * 檢查?��? LINE ID
    */
   async checkNewLineIds(): Promise<number> {
     this.stats.totalChecks++;
@@ -122,7 +121,7 @@ class LineIdMonitor {
     );
     
     if (newCustomers.length > 0) {
-      console.log(`🆕 發現 ${newCustomers.length} 個新 LINE ID:`);
+      console.log(`?? ?�現 ${newCustomers.length} ?�新 LINE ID:`);
       
       newCustomers.forEach(customer => {
         const lineId = customer.platform_user_id;
@@ -131,24 +130,24 @@ class LineIdMonitor {
         try {
           metadata = customer.metadata ? JSON.parse(customer.metadata) : {};
         } catch (e) {
-          // 忽略 JSON 解析錯誤
+          // 忽略 JSON �???�誤
         }
         
-        console.log(`   📱 ${lineId} ${isValidFormat ? '✅' : '❌'}`);
-        console.log(`      姓名: ${customer.display_name || '未知'}`);
-        console.log(`      建立時間: ${customer.created_at}`);
+        console.log(`   ?�� ${lineId} ${isValidFormat ? '?? : '??}`);
+        console.log(`      姓�?: ${customer.display_name || '?�知'}`);
+        console.log(`      建�??��?: ${customer.created_at}`);
         
         if (metadata.statusMessage) {
-          console.log(`      狀態: ${metadata.statusMessage}`);
+          console.log(`      ?�?? ${metadata.statusMessage}`);
         }
         
         if (!isValidFormat) {
-          console.log(`      ⚠️  格式可能不正確`);
+          console.log(`      ?��?  ?��??�能不正確`);
         }
         
         console.log('');
         
-        // 加入已知列表
+        // ?�入已知?�表
         this.knownLineIds.add(lineId);
         this.stats.newIdsFound++;
       });
@@ -160,72 +159,69 @@ class LineIdMonitor {
   }
 
   /**
-   * 顯示監控統計
+   * 顯示??��統�?
    */
   showMonitorStats(): void {
     const runTime = Math.floor((new Date().getTime() - this.stats.startTime.getTime()) / 1000);
     const minutes = Math.floor(runTime / 60);
     const seconds = runTime % 60;
     
-    console.log(`📈 監控統計 (運行時間: ${minutes}分${seconds}秒):`);
+    console.log(`?? ??��統�? (?��??��?: ${minutes}??{seconds}�?:`);
     console.log(`   檢查次數: ${this.stats.totalChecks}`);
-    console.log(`   發現新 ID: ${this.stats.newIdsFound}`);
+    console.log(`   ?�現??ID: ${this.stats.newIdsFound}`);
     console.log(`   已知 ID 總數: ${this.knownLineIds.size}`);
     console.log('');
   }
 
   /**
-   * 執行一次檢查
-   */
+   * ?��?一次檢??   */
   async performCheck(): Promise<void> {
     const checkTime = new Date().toLocaleString();
-    console.log(`🔍 檢查時間: ${checkTime}`);
+    console.log(`?? 檢查?��?: ${checkTime}`);
     
     try {
       const newCount = await this.checkNewLineIds();
       
       if (newCount === 0) {
-        console.log('   沒有新的 LINE ID');
+        console.log('   沒�??��? LINE ID');
       }
       
-      // 每10次檢查顯示一次統計
-      if (this.stats.totalChecks % 10 === 0) {
+      // �?0次檢?�顯示�?次統�?      if (this.stats.totalChecks % 10 === 0) {
         this.showMonitorStats();
       }
       
     } catch (error: any) {
-      console.error('❌ 檢查過程中發生錯誤:', error.message);
+      console.error('??檢查?��?中發?�錯�?', error.message);
     }
   }
 
   /**
-   * 開始監控
+   * ?��???��
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.log('⚠️  監控已在運行中');
+      console.log('?��?  ??��已在?��?�?);
       return;
     }
     
     await this.initialize();
     this.isRunning = true;
     
-    // 立即執行一次檢查
-    await this.performCheck();
+    // 立即?��?一次檢??    await this.performCheck();
     
-    // 設定定期檢查
+    // 設�?定�?檢查
     this.intervalId = setInterval(async () => {
       if (this.isRunning) {
         await this.performCheck();
       }
     }, this.interval);
     
-    console.log('✅ LINE ID 監控已啟動');
-    console.log('💡 按 Ctrl+C 停止監控\n');
+    console.log('??LINE ID ??��已�???);
+    console.log('?�� ??Ctrl+C ?�止??��\n');
   }
 
   /**
-   * 停止監控
+   * ?�止??��
    */
   stop(): void {
     if (this.intervalId) {
@@ -233,35 +229,33 @@ class LineIdMonitor {
       this.intervalId = undefined;
     }
     this.isRunning = false;
-    console.log('\n🛑 LINE ID 監控已停止');
+    console.log('\n?? LINE ID ??��已�?�?);
     this.showMonitorStats();
   }
 }
 
-// 使用範例
+// 使用範�?
 async function main(): Promise<void> {
   if (WORKER_URL === 'https://your-worker-domain.workers.dev') {
-    console.log('⚠️  請先更新 WORKER_URL 變數為你的實際 Worker 網址');
+    console.log('?��?  請�??�新 WORKER_URL 變數?��??�實??Worker 網�?');
     return;
   }
 
   const monitor = new LineIdMonitor(WORKER_URL);
   
-  // 處理程式結束信號
+  // ?��?程�?結�?信�?
   process.on('SIGINT', () => {
-    console.log('\n🔄 正在停止監控...');
+    console.log('\n?? �?��?�止??��...');
     monitor.stop();
     process.exit(0);
   });
   
-  // 開始監控
+  // ?��???��
   await monitor.start();
 }
 
-// 如果直接執行這個腳本
-if (typeof window === 'undefined') {
+// 如�??�接?��??�個腳??if (typeof window === 'undefined') {
   main().catch(console.error);
 }
 
-// 匯出類別供其他地方使用
-export { LineIdMonitor };
+// ?�出類別供其他地?�使??export { LineIdMonitor };

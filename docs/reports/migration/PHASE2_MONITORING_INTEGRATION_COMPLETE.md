@@ -158,7 +158,7 @@ monitoring/
 
 
  Production Worker
- (multi-channel.imfinethankyouandyou.com)
+ (your-api-domain.example.com)
 
 
  /api/websocket/health (15s )

@@ -10,7 +10,7 @@
 - ****: Vite v7.1.5Port 3000
 - ****: Chrome DevTools MCP
 - ****: ConversationDetail.vue ()
-- ** API**: https://multi-channel.imfinethankyouandyou.com
+- ** API**: https://your-api-domain.example.com
 
 
 1.

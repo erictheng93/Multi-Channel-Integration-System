@@ -232,12 +232,14 @@ export class FileStorageService {
   /**
    * 生成檔案的公開 URL
    * 使用 API 代理端點而非直接 R2 URL
+   * @param storageKey - 檔案的存儲鍵值
+   * @param apiHost - API 主機 URL (應從 getBackendUrl(env) 獲取)
    */
-  generatePublicUrl(storageKey: string): string {
-    // 使用 API 代理端點 - 生產環境使用固定域名
-    // 這樣可以繞過 R2 公開訪問未配置的問題
-    const apiHost = 'https://multi-channel.imfinethankyouandyou.com';
-    const proxyUrl = `${apiHost}/api/files/public/${storageKey}`;
+  generatePublicUrl(storageKey: string, apiHost?: string): string {
+    // 使用 API 代理端點
+    // apiHost 應由調用方傳入，從 getBackendUrl(env) 獲取
+    const host = apiHost || 'http://localhost:8787';
+    const proxyUrl = `${host}/api/files/public/${storageKey}`;
     console.log(`[FileStorage] Generated proxy URL: ${proxyUrl}`);
     return proxyUrl;
   }

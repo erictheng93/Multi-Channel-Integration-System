@@ -1,42 +1,42 @@
-# 硬編碼問題分析與優化報告
+# 硬編碼�?題�??��??��??��?
 
-**生成日期**: 2025-12-31
-**專案**: Multi-Channel Customer Support System
-**分析範圍**: 完整代碼庫 (Backend + Frontend)
+**?��??��?**: 2025-12-31
+**專�?**: Multi-Channel Customer Support System
+**?��?範�?**: 完整�?���?(Backend + Frontend)
 
 ---
 
-## 📋 執行摘要
+## ?? ?��??��?
 
-本報告系統性地檢測了整個專案中的硬編碼問題，發現以下主要問題類別：
+?�報?�系統性地檢測了整?��?案中?�硬編碼?��?，發?�以下主要�?題�??��?
 
-| 類別 | 發現數量 | 優先級 | 狀態 |
+| 類別 | ?�現?��? | ?��?�?| ?�??|
 |------|---------|--------|------|
-| 硬編碼 URLs 和 API 端點 | 80+ | 🔴 高 | 需優化 |
-| 魔術數字和限制值 | 75+ | 🟡 中 | 部分已優化 |
-| 配置值 (角色、狀態等) | 150+ | 🔴 高 | 需優化 |
-| 錯誤訊息 | 60+ (後端) + 19+ (前端) | 🟢 低 | 可接受 |
-| **總計** | **384+** | - | **60% 需優化** |
+| 硬編�?URLs ??API 端�? | 80+ | ?�� �?| ?�?��? |
+| 魔�??��??��??��?| 75+ | ?�� �?| ?��?已優??|
+| ?�置??(角色?��??��?) | 150+ | ?�� �?| ?�?��? |
+| ?�誤訊息 | 60+ (後端) + 19+ (?�端) | ?�� �?| ?�接??|
+| **總�?** | **384+** | - | **60% ?�?��?** |
 
 ---
 
-## 🔴 高優先級問題
+## ?�� 高優?��??��?
 
-### 1. 硬編碼 URLs 和 API 端點
+### 1. 硬編�?URLs ??API 端�?
 
-#### 問題嚴重性
-- **影響範圍**: 80+ 個硬編碼 URL
-- **風險**: 環境切換困難、部署配置錯誤、安全性問題
-- **維護成本**: 高 - 每次環境變更需修改多處
+#### ?��??��???
+- **影響範�?**: 80+ ?�硬編碼 URL
+- **風險**: ?��??��??�難?�部署�?置錯誤、�??�性�?�?
+- **維護?�本**: �?- 每次?��?變更?�修改多�?
 
-#### 詳細分類
+#### 詳細?��?
 
-##### A. 生產域名 (3個主要域名，24+ 引用位置)
+##### A. ?�產?��? (3?�主要�??��?24+ 引用位置)
 
-**主要域名**: `https://multi-channel.imfinethankyouandyou.com`
-- 出現位置: 24+ 個文件
-- 影響模組: CORS、安全配置、API客戶端、WebSocket連接
-- 關鍵文件:
+**主�??��?**: `https://your-api-domain.example.com`
+- ?�現位置: 24+ ?��?�?
+- 影響模�?: CORS?��??��?置、API客戶端、WebSocket??��
+- ?�鍵?�件:
   ```
   src/config/cors.ts:12
   src/config/security.ts:45
@@ -44,11 +44,11 @@
   frontend/src/services/websocketClient.ts:347
   ```
 
-**次要域名**:
+**次�??��?**:
 - `https://multi-channel-platform-frontend.pages.dev` (Cloudflare Pages)
-- `https://mcp.imfinethankyouandyou.com` (MCP Frontend)
+- `https://your-frontend-domain.example.com` (MCP Frontend)
 
-##### B. 開發環境 Localhost (12+ 配置)
+##### B. ?�發?��? Localhost (12+ ?�置)
 
 **Frontend Development (Port 3000)**:
 ```
@@ -62,41 +62,41 @@ http://127.0.0.1:3000      - 4 引用
 http://localhost:8787      - 15+ 引用
 ```
 
-出現位置:
+?�現位置:
 ```typescript
-// ❌ 硬編碼示例
+// ??硬編碼示�?
 src/config/cors.ts:17-24
 frontend/vite.config.ts:16
 frontend/vitest.setup.ts:15
 ```
 
-##### C. 外部 API 端點 (30+ 個)
+##### C. 外部 API 端�? (30+ ??
 
-**LINE Messaging API** (14 個端點):
+**LINE Messaging API** (14 ?�端�?:
 ```
 https://api.line.me/v2/bot/message/reply
 https://api.line.me/v2/bot/message/push
 https://api.line.me/v2/bot/message/multicast
 https://api.line.me/v2/bot/profile/{userId}
-... 等 10+ 個端點
+... �?10+ ?�端�?
 ```
-位置: `src/utils/line.ts` (22-1046行)
+位置: `src/utils/line.ts` (22-1046�?
 
-**Facebook Graph API** (6 個端點):
+**Facebook Graph API** (6 ?�端�?:
 ```
 https://graph.facebook.com/v18.0/me/messages
 https://graph.facebook.com/v18.0/{pageId}
-... 等
+... �?
 ```
 位置: `src/durable-objects/DelayedMessageScheduler.ts:1217`
 
-**其他外部服務**:
-- QR Code 生成: `https://api.qrserver.com/v1/create-qr-code/`
+**?��?外部?��?**:
+- QR Code ?��?: `https://api.qrserver.com/v1/create-qr-code/`
 - Unicode Emoji: `https://unicode.org/Public/emoji/15.1/emoji-test.txt`
 - Google Fonts: `https://fonts.googleapis.com/css2?family=...`
 - LINE LIFF SDK: `https://static.line-scdn.net/liff/edge/2/sdk.js`
 
-##### D. Cloudflare API 端點 (Web Installer)
+##### D. Cloudflare API 端�? (Web Installer)
 
 ```
 https://dash.cloudflare.com/oauth2/auth
@@ -106,271 +106,271 @@ https://api.resend.com/emails
 ```
 位置: `web-installer/backend/src/routes/oauth.ts`
 
-#### 📊 統計數據
+#### ?? 統�??��?
 
-| URL 類型 | 數量 | 影響文件數 |
+| URL 類�? | ?��? | 影響?�件??|
 |---------|------|-----------|
-| 生產域名 | 3 | 24+ |
-| 開發環境 | 4 | 18+ |
+| ?�產?��? | 3 | 24+ |
+| ?�發?��? | 4 | 18+ |
 | LINE API | 14 | 8 |
 | Facebook API | 6 | 5 |
-| 外部服務 | 8+ | 10+ |
+| 外部?��? | 8+ | 10+ |
 | Cloudflare API | 4 | 4 |
-| **總計** | **39+** | **69+ 文件** |
+| **總�?** | **39+** | **69+ ?�件** |
 
 ---
 
-### 2. 硬編碼配置值 (角色、狀態、類型)
+### 2. 硬編碼�?置�?(角色?��??�、�???
 
-#### A. 角色名稱 (Role Names)
+#### A. 角色?�稱 (Role Names)
 
-**硬編碼值**: `'admin'`, `'agent'`, `'team'`
-**出現次數**: 150+ 次
-**影響文件**: 25+ 個
+**硬編碼�?*: `'admin'`, `'agent'`, `'team'`
+**?�現次數**: 150+ �?
+**影響?�件**: 25+ ??
 
-**後端關鍵位置**:
+**後端?�鍵位置**:
 ```typescript
-// ❌ 硬編碼示例
-src/db/schema.ts:23              // 資料庫 schema
+// ??硬編碼示�?
+src/db/schema.ts:23              // 資�?�?schema
 src/enterprise/rbac.ts:80-232    // 40+ 次硬編碼
-src/middleware/auth.ts           // 認證中間件
-src/handlers/message.ts          // 訊息處理
-src/utils/auth.ts:368,394,406    // 認證工具
+src/middleware/auth.ts           // 認�?中�?�?
+src/handlers/message.ts          // 訊息?��?
+src/utils/auth.ts:368,394,406    // 認�?工具
 ```
 
-**前端關鍵位置**:
+**?�端?�鍵位置**:
 ```typescript
-// ❌ 硬編碼示例
-frontend/src/views/TeamManagement.vue:1082-1385  // 10+ 次
+// ??硬編碼示�?
+frontend/src/views/TeamManagement.vue:1082-1385  // 10+ �?
 frontend/src/views/ActivityLog.vue:345
 frontend/src/components/team/TeamMemberCard.vue:154,166
 ```
 
-#### B. 訊息狀態值 (Message Status)
+#### B. 訊息?�?��?(Message Status)
 
-**硬編碼值**: `'pending'`, `'sent'`, `'delivered'`, `'failed'`
-**出現次數**: 50+ 次
-**影響文件**: 12+ 個
+**硬編碼�?*: `'pending'`, `'sent'`, `'delivered'`, `'failed'`
+**?�現次數**: 50+ �?
+**影響?�件**: 12+ ??
 
-**關鍵位置**:
+**?�鍵位置**:
 ```typescript
-// ❌ 硬編碼示例
+// ??硬編碼示�?
 src/utils/drizzle-converters.ts:73,232
 src/handlers/attachment.ts:39
 src/handlers/delayed-message-drizzle.ts:190,267,309,333,385...
 ```
 
-#### C. 對話狀態值 (Conversation Status)
+#### C. 對話?�?��?(Conversation Status)
 
-**硬編碼值**: `'active'`, `'closed'`, `'pending'`, `'in-progress'`
-**出現次數**: 40+ 次
-**影響文件**: 10+ 個
+**硬編碼�?*: `'active'`, `'closed'`, `'pending'`, `'in-progress'`
+**?�現次數**: 40+ �?
+**影響?�件**: 10+ ??
 
-**關鍵位置**:
+**?�鍵位置**:
 ```typescript
-// ❌ 硬編碼示例
+// ??硬編碼示�?
 src/handlers/conversation.ts:255,271,303,1098,1173
 src/utils/team.ts:321
 src/handlers/customer.ts:29,109,259
 ```
 
-#### D. 發送者類型 (Sender Types)
+#### D. ?�送者�???(Sender Types)
 
-**硬編碼值**: `'customer'`, `'agent'`, `'system'`
-**出現次數**: 30+ 次
-**影響文件**: 8+ 個
+**硬編碼�?*: `'customer'`, `'agent'`, `'system'`
+**?�現次數**: 30+ �?
+**影響?�件**: 8+ ??
 
-**關鍵位置**:
+**?�鍵位置**:
 ```typescript
-// ❌ 硬編碼示例
+// ??硬編碼示�?
 src/db/schema.ts:132
 src/durable-objects/CustomerMessageDO.ts:20
 src/utils/drizzle-converters.ts:68
 ```
 
-#### E. 平台名稱 (Platform Names)
+#### E. 平台?�稱 (Platform Names)
 
-**硬編碼值**: `'LINE'`, `'FACEBOOK'`, `'SYSTEM'`, `'ADMIN'`
-**出現次數**: 20+ 次
+**硬編碼�?*: `'LINE'`, `'FACEBOOK'`, `'SYSTEM'`, `'ADMIN'`
+**?�現次數**: 20+ �?
 
-**關鍵位置**:
+**?�鍵位置**:
 ```typescript
-// ❌ 硬編碼示例
+// ??硬編碼示�?
 src/modules/file-management/constants/file-config.ts:116-152
 ```
 
-#### 📊 配置值統計
+#### ?? ?�置?�統�?
 
-| 配置類型 | 獨特值數量 | 總出現次數 | 影響文件數 |
+| ?�置類�? | ?�特?�數??| 總出?�次??| 影響?�件??|
 |---------|-----------|-----------|-----------|
-| 角色名稱 | 3 | 150+ | 25+ |
-| 訊息狀態 | 4 | 50+ | 12+ |
-| 對話狀態 | 4 | 40+ | 10+ |
-| 發送者類型 | 3 | 30+ | 8+ |
-| 平台名稱 | 4 | 20+ | 5+ |
-| **總計** | **18** | **290+** | **60+ 文件** |
+| 角色?�稱 | 3 | 150+ | 25+ |
+| 訊息?�??| 4 | 50+ | 12+ |
+| 對話?�??| 4 | 40+ | 10+ |
+| ?�送者�???| 3 | 30+ | 8+ |
+| 平台?�稱 | 4 | 20+ | 5+ |
+| **總�?** | **18** | **290+** | **60+ ?�件** |
 
 ---
 
-## 🟡 中優先級問題
+## ?�� 中優?��??��?
 
-### 3. 魔術數字和硬編碼限制值
+### 3. 魔�??��??�硬編碼?�制??
 
-#### 已優化的部分 ✅
+#### 已優?��??��? ??
 
-以下配置已經良好集中化：
+以�??�置已�??�好?�中?��?
 
-**A. KV 配置** - `src/config/kv-config.ts`
+**A. KV ?�置** - `src/config/kv-config.ts`
 ```typescript
-✅ TTL 值: 24 個已配置 (SESSION, MESSAGE_PENDING, CACHE_*)
-✅ 批次操作: 5 個已配置 (MAX_BATCH_SIZE, MAX_PARALLEL_OPS...)
-✅ 壓縮設定: 3 個已配置
+??TTL ?? 24 ?�已?�置 (SESSION, MESSAGE_PENDING, CACHE_*)
+???�次?��?: 5 ?�已?�置 (MAX_BATCH_SIZE, MAX_PARALLEL_OPS...)
+??壓縮設�?: 3 ?�已?�置
 ```
 
-**B. 文件配置** - `src/modules/file-management/constants/file-config.ts`
+**B. ?�件?�置** - `src/modules/file-management/constants/file-config.ts`
 ```typescript
-✅ 文件大小限制: 7 個已配置 (10MB, 5MB, 20MB...)
-✅ 處理選項: 4 個已配置 (縮圖尺寸, 質量...)
-✅ 上傳限制: 5 個已配置 (20/min, 100/hour, 100MB/hour)
+???�件大�??�制: 7 ?�已?�置 (10MB, 5MB, 20MB...)
+???��??��?: 4 ?�已?�置 (縮�?尺寸, 質�?...)
+??上傳?�制: 5 ?�已?�置 (20/min, 100/hour, 100MB/hour)
 ```
 
-**C. CORS 配置** - `src/config/cors.ts`
+**C. CORS ?�置** - `src/config/cors.ts`
 ```typescript
-✅ ALLOWED_ORIGINS 列表
-✅ CORS_HEADERS 配置
-✅ 輔助函數
+??ALLOWED_ORIGINS ?�表
+??CORS_HEADERS ?�置
+??輔助?�數
 ```
 
-**D. 功能開關** - `frontend/src/config/features.ts`
+**D. ?�能?��?** - `frontend/src/config/features.ts`
 ```typescript
-✅ QR_BACKGROUND_PRELOAD 與推出百分比
-✅ 網路條件控制
-✅ 優先級權重配置
+??QR_BACKGROUND_PRELOAD ?�推?�百?��?
+??網路條件?�制
+???��?級�??��?�?
 ```
 
-#### 仍需優化的部分 ⚠️
+#### 仍�??��??�部???��?
 
-**A. 超時值分散** (8+ 個位置)
+**A. 超�??��???* (8+ ?��?�?
 ```typescript
-// ❌ 分散在多個文件
+// ???�散?��??��?�?
 frontend/src/services/globalWebSocket.ts:17    // retryDelay = 5000
 frontend/src/stores/notifications.ts:98        // setTimeout(..., 5000)
 frontend/src/composables/usePerformanceMonitor.ts:204  // setInterval(..., 5000)
 frontend/src/composables/useMessageDebounce.ts:51      // delay = 500
 ```
 
-**B. 效能閾值** (5+ 個位置)
+**B. ?�能?��?* (5+ ?��?�?
 ```typescript
-// ❌ 硬編碼在組件中
+// ??硬編碼在組件�?
 frontend/src/composables/usePerformanceMonitor.ts:161  // delta > 33.33
 frontend/src/composables/usePerformanceMonitor.ts:314  // metrics.value.lcp > 2500
 frontend/src/composables/usePerformanceMonitor.ts:318  // metrics.value.fid > 100
 ```
 
-**C. 分頁限制** (4+ 個位置)
+**C. ?��??�制** (4+ ?��?�?
 ```typescript
-// ❌ 分散在 handlers
+// ???�散??handlers
 src/handlers/message.ts:30                    // pageSize = 50
 frontend/src/stores/notifications.ts:35       // pageSize: 20
 frontend/src/api/notifications.ts:170         // limit = 10
 ```
 
-**D. LINE API 限制** (5+ 個位置)
+**D. LINE API ?�制** (5+ ?��?�?
 ```typescript
-// ❌ 硬編碼在 line.ts
+// ??硬編碼在 line.ts
 src/utils/line.ts:151    // messages.length > 5
 src/utils/line.ts:167    // BATCH_SIZE = 500
 src/utils/line.ts:735    // maxLength = 30
 ```
 
-#### 📊 魔術數字統計
+#### ?? 魔�??��?統�?
 
-| 類別 | 已優化 ✅ | 需優化 ⚠️ | 總計 |
+| 類別 | 已優????| ?�?��? ?��? | 總�? |
 |------|----------|----------|------|
 | Timeout/Delay | 0 | 8 | 8 |
-| 文件大小限制 | 7 | 0 | 7 |
-| 分頁限制 | 0 | 4 | 4 |
+| ?�件大�??�制 | 7 | 0 | 7 |
+| ?��??�制 | 0 | 4 | 4 |
 | KV TTL | 24 | 0 | 24 |
-| 批次操作 | 5 | 0 | 5 |
-| 壓縮設定 | 3 | 0 | 3 |
-| 上傳限制 | 5 | 0 | 5 |
-| 快取配置 | 4 | 0 | 4 |
-| 效能閾值 | 0 | 5 | 5 |
-| API 限制 | 0 | 5 | 5 |
-| **總計** | **48 (64%)** | **22 (36%)** | **70** |
+| ?�次?��? | 5 | 0 | 5 |
+| 壓縮設�? | 3 | 0 | 3 |
+| 上傳?�制 | 5 | 0 | 5 |
+| 快�??�置 | 4 | 0 | 4 |
+| ?�能?��?| 0 | 5 | 5 |
+| API ?�制 | 0 | 5 | 5 |
+| **總�?** | **48 (64%)** | **22 (36%)** | **70** |
 
 ---
 
-## 🟢 低優先級問題
+## ?�� 低優?��??��?
 
-### 4. HTTP 狀態碼
+### 4. HTTP ?�?�碼
 
-**狀態**: 可接受 - 標準 HTTP 狀態碼通常直接使用
+**?�??*: ?�接??- 標�? HTTP ?�?�碼?�常?�接使用
 
-**出現位置**: 30+ 個文件
+**?�現位置**: 30+ ?��?�?
 ```typescript
-// 當前實踐 (可接受)
+// ?��?實�? (?�接??
 return c.json({ error: 'Unauthorized' }, 401)
 return c.json({ success: true }, 200)
 ```
 
-**可選優化**: 如果追求極致一致性，可以創建常量
+**?�選?��?**: 如�?追�?極致一?�性�??�以?�建常�?
 
-### 5. 錯誤訊息
+### 5. ?�誤訊息
 
-**狀態**: 可接受 - 錯誤訊息通常需要具體的上下文
+**?�??*: ?�接??- ?�誤訊息?�常?�要具體�?上�???
 
-**發現數量**:
-- 後端: 60+ 個文件使用 `throw new Error("...")`
-- 前端: 19+ 個文件使用 `throw new Error("...")`
+**?�現?��?**:
+- 後端: 60+ ?��?件使??`throw new Error("...")`
+- ?�端: 19+ ?��?件使??`throw new Error("...")`
 
-**當前實踐**:
+**?��?實�?**:
 ```typescript
-// 上下文特定的錯誤訊息 (可接受)
+// 上�??�特定�??�誤訊息 (?�接??
 throw new Error(`User ${userId} not found`)
 throw new Error('Invalid conversation ID')
 ```
 
-**可選優化**: 對於常見錯誤訊息，可以考慮創建錯誤字典
+**?�選?��?**: 對於常�??�誤訊息，可以考慮?�建?�誤字典
 
 ---
 
-## ✅ 已優化良好的部分
+## ??已優?�良好�??��?
 
-### 1. KV 配置系統
-- **文件**: `src/config/kv-config.ts`
-- **覆蓋範圍**: 完整的 KV 命名空間、TTL、批次操作配置
-- **評分**: ⭐⭐⭐⭐⭐ (5/5)
+### 1. KV ?�置系統
+- **?�件**: `src/config/kv-config.ts`
+- **覆�?範�?**: 完整??KV ?��?空�??�TTL?�批次�?作�?�?
+- **評�?**: ⭐�?⭐�?�?(5/5)
 
-### 2. 文件管理配置
-- **文件**: `src/modules/file-management/constants/file-config.ts`
-- **覆蓋範圍**: 文件大小、類型、上傳限制、處理選項
-- **評分**: ⭐⭐⭐⭐⭐ (5/5)
+### 2. ?�件管�??�置
+- **?�件**: `src/modules/file-management/constants/file-config.ts`
+- **覆�?範�?**: ?�件大�??��??�、�??��??�、�??�選??
+- **評�?**: ⭐�?⭐�?�?(5/5)
 
-### 3. CORS 配置
-- **文件**: `src/config/cors.ts`
-- **覆蓋範圍**: 允許來源、標頭、輔助函數
-- **評分**: ⭐⭐⭐⭐⭐ (5/5)
+### 3. CORS ?�置
+- **?�件**: `src/config/cors.ts`
+- **覆�?範�?**: ?�許來�??��??�、�??�函??
+- **評�?**: ⭐�?⭐�?�?(5/5)
 
-### 4. 安全配置
-- **文件**: `src/config/security.ts`
-- **覆蓋範圍**: CSP、安全標頭、信任來源
-- **評分**: ⭐⭐⭐⭐☆ (4/5)
+### 4. 安全?�置
+- **?�件**: `src/config/security.ts`
+- **覆�?範�?**: CSP?��??��??�、信任�?�?
+- **評�?**: ⭐�?⭐�???(4/5)
 
-### 5. 功能開關
-- **文件**: `frontend/src/config/features.ts`
-- **覆蓋範圍**: 功能標誌、推出百分比、優先級
-- **評分**: ⭐⭐⭐⭐⭐ (5/5)
+### 5. ?�能?��?
+- **?�件**: `frontend/src/config/features.ts`
+- **覆�?範�?**: ?�能標�??�推?�百?��??�優?��?
+- **評�?**: ⭐�?⭐�?�?(5/5)
 
 ---
 
-## 🎯 優化建議
+## ?�� ?��?建議
 
-### 優先級 1: 立即執行
+### ?��?�?1: 立即?��?
 
-#### 1.1 建立常量定義文件
+#### 1.1 建�?常�?定義?�件
 
-**創建以下新文件**:
+**?�建以�??��?�?*:
 
 ```typescript
 // src/constants/roles.ts
@@ -430,9 +430,9 @@ export const PLATFORMS = {
 export type Platform = typeof PLATFORMS[keyof typeof PLATFORMS];
 ```
 
-#### 1.2 環境配置整合
+#### 1.2 ?��??�置?��?
 
-**創建統一的環境配置**:
+**?�建統�??�環境�?�?*:
 
 ```typescript
 // src/config/environment.ts
@@ -449,10 +449,10 @@ export const ENV_CONFIG = {
   },
   production: {
     frontend: {
-      url: process.env.PROD_FRONTEND_URL || 'https://multi-channel.imfinethankyouandyou.com'
+      url: process.env.PROD_FRONTEND_URL || 'https://your-api-domain.example.com'
     },
     backend: {
-      url: process.env.PROD_BACKEND_URL || 'https://multi-channel.imfinethankyouandyou.com'
+      url: process.env.PROD_BACKEND_URL || 'https://your-api-domain.example.com'
     }
   }
 };
@@ -462,7 +462,7 @@ export const getCurrentEnv = () => {
 };
 ```
 
-#### 1.3 外部 API 配置集中化
+#### 1.3 外部 API ?�置?�中??
 
 ```typescript
 // src/config/external-apis.ts
@@ -504,9 +504,9 @@ export const EXTERNAL_APIS = {
 };
 ```
 
-### 優先級 2: 短期執行 (1-2週)
+### ?��?�?2: ?��??��? (1-2??
 
-#### 2.1 集中化超時配置
+#### 2.1 ?�中?��??��?�?
 
 ```typescript
 // src/config/timeouts.ts
@@ -530,7 +530,7 @@ export const TIMEOUTS = {
 } as const;
 ```
 
-#### 2.2 集中化分頁配置
+#### 2.2 ?�中?��??��?�?
 
 ```typescript
 // src/config/pagination.ts
@@ -542,7 +542,7 @@ export const PAGINATION = {
 } as const;
 ```
 
-#### 2.3 集中化效能閾值
+#### 2.3 ?�中?��??�閾??
 
 ```typescript
 // src/config/performance-thresholds.ts
@@ -563,170 +563,170 @@ export const PERFORMANCE_THRESHOLDS = {
 } as const;
 ```
 
-### 優先級 3: 中期執行 (1-2個月)
+### ?��?�?3: 中�??��? (1-2?��?)
 
-#### 3.1 大規模重構 - 替換硬編碼
+#### 3.1 大�?模�?�?- ?��?硬編�?
 
-**影響最大的文件需要重構**:
+**影響?�大�??�件?�要�?�?*:
 
-1. **`src/enterprise/rbac.ts`** (40+ 個硬編碼角色引用)
-   - 替換為 `ROLES` 常量
-   - 預計影響: 40+ 行程式碼
+1. **`src/enterprise/rbac.ts`** (40+ ?�硬編碼角色引用)
+   - ?��???`ROLES` 常�?
+   - ?��?影響: 40+ 行�?式碼
 
-2. **`src/handlers/conversation.ts`** (15+ 個硬編碼狀態值)
-   - 替換為 `CONVERSATION_STATUS` 常量
-   - 預計影響: 15+ 行程式碼
+2. **`src/handlers/conversation.ts`** (15+ ?�硬編碼?�?��?
+   - ?��???`CONVERSATION_STATUS` 常�?
+   - ?��?影響: 15+ 行�?式碼
 
-3. **`frontend/src/views/TeamManagement.vue`** (10+ 個硬編碼角色檢查)
-   - 替換為前端角色常量
-   - 預計影響: 10+ 行程式碼
+3. **`frontend/src/views/TeamManagement.vue`** (10+ ?�硬編碼角色檢查)
+   - ?��??��?端�??�常??
+   - ?��?影響: 10+ 行�?式碼
 
-4. **`src/handlers/delayed-message-drizzle.ts`** (12+ 個硬編碼狀態值)
-   - 替換為 `MESSAGE_STATUS` 常量
-   - 預計影響: 12+ 行程式碼
+4. **`src/handlers/delayed-message-drizzle.ts`** (12+ ?�硬編碼?�?��?
+   - ?��???`MESSAGE_STATUS` 常�?
+   - ?��?影響: 12+ 行�?式碼
 
-#### 3.2 建立遷移指南
+#### 3.2 建�??�移?��?
 
-創建 `docs/guides/HARDCODE_MIGRATION_GUIDE.md` 包含:
-- 步驟指引
-- 範例程式碼
+?�建 `docs/guides/HARDCODE_MIGRATION_GUIDE.md` ?�含:
+- 步�??��?
+- 範�?程�?�?
 - 測試策略
-- 回滾計劃
+- ?�滾計�?
 
 ---
 
-## 📈 優化效益評估
+## ?? ?��??��?評估
 
-### 量化指標
+### ?��??��?
 
-| 指標 | 優化前 | 優化後 | 改善 |
+| ?��? | ?��???| ?��?�?| ?��? |
 |------|--------|--------|------|
-| 硬編碼配置值 | 290+ | 0 | 100% |
-| 需修改文件數 (環境切換) | 69+ | 3 | 95.7% |
-| 維護複雜度 | 高 | 低 | - |
-| 配置錯誤風險 | 高 | 低 | - |
-| 測試覆蓋率 | 部分 | 完整 | - |
+| 硬編碼�?置�?| 290+ | 0 | 100% |
+| ?�修改?�件??(?��??��?) | 69+ | 3 | 95.7% |
+| 維護複�?�?| �?| �?| - |
+| ?�置?�誤風險 | �?| �?| - |
+| 測試覆�???| ?��? | 完整 | - |
 
-### 質化效益
+### 質�??��?
 
-#### 開發效率
-- ✅ 新開發者可以快速找到配置位置
-- ✅ 減少配置相關的 bug
-- ✅ 提高代碼可讀性
+#### ?�發?��?
+- ???��??�者可以快?�找?��?置�?�?
+- ??減�??�置?��???bug
+- ???��?�?��?��???
 
-#### 維護性
-- ✅ 環境切換只需修改 3 個配置文件
-- ✅ 統一的配置管理
-- ✅ 更容易進行配置驗證
+#### 維護??
+- ???��??��??��?修改 3 ?��?置�?�?
+- ??統�??��?置管??
+- ???�容?�進�??�置驗�?
 
-#### 可擴展性
-- ✅ 添加新環境更容易
-- ✅ 支持更多外部平台
-- ✅ 功能開關更靈活
+#### ?�擴展�?
+- ??添�??�環境更容�?
+- ???��??��?外部平台
+- ???�能?��??��?�?
 
 ---
 
-## 🛠️ 實施計劃
+## ??�?實施計�?
 
-### 階段 1: 基礎設施 (Week 1-2)
+### ?�段 1: ?��?設施 (Week 1-2)
 
-- [ ] 創建所有常量定義文件
-- [ ] 創建統一的環境配置
-- [ ] 創建外部 API 配置
-- [ ] 建立單元測試
+- [ ] ?�建?�?�常?��?義�?�?
+- [ ] ?�建統�??�環境�?�?
+- [ ] ?�建外部 API ?�置
+- [ ] 建�??��?測試
 
-**預計工時**: 16 小時
-**風險**: 低
+**?��?工�?**: 16 小�?
+**風險**: �?
 
-### 階段 2: 批量替換 (Week 3-4)
+### ?�段 2: ?��??��? (Week 3-4)
 
-- [ ] 後端角色常量替換 (25+ 文件)
-- [ ] 後端狀態常量替換 (20+ 文件)
-- [ ] 前端常量替換 (15+ 文件)
-- [ ] 更新所有測試
+- [ ] 後端角色常�??��? (25+ ?�件)
+- [ ] 後端?�?�常?�替??(20+ ?�件)
+- [ ] ?�端常�??��? (15+ ?�件)
+- [ ] ?�新?�?�測�?
 
-**預計工時**: 32 小時
-**風險**: 中
+**?��?工�?**: 32 小�?
+**風險**: �?
 
-### 階段 3: 驗證與優化 (Week 5-6)
+### ?�段 3: 驗�??�優??(Week 5-6)
 
-- [ ] 完整回歸測試
-- [ ] 效能測試
-- [ ] 文檔更新
+- [ ] 完整?�歸測試
+- [ ] ?�能測試
+- [ ] ?��??�新
 - [ ] Code Review
 
-**預計工時**: 16 小時
-**風險**: 低
+**?��?工�?**: 16 小�?
+**風險**: �?
 
-### 總計
+### 總�?
 
-- **總工時**: 64 小時 (約 8 個工作日)
-- **總風險**: 中低
-- **預期完成**: 6 週
-
----
-
-## 📝 檢查清單
-
-### 優先級 1 (必須執行)
-
-- [ ] 創建 `src/constants/roles.ts`
-- [ ] 創建 `src/constants/message-status.ts`
-- [ ] 創建 `src/constants/conversation-status.ts`
-- [ ] 創建 `src/constants/sender-types.ts`
-- [ ] 創建 `src/constants/platforms.ts`
-- [ ] 創建 `src/config/environment.ts`
-- [ ] 創建 `src/config/external-apis.ts`
-- [ ] 更新 `src/enterprise/rbac.ts` (40+ 引用)
-- [ ] 更新 `frontend/src/views/TeamManagement.vue` (10+ 引用)
-- [ ] 創建前端對應常量文件
-
-### 優先級 2 (建議執行)
-
-- [ ] 創建 `src/config/timeouts.ts`
-- [ ] 創建 `src/config/pagination.ts`
-- [ ] 創建 `src/config/performance-thresholds.ts`
-- [ ] 創建 `src/config/line-api-limits.ts`
-- [ ] 更新所有使用硬編碼超時的文件 (8+ 個)
-- [ ] 更新所有使用硬編碼分頁的文件 (4+ 個)
-
-### 優先級 3 (可選執行)
-
-- [ ] 創建 `src/constants/http-status.ts`
-- [ ] 創建錯誤訊息字典 (如需要)
-- [ ] 建立配置驗證系統
-- [ ] 建立配置文檔生成器
+- **總工??*: 64 小�? (�?8 ?�工作日)
+- **總風??*: 中�?
+- **?��?完�?**: 6 ??
 
 ---
 
-## 🎓 最佳實踐建議
+## ?? 檢查清單
 
-### 1. 配置管理原則
+### ?��?�?1 (必�??��?)
+
+- [ ] ?�建 `src/constants/roles.ts`
+- [ ] ?�建 `src/constants/message-status.ts`
+- [ ] ?�建 `src/constants/conversation-status.ts`
+- [ ] ?�建 `src/constants/sender-types.ts`
+- [ ] ?�建 `src/constants/platforms.ts`
+- [ ] ?�建 `src/config/environment.ts`
+- [ ] ?�建 `src/config/external-apis.ts`
+- [ ] ?�新 `src/enterprise/rbac.ts` (40+ 引用)
+- [ ] ?�新 `frontend/src/views/TeamManagement.vue` (10+ 引用)
+- [ ] ?�建?�端對�?常�??�件
+
+### ?��?�?2 (建議?��?)
+
+- [ ] ?�建 `src/config/timeouts.ts`
+- [ ] ?�建 `src/config/pagination.ts`
+- [ ] ?�建 `src/config/performance-thresholds.ts`
+- [ ] ?�建 `src/config/line-api-limits.ts`
+- [ ] ?�新?�?�使?�硬編碼超�??��?�?(8+ ??
+- [ ] ?�新?�?�使?�硬編碼?��??��?�?(4+ ??
+
+### ?��?�?3 (?�選?��?)
+
+- [ ] ?�建 `src/constants/http-status.ts`
+- [ ] ?�建?�誤訊息字典 (如�?�?
+- [ ] 建�??�置驗�?系統
+- [ ] 建�??�置?��??��???
+
+---
+
+## ?? ?�佳實踐建�?
+
+### 1. ?�置管�??��?
 
 ```typescript
-// ✅ 好的實踐
+// ??好�?實�?
 import { ROLES } from '@/constants/roles';
 if (user.role === ROLES.ADMIN) { ... }
 
-// ❌ 避免的實踐
+// ???��??�實�?
 if (user.role === 'admin') { ... }
 ```
 
-### 2. 環境配置原則
+### 2. ?��??�置?��?
 
 ```typescript
-// ✅ 好的實踐
+// ??好�?實�?
 import { getCurrentEnv } from '@/config/environment';
 const apiUrl = getCurrentEnv().backend.url;
 
-// ❌ 避免的實踐
+// ???��??�實�?
 const apiUrl = 'http://localhost:8787';
 ```
 
-### 3. 類型安全原則
+### 3. 類�?安全?��?
 
 ```typescript
-// ✅ 好的實踐 - 使用 const assertion 和類型推導
+// ??好�?實�? - 使用 const assertion ?��??�推�?
 export const ROLES = {
   ADMIN: 'admin',
   AGENT: 'agent'
@@ -734,72 +734,72 @@ export const ROLES = {
 
 export type Role = typeof ROLES[keyof typeof ROLES];
 
-// ❌ 避免的實踐 - 純字符串
+// ???��??�實�?- 純�?符串
 export type Role = 'admin' | 'agent';
 ```
 
-### 4. 配置文件組織
+### 4. ?�置?�件組�?
 
 ```
 src/
-├── constants/          # 業務常量 (角色、狀態等)
-│   ├── roles.ts
-│   ├── message-status.ts
-│   └── ...
-├── config/            # 系統配置
-│   ├── environment.ts
-│   ├── external-apis.ts
-│   ├── kv-config.ts
-│   └── ...
-└── modules/
-    └── [module]/
-        └── constants/  # 模組特定常量
+?��??� constants/          # 業�?常�? (角色?��??��?)
+??  ?��??� roles.ts
+??  ?��??� message-status.ts
+??  ?��??� ...
+?��??� config/            # 系統?�置
+??  ?��??� environment.ts
+??  ?��??� external-apis.ts
+??  ?��??� kv-config.ts
+??  ?��??� ...
+?��??� modules/
+    ?��??� [module]/
+        ?��??� constants/  # 模�??��?常�?
 ```
 
 ---
 
-## 📚 參考資源
+## ?? ?�考�?�?
 
-### 相關文檔
-- `CLAUDE.md` - 專案總體文檔
-- `docs/CORS_CONFIGURATION_GUIDE.md` - CORS 配置範例
-- `src/config/kv-config.ts` - KV 配置範例
-- `src/modules/file-management/constants/file-config.ts` - 文件配置範例
+### ?��??��?
+- `CLAUDE.md` - 專�?總�??��?
+- `docs/CORS_CONFIGURATION_GUIDE.md` - CORS ?�置範�?
+- `src/config/kv-config.ts` - KV ?�置範�?
+- `src/modules/file-management/constants/file-config.ts` - ?�件?�置範�?
 
-### 外部參考
+### 外部?��?
 - [TypeScript const assertions](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-4.html#const-assertions)
 - [12-Factor App Config](https://12factor.net/config)
 - [Environment Variables Best Practices](https://blog.bitsrc.io/a-gentle-introduction-to-environment-variables-9ad4fcca5c)
 
 ---
 
-## 📊 附錄: 完整統計表
+## ?? ?��?: 完整統�?�?
 
-### A. 硬編碼問題分布
+### A. 硬編碼�?題�?�?
 
-| 問題類型 | 後端 | 前端 | Web Installer | 總計 |
+| ?��?類�? | 後端 | ?�端 | Web Installer | 總�? |
 |---------|------|------|---------------|------|
 | URLs/Endpoints | 45+ | 20+ | 4 | 69+ |
-| 配置值 | 180+ | 110+ | - | 290+ |
-| 魔術數字 | 40+ | 30+ | - | 70+ |
-| 錯誤訊息 | 60+ | 19+ | - | 79+ |
-| **總計** | **325+** | **179+** | **4** | **508+** |
+| ?�置??| 180+ | 110+ | - | 290+ |
+| 魔�??��? | 40+ | 30+ | - | 70+ |
+| ?�誤訊息 | 60+ | 19+ | - | 79+ |
+| **總�?** | **325+** | **179+** | **4** | **508+** |
 
-### B. 文件影響範圍
+### B. ?�件影響範�?
 
-| 模組 | 需修改文件數 | 預計工時 |
+| 模�? | ?�修改?�件??| ?��?工�? |
 |------|-------------|---------|
-| 認證與授權 | 15+ | 8h |
-| 對話管理 | 12+ | 6h |
-| 訊息處理 | 18+ | 10h |
-| 團隊管理 | 10+ | 5h |
-| 前端視圖 | 15+ | 8h |
-| 配置文件 | 8+ | 4h |
-| 測試文件 | 20+ | 10h |
-| **總計** | **98+ 文件** | **51 小時** |
+| 認�??��?�?| 15+ | 8h |
+| 對話管�? | 12+ | 6h |
+| 訊息?��? | 18+ | 10h |
+| ?��?管�? | 10+ | 5h |
+| ?�端視�? | 15+ | 8h |
+| ?�置?�件 | 8+ | 4h |
+| 測試?�件 | 20+ | 10h |
+| **總�?** | **98+ ?�件** | **51 小�?** |
 
 ---
 
-**報告結束**
+**?��?結�?**
 
-*如需更詳細的實施指導或特定問題的解決方案，請參考本報告的相關章節或聯繫開發團隊。*
+*如�??�詳細�?實施?��??�特定�?題�?�?��?��?，�??�考本?��??�相?��?節?�聯繫�??��??��?

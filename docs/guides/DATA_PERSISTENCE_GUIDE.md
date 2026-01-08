@@ -137,7 +137,7 @@ wrangler d1 execute omni-channel-platform --file=./seed.sql
 ```
 
 ### 3. LINE Webhook URL
-- URL: `https://multi-channel-platform.imfinethankyouandyou.com/api/webhook`
+- URL: `https://multi-channel-platform.example.com/api/webhook`
 - : it is verified
 
 

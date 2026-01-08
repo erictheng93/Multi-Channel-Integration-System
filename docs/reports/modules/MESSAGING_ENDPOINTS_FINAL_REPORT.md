@@ -8,7 +8,7 @@
 
 1. ** URL**
  - URL: `https://multi-channel-integration-system.pages.dev` (DNS)
- - URL: `https://multi-channel.imfinethankyouandyou.com` (DNS)
+ - URL: `https://your-api-domain.example.com` (DNS)
 
 2. ** **
  - : `src/index.ts:322`
@@ -48,17 +48,17 @@ nslookup multi-channel-integration-system.pages.dev
 # : Non-existent domain
 
 # 2. wrangler.toml
-wrangler.toml:15 - pattern = "multi-channel.imfinethankyouandyou.com/*"
+wrangler.toml:15 - pattern = "your-api-domain.example.com/*"
 
 # 3. URL
-ping multi-channel.imfinethankyouandyou.com
+ping your-api-domain.example.com
 # : 172.67.156.188 ()
 ```
 
 
 ```typescript
 //
-const REMOTE_URL = 'https://multi-channel.imfinethankyouandyou.com'; //
+const REMOTE_URL = 'https://your-api-domain.example.com'; //
 // const REMOTE_URL = 'https://multi-channel-integration-system.pages.dev'; //
 ```
 
@@ -173,11 +173,11 @@ export default {
 
 ### (Production)
 
-**URL**: `https://multi-channel.imfinethankyouandyou.com`
+**URL**: `https://your-api-domain.example.com`
 
 #### 1:
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/messages/health
+curl https://your-api-domain.example.com/api/messages/health
 
 :
 {
@@ -190,7 +190,7 @@ curl https://multi-channel.imfinethankyouandyou.com/api/messages/health
 
 #### 2:
 ```bash
-curl https://multi-channel.imfinethankyouandyou.com/api/messages/info
+curl https://your-api-domain.example.com/api/messages/info
 
 :
 {
@@ -309,7 +309,7 @@ npx tsx test-messaging-dual.ts
 | | URL | DNS | |
 |------|-----|---------|------|
 | **** | `http://localhost:8787` | N/A | |
-| **** | `https://multi-channel.imfinethankyouandyou.com` | | |
+| **** | `https://your-api-domain.example.com` | | |
 | ~~URL~~ | ~~`https://multi-channel-integration-system.pages.dev`~~ | | () |
 
 ### wrangler.toml
@@ -317,15 +317,15 @@ npx tsx test-messaging-dual.ts
 ```toml
 
 [[routes]]
-pattern = "multi-channel.imfinethankyouandyou.com/*"
-zone_name = "imfinethankyouandyou.com"
+pattern = "your-api-domain.example.com/*"
+zone_name = "example.com"
 ```
 
 
 ```typescript
 // test-messaging-dual.ts
 const LOCAL_URL = 'http://localhost:8787';
-const REMOTE_URL = 'https://multi-channel.imfinethankyouandyou.com'; //
+const REMOTE_URL = 'https://your-api-domain.example.com'; //
 ```
 
 ---
@@ -349,7 +349,7 @@ const REMOTE_URL = 'https://multi-channel.imfinethankyouandyou.com'; //
 
 
 1. ** URL**
- - URL: `multi-channel.imfinethankyouandyou.com`
+ - URL: `your-api-domain.example.com`
  - DNS,Ping
 
 2. ** 100%**
@@ -415,7 +415,7 @@ ls -lh src/handlers/messaging-main.ts
 # : , > 50KB
 
 # 3.
-curl https://multi-channel.imfinethankyouandyou.com/api/messages/health
+curl https://your-api-domain.example.com/api/messages/health
 # : {"status":"healthy","module":"messaging",...}
 
 # 4.
@@ -427,7 +427,7 @@ npm run dev
 **Q1: ?**
 ```
 :
-1. URL multi-channel.imfinethankyouandyou.com
+1. URL your-api-domain.example.com
 2. npm run deploy
 3. /VPN
 ```
@@ -445,12 +445,12 @@ npm run dev
 **Q3: ?**
 ```bash
 
-curl https://multi-channel.imfinethankyouandyou.com/api/messages/health
-curl https://multi-channel.imfinethankyouandyou.com/api/messages/info
+curl https://your-api-domain.example.com/api/messages/health
+curl https://your-api-domain.example.com/api/messages/info
 
 # (JWT token)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
- https://multi-channel.imfinethankyouandyou.com/api/messages/stats
+ https://your-api-domain.example.com/api/messages/stats
 ```
 
 ---
@@ -485,7 +485,7 @@ npx wrangler deployments list #
 
 
 curl localhost:8787/api/messages/health #
-curl https://multi-channel.imfinethankyouandyou.com/api/messages/health #
+curl https://your-api-domain.example.com/api/messages/health #
 
 
 npx tsx test-messaging-dual.ts #

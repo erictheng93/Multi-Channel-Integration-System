@@ -157,15 +157,14 @@ corsMonitoringHandler.get('/health', (c: Context<{ Bindings: Bindings }>) => {
  * 返回當前的 CORS 配置（不包含敏感信息）
  */
 corsMonitoringHandler.get('/config', (c: Context<{ Bindings: Bindings }>) => {
+  // 使用動態 CORS 配置
+  const { getAllowedOrigins } = require('../config/cors');
+  const dynamicOrigins = getAllowedOrigins(c.env);
+
   return successResponse(c, {
     allowedOrigins: [
-      'https://multi-channel.imfinethankyouandyou.com',
-      'https://multi-channel-platform-frontend.pages.dev',
-      'https://mcp.imfinethankyouandyou.com',
-      '*.multi-channel-platform-frontend.pages.dev (preview branches)',
-      'localhost:3000 (development)',
-      '127.0.0.1:3000 (development)',
-      'localhost:8787 (development)'
+      ...dynamicOrigins,
+      '*.pages.dev (Cloudflare Pages preview branches)',
     ],
     features: {
       credentialsSupport: true,

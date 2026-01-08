@@ -185,7 +185,7 @@ VITE_WEBSOCKET_DEBUG=true
 
 3. ****
  ```bash
- curl https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-status
+ curl https://your-api-domain.example.com/api/websocket/migration-status
  ```
 
 ### WebSocket ()
@@ -193,7 +193,7 @@ VITE_WEBSOCKET_DEBUG=true
 #### Step 1: (5% )
 
 ```bash
-curl -X POST https://multi-channel.imfinethankyouandyou.com/api/websocket/migration-config \
+curl -X POST https://your-api-domain.example.com/api/websocket/migration-config \
  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
  -H "Content-Type: application/json" \
  -d '{

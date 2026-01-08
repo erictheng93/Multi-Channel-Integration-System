@@ -1,6 +1,6 @@
 
 
- URL `https://multi-channel.imfinethankyouandyou.com`
+ URL `https://your-api-domain.example.com`
 
 
 ### 1. API
@@ -41,7 +41,7 @@
 
 ### 1.
 - `docs/guides/CUSTOMER_COLLECTION_GUIDE.md`
-- `WORKER_URL` `'https://your-actual-worker.workers.dev'` `'https://multi-channel.imfinethankyouandyou.com'`
+- `WORKER_URL` `'https://your-actual-worker.workers.dev'` `'https://your-api-domain.example.com'`
 
 ### 2.
 - :
@@ -66,7 +66,7 @@
 ### 2.
 1. ****:
  ```bash
- curl https://multi-channel.imfinethankyouandyou.com/admin-dashboard.html
+ curl https://your-api-domain.example.com/admin-dashboard.html
  ```
 
 2. ****:
@@ -77,7 +77,7 @@
 
 3. ** API **:
  ```bash
- npx tsx tests/api-endpoints-test.ts https://multi-channel.imfinethankyouandyou.com
+ npx tsx tests/api-endpoints-test.ts https://your-api-domain.example.com
  ```
 
 
@@ -105,7 +105,7 @@
 
 ****
 
- Worker `https://multi-channel.imfinethankyouandyou.com`
+ Worker `https://your-api-domain.example.com`
 
  ****:
 - API
@@ -128,12 +128,12 @@
 
 
 ### :
-- **API **: https://multi-channel.imfinethankyouandyou.com/api/health
-- ****: https://multi-channel.imfinethankyouandyou.com/admin-dashboard.html
-- ****: https://multi-channel.imfinethankyouandyou.com/api/system/status
-- ****: https://multi-channel.imfinethankyouandyou.com/api/stats
+- **API **: https://your-api-domain.example.com/api/health
+- ****: https://your-api-domain.example.com/admin-dashboard.html
+- ****: https://your-api-domain.example.com/api/system/status
+- ****: https://your-api-domain.example.com/api/stats
 
 ---
 *: 2025-08-13*
-*: https://multi-channel.imfinethankyouandyou.com*
+*: https://your-api-domain.example.com*
 *: **** - *
