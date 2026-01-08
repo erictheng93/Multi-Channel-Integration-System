@@ -1674,6 +1674,56 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
       log.warn('WEBSOCKET: Pending message broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
+    // 🚀 Phase B4: Global Broadcast for Conversation List Updates
+    // This notifies all connected agents viewing the conversation list
+    try {
+      if (c.env.MESSAGE_BROADCASTER) {
+        const broadcasterId = c.env.MESSAGE_BROADCASTER.idFromName('global');
+        const broadcasterStub = c.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+        // Broadcast new_message event globally for conversation list updates
+        const globalEvent = {
+          id: crypto.randomUUID(),
+          type: 'new_message',
+          source: 'api',
+          timestamp: Date.now(),
+          conversationId: request.conversationId,
+          data: {
+            conversationId: request.conversationId,
+            content: request.content,
+            messageType: request.messageType || 'text',
+            senderType: 'agent',
+            senderId: user.id,
+            senderName: user.displayName,
+            platform: 'line',
+            timestamp: Date.now()
+          },
+          priority: 'normal'
+        };
+
+        // Use /broadcast-global endpoint for global broadcasts
+        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: globalEvent,
+            target: { type: 'global', targets: ['all'] }
+          })
+        }));
+
+        if (globalResponse.ok) {
+          log.debug('GLOBAL_BROADCAST: Agent message broadcast sent for conversation list updates');
+        } else {
+          log.warn('GLOBAL_BROADCAST: Agent message broadcast returned non-OK status');
+        }
+      }
+    } catch (globalBroadcastError) {
+      log.warn('GLOBAL_BROADCAST: Agent message broadcast failed (non-critical)', {
+        error: globalBroadcastError instanceof Error ? globalBroadcastError.message : String(globalBroadcastError)
+      });
+      // Non-critical - conversation list will still update on next poll
+    }
+
     // 4. Trigger background sending
     log.debug('BACKGROUND scheduling background delivery');
     c.executionCtx.waitUntil(
@@ -2062,19 +2112,73 @@ conversationHandler.get('/', jwtAuth, async (c) => {
 
     log.debug('Conversation Handler retrieved conversation data', { count: conversationData.length });
 
-    // ⚡ Enterprise Cache: Get latest messages using background job + cache system
-    const { LatestMessageCache } = await import('../../../services/latest-message-cache');
-    const latestMessageCache = new LatestMessageCache(c.env);
-
-    log.debug('Conversation Handler using enterprise cache for latest messages');
+    // 🔧 Phase B: 直接 DB 查詢獲取最新訊息（移除 KV 快取層以保證數據一致性）
+    // 使用單一批量查詢獲取所有對話的最新訊息
     const conversationIds = conversationData.map(c => c.id);
 
-    const latestMessagesMap = await latestMessageCache.getLatestMessages(conversationIds);
-    const lastMessages = Array.from(latestMessagesMap.values());
+    let lastMessagesMap = new Map<string, {
+      messageId: string;
+      content: string;
+      createdAt: string;
+      senderType: string;
+      messageType: string;
+    }>();
 
-    // 結合數據并統一為camelCase格式 (using cache structure)
+    if (conversationIds.length > 0) {
+      // 使用 SQL 子查詢獲取每個對話的最新訊息
+      // SQLite/D1 支持的高效查詢模式
+      const placeholders = conversationIds.map(() => '?').join(',');
+      const latestMessagesQuery = `
+        SELECT
+          m.id as messageId,
+          m.conversation_id as conversationId,
+          m.content,
+          m.created_at as createdAt,
+          m.sender_type as senderType,
+          m.message_type as messageType
+        FROM messages m
+        INNER JOIN (
+          SELECT conversation_id, MAX(created_at) as max_created_at
+          FROM messages
+          WHERE conversation_id IN (${placeholders})
+          GROUP BY conversation_id
+        ) latest ON m.conversation_id = latest.conversation_id
+                AND m.created_at = latest.max_created_at
+        WHERE m.conversation_id IN (${placeholders})
+      `;
+
+      try {
+        // 執行原生 SQL 查詢（參數需要傳遞兩次：一次給子查詢，一次給外層）
+        const result = await c.env.DB.prepare(latestMessagesQuery)
+          .bind(...conversationIds, ...conversationIds)
+          .all();
+
+        if (result.results) {
+          for (const row of result.results as any[]) {
+            lastMessagesMap.set(row.conversationId, {
+              messageId: row.messageId,
+              content: row.content,
+              createdAt: row.createdAt,
+              senderType: row.senderType,
+              messageType: row.messageType
+            });
+          }
+        }
+        log.debug('Conversation Handler fetched latest messages from DB', {
+          requestedCount: conversationIds.length,
+          foundCount: lastMessagesMap.size
+        });
+      } catch (dbError) {
+        log.error('Conversation Handler failed to fetch latest messages', {
+          error: dbError instanceof Error ? dbError.message : String(dbError)
+        });
+        // 繼續處理，但 lastMessage 將為 null
+      }
+    }
+
+    // 結合數據并統一為camelCase格式
     const combinedData = conversationData.map(conv => {
-      const lastMsg = lastMessages.find((msg: any) => msg?.conversationId === conv.id);
+      const lastMsg = lastMessagesMap.get(conv.id);
       return {
         ...conv,
         // 構建lastMessage對象以匹配前端期望的結構
