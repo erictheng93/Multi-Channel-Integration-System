@@ -1,6 +1,6 @@
 // WebSocket Broadcasting Service
 // Integrates with Durable Objects for real-time event broadcasting
-// Provides fallback to existing SSE/Queue system for backward compatibility
+// 🆕 Enhanced with structured logging and Circuit Breaker
 
 import type { Bindings } from '../types';
 import type {
@@ -9,6 +9,8 @@ import type {
   MigrationConfig
 } from '../types/websocket-types';
 import { DistributedLockService } from './distributed-lock-service';
+import { Logger, createLogger, type LogContext, PerformanceTimer } from './logger-service';
+import { getCircuitBreaker, type WebSocketCircuitBreaker, CircuitState } from './websocket-circuit-breaker';
 
 /**
  * Batch Configuration
@@ -41,6 +43,12 @@ export class WebSocketBroadcastService {
   private lockService: DistributedLockService;
   private migrationConfig: MigrationConfig | null = null;
 
+  // 🆕 結構化日誌
+  private logger: Logger;
+
+  // 🆕 Circuit Breaker
+  private circuitBreaker: WebSocketCircuitBreaker;
+
   // 🆕 P1: Batch Broadcasting Optimization
   private batchQueue: DurableObjectEvent[] = [];
   private batchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,8 +68,29 @@ export class WebSocketBroadcastService {
     avgBatchSize: 0
   };
 
+  // 🆕 Memory Leak Prevention
+  private readonly MAX_QUEUE_SIZE = 1000;           // Hard limit to prevent memory bloat
+  private readonly METRICS_RESET_INTERVAL = 3600000; // Reset metrics every hour
+  private metricsResetTimer: ReturnType<typeof setTimeout> | null = null;
+  private isDestroyed = false;
+
   constructor(env: Bindings, batchConfig?: Partial<BatchConfig>) {
     this.env = env;
+
+    // 🆕 初始化結構化日誌
+    this.logger = createLogger({ service: 'WebSocket-Broadcast' }, {
+      serviceName: 'websocket-broadcast-service'
+    });
+
+    // 🆕 初始化 Circuit Breaker
+    this.circuitBreaker = getCircuitBreaker({
+      failureThreshold: 5,
+      successThreshold: 2,
+      timeout: 60000,
+      errorRateThreshold: 0.25,
+      volumeThreshold: 10
+    });
+    this.circuitBreaker.setEnv(env);
 
     // 🆕 允許自定義批量配置
     if (batchConfig) {
@@ -71,12 +100,98 @@ export class WebSocketBroadcastService {
     try {
       this.lockService = new DistributedLockService(env);
     } catch (error) {
-      console.warn('⚠️ [WebSocket Broadcast] Failed to initialize DistributedLockService, using fallback mode');
+      this.logger.warn('Failed to initialize DistributedLockService', undefined, {
+        error: error instanceof Error ? error.message : String(error)
+      });
       // 在測試環境或 DISTRIBUTED_LOCK 不可用時，創建一個 null lockService
       this.lockService = null as any;
     }
 
-    console.log('📊 [WebSocket Broadcast] Initialized with batch config:', this.batchConfig);
+    this.logger.info('WebSocket Broadcast Service initialized', undefined, {
+      batchConfig: this.batchConfig,
+      circuitBreakerState: this.circuitBreaker.getState()
+    });
+
+    // 🆕 Memory Leak Prevention: Schedule periodic metrics reset
+    this.scheduleMetricsReset();
+  }
+
+  // =================== 🆕 Memory Leak Prevention ===================
+
+  /**
+   * Schedule periodic metrics reset to prevent counter overflow
+   */
+  private scheduleMetricsReset(): void {
+    if (this.metricsResetTimer) {
+      clearTimeout(this.metricsResetTimer);
+    }
+
+    this.metricsResetTimer = setTimeout(() => {
+      if (!this.isDestroyed) {
+        this.resetMetrics();
+        this.scheduleMetricsReset(); // Reschedule
+      }
+    }, this.METRICS_RESET_INTERVAL);
+  }
+
+  /**
+   * Reset metrics to prevent counter overflow (called hourly)
+   */
+  private resetMetrics(): void {
+    const oldMetrics = { ...this.metrics };
+
+    this.metrics = {
+      totalEvents: 0,
+      batchedEvents: 0,
+      immediateEvents: 0,
+      batchesSent: 0,
+      avgBatchSize: oldMetrics.avgBatchSize // Keep rolling average
+    };
+
+    this.logger.info('Metrics reset (hourly)', undefined, {
+      previousMetrics: oldMetrics
+    });
+  }
+
+  /**
+   * Cleanup resources to prevent memory leaks
+   * Call this when the service is no longer needed
+   */
+  destroy(): void {
+    this.isDestroyed = true;
+
+    // Clear batch timer
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
+    }
+
+    // Clear metrics reset timer
+    if (this.metricsResetTimer) {
+      clearTimeout(this.metricsResetTimer);
+      this.metricsResetTimer = null;
+    }
+
+    // Flush remaining events before destruction
+    if (this.batchQueue.length > 0) {
+      this.logger.warn('Destroying service with queued events', undefined, {
+        queuedEvents: this.batchQueue.length
+      });
+      // Attempt final flush (fire and forget)
+      this.flushBatchQueue().catch(() => {});
+    }
+
+    // Clear queue
+    this.batchQueue = [];
+
+    this.logger.info('WebSocket Broadcast Service destroyed');
+  }
+
+  /**
+   * Check if service is healthy and not destroyed
+   */
+  isHealthy(): boolean {
+    return !this.isDestroyed && this.batchQueue.length < this.MAX_QUEUE_SIZE;
   }
 
   // =================== Core Broadcasting Methods ===================
@@ -533,6 +648,161 @@ export class WebSocketBroadcastService {
     }
   }
 
+  // =================== 🚀 Phase B4: Unified New Message Broadcasting ===================
+
+  /**
+   * 🚀 Phase B4: Unified New Message Broadcast
+   *
+   * This method handles broadcasting new messages to BOTH:
+   * 1. CustomerConversationDO - for conversation detail page real-time updates
+   * 2. MessageBroadcaster (global) - for conversation list page lastMessage updates
+   *
+   * USE THIS METHOD for all new message broadcasts instead of manually broadcasting
+   * to multiple Durable Objects. This ensures consistent behavior and reduces code duplication.
+   *
+   * @param params.conversationId - The conversation ID
+   * @param params.message - Message details (id, content, type, sender info)
+   * @param params.source - Source of the message ('webhook' for customer, 'api' for agent)
+   * @returns Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }>
+   */
+  async broadcastNewMessage(params: {
+    conversationId: string;
+    message: {
+      id: string;
+      content: string;
+      messageType: string;
+      senderType: 'customer' | 'agent';
+      senderId: string;
+      senderName?: string;
+      platform: string;
+      timestamp?: number;
+      deliveryStatus?: string;
+    };
+    source: 'webhook' | 'api';
+  }): Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }> {
+    const { conversationId, message, source } = params;
+    const timestamp = message.timestamp || Date.now();
+
+    this.logger.info('Broadcasting new message', undefined, {
+      conversationId,
+      messageId: message.id,
+      senderType: message.senderType,
+      source
+    });
+
+    let conversationBroadcast = false;
+    let globalBroadcast = false;
+
+    // 1. Broadcast to CustomerConversationDO (for conversation detail page)
+    try {
+      if (this.env.CUSTOMER_CONVERSATION_DO) {
+        const conversationDOId = this.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+        const conversationDO = this.env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
+
+        const broadcastMessage = {
+          id: message.id,
+          conversationId,
+          senderType: message.senderType,
+          senderId: message.senderId,
+          content: message.content,
+          messageType: message.messageType,
+          platform: message.platform,
+          timestamp,
+          createdAt: new Date(timestamp).toISOString(),
+          deliveryStatus: message.deliveryStatus || 'delivered',
+          senderName: message.senderName
+        };
+
+        const notifyRequest = new Request('https://customer-conversation-do/notify-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            message: broadcastMessage
+          })
+        });
+
+        const response = await conversationDO.fetch(notifyRequest);
+        conversationBroadcast = response.ok;
+
+        if (conversationBroadcast) {
+          this.logger.debug('CustomerConversationDO broadcast successful', undefined, { conversationId });
+        } else {
+          this.logger.warn('CustomerConversationDO broadcast failed', undefined, {
+            conversationId,
+            status: response.status
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error('CustomerConversationDO broadcast error', undefined, {
+        conversationId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    // 2. Broadcast globally via MessageBroadcaster (for conversation list page)
+    try {
+      if (this.env.MESSAGE_BROADCASTER) {
+        const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
+        const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+        const globalEvent: DurableObjectEvent = {
+          id: crypto.randomUUID(),
+          type: 'new_message',
+          source,
+          timestamp,
+          conversationId,
+          data: {
+            conversationId,
+            content: message.content,
+            messageType: message.messageType,
+            senderType: message.senderType,
+            senderId: message.senderId,
+            senderName: message.senderName,
+            platform: message.platform,
+            timestamp
+          },
+          priority: 'normal'
+        };
+
+        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: globalEvent,
+            target: { type: 'global', targets: ['all'] }
+          })
+        }));
+
+        globalBroadcast = globalResponse.ok;
+
+        if (globalBroadcast) {
+          this.logger.debug('MessageBroadcaster global broadcast successful', undefined, { conversationId });
+        } else {
+          this.logger.warn('MessageBroadcaster global broadcast failed', undefined, {
+            conversationId,
+            status: globalResponse.status
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error('MessageBroadcaster global broadcast error', undefined, {
+        conversationId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    this.logger.info('New message broadcast completed', undefined, {
+      conversationId,
+      messageId: message.id,
+      conversationBroadcast,
+      globalBroadcast
+    });
+
+    return { conversationBroadcast, globalBroadcast };
+  }
+
   // =================== 🆕 P1: Batch Queue Management ===================
 
   /**
@@ -541,11 +811,37 @@ export class WebSocketBroadcastService {
    */
   private enqueueBatchEvent(event: DurableObjectEvent): boolean {
     try {
+      // 🆕 Memory Leak Prevention: Check if service is destroyed
+      if (this.isDestroyed) {
+        this.logger.warn('Cannot enqueue event - service destroyed', {
+          eventId: event.id,
+          eventType: event.type
+        });
+        return false;
+      }
+
+      // 🆕 Memory Leak Prevention: Hard limit to prevent memory bloat
+      if (this.batchQueue.length >= this.MAX_QUEUE_SIZE) {
+        this.logger.error('Queue overflow - dropping oldest events', undefined, {
+          queueSize: this.batchQueue.length,
+          maxSize: this.MAX_QUEUE_SIZE
+        });
+        // Drop oldest 10% of events to make room
+        const dropCount = Math.floor(this.MAX_QUEUE_SIZE * 0.1);
+        this.batchQueue.splice(0, dropCount);
+      }
+
       // Add to batch queue
       this.batchQueue.push(event);
       this.metrics.batchedEvents++;
 
-      console.log(`📦 [Batch Queue] Event enqueued. Queue size: ${this.batchQueue.length}/${this.batchConfig.maxBatchSize}`);
+      this.logger.debug('Event enqueued', {
+        eventId: event.id,
+        eventType: event.type
+      }, {
+        queueSize: this.batchQueue.length,
+        maxBatchSize: this.batchConfig.maxBatchSize
+      });
 
       // Start batch timer if not already running
       if (!this.batchTimer) {
@@ -554,13 +850,13 @@ export class WebSocketBroadcastService {
 
       // Force flush if queue reaches max size
       if (this.batchQueue.length >= this.batchConfig.maxBatchSize) {
-        console.log(`⚡ [Batch Queue] Max batch size reached, flushing immediately`);
+        this.logger.info('Max batch size reached, flushing immediately');
         this.flushBatchQueue();
       }
 
       return true;
     } catch (error) {
-      console.error('❌ [Batch Queue] Enqueue error:', error);
+      this.logger.error('Enqueue error', error);
       return false;
     }
   }
@@ -667,7 +963,7 @@ export class WebSocketBroadcastService {
   // =================== Core WebSocket Broadcasting ===================
 
   /**
-   * Main WebSocket broadcasting method
+   * 🆕 Enhanced Main WebSocket broadcasting method
    *
    * Week 3-4 Optimization: Removed distributed lock for broadcast operations
    * Rationale: Event IDs are UUIDs (guaranteed unique), so lock is unnecessary
@@ -675,48 +971,92 @@ export class WebSocketBroadcastService {
    *
    * 🆕 P1 Note: This method is now called by both immediate broadcasts (urgent events)
    * and batch broadcasts (normal/low priority events)
+   *
+   * 🆕 Circuit Breaker Integration: Automatic degradation when errors exceed threshold
    */
   private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> {
     const config = await this.getMigrationConfig();
 
     // Check if WebSocket is enabled
     if (!config.enableWebSocket || !config.featureFlags.durableObjectMessaging) {
+      this.logger.warn('WebSocket disabled', {
+        eventId: event.id,
+        eventType: event.type
+      });
       return false;
     }
 
-    try {
-      // ✅ Week 3-4: Direct broadcast without lock
-      // Event ID uniqueness (UUID) prevents duplicate broadcasts
-      const promises: Promise<boolean>[] = [];
+    const context: LogContext = {
+      eventId: event.id,
+      userId: event.userId,
+      conversationId: event.conversationId
+    };
 
-      if (event.deliveryOptions?.targets) {
-        for (const target of event.deliveryOptions.targets) {
-          switch (target.type) {
-            case 'conversation':
-              promises.push(this.broadcastToConversationRooms(event, target.targets as string[]));
-              break;
-            case 'user':
-              promises.push(this.broadcastToUserConnections(event, target.targets as string[]));
-              break;
-            case 'team':
-              promises.push(this.broadcastToTeamMembers(event, target.targets as number[]));
-              break;
-            case 'global':
-              promises.push(this.broadcastToGlobal(event, target));
-              break;
+    // 🆕 使用 Circuit Breaker 保護
+    return await this.circuitBreaker.execute(
+      async () => {
+        const timer = new PerformanceTimer(this.logger, 'websocket_broadcast', context);
+
+        try {
+          // ✅ Week 3-4: Direct broadcast without lock
+          // Event ID uniqueness (UUID) prevents duplicate broadcasts
+          const promises: Promise<boolean>[] = [];
+
+          if (event.deliveryOptions?.targets) {
+            for (const target of event.deliveryOptions.targets) {
+              switch (target.type) {
+                case 'conversation':
+                  promises.push(this.broadcastToConversationRooms(event, target.targets as string[]));
+                  break;
+                case 'user':
+                  promises.push(this.broadcastToUserConnections(event, target.targets as string[]));
+                  break;
+                case 'team':
+                  promises.push(this.broadcastToTeamMembers(event, target.targets as number[]));
+                  break;
+                case 'global':
+                  promises.push(this.broadcastToGlobal(event, target));
+                  break;
+              }
+            }
           }
+
+          // Wait for all broadcasts to complete
+          const results = await Promise.allSettled(promises);
+          const successCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
+
+          const duration = timer.end({
+            targetCount: promises.length,
+            successCount
+          });
+
+          this.logger.info('WebSocket broadcast completed', context, {
+            duration,
+            targetCount: promises.length,
+            successCount,
+            eventType: event.type,
+            priority: event.priority
+          });
+
+          return successCount > 0;
+
+        } catch (error) {
+          this.logger.error('WebSocket broadcast error', error, context);
+          throw error; // Re-throw to trigger circuit breaker
         }
-      }
+      },
+      // 🆕 Fallback: 隊列延遲處理
+      async () => {
+        this.logger.warn('Circuit OPEN - using fallback queue', context, {
+          circuitState: this.circuitBreaker.getState()
+        });
 
-      // Wait for all broadcasts to complete
-      const results = await Promise.allSettled(promises);
-      const successCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
-
-      return successCount > 0;
-    } catch (error) {
-      console.error('❌ [WebSocket Broadcast] Broadcasting error:', error);
-      return false;
-    }
+        // 將事件加入批量隊列延遲處理
+        this.enqueueBatchEvent(event);
+        return true;
+      },
+      context
+    );
   }
 
   /**
