@@ -66,6 +66,9 @@ import { feedbackHandler } from './handlers/feedback-main';
 // 🆕 KV Optimization Monitoring (P0 - 2025-01-08)
 import kvOptimizationMonitoringHandler from './handlers/kv-optimization-monitoring';
 
+// 🆕 Monitoring and Alerting API (2025-01-08)
+import monitoringMainHandler from './handlers/monitoring-main';
+
 // Import system functions (grouped by functionality)
 import {
   getSystemInfo,
@@ -317,6 +320,23 @@ log.info('KV Optimization Monitoring registered', {
     'GET /api/monitoring/kv/savings (admin only)',
     'GET /api/monitoring/kv/health (admin only)',
     'POST /api/monitoring/kv/reset (admin only)'
+  ]
+});
+
+// 🔧 Pre-register Monitoring & Alerting API BEFORE unified route system
+// Provides DO monitoring, Circuit Breaker status, and alerting
+app.route('/api/monitoring', monitoringMainHandler);
+log.info('Monitoring & Alerting API registered', {
+  endpoints: [
+    'GET /api/monitoring/health (public)',
+    'GET /api/monitoring/metrics (admin only)',
+    'GET /api/monitoring/alerts (auth)',
+    'GET /api/monitoring/alerts/history (admin only)',
+    'GET /api/monitoring/circuit-breaker/status (auth)',
+    'POST /api/monitoring/circuit-breaker/reset (admin only)',
+    'POST /api/monitoring/circuit-breaker/open (admin only)',
+    'GET /api/monitoring/instances/:type (admin only)',
+    'POST /api/monitoring/health-check (admin only)'
   ]
 });
 
