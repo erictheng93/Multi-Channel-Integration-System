@@ -25,7 +25,9 @@ import type {
   CustomDomain,
   AddCustomDomainRequest,
   D1QueryResult,
-  APIRequestOptions
+  APIRequestOptions,
+  UpdatePagesProjectRequest,
+  PagesEnvVar
 } from '../types/cloudflare';
 
 export class CloudflareAPI {
@@ -308,6 +310,56 @@ export class CloudflareAPI {
       method: 'DELETE',
       path: `/accounts/${this.accountId}/pages/projects/${projectName}`
     });
+  }
+
+  /**
+   * Set Pages Environment Variables
+   *
+   * Sets environment variables for Pages Functions (like _middleware.ts)
+   * These are different from Worker bindings - they're accessed via context.env
+   *
+   * @param projectName - The Pages project name
+   * @param variables - Key-value pairs of environment variables
+   * @param isSecret - Whether to mark variables as secrets (default: false for URLs)
+   */
+  async setPagesEnvironmentVariables(
+    projectName: string,
+    variables: Record<string, string>,
+    isSecret: boolean = false
+  ): Promise<PagesProject> {
+    // Convert simple key-value to Pages env var format
+    const envVars: Record<string, PagesEnvVar> = {};
+    for (const [key, value] of Object.entries(variables)) {
+      if (value) { // Only set non-empty values
+        envVars[key] = {
+          value,
+          type: isSecret ? 'secret_text' : 'plain_text'
+        };
+      }
+    }
+
+    const body: UpdatePagesProjectRequest = {
+      deployment_configs: {
+        production: {
+          env_vars: envVars
+        },
+        preview: {
+          env_vars: envVars
+        }
+      }
+    };
+
+    const response = await this.request<PagesProject>({
+      method: 'PATCH',
+      path: `/accounts/${this.accountId}/pages/projects/${projectName}`,
+      body
+    });
+
+    if (!response.success) {
+      throw new Error(`Failed to set Pages environment variables: ${response.errors[0]?.message}`);
+    }
+
+    return response.result;
   }
 
   /**

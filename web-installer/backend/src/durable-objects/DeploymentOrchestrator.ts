@@ -631,6 +631,7 @@ export class DeploymentOrchestrator implements DurableObject {
     if (!this.deploymentState) return;
 
     const projectName = this.deploymentState.config.projectName;
+    const config = this.deploymentState.config;
 
     // Create Pages project
     this.log('info', 'Creating Pages project...');
@@ -655,6 +656,39 @@ export class DeploymentOrchestrator implements DurableObject {
     } else {
       this.log('warning', 'No frontend assets to deploy');
     }
+
+    // Set Pages environment variables for dynamic CSP
+    // These are used by _middleware.ts to generate CSP headers dynamically
+    this.log('info', 'Setting Pages environment variables for dynamic CSP...');
+
+    const backendUrl = config.backendUrl ||
+      (config.customDomain ? `https://api.${config.customDomain}` : '') ||
+      this.deploymentState.resources.workerUrl ||
+      `https://${projectName}-worker.workers.dev`;
+
+    const pagesEnvVars: Record<string, string> = {
+      BACKEND_URL: backendUrl
+    };
+
+    // Add storage URL if configured
+    if (config.r2PublicUrl) {
+      pagesEnvVars['STORAGE_URL'] = config.r2PublicUrl;
+    }
+
+    // Add custom domains if configured
+    if (config.customDomain) {
+      // Allow both the custom domain and common subdomains
+      const customDomains = [
+        `https://${config.customDomain}`,
+        `https://api.${config.customDomain}`,
+        `wss://${config.customDomain}`,
+        `wss://api.${config.customDomain}`
+      ].join(',');
+      pagesEnvVars['CUSTOM_DOMAINS'] = customDomains;
+    }
+
+    await this.api.setPagesEnvironmentVariables(projectName, pagesEnvVars);
+    this.log('success', `Pages environment variables configured: ${Object.keys(pagesEnvVars).join(', ')}`);
   }
 
   private async stepConfigureDomain(): Promise<void> {
