@@ -79,8 +79,8 @@ export const KV_TTL = {
   /** Dashboard cache - 1 hour */
   CACHE_DASHBOARD: 60 * 60, // 3,600 seconds
 
-  /** Health check cache - 1 minute */
-  CACHE_HEALTH: 60, // 60 seconds
+  /** Health check cache - 5 minutes (optimized from 60s on 2025-01-09) */
+  CACHE_HEALTH: 300, // 300 seconds (was: 60)
 
   /** HTTP response cache - 5 minutes */
   CACHE_HTTP: 5 * 60, // 300 seconds
@@ -90,6 +90,23 @@ export const KV_TTL = {
 
   /** Paginated result cache - 1 minute */
   CACHE_PAGINATED: 60, // 60 seconds
+
+  // ─────────────────────────────────────────────────────────
+  // Notification Cache TTLs (optimized 2025-01-09)
+  // Extended from 60s to 300s for 70% KV operation reduction
+  // ─────────────────────────────────────────────────────────
+
+  /** Notification stats cache - 5 minutes (was: 60s) */
+  CACHE_NOTIFICATION_STATS: 5 * 60, // 300 seconds
+
+  /** Unread count cache - 5 minutes (was: 60s) */
+  CACHE_NOTIFICATION_UNREAD: 5 * 60, // 300 seconds
+
+  /** Recent notifications cache - 5 minutes (was: 60s) */
+  CACHE_NOTIFICATION_RECENT: 5 * 60, // 300 seconds
+
+  /** Notification list cache - 5 minutes */
+  CACHE_NOTIFICATION_LIST: 5 * 60, // 300 seconds
 
   // ─────────────────────────────────────────────────────────
   // Special TTLs
