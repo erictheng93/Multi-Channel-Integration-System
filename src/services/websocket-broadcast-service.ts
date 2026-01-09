@@ -677,6 +677,14 @@ export class WebSocketBroadcastService {
       platform: string;
       timestamp?: number;
       deliveryStatus?: string;
+      // 🆕 Support file attachments for Flex Card display
+      file_attachments?: Array<{
+        id: string;
+        filename: string;
+        mimeType: string;
+        fileSize: number;
+        fileUrl: string;
+      }>;
     };
     source: 'webhook' | 'api';
   }): Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }> {
@@ -710,7 +718,9 @@ export class WebSocketBroadcastService {
           timestamp,
           createdAt: new Date(timestamp).toISOString(),
           deliveryStatus: message.deliveryStatus || 'delivered',
-          senderName: message.senderName
+          senderName: message.senderName,
+          // 🆕 Include file_attachments for Flex Card display
+          file_attachments: message.file_attachments || []
         };
 
         const notifyRequest = new Request('https://customer-conversation-do/notify-message', {

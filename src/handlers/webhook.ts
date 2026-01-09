@@ -681,7 +681,9 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           senderId: String(user.id),
           platform: 'line',
           timestamp: Date.now(),
-          deliveryStatus: 'delivered'
+          deliveryStatus: 'delivered',
+          // 🆕 Include file_attachments for immediate Flex Card display
+          file_attachments: fileAttachmentData.length > 0 ? fileAttachmentData : undefined
         },
         source: 'webhook'
       });

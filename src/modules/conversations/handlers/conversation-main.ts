@@ -837,7 +837,31 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     }
 
     // 🚀 WebSocket Broadcasting: Conversation Assignment
+    // 🔧 FIX: Query agent/team names for real-time UI updates
     try {
+      let assignedAgentName: string | null = null;
+      let assignedTeamName: string | null = null;
+
+      // Query agent name if userId is provided
+      if (userId) {
+        const agentInfo = await drizzleDb
+          .select({ displayName: agents.displayName })
+          .from(agents)
+          .where(eq(agents.id, userId))
+          .get();
+        assignedAgentName = agentInfo?.displayName || null;
+      }
+
+      // Query team name if teamId is provided
+      if (teamId) {
+        const teamInfo = await drizzleDb
+          .select({ name: teams.name })
+          .from(teams)
+          .where(eq(teams.id, teamId))
+          .get();
+        assignedTeamName = teamInfo?.name || null;
+      }
+
       const broadcastService = new WebSocketBroadcastService(c.env);
       await broadcastService.broadcastConversationEvent({
         type: 'conversation_assigned',
@@ -846,6 +870,9 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
         data: {
           assignedTeamId: teamId,
           assignedUserId: userId,
+          // 🆕 Include names for real-time UI updates
+          assignedAgentName,
+          assignedTeamName,
           assignedBy: {
             id: user.id,
             name: user.displayName,
@@ -856,7 +883,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
         },
         priority: 'normal'
       });
-      log.debug('WebSocket conversation assignment broadcasted');
+      log.debug('WebSocket conversation assignment broadcasted', { assignedAgentName, assignedTeamName });
     } catch (broadcastError) {
       log.warn('WebSocket: Assignment broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }

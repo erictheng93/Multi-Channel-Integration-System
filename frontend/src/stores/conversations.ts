@@ -110,11 +110,12 @@ export const useConversationsStore = defineStore('conversations', () => {
   // Conversation comparison for change detection
   const hasConversationChanged = (existing: Conversation, updated: Conversation): boolean => {
     if (!existing || !updated) {return true}
-    
+
     // Compare key fields that would affect UI rendering
+    // 🆕 Added assignedAgent and assignedTeam for real-time UI updates
     const keyFields = [
       'id', 'status', 'unreadCount', 'lastMessageAt', 'lastMessage', 'priority',
-      'assignedAgentId', 'assignedTeamId', 'customerName', 'platform'
+      'assignedAgentId', 'assignedTeamId', 'assignedAgent', 'assignedTeam', 'customerName', 'platform'
     ] as const
     
     return keyFields.some(field => {
@@ -313,10 +314,11 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   /**
    * 更新對話狀態（指派、狀態變更等）
+   * 🆕 Extended to support assignedAgent and assignedTeam objects for real-time UI updates
    */
   const updateConversationStatus = (
     conversationId: string,
-    updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'unreadCount'>>
+    updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'unreadCount' | 'assignedAgent' | 'assignedTeam'>>
   ) => {
     const index = conversations.value.findIndex(c => c.id === conversationId)
 
@@ -1443,16 +1445,46 @@ export const useConversationsStore = defineStore('conversations', () => {
           const status = data?.status as string | undefined
           const assignedAgentId = (data?.assignedUserId || data?.assignedAgentId) as string | undefined
           const assignedTeamId = data?.assignedTeamId as number | undefined
+          // 🆕 Extract agent/team names for real-time UI updates
+          const assignedAgentName = data?.assignedAgentName as string | undefined
+          const assignedTeamName = data?.assignedTeamName as string | undefined
 
-          const updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId'>> = {}
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'assignedAgent' | 'assignedTeam'>> = {}
           if (status) updates.status = status as Conversation['status']
-          if (assignedAgentId) updates.assignedAgentId = assignedAgentId
-          if (assignedTeamId !== undefined) updates.assignedTeamId = assignedTeamId
+          if (assignedAgentId) {
+            updates.assignedAgentId = assignedAgentId
+            // 🆕 Build assignedAgent object with name for UI display
+            // Use type assertion since UI only needs 'name' property for display
+            updates.assignedAgent = {
+              id: assignedAgentId,
+              name: assignedAgentName || assignedAgentId, // Fallback to ID if name unavailable
+              // Provide minimal required fields for type safety - UI only uses 'name'
+              email: '',
+              displayName: assignedAgentName || assignedAgentId,
+              role: 'agent' as const,
+              isActive: true,
+              createdAt: Date.now()
+            }
+          }
+          if (assignedTeamId !== undefined) {
+            updates.assignedTeamId = assignedTeamId
+            // 🆕 Build assignedTeam object with name for UI display
+            if (assignedTeamId) {
+              updates.assignedTeam = {
+                id: assignedTeamId,
+                name: assignedTeamName || `Team ${assignedTeamId}`, // Fallback to generic name
+                description: null
+              }
+            } else {
+              // Clear team assignment
+              updates.assignedTeam = undefined
+            }
+          }
 
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
-            console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`)
+            console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`, { assignedAgentName, assignedTeamName })
           } else {
             // 沒有具體更新內容，回退到輪詢
             pollConversations()
