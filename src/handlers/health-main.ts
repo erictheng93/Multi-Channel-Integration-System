@@ -7,6 +7,7 @@ import { DatabaseHealthChecker } from '../health-checkers/database-checker';
 import { CacheHealthChecker } from '../health-checkers/cache-checker';
 import { APIHealthChecker } from '../health-checkers/api-checker';
 import { successResponse, internalErrorResponse } from '../utils/api-response';
+import { getConfigurationStatus } from '../middleware/configuration-guard';
 
 let initialized = false;
 
@@ -250,6 +251,36 @@ function calculateUptime(health: any): string {
 }
 
 /**
+ * 檢查系統配置狀態
+ *
+ * 此端點用於檢查關鍵環境變量是否已配置
+ * 特別是 FRONTEND_URL 和 BACKEND_URL (CORS 所需)
+ *
+ * @public 此端點不需要身份驗證，方便部署後檢查配置
+ */
+export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
+  try {
+    const configStatus = getConfigurationStatus(c.env);
+
+    // 根據配置狀態設置 HTTP 狀態碼
+    const httpStatus = (configStatus as any).success ? 200 : 503;
+
+    // 添加 CORS headers 以便從前端檢查
+    const origin = c.req.header('Origin');
+    if (origin) {
+      c.header('Access-Control-Allow-Origin', origin);
+      c.header('Access-Control-Allow-Credentials', 'true');
+    }
+
+    return c.json(configStatus, httpStatus);
+
+  } catch (error) {
+    console.error('Configuration check failed:', error);
+    return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
+  }
+}
+
+/**
  * 創建健康檢查方法集合
  */
 export function createHealthCheckHandlerMethods(db: any, cache: any) {
@@ -261,6 +292,7 @@ export function createHealthCheckHandlerMethods(db: any, cache: any) {
     getInfrastructureHealth,
     getServicesHealth,
     runComponentCheck,
-    getHealthStats
+    getHealthStats,
+    getConfigCheck
   };
 }

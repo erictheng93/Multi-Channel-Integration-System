@@ -7,17 +7,22 @@ compatibility_flags = ["nodejs_compat"]
 
 # Default production variables
 # ⚠️ IMPORTANT: The following URLs must be configured for production deployment
-# These are placeholder examples - replace with your actual domain
 [vars]
 ENVIRONMENT = "production"
-# R2_PUBLIC_URL = "https://your-storage-domain.example.com"  # REQUIRED: Set in Cloudflare Dashboard
 # LINE OA Basic ID for QR Code generation
 LINE_BOT_ID = "@110xsqef"
-# Frontend URL for LIFF redirect (QR Code team binding)
-# FRONTEND_URL = "https://your-frontend-domain.example.com"  # REQUIRED: Set in Cloudflare Dashboard
-# BACKEND_URL = "https://your-api-domain.example.com"  # REQUIRED: Set in Cloudflare Dashboard
 # LIFF ID for team QR Code onboarding
 LINE_LIFF_ID = "2008756115-vWtFyDMA"
+
+# ============================================================================
+# CORS Configuration (Required for cross-origin requests)
+# ============================================================================
+# Frontend URL - Your main frontend domain
+FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
+# Backend URL - Your API/Worker domain
+BACKEND_URL = "https://multi-channel.imfinethankyouandyou.com"
+# R2 Storage Public URL - For file access
+STORAGE_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
 # Logging Configuration (P2-6)
 # Options: "debug" | "info" | "warn" | "error" | "fatal" | "silent"
 # - debug: All logs (development only)
