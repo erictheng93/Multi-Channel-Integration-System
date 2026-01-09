@@ -476,6 +476,52 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           // Clients will receive it on next fetch
         }
 
+        // 🆕 Broadcast to MessageBroadcaster for global updates (conversation list page)
+        // This ensures conversation list lastMessage updates in real-time
+        try {
+          if (this.env.MESSAGE_BROADCASTER) {
+            const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
+            const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+            const globalEvent = {
+              id: crypto.randomUUID(),
+              type: 'new_message',
+              source: 'api',
+              timestamp: Date.now(),
+              conversationId,
+              data: {
+                conversationId,
+                messageId: createdMessage.id,
+                content: createdMessage.content,
+                messageType: createdMessage.messageType,
+                senderType: createdMessage.senderType,
+                senderId: createdMessage.senderId,
+                platform: 'line',
+                timestamp: createdMessage.createdAt
+              },
+              priority: 'normal'
+            };
+
+            const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                event: globalEvent,
+                target: { type: 'global', targets: ['all'] }
+              })
+            }));
+
+            if (globalResponse.ok) {
+              console.log(`✅ [CustomerMessageDO] Global broadcast sent to MessageBroadcaster for conversation list updates`);
+            } else {
+              console.warn(`⚠️  [CustomerMessageDO] MessageBroadcaster returned non-ok:`, await globalResponse.text());
+            }
+          }
+        } catch (globalError) {
+          console.error(`⚠️  [CustomerMessageDO] Failed to broadcast globally:`, globalError);
+          // Non-critical - conversation detail page still gets updates via CustomerConversationDO
+        }
+
         console.log(`📤 [CustomerMessageDO] Returning success response`);
         return c.json({
           success: true,

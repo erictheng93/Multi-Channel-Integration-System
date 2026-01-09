@@ -289,9 +289,11 @@ export class WebSocketClient {
 
       // 檢查 6: 網路連接性預檢（可選）
       try {
-        // ✅ 使用統一的配置層獲取後端 URL
-        const baseUrl = getBackendUrl()
-        const healthUrl = `${baseUrl}/api/websocket/health`
+        // ✅ 使用 Vite proxy 在開發模式，避免 CORS 問題
+        // 開發模式使用相對 URL (通過 Vite proxy)，生產模式使用完整 URL
+        const healthUrl = import.meta.env.DEV
+          ? '/api/websocket/health'
+          : `${getBackendUrl()}/api/websocket/health`
 
         // Create AbortController for timeout handling
         // eslint-disable-next-line no-undef

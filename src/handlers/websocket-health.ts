@@ -123,6 +123,40 @@ healthApp.get('/migration-status', async (c) => {
 });
 
 /**
+ * GET /api/websocket/debug-connections
+ * 🔍 DEBUG: Get list of registered connections in MessageBroadcaster
+ */
+healthApp.get('/debug-connections', async (c) => {
+  try {
+    if (!c.env.MESSAGE_BROADCASTER) {
+      return c.json({
+        error: 'MESSAGE_BROADCASTER binding not available'
+      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    }
+
+    const broadcasterId = c.env.MESSAGE_BROADCASTER.idFromName('global');
+    const broadcasterStub = c.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+    const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/debug-connections', {
+      method: 'GET'
+    }));
+
+    if (response.ok) {
+      const data = await response.json();
+      return c.json(data);
+    } else {
+      return c.json({
+        error: `Failed to get debug info: ${response.status}`
+      }, 500);
+    }
+  } catch (error) {
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
  * GET /api/websocket/readiness
  * Kubernetes-style readiness probe
  */
