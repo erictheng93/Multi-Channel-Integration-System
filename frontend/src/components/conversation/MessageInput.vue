@@ -224,6 +224,7 @@
   const props = defineProps<Props>()
 
   // Phase 3B: 擴展 emit 事件支援樂觀更新
+  // 🔧 Phase 2: 新增 correlationId 支援
   const emit = defineEmits<{
     // 原有事件 - 訊息發送成功
     'message-sent': [data: {
@@ -232,28 +233,36 @@
       file_attachments?: FileAttachmentEmitData[]
     }]
     // Phase 3B: 訊息開始發送（樂觀更新）
+    // 🔧 Phase 2: 新增 correlationId
     'message-pending': [data: {
       tempId: string                    // 臨時 ID
+      correlationId?: string            // 🔧 Phase 2: Correlation ID
       content: string
       attachments: Attachment[]         // 包含 blobUrl 的附件
       status: 'uploading' | 'sending'
       uploadProgress?: number           // 上傳進度 0-100
     }]
     // Phase 3B: 上傳進度更新
+    // 🔧 Phase 2: 新增 correlationId
     'upload-progress': [data: {
       tempId: string
+      correlationId?: string            // 🔧 Phase 2: Correlation ID
       progress: number                  // 0-100
       status: 'uploading' | 'sending'
     }]
     // Phase 3B: 訊息發送完成（替換臨時訊息）
+    // 🔧 Phase 2: 新增 correlationId
     'message-confirmed': [data: {
       tempId: string                    // 臨時 ID
+      correlationId?: string            // 🔧 Phase 2: Correlation ID
       realId: string                    // 真實訊息 ID
       file_attachments?: FileAttachmentEmitData[]
     }]
     // Phase 3C: 訊息發送失敗（含重試資料）
+    // 🔧 Phase 2: 新增 correlationId
     'message-failed': [data: {
       tempId: string
+      correlationId?: string            // 🔧 Phase 2: Correlation ID
       error: string
       // 重試所需的原始資料
       retryData?: {
@@ -436,6 +445,9 @@
     // Phase 3B: 生成臨時 ID
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
+    // 🔧 Phase 2: 生成 Correlation ID（用於可靠的前後端訊息關聯）
+    const correlationId = `corr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
     // 🔧 FIX: 根據是否有附件設置不同的狀態
     if (hasAttachments) {
       uploadingFiles.value = true  // 文件上傳狀態
@@ -445,8 +457,10 @@
     successMessage.value = ''
 
     // ⚡ Phase 3B: 立即發送樂觀更新 - 用戶馬上看到訊息
+    // 🔧 Phase 2: 包含 correlationId
     emit('message-pending', {
       tempId,
+      correlationId,  // 🔧 Phase 2
       content: finalContent,
       attachments: currentAttachments, // 包含 blobUrl 供預覽
       status: hasAttachments ? 'uploading' : 'sending',
@@ -482,6 +496,7 @@
           const overallProgress = Math.round(totalProgress / totalFiles)
           emit('upload-progress', {
             tempId,
+            correlationId,  // 🔧 Phase 2
             progress: Math.min(overallProgress, 99), // 保留 1% 給最終確認
             status: 'uploading'
           })
@@ -558,6 +573,7 @@
         // 上傳完成，更新狀態為發送中
         emit('upload-progress', {
           tempId,
+          correlationId,  // 🔧 Phase 2
           progress: 100,
           status: 'sending'
         })
@@ -580,7 +596,8 @@
             messageType: hasAttachments ? 'file' : 'text',
             platform: 'line',
             attachmentIds,
-            senderId: authStore.currentAgent?.id
+            senderId: authStore.currentAgent?.id,
+            correlationId  // 🔧 Phase 2/3: 傳送 correlationId 到後端
           })
         }
       )
@@ -591,8 +608,10 @@
 
       if (response.success && messageData) {
         // ⚡ Phase 3B: 發送成功，確認訊息
+        // 🔧 Phase 2: 包含 correlationId
         emit('message-confirmed', {
           tempId,
+          correlationId,  // 🔧 Phase 2
           realId: messageData.id || tempId,
           // eslint-disable-next-line camelcase
           file_attachments: fileAttachmentsData
@@ -614,8 +633,10 @@
       } else {
         const errorMsg = (response.error as { message?: string })?.message || '發送失敗'
         // Phase 3C: 發送失敗（含重試資料）
+        // 🔧 Phase 2: 包含 correlationId
         emit('message-failed', {
           tempId,
+          correlationId,  // 🔧 Phase 2
           error: errorMsg,
           retryData: {
             content: savedContent,
@@ -635,8 +656,10 @@
       }
 
       // Phase 3C: 發送失敗（含重試資料）
+      // 🔧 Phase 2: 包含 correlationId
       emit('message-failed', {
         tempId,
+        correlationId,  // 🔧 Phase 2
         error: errorMsg,
         retryData: {
           content: savedContent,

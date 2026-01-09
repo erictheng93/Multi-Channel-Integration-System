@@ -251,7 +251,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           agentId = sessionId;
         }
 
-        const { content, assets, attachmentIds, messageType, platform } = await c.req.json();
+        const { content, assets, attachmentIds, messageType, platform, correlationId } = await c.req.json();
 
         // Allow empty content if there are attachments
         const hasAttachments = attachmentIds && attachmentIds.length > 0;
@@ -264,17 +264,20 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           agentId,
           contentLength: content?.length || 0,
           assetsCount: assets?.length || 0,
-          attachmentIds: attachmentIds || []
+          attachmentIds: attachmentIds || [],
+          correlationId: correlationId || 'N/A'  // 🔧 Phase 3: Log correlationId
         });
 
         const messageId = crypto.randomUUID();
         const createdAt = new Date().toISOString();
 
         // Store assets and attachmentIds in metadata field as JSON
+        // 🔧 Phase 3: Include correlationId for deduplication
         const metadata = JSON.stringify({
           assets: assets || [],
           attachmentIds: attachmentIds || [],
-          platform: platform || 'system'
+          platform: platform || 'system',
+          correlationId: correlationId || null  // 🔧 Phase 3: Track correlation for WebSocket dedup
         });
 
         // Determine message type - use 'file' if there are attachments
@@ -337,10 +340,12 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         // Use the inserted data directly for broadcasting
         // This avoids D1 eventual consistency issues
         // 🔧 FIX: Add senderId field and file_attachments for frontend compatibility
+        // 🔧 Phase 3: Add correlationId for WebSocket deduplication
         const createdMessage = {
           ...messageData,
           senderId: messageData.agentSenderId || messageData.customerSenderId,
-          file_attachments: linkedAttachments
+          file_attachments: linkedAttachments,
+          correlationId: correlationId || null  // 🔧 Phase 3: For WebSocket deduplication
         };
 
         console.log(`📋 [CustomerMessageDO] Using direct message data for broadcast`);

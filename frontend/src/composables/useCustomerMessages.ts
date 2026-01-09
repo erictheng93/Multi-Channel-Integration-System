@@ -331,6 +331,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   /**
    * 發送帶附件的消息（使用正確的 customer-conversations 端點以支持 WebSocket 廣播）
    * 🔧 FIX: 確保帶附件的訊息也使用 CustomerMessageDO，觸發 WebSocket 廣播
+   * 🔧 Phase 3: 支援 correlationId 用於 WebSocket 去重
    */
   const sendMessageWithAttachments = async (
     content: string,
@@ -338,6 +339,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     options?: {
       messageType?: 'text' | 'file'
       platform?: string
+      correlationId?: string  // 🔧 Phase 3: For WebSocket deduplication
     }
   ): Promise<{ success: boolean; message?: unknown; error?: string }> => {
     // 允許純附件訊息（沒有文字內容）
@@ -358,7 +360,8 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
             content: content?.trim() || '',
             attachmentIds,
             messageType: options?.messageType || (attachmentIds.length > 0 ? 'file' : 'text'),
-            platform: options?.platform || 'system'
+            platform: options?.platform || 'system',
+            correlationId: options?.correlationId || null  // 🔧 Phase 3: For WebSocket deduplication
           })
         }
       )

@@ -121,9 +121,13 @@ export function useWebSocketIntegration(
   /**
    * 處理統一連接接收的消息
    * 🛡️ 方案 C: 使用小寫事件類型（customerWebSocketManager 已正規化）
+   * 🔧 Phase 2: 支援 Correlation ID 匹配
    */
   function handleUnifiedMessage(message: unknown) {
-    const msg = message as { type?: string; message?: Message }
+    const msg = message as {
+      type?: string
+      message?: Message & { correlationId?: string }  // 🔧 Phase 2/3: 後端可能包含 correlationId
+    }
 
     // 🛡️ 防禦性編程：再次正規化以防萬一（defense-in-depth）
     const eventType = normalizeEventType(msg.type || '')
@@ -132,11 +136,15 @@ export function useWebSocketIntegration(
     // Handle new_message events (小寫，由 customerWebSocketManager 正規化)
     if (eventType === WS_EVENTS.NEW_MESSAGE && msg.message) {
       const messageId = msg.message.id
+      // 🔧 Phase 2/3: 從訊息或 metadata 中獲取 correlationId
+      const correlationId = msg.message.correlationId ||
+        (msg.message.metadata as Record<string, unknown> | undefined)?.correlationId as string | undefined
 
       // 檢查是否是本標籤發送的訊息（避免重複）
-      if (handlers.isSentMessage(messageId)) {
+      // 🔧 Phase 2: 優先使用 correlationId 進行匹配（更可靠）
+      if (handlers.isSentMessage(messageId, correlationId)) {
         console.log(
-          `⏭️ [WebSocketIntegration] Skipping own message (sentMessageIds): ${messageId}`
+          `⏭️ [WebSocketIntegration] Skipping own message: id=${messageId}, correlationId=${correlationId || 'N/A'}`
         )
         return
       }
