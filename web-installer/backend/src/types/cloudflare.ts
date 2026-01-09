@@ -165,6 +165,28 @@ export interface AddCustomDomainRequest {
   hostname: string;
 }
 
+// Pages Environment Variables Types
+export interface PagesEnvVar {
+  value: string;
+  type?: 'plain_text' | 'secret_text';
+}
+
+export interface PagesDeploymentConfig {
+  env_vars?: Record<string, PagesEnvVar>;
+  compatibility_date?: string;
+  compatibility_flags?: string[];
+  d1_databases?: Record<string, { id: string }>;
+  kv_namespaces?: Record<string, { namespace_id: string }>;
+  r2_buckets?: Record<string, { name: string }>;
+}
+
+export interface UpdatePagesProjectRequest {
+  deployment_configs?: {
+    production?: PagesDeploymentConfig;
+    preview?: PagesDeploymentConfig;
+  };
+}
+
 // Generic API Response
 export interface CloudflareAPIResponse<T = unknown> {
   result: T;
