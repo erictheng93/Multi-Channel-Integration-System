@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { filesApi } from '@/api/files'
 import { useError } from './useError'
-import { getBackendUrl } from '@/config/runtime'
+import { getApiUrl } from '@/config/runtime'
 import type { MediaFileInfo, FileStatsResponse } from '@/api/files'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22,32 +22,9 @@ let _statusCheckPromise: Promise<PresignedServiceStatus | null> | null = null
 const STATUS_CACHE_TTL = 5 * 60 * 1000 // 5 分鐘緩存
 
 // ═══════════════════════════════════════════════════════════════════════════
-// API URL Helper - 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
+// API URL Helper - 使用統一的 getApiUrl (from @/config/runtime)
+// 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
 // ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * 獲取 API URL
- * - 開發環境 (localhost): 使用相對路徑，通過 Vite Proxy 避免 CORS 問題
- * - 生產環境: 使用絕對路徑直接連接後端
- *
- * @param endpoint - API 端點 (例如 '/api/files/upload')
- * @returns 完整的 URL 或相對路徑
- */
-function getApiUrl(endpoint: string): string {
-  const isDev = import.meta.env.DEV
-
-  if (isDev) {
-    // 開發環境: 使用相對路徑，讓 Vite Proxy 處理
-    console.log(`[API URL] Dev mode - using relative path: ${endpoint}`)
-    return endpoint
-  } else {
-    // 生產環境: 使用絕對路徑
-    const baseUrl = getBackendUrl()
-    const fullUrl = `${baseUrl}${endpoint}`
-    console.log(`[API URL] Production mode - using absolute URL: ${fullUrl}`)
-    return fullUrl
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Presigned URL Upload Types

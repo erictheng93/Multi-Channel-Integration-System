@@ -29,6 +29,41 @@ export type {
   ActivityStreamEvent
 } from './activity';
 
+// WebSocket Event 型別
+export type {
+  WebSocketEvent,
+  NewMessageEvent,
+  MessageReadEvent,
+  MessageRecalledEvent,
+  UserConnectedEvent,
+  UserDisconnectedEvent,
+  TypingStartEvent,
+  TypingStopEvent,
+  ConnectionStateEvent,
+  HeartbeatEvent,
+  ErrorEvent,
+  MessageRelatedEvent,
+  PresenceRelatedEvent,
+  ConnectionRelatedEvent,
+  EventPayload
+} from './websocket-events';
+
+export {
+  isNewMessageEvent,
+  isMessageReadEvent,
+  isMessageRecalledEvent,
+  isUserConnectedEvent,
+  isUserDisconnectedEvent,
+  isTypingStartEvent,
+  isTypingStopEvent,
+  isConnectionStateEvent,
+  isHeartbeatEvent,
+  isErrorEvent,
+  isMessageRelatedEvent,
+  isPresenceRelatedEvent,
+  isConnectionRelatedEvent
+} from './websocket-events';
+
 import type { Agent, Platform } from '@shared/types/index';
 
 // 前端專用型別

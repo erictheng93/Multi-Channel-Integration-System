@@ -21,3 +21,6 @@ export * from './http-status';
 
 // Re-export all time constants
 export * from './time';
+
+// Re-export all WebSocket event constants
+export * from './websocket-events';

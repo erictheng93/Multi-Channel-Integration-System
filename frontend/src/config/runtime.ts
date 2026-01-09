@@ -275,15 +275,57 @@ export function isDebugEnabled(): boolean {
 // ============================================================================
 
 /**
- * 構建 API 端點 URL
+ * 獲取 API URL (開發環境感知)
+ *
+ * 這是前端發起 API 請求時的推薦方式：
+ * - 開發環境: 返回相對路徑，通過 Vite Proxy 避免 CORS 問題
+ * - 生產環境: 返回完整絕對 URL 直接連接後端
+ *
+ * @param endpoint - API 端點路徑 (如 '/api/conversations' 或 'api/messages')
+ * @returns 適用於當前環境的 URL
+ *
+ * @example
+ * ```ts
+ * // 在 Vue 組件或 composable 中使用
+ * const url = getApiUrl('/api/conversations');
+ * const response = await fetch(url, { headers: { ... } });
+ *
+ * // 開發環境 (localhost:3000):
+ * // => '/api/conversations' (透過 Vite Proxy 代理到後端)
+ *
+ * // 生產環境:
+ * // => 'https://multi-channel.example.com/api/conversations'
+ * ```
+ */
+export function getApiUrl(endpoint: string): string {
+  // 標準化路徑：確保以 / 開頭
+  const normalizedPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // 開發環境：使用相對路徑，讓 Vite Proxy 處理 CORS
+  if (import.meta.env.DEV) {
+    return normalizedPath;
+  }
+
+  // 生產環境：使用完整絕對 URL
+  const baseUrl = getBackendUrl();
+  return `${baseUrl}${normalizedPath}`;
+}
+
+/**
+ * 構建 API 端點 URL (總是返回完整 URL)
+ *
+ * ⚠️ 注意: 此函數總是返回完整 URL，開發環境可能遇到 CORS 問題
+ * 推薦使用 getApiUrl() 替代，它會自動處理開發/生產環境差異
+ *
  * @param path - API 路徑 (如 '/api/conversations')
  * @returns 完整的 API URL
+ * @deprecated 建議使用 getApiUrl() 替代，自動處理 CORS
  *
  * @example
  * ```ts
  * const url = getApiEndpoint('/api/conversations');
  * // => 'https://your-api-domain.example.com/api/conversations' (production)
- * // => 'http://localhost:8787/api/conversations' (development)
+ * // => 'http://localhost:8787/api/conversations' (development) - 可能有 CORS 問題!
  * ```
  */
 export function getApiEndpoint(path: string): string {
