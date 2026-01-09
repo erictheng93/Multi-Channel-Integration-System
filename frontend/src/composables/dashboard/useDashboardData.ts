@@ -12,7 +12,7 @@
  * - 多数据源协调
  */
 
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversations } from '@/composables/useConversations'
 import type { Conversation } from '@/types'
@@ -42,8 +42,18 @@ export function useDashboardData(options: UseDashboardDataOptions = {}) {
     openConversations,
     assignedConversations,
     loading: conversationsLoading,
+    fetchConversations,
     refreshConversations
   } = conversationsData
+
+  // 初始化時自動載入對話數據
+  onMounted(async () => {
+    // 只在沒有數據時載入，避免重複請求
+    if (!conversations.value || conversations.value.length === 0) {
+      console.log('📥 [useDashboardData] 自動載入對話數據...')
+      await fetchConversations()
+    }
+  })
 
   /**
    * 当前日期（格式化）
@@ -58,11 +68,25 @@ export function useDashboardData(options: UseDashboardDataOptions = {}) {
   })
 
   /**
-   * 最近对话（限制数量）
+   * 最近对话（按時間排序，從新到舊）
+   * 優先使用 lastMessageAt，fallback 到 updatedAt
    */
-  const recentConversations = computed(() =>
-    conversations.value?.slice(0, recentConversationsCount) || []
-  )
+  const recentConversations = computed(() => {
+    if (!conversations.value || conversations.value.length === 0) {
+      return []
+    }
+
+    // 複製陣列避免修改原始數據，然後排序
+    return [...conversations.value]
+      .sort((a, b) => {
+        // 優先使用 lastMessageAt，fallback 到 updatedAt
+        const timeA = a.lastMessageAt || a.updatedAt || 0
+        const timeB = b.lastMessageAt || b.updatedAt || 0
+        // 降序排序（從新到舊）
+        return timeB - timeA
+      })
+      .slice(0, recentConversationsCount)
+  })
 
   /**
    * 导航到对话详情

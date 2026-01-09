@@ -1959,6 +1959,49 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
+    // 🔧 FIX: 查詢該對話的最新訊息
+    let lastMessageData: {
+      messageId: string;
+      content: string;
+      createdAt: string;
+      senderType: string;
+      messageType: string;
+    } | null = null;
+
+    try {
+      const latestMessageResult = await c.env.DB.prepare(`
+        SELECT id as messageId, content, created_at as createdAt, sender_type as senderType, message_type as messageType
+        FROM messages
+        WHERE conversation_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).bind(conversationId).first();
+
+      if (latestMessageResult) {
+        lastMessageData = latestMessageResult as any;
+      }
+    } catch (msgError) {
+      log.warn('Failed to fetch latest message for conversation', { conversationId, error: msgError });
+    }
+
+    // Helper function to get display content for non-text messages with empty content
+    const getDisplayContent = (content: string | undefined | null, messageType: string | undefined): string | null => {
+      if (content && content.trim() !== '') {
+        return content;
+      }
+      const placeholders: Record<string, string> = {
+        'file': '[檔案]',
+        'image': '[圖片]',
+        'video': '[影片]',
+        'sticker': '[貼圖]',
+        'audio': '[語音訊息]',
+        'location': '[位置]'
+      };
+      return placeholders[messageType || 'text'] || null;
+    };
+
+    const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
+
     // 構建完整的對話對象，包含嵌套的 customer 和 assignedTeam 對象
     const conversationData: any = {
       ...result.conversations,
@@ -1978,7 +2021,18 @@ conversationHandler.get('/:id', jwtAuth, async (c) => {
         metadata: result.customers.metadata,
         createdAt: result.customers.createdAt,
         updatedAt: result.customers.updatedAt
-      } : undefined
+      } : undefined,
+      // 🔧 FIX: 添加 lastMessage 相關字段，與 list API 保持一致
+      lastMessage: (lastMessageData && displayContent) ? {
+        id: lastMessageData.messageId || '',
+        content: displayContent,
+        createdAt: lastMessageData.createdAt,
+        senderType: lastMessageData.senderType || 'agent',
+        messageType: lastMessageData.messageType || 'text'
+      } : null,
+      lastMessageContent: displayContent,
+      lastMessageAtActual: lastMessageData?.createdAt || null,
+      lastMessageType: lastMessageData?.messageType || null
     };
 
     return c.json({
@@ -2199,22 +2253,44 @@ conversationHandler.get('/', jwtAuth, async (c) => {
       }
     }
 
+    // Helper function to get display content for non-text messages with empty content
+    const getDisplayContent = (content: string | undefined | null, messageType: string | undefined): string | null => {
+      // If content exists and is non-empty, use it
+      if (content && content.trim() !== '') {
+        return content;
+      }
+      // Generate placeholder for non-text message types with empty content
+      const placeholders: Record<string, string> = {
+        'file': '[檔案]',
+        'image': '[圖片]',
+        'video': '[影片]',
+        'sticker': '[貼圖]',
+        'audio': '[語音訊息]',
+        'location': '[位置]'
+      };
+      return placeholders[messageType || 'text'] || null;
+    };
+
     // 結合數據并統一為camelCase格式
     const combinedData = conversationData.map(conv => {
       const lastMsg = lastMessagesMap.get(conv.id);
+      const displayContent = lastMsg ? getDisplayContent(lastMsg.content, lastMsg.messageType) : null;
       return {
         ...conv,
         // 構建lastMessage對象以匹配前端期望的結構
-        lastMessage: lastMsg?.content ? {
+        // Now checks if lastMsg exists AND has displayable content (original or placeholder)
+        lastMessage: (lastMsg && displayContent) ? {
           id: lastMsg.messageId || '',
-          content: lastMsg.content,
+          content: displayContent,
           createdAt: lastMsg.createdAt,
           senderType: lastMsg.senderType || 'agent',
           messageType: lastMsg.messageType || 'text'
         } : null,
         // 保留原有字段以確保向後兼容
-        lastMessageContent: lastMsg?.content || null,
-        lastMessageAtActual: lastMsg?.createdAt || null
+        lastMessageContent: displayContent,
+        lastMessageAtActual: lastMsg?.createdAt || null,
+        // 新增: 原始消息類型，供前端判斷顯示樣式
+        lastMessageType: lastMsg?.messageType || null
       };
     });
 

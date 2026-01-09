@@ -22,6 +22,7 @@ import {
 } from '@/services/customerWebSocketManager'
 import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 import { useConnectionState } from '@/composables/useConnectionState'
+import { WS_EVENTS, normalizeEventType } from '@/constants/websocket-events'
 import type { Message } from '@/types'
 import type { ConversationState } from './useConversationState'
 import type { MessageHandlers } from './useMessageHandlers'
@@ -119,13 +120,17 @@ export function useWebSocketIntegration(
 
   /**
    * 處理統一連接接收的消息
+   * 🛡️ 方案 C: 使用小寫事件類型（customerWebSocketManager 已正規化）
    */
   function handleUnifiedMessage(message: unknown) {
     const msg = message as { type?: string; message?: Message }
-    console.log('✅ [WebSocketIntegration] Received message:', msg.type, message)
 
-    // Handle NEW_MESSAGE events
-    if (msg.type === 'NEW_MESSAGE' && msg.message) {
+    // 🛡️ 防禦性編程：再次正規化以防萬一（defense-in-depth）
+    const eventType = normalizeEventType(msg.type || '')
+    console.log('✅ [WebSocketIntegration] Received message:', eventType, message)
+
+    // Handle new_message events (小寫，由 customerWebSocketManager 正規化)
+    if (eventType === WS_EVENTS.NEW_MESSAGE && msg.message) {
       const messageId = msg.message.id
 
       // 檢查是否是本標籤發送的訊息（避免重複）
@@ -142,8 +147,8 @@ export function useWebSocketIntegration(
     }
 
     // Handle TYPING events (Phase 2)
-    // if (msg.type === 'TYPING_START') { ... }
-    // if (msg.type === 'TYPING_STOP') { ... }
+    // if (eventType === WS_EVENTS.TYPING_START) { ... }
+    // if (eventType === WS_EVENTS.TYPING_STOP) { ... }
   }
 
   /**

@@ -229,7 +229,8 @@ const conversationAriaLabel = computed(() => {
 // Methods
 const handleMouseEnter = () => {
   isHovered.value = true
-  prefetchApiData(`/api/conversations/${props.conversation.id}/messages`)
+  // 🔧 FIX: 使用新的 customer-conversations 端點
+  prefetchApiData(`/api/customer-conversations/${props.conversation.id}/messages`)
 }
 
 const handleMouseLeave = () => {

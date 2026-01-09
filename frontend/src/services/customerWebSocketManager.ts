@@ -4,6 +4,7 @@ import { ref, computed, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
 import { getBackendUrl } from '@/config/runtime'
+import { WS_EVENTS, normalizeEventType } from '@/constants/websocket-events'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 
@@ -112,26 +113,35 @@ export function createCustomerWebSocketConnection(
       ws.value.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          console.log('📨 [CustomerWebSocket] Received:', data.type, data)
 
-          if (data.type === 'NEW_MESSAGE' && data.message) {
+          // 🛡️ 方案 C: 防禦性編程 - 正規化事件類型為小寫
+          // 遵循 Postel's Law: "Be liberal in what you accept"
+          // 這樣無論後端發送 'new_message', 'NEW_MESSAGE', 或 'New_Message' 都能正確處理
+          const eventType = normalizeEventType(data.type)
+
+          console.log('📨 [CustomerWebSocket] Received:', eventType, data)
+
+          if (eventType === WS_EVENTS.NEW_MESSAGE && data.message) {
             // 🔧 FIX: 不再基於 senderId 跳過訊息
             // 改由 useCustomerMessages.addMessage() 的 ID 去重機制處理
             // 這樣可以支援同一用戶多瀏覽器標籤的即時同步：
             // - 發送者標籤：handleMessageConfirmed 已更新 message.id 為 realId，addMessage 會跳過
             // - 其他標籤：沒有 realId，addMessage 會添加訊息
-            console.log('📬 [CustomerWebSocket] Processing NEW_MESSAGE:', data.message.id)
+            console.log('📬 [CustomerWebSocket] Processing new_message:', data.message.id)
 
             // 更新計數器
             messageCount.value++
 
+            // 🛡️ 正規化後傳遞給回調，確保下游一致使用小寫
+            const normalizedData = { ...data, type: eventType }
             // 通知回調（由 ConversationDetail.vue 的 handleUnifiedMessage 處理）
             // addMessage 會進行 ID 去重，確保發送者標籤不會重複顯示
-            messageCallback?.(data)
-          } else if (data.type === 'USER_CONNECTED' || data.type === 'USER_DISCONNECTED') {
+            messageCallback?.(normalizedData)
+          } else if (eventType === WS_EVENTS.USER_CONNECTED || eventType === WS_EVENTS.USER_DISCONNECTED) {
             // 用戶在線狀態變化
-            console.log(`👤 [CustomerWebSocket] User ${data.type}: ${data.userId}`)
-            messageCallback?.(data)
+            console.log(`👤 [CustomerWebSocket] User ${eventType}: ${data.userId}`)
+            const normalizedData = { ...data, type: eventType }
+            messageCallback?.(normalizedData)
           }
         } catch (_error) {
           console.error('❌ [CustomerWebSocket] Error parsing message:', _error)

@@ -206,7 +206,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import Modal from '@/components/ui/Modal.vue';
 import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
-import { getBackendUrl } from '@/config/runtime';
+import { getApiUrl } from '@/config/runtime';
 
 interface Props {
   title?: string;
@@ -363,8 +363,6 @@ async function loadDataFromAPI(isBackground: boolean) {
   error.value = null;
 
   try {
-    const apiUrl = getBackendUrl();
-
     // 根據 preset 決定使用哪個 API endpoint
     let endpoint = '/api/analytics/comparison/metrics';
     const params = new URLSearchParams({
@@ -379,7 +377,8 @@ async function loadDataFromAPI(isBackground: boolean) {
       params.append('metrics', 'total_conversations,active_conversations,closed_conversations,total_messages');
     }
 
-    const response = await fetch(`${apiUrl}${endpoint}?${params.toString()}`, {
+    // 使用 getApiUrl: 開發環境透過 Vite Proxy，生產環境直接連接
+    const response = await fetch(getApiUrl(`${endpoint}?${params.toString()}`), {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json'
@@ -420,8 +419,8 @@ async function loadDataFromAPI(isBackground: boolean) {
 // 載入快取統計
 async function loadCacheStats() {
   try {
-    const apiUrl = getBackendUrl();
-    const response = await fetch(`${apiUrl}/api/analytics/comparison/cache/stats`, {
+    // 使用 getApiUrl: 開發環境透過 Vite Proxy，生產環境直接連接
+    const response = await fetch(getApiUrl('/api/analytics/comparison/cache/stats'), {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
