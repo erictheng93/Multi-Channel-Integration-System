@@ -811,69 +811,8 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       // 不要讓通知失敗影響主流程
     }
 
-    // 如果是多媒體訊息，下載並存儲到 R2
-    console.log(`🔍 [LINE Webhook] Media processing check:`, {
-      hasMediaData: !!mediaData,
-      messageType: message.type,
-      shouldProcess: !!(mediaData && message.type !== 'location' && message.type !== 'sticker'),
-      lineMessageId: message.id,
-      fileName: message.fileName || 'N/A'
-    });
-
-    if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
-      console.log(`📥 [LINE Webhook] Starting media download for ${message.type} message...`);
-      try {
-        const { processLineMediaMessage } = await import('../utils/file-storage');
-        console.log(`📦 [LINE Webhook] Calling processLineMediaMessage with:`, {
-          lineMessageId: message.id,
-          messageType: message.type,
-          fileName: message.fileName || 'N/A'
-        });
-        const mediaFile = await processLineMediaMessage(
-          env,
-          message.id,
-          message.type,
-          message.fileName
-        );
-        console.log(`📤 [LINE Webhook] processLineMediaMessage returned:`, mediaFile ? {
-          id: mediaFile.id,
-          filename: mediaFile.filename,
-          size: mediaFile.size,
-          url: mediaFile.url
-        } : 'NULL');
-        
-        if (mediaFile) {
-          // 將檔案資訊存儲到資料庫 - using Drizzle ORM
-          // 🔧 FIX: Column names must match schema.ts exactly!
-          const drizzleDb = createDbClient(env.DB);
-
-          // Extract R2 key from the proxy URL
-          // URL format: https://{BACKEND_URL}/api/files/public/{r2Key}
-          const r2Key = mediaFile.url.includes('/api/files/public/')
-            ? mediaFile.url.split('/api/files/public/')[1]
-            : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;
-
-          const newFileAttachment = {
-            id: mediaFile.id,
-            messageId: messageId,
-            filename: mediaFile.filename,        // 🔧 FIX: was 'fileName'
-            mimeType: mediaFile.mimeType,        // 🔧 FIX: was 'fileType'
-            fileSize: mediaFile.size,
-            fileUrl: mediaFile.url,              // 🔧 FIX: Added - stores proxy URL
-            r2Key: r2Key,                        // 🔧 FIX: Now stores actual R2 path
-            createdAt: new Date().toISOString()
-          };
-
-          await drizzleDb.insert(fileAttachments).values(newFileAttachment);
-
-          log.debug('LINE Webhook: Media stored', { filename: mediaFile.filename, url: mediaFile.url });
-        } else {
-          log.warn('Failed to store LINE media', { messageType: message.type, messageId: message.id });
-        }
-      } catch (storageError) {
-        log.error('Error storing LINE media', { error: storageError instanceof Error ? storageError.message : String(storageError) });
-      }
-    }
+    // ✅ 媒體已在廣播前處理完成 (Lines 622-666)
+    // 不需要第二次處理，避免重複插入 file_attachments
 
     logSecurely('LINE', userId, messageContent.length);
   } catch (error) {
