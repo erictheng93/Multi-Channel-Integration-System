@@ -101,179 +101,36 @@
         <ChevronRightIcon class="chevron-icon" />
       </div>
     </div>
-
-    <!-- Quick Actions - Slide from Bottom -->
-    <Transition name="slide-up">
-      <div
-        v-if="showActions && isHovered"
-        class="actions-overlay"
-      >
-        <div class="actions-glass">
-          <button
-            v-if="canAssignToMe"
-            class="action-button primary"
-            :disabled="isAssigning"
-            @click.stop="handleAssignToMe"
-          >
-            <UserPlusIcon class="action-icon" />
-            <span>{{ isAssigning ? '指派中...' : '指派給我' }}</span>
-          </button>
-
-          <div class="action-divider" />
-
-          <button
-            v-if="canAssignToOthers"
-            class="action-button"
-            :disabled="isAssigning"
-            @click.stop="toggleAssignMenu"
-          >
-            <TeamIcon class="action-icon" />
-            <span>指派他人</span>
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Assign Menu - iOS Style Sheet -->
-    <Teleport to="body">
-      <Transition name="sheet-slide">
-        <div
-          v-if="showAssignMenu"
-          class="sheet-overlay"
-          @click="closeAssignMenu"
-        >
-          <div
-            class="sheet-container"
-            @click.stop
-          >
-            <div class="sheet-handle" />
-
-            <div class="sheet-header">
-              <h4 class="sheet-title">
-                選擇指派對象
-              </h4>
-              <button
-                class="sheet-close"
-                @click="closeAssignMenu"
-              >
-                <XCircleIcon />
-              </button>
-            </div>
-
-            <div
-              v-if="loadingTeamMembers"
-              class="sheet-loading"
-            >
-              <div class="ios-spinner" />
-              <span>載入中...</span>
-            </div>
-
-            <div
-              v-else-if="teamMembers.length === 0"
-              class="sheet-empty"
-            >
-              <UserXIcon class="empty-icon" />
-              <span>暫無可指派的成員</span>
-            </div>
-
-            <div
-              v-else
-              class="sheet-list"
-            >
-              <button
-                v-for="member in teamMembers"
-                :key="member.id"
-                class="member-row"
-                :class="{ 'is-selected': member.id === conversation.assignedAgentId }"
-                :disabled="isAssigning || member.id === conversation.assignedAgentId"
-                @click="handleAssignToMember(member)"
-              >
-                <div class="member-avatar">
-                  {{ getInitials(member.name || member.loginId) }}
-                </div>
-                <div class="member-details">
-                  <span class="member-name">{{ member.name || member.loginId }}</span>
-                  <span class="member-role">{{ getRoleDisplayName(member.role) }}</span>
-                </div>
-                <CheckCircleIcon
-                  v-if="member.id === conversation.assignedAgentId"
-                  class="member-check"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, h } from 'vue'
-import type { Conversation, TeamMember, Agent } from '@/types'
-import { useAuth } from '@/composables'
-import { useConversationsStore } from '@/stores/conversations'
-import { usePermissions } from '@/services/permissionService'
+import { computed, ref, h } from 'vue'
+import type { Conversation } from '@/types'
 import { usePrefetch } from '@/composables/usePrefetch'
 import { convertEmojiForConversationList } from '@/utils/layered-emoji-processor'
-import { teamApi } from '@/api/team'
-import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
+import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 import {
-  UserPlusIcon,
-  TeamIcon,
   UserCheckIcon,
   ChevronRightIcon
 } from '@/components/icons'
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  select: [conversation: Conversation]
-  assigned: [conversation: Conversation, assignedTo: string]
-  assignError: [error: string]
-}>()
-
-// Additional icons for Apple style
-const XCircleIcon = {
-  render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' }, [
-    h('circle', { cx: '12', cy: '12', r: '10' }),
-    h('path', { d: 'm15 9-6 6' }),
-    h('path', { d: 'm9 9 6 6' })
-  ])
-}
-
-const CheckCircleIcon = {
-  render: () => h('svg', { viewBox: '0 0 24 24', fill: 'currentColor' }, [
-    h('path', { 'fill-rule': 'evenodd', 'clip-rule': 'evenodd', d: 'M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 8.707a1 1 0 0 0-1.414-1.414L10 14.586l-2.293-2.293a1 1 0 0 0-1.414 1.414l3 3a1 1 0 0 0 1.414 0l6-6z' })
-  ])
-}
-
-const UserXIcon = {
-  render: () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [
-    h('path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }),
-    h('circle', { cx: '9', cy: '7', r: '4' }),
-    h('line', { x1: '17', x2: '22', y1: '8', y2: '13' }),
-    h('line', { x1: '22', x2: '17', y1: '8', y2: '13' })
-  ])
-}
 
 interface Props {
   conversation: Conversation
   selected?: boolean
 }
 
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  select: [conversation: Conversation]
+}>()
+
 // Composables
-const { currentAgent } = useAuth()
-const conversationsStore = useConversationsStore()
-const { canAssignConversation, canViewTeamMembers } = usePermissions()
 const { prefetchApiData } = usePrefetch()
 
 // State
 const isHovered = ref(false)
-const isAssigning = ref(false)
-const showAssignMenu = ref(false)
-const loadingTeamMembers = ref(false)
-const teamMembers = ref<TeamMember[]>([])
 
 // Platform config
 const platformConfig: Record<string, { name: string; key: string }> = {
@@ -369,41 +226,6 @@ const conversationAriaLabel = computed(() => {
   return `與 ${customerName.value} 的對話，狀態：${statusText}${unreadText}`
 })
 
-const showActions = computed(() => isOpenConversation(props.conversation.status))
-
-// Agent type adapter
-const agentToTeamMember = (agent: Agent): TeamMember | null => {
-  if (!agent) {return null}
-  return {
-    id: agent.id,
-    loginId: agent.email,
-    name: agent.displayName || agent.name,
-    email: agent.email,
-    role: agent.role,
-    status: agent.isActive ? 'active' : 'inactive',
-    group: undefined,
-    teamId: agent.teamId,
-    avatar: undefined,
-    createdAt: new Date(agent.createdAt),
-    updatedAt: new Date(),
-    lastLoginAt: agent.lastActive ? new Date(agent.lastActive) : undefined
-  }
-}
-
-const canAssignToMe = computed(() => {
-  if (!currentAgent.value) {return false}
-  if (props.conversation.assignedAgentId === currentAgent.value.id) {return false}
-  const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  return canAssignConversation(teamMemberAgent, props.conversation, currentAgent.value.id)
-})
-
-const canAssignToOthers = computed(() => {
-  if (!currentAgent.value) {return false}
-  const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  return canAssignConversation(teamMemberAgent, props.conversation) &&
-         canViewTeamMembers(teamMemberAgent)
-})
-
 // Methods
 const handleMouseEnter = () => {
   isHovered.value = true
@@ -416,97 +238,6 @@ const handleMouseLeave = () => {
 
 const handleSelect = () => {
   emit('select', props.conversation)
-}
-
-const handleAssignToMe = async () => {
-  if (!currentAgent.value || isAssigning.value) {return}
-
-  isAssigning.value = true
-  try {
-    const success = await conversationsStore.assignConversation(
-      props.conversation.id,
-      currentAgent.value.id
-    )
-    if (success) {
-      emit('assigned', props.conversation, currentAgent.value.id)
-    } else {
-      emit('assignError', '指派失敗，請重試')
-    }
-  } catch {
-    emit('assignError', '指派過程中發生錯誤')
-  } finally {
-    isAssigning.value = false
-  }
-}
-
-const handleAssignToMember = async (member: TeamMember) => {
-  if (isAssigning.value || member.id === props.conversation.assignedAgentId) {return}
-
-  isAssigning.value = true
-  try {
-    const success = await conversationsStore.assignConversation(
-      props.conversation.id,
-      member.id
-    )
-    if (success) {
-      emit('assigned', props.conversation, member.id)
-      closeAssignMenu()
-    } else {
-      emit('assignError', `指派給 ${member.name || member.loginId} 失敗`)
-    }
-  } catch {
-    emit('assignError', '指派過程中發生錯誤')
-  } finally {
-    isAssigning.value = false
-  }
-}
-
-const toggleAssignMenu = async () => {
-  if (showAssignMenu.value) {
-    closeAssignMenu()
-  } else {
-    showAssignMenu.value = true
-    if (teamMembers.value.length === 0) {
-      await loadTeamMembers()
-    }
-  }
-}
-
-const closeAssignMenu = () => {
-  showAssignMenu.value = false
-}
-
-const loadTeamMembers = async () => {
-  if (!currentAgent.value?.teamId) {return}
-
-  loadingTeamMembers.value = true
-  try {
-    const response = await teamApi.getTeamMembers(currentAgent.value.teamId)
-    if (response.success && response.data) {
-      teamMembers.value = response.data.filter(member =>
-        member.id !== currentAgent.value?.id &&
-        ['agent', 'team'].includes(member.role)
-      )
-    }
-  } catch {
-    emit('assignError', '載入團隊成員失敗')
-  } finally {
-    loadingTeamMembers.value = false
-  }
-}
-
-const getInitials = (name: string | undefined): string => {
-  if (!name) {return 'U'}
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-
-const getRoleDisplayName = (role: string): string => {
-  const roleNames: Record<string, string> = {
-    'admin': '管理員',
-    'team': '團隊主管',
-    'agent': '客服專員'
-  }
-  return roleNames[role] || role
 }
 
 const formatTime = (date: Date | string | number) => {
@@ -541,22 +272,6 @@ const formatTime = (date: Date | string | number) => {
     return ''
   }
 }
-
-// Click outside handler
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as HTMLElement
-  if (showAssignMenu.value && !target.closest('.sheet-container')) {
-    closeAssignMenu()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
 
 <style scoped>
@@ -896,291 +611,8 @@ onUnmounted(() => {
 }
 
 /* ============================================
-   ACTIONS OVERLAY
-   ============================================ */
-.actions-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 0 16px 14px;
-  z-index: 10;
-}
-
-.actions-glass {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-medium);
-  padding: 6px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.action-button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-small);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--apple-blue);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.action-button:hover:not(:disabled) {
-  background: rgba(0, 122, 255, 0.1);
-}
-
-.action-button:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.action-button.primary {
-  background: var(--apple-blue);
-  color: white;
-}
-
-.action-button.primary:hover:not(:disabled) {
-  background: #0066d6;
-}
-
-.action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.action-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.action-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--apple-separator);
-  margin: 0 4px;
-}
-
-/* ============================================
-   SHEET (iOS Action Sheet Style)
-   ============================================ */
-.sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 9999;
-  padding: 8px;
-}
-
-.sheet-container {
-  width: 100%;
-  max-width: 420px;
-  max-height: 70vh;
-  background: var(--apple-bg);
-  border-radius: var(--radius-large) var(--radius-large) var(--radius-large) var(--radius-large);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.sheet-handle {
-  width: 36px;
-  height: 5px;
-  background: var(--apple-bg-tertiary);
-  border-radius: 2.5px;
-  margin: 8px auto;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px 16px;
-  border-bottom: 0.5px solid var(--apple-separator);
-}
-
-.sheet-title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--apple-label);
-  letter-spacing: -0.4px;
-}
-
-.sheet-close {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--apple-bg-secondary);
-  border: none;
-  border-radius: 50%;
-  color: var(--apple-label-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.sheet-close:hover {
-  background: var(--apple-bg-tertiary);
-}
-
-.sheet-close svg {
-  width: 18px;
-  height: 18px;
-}
-
-.sheet-loading,
-.sheet-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 40px 20px;
-  color: var(--apple-label-secondary);
-  font-size: 15px;
-}
-
-.ios-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2.5px solid var(--apple-bg-tertiary);
-  border-top-color: var(--apple-blue);
-  border-radius: 50%;
-  animation: ios-spin 0.8s linear infinite;
-}
-
-@keyframes ios-spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-icon {
-  width: 40px;
-  height: 40px;
-  color: var(--apple-label-tertiary);
-}
-
-.sheet-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.member-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 12px 14px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-medium);
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.member-row:hover:not(:disabled) {
-  background: var(--apple-bg-secondary);
-}
-
-.member-row:active:not(:disabled) {
-  background: var(--apple-bg-tertiary);
-}
-
-.member-row:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.member-row.is-selected {
-  background: rgba(52, 199, 89, 0.1);
-}
-
-.member-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-medium);
-  background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 15px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.member-details {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-}
-
-.member-name {
-  display: block;
-  font-size: 17px;
-  font-weight: 500;
-  color: var(--apple-label);
-  letter-spacing: -0.3px;
-}
-
-.member-role {
-  display: block;
-  font-size: 14px;
-  color: var(--apple-label-secondary);
-  margin-top: 2px;
-}
-
-.member-check {
-  width: 24px;
-  height: 24px;
-  color: var(--apple-green);
-  flex-shrink: 0;
-}
-
-/* ============================================
    TRANSITIONS
    ============================================ */
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.slide-up-enter-from,
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
-}
-
-.sheet-slide-enter-active,
-.sheet-slide-leave-active {
-  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.sheet-slide-enter-from,
-.sheet-slide-leave-to {
-  opacity: 0;
-}
-
-.sheet-slide-enter-from .sheet-container,
-.sheet-slide-leave-to .sheet-container {
-  transform: translateY(100%);
-}
-
 .scale-pop-enter-active {
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
