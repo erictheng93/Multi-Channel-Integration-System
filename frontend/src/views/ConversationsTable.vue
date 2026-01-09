@@ -414,13 +414,13 @@ const applyFilters = () => {
 
 onMounted(async () => {
   console.log('🚀 ConversationsTable mounted')
-  // 確保數據載入 - 使用平滑更新系統
+
+  // 🔧 FIX: 每次 mount 都刷新數據，確保返回列表時顯示最新狀態
+  // 使用 loadWithCache 提供最佳 UX：
+  // - 如果有緩存數據：立即顯示，背景靜默更新（只顯示更新指示器，非全屏載入）
+  // - 如果無緩存數據：顯示載入狀態
   try {
-    // 檢查是否已經有數據（避免重複載入）
-    if (conversationsStore.conversations.length === 0 && !conversationsStore.loading) {
-      // 初始載入不需要更新指示器
-      await conversationsStore.fetchConversations()
-    }
+    await conversationsStore.loadWithCache(filters.value)
   } catch (error) {
     console.error('載入對話失敗:', error)
     // 即使載入失敗，也不要讓頁面白屏
