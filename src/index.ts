@@ -1,7 +1,7 @@
 // 主要入口點 - Handler-based 架構 + 統一路由管理
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { getAllowedOrigins, isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
+import { getAllowedOrigins, isOriginAllowed, createCorsPreflightResponse, createCorsBlockedResponse } from '@/config/cors';
 import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
 import { logger, createContextLogger, configureLogger } from './utils/logger';
@@ -114,8 +114,8 @@ app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
   log.debug('CORS Middleware request', { method: c.req.method, origin, path: c.req.path });
 
-  // 檢查是否允許該 origin
-  const allowed = origin && isOriginAllowed(origin);
+  // 檢查是否允許該 origin - 傳遞環境變量以讀取 FRONTEND_URL/BACKEND_URL
+  const allowed = origin && isOriginAllowed(origin, c.env);
   log.debug('CORS Middleware origin check', { origin, allowed });
 
   // 處理 OPTIONS preflight 請求
@@ -124,10 +124,11 @@ app.use('*', async (c, next) => {
 
     if (allowed) {
       log.debug('CORS OPTIONS allowed', { origin });
-      return createCorsPreflightResponse(origin);
+      return createCorsPreflightResponse(origin, c.env);
     } else {
       log.warn('CORS OPTIONS: Blocked origin', { origin });
-      return c.json({ error: 'CORS policy violation' }, 403);
+      // 使用增強的 CORS 錯誤響應，包含配置指引
+      return createCorsBlockedResponse(origin, c.env);
     }
   }
 
@@ -199,6 +200,15 @@ app.get('/api/delayed-messages-v2/health', async (c) => {
 });
 log.info('DelayedMessageScheduler public endpoint registered', {
   endpoint: 'GET /api/delayed-messages-v2/health (public, no auth)'
+});
+
+// 🆕 Pre-register Configuration Check endpoint BEFORE unified route system
+// This is a PUBLIC endpoint for debugging CORS and environment variable issues
+// It should be accessible without authentication to help diagnose configuration problems
+import { getConfigCheck } from './handlers/health-main';
+app.get('/api/system/config-check', getConfigCheck);
+log.info('Configuration check endpoint registered (public)', {
+  endpoint: 'GET /api/system/config-check (public, no auth)'
 });
 
 // 🔧 Pre-register R2 Public Proxy Endpoint (QR Code Fix)
@@ -1227,6 +1237,7 @@ app.post('/api/system/cache/clear', jwtAuth, clearCache);
 app.post('/api/system/restart', jwtAuth, restartSystem);
 app.get('/api/system/health', healthCheck);
 app.get('/api/system/api-status', getApiStatus);
+// Note: /api/system/config-check is registered as a PUBLIC endpoint at the top of this file
 
 // 憑證管理路由 - 細粒度控制 (保留)
 app.post('/api/credentials', jwtAuth, storeCredential);

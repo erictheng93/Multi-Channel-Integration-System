@@ -145,9 +145,10 @@ export const CORS_HEADERS = {
  * 為響應添加 CORS headers
  * @param origin - 請求的 origin
  * @param headers - Headers 對象
+ * @param env - 環境變量 (用於動態配置)
  */
-export function addCorsHeaders(origin: string | undefined, headers: Headers): void {
-  if (!origin || !isOriginAllowed(origin)) {
+export function addCorsHeaders(origin: string | undefined, headers: Headers, env?: WorkerEnv): void {
+  if (!origin || !isOriginAllowed(origin, env)) {
     return;
   }
 
@@ -161,13 +162,14 @@ export function addCorsHeaders(origin: string | undefined, headers: Headers): vo
 /**
  * 創建 CORS OPTIONS 預檢響應
  * @param origin - 請求的 origin
+ * @param env - 環境變量 (用於動態配置)
  * @returns Response 對象
  */
-export function createCorsPreflightResponse(origin: string | undefined): Response {
+export function createCorsPreflightResponse(origin: string | undefined, env?: WorkerEnv): Response {
   const response = new Response(null, { status: 204 });
 
-  if (origin && isOriginAllowed(origin)) {
-    addCorsHeaders(origin, response.headers);
+  if (origin && isOriginAllowed(origin, env)) {
+    addCorsHeaders(origin, response.headers, env);
   }
 
   // 防止 Cloudflare edge 緩存 OPTIONS 響應
@@ -250,5 +252,104 @@ export function applySSECorsHeaders(
 
   Object.entries(headers).forEach(([key, value]) => {
     c.header(key, value);
+  });
+}
+
+// ============================================================================
+// CORS Error Response Helpers (Configuration Guard Pattern)
+// ============================================================================
+
+/**
+ * CORS configuration error details
+ */
+export interface CorsConfigurationError {
+  error: string;
+  code: 'CORS_ORIGIN_NOT_ALLOWED' | 'CORS_CONFIGURATION_MISSING';
+  message: string;
+  requestedOrigin: string | undefined;
+  allowedOrigins: string[];
+  isConfigurationIssue: boolean;
+  resolution: {
+    steps: string[];
+    documentation: string;
+  };
+  timestamp: string;
+}
+
+/**
+ * Creates a detailed CORS error response with configuration guidance
+ *
+ * @param origin - The blocked origin
+ * @param env - Environment bindings to check configuration
+ * @returns CorsConfigurationError object
+ */
+export function createCorsErrorDetails(
+  origin: string | undefined,
+  env?: WorkerEnv
+): CorsConfigurationError {
+  const currentEnv = env ? getCurrentEnvironment(env) : 'unknown';
+  const allowedOrigins = getAllowedOrigins(env);
+  const hasFrontendUrl = !!(env?.FRONTEND_URL);
+  const hasBackendUrl = !!(env?.BACKEND_URL);
+
+  // Determine if this is a configuration issue
+  const isConfigurationIssue = currentEnv === 'production' && !hasFrontendUrl && !hasBackendUrl;
+
+  const baseError: CorsConfigurationError = {
+    error: isConfigurationIssue ? 'CORS_CONFIGURATION_MISSING' : 'CORS_ORIGIN_NOT_ALLOWED',
+    code: isConfigurationIssue ? 'CORS_CONFIGURATION_MISSING' : 'CORS_ORIGIN_NOT_ALLOWED',
+    message: isConfigurationIssue
+      ? 'CORS is blocking requests because FRONTEND_URL is not configured in production environment.'
+      : `Origin '${origin}' is not in the allowed origins list.`,
+    requestedOrigin: origin,
+    allowedOrigins: allowedOrigins,
+    isConfigurationIssue,
+    resolution: isConfigurationIssue
+      ? {
+          steps: [
+            '1. Go to Cloudflare Dashboard (https://dash.cloudflare.com)',
+            '2. Navigate to: Workers & Pages -> multi-channel-platform -> Settings -> Variables',
+            '3. Add environment variable: FRONTEND_URL = ' + (origin || 'https://your-frontend-domain.com'),
+            '4. Add environment variable: BACKEND_URL = https://your-backend-domain.com',
+            '5. Click "Save and Deploy"',
+            '6. Wait for deployment to complete (~30 seconds)',
+            '7. Refresh the page',
+          ],
+          documentation: 'https://developers.cloudflare.com/workers/configuration/environment-variables/',
+        }
+      : {
+          steps: [
+            `1. The origin '${origin}' is not in the allowed list`,
+            '2. To allow this origin, add it to ADDITIONAL_ALLOWED_ORIGINS environment variable',
+            '3. Or set FRONTEND_URL to this origin if it is your primary frontend',
+          ],
+          documentation: 'https://developers.cloudflare.com/workers/configuration/environment-variables/',
+        },
+    timestamp: new Date().toISOString(),
+  };
+
+  return baseError;
+}
+
+/**
+ * Creates a CORS blocked response with detailed error information
+ *
+ * @param origin - The blocked origin
+ * @param env - Environment bindings
+ * @returns Response object with 403 status
+ */
+export function createCorsBlockedResponse(
+  origin: string | undefined,
+  env?: WorkerEnv
+): Response {
+  const errorDetails = createCorsErrorDetails(origin, env);
+
+  return new Response(JSON.stringify(errorDetails, null, 2), {
+    status: 403,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CORS-Error': errorDetails.code,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
   });
 }
