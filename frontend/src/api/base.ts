@@ -330,8 +330,10 @@ class ApiClient {
 import { getBackendUrl } from '@/config/runtime';
 
 // 建立 API 客戶端實例
-// ✅ 不再硬編碼 URL，使用運行時配置
-const backendUrl = getBackendUrl();
-const apiBaseUrl = backendUrl.endsWith('/api') ? backendUrl : `${backendUrl}/api`;
+// ✅ 開發環境使用相對路徑，讓 Vite proxy 處理 CORS
+// ✅ 生產環境使用完整 URL 直連後端
+const apiBaseUrl = import.meta.env.DEV
+  ? '/api'  // 開發環境: 走 Vite proxy (vite.config.ts 中配置)
+  : `${getBackendUrl()}/api`;  // 生產環境: 直連後端
 
 export const apiClient = new ApiClient(apiBaseUrl);
