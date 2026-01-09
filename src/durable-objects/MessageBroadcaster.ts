@@ -122,6 +122,16 @@ export class MessageBroadcaster implements DurableObject {
           return this.handleGetStatus(request);
         case '/system-broadcast':
           return this.handleSystemBroadcast(request);
+        case '/debug-connections':
+          // 🔍 DEBUG: Return list of registered connections
+          return new Response(JSON.stringify({
+            registeredUsers: Array.from(this.userConnections.keys()),
+            registeredConversations: Array.from(this.conversationRooms.keys()),
+            activeConnections: this.activeConnections,
+            timestamp: Date.now()
+          }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
         default:
           return new Response('Not Found', { status: 404 });
       }
@@ -487,6 +497,17 @@ export class MessageBroadcaster implements DurableObject {
     try {
       let totalDelivered = 0;
 
+      // 🔍 DEBUG: Log registered connections before broadcast
+      const registeredUsers = Array.from(this.userConnections.keys());
+      const registeredConversations = Array.from(this.conversationRooms.keys());
+      console.log(`🔍 [MessageBroadcaster] deliverGlobalBroadcast called:`, {
+        eventCount: events.length,
+        eventTypes: events.map(e => e.type),
+        registeredUserCount: registeredUsers.length,
+        registeredUsers: registeredUsers.slice(0, 10), // Show first 10 users
+        registeredConversationCount: registeredConversations.length
+      });
+
       // Broadcast to all active conversation rooms
       const conversationPromises = Array.from(this.conversationRooms.entries()).map(async ([conversationId, _stub]) => {
         try {
@@ -500,7 +521,10 @@ export class MessageBroadcaster implements DurableObject {
       // Broadcast to all active user connections
       const userPromises = Array.from(this.userConnections.entries()).map(async ([userId, _stub]) => {
         try {
-          return await this.deliverToUser(userId, events);
+          console.log(`📤 [MessageBroadcaster] Delivering to user: ${userId}`);
+          const result = await this.deliverToUser(userId, events);
+          console.log(`✅ [MessageBroadcaster] Delivered to user ${userId}: ${result} events`);
+          return result;
         } catch (error) {
           log.error('Global user delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
           return 0;
@@ -514,6 +538,7 @@ export class MessageBroadcaster implements DurableObject {
         }
       });
 
+      console.log(`📊 [MessageBroadcaster] Global broadcast complete: ${totalDelivered} total deliveries`);
       return totalDelivered;
     } catch (error) {
       log.error('Global broadcast error', { error: error instanceof Error ? error.message : String(error) });

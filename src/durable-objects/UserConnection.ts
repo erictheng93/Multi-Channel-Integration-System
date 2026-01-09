@@ -292,6 +292,14 @@ export class UserConnection implements DurableObject {
     // Track if this is the first connection (for registration)
     const wasOffline = this.connections.size === 0;
 
+    // 🔍 DEBUG: Log connection state before adding
+    console.log(`🔍 [UserConnection] addConnection called:`, {
+      connectionId,
+      userId: this.userId,
+      wasOffline,
+      currentConnectionCount: this.connections.size
+    });
+
     // Add to connections
     this.connections.set(connectionId, connection);
     this.isOnline = true;
@@ -310,8 +318,11 @@ export class UserConnection implements DurableObject {
 
     // 🚀 Phase B4: Register with MessageBroadcaster for global broadcasts
     // Only register on first connection to avoid duplicate registrations
+    console.log(`🔍 [UserConnection] Checking registration condition: wasOffline=${wasOffline}, userId=${this.userId}, shouldRegister=${wasOffline && this.userId !== 'unknown'}`);
     if (wasOffline && this.userId !== 'unknown') {
       await this.registerWithMessageBroadcaster();
+    } else {
+      console.log(`⚠️ [UserConnection] Skipping MessageBroadcaster registration: wasOffline=${wasOffline}, userId=${this.userId}`);
     }
 
     console.log(`✅ [UserConnection] Connection added: ${connectionId} (Total: ${this.connections.size})`);
@@ -322,6 +333,7 @@ export class UserConnection implements DurableObject {
    * This enables conversation list real-time updates
    */
   private async registerWithMessageBroadcaster(): Promise<void> {
+    console.log(`🔍 [UserConnection] registerWithMessageBroadcaster called for user: ${this.userId}`);
     try {
       if (!this.env.MESSAGE_BROADCASTER) {
         console.warn('⚠️ [UserConnection] MESSAGE_BROADCASTER binding not available');
@@ -332,6 +344,7 @@ export class UserConnection implements DurableObject {
       const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
       if (broadcasterStub) {
+        console.log(`📤 [UserConnection] Sending registration request for user ${this.userId}`);
         const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/register-connection', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -339,7 +352,8 @@ export class UserConnection implements DurableObject {
         }));
 
         if (response.ok) {
-          console.log(`✅ [UserConnection] Registered user ${this.userId} with MessageBroadcaster for global broadcasts`);
+          const result = await response.json() as { activeConnections?: number };
+          console.log(`✅ [UserConnection] Registered user ${this.userId} with MessageBroadcaster for global broadcasts (total active: ${result.activeConnections})`);
         } else {
           console.error(`❌ [UserConnection] Failed to register with MessageBroadcaster: ${response.status}`);
         }
@@ -874,6 +888,13 @@ export class UserConnection implements DurableObject {
     try {
       const { events } = await request.json() as { events: any[] };
 
+      // 🔍 DEBUG: Log received batch events
+      console.log(`🔍 [UserConnection] handleBatchEvents called for user ${this.userId}:`, {
+        eventCount: events?.length || 0,
+        eventTypes: events?.map(e => e.type) || [],
+        activeConnections: this.connections.size
+      });
+
       if (!events || !Array.isArray(events)) {
         return new Response(JSON.stringify({ error: 'Invalid events format' }), { status: 400 });
       }
@@ -889,17 +910,24 @@ export class UserConnection implements DurableObject {
           timestamp: event.timestamp || Date.now()
         };
 
+        // 🔍 DEBUG: Log message being broadcast
+        console.log(`📤 [UserConnection] Broadcasting to ${this.connections.size} WebSocket connections:`, {
+          messageType: message.type,
+          conversationId: message.conversationId
+        });
+
         // Broadcast to all user connections
         await this.broadcastToUserConnections(message);
         deliveredCount++;
       }
 
-      console.log(`📡 [UserConnection] Batch events delivered: ${deliveredCount} events to user ${this.userId}`);
+      console.log(`📡 [UserConnection] Batch events delivered: ${deliveredCount} events to user ${this.userId} (${this.connections.size} connections)`);
 
       return new Response(JSON.stringify({
         success: true,
         deliveredCount,
-        userId: this.userId
+        userId: this.userId,
+        activeConnections: this.connections.size
       }));
     } catch (error) {
       console.error('❌ [UserConnection] Batch events error:', error);
