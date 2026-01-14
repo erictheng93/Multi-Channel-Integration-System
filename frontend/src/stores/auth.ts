@@ -6,6 +6,10 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Agent, LoginRequest, LoginResponse } from '@/types';
 import { authApi } from '@/api/auth';
+import { apiClient } from '@/api/base';
+
+// 🚀 Phase 1 Optimization: Team role type (matches backend TeamRoleInTeam)
+type TeamRoleInTeam = 'member' | 'lead' | 'supervisor';
 
 // 會話時間常量 - 統一管理
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 天
@@ -92,12 +96,83 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔧 新增：會話恢復狀態 - 解決競爭條件問題
   const sessionStatus = ref<SessionStatus>('pending');
 
+  // 🚀 Phase 1 Optimization: Multi-team support state
+  const allowedTeamIds = ref<number[]>([]);
+  const teamRoles = ref<Record<number, TeamRoleInTeam>>({});
+  const contextTeamId = ref<number | null>(null);
+
   // 清除認證狀態的內部函數
   function clearAuthState() {
     token.value = null;
     refreshToken.value = null;
     currentAgent.value = null;
     sessionExpiry.value = null;
+    // 🚀 Phase 1: Clear multi-team state
+    allowedTeamIds.value = [];
+    teamRoles.value = {};
+    contextTeamId.value = null;
+    apiClient.setContextTeam(null);
+  }
+
+  // 🚀 Phase 1 Optimization: Parse multi-team data from JWT token
+  function parseJwtTeamData(tokenStr: string): void {
+    try {
+      const parts = tokenStr.split('.');
+      if (parts.length === 3 && parts[1]) {
+        const payload = JSON.parse(base64UrlDecode(parts[1]));
+
+        // Extract multi-team data from JWT
+        if (payload.allowedTeamIds && Array.isArray(payload.allowedTeamIds)) {
+          allowedTeamIds.value = payload.allowedTeamIds;
+        }
+        if (payload.teamRoles && typeof payload.teamRoles === 'object') {
+          teamRoles.value = payload.teamRoles;
+        }
+
+        console.log('[Auth] Parsed JWT team data:', {
+          allowedTeamIds: allowedTeamIds.value,
+          teamRoles: teamRoles.value
+        });
+      }
+    } catch (e) {
+      console.error('[Auth] Failed to parse JWT team data:', e);
+    }
+  }
+
+  // 🚀 Phase 1 Optimization: Switch team context
+  function switchTeam(teamId: number): boolean {
+    // Validate: admin can switch to any team, agents must have access
+    if (currentAgent.value?.role !== 'admin' && !allowedTeamIds.value.includes(teamId)) {
+      console.warn('[Auth] Cannot switch to team without access:', {
+        requestedTeam: teamId,
+        allowedTeams: allowedTeamIds.value
+      });
+      return false;
+    }
+
+    contextTeamId.value = teamId;
+    apiClient.setContextTeam(teamId);
+
+    // Persist to localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('contextTeamId', teamId.toString());
+    }
+
+    console.log('[Auth] Switched team context to:', teamId);
+    return true;
+  }
+
+  // 🚀 Phase 1 Optimization: Get user's role in a specific team
+  function getTeamRole(teamId: number): TeamRoleInTeam | undefined {
+    return teamRoles.value[teamId];
+  }
+
+  // 🚀 Phase 1 Optimization: Check if user can access a team
+  function canAccessTeam(teamId: number): boolean {
+    if (currentAgent.value?.role === 'admin') {
+      return true;
+    }
+    return allowedTeamIds.value.includes(teamId);
   }
 
   // Initialize from localStorage with JWT validation
@@ -141,6 +216,19 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = storedToken;
         refreshToken.value = localStorage.getItem('refreshToken');
         sessionExpiry.value = parseInt(expiry || '0', 10);
+
+        // 🚀 Phase 1: Parse multi-team data from stored token
+        parseJwtTeamData(storedToken);
+
+        // 🚀 Phase 1: Restore team context from localStorage
+        const storedContextTeamId = localStorage.getItem('contextTeamId');
+        if (storedContextTeamId) {
+          const parsed = parseInt(storedContextTeamId, 10);
+          if (!isNaN(parsed)) {
+            contextTeamId.value = parsed;
+            apiClient.setContextTeam(parsed);
+          }
+        }
 
         // Restore agent data
         const storedAgent = localStorage.getItem('currentAgent');
@@ -201,6 +289,14 @@ export const useAuthStore = defineStore('auth', () => {
 
       const expiry = Date.now() + SESSION_DURATION;
       sessionExpiry.value = expiry;
+
+      // 🚀 Phase 1: Parse multi-team data from new token
+      parseJwtTeamData(loginData.token);
+
+      // 🚀 Phase 1: Set initial team context to agent's primary team
+      if (loginData.agent.teamId) {
+        switchTeam(loginData.agent.teamId);
+      }
 
       // Store auth data
       storeAuthData(loginData, expiry);
@@ -537,6 +633,10 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     sessionExpiry,
     sessionStatus,
+    // 🚀 Phase 1: Multi-team state
+    allowedTeamIds,
+    teamRoles,
+    contextTeamId,
     // 計算屬性 (PURE COMPUTED - No side effects)
     isAuthenticated: computed(() => {
       // ✅ Pure computation without any state mutations
@@ -563,6 +663,10 @@ export const useAuthStore = defineStore('auth', () => {
     initializeSession,
     // 🔧 新增：Token 有效性檢查方法
     isTokenExpired,
-    isTokenValid
+    isTokenValid,
+    // 🚀 Phase 1: Multi-team methods
+    switchTeam,
+    getTeamRole,
+    canAccessTeam
   };
 });

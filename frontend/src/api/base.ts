@@ -15,6 +15,7 @@ class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private refreshToken: string | null = null;
+  private contextTeamId: number | null = null;  // 🚀 Phase 1: Multi-team context
   private isRefreshing = false;
   private failedQueue: Array<{ resolve: (_token: string | null) => void; reject: (_error?: unknown) => void }> = [];
   private defaultRetryConfig: RetryConfig = {
@@ -32,11 +33,19 @@ class ApiClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    
+
     // Initialize tokens from localStorage
     if (typeof window !== 'undefined' && window.localStorage) {
       this.token = localStorage.getItem('token');
       this.refreshToken = localStorage.getItem('refreshToken');
+      // 🚀 Phase 1: Restore team context from localStorage
+      const storedTeamId = localStorage.getItem('contextTeamId');
+      if (storedTeamId) {
+        const parsed = parseInt(storedTeamId, 10);
+        if (!isNaN(parsed)) {
+          this.contextTeamId = parsed;
+        }
+      }
     }
   }
 
@@ -60,6 +69,29 @@ class ApiClient {
 
   getCurrentToken(): string | null {
     return this.token;
+  }
+
+  // 🚀 Phase 1 Optimization: Team context management
+  /**
+   * Set the current team context for API requests
+   * This team ID will be sent as X-Context-Team-ID header
+   */
+  setContextTeam(teamId: number | null): void {
+    this.contextTeamId = teamId;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (teamId !== null) {
+        localStorage.setItem('contextTeamId', teamId.toString());
+      } else {
+        localStorage.removeItem('contextTeamId');
+      }
+    }
+  }
+
+  /**
+   * Get the current team context
+   */
+  getContextTeam(): number | null {
+    return this.contextTeamId;
   }
 
   private processQueue(error: Error | null, token: string | null = null) {
@@ -137,6 +169,11 @@ class ApiClient {
 
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    // 🚀 Phase 1 Optimization: Include team context header
+    if (this.contextTeamId !== null) {
+      headers['X-Context-Team-ID'] = this.contextTeamId.toString();
     }
 
     return headers;
@@ -276,11 +313,16 @@ class ApiClient {
   async uploadFile<T>(endpoint: string, formData: globalThis.FormData): Promise<ApiResponse<T>> {
     try {
       const headers: Record<string, string> = {};
-      
+
       if (this.token) {
         headers['Authorization'] = `Bearer ${this.token}`;
       }
-      
+
+      // 🚀 Phase 1 Optimization: Include team context header
+      if (this.contextTeamId !== null) {
+        headers['X-Context-Team-ID'] = this.contextTeamId.toString();
+      }
+
       // 不設定 Content-Type，讓瀏覽器自動設定 multipart/form-data 邊界
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         method: 'POST',
