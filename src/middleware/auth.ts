@@ -1,7 +1,7 @@
 import { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
 import type { DbUser } from '../types';
-import { verifyJWT, getUserById, getSession, updateUserActivityDebounced } from '../utils/auth';
+import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAccessTeam } from '../utils/auth';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
 import { incrementRequestCounter, trackTheoreticalKVSavings } from '../handlers/kv-optimization-monitoring';
@@ -287,16 +287,22 @@ export function requireAdmin() {
 
 /**
  * 團隊權限中間件
+ *
+ * 🔧 v2.0 MULTI-TEAM SUPPORT:
+ * - 支援多團隊成員資格檢查
+ * - 首先檢查主團隊 (agents.teamId)
+ * - 如果不匹配，查詢 agent_teams 表檢查次要團隊成員資格
+ * - Admin 用戶可以訪問所有團隊
  */
 export function requireTeamAccess(teamIdParam: string = 'teamId') {
   return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
     const user = c.get('user');
-    
+
     if (!user) {
       return c.json({ error: 'Authentication required' }, 401);
     }
 
-    // admin 可以訪問所有團隊
+    // admin 可以訪問所有團隊 (快速路徑)
     if (user.role === ROLES.ADMIN) {
       await next();
       return;
@@ -308,9 +314,17 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
       return c.json({ error: 'Invalid team ID' }, 400);
     }
 
-    // 檢查用戶是否屬於該團隊
-    if (user.teamId !== teamId) {
-      return c.json({ 
+    // 🔧 v2.0: 使用 canAccessTeam() 支援多團隊檢查
+    // 傳入 DB 以支援 agent_teams 表查詢
+    const hasAccess = await canAccessTeam(user, teamId, c.env.DB);
+
+    if (!hasAccess) {
+      log.debug('Team access denied', {
+        userId: user.id,
+        userPrimaryTeam: user.teamId,
+        requestedTeam: teamId
+      });
+      return c.json({
         error: 'Access denied to this team',
         userTeam: user.teamId,
         requestedTeam: teamId
