@@ -123,6 +123,8 @@ export class CustomerMainHandler {
   /**
    * 根據平台ID查詢客戶
    * GET /api/customers/platform/:platform/:platformUserId
+   *
+   * 安全性修復 (2025-01-14): 加入團隊所有權驗證，防止跨團隊資料洩漏
    */
   static async getByPlatformId(c: Context<{ Bindings: Bindings }>) {
     try {
@@ -144,6 +146,22 @@ export class CustomerMainHandler {
         return notFoundResponse(c, 'Customer');
       }
 
+      // 安全性檢查: 驗證用戶是否有權限存取此客戶
+      const userPayload = c.get('jwtPayload') as JWTPayload;
+
+      // Admin 可以存取所有客戶
+      if (userPayload.role !== 'admin') {
+        // 非 Admin 需要檢查團隊所有權
+        // 客戶有團隊歸屬且不屬於當前用戶的團隊時，拒絕存取
+        if (customer.sourceTeamId && customer.sourceTeamId !== userPayload.teamId) {
+          return c.json({
+            success: false,
+            error: 'Access denied to this customer',
+            timestamp: new Date().toISOString()
+          }, 403);
+        }
+      }
+
       // 獲取完整的客戶資料 (包含詳情)
       const customerWithDetails = await customerService.findByIdWithDetails(customer.id);
 
@@ -157,6 +175,8 @@ export class CustomerMainHandler {
   /**
    * 尋找或創建客戶 (用於自動客戶管理)
    * POST /api/customers/find-or-create
+   *
+   * 安全性修復 (2025-01-14): 加入團隊所有權驗證，防止跨團隊資料存取
    */
   static async findOrCreate(c: Context<{ Bindings: Bindings }>) {
     try {
@@ -187,24 +207,45 @@ export class CustomerMainHandler {
       }
 
       const userPayload = c.get('jwtPayload') as JWTPayload;
+      const customerService = new CustomerCrudService(c.env.DB);
 
+      // 安全性檢查: 先檢查是否存在現有客戶，並驗證團隊所有權
+      const existingCustomer = await customerService.findByPlatformId(platform, platformUserId);
+
+      if (existingCustomer) {
+        // 客戶已存在，檢查用戶是否有權限存取
+        if (userPayload.role !== 'admin') {
+          // 非 Admin 需要檢查團隊所有權
+          if (existingCustomer.sourceTeamId && existingCustomer.sourceTeamId !== userPayload.teamId) {
+            // 客戶屬於其他團隊，拒絕存取
+            return c.json({
+              success: false,
+              error: 'Access denied: Customer belongs to another team',
+              timestamp: new Date().toISOString()
+            }, 403);
+          }
+        }
+
+        // 有權限存取，返回現有客戶 (不更新，避免跨團隊修改)
+        return successResponse(c, existingCustomer, 'Customer retrieved successfully');
+      }
+
+      // 客戶不存在，創建新客戶
       // 清理附加信息
-      const sanitizedAdditionalInfo = additionalInfo ? sanitizeCustomerData(additionalInfo) : undefined;
+      const sanitizedAdditionalInfo = additionalInfo ? sanitizeCustomerData(additionalInfo) : {};
 
       // 如果用戶不是admin且沒有指定sourceTeamId，則自動設置為用戶的團隊
-      if (sanitizedAdditionalInfo && userPayload.role !== 'admin' &&
-          !sanitizedAdditionalInfo.sourceTeamId && userPayload.teamId) {
+      if (userPayload.role !== 'admin' && !sanitizedAdditionalInfo.sourceTeamId && userPayload.teamId) {
         sanitizedAdditionalInfo.sourceTeamId = userPayload.teamId;
       }
 
-      const customerService = new CustomerCrudService(c.env.DB);
-      const customer = await customerService.findOrCreate(
+      const newCustomer = await customerService.create({
         platform,
         platformUserId,
-        sanitizedAdditionalInfo
-      );
+        ...sanitizedAdditionalInfo
+      });
 
-      return successResponse(c, customer, 'Customer retrieved or created successfully');
+      return successResponse(c, newCustomer, 'Customer created successfully');
     } catch (error) {
       console.error('Error in find or create customer:', error);
       return handleApiError(error, c);
@@ -289,6 +330,8 @@ export class CustomerMainHandler {
   /**
    * 檢查平台客戶是否存在
    * HEAD /api/customers/platform/:platform/:platformUserId
+   *
+   * 安全性修復 (2025-01-14): 加入團隊所有權驗證，防止跨團隊資料探測
    */
   static async existsByPlatformId(c: Context<{ Bindings: Bindings }>) {
     try {
@@ -304,6 +347,18 @@ export class CustomerMainHandler {
 
       if (!customer) {
         return c.body(null, 404);
+      }
+
+      // 安全性檢查: 驗證用戶是否有權限存取此客戶
+      const userPayload = c.get('jwtPayload') as JWTPayload;
+
+      if (userPayload.role !== 'admin') {
+        // 非 Admin 需要檢查團隊所有權
+        if (customer.sourceTeamId && customer.sourceTeamId !== userPayload.teamId) {
+          // 客戶屬於其他團隊，返回 404 (不透露客戶存在)
+          // 使用 404 而非 403 以防止資訊洩漏
+          return c.body(null, 404);
+        }
       }
 
       return c.body(null, 200);
