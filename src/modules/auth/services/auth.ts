@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { agents, teams } from '@/db/schema';
+import { agents, teams, agentTeams } from '@/db/schema';
 import { convertAgent } from '@/utils/drizzle-converters';
 import type { JWTPayload } from '@/types';
 import type { DbUser } from '@/types';
@@ -374,11 +374,72 @@ export function hasPermission(user: DbUser, requiredRole: 'admin' | 'agent'): bo
   return user.role === requiredRole;
 }
 
-export function canAccessTeam(user: DbUser, teamId: number): boolean {
+/**
+ * 檢查用戶是否可以訪問指定團隊
+ *
+ * 🔧 v2.0 MULTI-TEAM SUPPORT:
+ * - 首先檢查主團隊 (agents.teamId)
+ * - 如果不匹配，查詢 agent_teams 表檢查次要團隊成員資格
+ * - Admin 用戶可以訪問所有團隊
+ *
+ * @param user 當前用戶
+ * @param teamId 要檢查的團隊 ID
+ * @param db 可選的 D1 資料庫實例 (用於查詢 agent_teams)
+ * @returns 是否有權限訪問該團隊
+ */
+export async function canAccessTeam(
+  user: DbUser,
+  teamId: number,
+  db?: D1Database
+): Promise<boolean> {
+  // Admin 可以訪問所有團隊
   if (user.role === 'admin') {
-    return true; // admin 可以訪問所有團隊
+    return true;
   }
 
+  // 檢查主團隊 (快速路徑)
+  if (user.teamId === teamId) {
+    return true;
+  }
+
+  // 如果沒有提供 DB，無法查詢次要團隊，返回 false
+  if (!db) {
+    return false;
+  }
+
+  // 查詢 agent_teams 表檢查次要團隊成員資格
+  try {
+    const drizzleDb = createDbClient(db);
+    const membership = await drizzleDb
+      .select({ id: agentTeams.id })
+      .from(agentTeams)
+      .where(and(
+        eq(agentTeams.agentId, String(user.id)),
+        eq(agentTeams.teamId, teamId)
+      ))
+      .get();
+
+    return membership !== undefined;
+  } catch (error) {
+    console.error('[canAccessTeam] Failed to check team membership:', error);
+    return false;
+  }
+}
+
+/**
+ * 同步版本的團隊權限檢查 (僅檢查主團隊)
+ *
+ * ⚠️ DEPRECATED: 建議使用 canAccessTeam() 的異步版本以支援多團隊
+ * 此函數保留用於向後兼容，僅檢查主團隊
+ *
+ * @param user 當前用戶
+ * @param teamId 要檢查的團隊 ID
+ * @returns 是否有權限訪問該團隊 (僅主團隊)
+ */
+export function canAccessTeamSync(user: DbUser, teamId: number): boolean {
+  if (user.role === 'admin') {
+    return true;
+  }
   return user.teamId === teamId;
 }
 
