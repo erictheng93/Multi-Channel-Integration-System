@@ -101,6 +101,9 @@ export class MessageBroadcaster implements DurableObject {
           return this.handleBroadcastToUsers(request);
         case '/broadcast-to-teams':
           return this.handleBroadcastToTeams(request);
+        case '/broadcast-to-teams-and-admins':
+          // 🔒 Security: Team-scoped broadcast with admin access (P1 fix)
+          return this.handleBroadcastToTeamsAndAdmins(request);
         case '/broadcast-global':
           return this.handleBroadcastGlobal(request);
         case '/batch-broadcast':
@@ -662,15 +665,48 @@ export class MessageBroadcaster implements DurableObject {
         return [];
       }
 
-      // Query database for team members
-      const result = await this.env.DB.select()
-        .from('agents')
-        .where('teamId', teamId)
-        .execute();
+      // Query database for team members using D1 raw SQL
+      // Includes both primary team (teamId) and multi-team membership (agent_teams)
+      const result = await this.env.DB.prepare(`
+        SELECT DISTINCT a.id
+        FROM agents a
+        LEFT JOIN agent_teams at ON a.id = at.agent_id
+        WHERE (a.team_id = ?1 OR at.team_id = ?1)
+          AND a.is_active = 1
+          AND a.deleted_at IS NULL
+      `).bind(teamId).all();
 
-      return result.map((member: any) => member.id || member.userId);
+      return (result.results || []).map((member: any) => member.id);
     } catch (error) {
       log.error('❌ [MessageBroadcaster] Error getting team members:', { error: error instanceof Error ? error.message : String(error) });
+      return [];
+    }
+  }
+
+  /**
+   * 🔒 Security: Get all admin users for broadcasting
+   * Admins have access to all team conversations
+   */
+  private async getAdminUsers(): Promise<string[]> {
+    try {
+      if (!this.env.DB) {
+        log.warn('⚠️ [MessageBroadcaster] Database not available');
+        return [];
+      }
+
+      // Query database for admin users using D1 raw SQL
+      const result = await this.env.DB.prepare(`
+        SELECT id FROM agents
+        WHERE role = 'admin'
+          AND is_active = 1
+          AND deleted_at IS NULL
+      `).all();
+
+      const adminIds = (result.results || []).map((admin: any) => admin.id);
+      log.debug('Found admin users', { count: adminIds.length });
+      return adminIds;
+    } catch (error) {
+      log.error('❌ [MessageBroadcaster] Error getting admin users:', { error: error instanceof Error ? error.message : String(error) });
       return [];
     }
   }
@@ -1131,6 +1167,87 @@ export class MessageBroadcaster implements DurableObject {
       }));
     } catch (error) {
       log.error('❌ [MessageBroadcaster] Broadcast to teams error:', { error: error instanceof Error ? error.message : String(error) });
+      if (error instanceof SyntaxError) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
+    }
+  }
+
+  /**
+   * 🔒 Security Enhancement (P1): Broadcast to specific teams AND all admin users
+   * This ensures team-scoped data isolation while allowing admins to monitor all conversations
+   *
+   * Use this method instead of global broadcast to prevent cross-team data leakage
+   */
+  private async handleBroadcastToTeamsAndAdmins(request: Request): Promise<Response> {
+    try {
+      const startTime = Date.now();
+      const { event, teamIds, includeAdmins = true } = await request.json() as {
+        event: DurableObjectEvent;
+        teamIds: number[];
+        includeAdmins?: boolean;
+      };
+
+      if (!event || !teamIds || !Array.isArray(teamIds)) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+      }
+
+      let successful = 0;
+      let failed = 0;
+
+      // 1. Deliver to specified teams
+      const { successful: teamSuccess, failed: teamFailed } = await this.batchDeliverToTeams(event, teamIds);
+      successful += teamSuccess;
+      failed += teamFailed;
+
+      // 2. Deliver to all admin users (if includeAdmins is true)
+      if (includeAdmins) {
+        try {
+          const adminUsers = await this.getAdminUsers();
+          log.info('🔒 [Security] Broadcasting to admin users', { adminCount: adminUsers.length, teamIds });
+
+          const adminPromises = adminUsers.map(async (userId: string) => {
+            try {
+              const delivered = await this.deliverToUser(userId, [event]);
+              return delivered;
+            } catch (error) {
+              log.error('Admin user delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
+              return 0;
+            }
+          });
+
+          const adminResults = await Promise.allSettled(adminPromises);
+          adminResults.forEach(result => {
+            if (result.status === 'fulfilled') {
+              successful += result.value;
+            } else {
+              failed++;
+            }
+          });
+        } catch (adminError) {
+          log.error('Failed to broadcast to admins', { error: adminError instanceof Error ? adminError.message : String(adminError) });
+        }
+      }
+
+      // Update stats
+      const processingTime = Date.now() - startTime;
+      this.distributionStats.totalEvents++;
+      this.distributionStats.successfulDeliveries += successful;
+      this.distributionStats.failedDeliveries += failed;
+      this.updateAverageLatency(processingTime);
+
+      return new Response(JSON.stringify({
+        success: true,
+        eventId: event.id,
+        teamCount: teamIds.length,
+        includeAdmins,
+        successful,
+        failed,
+        processingTime
+      }));
+    } catch (error) {
+      log.error('❌ [MessageBroadcaster] Broadcast to teams and admins error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
