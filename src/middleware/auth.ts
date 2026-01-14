@@ -1,7 +1,8 @@
 import { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
 import type { DbUser } from '../types';
-import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAccessTeam } from '../utils/auth';
+import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAccessTeam, hasTeamRole, TEAM_PERMISSIONS } from '../utils/auth';
+import type { TeamRoleInTeam } from '../types';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
 import { incrementRequestCounter, trackTheoreticalKVSavings } from '../handlers/kv-optimization-monitoring';
@@ -374,6 +375,92 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
 
     await next();
   };
+}
+
+// ============================================================================
+// 🚀 Phase 2: Team Role-Based Access Control Middleware
+// ============================================================================
+
+/**
+ * 團隊角色權限中間件
+ *
+ * 檢查用戶在指定團隊中是否有足夠的角色權限。
+ * 必須在 jwtAuth 之後使用。
+ *
+ * @param requiredRole 所需的最低團隊角色 ('member' | 'lead' | 'supervisor')
+ * @param teamIdParam URL 參數名稱，用於提取團隊 ID (默認 'id')
+ *
+ * @example
+ * // 需要 lead 或更高角色才能訪問
+ * app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => {...})
+ *
+ * // 需要 supervisor 角色才能修改團隊設定
+ * app.put('/:teamId', jwtAuth, requireTeamRole('supervisor', 'teamId'), async (c) => {...})
+ */
+export function requireTeamRole(requiredRole: TeamRoleInTeam, teamIdParam: string = 'id') {
+  return async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
+    const user = c.get('user');
+
+    if (!user) {
+      return c.json({ error: 'Authentication required' }, 401);
+    }
+
+    // Admin bypasses all team role checks
+    if (user.role === ROLES.ADMIN) {
+      await next();
+      return;
+    }
+
+    const teamId = parseInt(c.req.param(teamIdParam));
+
+    if (isNaN(teamId)) {
+      return c.json({ error: 'Invalid team ID' }, 400);
+    }
+
+    // Check if user has the required role in the team
+    const hasRequiredRole = hasTeamRole(user, teamId, requiredRole);
+
+    if (!hasRequiredRole) {
+      const userRole = user.teamRoles?.[teamId] || 'none';
+      log.debug('Team role check failed', {
+        userId: user.id,
+        teamId,
+        userRole,
+        requiredRole
+      });
+
+      return c.json({
+        error: 'Insufficient team permissions',
+        message: `This operation requires ${requiredRole} role or higher in the team`,
+        details: {
+          teamId,
+          requiredRole,
+          currentRole: userRole
+        }
+      }, 403);
+    }
+
+    await next();
+  };
+}
+
+/**
+ * 團隊操作權限中間件
+ *
+ * 基於操作類型檢查權限，使用預定義的權限矩陣。
+ *
+ * @param operation 要執行的操作 (來自 TEAM_PERMISSIONS)
+ * @param teamIdParam URL 參數名稱
+ *
+ * @example
+ * app.post('/:id/members', jwtAuth, requireTeamPermission('ADD_MEMBER'), async (c) => {...})
+ */
+export function requireTeamPermission(
+  operation: keyof typeof TEAM_PERMISSIONS,
+  teamIdParam: string = 'id'
+) {
+  const requiredRole = TEAM_PERMISSIONS[operation];
+  return requireTeamRole(requiredRole, teamIdParam);
 }
 
 /**

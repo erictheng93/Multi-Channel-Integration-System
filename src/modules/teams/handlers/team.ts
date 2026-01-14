@@ -1,5 +1,5 @@
 // Teams Module Handlers
-// ?˜é?æ¨¡ç?è«‹æ??•ç???
+// ?ï¿½ï¿½?æ¨¡ï¿½?è«‹ï¿½??ï¿½ï¿½???
 
 import { Hono } from 'hono';
 import { TeamService } from '@modules/teams/services/team-service';
@@ -21,6 +21,8 @@ import { ERROR_MESSAGES } from '@shared/utils/error-messages';
 import {
   jwtAuth,
   requireTeamAccess,
+  requireTeamRole,
+  requireTeamPermission,
   requireManagerOrAdmin,
   requireAdmin
 } from '@/middleware/auth';
@@ -30,10 +32,10 @@ import { eq, and, desc } from 'drizzle-orm';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// ??CORS ?•ç?å·²ç§»??src/index.ts çµ±ä?ç®¡ç?
-// ä¸å??€è¦æ¨¡çµ„ç??¥ç? CORS middleware
+// ??CORS ?ï¿½ï¿½?å·²ç§»??src/index.ts çµ±ï¿½?ç®¡ï¿½?
+// ä¸ï¿½??ï¿½è¦æ¨¡çµ„ï¿½??ï¿½ï¿½? CORS middleware
 
-// ?¥åº·æª¢æŸ¥ç«¯é?
+// ?ï¿½åº·æª¢æŸ¥ç«¯ï¿½?
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
@@ -43,7 +45,7 @@ app.get('/health', (c) => {
   });
 });
 
-// æ¨¡ç?è³‡è?ç«¯é?
+// æ¨¡ï¿½?è³‡ï¿½?ç«¯ï¿½?
 app.get('/info', (c) => {
   return c.json({
     success: true,
@@ -156,8 +158,8 @@ app.get('/search/:query', async (c) => {
 
 // ==================== Priority 4: MULTI-SEGMENT PARAMETERIZED ====================
 // 3-segment routes (most specific first)
-// Update team member
-app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+// Update team member (ðŸš€ Phase 2: requires 'lead' role in team)
+app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => {
   try {
     const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
@@ -184,8 +186,8 @@ app.put('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => 
   }
 });
 
-// Remove member from team
-app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+// Remove member from team (ðŸš€ Phase 2: requires 'lead' role in team)
+app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => {
   try {
     const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
@@ -219,8 +221,9 @@ app.delete('/:id/members/:agentId', jwtAuth, requireManagerOrAdmin(), async (c) 
 });
 
 // Deactivate QR code
-// Phase 1 ?ªå?ï¼šå??‚æ???KV å¿«å?
-app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamAccess('id'), async (c) => {
+// Phase 1 ?ï¿½ï¿½?ï¼šï¿½??ï¿½ï¿½???KV å¿«ï¿½?
+// ðŸš€ Phase 2 RBAC: requires 'supervisor' role in team
+app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamRole('supervisor'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
     const qrCodeId = c.req.param('qrCodeId');
@@ -276,8 +279,8 @@ app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
   }
 });
 
-// Add member to team
-app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
+// Add member to team (ðŸš€ Phase 2: requires 'lead' role in team)
+app.post('/:id/members', jwtAuth, requireTeamRole('lead'), async (c) => {
   try {
     const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
@@ -314,9 +317,10 @@ app.post('/:id/members', jwtAuth, requireManagerOrAdmin(), async (c) => {
 });
 
 // Generate QR Code for team
-// Phase 1 ?ªå?ï¼šå‚³??KV ?½å?ç©ºé??¨æ–¼å¿«å?
-// Phase 2 ä¿®æ­£ï¼šå‚³??LINE_BOT_ID ?°å?è®Šæ•¸
-app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
+// Phase 1 ?ï¿½ï¿½?ï¼šå‚³??KV ?ï¿½ï¿½?ç©ºï¿½??ï¿½æ–¼å¿«ï¿½?
+// Phase 2 ä¿®æ­£ï¼šå‚³??LINE_BOT_ID ?ï¿½ï¿½?è®Šæ•¸
+// ðŸš€ Phase 2 RBAC: requires 'supervisor' role in team
+app.post('/:id/qr-code', jwtAuth, requireTeamRole('supervisor'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
     const { campaignName, description, expiresAt, maxUses } = await c.req.json().catch(() => ({}));
@@ -328,7 +332,7 @@ app.post('/:id/qr-code', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // ?³é? CACHE KV ?½å?ç©ºé??LINE_BOT_ID ??FRONTEND_URLï¼ˆç”¨??LIFF ?¹æ?ï¼?
+    // ?ï¿½ï¿½? CACHE KV ?ï¿½ï¿½?ç©ºï¿½??ï¿½LINE_BOT_ID ??FRONTEND_URLï¼ˆç”¨??LIFF ?ï¿½ï¿½?ï¿½?
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const qrCodeParams: any = {
       teamId,
@@ -392,8 +396,8 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
   }
 });
 
-// ?? Phase 1: å¿«é€Ÿç²?–æ???QR ç¢?(?¨æ–¼?¸å??è?)
-// ?? Phase 3 ?ªå?: ?ªå?å¾?teams.qrCode è®€?–ï?å¯¦ç¾?™å??Œæ­¥æ©Ÿåˆ¶
+// ?? Phase 1: å¿«é€Ÿç²?ï¿½ï¿½???QR ï¿½?(?ï¿½æ–¼?ï¿½ï¿½??ï¿½ï¿½?)
+// ?? Phase 3 ?ï¿½ï¿½?: ?ï¿½ï¿½?ï¿½?teams.qrCode è®€?ï¿½ï¿½?å¯¦ç¾?ï¿½ï¿½??ï¿½æ­¥æ©Ÿåˆ¶
 app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -407,7 +411,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
 
     const drizzleDb = createDbClient(c.env.DB);
 
-    // ?? Step 1: ?ªå?å¾?teams.qrCode ?´æŽ¥è®€??(Optimal Path - 50x ?å?)
+    // ?? Step 1: ?ï¿½ï¿½?ï¿½?teams.qrCode ?ï¿½æŽ¥è®€??(Optimal Path - 50x ?ï¿½ï¿½?)
     const teamData = await drizzleDb
       .select({ qrCode: teams.qrCode })
       .from(teams)
@@ -415,8 +419,8 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       .get();
 
     if (teamData?.qrCode) {
-      console.log(`??[QR Latest] Optimal path: å¾?teams.qrCode è®€??(teamId=${teamId})`);
-      // å¾?qrCode URL ?¨æ–· lineUrl (?¼å?: https://line.me/R/ti/p/@{botId}?token={token})
+      console.log(`??[QR Latest] Optimal path: ï¿½?teams.qrCode è®€??(teamId=${teamId})`);
+      // ï¿½?qrCode URL ?ï¿½æ–· lineUrl (?ï¿½ï¿½?: https://line.me/R/ti/p/@{botId}?token={token})
       const lineUrl = teamData.qrCode.includes('line.me')
         ? teamData.qrCode.replace('api.qrserver.com/v1/create-qr-code/?data=', '')
         : `https://line.me/R/ti/p/@${c.env.LINE_BOT_ID || 'unknown'}`;
@@ -426,14 +430,14 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         data: {
           qrCode: teamData.qrCode,
           lineUrl: lineUrl,
-          fromCache: false // å¾?DB è®€?–ï?ä¸æ˜¯ KV å¿«å?
+          fromCache: false // ï¿½?DB è®€?ï¿½ï¿½?ä¸æ˜¯ KV å¿«ï¿½?
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    // ?? Step 2: Fallback - å¾?qr_codes è¡¨æŸ¥è©?(?¼å®¹?Šé?è¼?
-    console.log(`?? [QR Latest] Fallback: teams.qrCode ?ºç©ºï¼Œä½¿??qrService (teamId=${teamId})`);
+    // ?? Step 2: Fallback - ï¿½?qr_codes è¡¨æŸ¥ï¿½?(?ï¿½å®¹?ï¿½ï¿½?ï¿½?
+    console.log(`?? [QR Latest] Fallback: teams.qrCode ?ï¿½ç©ºï¼Œä½¿??qrService (teamId=${teamId})`);
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const result = await qrService.getLatestQRCodeFast(teamId);
@@ -445,7 +449,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // ?? Step 3: ?°æ­¥?Œæ­¥??teams.qrCode (?™å??Œæ­¥æ©Ÿåˆ¶)
+    // ?? Step 3: ?ï¿½æ­¥?ï¿½æ­¥??teams.qrCode (?ï¿½ï¿½??ï¿½æ­¥æ©Ÿåˆ¶)
     c.executionCtx.waitUntil(
       drizzleDb
         .update(teams)
@@ -455,10 +459,10 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         })
         .where(eq(teams.id, teamId))
         .then(() => {
-          console.log(`??[QR Latest] å·²å?æ­¥åˆ° teams.qrCode: teamId=${teamId}`);
+          console.log(`??[QR Latest] å·²ï¿½?æ­¥åˆ° teams.qrCode: teamId=${teamId}`);
         })
         .catch(err => {
-          console.error(`??[QR Latest] ?Œæ­¥å¤±æ?: teamId=${teamId}`, err);
+          console.error(`??[QR Latest] ?ï¿½æ­¥å¤±ï¿½?: teamId=${teamId}`, err);
         })
     );
 
@@ -481,7 +485,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
   }
 });
 
-// ?? Phase 3: æ¥µé€ŸæŸ¥è©¢ç«¯é»?- ?ªå?å¾?teams.qrCode è®€??(?™å??Œæ­¥?ªå?)
+// ?? Phase 3: æ¥µé€ŸæŸ¥è©¢ç«¯ï¿½?- ?ï¿½ï¿½?ï¿½?teams.qrCode è®€??(?ï¿½ï¿½??ï¿½æ­¥?ï¿½ï¿½?)
 app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
   try {
     const teamId = parseInt(c.req.param('id'));
@@ -495,7 +499,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
 
     const drizzleDb = createDbClient(c.env.DB);
 
-    // Step 1: ?ªå?å¾?teams è¡¨ç›´?¥è???(?€å¿?)
+    // Step 1: ?ï¿½ï¿½?ï¿½?teams è¡¨ç›´?ï¿½ï¿½???(?ï¿½ï¿½?)
     const teamData = await drizzleDb
       .select({ qrCode: teams.qrCode })
       .from(teams)
@@ -503,20 +507,20 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
       .get();
 
     if (teamData?.qrCode) {
-      console.log(`??[Fast QR Query] å¾?teams è¡¨ç›´?¥è??? teamId=${teamId}`);
+      console.log(`??[Fast QR Query] ï¿½?teams è¡¨ç›´?ï¿½ï¿½??? teamId=${teamId}`);
       return c.json({
         success: true,
         data: {
           qrCode: teamData.qrCode,
-          source: 'teams_table',  // è³‡æ?ä¾†æ?æ¨™è?
-          performance: 'optimal'   // ?ˆèƒ½æ¨™è?
+          source: 'teams_table',  // è³‡ï¿½?ä¾†ï¿½?æ¨™ï¿½?
+          performance: 'optimal'   // ?ï¿½èƒ½æ¨™ï¿½?
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    // Step 2: Fallback - å¾?qr_codes è¡¨æŸ¥è©¢ä¸¦?Œæ­¥??teams è¡?
-    console.log(`?? [Fast QR Query] teams.qrCode ?ºç©ºï¼Œå? qr_codes è¡¨æŸ¥è©? teamId=${teamId}`);
+    // Step 2: Fallback - ï¿½?qr_codes è¡¨æŸ¥è©¢ä¸¦?ï¿½æ­¥??teams ï¿½?
+    console.log(`?? [Fast QR Query] teams.qrCode ?ï¿½ç©ºï¼Œï¿½? qr_codes è¡¨æŸ¥ï¿½? teamId=${teamId}`);
 
     const latestQR = await drizzleDb
       .select()
@@ -532,7 +536,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
       .get();
 
     if (latestQR) {
-      // ?°æ­¥?Œæ­¥??teams è¡?(ä¸é˜»å¡žéŸ¿??
+      // ?ï¿½æ­¥?ï¿½æ­¥??teams ï¿½?(ä¸é˜»å¡žéŸ¿??
       c.executionCtx.waitUntil(
         drizzleDb
           .update(teams)
@@ -542,10 +546,10 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
           })
           .where(eq(teams.id, teamId))
           .then(() => {
-            console.log(`??[Fast QR Query] å·²å?æ­¥åˆ° teams.qrCode: teamId=${teamId}`);
+            console.log(`??[Fast QR Query] å·²ï¿½?æ­¥åˆ° teams.qrCode: teamId=${teamId}`);
           })
           .catch(err => {
-            console.error(`??[Fast QR Query] ?Œæ­¥å¤±æ?: teamId=${teamId}`, err);
+            console.error(`??[Fast QR Query] ?ï¿½æ­¥å¤±ï¿½?: teamId=${teamId}`, err);
           })
       );
 
@@ -554,14 +558,14 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
         data: {
           qrCode: latestQR.qrCodeImageUrl,
           lineUrl: latestQR.lineUrl,
-          source: 'qr_codes_table',  // è³‡æ?ä¾†æ?æ¨™è?
-          performance: 'fallback'     // ?ˆèƒ½æ¨™è?
+          source: 'qr_codes_table',  // è³‡ï¿½?ä¾†ï¿½?æ¨™ï¿½?
+          performance: 'fallback'     // ?ï¿½èƒ½æ¨™ï¿½?
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    // Step 3: æ²’æ??¾åˆ°ä»»ä? QR Code
+    // Step 3: æ²’ï¿½??ï¿½åˆ°ä»»ï¿½? QR Code
     return c.json({
       success: false,
       error: 'No QR code found for this team',
@@ -823,8 +827,8 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
   }
 });
 
-// Update team
-app.put('/:id', jwtAuth, requireManagerOrAdmin(), async (c) => {
+// Update team (ðŸš€ Phase 2 RBAC: requires 'supervisor' role in team)
+app.put('/:id', jwtAuth, requireTeamRole('supervisor'), async (c) => {
   try {
     const user = c.get('user');
     const teamId = parseInt(c.req.param('id'));
@@ -890,7 +894,7 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
 
     const teamService = new TeamService(c.env.DB);
 
-    // ?ˆç²?–å??Šä¿¡?¯ä»¥ä¾¿è???
+    // ?ï¿½ç²?ï¿½ï¿½??ï¿½ä¿¡?ï¿½ä»¥ä¾¿ï¿½???
     const teamInfo = await teamService.getTeam(teamId);
     if (!teamInfo) {
       return c.json({
@@ -943,7 +947,7 @@ app.get('/', jwtAuth, async (c) => {
     const user = c.get('user');
     const includeInactive = c.req.query('includeInactive') === 'true';
 
-    // ??admin/team ?¨æˆ¶?ªèƒ½?‹åˆ°?ªå·±?„å???
+    // ??admin/team ?ï¿½æˆ¶?ï¿½èƒ½?ï¿½åˆ°?ï¿½å·±?ï¿½ï¿½???
     if (user.role === 'agent' && user.teamId) {
       const teamService = new TeamService(c.env.DB);
       const team = await teamService.getTeam(user.teamId);
@@ -965,7 +969,7 @@ app.get('/', jwtAuth, async (c) => {
 
     const result = await teamService.listTeams(params);
 
-    // è¨ºæ–·?¥è?
+    // è¨ºæ–·?ï¿½ï¿½?
     console.log('?? Teams List Result:', {
       teamsCount: result.teams?.length || 0,
       teams: result.teams,
@@ -975,7 +979,7 @@ app.get('/', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      data: result.teams,  // ??ä¿®å¾©ï¼šä½¿??data å­—æ®µ?Œä???teams
+      data: result.teams,  // ??ä¿®å¾©ï¼šä½¿??data å­—æ®µ?ï¿½ï¿½???teams
       pagination: result.pagination,
       timestamp: new Date().toISOString()
     });
@@ -1004,11 +1008,11 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     const teamService = new TeamService(c.env.DB);
     const team = await teamService.createTeam(body);
 
-    // Phase 3 ?ªå?ï¼šä¸¦è¡ŒåŸ·è¡Œæ´»?•æ—¥èªŒå? QR ç¢¼ç???
+    // Phase 3 ?ï¿½ï¿½?ï¼šä¸¦è¡ŒåŸ·è¡Œæ´»?ï¿½æ—¥èªŒï¿½? QR ç¢¼ï¿½???
     // QR code generation runs in parallel with activity logging (~30-50ms overhead)
     const user = c.get('user');
     const activityService = new TeamActivityService(c.env.DB);
-    // ?”§ ä¿®æ­£ï¼šå‚³??LINE_BOT_ID ??FRONTEND_URL ä»¥ç??æ­£ç¢ºç? LIFF URL
+    // ?ï¿½ï¿½ ä¿®æ­£ï¼šå‚³??LINE_BOT_ID ??FRONTEND_URL ä»¥ï¿½??ï¿½æ­£ç¢ºï¿½? LIFF URL
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
 
     // Run activity logging and QR generation in parallel
@@ -1025,8 +1029,8 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       // Task 2: Pre-generate QR code (existing - Phase 3)
       qrService.generateTeamQRCode({
         teamId: team.id,
-        campaignName: `${team.name} - ?è¨­ QR ç¢¼`,
-        description: `?˜é? ${team.name} ?„é?è¨?QR ç¢¼`
+        campaignName: `${team.name} - ?ï¿½è¨­ QR ç¢¼`,
+        description: `?ï¿½ï¿½? ${team.name} ?ï¿½ï¿½?ï¿½?QR ç¢¼`
       }).catch(err => {
         // QR generation failure should not fail team creation
         console.error(`[Phase 3] QR generation failed for team ${team.id}:`, err);

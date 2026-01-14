@@ -7,7 +7,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
-import { jwtAuth, requireManagerOrAdmin } from '@/middleware/auth';
+import { jwtAuth, requireManagerOrAdmin, requireTeamRole } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
 import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { teams, conversations, agents } from '@/db/schema';
@@ -257,7 +257,8 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
  * 2. 前端收到通知後刷新對話列表
  * 3. 如果客服正在查看該團隊的對話，前端會強制關閉
  */
-agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+// 🚀 Phase 2 RBAC: requires 'lead' role in the target team
+agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), async (c) => {
   try {
     const user = c.get('user');
     const agentId = c.req.param('agentId');
@@ -374,8 +375,9 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireManagerOrAdm
 /**
  * 更新客服在團隊中的角色
  * PUT /api/teams/agent-teams/:agentId/role/:teamId
+ * 🚀 Phase 2 RBAC: requires 'lead' role in the target team
  */
-agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), async (c) => {
   try {
     const user = c.get('user');
     const agentId = c.req.param('agentId');
@@ -426,8 +428,9 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireManagerOrAdmin()
 /**
  * 設定主要團隊
  * PUT /api/teams/agent-teams/:agentId/primary/:teamId
+ * 🚀 Phase 2 RBAC: requires 'lead' role in the target team
  */
-agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireManagerOrAdmin(), async (c) => {
+agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), async (c) => {
   try {
     const user = c.get('user');
     const agentId = c.req.param('agentId');
