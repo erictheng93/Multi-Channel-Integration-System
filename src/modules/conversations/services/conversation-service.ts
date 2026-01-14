@@ -20,7 +20,8 @@ import type {
   NewMessage,
   Message,
   ConversationTransfer,
-  NewConversationTransfer
+  NewConversationTransfer,
+  LatestMessageSummary
 } from '../types/conversation-types';
 
 export class ConversationService implements ConversationServiceInterface {
@@ -55,16 +56,52 @@ export class ConversationService implements ConversationServiceInterface {
   }
 
   // Get conversation by ID with details
+  // Performance optimized: Single query with subqueries (was 3 separate queries - N+1 fix)
   async getConversation(id: string): Promise<ConversationWithDetails | null> {
+    // Single optimized query with subqueries for message count and latest message
     const [result] = await this.db
       .select({
+        // Conversation fields
         conversation: conversations,
+        // Customer fields (LEFT JOIN)
         customer: customers,
+        // Agent fields (LEFT JOIN)
         agent: {
           id: agents.id,
           displayName: agents.displayName,
           email: agents.email
-        }
+        },
+        // Message count via subquery (eliminates separate query)
+        messageCount: sql<number>`(
+          SELECT COUNT(*) FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+        )`.as('messageCount'),
+        // Latest message content via subquery (eliminates separate query)
+        latestMessageId: sql<string>`(
+          SELECT id FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageId'),
+        latestMessageContent: sql<string>`(
+          SELECT content FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageContent'),
+        latestMessageSenderType: sql<string>`(
+          SELECT sender_type FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageSenderType'),
+        latestMessageCreatedAt: sql<string>`(
+          SELECT created_at FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageCreatedAt'),
+        latestMessageType: sql<string>`(
+          SELECT message_type FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageType')
       })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -74,25 +111,21 @@ export class ConversationService implements ConversationServiceInterface {
 
     if (!result) return null;
 
-    // Get latest message
-    const [latestMessage] = await this.db
-      .select()
-      .from(messages)
-      .where(eq(messages.conversationId, id))
-      .orderBy(desc(messages.createdAt))
-      .limit(1);
-
-    // Get message count
-    const messageCountResult = await this.db
-      .select({ messageCount: count() })
-      .from(messages)
-      .where(eq(messages.conversationId, id));
+    // Construct latest message object from subquery results
+    const latestMessage: LatestMessageSummary | undefined = result.latestMessageId ? {
+      id: result.latestMessageId,
+      conversationId: id,
+      content: result.latestMessageContent || '',
+      senderType: result.latestMessageSenderType || 'customer',
+      messageType: result.latestMessageType || 'text',
+      createdAt: result.latestMessageCreatedAt || null
+    } : undefined;
 
     return {
       ...result.conversation,
       customer: result.customer || undefined,
-      latestMessage: latestMessage || undefined,
-      messageCount: messageCountResult[0]?.messageCount || 0,
+      latestMessage: latestMessage,
+      messageCount: result.messageCount || 0,
       assignedAgent: result.agent || undefined
     };
   }

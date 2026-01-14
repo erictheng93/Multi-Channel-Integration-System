@@ -12,6 +12,17 @@ export type Customer = typeof customers.$inferSelect;
 export type ConversationTransfer = typeof conversationTransfers.$inferSelect;
 export type NewConversationTransfer = typeof conversationTransfers.$inferInsert;
 
+// Lightweight message summary for optimized queries (N+1 fix)
+// Used when fetching conversation lists/details without full message data
+export interface LatestMessageSummary {
+  id: string;
+  conversationId: string;
+  content: string;
+  senderType: string;
+  messageType: string;
+  createdAt: string | null;
+}
+
 // API Request/Response types
 export interface ConversationListRequest {
   page?: number;
@@ -34,7 +45,8 @@ export interface ConversationListResponse {
 
 export interface ConversationWithDetails extends Conversation {
   customer?: Customer | undefined;
-  latestMessage?: Message | undefined;
+  // latestMessage can be full Message or lightweight summary (N+1 optimization)
+  latestMessage?: Message | LatestMessageSummary | undefined;
   messageCount?: number | undefined;
   assignedAgent?: {
     id: string;
