@@ -71,6 +71,8 @@ declare module 'hono' {
     systemAccessScope: SystemAccessScope;
     customerPermissions: CustomerPermissions;
     customerAccessScope: CustomerAccessScope;
+    // Multi-team context (Phase 1 optimization)
+    contextTeamId: number | null;  // Current team context from X-Context-Team-ID header
   }
 }
 
@@ -108,9 +110,48 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       user.teamId = payload.teamId;
     }
 
+    // 🚀 Phase 1 Optimization: Fallback to JWT multi-team data if not populated
+    // This ensures cached allowedTeamIds are available even if getUserById fails to populate
+    if (payload.allowedTeamIds && (!user.allowedTeamIds || user.allowedTeamIds.length === 0)) {
+      user.allowedTeamIds = payload.allowedTeamIds;
+    }
+    if (payload.teamRoles && (!user.teamRoles || Object.keys(user.teamRoles).length === 0)) {
+      user.teamRoles = payload.teamRoles;
+    }
+
+    // 🚀 Phase 1 Optimization: Parse and validate X-Context-Team-ID header
+    const contextTeamHeader = c.req.header('X-Context-Team-ID');
+    let contextTeamId: number | null = null;
+
+    if (contextTeamHeader) {
+      const parsedTeamId = parseInt(contextTeamHeader, 10);
+      if (!isNaN(parsedTeamId)) {
+        // Validate: user must have access to this team
+        const hasAccess = user.role === 'admin' ||
+          (user.allowedTeamIds && user.allowedTeamIds.includes(parsedTeamId));
+
+        if (hasAccess) {
+          contextTeamId = parsedTeamId;
+        } else {
+          log.warn('Invalid X-Context-Team-ID: user lacks access', {
+            userId: user.id,
+            requestedTeam: parsedTeamId,
+            allowedTeams: user.allowedTeamIds
+          });
+          // Don't fail the request, just ignore invalid team context
+        }
+      }
+    }
+
+    // Default to primary team if no context header provided
+    if (contextTeamId === null && user.teamId) {
+      contextTeamId = user.teamId;
+    }
+
     // 將用戶信息和 JWT payload 添加到 context
     c.set('user', user);
     c.set('jwtPayload', payload);
+    c.set('contextTeamId', contextTeamId);
 
     // ⚡ OPTIMIZED v3.0: 更新用戶的最後活動時間（純記憶體去重，15分鐘間隔）
     // - Zero KV operations (100% quota savings)

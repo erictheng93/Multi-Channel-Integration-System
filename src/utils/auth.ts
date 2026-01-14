@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams, agentTeams } from '../db/schema';
 import { convertAgent } from './drizzle-converters';
-import type { DbUser, JWTPayload } from '../types';
+import type { DbUser, JWTPayload, TeamRoleInTeam } from '../types';
 
 /**
  * JWT 認證工具函數
@@ -258,8 +258,9 @@ export async function createUser(
 
 export async function getUserById(db: D1Database, userId: number | string): Promise<DbUser> {
   const drizzleDb = createDbClient(db);
-  
-  // 檢查 agents 表
+  const userIdStr = userId.toString();
+
+  // Query 1: 檢查 agents 表 (with primary team)
   const agent = await drizzleDb
     .select({
       id: agents.id,
@@ -275,31 +276,67 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     .from(agents)
     .leftJoin(teams, eq(agents.teamId, teams.id))
     .where(and(
-      eq(agents.id, userId.toString()),
+      eq(agents.id, userIdStr),
       eq(agents.isActive, true)
     ))
     .get();
 
-  if (agent) {
-    return convertAgent({
-      id: agent.id,
-      email: agent.email,
-      displayName: agent.display_name,
-      role: agent.role,
-      teamId: agent.team_id,
-      isActive: Boolean(agent.is_active),
-      lastActive: null,
-      createdAt: agent.created_at,
-      updatedAt: agent.updated_at,
-      deletedAt: null,
-      passwordHash: '', // Not needed for return
-      passwordPolicy: 'changeable',
-      lastLoginAt: null
-    }, agent.team_name || undefined);
+  if (!agent) {
+    throw new Error('User not found');
   }
 
-  // 未找到用戶
-  throw new Error('User not found');
+  // Query 2: 獲取所有團隊成員資格 (Phase 1 optimization)
+  const teamMemberships = await drizzleDb
+    .select({
+      teamId: agentTeams.teamId,
+      roleInTeam: agentTeams.roleInTeam
+    })
+    .from(agentTeams)
+    .where(eq(agentTeams.agentId, userIdStr))
+    .all();
+
+  // 構建 allowedTeamIds 和 teamRoles (合併主團隊 + agent_teams)
+  const allowedTeamIds: number[] = [];
+  const teamRoles: Record<number, TeamRoleInTeam> = {};
+
+  // 加入主團隊 (如果存在)
+  if (agent.team_id) {
+    allowedTeamIds.push(agent.team_id);
+    teamRoles[agent.team_id] = 'member'; // 主團隊預設角色
+  }
+
+  // 加入 agent_teams 中的所有團隊
+  for (const membership of teamMemberships) {
+    if (!allowedTeamIds.includes(membership.teamId)) {
+      allowedTeamIds.push(membership.teamId);
+    }
+    // 使用 agent_teams 中的角色 (可能覆蓋主團隊的預設角色)
+    teamRoles[membership.teamId] = (membership.roleInTeam as TeamRoleInTeam) || 'member';
+  }
+
+  // 構建並返回增強的 DbUser
+  const baseUser = convertAgent({
+    id: agent.id,
+    email: agent.email,
+    displayName: agent.display_name,
+    role: agent.role,
+    teamId: agent.team_id,
+    isActive: Boolean(agent.is_active),
+    lastActive: null,
+    createdAt: agent.created_at,
+    updatedAt: agent.updated_at,
+    deletedAt: null,
+    passwordHash: '', // Not needed for return
+    passwordPolicy: 'changeable',
+    lastLoginAt: null
+  }, agent.team_name || undefined);
+
+  // 返回帶有多團隊資料的 DbUser
+  return {
+    ...baseUser,
+    allowedTeamIds,
+    teamRoles
+  };
 }
 
 // getUserByUsername function removed - using email for authentication instead
@@ -384,14 +421,15 @@ export function hasPermission(user: DbUser, requiredRole: 'admin' | 'agent'): bo
 /**
  * 檢查用戶是否可以訪問指定團隊
  *
- * 🔧 v2.0 MULTI-TEAM SUPPORT:
- * - 首先檢查主團隊 (agents.teamId)
- * - 如果不匹配，查詢 agent_teams 表檢查次要團隊成員資格
- * - Admin 用戶可以訪問所有團隊
+ * 🚀 v3.0 OPTIMIZED MULTI-TEAM SUPPORT (Phase 1):
+ * - Priority 1: Admin 用戶可以訪問所有團隊 (instant)
+ * - Priority 2: 檢查緩存的 allowedTeamIds (instant, no DB query)
+ * - Priority 3: 檢查主團隊 teamId (backward compat)
+ * - Priority 4: 回退到 DB 查詢 (僅用於舊 token)
  *
- * @param user 當前用戶
+ * @param user 當前用戶 (應包含 allowedTeamIds 從 getUserById)
  * @param teamId 要檢查的團隊 ID
- * @param db 可選的 D1 資料庫實例 (用於查詢 agent_teams)
+ * @param db 可選的 D1 資料庫實例 (僅用於回退查詢)
  * @returns 是否有權限訪問該團隊
  */
 export async function canAccessTeam(
@@ -399,17 +437,22 @@ export async function canAccessTeam(
   teamId: number,
   db?: D1Database
 ): Promise<boolean> {
-  // Admin 可以訪問所有團隊
+  // Priority 1: Admin 可以訪問所有團隊
   if (user.role === 'admin') {
     return true;
   }
 
-  // 檢查主團隊 (快速路徑)
+  // Priority 2: 🚀 OPTIMIZED - 使用緩存的 allowedTeamIds (無 DB 查詢)
+  if (user.allowedTeamIds && user.allowedTeamIds.length > 0) {
+    return user.allowedTeamIds.includes(teamId);
+  }
+
+  // Priority 3: 檢查主團隊 (backward compat for old tokens)
   if (user.teamId === teamId) {
     return true;
   }
 
-  // 如果沒有提供 DB，無法查詢次要團隊，返回 false
+  // Priority 4: 回退到 DB 查詢 (僅用於沒有 allowedTeamIds 的舊 token)
   if (!db) {
     return false;
   }
@@ -428,9 +471,23 @@ export async function canAccessTeam(
 
     return membership !== undefined;
   } catch (error) {
-    console.error('[canAccessTeam] Failed to check team membership:', error);
+    console.error('[canAccessTeam] Fallback DB query failed:', error);
     return false;
   }
+}
+
+/**
+ * 獲取用戶在指定團隊中的角色
+ *
+ * @param user 當前用戶 (應包含 teamRoles 從 getUserById)
+ * @param teamId 要查詢的團隊 ID
+ * @returns 團隊角色，如果用戶不是該團隊成員則返回 undefined
+ */
+export function getUserTeamRole(user: DbUser, teamId: number): TeamRoleInTeam | undefined {
+  if (!user.teamRoles) {
+    return undefined;
+  }
+  return user.teamRoles[teamId];
 }
 
 /**

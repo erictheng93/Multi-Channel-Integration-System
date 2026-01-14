@@ -128,28 +128,36 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     }
 
     // 生成 Access Token (短期，2小時)
+    // 🚀 Phase 1 Optimization: Include multi-team data in JWT
     const token = await signJWT(
-      { 
+      {
         userId: user.id, // 保持原始 ID 格式
         displayName: user.displayName,
         email: user.email,
         role: user.role,
         teamId: user.teamId || undefined,
-        type: 'access'
+        type: 'access',
+        // Multi-team support (Phase 1 optimization)
+        allowedTeamIds: user.allowedTeamIds || [],
+        teamRoles: user.teamRoles || {}
       },
       c.env.JWT_SECRET,
       2 * 60 * 60 // 2 小時
     );
 
     // 生成 Refresh Token (長期，7天)
+    // 🚀 Phase 1 Optimization: Include multi-team data in JWT
     const refreshToken = await signJWT(
-      { 
+      {
         userId: user.id, // 保持原始 ID 格式
         displayName: user.displayName,
         email: user.email,
         role: user.role,
         teamId: user.teamId || undefined,
-        type: 'refresh'
+        type: 'refresh',
+        // Multi-team support (Phase 1 optimization)
+        allowedTeamIds: user.allowedTeamIds || [],
+        teamRoles: user.teamRoles || {}
       },
       c.env.JWT_SECRET,
       7 * 24 * 60 * 60 // 7 天
@@ -475,28 +483,36 @@ authHandler.post('/refresh', async (c) => {
     }
 
     // 生成新的 access token
+    // 🚀 Phase 1 Optimization: Carry over multi-team data from refresh token
     const newToken = await signJWT(
-      { 
+      {
         userId: payload.userId,
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: payload.role,
         teamId: payload.teamId,
-        type: 'access'
+        type: 'access',
+        // Multi-team support (Phase 1 optimization) - carry over from refresh token
+        allowedTeamIds: payload.allowedTeamIds || [],
+        teamRoles: payload.teamRoles || {}
       },
       c.env.JWT_SECRET,
       2 * 60 * 60 // 2 小時
     );
 
     // 生成新的 refresh token (滾動刷新)
+    // 🚀 Phase 1 Optimization: Carry over multi-team data
     const newRefreshToken = await signJWT(
-      { 
+      {
         userId: payload.userId,
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: payload.role,
         teamId: payload.teamId,
-        type: 'refresh'
+        type: 'refresh',
+        // Multi-team support (Phase 1 optimization) - carry over
+        allowedTeamIds: payload.allowedTeamIds || [],
+        teamRoles: payload.teamRoles || {}
       },
       c.env.JWT_SECRET,
       7 * 24 * 60 * 60 // 7 天

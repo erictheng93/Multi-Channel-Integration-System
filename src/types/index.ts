@@ -208,6 +208,9 @@ export interface FacebookMediaData {
 
 export type PlatformMediaData = LineMediaData | FacebookMediaData;
 
+// Team role within a specific team (for multi-team RBAC)
+export type TeamRoleInTeam = 'member' | 'lead' | 'supervisor';
+
 // Database user type
 export interface DbUser {
   id: number | string;
@@ -219,6 +222,9 @@ export interface DbUser {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Multi-team support (Phase 1 optimization)
+  allowedTeamIds?: number[];                    // All accessible team IDs (cached from agent_teams)
+  teamRoles?: Record<number, TeamRoleInTeam>;   // teamId -> roleInTeam mapping
 }
 
 // Team type
@@ -265,6 +271,9 @@ export interface JWTPayload {
   iss?: string;
   type?: 'access' | 'refresh' | 'temp_password_change';
   isSystemToken?: boolean;
+  // Multi-team support (Phase 1 optimization)
+  allowedTeamIds?: number[];                    // All accessible team IDs
+  teamRoles?: Record<number, TeamRoleInTeam>;   // teamId -> roleInTeam mapping
 }
 
 // Facebook Webhook types
