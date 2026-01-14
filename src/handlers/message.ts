@@ -162,6 +162,7 @@ export const messageHandler = {
                 id: schema.conversations.id,
                 customerId: schema.conversations.customerId,
                 assignedUserId: schema.conversations.assignedUserId,
+                assignedTeamId: schema.conversations.assignedTeamId, // 🔒 Security: For team-scoped broadcast
                 status: schema.conversations.status,
                 // Customer platform info
                 platform: schema.customers.platform,
@@ -506,7 +507,9 @@ export const messageHandler = {
                         timestamp: Date.now(),
                         deliveryStatus: isAsyncLineMessage ? 'sending' : (sendResult ? 'sent' : 'failed')
                     },
-                    source: 'api'
+                    source: 'api',
+                    // 🔒 Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
+                    teamId: conversationWithCustomer.assignedTeamId || undefined
                 });
                 console.log(`✅ [Agent Message] Unified broadcast completed`, {
                     messageId,

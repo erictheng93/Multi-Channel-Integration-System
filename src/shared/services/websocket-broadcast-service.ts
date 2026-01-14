@@ -510,15 +510,18 @@ export class WebSocketBroadcastService {
       deliveryStatus?: string;
     };
     source: 'webhook' | 'api';
+    // 🔒 Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
+    teamId?: number;
   }): Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }> {
-    const { conversationId, message, source } = params;
+    const { conversationId, message, source, teamId } = params;
     const timestamp = message.timestamp || Date.now();
 
     console.log('📡 [WebSocket Broadcast] Broadcasting new message', {
       conversationId,
       messageId: message.id,
       senderType: message.senderType,
-      source
+      source,
+      teamId: teamId || 'global'
     });
 
     let conversationBroadcast = false;
@@ -568,13 +571,14 @@ export class WebSocketBroadcastService {
       console.error('❌ [WebSocket Broadcast] CustomerConversationDO broadcast error:', error);
     }
 
-    // 2. Broadcast globally via MessageBroadcaster (for conversation list page)
+    // 2. Broadcast via MessageBroadcaster (for conversation list page)
+    // 🔒 Security Fix (P1): Team-scoped broadcast to prevent cross-team data leakage
     try {
       if (this.env.MESSAGE_BROADCASTER) {
         const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
         const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
-        const globalEvent: DurableObjectEvent = {
+        const broadcastEvent: DurableObjectEvent = {
           id: crypto.randomUUID(),
           type: 'new_message',
           source,
@@ -588,32 +592,65 @@ export class WebSocketBroadcastService {
             senderId: message.senderId,
             senderName: message.senderName,
             platform: message.platform,
-            timestamp
+            timestamp,
+            // 🔒 Include teamId for filtering at client side as backup
+            teamId: teamId || null
           },
           priority: 'normal'
         };
 
-        const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event: globalEvent,
-            target: { type: 'global', targets: ['all'] }
-          })
-        }));
+        // 🔒 Security: Use team-scoped broadcast when teamId is provided
+        if (teamId) {
+          // Team-scoped broadcast: Only send to team members + admins
+          const teamResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-to-teams-and-admins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: broadcastEvent,
+              teamIds: [teamId],
+              includeAdmins: true  // Admins can see all conversations
+            })
+          }));
 
-        globalBroadcast = globalResponse.ok;
+          globalBroadcast = teamResponse.ok;
 
-        if (globalBroadcast) {
-          console.log('✅ [WebSocket Broadcast] MessageBroadcaster global broadcast successful');
+          if (globalBroadcast) {
+            console.log('✅ [WebSocket Broadcast] Team-scoped broadcast successful', { teamId });
+          } else {
+            console.warn('⚠️ [WebSocket Broadcast] Team-scoped broadcast failed', {
+              teamId,
+              status: teamResponse.status
+            });
+          }
         } else {
-          console.warn('⚠️ [WebSocket Broadcast] MessageBroadcaster global broadcast failed', {
-            status: globalResponse.status
+          // Fallback to global broadcast when no teamId (legacy behavior, should be rare)
+          console.warn('⚠️ [WebSocket Broadcast] No teamId provided, using global broadcast (security risk)', {
+            conversationId,
+            source
           });
+
+          const globalResponse = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: broadcastEvent,
+              target: { type: 'global', targets: ['all'] }
+            })
+          }));
+
+          globalBroadcast = globalResponse.ok;
+
+          if (globalBroadcast) {
+            console.log('✅ [WebSocket Broadcast] MessageBroadcaster global broadcast successful');
+          } else {
+            console.warn('⚠️ [WebSocket Broadcast] MessageBroadcaster global broadcast failed', {
+              status: globalResponse.status
+            });
+          }
         }
       }
     } catch (error) {
-      console.error('❌ [WebSocket Broadcast] MessageBroadcaster global broadcast error:', error);
+      console.error('❌ [WebSocket Broadcast] MessageBroadcaster broadcast error:', error);
     }
 
     console.log('📡 [WebSocket Broadcast] New message broadcast completed', {

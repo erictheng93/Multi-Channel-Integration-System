@@ -175,6 +175,7 @@ export class ConversationService implements ConversationServiceInterface {
   }
 
   // List conversations with pagination
+  // Performance optimized: Uses subqueries instead of LEFT JOIN + GROUP BY (N+1 fix)
   async listConversations(params: ConversationListRequest): Promise<ConversationListResponse> {
     const {
       page = 1,
@@ -197,7 +198,7 @@ export class ConversationService implements ConversationServiceInterface {
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    // Get conversations with details
+    // Get conversations with details using subqueries (eliminates GROUP BY overhead)
     const conversationList = await this.db
       .select({
         conversation: conversations,
@@ -207,14 +208,42 @@ export class ConversationService implements ConversationServiceInterface {
           displayName: agents.displayName,
           email: agents.email
         },
-        messageCount: count(messages.id)
+        // Message count via subquery (more efficient than LEFT JOIN + GROUP BY)
+        messageCount: sql<number>`(
+          SELECT COUNT(*) FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+        )`.as('messageCount'),
+        // Latest message fields via subqueries for conversation list preview
+        latestMessageId: sql<string>`(
+          SELECT id FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageId'),
+        latestMessageContent: sql<string>`(
+          SELECT content FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageContent'),
+        latestMessageSenderType: sql<string>`(
+          SELECT sender_type FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageSenderType'),
+        latestMessageCreatedAt: sql<string>`(
+          SELECT created_at FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageCreatedAt'),
+        latestMessageType: sql<string>`(
+          SELECT message_type FROM messages
+          WHERE messages.conversation_id = ${conversations.id}
+          ORDER BY created_at DESC LIMIT 1
+        )`.as('latestMessageType')
       })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
-      .leftJoin(messages, eq(conversations.id, messages.conversationId))
       .where(whereClause)
-      .groupBy(conversations.id)
       .orderBy(desc(conversations.updatedAt))
       .limit(actualLimit)
       .offset(offset);
@@ -228,12 +257,25 @@ export class ConversationService implements ConversationServiceInterface {
     const total = totalResult[0]?.total ?? 0;
 
     return {
-      conversations: conversationList.map(row => ({
-        ...row.conversation,
-        customer: row.customer || undefined,
-        messageCount: row.messageCount,
-        assignedAgent: row.agent || undefined
-      })),
+      conversations: conversationList.map(row => {
+        // Construct latest message object from subquery results
+        const latestMessage: LatestMessageSummary | undefined = row.latestMessageId ? {
+          id: row.latestMessageId,
+          conversationId: row.conversation.id,
+          content: row.latestMessageContent || '',
+          senderType: row.latestMessageSenderType || 'customer',
+          messageType: row.latestMessageType || 'text',
+          createdAt: row.latestMessageCreatedAt || null
+        } : undefined;
+
+        return {
+          ...row.conversation,
+          customer: row.customer || undefined,
+          latestMessage,
+          messageCount: row.messageCount || 0,
+          assignedAgent: row.agent || undefined
+        };
+      }),
       pagination: {
         page,
         limit: actualLimit,

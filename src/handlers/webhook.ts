@@ -685,7 +685,9 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           // 🆕 Include file_attachments for immediate Flex Card display
           file_attachments: fileAttachmentData.length > 0 ? fileAttachmentData : undefined
         },
-        source: 'webhook'
+        source: 'webhook',
+        // 🔒 Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
+        teamId: conversation!.assignedTeamId || undefined
       });
 
       console.log(`✅ [LINE Webhook] Unified broadcast completed`, {

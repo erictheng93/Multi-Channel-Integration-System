@@ -1706,6 +1706,19 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
     // 1. CustomerConversationDO - conversation detail page real-time updates
     // 2. MessageBroadcaster global - conversation list page lastMessage updates
     try {
+      // 🔒 Security: Fetch teamId for team-scoped broadcast (P1 fix)
+      let teamId: number | undefined;
+      try {
+        const db = createDbClient(c.env.DB);
+        const [conv] = await db.select({ assignedTeamId: conversations.assignedTeamId })
+          .from(conversations)
+          .where(eq(conversations.id, request.conversationId))
+          .limit(1);
+        teamId = conv?.assignedTeamId || undefined;
+      } catch (teamIdError) {
+        log.warn('Failed to fetch teamId for broadcast', { error: teamIdError instanceof Error ? teamIdError.message : String(teamIdError) });
+      }
+
       const unifiedBroadcastService = new WebSocketBroadcastService(c.env);
       const broadcastResult = await unifiedBroadcastService.broadcastNewMessage({
         conversationId: request.conversationId,
@@ -1720,7 +1733,9 @@ conversationHandler.post('/:id/messages', jwtAuth, async (c) => {
           timestamp: Date.now(),
           deliveryStatus: 'pending'
         },
-        source: 'api'
+        source: 'api',
+        // 🔒 Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
+        teamId
       });
       log.debug('UNIFIED_BROADCAST: Agent message broadcast completed', {
         conversationBroadcast: broadcastResult.conversationBroadcast,
