@@ -490,6 +490,98 @@ export function getUserTeamRole(user: DbUser, teamId: number): TeamRoleInTeam | 
   return user.teamRoles[teamId];
 }
 
+// ============================================================================
+// 🚀 Phase 2: Team RBAC (Role-Based Access Control)
+// ============================================================================
+
+/**
+ * Team role hierarchy (higher number = more permissions)
+ * - member: 1 (基本成員，只能查看)
+ * - lead: 2 (組長，可以管理成員)
+ * - supervisor: 3 (主管，可以管理團隊設定)
+ */
+export const TEAM_ROLE_HIERARCHY: Record<TeamRoleInTeam, number> = {
+  'member': 1,
+  'lead': 2,
+  'supervisor': 3
+};
+
+/**
+ * 檢查用戶在團隊中是否有足夠的角色權限
+ *
+ * @param user 當前用戶
+ * @param teamId 團隊 ID
+ * @param requiredRole 所需的最低角色
+ * @returns true 如果用戶有足夠權限
+ *
+ * @example
+ * // 檢查用戶是否是 lead 或更高
+ * hasTeamRole(user, 1, 'lead') // true if user is lead or supervisor
+ */
+export function hasTeamRole(
+  user: DbUser,
+  teamId: number,
+  requiredRole: TeamRoleInTeam
+): boolean {
+  // Admin bypasses all team role checks
+  if (user.role === 'admin') {
+    return true;
+  }
+
+  const userRole = getUserTeamRole(user, teamId);
+  if (!userRole) {
+    return false;
+  }
+
+  const userLevel = TEAM_ROLE_HIERARCHY[userRole];
+  const requiredLevel = TEAM_ROLE_HIERARCHY[requiredRole];
+
+  return userLevel >= requiredLevel;
+}
+
+/**
+ * 團隊操作權限矩陣
+ *
+ * 定義不同操作所需的最低團隊角色
+ */
+export const TEAM_PERMISSIONS = {
+  // 查看操作 - member 即可
+  VIEW_TEAM: 'member' as TeamRoleInTeam,
+  VIEW_MEMBERS: 'member' as TeamRoleInTeam,
+  VIEW_STATS: 'member' as TeamRoleInTeam,
+
+  // 成員管理 - lead 或以上
+  ADD_MEMBER: 'lead' as TeamRoleInTeam,
+  UPDATE_MEMBER: 'lead' as TeamRoleInTeam,
+  REMOVE_MEMBER: 'lead' as TeamRoleInTeam,
+
+  // 團隊設定 - supervisor 或以上
+  UPDATE_TEAM: 'supervisor' as TeamRoleInTeam,
+  DELETE_TEAM: 'supervisor' as TeamRoleInTeam,
+  MANAGE_QR_CODES: 'supervisor' as TeamRoleInTeam,
+  TRANSFER_MEMBERS: 'supervisor' as TeamRoleInTeam
+} as const;
+
+/**
+ * 檢查用戶是否有執行特定團隊操作的權限
+ *
+ * @param user 當前用戶
+ * @param teamId 團隊 ID
+ * @param operation 要執行的操作
+ * @returns true 如果有權限
+ *
+ * @example
+ * canPerformTeamOperation(user, 1, 'ADD_MEMBER')
+ */
+export function canPerformTeamOperation(
+  user: DbUser,
+  teamId: number,
+  operation: keyof typeof TEAM_PERMISSIONS
+): boolean {
+  const requiredRole = TEAM_PERMISSIONS[operation];
+  return hasTeamRole(user, teamId, requiredRole);
+}
+
 /**
  * 同步版本的團隊權限檢查 (僅檢查主團隊)
  *
