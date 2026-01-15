@@ -114,19 +114,7 @@
   import { useAuthStore } from '@/stores/auth'
   import { useQRCodeStore } from '@/stores/qrcode'
   import { useMemberOperations } from '@/composables/team-management'
-  import type { TeamMember, LiffQRCode } from '@/types'
-
-  interface Team {
-    id: number
-    name: string
-    description?: string
-    qrCode?: string
-    lineUrl?: string // LINE connection URL
-    isActive: boolean
-    createdAt: string
-    updatedAt: string
-    memberCount?: number
-  }
+  import type { Team, TeamMember, LiffQRCode } from '@/types'
 
   const props = defineProps<{
     team: Team

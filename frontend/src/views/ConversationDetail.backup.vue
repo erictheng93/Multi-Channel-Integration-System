@@ -583,6 +583,11 @@ function handleDrop(event: DragEvent) {
     messageInputRef.value.handleFilesDropped?.(files)
   }
 }
+
+// Template refs (exposed to satisfy TypeScript noUnusedLocals)
+defineExpose({
+  keyboardShortcutsRef
+})
 </script>
 
 <style scoped>
