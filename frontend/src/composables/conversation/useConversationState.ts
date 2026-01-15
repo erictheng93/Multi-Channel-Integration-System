@@ -61,7 +61,8 @@ export function useConversationState(
   const {
     messages: smoothMessages,
     isUpdating,
-    updateMessages
+    updateMessages,
+    setMessagesImmediate // 🔧 FIX: 用於初始載入的即時更新，避免防抖延遲導致的競態條件
   } = useSmoothLoading({
     animationDuration: 400,
     enableAnimations: false, // 禁用動畫避免遞歸問題
@@ -286,6 +287,15 @@ export function useConversationState(
       console.log(
         `✅ [useConversationState] HTTP messages loaded: ${httpMessages.messages.value.length} messages`
       )
+
+      // 🔧 FIX: 初始載入時立即更新 smoothMessages，避免防抖延遲導致的競態條件
+      // 問題：hasLoadedInitially 在 loading=false 時立即設為 true
+      //       但 smoothMessages 因防抖延遲還是空的，導致顯示「暫無訊息」
+      // 解決：使用 setMessagesImmediate 同步設置訊息，繞過防抖機制
+      if (httpMessages.messages.value.length > 0) {
+        console.log('🔧 [useConversationState] Applying immediate messages update to prevent race condition')
+        setMessagesImmediate(httpMessages.messages.value)
+      }
     } catch (error) {
       console.error('❌ [useConversationState] Failed to load conversation:', error)
       throw error
