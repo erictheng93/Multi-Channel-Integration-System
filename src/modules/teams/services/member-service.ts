@@ -4,7 +4,7 @@
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, or, desc, sql, ne } from 'drizzle-orm';
-import { agents } from '@/db/schema';
+import { agents, messages, delayedMessages } from '@/db/schema';
 import { hashPassword } from '@/utils/auth';
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
@@ -207,9 +207,27 @@ export class MemberService {
 
   /**
    * 刪除成員
+   *
+   * 處理外鍵約束：
+   * 1. 將 messages.agentSenderId 設為 null（保留訊息歷史）
+   * 2. 刪除 delayedMessages 中的待發訊息
+   * 3. agent_teams 會自動級聯刪除（onDelete: cascade）
+   * 4. 最後刪除成員帳號
    */
   async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
-    const result = await this.db
+    // Step 1: 將該成員發送的訊息的 agentSenderId 設為 null（保留訊息歷史）
+    await this.db
+      .update(messages)
+      .set({ agentSenderId: null })
+      .where(eq(messages.agentSenderId, memberId));
+
+    // Step 2: 刪除該成員的待發延遲訊息
+    await this.db
+      .delete(delayedMessages)
+      .where(eq(delayedMessages.agentId, memberId));
+
+    // Step 3: 刪除成員帳號（agent_teams 會自動級聯刪除）
+    await this.db
       .delete(agents)
       .where(eq(agents.id, memberId));
 
