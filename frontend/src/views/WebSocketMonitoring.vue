@@ -461,6 +461,11 @@ function formatTime(timestamp: number) {
   const date = new Date(timestamp)
   return date.toLocaleTimeString('zh-TW')
 }
+
+// Template refs (exposed to satisfy TypeScript noUnusedLocals)
+defineExpose({
+  trendCanvas
+})
 </script>
 
 <style scoped>

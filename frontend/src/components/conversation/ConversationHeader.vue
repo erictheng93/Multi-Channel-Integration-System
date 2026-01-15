@@ -391,6 +391,11 @@ watch(() => props.conversation?.customer?.id, (newId) => {
 onMounted(() => {
   loadCustomerTags()
 })
+
+// Template refs (exposed to satisfy TypeScript noUnusedLocals)
+defineExpose({
+  assignPanelRef
+})
 </script>
 
 <style scoped>

@@ -145,6 +145,11 @@ onUnmounted(() => {
     document.body.style.overflow = ''
   }
 })
+
+// Template refs (exposed to satisfy TypeScript noUnusedLocals)
+defineExpose({
+  overlayRef
+})
 </script>
 
 <style scoped>

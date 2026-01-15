@@ -423,6 +423,11 @@ function handleMessageSelect(message: Message) {
 function handleAttachmentUpload(attachment: unknown) {
   console.log('Attachment upload:', attachment)
 }
+
+// Template refs (exposed to satisfy TypeScript noUnusedLocals)
+defineExpose({
+  keyboardShortcutsRef
+})
 </script>
 
 <style scoped>

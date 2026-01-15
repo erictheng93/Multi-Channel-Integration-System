@@ -231,6 +231,11 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+// Template refs (exposed to satisfy TypeScript noUnusedLocals)
+defineExpose({
+  overlayRef
+})
 </script>
 
 <style scoped>

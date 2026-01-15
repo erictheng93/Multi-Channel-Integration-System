@@ -879,11 +879,13 @@ onUnmounted(() => {
   }
 })
 
-// Expose methods
+// Expose methods and template refs
 defineExpose({
   scrollToMessage,
   scrollToTop,
-  scrollToBottom
+  scrollToBottom,
+  // Template refs (exposed to satisfy TypeScript noUnusedLocals)
+  listContainer
 })
 </script>
 

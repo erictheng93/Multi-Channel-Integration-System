@@ -245,11 +245,13 @@ onUnmounted(() => {
   clearTimers()
 })
 
-// 暴露方法
+// 暴露方法和 template refs
 defineExpose({
   show: showTooltip,
   hide: hideTooltip,
-  toggle: toggleTooltip
+  toggle: toggleTooltip,
+  // Template refs (exposed to satisfy TypeScript noUnusedLocals)
+  containerRef
 })
 </script>
 
