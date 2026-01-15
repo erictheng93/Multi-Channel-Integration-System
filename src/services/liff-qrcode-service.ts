@@ -57,9 +57,11 @@ export async function generateTeamQRCode(
       }
     });
 
-    const r2PublicUrl = env.R2_PUBLIC_URL;
+    // Support both STORAGE_PUBLIC_URL (primary) and R2_PUBLIC_URL (legacy) for compatibility
+    // This aligns with the pattern used in src/config/runtime.ts
+    const r2PublicUrl = env.STORAGE_PUBLIC_URL || env.R2_PUBLIC_URL;
     if (!r2PublicUrl) {
-      return { success: false, error: 'R2_PUBLIC_URL not configured' };
+      return { success: false, error: 'STORAGE_PUBLIC_URL or R2_PUBLIC_URL not configured' };
     }
 
     const qrCodeUrl = r2PublicUrl + '/' + fileName;
