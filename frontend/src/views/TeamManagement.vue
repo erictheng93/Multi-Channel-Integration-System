@@ -43,8 +43,6 @@
         :loading="loading"
         @add-team="controller.team.openAddTeamModal"
         @toggle-status="controller.team.toggleTeamStatus"
-        @view-qr="controller.qr.viewQR"
-        @prefetch-qr="(team) => controller.qr.viewQR(team)"
         @remove-team="controller.team.removeTeam"
         @member-updated="controller.team.handleMemberUpdated"
         @team-updated="controller.refresh"
@@ -105,16 +103,6 @@
         @close="controller.member.closePasswordResetModal"
         @submit="controller.member.submitPasswordReset"
       />
-
-      <!-- QR Code Modal -->
-      <QRCodeModal
-        :visible="controller.qr.qrModal.value"
-        :team="controller.qr.currentTeam.value"
-        :qr-code="controller.qr.currentQRCode.value"
-        :image-loading="controller.qr.qrImageLoading.value"
-        @close="controller.qr.closeQRModal"
-        @download="controller.qr.downloadQR"
-      />
     </div>
   </AppLayout>
 </template>
@@ -132,7 +120,6 @@ import AddMemberModal from '@/components/team/AddMemberModal.vue'
 import AddTeamModal from '@/components/team/AddTeamModal.vue'
 import EditTeamModal from '@/components/team/EditTeamModal.vue'
 import PasswordResetModal from '@/components/team/PasswordResetModal.vue'
-import QRCodeModal from '@/components/team/QRCodeModal.vue'
 
 // ==================== Controller & State ====================
 

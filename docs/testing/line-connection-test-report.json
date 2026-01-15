@@ -1,7 +1,7 @@
 {
   "timestamp": "2025-08-13T07:02:44.525Z",
   "config": {
-    "webhookUrl": "https://your-api-domain.example.com/api/webhook",
+    "webhookUrl": "https://multi-channel.imfinethankyouandyou.com/api/webhook",
     "hasAccessToken": true,
     "hasChannelSecret": true,
     "timeout": 15000
@@ -15,7 +15,7 @@
     {
       "test": "system-health",
       "success": true,
-      "message": "ç³»çµ±?¥åº·?€?‹æ­£å¸?,
+      "message": "ç³»çµ±?ï¿½åº·?ï¿½?ï¿½æ­£ï¿½?,
       "responseTime": 1090,
       "details": {
         "status": 200,
@@ -30,7 +30,7 @@
     {
       "test": "webhook-reachability",
       "success": true,
-      "message": "Webhook ç«¯é??¯é? (200)",
+      "message": "Webhook ç«¯ï¿½??ï¿½ï¿½? (200)",
       "responseTime": 151,
       "details": {
         "status": 200,
@@ -54,7 +54,7 @@
     {
       "test": "webhook-event-processing",
       "success": true,
-      "message": "Webhook äº‹ä»¶?•ç??å? (200)",
+      "message": "Webhook äº‹ä»¶?ï¿½ï¿½??ï¿½ï¿½? (200)",
       "responseTime": 152,
       "details": {
         "status": 200,
@@ -65,7 +65,7 @@
               "type": "message",
               "message": {
                 "type": "text",
-                "text": "LINE ??¥æ¸¬è©¦è¨Šæ¯",
+                "text": "LINE ??ï¿½ï¿½æ¸¬è©¦è¨Šæ¯",
                 "id": "test-message-1755068564047"
               },
               "source": {
@@ -82,13 +82,13 @@
     {
       "test": "line-api-connection",
       "success": true,
-      "message": "LINE API ??¥?å? - Bot: Peninsula ?å?ä¸­å?",
+      "message": "LINE API ??ï¿½ï¿½?ï¿½ï¿½? - Bot: Peninsula ?ï¿½ï¿½?ä¸­ï¿½?",
       "responseTime": 324,
       "details": {
         "botInfo": {
           "userId": "U5a5359357b93b33dba988dba6d7380e6",
           "basicId": "@110xsqef",
-          "displayName": "Peninsula ?å?ä¸­å?",
+          "displayName": "Peninsula ?ï¿½ï¿½?ä¸­ï¿½?",
           "chatMode": "chat",
           "markAsReadMode": "manual"
         },
@@ -98,7 +98,7 @@
     {
       "test": "push-message",
       "success": false,
-      "message": "è·³é??¨é€è??¯æ¸¬è©?- ?ªæ?ä¾›æ¸¬è©¦ç”¨??ID",
+      "message": "è·³ï¿½??ï¿½é€ï¿½??ï¿½æ¸¬ï¿½?- ?ï¿½ï¿½?ä¾›æ¸¬è©¦ç”¨??ID",
       "details": {
         "reason": "no-user-id"
       }

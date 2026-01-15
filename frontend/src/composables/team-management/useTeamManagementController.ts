@@ -16,7 +16,6 @@ import { computed, type ComputedRef } from 'vue'
 import { useTeamStore } from '@/stores/team'
 import { useMemberOperations, type UseMemberOperationsReturn } from './useMemberOperations'
 import { useTeamOperations, type UseTeamOperationsReturn } from './useTeamOperations'
-import { useQRCodeOperations, type UseQRCodeOperationsReturn } from './useQRCodeOperations'
 import { useTeamStats, type TeamStatsData } from './useTeamStats'
 import type { TeamMember } from '@/types'
 
@@ -44,7 +43,6 @@ export interface UseTeamManagementControllerReturn {
   // Sub-Controllers
   member: UseMemberOperationsReturn
   team: UseTeamOperationsReturn
-  qr: UseQRCodeOperationsReturn
 
   // Lifecycle
   initialize: () => Promise<void>
@@ -78,9 +76,6 @@ export interface UseTeamManagementControllerReturn {
  * // 访问团队操作
  * controller.team.openAddTeamModal()
  *
- * // 访问 QR 码操作
- * await controller.qr.viewQR(team)
- *
  * // 访问统计数据
  * console.log(controller.stats.value.totalMembers)
  * ```
@@ -95,9 +90,6 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
 
   // 团队操作控制器
   const teamOps = useTeamOperations()
-
-  // QR 码操作控制器
-  const qrOps = useQRCodeOperations()
 
   // 统计数据控制器
   const statsOps = useTeamStats()
@@ -167,9 +159,6 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
       console.log('✅ [TeamManagementController] Data loaded successfully')
       console.log(`   - Teams: ${teams.value.length}`)
       console.log(`   - Members: ${members.value.length}`)
-
-      // 启动背景 QR 预加载
-      qrOps.startBackgroundPreload(teams.value)
     } catch (error) {
       console.error('❌ [TeamManagementController] Initialization failed:', error)
       throw error
@@ -182,10 +171,6 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    */
   function cleanup() {
     console.log('🧹 [TeamManagementController] Cleaning up...')
-
-    // 停止 QR 预加载
-    qrOps.stopBackgroundPreload()
-
     console.log('✅ [TeamManagementController] Cleanup complete')
   }
 
@@ -220,9 +205,6 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
 
     // 团队操作（新增、编辑、删除、状态切换等）
     team: teamOps,
-
-    // QR 码操作（查看、下载、预加载等）
-    qr: qrOps,
 
     // Lifecycle
     initialize,

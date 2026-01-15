@@ -3,10 +3,9 @@
     {
       "allowed": {
         "origins": [
-          "https://your-frontend-domain.example.com",
-          "https://your-api-domain.example.com",
           "https://multi-channel-platform-frontend.pages.dev",
-          "https://your-storage-domain.example.com",
+          "https://multi-channel.imfinethankyouandyou.com",
+          "https://s3.imfinethankyouandyou.com",
           "http://localhost:3000",
           "http://localhost:3001",
           "http://127.0.0.1:3000"

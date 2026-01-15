@@ -64,7 +64,7 @@
         "threshold": 90,
         "operator": "lessThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: WebSocket connection success rate dropped below 90% for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: WebSocket connection success rate dropped below 90% for 5 minutes",
         "action": "immediate_rollback_consideration",
         "severity": "critical"
       },
@@ -73,7 +73,7 @@
         "threshold": 95,
         "operator": "lessThan",
         "duration": 180,
-        "message": "? ï? HIGH: WebSocket connection success rate below 95% for 3 minutes",
+        "message": "?ï¿½ï¿½? HIGH: WebSocket connection success rate below 95% for 3 minutes",
         "action": "investigate_connection_issues",
         "severity": "high"
       },
@@ -97,7 +97,7 @@
         "threshold": 5,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: WebSocket error rate exceeded 5% for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: WebSocket error rate exceeded 5% for 5 minutes",
         "action": "emergency_rollback",
         "severity": "critical"
       },
@@ -106,7 +106,7 @@
         "threshold": 3,
         "operator": "greaterThan",
         "duration": 180,
-        "message": "? ï? HIGH: WebSocket error rate exceeded 3% for 3 minutes",
+        "message": "?ï¿½ï¿½? HIGH: WebSocket error rate exceeded 3% for 3 minutes",
         "action": "pause_rollout_increase",
         "severity": "high"
       },
@@ -130,7 +130,7 @@
         "threshold": 1000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: Average WebSocket latency exceeded 1000ms for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: Average WebSocket latency exceeded 1000ms for 5 minutes",
         "action": "investigate_performance_degradation",
         "severity": "critical"
       },
@@ -139,7 +139,7 @@
         "threshold": 500,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "? ï? HIGH: Average WebSocket latency exceeded 500ms for 5 minutes",
+        "message": "?ï¿½ï¿½? HIGH: Average WebSocket latency exceeded 500ms for 5 minutes",
         "action": "monitor_performance",
         "severity": "high"
       },
@@ -163,7 +163,7 @@
         "threshold": 2000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: P95 WebSocket latency exceeded 2000ms for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: P95 WebSocket latency exceeded 2000ms for 5 minutes",
         "action": "investigate_tail_latency",
         "severity": "critical"
       },
@@ -172,7 +172,7 @@
         "threshold": 1000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "? ï? HIGH: P95 WebSocket latency exceeded 1000ms for 5 minutes",
+        "message": "?ï¿½ï¿½? HIGH: P95 WebSocket latency exceeded 1000ms for 5 minutes",
         "action": "monitor_tail_latency",
         "severity": "high"
       }
@@ -187,7 +187,7 @@
         "threshold": 3000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: P99 WebSocket latency exceeded 3000ms for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: P99 WebSocket latency exceeded 3000ms for 5 minutes",
         "action": "investigate_worst_case_latency",
         "severity": "critical"
       },
@@ -196,7 +196,7 @@
         "threshold": 2000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "? ï? HIGH: P99 WebSocket latency exceeded 2000ms for 5 minutes",
+        "message": "?ï¿½ï¿½? HIGH: P99 WebSocket latency exceeded 2000ms for 5 minutes",
         "action": "monitor_worst_case",
         "severity": "high"
       }
@@ -211,7 +211,7 @@
         "threshold": 3000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: Average WebSocket connection time exceeded 3000ms for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: Average WebSocket connection time exceeded 3000ms for 5 minutes",
         "action": "investigate_connection_delays",
         "severity": "critical"
       },
@@ -220,7 +220,7 @@
         "threshold": 2000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "? ï? HIGH: Average WebSocket connection time exceeded 2000ms for 5 minutes",
+        "message": "?ï¿½ï¿½? HIGH: Average WebSocket connection time exceeded 2000ms for 5 minutes",
         "action": "monitor_connection_performance",
         "severity": "high"
       },
@@ -244,7 +244,7 @@
         "threshold": 4000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: P95 connection time exceeded 4000ms for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: P95 connection time exceeded 4000ms for 5 minutes",
         "action": "investigate_slow_connections",
         "severity": "critical"
       },
@@ -253,7 +253,7 @@
         "threshold": 2500,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "? ï? HIGH: P95 connection time exceeded 2500ms for 5 minutes",
+        "message": "?ï¿½ï¿½? HIGH: P95 connection time exceeded 2500ms for 5 minutes",
         "action": "monitor_connection_tail_latency",
         "severity": "high"
       }
@@ -268,7 +268,7 @@
         "threshold": 10,
         "operator": "lessThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: Active WebSocket connections dropped below 10 for 5 minutes (possible mass disconnect)",
+        "message": "?ï¿½ï¿½ CRITICAL: Active WebSocket connections dropped below 10 for 5 minutes (possible mass disconnect)",
         "action": "investigate_mass_disconnect",
         "severity": "critical"
       },
@@ -277,7 +277,7 @@
         "threshold": 1000,
         "operator": "greaterThan",
         "duration": 300,
-        "message": "? ï? HIGH: Active WebSocket connections exceeded 1000 for 5 minutes (capacity warning)",
+        "message": "?ï¿½ï¿½? HIGH: Active WebSocket connections exceeded 1000 for 5 minutes (capacity warning)",
         "action": "prepare_for_scaling",
         "severity": "high"
       }
@@ -292,7 +292,7 @@
         "threshold": 50,
         "operator": "greaterThan",
         "duration": 180,
-        "message": "?š¨ CRITICAL: Reconnection rate exceeded 50/min for 3 minutes (connection instability)",
+        "message": "?ï¿½ï¿½ CRITICAL: Reconnection rate exceeded 50/min for 3 minutes (connection instability)",
         "action": "investigate_connection_stability",
         "severity": "critical"
       },
@@ -301,7 +301,7 @@
         "threshold": 30,
         "operator": "greaterThan",
         "duration": 180,
-        "message": "? ï? HIGH: Reconnection rate exceeded 30/min for 3 minutes",
+        "message": "?ï¿½ï¿½? HIGH: Reconnection rate exceeded 30/min for 3 minutes",
         "action": "monitor_connection_stability",
         "severity": "high"
       },
@@ -327,7 +327,7 @@
         "threshold": 50,
         "operator": "lessThan",
         "duration": 300,
-        "message": "?š¨ CRITICAL: System health score dropped below 50 for 5 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: System health score dropped below 50 for 5 minutes",
         "action": "emergency_investigation",
         "severity": "critical"
       },
@@ -336,7 +336,7 @@
         "threshold": 70,
         "operator": "lessThan",
         "duration": 300,
-        "message": "? ï? HIGH: System health score dropped below 70 for 5 minutes",
+        "message": "?ï¿½ï¿½? HIGH: System health score dropped below 70 for 5 minutes",
         "action": "investigate_system_issues",
         "severity": "high"
       },
@@ -360,7 +360,7 @@
         "threshold": "unhealthy",
         "operator": "equals",
         "duration": 60,
-        "message": "?š¨ CRITICAL: System status is UNHEALTHY for 1 minute",
+        "message": "?ï¿½ï¿½ CRITICAL: System status is UNHEALTHY for 1 minute",
         "action": "immediate_investigation",
         "severity": "critical"
       },
@@ -369,7 +369,7 @@
         "threshold": "degraded",
         "operator": "equals",
         "duration": 180,
-        "message": "? ï? HIGH: System status is DEGRADED for 3 minutes",
+        "message": "?ï¿½ï¿½? HIGH: System status is DEGRADED for 3 minutes",
         "action": "investigate_degradation",
         "severity": "high"
       }
@@ -386,7 +386,7 @@
         "threshold": 10,
         "operator": "greaterThan",
         "duration": 180,
-        "message": "?š¨ CRITICAL: ConversationRoom errors exceeded 10/min for 3 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: ConversationRoom errors exceeded 10/min for 3 minutes",
         "action": "investigate_durable_object_errors",
         "severity": "critical"
       },
@@ -395,7 +395,7 @@
         "threshold": 5,
         "operator": "greaterThan",
         "duration": 180,
-        "message": "? ï? HIGH: ConversationRoom errors exceeded 5/min for 3 minutes",
+        "message": "?ï¿½ï¿½? HIGH: ConversationRoom errors exceeded 5/min for 3 minutes",
         "action": "monitor_durable_objects",
         "severity": "high"
       }
@@ -410,7 +410,7 @@
         "threshold": 10,
         "operator": "greaterThan",
         "duration": 180,
-        "message": "?š¨ CRITICAL: MessageBroadcaster errors exceeded 10/min for 3 minutes",
+        "message": "?ï¿½ï¿½ CRITICAL: MessageBroadcaster errors exceeded 10/min for 3 minutes",
         "action": "investigate_broadcast_failures",
         "severity": "critical"
       }
@@ -493,9 +493,9 @@
   },
 
   "monitoringDashboards": {
-    "primary": "https://your-api-domain.example.com/websocket-monitoring",
-    "analytics": "https://your-api-domain.example.com/websocket-analytics",
-    "health": "https://your-api-domain.example.com/api/health/health"
+    "primary": "https://multi-channel.imfinethankyouandyou.com/websocket-monitoring",
+    "analytics": "https://multi-channel.imfinethankyouandyou.com/websocket-analytics",
+    "health": "https://multi-channel.imfinethankyouandyou.com/api/system/health"
   },
 
   "notes": [

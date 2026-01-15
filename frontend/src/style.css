@@ -35,7 +35,7 @@
   }
 
   /* Dark Mode Support (prepared for future use) */
-  [data-theme="dark"] {
+  [data-theme='dark'] {
     --background: 3 7 18;
     --foreground: 248 250 252;
     --card: 15 23 42;
@@ -121,14 +121,28 @@
   }
 
   .btn-success {
-    @apply bg-success-600 text-white border-success-600;
-    @apply hover:bg-success-700 hover:border-success-700;
+    @apply bg-success-600 text-white border-success-400;
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.2),
+      0 0 12px rgba(34, 197, 94, 0.3);
+    @apply hover:bg-success-700 hover:border-success-300;
+    @apply hover:shadow-[0_0_20px_rgba(34,197,94,0.5)];
+  }
+
+  .btn-warning {
+    @apply bg-warning-500 text-white border-warning-300;
+    box-shadow:
+      0 0 0 1px rgba(245, 158, 11, 0.2),
+      0 0 12px rgba(245, 158, 11, 0.3);
+    @apply hover:bg-warning-600 hover:border-warning-200;
+    @apply hover:shadow-[0_0_20px_rgba(245,158,11,0.5)];
   }
 
   .btn-danger {
-    @apply bg-danger-600 text-white border-danger-600;
-    @apply hover:bg-danger-700 hover:border-danger-700 hover:font-bold;
-    @apply hover:-translate-y-0.5 hover:shadow-lg;
+    @apply bg-danger-600 text-white border-danger-400;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2), 0 0 12px rgba(220, 38, 38, 0.3);
+    @apply hover:bg-danger-700 hover:border-danger-300 hover:font-bold;
+    @apply hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)];
     @apply active:translate-y-0 active:bg-danger-800 active:border-danger-800;
   }
 
@@ -358,7 +372,7 @@
     @apply bg-white/10 backdrop-blur-[10px] border border-white/20;
   }
 
-  [data-theme="dark"] .glass {
+  [data-theme='dark'] .glass {
     @apply bg-black/20 border-white/10;
   }
 
@@ -430,7 +444,7 @@ img {
   @apply h-auto;
 }
 
-img[loading="lazy"] {
+img[loading='lazy'] {
   @apply bg-gray-100;
 }
 
