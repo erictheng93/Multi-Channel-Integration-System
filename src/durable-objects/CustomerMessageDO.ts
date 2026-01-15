@@ -386,17 +386,27 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
               // 2. Add attachment messages
               if (linkedAttachments && linkedAttachments.length > 0) {
                 for (const attachment of linkedAttachments) {
+                  // 🔧 FIX: Use correct field names from database schema
+                  // Schema uses: fileUrl (not url), fileSize (not size)
+                  const attachmentUrl = attachment.fileUrl || attachment.url; // Fallback for legacy
+                  const attachmentSize = attachment.fileSize || attachment.size || 0;
+
+                  if (!attachmentUrl) {
+                    console.warn(`⚠️ [CustomerMessageDO] Attachment ${attachment.id} has no URL, skipping`);
+                    continue;
+                  }
+
                   const isImage = attachment.mimeType?.startsWith('image/');
                   if (isImage) {
                     // Use createImageMessage for images
-                    lineMessages.push(createImageMessage(attachment.url, attachment.url));
+                    lineMessages.push(createImageMessage(attachmentUrl, attachmentUrl));
                   } else {
                     // Use createFileFlexMessage for other files
                     lineMessages.push(createFileFlexMessage(
-                      attachment.url,
+                      attachmentUrl,
                       attachment.filename || 'file',
                       attachment.mimeType || '',
-                      attachment.size || 0
+                      attachmentSize
                     ));
                   }
                 }

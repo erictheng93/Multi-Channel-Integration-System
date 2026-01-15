@@ -1049,6 +1049,7 @@
     setReplyTo,
     clearReply,
     addFiles,  // 新增：供拖拽上傳使用
+    handleFilesDropped: addFiles,  // 🔧 FIX: 別名，供 ConversationDetail.vue 拖拽上傳使用
     focus: () => textareaRef.value?.focus(),
   })
 </script>
