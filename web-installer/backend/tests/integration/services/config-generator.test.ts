@@ -212,6 +212,35 @@ describe('ConfigGenerator Service - Integration Tests', () => {
       expect(backendLine).toContain('https://test.workers.dev');
       expect(wsLine).toContain('wss://test.workers.dev');
     });
+
+    it('should include VITE_LIFF_ID when lineLiffId is provided', () => {
+      const resources: CloudflareResources = {
+        workerUrl: 'https://test-crm.workers.dev',
+        pagesUrl: 'https://test-crm.pages.dev'
+      };
+      const configWithLiff: DeploymentConfig = {
+        ...mockConfig,
+        lineLiffId: '2008756115-vWtFyDMA'
+      };
+
+      const envConfig = generator.generateFrontendEnv(resources, configWithLiff);
+
+      expect(envConfig).toContain('VITE_LIFF_ID=2008756115-vWtFyDMA');
+      expect(envConfig).toContain('# ===== LINE LIFF Configuration =====');
+    });
+
+    it('should include empty VITE_LIFF_ID when lineLiffId is not provided', () => {
+      const resources: CloudflareResources = {
+        workerUrl: 'https://test-crm.workers.dev',
+        pagesUrl: 'https://test-crm.pages.dev'
+      };
+
+      const envConfig = generator.generateFrontendEnv(resources, mockConfig);
+
+      expect(envConfig).toContain('VITE_LIFF_ID=');
+      // Should still have the section header
+      expect(envConfig).toContain('# ===== LINE LIFF Configuration =====');
+    });
   });
 
   describe('Deployment Summary', () => {
