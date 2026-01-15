@@ -6,7 +6,7 @@
 import { Context } from 'hono';
 import { eq, and, ne, sql, desc } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { customers, conversations, messages, fileAttachments, qrCodes } from '../db/schema';
+import { customers, conversations, messages, fileAttachments, qrCodes, teams } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
 import type { 
@@ -882,6 +882,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     let assignedTeamId: number | null = null;
     let qrCodeToken: string | null = null;
     let existingConversation: any = null; // Declare at function scope for later use
+    let matchedRecentQR: { id: string; teamId: number } | null = null; // 用於後續更新使用次數
 
     // 嘗試從多種來源獲取追蹤參數
     // 方式 1: LINE 標準的 follow.param (如果可用)
@@ -902,93 +903,131 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       qrCodeToken: qrCodeToken ? qrCodeToken.substring(0, 10) + '...' : 'None'
     });
 
-    // Step 4: 如果有追蹤參數，查詢對應的 QR Code 並獲取團隊 ID
-    if (qrCodeToken) {
-      try {
-        const { QRCodeServiceImpl } = await import('../services/qrcode-service-impl');
-        const result = await QRCodeServiceImpl.handleQRCodeFollow(env.DB, {
-          type: 'follow',
-          source: { userId, type: 'user' },
-          follow: { param: qrCodeToken }
-        } as any);
+    // 🔧 優化：並行執行 Step 4, 5, 6 的團隊查找（從串行改為並行，減少 40-100ms 延遲）
+    const teamFindStartTime = Date.now();
 
-        if (result.autoAssigned && result.teamId) {
-          assignedTeamId = result.teamId;
-          console.log(`✅ [LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
-        }
-      } catch (qrError) {
-        log.warn('LINE Follow: QR code tracking failed', {
-          error: qrError instanceof Error ? qrError.message : String(qrError)
-        });
-      }
-    }
-
-    // Step 5: 🆕 優先查詢 customer_team_assignments 表（LIFF QR Code 系統）
-    if (!assignedTeamId) {
-      try {
-        const { customerTeamAssignments } = await import('../db/schema');
-        const assignment = await drizzleDb
-          .select()
-          .from(customerTeamAssignments)
-          .where(eq(customerTeamAssignments.platformUserId, userId))
-          .orderBy(desc(customerTeamAssignments.assignedAt))
-          .limit(1)
-          .get();
-
-        if (assignment) {
-          assignedTeamId = assignment.teamId;
-          console.log(`🎯 [LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
-            assignmentId: assignment.id,
-            source: assignment.source,
-            assignedAt: assignment.assignedAt
+    // 定義並行查找任務
+    const teamFindTasks = await Promise.all([
+      // Task 1 (原 Step 4): QR Code 追蹤參數查找
+      (async (): Promise<{ source: 'qr_token'; teamId: number } | null> => {
+        if (!qrCodeToken) return null;
+        try {
+          const { QRCodeServiceImpl } = await import('../services/qrcode-service-impl');
+          const result = await QRCodeServiceImpl.handleQRCodeFollow(env.DB, {
+            type: 'follow',
+            source: { userId, type: 'user' },
+            follow: { param: qrCodeToken }
+          } as any);
+          if (result.autoAssigned && result.teamId) {
+            return { source: 'qr_token', teamId: result.teamId };
+          }
+        } catch (qrError) {
+          log.warn('LINE Follow: QR code tracking failed', {
+            error: qrError instanceof Error ? qrError.message : String(qrError)
           });
         }
-      } catch (assignmentError) {
-        log.warn('LINE Follow: Failed to query customer_team_assignments', {
-          error: assignmentError instanceof Error ? assignmentError.message : String(assignmentError)
-        });
-      }
-    }
+        return null;
+      })(),
 
-    // Step 6: 如果沒有找到預先分配，嘗試匹配最近建立的 QR Code
-    if (!assignedTeamId) {
-      try {
-        // 查找過去 5 分鐘內建立的活躍 QR Code (用於測試/示範)
-        // 實際環境中可能需要更精確的匹配邏輯
-        const recentQRCodes = await drizzleDb
-          .select()
-          .from(qrCodes)
-          .where(eq(qrCodes.isActive, true))
-          .orderBy(desc(qrCodes.createdAt))
-          .limit(1)
-          .all();
-
-        if (recentQRCodes.length > 0 && recentQRCodes[0]) {
-          const recentQR = recentQRCodes[0];
-          // 只有在 QR Code 是最近 5 分鐘內建立的才使用
-          const qrCreatedAt = recentQR.createdAt ? new Date(recentQR.createdAt).getTime() : 0;
-          const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-
-          if (qrCreatedAt > fiveMinutesAgo && recentQR.teamId) {
-            assignedTeamId = recentQR.teamId;
-            console.log(`📋 [LINE Follow] 匹配到最近的 QR Code，指派到團隊: ${assignedTeamId}`);
-
-            // 增加 QR Code 使用次數
-            await drizzleDb
-              .update(qrCodes)
-              .set({
-                usageCount: sql`${qrCodes.usageCount} + 1`,
-                updatedAt: new Date().toISOString()
-              })
-              .where(eq(qrCodes.id, recentQR.id));
+      // Task 2 (原 Step 5): customer_team_assignments 表查找（優先級最高）
+      (async (): Promise<{ source: 'assignment'; teamId: number; assignmentId: string; assignmentSource: string; assignedAt: string } | null> => {
+        try {
+          const { customerTeamAssignments } = await import('../db/schema');
+          const assignment = await drizzleDb
+            .select()
+            .from(customerTeamAssignments)
+            .where(eq(customerTeamAssignments.platformUserId, userId))
+            .orderBy(desc(customerTeamAssignments.assignedAt))
+            .limit(1)
+            .get();
+          if (assignment) {
+            return {
+              source: 'assignment',
+              teamId: assignment.teamId,
+              assignmentId: assignment.id,
+              assignmentSource: assignment.source || 'unknown',
+              assignedAt: assignment.assignedAt || ''
+            };
           }
+        } catch (assignmentError) {
+          log.warn('LINE Follow: Failed to query customer_team_assignments', {
+            error: assignmentError instanceof Error ? assignmentError.message : String(assignmentError)
+          });
         }
-      } catch (matchError) {
-        log.warn('LINE Follow: Recent QR code matching failed', {
-          error: matchError instanceof Error ? matchError.message : String(matchError)
+        return null;
+      })(),
+
+      // Task 3 (原 Step 6): 最近 QR Code 匹配（作為 fallback）
+      (async (): Promise<{ source: 'recent_qr'; teamId: number; qrCodeId: string } | null> => {
+        try {
+          const recentQRCodes = await drizzleDb
+            .select()
+            .from(qrCodes)
+            .where(eq(qrCodes.isActive, true))
+            .orderBy(desc(qrCodes.createdAt))
+            .limit(1)
+            .all();
+
+          if (recentQRCodes.length > 0 && recentQRCodes[0]) {
+            const recentQR = recentQRCodes[0];
+            const qrCreatedAt = recentQR.createdAt ? new Date(recentQR.createdAt).getTime() : 0;
+            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+
+            if (qrCreatedAt > fiveMinutesAgo && recentQR.teamId) {
+              return { source: 'recent_qr', teamId: recentQR.teamId, qrCodeId: recentQR.id };
+            }
+          }
+        } catch (matchError) {
+          log.warn('LINE Follow: Recent QR code matching failed', {
+            error: matchError instanceof Error ? matchError.message : String(matchError)
+          });
+        }
+        return null;
+      })()
+    ]);
+
+    const [qrTokenResult, assignmentResult, recentQRResult] = teamFindTasks;
+
+    // 按優先級選擇結果：assignment > qr_token > recent_qr
+    if (assignmentResult) {
+      assignedTeamId = assignmentResult.teamId;
+      console.log(`🎯 [LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
+        assignmentId: assignmentResult.assignmentId,
+        source: assignmentResult.assignmentSource,
+        assignedAt: assignmentResult.assignedAt
+      });
+    } else if (qrTokenResult) {
+      assignedTeamId = qrTokenResult.teamId;
+      console.log(`✅ [LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
+    } else if (recentQRResult) {
+      assignedTeamId = recentQRResult.teamId;
+      matchedRecentQR = { id: recentQRResult.qrCodeId, teamId: recentQRResult.teamId };
+      console.log(`📋 [LINE Follow] 匹配到最近的 QR Code，指派到團隊: ${assignedTeamId}`);
+    }
+
+    // 如果使用了 recent_qr 匹配，更新 QR Code 使用次數
+    if (matchedRecentQR) {
+      try {
+        await drizzleDb
+          .update(qrCodes)
+          .set({
+            usageCount: sql`${qrCodes.usageCount} + 1`,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(qrCodes.id, matchedRecentQR.id));
+      } catch (updateError) {
+        log.warn('LINE Follow: Failed to update QR code usage count', {
+          error: updateError instanceof Error ? updateError.message : String(updateError)
         });
       }
     }
+
+    const teamFindDuration = Date.now() - teamFindStartTime;
+    console.log(`⚡ [LINE Follow] 團隊查找完成 (並行優化)`, {
+      duration: `${teamFindDuration}ms`,
+      assignedTeamId,
+      source: assignmentResult ? 'assignment' : qrTokenResult ? 'qr_token' : recentQRResult ? 'recent_qr' : 'none'
+    });
 
     const timestamp = new Date().toISOString();
 
@@ -1104,6 +1143,25 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       }
     }
 
+    // 🔧 優化：統一查詢團隊資訊（避免 Step 10 和 Step 11 重複查詢）
+    let teamInfo: { id: number; name: string } | null = null;
+    if (assignedTeamId) {
+      try {
+        const teamResult = await drizzleDb
+          .select({ id: teams.id, name: teams.name })
+          .from(teams)
+          .where(eq(teams.id, assignedTeamId))
+          .get();
+        if (teamResult) {
+          teamInfo = teamResult;
+        }
+      } catch (teamQueryError) {
+        log.warn('LINE Follow: Failed to fetch team info', {
+          error: teamQueryError instanceof Error ? teamQueryError.message : String(teamQueryError)
+        });
+      }
+    }
+
     // Step 9: 記錄活動
     try {
       const activityService = new ActivityService(env.DB);
@@ -1137,25 +1195,9 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       source: qrCodeToken ? 'qr_code' : 'direct'
     });
 
-    // 🆕 Step 10: 觸發新客戶加入通知
+    // 🆕 Step 10: 觸發新客戶加入通知（使用已查詢的 teamInfo，避免重複查詢）
     try {
       const { triggerCustomerFollowedNotification } = await import('../utils/notification-trigger');
-
-      // 獲取團隊名稱（如果有）
-      let teamName: string | undefined;
-      if (assignedTeamId) {
-        try {
-          const { teams } = await import('../db/schema');
-          const team = await drizzleDb
-            .select()
-            .from(teams)
-            .where(eq(teams.id, assignedTeamId))
-            .get();
-          teamName = team?.name;
-        } catch (teamError) {
-          console.warn('Failed to fetch team name:', teamError);
-        }
-      }
 
       // 觸發通知給管理員或團隊成員
       await triggerCustomerFollowedNotification(env, {
@@ -1163,7 +1205,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         platform: 'LINE',
         source: qrCodeToken ? 'qr_code' : 'direct',
         teamId: assignedTeamId || undefined,
-        teamName,
+        teamName: teamInfo?.name,  // 🔧 優化：使用已查詢的 teamInfo
         conversationId: existingConversation?.id
       });
 
@@ -1175,19 +1217,11 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       // 不要讓通知失敗影響主流程
     }
 
-    // 🆕 Step 11: 發送歡迎訊息
+    // 🆕 Step 11: 發送歡迎訊息（使用已查詢的 teamInfo，避免重複查詢）
     if (event.replyToken && assignedTeamId) {
       try {
-        const { teams } = await import('../db/schema');
-
-        // 獲取團隊名稱
-        const team = await drizzleDb
-          .select()
-          .from(teams)
-          .where(eq(teams.id, assignedTeamId))
-          .get();
-
-        const teamName = team?.name || '我們的團隊';
+        // 🔧 優化：直接使用已查詢的 teamInfo，不再重複查詢 teams 表
+        const teamName = teamInfo?.name || '我們的團隊';
         const welcomeMessage = `🎉 歡迎加入 ${teamName}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
 
         // 使用 LINE Messaging API 發送歡迎訊息
