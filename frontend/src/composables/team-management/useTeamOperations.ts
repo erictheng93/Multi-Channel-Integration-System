@@ -14,6 +14,7 @@ import { ref, reactive, computed, type Ref } from 'vue'
 import { useTeamStore } from '@/stores/team'
 import { useQRCodeStore } from '@/stores/qrcode'
 import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { teamApi } from '@/api/team'
 import type { TeamMember } from '@/types'
 
@@ -103,6 +104,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
   const teamStore = useTeamStore()
   const qrCodeStore = useQRCodeStore()
   const { showSuccess, showError } = useToast()
+  const { showDanger } = useConfirmDialog()
 
   // ==================== Add Team Modal ====================
 
@@ -524,9 +526,23 @@ export function useTeamOperations(): UseTeamOperationsReturn {
   }
 
   /**
-   * 移除团队
+   * 移除团队（带确认弹窗）
    */
   async function removeTeam(team: Team) {
+    // 顯示確認彈窗
+    const confirmed = await showDanger(
+      '確認刪除團隊',
+      `您確定要刪除團隊「${team.name}」嗎？\n\n此操作將會：\n• 永久刪除此團隊\n• 團隊中的成員將變為未分配狀態\n\n⚠️ 此操作無法復原`,
+      {
+        confirmText: '確認刪除',
+        cancelText: '取消'
+      }
+    )
+
+    if (!confirmed) {
+      return
+    }
+
     try {
       await teamApi.deleteTeam(team.id)
       // 从列表中移除

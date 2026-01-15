@@ -58,22 +58,22 @@
       @click.stop
     >
       <button
-        class="btn btn-sm"
-        :class="member.status === 'active' ? 'btn-warning' : 'btn-success'"
+        class="btn"
+        :class="member.status === 'active' ? 'btn-danger' : 'btn-success'"
         :disabled="isCurrentUser || loading"
         @click="$emit('toggleStatus', member)"
       >
         {{ member.status === 'active' ? '停用' : '啟用' }}
       </button>
       <button
-        class="btn btn-sm btn-secondary"
+        class="btn btn-secondary"
         :disabled="loading"
         @click="$emit('resetPassword', member)"
       >
         重設密碼
       </button>
       <button
-        class="btn btn-sm btn-danger"
+        class="btn btn-danger"
         :disabled="isCurrentUser || loading"
         @click="$emit('removeMember', member)"
       >

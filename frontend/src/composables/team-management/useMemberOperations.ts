@@ -13,6 +13,7 @@
 import { ref, reactive, computed, type Ref, type ComputedRef } from 'vue'
 import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { ROLES } from '@/constants/roles'
 import type { TeamMember } from '@/types'
 
@@ -80,6 +81,7 @@ export interface UseMemberOperationsReturn {
 export function useMemberOperations(): UseMemberOperationsReturn {
   const teamStore = useTeamStore()
   const { showSuccess, showError } = useToast()
+  const { showDanger } = useConfirmDialog()
 
   // ==================== Add Member Modal ====================
 
@@ -291,14 +293,30 @@ export function useMemberOperations(): UseMemberOperationsReturn {
   }
 
   /**
-   * 移除成员
+   * 移除成员（带确认弹窗）
    */
   async function removeMember(member: TeamMember) {
+    const memberName = member.name || member.loginId
+
+    // 顯示確認彈窗
+    const confirmed = await showDanger(
+      '確認移除成員',
+      `您確定要移除成員「${memberName}」嗎？\n\n此操作將會：\n• 將該成員從團隊中移除\n• 該成員將無法處理此團隊的客戶對話`,
+      {
+        confirmText: '確認移除',
+        cancelText: '取消'
+      }
+    )
+
+    if (!confirmed) {
+      return
+    }
+
     try {
       await teamStore.removeMember(member.id)
       showSuccess(
         '移除成員成功',
-        `已成功移除成員 ${member.name || member.loginId}`
+        `已成功移除成員 ${memberName}`
       )
     } catch (error) {
       console.error('移除成員失敗:', error)

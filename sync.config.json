@@ -114,9 +114,9 @@
     "channels": {
       "email": {
         "enabled": false,
-        "recipients": ["admin@example.com"],
+        "recipients": ["YOUR_ADMIN_EMAIL@YOUR_DOMAIN.com"],
         "smtp": {
-          "host": "smtp.example.com",
+          "host": "YOUR_SMTP_HOST.com",
           "port": 587,
           "secure": true,
           "auth": {

@@ -142,7 +142,8 @@
       "Bash(git -C \"D:\\Code\\Multi_Channel_Integration_System\" log --oneline -3)",
       "Bash(npm install:*)",
       "Bash(npx vue-tsc:*)",
-      "mcp__chrome-devtools__press_key"
+      "mcp__chrome-devtools__press_key",
+      "Bash(typescript-language-server:*)"
     ],
     "deny": [],
     "ask": [],

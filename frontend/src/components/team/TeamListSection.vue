@@ -54,8 +54,6 @@
           :team="team"
           :loading="loading"
           @toggle-status="(team) => emit('toggle-status', team)"
-          @view-qr="(team) => emit('view-qr', team)"
-          @prefetch-qr="(team) => emit('prefetch-qr', team)"
           @remove-team="(team) => emit('remove-team', team)"
           @member-updated="emit('member-updated')"
           @team-updated="emit('team-updated')"
@@ -82,8 +80,6 @@ interface Props {
 interface Emits {
   (_e: 'add-team'): void
   (_e: 'toggle-status', _team: Team): void
-  (_e: 'view-qr', _team: Team): void
-  (_e: 'prefetch-qr', _team: Team): void
   (_e: 'remove-team', _team: Team): void
   (_e: 'member-updated'): void
   (_e: 'team-updated'): void
