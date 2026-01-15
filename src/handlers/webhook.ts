@@ -1162,6 +1162,68 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       }
     }
 
+    // 🆕 Step 8.5: 廣播自動指派事件到 WebSocket（實時更新前端 UI）
+    if (assignedTeamId && existingCustomer) {
+      // 確定對話 ID（新創建的或已存在的）
+      let broadcastConversationId: string | null = null;
+
+      if (!existingConversation) {
+        // 新創建的對話需要重新查詢獲取 ID
+        const newConv = await drizzleDb
+          .select({ id: conversations.id })
+          .from(conversations)
+          .where(and(
+            eq(conversations.customerId, existingCustomer.id),
+            eq(conversations.assignedTeamId, assignedTeamId)
+          ))
+          .orderBy(desc(conversations.createdAt))
+          .limit(1)
+          .get();
+        broadcastConversationId = newConv?.id || null;
+      } else {
+        broadcastConversationId = existingConversation.id;
+      }
+
+      if (broadcastConversationId) {
+        try {
+          const { WebSocketBroadcastService } = await import('../services/websocket-broadcast-service');
+          const broadcastService = new WebSocketBroadcastService(env);
+
+          await broadcastService.broadcastConversationEvent({
+            type: 'conversation_assigned',
+            conversationId: broadcastConversationId,
+            data: {
+              assignedTeamId,
+              assignedTeamName: teamInfo?.name || null,
+              assignedUserId: null,
+              assignedAgentName: null,
+              assignedBy: {
+                id: 'system',
+                name: 'Auto-Assignment',
+                role: 'system'
+              },
+              reason: 'QR Code Follow - Auto Assignment',
+              timestamp
+            },
+            priority: 'normal'
+          });
+
+          console.log('✅ [LINE Follow] WebSocket broadcast sent for auto-assignment:', {
+            conversationId: broadcastConversationId,
+            teamId: assignedTeamId,
+            teamName: teamInfo?.name
+          });
+        } catch (broadcastError) {
+          log.warn('LINE Follow: WebSocket broadcast failed (non-blocking)', {
+            error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError),
+            conversationId: broadcastConversationId,
+            teamId: assignedTeamId
+          });
+          // 不要讓廣播失敗影響主流程
+        }
+      }
+    }
+
     // Step 9: 記錄活動
     try {
       const activityService = new ActivityService(env.DB);
