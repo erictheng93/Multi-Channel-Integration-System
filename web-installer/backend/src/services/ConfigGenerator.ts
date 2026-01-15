@@ -149,6 +149,9 @@ VITE_WEBSOCKET_URL=${wsUrl}/ws
 # ===== Environment =====
 VITE_ENVIRONMENT=production
 
+# ===== LINE LIFF Configuration =====
+VITE_LIFF_ID=${config.lineLiffId || ''}
+
 # ===== Backward Compatibility (Legacy) =====
 VITE_API_BASE_URL=${backendUrl}
 VITE_WS_BASE_URL=${wsUrl}
