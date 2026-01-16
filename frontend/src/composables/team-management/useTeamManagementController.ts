@@ -20,8 +20,11 @@ import { useTeamStats, type TeamStatsData } from './useTeamStats'
 import {
   useMemberListSorting,
   useTeamListSorting,
+  useMemberSortMode,
+  useTeamSortMode,
   type SortState,
   type SortOption,
+  type SortMode,
   type MemberSortField,
   type TeamSortField
 } from '@/composables/useListSorting'
@@ -50,6 +53,15 @@ export interface ListSortingControls<T extends string> {
   toggleSortOrder: () => void
 }
 
+// Sort Mode Types
+export interface SortModeControls {
+  sortMode: Ref<SortMode>
+  customOrder: Ref<string[]>
+  isCustomMode: ComputedRef<boolean>
+  setSortMode: (mode: SortMode) => void
+  updateCustomOrder: (ids: string[]) => void
+}
+
 export interface UseTeamManagementControllerReturn {
   // Global State
   loading: ComputedRef<boolean>
@@ -60,6 +72,10 @@ export interface UseTeamManagementControllerReturn {
   // Sorting Controls
   memberSorting: ListSortingControls<MemberSortField>
   teamSorting: ListSortingControls<TeamSortField>
+
+  // Sort Mode Controls
+  memberSortMode: SortModeControls
+  teamSortMode: SortModeControls
 
   // Sub-Controllers
   member: UseMemberOperationsReturn
@@ -123,6 +139,14 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
   // 团队列表排序（含 localStorage 持久化）
   const teamSortingOps = useTeamListSorting()
 
+  // ==================== Sort Mode ====================
+
+  // 成员排序模式（自动/自定）
+  const memberSortModeOps = useMemberSortMode()
+
+  // 团队排序模式（自动/自定）
+  const teamSortModeOps = useTeamSortMode()
+
   // ==================== Global State ====================
 
   /**
@@ -133,10 +157,18 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
   /**
    * 团队列表（响应式）
    * 使用 computed 确保数据是最新的，并且与 Store 同步
-   * 应用前端排序
+   * 根据排序模式应用自动排序或自定顺序
    */
   const teams = computed(() => {
-    return teamSortingOps.sortFn(teamStore.teams, (team, field) => {
+    const rawTeams = teamStore.teams
+
+    // 自定排序模式：使用用户自定义的顺序
+    if (teamSortModeOps.isCustomMode.value) {
+      return teamSortModeOps.applyCustomOrder(rawTeams)
+    }
+
+    // 自动排序模式：使用字段排序
+    return teamSortingOps.sortFn(rawTeams, (team, field) => {
       switch (field) {
         case 'createdAt': return team.createdAt
         case 'name': return team.name
@@ -150,6 +182,7 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
   /**
    * 成员列表（响应式）
    * 系统管理员固定在顶部，其餘應用排序
+   * 根据排序模式应用自动排序或自定顺序
    */
   const members = computed(() => {
     const allMembers = teamStore.members
@@ -176,17 +209,25 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
       ))
     )
 
-    // 對其他成員進行排序
-    const sortedOtherMembers = memberSortingOps.sortFn(otherMembers, (member, field) => {
-      switch (field) {
-        case 'createdAt': return member.createdAt
-        case 'name': return member.name || member.loginId
-        case 'email': return member.email
-        case 'role': return member.role
-        case 'isActive': return member.status === 'active'
-        default: return member.createdAt
-      }
-    })
+    // 根据排序模式对其他成员进行排序
+    let sortedOtherMembers: TeamMember[]
+
+    if (memberSortModeOps.isCustomMode.value) {
+      // 自定排序模式：使用用户自定义的顺序
+      sortedOtherMembers = memberSortModeOps.applyCustomOrder(otherMembers)
+    } else {
+      // 自动排序模式：使用字段排序
+      sortedOtherMembers = memberSortingOps.sortFn(otherMembers, (member, field) => {
+        switch (field) {
+          case 'createdAt': return member.createdAt
+          case 'name': return member.name || member.loginId
+          case 'email': return member.email
+          case 'role': return member.role
+          case 'isActive': return member.status === 'active'
+          default: return member.createdAt
+        }
+      })
+    }
 
     // 系統管理員固定在頂部
     return systemAdmin ? [systemAdmin, ...sortedOtherMembers] : sortedOtherMembers
@@ -270,6 +311,22 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
       currentSortLabel: teamSortingOps.currentSortLabel,
       setSortField: teamSortingOps.setSortField,
       toggleSortOrder: teamSortingOps.toggleSortOrder
+    },
+
+    // Sort Mode Controls
+    memberSortMode: {
+      sortMode: memberSortModeOps.sortMode,
+      customOrder: memberSortModeOps.customOrder,
+      isCustomMode: memberSortModeOps.isCustomMode,
+      setSortMode: memberSortModeOps.setSortMode,
+      updateCustomOrder: memberSortModeOps.updateCustomOrder
+    },
+    teamSortMode: {
+      sortMode: teamSortModeOps.sortMode,
+      customOrder: teamSortModeOps.customOrder,
+      isCustomMode: teamSortModeOps.isCustomMode,
+      setSortMode: teamSortModeOps.setSortMode,
+      updateCustomOrder: teamSortModeOps.updateCustomOrder
     },
 
     // Sub-Controllers

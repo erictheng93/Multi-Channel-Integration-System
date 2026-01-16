@@ -33,6 +33,7 @@
         :sort-options="memberSorting.sortOptions"
         :sort-state="memberSorting.sortState.value"
         :current-sort-label="memberSorting.currentSortLabel.value"
+        :sort-mode="memberSortMode.sortMode.value"
         @add-member="controller.member.openAddMemberModal"
         @update-role="controller.member.updateMemberRole"
         @toggle-status="controller.member.toggleMemberStatus"
@@ -40,6 +41,8 @@
         @remove-member="controller.member.removeMember"
         @sort-change="(field: string) => memberSorting.setSortField(field as any)"
         @sort-toggle="memberSorting.toggleSortOrder"
+        @sort-mode-change="memberSortMode.setSortMode"
+        @custom-order-change="memberSortMode.updateCustomOrder"
       />
 
       <!-- Team Management Section -->
@@ -49,6 +52,7 @@
         :sort-options="teamSorting.sortOptions"
         :sort-state="teamSorting.sortState.value"
         :current-sort-label="teamSorting.currentSortLabel.value"
+        :sort-mode="teamSortMode.sortMode.value"
         @add-team="controller.team.openAddTeamModal"
         @toggle-status="controller.team.toggleTeamStatus"
         @remove-team="controller.team.removeTeam"
@@ -56,6 +60,8 @@
         @team-updated="controller.refresh"
         @sort-change="(field: string) => teamSorting.setSortField(field as any)"
         @sort-toggle="teamSorting.toggleSortOrder"
+        @sort-mode-change="teamSortMode.setSortMode"
+        @custom-order-change="teamSortMode.updateCustomOrder"
       />
 
       <!-- Modals -->
@@ -141,7 +147,7 @@ const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.currentAgent?.id)
 
 // Extract state from controller
-const { loading, teams, members, stats, memberSorting, teamSorting } = controller
+const { loading, teams, members, stats, memberSorting, teamSorting, memberSortMode, teamSortMode } = controller
 
 // ==================== Lifecycle ====================
 
