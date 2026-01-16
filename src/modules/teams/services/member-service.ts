@@ -4,7 +4,19 @@
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, or, desc, sql, ne } from 'drizzle-orm';
-import { agents, messages, delayedMessages } from '@/db/schema';
+import {
+  agents,
+  messages,
+  delayedMessages,
+  notifications,
+  tags,
+  customerTags,
+  conversationTags,
+  messageRecallLogs,
+  conversationTransfers,
+  fileAttachments,
+  activities
+} from '@/db/schema';
 import { hashPassword } from '@/utils/auth';
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
@@ -208,25 +220,92 @@ export class MemberService {
   /**
    * 刪除成員
    *
-   * 處理外鍵約束：
-   * 1. 將 messages.agentSenderId 設為 null（保留訊息歷史）
-   * 2. 刪除 delayedMessages 中的待發訊息
-   * 3. agent_teams 會自動級聯刪除（onDelete: cascade）
-   * 4. 最後刪除成員帳號
+   * 處理外鍵約束（依順序處理所有引用 agents 表的外鍵）：
+   * 1. 刪除 notifications（用戶刪除後通知無意義）
+   * 2. 將 messages.agentSenderId 設為 null（保留訊息歷史）
+   * 3. 刪除 delayedMessages 中的待發訊息
+   * 4. 將 messageRecallLogs.userId 設為 null（保留撤回記錄）
+   * 5. 將 fileAttachments.uploadedBy 設為 null（保留附件記錄）
+   * 6. 將 tags.createdBy 設為 null（保留標籤）
+   * 7. 將 customerTags.assignedBy 設為 null（保留標籤關聯）
+   * 8. 將 conversationTags.assignedBy 設為 null（保留標籤關聯）
+   * 9. 將 conversationTransfers 相關欄位設為 null（保留轉移記錄）
+   * 10. 將 activities.userId 設為 null（保留審計記錄）
+   * 11. agent_teams 會自動級聯刪除（onDelete: cascade）
+   * 12. task_reminders 會自動級聯刪除（onDelete: cascade）
+   * 13. 最後刪除成員帳號
    */
   async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
-    // Step 1: 將該成員發送的訊息的 agentSenderId 設為 null（保留訊息歷史）
+    // Step 1: 刪除該成員的通知（用戶刪除後通知無意義）
+    await this.db
+      .delete(notifications)
+      .where(eq(notifications.userId, memberId));
+
+    // Step 2: 將該成員發送的訊息的 agentSenderId 設為 null（保留訊息歷史）
     await this.db
       .update(messages)
       .set({ agentSenderId: null })
       .where(eq(messages.agentSenderId, memberId));
 
-    // Step 2: 刪除該成員的待發延遲訊息
+    // Step 3: 刪除該成員的待發延遲訊息
     await this.db
       .delete(delayedMessages)
       .where(eq(delayedMessages.agentId, memberId));
 
-    // Step 3: 刪除成員帳號（agent_teams 會自動級聯刪除）
+    // Step 4: 將訊息撤回記錄的 userId 設為 'deleted-user'（保留撤回記錄）
+    await this.db
+      .update(messageRecallLogs)
+      .set({ userId: 'deleted-user' })
+      .where(eq(messageRecallLogs.userId, memberId));
+
+    // Step 5: 將附件上傳者設為 null（保留附件記錄）
+    await this.db
+      .update(fileAttachments)
+      .set({ uploadedBy: null })
+      .where(eq(fileAttachments.uploadedBy, memberId));
+
+    // Step 6: 將標籤建立者設為 'deleted-user'（保留標籤）
+    await this.db
+      .update(tags)
+      .set({ createdBy: 'deleted-user' })
+      .where(eq(tags.createdBy, memberId));
+
+    // Step 7: 將客戶標籤指派者設為 'deleted-user'（保留標籤關聯）
+    await this.db
+      .update(customerTags)
+      .set({ assignedBy: 'deleted-user' })
+      .where(eq(customerTags.assignedBy, memberId));
+
+    // Step 8: 將對話標籤指派者設為 'deleted-user'（保留標籤關聯）
+    await this.db
+      .update(conversationTags)
+      .set({ assignedBy: 'deleted-user' })
+      .where(eq(conversationTags.assignedBy, memberId));
+
+    // Step 9: 將對話轉移記錄相關欄位設為 null（保留轉移記錄）
+    await this.db
+      .update(conversationTransfers)
+      .set({ fromUserId: null })
+      .where(eq(conversationTransfers.fromUserId, memberId));
+
+    await this.db
+      .update(conversationTransfers)
+      .set({ toUserId: null })
+      .where(eq(conversationTransfers.toUserId, memberId));
+
+    await this.db
+      .update(conversationTransfers)
+      .set({ transferredBy: 'deleted-user' })
+      .where(eq(conversationTransfers.transferredBy, memberId));
+
+    // Step 10: 將活動記錄的 userId 設為 'deleted-user'（保留審計記錄）
+    await this.db
+      .update(activities)
+      .set({ userId: 'deleted-user' })
+      .where(eq(activities.userId, memberId));
+
+    // Step 11: 刪除成員帳號
+    // (agent_teams 和 task_reminders 會自動級聯刪除)
     await this.db
       .delete(agents)
       .where(eq(agents.id, memberId));
