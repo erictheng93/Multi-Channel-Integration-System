@@ -18,7 +18,7 @@ import { eq, and, inArray, like, count, or, lte, gte, aliasedTable } from 'drizz
 import * as schema from '../db/schema';
 import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
-import { messages, conversations, customers, agents, teams } from '../db/schema';
+import { messages, conversations, customers, agents, teams, fileAttachments } from '../db/schema';
 import { logger } from '../utils/logger';
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 
@@ -83,19 +83,61 @@ export const messageHandler = {
 
             const total = totalResult?.total || 0;
 
-            // ✅ 類型安全的數據轉換
+            // 🆕 查詢所有訊息的 file_attachments（修復 Flex Card 顯示問題）
+            const messageIds = messagesWithSender.map(m => m.id);
+            let attachmentsMap: Map<string, Array<{
+                id: string;
+                filename: string;
+                mimeType: string;
+                fileSize: number;
+                fileUrl: string | null;
+                r2Key: string;
+            }>> = new Map();
+
+            if (messageIds.length > 0) {
+                const attachmentsResult = await db.select({
+                    id: schema.fileAttachments.id,
+                    messageId: schema.fileAttachments.messageId,
+                    filename: schema.fileAttachments.filename,
+                    mimeType: schema.fileAttachments.mimeType,
+                    fileSize: schema.fileAttachments.fileSize,
+                    fileUrl: schema.fileAttachments.fileUrl,
+                    r2Key: schema.fileAttachments.r2Key,
+                })
+                .from(schema.fileAttachments)
+                .where(inArray(schema.fileAttachments.messageId, messageIds));
+
+                // 按 messageId 分組
+                for (const att of attachmentsResult) {
+                    if (!att.messageId) continue;
+                    const existing = attachmentsMap.get(att.messageId) || [];
+                    existing.push({
+                        id: att.id,
+                        filename: att.filename,
+                        mimeType: att.mimeType,
+                        fileSize: att.fileSize,
+                        fileUrl: att.fileUrl,
+                        r2Key: att.r2Key,
+                    });
+                    attachmentsMap.set(att.messageId, existing);
+                }
+            }
+
+            // ✅ 類型安全的數據轉換（包含 file_attachments）
             const items: Message[] = messagesWithSender.map(row => ({
                 id: row.id,
                 conversationId: row.conversationId,
                 senderType: row.senderType === 'customer' ? 'user' as const : 'agent' as const,
-                senderId: row.senderType === 'customer' 
-                    ? row.customerSenderId?.toString() || '' 
+                senderId: row.senderType === 'customer'
+                    ? row.customerSenderId?.toString() || ''
                     : row.agentSenderId || '',
                 content: row.content,
                 mediaUrl: '', // 需要從 metadata 或其他表獲取
                 mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
                 platform: 'line' as const, // 需要從 conversation->customer 獲取
-                createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now()
+                createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
+                // 🆕 加入 file_attachments 以支援 Flex Card 顯示
+                file_attachments: attachmentsMap.get(row.id) || undefined
             }));
 
             // 🚀 WebSocket Broadcasting: Typing Indicator (if applicable)
