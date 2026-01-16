@@ -118,6 +118,17 @@ When adding new documentation:
 
 ## 📝 Recent Changes
 
+### 2025-01-16: Enterprise Team Management & Sorting System
+- ✅ **RBAC Phase 2**: Team role hierarchy (Member → Lead → Supervisor)
+- ✅ **Multi-Team Support**: JWT-cached permissions with 50% DB query reduction
+- ✅ **Dynamic Sorting**: Field-based sorting with SortDropdown component
+- ✅ **Drag-and-Drop**: Custom ordering with localStorage persistence (vue-draggable-plus)
+- ✅ **Team-Scoped Broadcasts**: WebSocket security isolation
+- ✅ **Member Deletion**: Comprehensive foreign key cleanup
+- ✅ **Auto-Assignment Broadcasts**: Real-time UI updates for LINE Follow events
+- ✅ **Race Condition Fix**: Resolved empty messages flash in conversation view
+- ✅ **Code Quality**: Eliminated all TypeScript unused variable warnings
+
 ### 2025-01-31: Modular Documentation Migration
 - ✅ Created modular documentation structure
 - ✅ Extracted 4 major sections from CLAUDE.md

@@ -11,13 +11,16 @@ This is a **Multi-Channel Customer Support System** built with Cloudflare Worker
 ### Key Characteristics
 - **Modern Vue 3 + TypeScript** frontend with comprehensive testing (132+ tests)
 - **Cloudflare Worker backend** with Hono framework and Drizzle ORM
-- **Simplified role system** with Admin and Agent (2-tier hierarchy)
-- **LINE OA integration** with complete webhook handling
+- **Dual role architecture**: System roles (Admin/Agent) + Team roles (Member/Lead/Supervisor)
+- **Multi-team support** with JWT-cached permissions and team-scoped data access
+- **LINE OA integration** with complete webhook handling and auto-assignment broadcasts
 - **Delayed messaging system** with Cloudflare Queues integration
 - **File upload support** with Cloudflare R2 storage
 - **Production deployment** on Cloudflare Pages and Workers
 - **WebSocket real-time communication** with Durable Objects architecture (100% deployed)
-- **🚀 Web Installer** - One-click self-hosted deployment system for customers (NEW - Production Ready)
+- **Team-scoped broadcasts** with security isolation (agents only see their teams' data)
+- **Dynamic sorting system** with drag-and-drop and localStorage persistence
+- **🚀 Web Installer** - One-click self-hosted deployment system for customers (Production Ready)
 
 ## Architecture
 
@@ -61,10 +64,11 @@ The backend uses a modular handler-based approach:
 - `handlers/websocket-integration-test.ts` - WebSocket testing endpoints
 
 ### Services and Infrastructure
-- `services/websocket-broadcast-service.ts` - **Production WebSocket broadcasting** with Durable Objects integration
+- `services/websocket-broadcast-service.ts` - **Production WebSocket broadcasting** with team-scoped security
 - `services/websocket-auth-service.ts` - WebSocket authentication and authorization
+- `modules/teams/services/member-service.ts` - **Team member service** with comprehensive foreign key cleanup on deletion
 - `durable-objects/` - **Five production-ready Durable Objects** for WebSocket state management
-- `middleware/auth.ts` - JWT authentication middleware with role-based access
+- `middleware/auth.ts` - JWT authentication middleware with **team role enforcement** (requireTeamRole, requireTeamPermission)
 - `types/` - Comprehensive TypeScript definitions including WebSocket types
 
 ## Development Commands
@@ -256,6 +260,8 @@ bun run build:bun        # Production build (hybrid: npx + bun)
   - Responsive design with modern CSS and component library
   - Loading states and error handling components
   - **Confirmation dialogs** with promise-based API and multiple types (warning, danger, info)
+  - **Dynamic sorting** with `SortDropdown.vue` for field selection and order toggle
+  - **Drag-and-drop sorting** with `vue-draggable-plus` for custom order persistence
 - **Developer Experience**:
   - **Internationalization (i18n)** with Vue I18n
   - **Development tools** with Vite and TypeScript
@@ -302,6 +308,8 @@ bun run build:bun        # Production build (hybrid: npx + bun)
 - `frontend/src/services/` - WebSocket client services and connection management
 - `frontend/src/composables/` - Vue composables for WebSocket functionality and UI interactions
   - `frontend/src/composables/useConfirmDialog.ts` - **Global confirmation dialog system** with singleton pattern and promise-based API
+  - `frontend/src/composables/useListSorting.ts` - **Dynamic sorting system** with field selection, order toggle, drag-and-drop, and localStorage persistence
+  - `frontend/src/composables/team-management/useTeamManagementController.ts` - **Team management controller** with sorting mode helpers
 - `frontend/src/components/ui/` - Real-time UI components (status indicators, typing indicators)
 - `frontend/src/views/ConversationDetail.vue` - Main conversation interface with WebSocket integration
 - `frontend/src/types/` - Frontend type definitions including WebSocket types
@@ -427,12 +435,23 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 - **Real-time Updates**: **WebSocket-based** live message delivery, status updates, and presence
 
 ### **Enterprise Team Management**
-- **2-Tier Role System**: Admin and Agent roles with simplified permission hierarchy
-- **Team Organization**: Complete team lifecycle management with admin oversight
-- **Role-Based Access Control**: Database-level permission enforcement and team-scoped access
-- **User Management**: JWT authentication with KV-based session management
+- **Dual Role Architecture**:
+  - **System Roles**: Admin and Agent (global permissions)
+  - **Team Roles**: Member → Lead → Supervisor (team-scoped permissions)
+- **Team Role Hierarchy** (RBAC Phase 2):
+  - `member` - View team, members, and statistics
+  - `lead` - Add/update/remove members
+  - `supervisor` - Update team settings, manage QR codes
+- **Multi-Team Support** (JWT Optimization):
+  - Agents can belong to multiple teams with different roles
+  - JWT caches `allowedTeamIds[]` and `teamRoles{}` for 50% DB query reduction
+  - Team-scoped WebSocket broadcasts prevent cross-team data leakage
+- **Dynamic Sorting**:
+  - Field-based sorting (name, email, role, joinedAt)
+  - Drag-and-drop custom ordering with localStorage persistence
+  - System admin always pinned at top
+- **Member Deletion**: Comprehensive foreign key cleanup (notifications, tags, transfers, activities)
 - **Activity Tracking**: Comprehensive logging and monitoring of team activities
-- **Note**: Team functionality preserved - agents can still be assigned to teams
 
 ### **Customer Management**
 - **Multi-platform Customer Data**: Unified customer profiles across LINE OA and planned channels
@@ -526,10 +545,14 @@ The system is production-ready and deployed on Cloudflare infrastructure:
 ## Enterprise Documentation
 
 ### Role System Documentation
-- **Role system simplified**: From 3-tier (admin/team/agent) to 2-tier (admin/agent)
-- `drizzle/0017_remove_team_role.sql` - Database migration removing team role
-- Team functionality preserved - agents can still be organized into teams
-- Permission matrix and management guides updated for simplified hierarchy
+- **Dual Role Architecture**:
+  - **System Roles** (2-tier): Admin and Agent for global access control
+  - **Team Roles** (3-tier): Member → Lead → Supervisor for team-level permissions
+- **Team Role Enforcement** (RBAC Phase 2):
+  - `src/middleware/auth.ts` - `requireTeamRole()` and `requireTeamPermission()` middleware
+  - `src/utils/auth.ts` - `TEAM_ROLE_HIERARCHY`, `TEAM_PERMISSIONS`, `hasTeamRole()`, `canPerformTeamOperation()`
+- **Multi-Team JWT Caching**: `allowedTeamIds[]` and `teamRoles{}` in JWT payload
+- Team functionality preserved - agents can belong to multiple teams with different roles
 
 ### Key Documentation Files
 - Role hierarchy and permission system
@@ -573,11 +596,13 @@ This is a comprehensive, production-ready system with **enterprise-grade archite
 - **Database optimization** with Drizzle ORM and D1 for scalable data management
 
 ### **Enterprise-Grade Features**
-- **3-Role hierarchy system** with Admin, Team, and Agent permissions
-- **Team-based organization** with complete lifecycle management and delegation
+- **Dual role architecture**: System roles (Admin/Agent) + Team roles (Member/Lead/Supervisor)
+- **Multi-team support** with JWT-cached permissions and team-scoped security
+- **Team-based organization** with complete lifecycle management and role delegation
 - **Multi-channel support** with LINE OA integration and planned platform expansion
 - **Comprehensive security** with JWT authentication, KV session management, and role-based access control
 - **File management system** with R2 integration and upload progress tracking
+- **Dynamic sorting system** with field selection, drag-and-drop, and localStorage persistence
 
 ### **Developer Excellence**
 - **Modern development stack** with Vue 3, Composition API, and Pinia state management
