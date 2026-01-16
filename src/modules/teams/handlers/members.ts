@@ -59,7 +59,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
         teamId: agents.teamId // Legacy: primary team for backward compatibility
       })
       .from(agents)
-      .orderBy(desc(agents.lastLoginAt), desc(agents.createdAt));
+      .orderBy(desc(agents.createdAt));
 
     // Fetch multi-team membership information
     const agentTeamsService = new AgentTeamsService(c.env.DB);

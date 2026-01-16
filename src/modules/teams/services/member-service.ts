@@ -106,7 +106,7 @@ export class MemberService {
       .select()
       .from(agents)
       .where(whereClause)
-      .orderBy(desc(agents.lastLoginAt), desc(agents.createdAt))
+      .orderBy(desc(agents.createdAt))
       .limit(limit)
       .offset(offset);
 
