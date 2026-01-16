@@ -258,3 +258,193 @@ export function useTeamListSorting() {
     defaultSort: { field: 'createdAt', order: 'desc' }
   })
 }
+
+// ==================== Sort Mode Types ====================
+
+export type SortMode = 'auto' | 'custom'
+
+export interface SortModeState {
+  mode: SortMode
+  customOrder: string[]  // Array of item IDs in custom order
+}
+
+export interface UseSortModeOptions {
+  /** localStorage 存儲的 key */
+  storageKey: string
+  /** 預設排序模式 */
+  defaultMode?: SortMode
+}
+
+export interface UseSortModeReturn {
+  /** 當前排序模式 */
+  sortMode: Ref<SortMode>
+  /** 自訂順序 (項目 ID 陣列) */
+  customOrder: Ref<string[]>
+  /** 是否為自訂排序模式 */
+  isCustomMode: ComputedRef<boolean>
+  /** 切換排序模式 */
+  toggleSortMode: () => void
+  /** 設置排序模式 */
+  setSortMode: (mode: SortMode) => void
+  /** 更新自訂順序 */
+  updateCustomOrder: (newOrder: string[]) => void
+  /** 清除自訂順序 */
+  clearCustomOrder: () => void
+  /** 根據自訂順序排序項目 */
+  applyCustomOrder: <T extends { id: string | number }>(items: T[]) => T[]
+}
+
+// ==================== Sort Mode Composable ====================
+
+/**
+ * 排序模式 Composable
+ *
+ * 支援「自動排序」與「自訂順序」兩種模式
+ *
+ * @example
+ * ```typescript
+ * const { sortMode, customOrder, toggleSortMode, applyCustomOrder } = useSortMode({
+ *   storageKey: 'member-list-sort-mode'
+ * })
+ *
+ * // 根據模式排序
+ * const sortedItems = isCustomMode.value
+ *   ? applyCustomOrder(items)
+ *   : sortFn(items, getFieldValue)
+ * ```
+ */
+export function useSortMode(options: UseSortModeOptions): UseSortModeReturn {
+  const { storageKey, defaultMode = 'auto' } = options
+
+  // ==================== State ====================
+
+  /**
+   * 從 localStorage 讀取排序模式設定
+   */
+  function loadSortModeState(): SortModeState {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      if (stored) {
+        const parsed = JSON.parse(stored) as SortModeState
+        if (parsed.mode === 'auto' || parsed.mode === 'custom') {
+          return {
+            mode: parsed.mode,
+            customOrder: Array.isArray(parsed.customOrder) ? parsed.customOrder : []
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`[useSortMode] Failed to load sort mode from localStorage:`, e)
+    }
+    return { mode: defaultMode, customOrder: [] }
+  }
+
+  const state = loadSortModeState()
+  const sortMode = ref<SortMode>(state.mode)
+  const customOrder = ref<string[]>(state.customOrder)
+
+  // ==================== Computed ====================
+
+  const isCustomMode = computed(() => sortMode.value === 'custom')
+
+  // ==================== Methods ====================
+
+  function toggleSortMode() {
+    sortMode.value = sortMode.value === 'auto' ? 'custom' : 'auto'
+  }
+
+  function setSortMode(mode: SortMode) {
+    sortMode.value = mode
+  }
+
+  function updateCustomOrder(newOrder: string[]) {
+    customOrder.value = newOrder
+  }
+
+  function clearCustomOrder() {
+    customOrder.value = []
+  }
+
+  /**
+   * 根據自訂順序排序項目
+   */
+  function applyCustomOrder<T extends { id: string | number }>(items: T[]): T[] {
+    if (customOrder.value.length === 0) {
+      return items
+    }
+
+    const orderMap = new Map<string, number>()
+    customOrder.value.forEach((id, index) => {
+      orderMap.set(String(id), index)
+    })
+
+    return [...items].sort((a, b) => {
+      const aIndex = orderMap.get(String(a.id))
+      const bIndex = orderMap.get(String(b.id))
+
+      // 如果都在自訂順序中，按自訂順序排序
+      if (aIndex !== undefined && bIndex !== undefined) {
+        return aIndex - bIndex
+      }
+      // 如果只有 a 在自訂順序中，a 排前面
+      if (aIndex !== undefined) return -1
+      // 如果只有 b 在自訂順序中，b 排前面
+      if (bIndex !== undefined) return 1
+      // 都不在自訂順序中，保持原順序
+      return 0
+    })
+  }
+
+  // ==================== Watchers ====================
+
+  // 保存排序模式到 localStorage
+  watch(
+    [sortMode, customOrder],
+    ([newMode, newOrder]) => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          mode: newMode,
+          customOrder: newOrder
+        }))
+      } catch (e) {
+        console.warn(`[useSortMode] Failed to save sort mode to localStorage:`, e)
+      }
+    },
+    { deep: true }
+  )
+
+  // ==================== Return ====================
+
+  return {
+    sortMode,
+    customOrder,
+    isCustomMode,
+    toggleSortMode,
+    setSortMode,
+    updateCustomOrder,
+    clearCustomOrder,
+    applyCustomOrder
+  }
+}
+
+// ==================== Pre-configured Sort Mode Hooks ====================
+
+/**
+ * 成員列表排序模式
+ */
+export function useMemberSortMode() {
+  return useSortMode({
+    storageKey: 'team-management-member-sort-mode',
+    defaultMode: 'auto'
+  })
+}
+
+/**
+ * 團隊列表排序模式
+ */
+export function useTeamSortMode() {
+  return useSortMode({
+    storageKey: 'team-management-team-sort-mode',
+    defaultMode: 'auto'
+  })
+}
