@@ -165,19 +165,8 @@ const fileTypeInfo = computed(() => {
     }
   }
 
-  // Word
-  if (mime.includes('word') || mime.includes('document') || ['doc', 'docx'].includes(ext)) {
-    return {
-      type: 'word',
-      icon: '📝',
-      label: 'Word 文件',
-      typeName: 'Word 文檔',
-      headerColor: '#2196F3',
-      buttonColor: '#2196F3'
-    }
-  }
-
-  // Excel
+  // Excel (must check BEFORE Word because xlsx MIME contains "document")
+  // xlsx MIME: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
   if (mime.includes('excel') || mime.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
     return {
       type: 'excel',
@@ -189,7 +178,8 @@ const fileTypeInfo = computed(() => {
     }
   }
 
-  // PowerPoint
+  // PowerPoint (must check BEFORE Word because pptx MIME contains "document")
+  // pptx MIME: application/vnd.openxmlformats-officedocument.presentationml.presentation
   if (mime.includes('powerpoint') || mime.includes('presentation') || ['ppt', 'pptx'].includes(ext)) {
     return {
       type: 'ppt',
@@ -198,6 +188,19 @@ const fileTypeInfo = computed(() => {
       typeName: 'PowerPoint 簡報',
       headerColor: '#FF9800',
       buttonColor: '#FF9800'
+    }
+  }
+
+  // Word (check after Excel and PowerPoint to avoid false matches)
+  // docx MIME: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  if (mime.includes('word') || mime.includes('wordprocessing') || ['doc', 'docx'].includes(ext)) {
+    return {
+      type: 'word',
+      icon: '📝',
+      label: 'Word 文件',
+      typeName: 'Word 文檔',
+      headerColor: '#2196F3',
+      buttonColor: '#2196F3'
     }
   }
 
