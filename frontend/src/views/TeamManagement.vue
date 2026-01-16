@@ -30,22 +30,32 @@
         :all-teams="teams"
         :loading="loading"
         :current-user-id="currentUserId"
+        :sort-options="memberSorting.sortOptions"
+        :sort-state="memberSorting.sortState.value"
+        :current-sort-label="memberSorting.currentSortLabel.value"
         @add-member="controller.member.openAddMemberModal"
         @update-role="controller.member.updateMemberRole"
         @toggle-status="controller.member.toggleMemberStatus"
         @reset-password="controller.member.openPasswordResetModal"
         @remove-member="controller.member.removeMember"
+        @sort-change="(field: string) => memberSorting.setSortField(field as any)"
+        @sort-toggle="memberSorting.toggleSortOrder"
       />
 
       <!-- Team Management Section -->
       <TeamListSection
         :teams="teams"
         :loading="loading"
+        :sort-options="teamSorting.sortOptions"
+        :sort-state="teamSorting.sortState.value"
+        :current-sort-label="teamSorting.currentSortLabel.value"
         @add-team="controller.team.openAddTeamModal"
         @toggle-status="controller.team.toggleTeamStatus"
         @remove-team="controller.team.removeTeam"
         @member-updated="controller.team.handleMemberUpdated"
         @team-updated="controller.refresh"
+        @sort-change="(field: string) => teamSorting.setSortField(field as any)"
+        @sort-toggle="teamSorting.toggleSortOrder"
       />
 
       <!-- Modals -->
@@ -131,7 +141,7 @@ const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.currentAgent?.id)
 
 // Extract state from controller
-const { loading, teams, members, stats } = controller
+const { loading, teams, members, stats, memberSorting, teamSorting } = controller
 
 // ==================== Lifecycle ====================
 

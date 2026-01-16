@@ -12,11 +12,19 @@
  * @module composables/team-management/useTeamManagementController
  */
 
-import { computed, type ComputedRef } from 'vue'
+import { computed, type ComputedRef, type Ref } from 'vue'
 import { useTeamStore } from '@/stores/team'
 import { useMemberOperations, type UseMemberOperationsReturn } from './useMemberOperations'
 import { useTeamOperations, type UseTeamOperationsReturn } from './useTeamOperations'
 import { useTeamStats, type TeamStatsData } from './useTeamStats'
+import {
+  useMemberListSorting,
+  useTeamListSorting,
+  type SortState,
+  type SortOption,
+  type MemberSortField,
+  type TeamSortField
+} from '@/composables/useListSorting'
 import type { TeamMember } from '@/types'
 
 // ==================== Types ====================
@@ -33,12 +41,25 @@ export interface Team {
   memberCount?: number
 }
 
+// Sorting Types
+export interface ListSortingControls<T extends string> {
+  sortState: Ref<SortState<T>>
+  sortOptions: SortOption<T>[]
+  currentSortLabel: ComputedRef<string>
+  setSortField: (field: T) => void
+  toggleSortOrder: () => void
+}
+
 export interface UseTeamManagementControllerReturn {
   // Global State
   loading: ComputedRef<boolean>
   teams: ComputedRef<Team[]>
   members: ComputedRef<TeamMember[]>
   stats: ComputedRef<TeamStatsData>
+
+  // Sorting Controls
+  memberSorting: ListSortingControls<MemberSortField>
+  teamSorting: ListSortingControls<TeamSortField>
 
   // Sub-Controllers
   member: UseMemberOperationsReturn
@@ -94,6 +115,14 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
   // 统计数据控制器
   const statsOps = useTeamStats()
 
+  // ==================== Sorting ====================
+
+  // 成员列表排序（含 localStorage 持久化）
+  const memberSortingOps = useMemberListSorting()
+
+  // 团队列表排序（含 localStorage 持久化）
+  const teamSortingOps = useTeamListSorting()
+
   // ==================== Global State ====================
 
   /**
@@ -104,15 +133,28 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
   /**
    * 团队列表（响应式）
    * 使用 computed 确保数据是最新的，并且与 Store 同步
+   * 应用前端排序
    */
-  const teams = computed(() => teamStore.teams)
+  const teams = computed(() => {
+    return teamSortingOps.sortFn(teamStore.teams, (team, field) => {
+      switch (field) {
+        case 'createdAt': return team.createdAt
+        case 'name': return team.name
+        case 'memberCount': return team.memberCount ?? 0
+        case 'isActive': return team.isActive
+        default: return team.createdAt
+      }
+    })
+  })
 
   /**
    * 成员列表（响应式）
-   * 系统管理员固定在顶部
+   * 系统管理员固定在顶部，其餘應用排序
    */
   const members = computed(() => {
     const allMembers = teamStore.members
+
+    // 識別系統管理員
     const systemAdmin = allMembers.find(member =>
       member.role === 'admin' && (
         member.name?.includes('系統管理員') ||
@@ -122,6 +164,8 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
         member.email?.includes('admin')
       )
     )
+
+    // 過濾出其他成員
     const otherMembers = allMembers.filter(member =>
       !(member.role === 'admin' && (
         member.name?.includes('系統管理員') ||
@@ -132,7 +176,20 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
       ))
     )
 
-    return systemAdmin ? [systemAdmin, ...otherMembers] : allMembers
+    // 對其他成員進行排序
+    const sortedOtherMembers = memberSortingOps.sortFn(otherMembers, (member, field) => {
+      switch (field) {
+        case 'createdAt': return member.createdAt
+        case 'name': return member.name || member.loginId
+        case 'email': return member.email
+        case 'role': return member.role
+        case 'isActive': return member.status === 'active'
+        default: return member.createdAt
+      }
+    })
+
+    // 系統管理員固定在頂部
+    return systemAdmin ? [systemAdmin, ...sortedOtherMembers] : sortedOtherMembers
   })
 
   /**
@@ -198,6 +255,22 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
     teams,
     members,
     stats,
+
+    // Sorting Controls
+    memberSorting: {
+      sortState: memberSortingOps.sortState,
+      sortOptions: memberSortingOps.sortOptions,
+      currentSortLabel: memberSortingOps.currentSortLabel,
+      setSortField: memberSortingOps.setSortField,
+      toggleSortOrder: memberSortingOps.toggleSortOrder
+    },
+    teamSorting: {
+      sortState: teamSortingOps.sortState,
+      sortOptions: teamSortingOps.sortOptions,
+      currentSortLabel: teamSortingOps.currentSortLabel,
+      setSortField: teamSortingOps.setSortField,
+      toggleSortOrder: teamSortingOps.toggleSortOrder
+    },
 
     // Sub-Controllers
     // 成员操作（新增、编辑、删除、密码重置等）

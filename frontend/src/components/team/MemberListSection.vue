@@ -7,6 +7,15 @@
         人員管理 Staff Management ({{ members.length }})
       </h2>
       <div class="header-actions">
+        <!-- Sort Dropdown -->
+        <SortDropdown
+          :options="sortOptions"
+          :current-field="sortState.field"
+          :current-label="currentSortLabel"
+          :sort-order="sortState.order"
+          @select="(field) => emit('sort-change', field)"
+          @toggle-order="emit('sort-toggle')"
+        />
         <PrimaryActionButton
           text="新增成員"
           :icon="PlusIcon"
@@ -67,10 +76,12 @@
 
 <script setup lang="ts">
 import type { TeamMember, Team } from '@/types'
+import type { SortOption, SortState } from '@/composables/useListSorting'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
+import SortDropdown from '@/components/ui/SortDropdown.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
 
@@ -79,6 +90,10 @@ interface Props {
   allTeams: Team[]
   loading: boolean
   currentUserId?: string
+  // Sorting props
+  sortOptions: SortOption[]
+  sortState: SortState
+  currentSortLabel: string
 }
 
 interface Emits {
@@ -87,6 +102,8 @@ interface Emits {
   (_e: 'toggle-status', _member: TeamMember): void
   (_e: 'reset-password', _member: TeamMember): void
   (_e: 'remove-member', _member: TeamMember): void
+  (_e: 'sort-change', _field: string): void
+  (_e: 'sort-toggle'): void
 }
 
 defineProps<Props>()

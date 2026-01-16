@@ -7,6 +7,15 @@
         團隊設置 Team Settings ({{ teams.length }})
       </h2>
       <div class="header-actions">
+        <!-- Sort Dropdown -->
+        <SortDropdown
+          :options="sortOptions"
+          :current-field="sortState.field"
+          :current-label="currentSortLabel"
+          :sort-order="sortState.order"
+          @select="(field) => emit('sort-change', field)"
+          @toggle-order="emit('sort-toggle')"
+        />
         <PrimaryActionButton
           text="新增團隊"
           :icon="PlusIcon"
@@ -65,16 +74,22 @@
 
 <script setup lang="ts">
 import type { Team } from '@/composables/team-management'
+import type { SortOption, SortState } from '@/composables/useListSorting'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TeamCard from '@/components/team/TeamCard.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
+import SortDropdown from '@/components/ui/SortDropdown.vue'
 import TeamsIcon from '@/components/icons/TeamsIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
 
 interface Props {
   teams: Team[]
   loading: boolean
+  // Sorting props
+  sortOptions: SortOption[]
+  sortState: SortState
+  currentSortLabel: string
 }
 
 interface Emits {
@@ -83,6 +98,8 @@ interface Emits {
   (_e: 'remove-team', _team: Team): void
   (_e: 'member-updated'): void
   (_e: 'team-updated'): void
+  (_e: 'sort-change', _field: string): void
+  (_e: 'sort-toggle'): void
 }
 
 defineProps<Props>()
