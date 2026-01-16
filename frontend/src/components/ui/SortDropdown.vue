@@ -2,30 +2,52 @@
   <div class="sort-dropdown">
     <button
       class="sort-button"
-      :class="{ 'is-open': isOpen }"
+      :class="{ 'is-open': isOpen, 'is-custom': isCustomMode }"
       @click="toggleDropdown"
     >
       <SortIcon class="sort-icon" />
       <span class="sort-label">{{ currentLabel }}</span>
-      <span class="sort-order-badge" :class="sortOrder">
+      <span
+        v-if="!isCustomMode"
+        class="sort-order-badge"
+        :class="sortOrder"
+      >
         {{ sortOrder === 'asc' ? '↑' : '↓' }}
+      </span>
+      <span
+        v-else
+        class="custom-badge"
+      >
+        ⋮⋮
       </span>
       <ChevronDownIcon class="chevron-icon" :class="{ 'is-open': isOpen }" />
     </button>
 
     <Transition name="dropdown">
       <div v-if="isOpen" class="dropdown-menu">
+        <!-- Custom Mode Header - Show reset option -->
+        <div v-if="isCustomMode" class="custom-mode-header">
+          <span class="custom-mode-text">目前為拖拽自訂順序</span>
+          <button
+            class="reset-button"
+            @click.stop="resetToAuto"
+          >
+            <ResetIcon />
+            恢復自動
+          </button>
+        </div>
+
         <div class="dropdown-header">排序方式</div>
         <button
           v-for="option in options"
           :key="option.field"
           class="dropdown-item"
-          :class="{ 'is-active': currentField === option.field }"
+          :class="{ 'is-active': !isCustomMode && currentField === option.field }"
           @click="selectOption(option.field)"
         >
           <span class="item-label">{{ option.label }}</span>
           <span
-            v-if="currentField === option.field"
+            v-if="!isCustomMode && currentField === option.field"
             class="item-order"
             @click.stop="toggleOrder"
           >
@@ -54,6 +76,7 @@ interface Props {
   currentField: string
   currentLabel: string
   sortOrder: SortOrder
+  isCustomMode?: boolean
 }
 
 defineProps<Props>()
@@ -62,6 +85,7 @@ defineProps<Props>()
 const emit = defineEmits<{
   (_e: 'select', _field: string): void
   (_e: 'toggle-order'): void
+  (_e: 'reset-to-auto'): void
 }>()
 
 // Icons
@@ -71,6 +95,10 @@ const SortIcon = {
 
 const ChevronDownIcon = {
   template: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`
+}
+
+const ResetIcon = {
+  template: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`
 }
 
 // State
@@ -92,6 +120,11 @@ function selectOption(field: string) {
 
 function toggleOrder() {
   emit('toggle-order')
+}
+
+function resetToAuto() {
+  emit('reset-to-auto')
+  closeDropdown()
 }
 </script>
 
@@ -127,6 +160,15 @@ function toggleOrder() {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
+.sort-button.is-custom {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+}
+
+.sort-button.is-custom:hover {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+}
+
 .sort-icon {
   width: 16px;
   height: 16px;
@@ -159,6 +201,18 @@ function toggleOrder() {
   color: #db2777;
 }
 
+.custom-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f59e0b;
+  color: white;
+  border-radius: 4px;
+}
+
 .chevron-icon {
   width: 14px;
   height: 14px;
@@ -174,13 +228,54 @@ function toggleOrder() {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  min-width: 180px;
+  min-width: 220px;
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   z-index: 100;
   overflow: hidden;
+}
+
+.custom-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 1px solid #f59e0b;
+}
+
+.custom-mode-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #92400e;
+}
+
+.reset-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: white;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.reset-button:hover {
+  background: #fffbeb;
+  border-color: #d97706;
+}
+
+.reset-button svg {
+  width: 12px;
+  height: 12px;
 }
 
 .dropdown-header {

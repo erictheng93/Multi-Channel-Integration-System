@@ -7,21 +7,16 @@
         人員管理 Staff Management ({{ members.length }})
       </h2>
       <div class="header-actions">
-        <!-- Sort Mode Toggle -->
-        <SortModeToggle
-          :mode="sortMode"
-          :disabled="loading"
-          @change="(mode) => emit('sort-mode-change', mode)"
-        />
-        <!-- Sort Dropdown (only visible in auto mode) -->
+        <!-- Sort Dropdown -->
         <SortDropdown
-          v-if="sortMode === 'auto'"
           :options="sortOptions"
           :current-field="sortState.field"
-          :current-label="currentSortLabel"
+          :current-label="isCustomMode ? '自訂順序' : currentSortLabel"
           :sort-order="sortState.order"
-          @select="(field) => emit('sort-change', field)"
+          :is-custom-mode="isCustomMode"
+          @select="handleSortSelect"
           @toggle-order="emit('sort-toggle')"
+          @reset-to-auto="handleResetToAuto"
         />
         <PrimaryActionButton
           text="新增成員"
@@ -30,15 +25,6 @@
           @click="emit('add-member')"
         />
       </div>
-    </div>
-
-    <!-- Custom Sort Hint -->
-    <div
-      v-if="sortMode === 'custom'"
-      class="sort-hint"
-    >
-      <DragHintIcon class="hint-icon" />
-      <span>拖動 <span class="drag-handle-hint">⋮⋮</span> 把手來自訂排序順序</span>
     </div>
 
     <!-- Content Body -->
@@ -68,64 +54,38 @@
         </template>
       </EmptyState>
 
-      <!-- Members List - Draggable in custom mode -->
+      <!-- Members List - Always Draggable -->
       <VueDraggable
-        v-else-if="sortMode === 'custom'"
+        v-else
         v-model="localMembers"
         class="members-list"
-        handle=".drag-handle"
         :animation="200"
         ghost-class="drag-ghost"
         chosen-class="drag-chosen"
         drag-class="drag-active"
+        @start="onDragStart"
         @end="onDragEnd"
       >
-        <div
-          v-for="member in localMembers"
-          :key="member.id"
-          class="draggable-item"
-        >
-          <div class="drag-handle">
-            <DragHandleIcon />
-          </div>
-          <TeamMemberCard
-            :member="member"
-            :all-teams="allTeams"
-            :current-user-id="currentUserId"
-            :loading="loading"
-            class="member-card-draggable"
-            @update-role="(memberId: string, role: string) => emit('update-role', memberId, role)"
-            @toggle-status="(m) => emit('toggle-status', m)"
-            @reset-password="(m) => emit('reset-password', m)"
-            @remove-member="(m) => emit('remove-member', m)"
-          />
-        </div>
-      </VueDraggable>
-
-      <!-- Members List - Static in auto mode -->
-      <div
-        v-else
-        class="members-list"
-      >
         <TeamMemberCard
-          v-for="member in members"
+          v-for="member in localMembers"
           :key="member.id"
           :member="member"
           :all-teams="allTeams"
           :current-user-id="currentUserId"
           :loading="loading"
+          class="draggable-card"
           @update-role="(memberId: string, role: string) => emit('update-role', memberId, role)"
           @toggle-status="(m) => emit('toggle-status', m)"
           @reset-password="(m) => emit('reset-password', m)"
           @remove-member="(m) => emit('remove-member', m)"
         />
-      </div>
+      </VueDraggable>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { TeamMember, Team } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
@@ -134,7 +94,6 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import TeamMemberCard from '@/components/team/TeamMemberCard.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
-import SortModeToggle from '@/components/ui/SortModeToggle.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
 
@@ -166,6 +125,9 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+// Computed
+const isCustomMode = computed(() => props.sortMode === 'custom')
+
 // Local copy for drag operations
 const localMembers = ref<TeamMember[]>([...props.members])
 
@@ -178,19 +140,34 @@ watch(
   { deep: true }
 )
 
-// Handle drag end
+// Handle drag start - no action needed
+function onDragStart() {
+  // Optional: Add visual feedback
+}
+
+// Handle drag end - switch to custom mode and save order
 function onDragEnd() {
+  // Switch to custom mode if not already
+  if (props.sortMode !== 'custom') {
+    emit('sort-mode-change', 'custom')
+  }
+  // Save custom order
   const newOrder = localMembers.value.map(m => m.id)
   emit('custom-order-change', newOrder)
 }
 
-// Icons
-const DragHandleIcon = {
-  template: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>`
+// Handle sort field selection
+function handleSortSelect(field: string) {
+  // If in custom mode, switch back to auto first
+  if (props.sortMode === 'custom') {
+    emit('sort-mode-change', 'auto')
+  }
+  emit('sort-change', field)
 }
 
-const DragHintIcon = {
-  template: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+// Reset to auto sort
+function handleResetToAuto() {
+  emit('sort-mode-change', 'auto')
 }
 </script>
 
@@ -235,33 +212,6 @@ const DragHintIcon = {
   flex-wrap: wrap;
 }
 
-.sort-hint {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: #4338ca;
-}
-
-.hint-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.drag-handle-hint {
-  display: inline-flex;
-  padding: 0.125rem 0.375rem;
-  background: white;
-  border-radius: 4px;
-  font-weight: 600;
-  color: #6366f1;
-}
-
 .content-body {
   min-height: 200px;
 }
@@ -271,54 +221,35 @@ const DragHintIcon = {
   gap: 1rem;
 }
 
-/* Draggable item wrapper */
-.draggable-item {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-}
-
-.drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  min-width: 32px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  color: #94a3b8;
+/* Draggable card styles */
+.draggable-card {
   cursor: grab;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
-.drag-handle:hover {
-  background: #f1f5f9;
-  color: #6366f1;
+.draggable-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.drag-handle:active {
+.draggable-card:active {
   cursor: grabbing;
-}
-
-.member-card-draggable {
-  flex: 1;
-  border-radius: 0 8px 8px 0 !important;
 }
 
 /* Drag states */
 .drag-ghost {
   opacity: 0.4;
-  background: #c7d2fe;
+  background: #e0e7ff;
+  border-radius: 12px;
 }
 
 .drag-chosen {
   box-shadow: 0 8px 25px rgba(99, 102, 241, 0.25);
+  transform: scale(1.02);
 }
 
 .drag-active {
-  transform: rotate(2deg);
+  transform: rotate(1deg) scale(1.02);
   box-shadow: 0 12px 35px rgba(99, 102, 241, 0.3);
 }
 
@@ -358,10 +289,6 @@ const DragHintIcon = {
 
   .content-title {
     font-size: 1.25rem;
-  }
-
-  .sort-hint {
-    font-size: 0.8125rem;
   }
 }
 </style>
