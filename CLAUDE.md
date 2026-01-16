@@ -658,6 +658,7 @@ For detailed information on specific topics, see:
 - **[Testing Strategy](docs/claude/TESTING.md)** - Complete testing infrastructure and best practices
 - **[Route Registration](docs/claude/ROUTE_REGISTRATION.md)** - Critical routing order rules and debugging
 - **[Web Installer](docs/claude/WEB_INSTALLER.md)** - Self-hosted deployment system documentation
+- **[Team Management](docs/claude/TEAM_MANAGEMENT.md)** - Dual role architecture, multi-team support, sorting system (NEW)
 - **[Hardcoding Best Practices](docs/HARDCODING_BEST_PRACTICES.md)** - Constants management and coding standards
 
 ---
