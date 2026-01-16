@@ -53,6 +53,18 @@ Welcome to the extended documentation for the Multi-Channel Customer Support Sys
   - Cost estimation
 - **Use When:** Understanding web installer, deploying for customers, troubleshooting deployment
 
+#### 👥 **Team Management** (NEW)
+- **File:** [`TEAM_MANAGEMENT.md`](TEAM_MANAGEMENT.md)
+- **Size:** ~8,000 characters
+- **Contents:**
+  - Dual role architecture (System + Team roles)
+  - Multi-team support with JWT caching
+  - Dynamic sorting system with drag-and-drop
+  - Team-scoped WebSocket broadcasts
+  - Member deletion with FK cleanup
+  - Protected API endpoints
+- **Use When:** Working on team features, understanding role hierarchy, implementing sorting
+
 ## 🔍 Find What You Need
 
 ### By Task
@@ -64,6 +76,8 @@ Welcome to the extended documentation for the Multi-Channel Customer Support Sys
 - **Add a new API endpoint** → [ROUTE_REGISTRATION.md](ROUTE_REGISTRATION.md)
 - **Write tests for my code** → [TESTING.md](TESTING.md)
 - **Understand the Web Installer** → [WEB_INSTALLER.md](WEB_INSTALLER.md)
+- **Work on team management features** → [TEAM_MANAGEMENT.md](TEAM_MANAGEMENT.md)
+- **Implement sorting/drag-and-drop** → [TEAM_MANAGEMENT.md](TEAM_MANAGEMENT.md#dynamic-sorting-system)
 - **Fix CORS issues** → [CLAUDE.md CORS Documentation](../../CLAUDE.md#cors-configuration-documentation)
 - **Deploy to production** → [CLAUDE.md Production Deployment](../../CLAUDE.md#production-deployment)
 
@@ -75,6 +89,8 @@ Welcome to the extended documentation for the Multi-Channel Customer Support Sys
 - **Backend (Cloudflare Workers)** → [CLAUDE.md Backend Architecture](../../CLAUDE.md#backend-cloudflare-worker)
 - **Database (D1 + Drizzle)** → [CLAUDE.md Database & ORM](../../CLAUDE.md#database--orm)
 - **WebSocket** → [TESTING.md WebSocket Testing](TESTING.md#comprehensive-websocket-testing-infrastructure)
+- **Team Management** → [TEAM_MANAGEMENT.md](TEAM_MANAGEMENT.md)
+- **Sorting & Drag-Drop** → [TEAM_MANAGEMENT.md](TEAM_MANAGEMENT.md#dynamic-sorting-system)
 - **Environment Configuration** → [ENVIRONMENT_CONFIG.md](ENVIRONMENT_CONFIG.md)
 - **Testing** → [TESTING.md](TESTING.md)
 
@@ -91,12 +107,18 @@ Welcome to the extended documentation for the Multi-Channel Customer Support Sys
 ## 📊 Documentation Statistics
 
 ```
-Total Documentation Size: ~17,000 characters (split from 48,300)
-CLAUDE.md: ~27,000 characters (44% reduction)
-Modular Docs: 4 files totaling ~17,000 characters
+Total Documentation Size: ~25,000 characters (split from 48,300)
+CLAUDE.md: ~28,000 characters (updated with new features)
+Modular Docs: 5 files totaling ~25,000 characters
 
-Performance Improvement: 44% faster initial load
-Maintainability: 5 focused files vs 1 monolithic file
+Files:
+├── ENVIRONMENT_CONFIG.md  (~6,000 chars)
+├── TESTING.md             (~2,000 chars)
+├── ROUTE_REGISTRATION.md  (~4,000 chars)
+├── WEB_INSTALLER.md       (~5,000 chars)
+└── TEAM_MANAGEMENT.md     (~8,000 chars) [NEW]
+
+Maintainability: 6 focused files for easier navigation
 ```
 
 ## 🎯 Best Practices
