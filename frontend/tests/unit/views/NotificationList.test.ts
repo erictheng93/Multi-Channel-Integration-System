@@ -599,8 +599,8 @@ describe('NotificationList.vue', () => {
       await settingsBtn.trigger('click')
       await nextTick()
 
-      // 检查模态框是否出现
-      const modal = document.querySelector('.settings-modal')
+      // 检查模态框是否出现 (使用实际的 Modal 组件类名)
+      const modal = document.querySelector('.modal-overlay')
       expect(modal).not.toBeNull()
     })
 
@@ -616,14 +616,14 @@ describe('NotificationList.vue', () => {
       await settingsBtn.trigger('click')
       await nextTick()
 
-      // 点击关闭按钮
-      const closeBtn = document.querySelector('.modal-close')
+      // 点击关闭按钮 (使用实际的 Modal 组件类名)
+      const closeBtn = document.querySelector('.modal-close-btn')
       if (closeBtn) {
         (closeBtn as HTMLElement).click()
         await nextTick()
 
         // 模态框应该消失
-        const modal = document.querySelector('.settings-modal')
+        const modal = document.querySelector('.modal-overlay')
         expect(modal).toBeNull()
       }
     })

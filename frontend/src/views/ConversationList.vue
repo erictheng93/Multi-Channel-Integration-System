@@ -1,28 +1,32 @@
 <template>
   <AppLayout>
-    <div class="h-full flex flex-col">
+    <div class="conversation-list h-full flex flex-col">
       <!-- Header with Actions -->
-      <ConversationHeader
-        :cache-hit-rate="controller.cache.cacheHitRate.value"
-        :sync-status="conversationsStore.syncStatus"
-        :is-syncing="isSyncing"
-        :is-refreshing="controller.isRefreshing.value"
-        @refresh="handleRefresh"
-      />
+      <div class="list-header">
+        <ConversationHeader
+          :cache-hit-rate="controller.cache.cacheHitRate.value"
+          :sync-status="conversationsStore.syncStatus"
+          :is-syncing="isSyncing"
+          :is-refreshing="controller.isRefreshing.value"
+          @refresh="handleRefresh"
+        />
+      </div>
 
       <!-- Filters Section -->
-      <ConversationFilters
-        :filters="controller.filters.filters.value"
-        :available-tags="availableTags"
-        :total-conversations="controller.totalConversations.value"
-        :unread-count="controller.unreadCount.value"
-        @update:filter="handleFilterUpdate"
-        @toggle:tag="controller.filters.toggleTagFilter"
-        @clear:tags="controller.filters.clearTagFilter"
-      />
+      <div class="filters filters-section">
+        <ConversationFilters
+          :filters="controller.filters.filters.value"
+          :available-tags="availableTags"
+          :total-conversations="controller.totalConversations.value"
+          :unread-count="controller.unreadCount.value"
+          @update:filter="handleFilterUpdate"
+          @toggle:tag="controller.filters.toggleTagFilter"
+          @clear:tags="controller.filters.clearTagFilter"
+        />
+      </div>
 
       <!-- Content -->
-      <div class="flex-1 overflow-hidden flex flex-col">
+      <div class="list-content flex-1 overflow-hidden flex flex-col">
         <Transition
           name="content-fade"
           mode="out-in"
@@ -117,7 +121,7 @@
       <!-- Pagination -->
       <div
         v-if="controller.totalPages.value > 1"
-        class="flex items-center justify-between p-6 bg-white border-t border-gray-200 md:flex-col md:gap-4"
+        class="pagination flex items-center justify-between p-6 bg-white border-t border-gray-200 md:flex-col md:gap-4"
       >
         <button
           :disabled="controller.currentPage.value === 1"
