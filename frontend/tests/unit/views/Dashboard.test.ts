@@ -136,6 +136,40 @@ vi.mock('@/composables/useActivityStream', () => {
   }
 })
 
+// Mock useDashboardActivities to properly filter and slice activities
+vi.mock('@/composables/dashboard/useDashboardActivities', () => {
+  const { computed } = require('vue')
+  // Simple stub components for icons
+  const IconStub = { template: '<svg></svg>' }
+  return {
+    useDashboardActivities: (options: { maxImportantActivities?: number } = {}) => {
+      const maxActivities = options.maxImportantActivities ?? 8
+      return {
+        activities: computed(() => {
+          // Filter for high/medium priority and slice to max
+          const filtered = mockActivities.value
+            .filter((a: any) => a.priority === 'high' || a.priority === 'medium')
+            .slice(0, maxActivities)
+          return filtered
+        }),
+        isConnected: computed(() => mockIsActivityStreamConnected.value),
+        getActivityIcon: () => IconStub,
+        formatTime: (date: Date) => {
+          const now = new Date()
+          const diff = now.getTime() - new Date(date).getTime()
+          const minutes = Math.floor(diff / 60000)
+          if (minutes < 60) return `${minutes} 分鐘前`
+          const hours = Math.floor(minutes / 60)
+          if (hours < 24) return `${hours} 小時前`
+          return `${Math.floor(hours / 24)} 天前`
+        },
+        connect: vi.fn(),
+        disconnect: vi.fn()
+      }
+    }
+  }
+})
+
 vi.mock('@/composables/useI18n', () => ({
   useI18n: () => ({
     t: (key: string) => key
