@@ -23,87 +23,95 @@
 
       <!-- Content -->
       <div class="flex-1 overflow-hidden flex flex-col">
-        <!-- Skeleton Loading -->
-        <SkeletonLoader
-          v-if="showSkeleton"
-          :count="8"
-          class="animate-fade-in-up"
-        />
-
-        <!-- Empty State -->
-        <EmptyState
-          v-else-if="controller.conversations.value.length === 0 && !controller.isLoading.value"
-          title="沒有找到對話"
-          description="目前沒有符合篩選條件的對話，請調整篩選條件或等待新對話"
+        <Transition
+          name="content-fade"
+          mode="out-in"
         >
-          <template #icon>
-            <ChatIcon />
-          </template>
-          <template #actions>
-            <button
-              class="btn btn-primary"
-              @click="controller.filters.clearAllFilters"
-            >
-              清除篩選
-            </button>
-            <button
-              class="btn btn-secondary"
-              @click="handleRefresh"
-            >
-              重新整理
-            </button>
-          </template>
-        </EmptyState>
+          <!-- Skeleton Loading -->
+          <SkeletonLoader
+            v-if="showSkeleton"
+            key="skeleton"
+            :count="8"
+            class="animate-fade-in-up"
+          />
 
-        <!-- Conversations List with Virtual Scrolling -->
-        <div
-          v-else
-          class="flex-1 p-6 overflow-hidden"
-        >
-          <SmartVirtualScrollList
-            :items="controller.conversations.value"
-            :item-height="virtualScroll.scrollConfig.itemHeight"
-            :container-height="virtualScroll.scrollConfig.containerHeight"
-            :overscan="virtualScroll.scrollConfig.overscan"
-            :loading-more="controller.loadingMore.value"
-            :reached-end="virtualScroll.reachedEnd.value"
-            :preload-pages="virtualScroll.scrollConfig.preloadPages"
-            :enable-smart-preload="virtualScroll.scrollConfig.enableSmartPreload"
-            :predictive-load-threshold="virtualScroll.scrollConfig.predictiveLoadThreshold"
-            :intersection-threshold="virtualScroll.scrollConfig.intersectionThreshold"
-            :root-margin="virtualScroll.scrollConfig.rootMargin"
-            :get-item-key="(item) => (item as Conversation).id"
-            class="smart-virtual-conversations"
-            @reach-bottom="handleLoadMore"
-            @visible-range-change="handleVisibleRangeChange"
-            @predictive-load="handlePredictiveLoad"
+          <!-- Empty State -->
+          <EmptyState
+            v-else-if="controller.conversations.value.length === 0 && !controller.isLoading.value"
+            key="empty"
+            title="沒有找到對話"
+            description="目前沒有符合篩選條件的對話，請調整篩選條件或等待新對話"
           >
-            <template #default="{ item }">
-              <div class="virtual-conversation-wrapper">
-                <ConversationCard
-                  :conversation="item as Conversation"
-                  :selected="controller.selectedConversationId.value === (item as Conversation).id"
-                  @select="controller.selectConversation"
-                />
-              </div>
+            <template #icon>
+              <ChatIcon />
             </template>
-
-            <template #loading>
-              <div class="flex items-center justify-center gap-2 p-6 text-gray-600 text-sm">
-                <HamsterLoader message="刷新中..." />
-                <span>智能載入更多對話中...</span>
-              </div>
+            <template #actions>
+              <button
+                class="btn btn-primary"
+                @click="controller.filters.clearAllFilters"
+              >
+                清除篩選
+              </button>
+              <button
+                class="btn btn-secondary"
+                @click="handleRefresh"
+              >
+                重新整理
+              </button>
             </template>
+          </EmptyState>
 
-            <template #end>
-              <div class="flex justify-center p-6">
-                <div class="end-stats">
-                  <span>✨ 已顯示全部 {{ controller.totalConversations.value }} 個對話</span>
+          <!-- Conversations List with Virtual Scrolling -->
+          <div
+            v-else
+            key="content"
+            class="flex-1 p-6 overflow-hidden"
+          >
+            <SmartVirtualScrollList
+              :items="controller.conversations.value"
+              :item-height="virtualScroll.scrollConfig.itemHeight"
+              :container-height="virtualScroll.scrollConfig.containerHeight"
+              :overscan="virtualScroll.scrollConfig.overscan"
+              :loading-more="controller.loadingMore.value"
+              :reached-end="virtualScroll.reachedEnd.value"
+              :preload-pages="virtualScroll.scrollConfig.preloadPages"
+              :enable-smart-preload="virtualScroll.scrollConfig.enableSmartPreload"
+              :predictive-load-threshold="virtualScroll.scrollConfig.predictiveLoadThreshold"
+              :intersection-threshold="virtualScroll.scrollConfig.intersectionThreshold"
+              :root-margin="virtualScroll.scrollConfig.rootMargin"
+              :get-item-key="(item) => (item as Conversation).id"
+              class="smart-virtual-conversations"
+              @reach-bottom="handleLoadMore"
+              @visible-range-change="handleVisibleRangeChange"
+              @predictive-load="handlePredictiveLoad"
+            >
+              <template #default="{ item }">
+                <div class="virtual-conversation-wrapper">
+                  <ConversationCard
+                    :conversation="item as Conversation"
+                    :selected="controller.selectedConversationId.value === (item as Conversation).id"
+                    @select="controller.selectConversation"
+                  />
                 </div>
-              </div>
-            </template>
-          </SmartVirtualScrollList>
-        </div>
+              </template>
+
+              <template #loading>
+                <div class="flex items-center justify-center gap-2 p-6 text-gray-600 text-sm">
+                  <HamsterLoader message="刷新中..." />
+                  <span>智能載入更多對話中...</span>
+                </div>
+              </template>
+
+              <template #end>
+                <div class="flex justify-center p-6">
+                  <div class="end-stats">
+                    <span>✨ 已顯示全部 {{ controller.totalConversations.value }} 個對話</span>
+                  </div>
+                </div>
+              </template>
+            </SmartVirtualScrollList>
+          </div>
+        </Transition>
       </div>
 
       <!-- Pagination -->
