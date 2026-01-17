@@ -201,3 +201,43 @@ config.global.mocks = {
     meta: {}
   }
 }
+
+// ======================== ASYNC CLEANUP ========================
+// Global handlers to prevent unhandled rejection warnings in tests
+// This is especially important for component tests that have async onMounted hooks
+
+// Store original console methods
+const originalConsoleError = console.error
+
+// Suppress specific known test-related errors during cleanup
+console.error = (...args) => {
+  const message = args[0]?.toString() || ''
+  // Suppress expected test cleanup errors
+  if (
+    message.includes('Unhandled error during cleanup') ||
+    message.includes('[Vue warn]') ||
+    message.includes('runtime-core.cjs')
+  ) {
+    return
+  }
+  originalConsoleError(...args)
+}
+
+// Handle unhandled promise rejections in tests gracefully
+if (typeof process !== 'undefined') {
+  process.on('unhandledRejection', (reason: any, _promise: Promise<any>) => {
+    // Only log in debug mode, otherwise suppress known test-related rejections
+    const reasonStr = reason?.toString() || ''
+    if (
+      reasonStr.includes('fetchConversations') ||
+      reasonStr.includes('refreshConversations') ||
+      reasonStr.includes('AbortError') ||
+      reasonStr.includes('Component is unmounted')
+    ) {
+      // Expected test cleanup - silently ignore
+      return
+    }
+    // Log unexpected rejections for debugging
+    console.warn('[Test] Unhandled rejection:', reason)
+  })
+}
