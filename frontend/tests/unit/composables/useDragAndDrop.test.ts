@@ -19,7 +19,7 @@ const createMockDragEvent = (options: {
   } as unknown as DragEvent
 }
 
-// Helper to create mock File
+// Helper to create mock File with custom size
 const createMockFile = (options: {
   name?: string
   size?: number
@@ -31,7 +31,10 @@ const createMockFile = (options: {
     type = 'text/plain',
   } = options
 
-  return new File(['content'], name, { type }) as File & { size: number }
+  // Create a file with content that matches the desired size
+  // For size validation tests, we need the actual file size to match
+  const content = 'x'.repeat(size)
+  return new File([content], name, { type })
 }
 
 describe('useDragAndDrop', () => {

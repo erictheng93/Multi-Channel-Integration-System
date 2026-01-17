@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useNewMessageNotification } from '@/composables/useNewMessageNotification'
 
 describe('useNewMessageNotification', () => {
@@ -218,8 +218,8 @@ describe('useNewMessageNotification', () => {
 
       messageCount.value = 3 // Still > 0
 
-      // Wait a bit
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      // With fake timers, advance time instead of using setTimeout
+      await vi.advanceTimersByTimeAsync(50)
 
       expect(notification.isVisible.value).toBe(true) // Still visible
     })
@@ -235,7 +235,8 @@ describe('useNewMessageNotification', () => {
 
       messageCount.value = 0
 
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      // With fake timers, advance time instead of using setTimeout
+      await vi.advanceTimersByTimeAsync(50)
 
       expect(notification.isVisible.value).toBe(false) // Still hidden
     })
@@ -305,23 +306,24 @@ describe('useNewMessageNotification', () => {
     })
 
     it('should handle multiple new messages', async () => {
-      const messageCount = ref(0)
+      // Start with some messages (simulating multiple unread messages)
+      const messageCount = ref(3)
       const notification = useNewMessageNotification({
         newMessageCount: messageCount,
       })
 
-      // Message 1
-      messageCount.value = 1
+      // Show notification when user scrolls up
       notification.show()
       expect(notification.isVisible.value).toBe(true)
 
-      // Message 2
-      messageCount.value = 2
-      expect(notification.isVisible.value).toBe(true)
+      // More messages arrive while user is scrolled up
+      messageCount.value = 5
+      expect(notification.isVisible.value).toBe(true) // Still visible
 
-      // User reads all
+      // User reads all messages (count drops to 0)
       messageCount.value = 0
 
+      // Wait for watcher to process (Vue's async scheduler)
       await vi.waitFor(() => {
         expect(notification.isVisible.value).toBe(false)
       })

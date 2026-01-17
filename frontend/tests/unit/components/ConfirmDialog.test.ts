@@ -236,6 +236,9 @@ describe('ConfirmDialog.vue', () => {
     })
 
     it('点击遮罩层应该关闭对话框（默认行为）', async () => {
+      // Use fake timers because the component uses setTimeout to add click listener
+      vi.useFakeTimers()
+
       wrapper = mount(ConfirmDialog, {
         props: {
           title: '确认',
@@ -245,12 +248,19 @@ describe('ConfirmDialog.vue', () => {
       })
 
       await nextTick()
+
+      // Advance timers to allow the setTimeout in onMounted to fire
+      vi.runAllTimers()
+      await nextTick()
+
       const overlay = document.querySelector('.dialog-overlay') as HTMLElement
       overlay.click()
       await nextTick()
 
       expect(wrapper.emitted('cancel')).toBeTruthy()
       expect(wrapper.emitted('close')).toBeTruthy()
+
+      vi.useRealTimers()
     })
 
     it('closeOnOverlay 为 false 时点击遮罩层不应该关闭', async () => {
