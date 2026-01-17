@@ -1,0 +1,47 @@
+# ========================================
+# WRANGLER TEST CONFIGURATION
+# ========================================
+# This configuration is specifically for testing with @cloudflare/vitest-pool-workers
+# It provides isolated testing environment for Durable Objects
+
+name = "crm-installer-test"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# ========================================
+# DURABLE OBJECTS CONFIGURATION
+# ========================================
+[durable_objects]
+bindings = [
+  { name = "DEPLOYMENT_ORCHESTRATOR", class_name = "DeploymentOrchestrator" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DeploymentOrchestrator"]
+
+# ========================================
+# TEST ENVIRONMENT VARIABLES
+# ========================================
+[vars]
+# Frontend URL for CORS (test environment)
+FRONTEND_URL = "http://localhost:3000"
+# Environment identifier
+ENVIRONMENT = "test"
+# Email configuration (test values)
+FROM_NAME = "CRM Installer Test"
+# Test API keys (not real - for testing only)
+RESEND_API_KEY = "re_test_mock_api_key_12345"
+FROM_EMAIL = "test@example.com"
+# Cloudflare OAuth test credentials
+CF_CLIENT_ID = "test-client-id"
+CF_CLIENT_SECRET = "test-client-secret"
+# Encryption key for testing (32-byte hex)
+ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+# ========================================
+# DEVELOPMENT CONFIGURATION
+# ========================================
+[dev]
+port = 8788
+local_protocol = "http"
