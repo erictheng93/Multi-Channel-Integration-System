@@ -88,14 +88,14 @@ describe('System Settings - Verification Tests', () => {
 
   describe('Main Component Import', () => {
     it('should import SystemSettings.refactored component', async () => {
-      const component = await import('@/views/SystemSettings.refactored.vue')
+      const component = await import('@/views/SystemSettings.vue')
 
       expect(component.default).toBeDefined()
       expect(component.default).toHaveProperty('__name')
     })
 
     it('should import all child components in main component', async () => {
-      const component = await import('@/views/SystemSettings.refactored.vue')
+      const component = await import('@/views/SystemSettings.vue')
 
       // Verify component is valid Vue component
       expect(component.default).toHaveProperty('setup')

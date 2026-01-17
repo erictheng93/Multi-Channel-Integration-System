@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import ApiMonitorRefactored from '@/views/ApiMonitor.refactored.vue'
+import ApiMonitorRefactored from '@/views/ApiMonitor.vue'
 
 // Mock fetch globally
 global.fetch = vi.fn()
