@@ -436,6 +436,22 @@
   @apply opacity-0;
 }
 
+/* ============================================
+   Content Fade Transition (骨架屏到內容)
+   ============================================ */
+.content-fade-enter-active {
+  transition: opacity 250ms ease-out;
+}
+
+.content-fade-leave-active {
+  transition: opacity 180ms ease-in;
+}
+
+.content-fade-enter-from,
+.content-fade-leave-to {
+  opacity: 0;
+}
+
 .loading-state-wrapper {
   @apply relative min-h-[100px];
 }

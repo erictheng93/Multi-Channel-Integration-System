@@ -495,16 +495,22 @@ defineExpose({
   height: 100%;
 }
 
+/* 骨架屏淡出過渡 */
 .skeleton-layer {
   z-index: 30;
+  transition: opacity 200ms ease-out;
 }
 
+/* 空狀態層過渡 */
 .empty-layer {
   z-index: 20;
+  transition: opacity 200ms ease-out;
 }
 
+/* 內容層淡入過渡 (延遲等待骨架屏淡出) */
 .messages-layer {
   z-index: 10;
+  transition: opacity 280ms ease-in 100ms;
 }
 
 .empty-state-wrapper {
