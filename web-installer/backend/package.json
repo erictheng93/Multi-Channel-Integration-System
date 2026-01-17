@@ -9,6 +9,7 @@
     "dev:bun": "bunx wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
+    "test:ci": "INCLUDE_DO_TESTS=true vitest run",
     "test:bun": "bun test",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
@@ -19,11 +20,12 @@
     "hono": "^4.0.0"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.4",
     "@cloudflare/workers-types": "^4.20240925.0",
     "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^1.6.1",
+    "@vitest/coverage-v8": "~3.2.0",
     "typescript": "^5.3.3",
-    "vitest": "^1.0.4",
+    "vitest": "~3.2.0",
     "wrangler": "^4.45.4"
   }
 }
