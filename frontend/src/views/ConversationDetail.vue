@@ -526,6 +526,9 @@ defineExpose({
   background: white;
   border-top: 1px solid #e5e7eb;
   padding: 12px;
+  /* 🔧 Fix: Ensure input section creates a stacking context above messages */
+  position: relative;
+  z-index: 50;
 }
 
 /* Closed State */
