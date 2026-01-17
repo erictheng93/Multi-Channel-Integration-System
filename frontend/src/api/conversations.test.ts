@@ -111,7 +111,7 @@ describe('Conversations API', () => {
       expect(result.data).toBeDefined()
       if (result.success && result.data) {
         expect(result.data.id).toBe(conversationId)
-        expect(result.data.status).toBe('open') // 'active' gets mapped to 'open'
+        expect(result.data.status).toBe('active') // Status is passed through as-is
       }
     })
 
@@ -422,7 +422,7 @@ describe('Conversations API', () => {
       if (result.success && result.data && Array.isArray(result.data)) {
         expect(result.data).toHaveLength(1)
         expect(result.data[0]?.id).toBe('conv-123')
-        expect(result.data[0]?.status).toBe('open') // 'active' maps to 'open'
+        expect(result.data[0]?.status).toBe('active') // Status is passed through as-is
       }
     })
 

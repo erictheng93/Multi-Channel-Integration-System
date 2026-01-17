@@ -131,7 +131,7 @@ describe('ApiMonitor Refactoring Verification', () => {
 
   describe('Refactored Main Component', () => {
     it('should be able to import refactored ApiMonitor view', async () => {
-      const ApiMonitor = (await import('@/views/ApiMonitor.refactored.vue')).default
+      const ApiMonitor = (await import('@/views/ApiMonitor.vue')).default
       expect(ApiMonitor).toBeDefined()
       expect(ApiMonitor).toHaveProperty('__name')
     })
