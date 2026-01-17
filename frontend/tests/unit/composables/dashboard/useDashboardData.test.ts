@@ -64,8 +64,9 @@ describe('useDashboardData', () => {
         openConversations: ref(mockConversations.filter(c => c.status === 'open')),
         assignedConversations: ref(mockConversations.filter(c => c.status === 'assigned')),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { openConversations, assignedConversations } = useDashboardData()
 
@@ -79,8 +80,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { currentDate } = useDashboardData()
 
@@ -96,8 +98,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData({
         recentConversationsCount: 2
@@ -122,8 +125,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData()
 
@@ -136,8 +140,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData({
         recentConversationsCount: 10
@@ -152,8 +157,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData()
 
@@ -168,8 +174,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { goToConversation } = useDashboardData()
 
@@ -184,8 +191,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { goToConversation } = useDashboardData()
 
@@ -205,8 +213,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: mockRefresh
-      })
+      } as any)
 
       const { refresh } = useDashboardData()
 
@@ -224,8 +233,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: loadingRef,
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { loading } = useDashboardData()
 
@@ -243,8 +253,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { currentDate } = useDashboardData()
 
@@ -261,8 +272,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData()
 
@@ -275,8 +287,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData({
         recentConversationsCount: 0
@@ -291,8 +304,9 @@ describe('useDashboardData', () => {
         openConversations: ref([]),
         assignedConversations: ref([]),
         loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
         refreshConversations: vi.fn()
-      })
+      } as any)
 
       const { recentConversations } = useDashboardData({
         recentConversationsCount: -1

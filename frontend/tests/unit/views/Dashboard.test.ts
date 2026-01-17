@@ -72,8 +72,18 @@ vi.mock('@/composables/useConversations', () => {
       conversations: computed(() => mockConversations.value),
       openConversations: computed(() => mockConversations.value.filter((c: Conversation) => c.status === 'open')),
       assignedConversations: computed(() => mockConversations.value.filter((c: Conversation) => c.status === 'assigned')),
+      closedConversations: computed(() => mockConversations.value.filter((c: Conversation) => c.status === 'closed')),
+      unreadCount: computed(() => mockConversations.value.reduce((sum: number, c: Conversation) => sum + (c.unreadCount || 0), 0)),
       loading: ref(false),
-      refreshConversations: vi.fn().mockResolvedValue(undefined)
+      error: ref(null),
+      fetchConversations: vi.fn().mockResolvedValue(undefined),
+      refreshConversations: vi.fn().mockResolvedValue(undefined),
+      selectConversation: vi.fn(),
+      assignConversation: vi.fn().mockResolvedValue(undefined),
+      closeConversation: vi.fn().mockResolvedValue(undefined),
+      getConversationById: vi.fn((id: string) => mockConversations.value.find((c: Conversation) => c.id === id) || null),
+      filterConversations: vi.fn(() => mockConversations.value),
+      clearError: vi.fn()
     })
   }
 })

@@ -18,11 +18,11 @@ const mockLoadQRCode = vi.fn()
 const mockPrefetchQRCode = vi.fn()
 
 const mockStoreInstance = {
-  // Computed getters (refs with function values)
-  getQRCode: { value: mockGetQRCodeFn },
-  isCacheValid: { value: mockIsCacheValidFn },
-  isLoading: { value: mockIsLoadingFn },
-  isGenerating: { value: mockIsGeneratingFn },
+  // Computed getters - Pinia unwraps these automatically, so they are direct callables
+  getQRCode: mockGetQRCodeFn,
+  isCacheValid: mockIsCacheValidFn,
+  isLoading: mockIsLoadingFn,
+  isGenerating: mockIsGeneratingFn,
 
   // Actions (regular functions)
   loadQRCode: mockLoadQRCode,

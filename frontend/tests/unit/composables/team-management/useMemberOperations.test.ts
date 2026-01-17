@@ -31,6 +31,19 @@ vi.mock('@/composables/useToast', () => ({
   useToast: vi.fn(() => mockToast)
 }))
 
+// Mock useConfirmDialog to auto-confirm dangerous actions
+const mockShowDanger = vi.fn().mockResolvedValue(true)
+const mockShowWarning = vi.fn().mockResolvedValue(true)
+vi.mock('@/composables/useConfirmDialog', () => ({
+  useConfirmDialog: () => ({
+    showDanger: mockShowDanger,
+    showWarning: mockShowWarning,
+    showInfo: vi.fn().mockResolvedValue(true),
+    confirmDialog: { value: null },
+    closeDialog: vi.fn()
+  })
+}))
+
 describe('useMemberOperations', () => {
   let operations: ReturnType<typeof useMemberOperations>
 
@@ -48,6 +61,9 @@ describe('useMemberOperations', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset confirm dialog mock to always confirm
+    mockShowDanger.mockResolvedValue(true)
+    mockShowWarning.mockResolvedValue(true)
     operations = useMemberOperations()
   })
 

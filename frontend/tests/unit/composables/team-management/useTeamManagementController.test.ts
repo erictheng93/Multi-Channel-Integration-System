@@ -25,14 +25,8 @@ vi.mock('@/composables/team-management/useTeamOperations', () => ({
   })
 }))
 
-vi.mock('@/composables/team-management/useQRCodeOperations', () => ({
-  useQRCodeOperations: () => ({
-    qrModal: { value: false },
-    viewQR: vi.fn(),
-    startBackgroundPreload: vi.fn(),
-    stopBackgroundPreload: vi.fn()
-  })
-}))
+// Note: QRCodeOperations is no longer part of TeamManagementController
+// It has been refactored to be used separately where needed
 
 describe('useTeamManagementController', () => {
   beforeEach(() => {
@@ -112,12 +106,8 @@ describe('useTeamManagementController', () => {
       expect(controller.team.addTeamModal).toBeDefined()
     })
 
-    it('应该提供 qr 子控制器', () => {
-      const controller = useTeamManagementController()
-
-      expect(controller.qr).toBeDefined()
-      expect(controller.qr.qrModal).toBeDefined()
-    })
+    // Note: qr sub-controller has been removed from TeamManagementController
+    // QR code operations are now handled separately in components that need them
   })
 
   describe('生命周期方法', () => {
@@ -139,12 +129,11 @@ describe('useTeamManagementController', () => {
       expect(controller.refresh).toBeInstanceOf(Function)
     })
 
-    it('cleanup 应该调用 QR 预加载的 stop 方法', () => {
+    it('cleanup 应该完成清理工作', () => {
       const controller = useTeamManagementController()
 
-      controller.cleanup()
-
-      expect(controller.qr.stopBackgroundPreload).toHaveBeenCalled()
+      // cleanup should not throw
+      expect(() => controller.cleanup()).not.toThrow()
     })
   })
 

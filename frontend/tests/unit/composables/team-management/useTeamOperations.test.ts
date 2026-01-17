@@ -18,6 +18,19 @@ vi.mock('@/stores/qrcode')
 vi.mock('@/composables/useToast')
 vi.mock('@/api/team')
 
+// Mock confirm dialog - showDanger returns a promise that resolves to boolean
+const mockShowDanger = vi.fn().mockResolvedValue(true)
+const mockShowWarning = vi.fn().mockResolvedValue(true)
+vi.mock('@/composables/useConfirmDialog', () => ({
+  useConfirmDialog: () => ({
+    showDanger: mockShowDanger,
+    showWarning: mockShowWarning,
+    showInfo: vi.fn().mockResolvedValue(true),
+    confirmDialog: { value: null },
+    closeDialog: vi.fn()
+  })
+}))
+
 describe('useTeamOperations', () => {
   let operations: ReturnType<typeof useTeamOperations>
   let mockTeamStore: any
@@ -73,6 +86,10 @@ describe('useTeamOperations', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+
+    // Reset confirm dialog mock to always confirm
+    mockShowDanger.mockResolvedValue(true)
+    mockShowWarning.mockResolvedValue(true)
 
     // Setup mock implementations
     mockTeamStore = {
