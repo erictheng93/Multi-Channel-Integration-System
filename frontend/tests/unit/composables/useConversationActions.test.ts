@@ -137,15 +137,16 @@ describe('useConversationActions', () => {
     })
 
     it('should set isClosing to true during operation', async () => {
+      // Create actions first, then capture its isClosing state during operation
+      const actions = useConversationActions(mockController)
       let closingDuringOperation = false
 
       mockController.closeConversation = vi.fn().mockImplementation(async () => {
-        const actions = useConversationActions(mockController)
+        // Capture the state from the SAME actions instance
         closingDuringOperation = actions.isClosing.value
         return true
       })
 
-      const actions = useConversationActions(mockController)
       await actions.close()
 
       expect(closingDuringOperation).toBe(true)
