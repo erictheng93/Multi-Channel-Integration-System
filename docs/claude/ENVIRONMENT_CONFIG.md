@@ -1,36 +1,36 @@
 # Environment Configuration System
 
-?¬å?æ¡ˆæ¡??**3 å±¤æ¶æ§‹æ¨¡å¼?* ?²è??°å??ç½®ç®¡ç?ï¼Œå¯¦?¾ä??Ÿç”¢/?‹ç™¼?°å??„ç„¡ç¸«å??›ï?ä¸¦å??¨æ??¤ç¡¬ç·¨ç¢¼ URL??
+æœ¬æ–‡ä»¶æ¡ç”¨ **3 å±¤æ¶æ§‹æ¨¡å¼** é€²è¡Œç’°å¢ƒé…ç½®ç®¡ç†ï¼Œå¯¦ç¾ç”Ÿç”¢/é–‹ç™¼ç’°å¢ƒçš„ç„¡ç¸«åˆ‡æ›ï¼Œä¸¦æ¶ˆé™¤ç¡¬ç·¨ç¢¼ URLã€‚
 
 ## Architecture Pattern: 3-Layer Configuration
 
 ```
-?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-?? Layer 3: Business Logic Code                           ??
-?? ?œâ? Components, Services, Handlers                      ??
-?? ?”â? Uses: getBackendUrl(), getWebSocketUrl(), etc.      ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-                        ??
-                        ??(Imports configuration functions)
-                        ??
-?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-?? Layer 2: Runtime Configuration Layer                   ??
-?? ?œâ? frontend/src/config/runtime.ts (428 lines)          ??
-?? ?œâ? src/config/runtime.ts (300+ lines)                  ??
-?? ?”â? Functions: getBackendUrl(), getWebSocketUrl()       ??
-??    getFrontendUrl(), getStoragePublicUrl()              ??
-??    validateRuntimeConfig(), etc.                        ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-                        ??
-                        ??(Reads from environment variables)
-                        ??
-?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-?? Layer 1: Environment Variables                         ??
-?? ?œâ? .env.development / .env.production (Frontend)       ??
-?? ?œâ? .dev.vars (Backend development)                     ??
-?? ?œâ? wrangler.toml [vars] (Backend production)           ??
-?? ?”â? Cloudflare Dashboard secrets (Production secrets)   ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+â•‘ Layer 3: Business Logic Code                                  â•‘
+â•‘ â†’ Components, Services, Handlers                              â•‘
+â•‘ â†’ Uses: getBackendUrl(), getWebSocketUrl(), etc.              â•‘
+â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                        â”‚
+                        â”‚ (Imports configuration functions)
+                        â–¼
+â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+â•‘ Layer 2: Runtime Configuration Layer                          â•‘
+â•‘ â†’ frontend/src/config/runtime.ts (428 lines)                  â•‘
+â•‘ â†’ src/config/runtime.ts (300+ lines)                          â•‘
+â•‘ â†’ Functions: getBackendUrl(), getWebSocketUrl()               â•‘
+â•‘   getFrontendUrl(), getStoragePublicUrl()                     â•‘
+â•‘   validateRuntimeConfig(), etc.                               â•‘
+â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                        â”‚
+                        â”‚ (Reads from environment variables)
+                        â–¼
+â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+â•‘ Layer 1: Environment Variables                                â•‘
+â•‘ â†’ .env.development / .env.production (Frontend)               â•‘
+â•‘ â†’ .dev.vars (Backend development)                             â•‘
+â•‘ â†’ wrangler.toml [vars] (Backend production)                   â•‘
+â•‘ â†’ Cloudflare Dashboard secrets (Production secrets)           â•‘
+â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ```
 
 ## Key Configuration Functions
@@ -47,7 +47,7 @@ const apiUrl = getBackendUrl();
 
 // Get WebSocket URL (auto protocol conversion)
 const wsUrl = getWebSocketUrl();
-// Automatically converts: https: ??wss:, http: ??ws:
+// Automatically converts: https: â†’ wss:, http: â†’ ws:
 // Returns: 'wss://your-api-domain.example.com/ws' (production)
 //       or 'ws://localhost:8787/ws' (development)
 
@@ -198,30 +198,30 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 ## Migration Benefits
 
 **Before Migration (Hardcoded URLs):**
-- ??69+ files with hardcoded URLs
-- ??4-6 hours to switch environments
-- ??Manual find-and-replace prone to errors
-- ??No type safety for configuration
-- ??Difficult to maintain consistency
+- âŒ 69+ files with hardcoded URLs
+- âŒ 4-6 hours to switch environments
+- âŒ Manual find-and-replace prone to errors
+- âŒ No type safety for configuration
+- âŒ Difficult to maintain consistency
 
 **After Migration (3-Layer Architecture):**
-- ??0 hardcoded URLs (except defaults in runtime.ts)
-- ??5-10 minutes to switch environments
-- ??Single `.env` file change
-- ??Full TypeScript type safety
-- ??Automatic validation and error handling
-- ??96% reduction in switching time
-- ??732% ROI (Return on Investment)
+- âœ… 0 hardcoded URLs (except defaults in runtime.ts)
+- âœ… 5-10 minutes to switch environments
+- âœ… Single `.env` file change
+- âœ… Full TypeScript type safety
+- âœ… Automatic validation and error handling
+- âœ… 96% reduction in switching time
+- âœ… 732% ROI (Return on Investment)
 
 ## Configuration Best Practices
 
 1. **Always use configuration functions:**
    ```typescript
-   // ??GOOD
+   // âœ… GOOD
    import { getBackendUrl } from '@/config/runtime';
    const url = getBackendUrl();
 
-   // ??BAD - Never hardcode URLs
+   // âŒ BAD - Never hardcode URLs
    const url = 'https://your-api-domain.example.com';
    ```
 
@@ -244,7 +244,7 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 4. **TypeScript support:**
    ```typescript
    // frontend/src/vite-env.d.ts provides full autocomplete
-   const url = import.meta.env.VITE_BACKEND_URL; // ??Type-safe
+   const url = import.meta.env.VITE_BACKEND_URL; // âœ… Type-safe
    ```
 
 5. **Never commit sensitive data:**
