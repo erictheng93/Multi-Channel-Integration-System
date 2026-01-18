@@ -121,9 +121,9 @@
         </div>
       </div>
 
-      <!-- 🔧 FIX: Image Attachments - Simple display without Flex Message Card -->
+      <!-- 🔧 FIX: Attachments Container - Images, Videos, and Documents -->
       <div
-        v-else-if="imageAttachments.length > 0 || nonImageAttachments.length > 0"
+        v-else-if="imageAttachments.length > 0 || videoAttachments.length > 0 || documentAttachments.length > 0"
         class="message-attachments-container"
       >
         <!-- 圖片附件：簡單顯示，不使用 Flex Message Card -->
@@ -189,13 +189,112 @@
           </div>
         </div>
 
-        <!-- 非圖片附件：使用 Flex Message Card 顯示 -->
+        <!-- 影片附件：直接內嵌播放 -->
         <div
-          v-if="nonImageAttachments.length > 0"
+          v-for="attachment in videoAttachments"
+          :key="attachment.id"
+          class="message-media attachment-video"
+        >
+          <div class="video-container">
+            <video
+              :ref="(el) => setVideoRef(el as HTMLVideoElement, attachment.id)"
+              :src="attachment.fileUrl"
+              class="video-player"
+              preload="metadata"
+              playsinline
+              :muted="videoMuted[attachment.id] !== false"
+              @play="onVideoPlay(attachment.id)"
+              @pause="onVideoPause(attachment.id)"
+              @ended="onVideoEnded(attachment.id)"
+            />
+            <!-- 控制層 -->
+            <div
+              class="video-controls-overlay"
+              :class="{ 'is-playing': videoPlaying[attachment.id] }"
+            >
+              <button
+                class="video-play-btn-center"
+                @click="toggleVideoPlay(attachment.id)"
+              >
+                <PlayIcon
+                  v-if="!videoPlaying[attachment.id]"
+                  :size="32"
+                />
+                <PauseIcon
+                  v-else
+                  :size="32"
+                />
+              </button>
+              <div class="video-controls-bar">
+                <button
+                  class="video-control-btn"
+                  @click="toggleVideoPlay(attachment.id)"
+                >
+                  <PlayIcon
+                    v-if="!videoPlaying[attachment.id]"
+                    :size="16"
+                  />
+                  <PauseIcon
+                    v-else
+                    :size="16"
+                  />
+                </button>
+                <button
+                  class="video-control-btn"
+                  @click="toggleVideoMute(attachment.id)"
+                >
+                  <VolumeMuteIcon
+                    v-if="videoMuted[attachment.id] !== false"
+                    :size="16"
+                  />
+                  <VolumeIcon
+                    v-else
+                    :size="16"
+                  />
+                </button>
+                <button
+                  class="video-control-btn"
+                  @click="downloadAttachment(attachment)"
+                >
+                  <DownloadIcon :size="16" />
+                </button>
+                <button
+                  class="video-control-btn expand-btn"
+                  title="放大播放"
+                  @click.stop="openVideoPreview(attachment)"
+                >
+                  <MaximizeIcon :size="16" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- 影片附件狀態指示器 -->
+          <div
+            class="attachment-status-indicator video-status"
+            :class="getAttachmentStatusClass(attachment)"
+          >
+            <template v-if="isAttachmentPending(attachment)">
+              <span class="status-spinner" />
+              <span class="status-text">傳送中...</span>
+            </template>
+            <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
+              <span class="status-icon failed">✕</span>
+              <span class="status-text failed">發送失敗</span>
+            </template>
+            <template v-else>
+              <span class="status-icon success">✓</span>
+              <span class="status-text success">已發送</span>
+            </template>
+          </div>
+        </div>
+
+        <!-- 文件附件：使用 Flex Message Card 顯示 -->
+        <div
+          v-if="documentAttachments.length > 0"
           class="message-file-attachments"
         >
           <div
-            v-for="attachment in nonImageAttachments"
+            v-for="attachment in documentAttachments"
             :key="attachment.id"
             class="attachment-wrapper"
           >
@@ -207,7 +306,7 @@
                 fileSize: attachment.fileSize || 0,
                 fileUrl: attachment.fileUrl
               }"
-              :compact="nonImageAttachments.length > 1"
+              :compact="documentAttachments.length > 1"
               @preview="handleAttachmentPreview"
             />
             <!-- 🆕 附件發送狀態指示器 -->
@@ -545,6 +644,179 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Enhanced Video Preview Modal -->
+    <Teleport
+      v-if="showVideoPreview && previewVideoAttachment"
+      to="body"
+    >
+      <div
+        class="video-preview-overlay"
+        @click="closeVideoPreview"
+      >
+        <div
+          class="video-preview-modal"
+          @click.stop
+        >
+          <div class="video-preview-header">
+            <div class="video-preview-title">
+              <h3>{{ previewVideoAttachment.filename }}</h3>
+              <span class="video-preview-meta">
+                {{ formatFileSize(previewVideoAttachment.fileSize || 0) }}
+                <span v-if="previewVideoDuration > 0">
+                  • {{ formatVideoTime(previewVideoDuration) }}
+                </span>
+              </span>
+            </div>
+            <div class="video-preview-actions">
+              <button
+                class="video-preview-btn"
+                title="下載"
+                @click="downloadPreviewVideo"
+              >
+                <DownloadIcon />
+              </button>
+              <button
+                class="video-preview-btn"
+                title="全螢幕"
+                @click="requestFullscreen"
+              >
+                <MaximizeIcon />
+              </button>
+              <button
+                class="video-preview-btn close"
+                title="關閉"
+                @click="closeVideoPreview"
+              >
+                <XIcon />
+              </button>
+            </div>
+          </div>
+          <div class="video-preview-content">
+            <div class="video-preview-player-wrapper">
+              <video
+                :ref="(el) => setPreviewVideoRef(el as HTMLVideoElement)"
+                :src="previewVideoAttachment.fileUrl"
+                class="video-preview-player"
+                preload="metadata"
+                playsinline
+                :muted="previewVideoMuted"
+                @play="onPreviewVideoPlay"
+                @pause="onPreviewVideoPause"
+                @timeupdate="onPreviewVideoTimeUpdate"
+                @loadedmetadata="onPreviewVideoLoadedMetadata"
+                @ended="onPreviewVideoEnded"
+                @click="togglePreviewVideoPlay"
+              />
+              <!-- 中央播放按鈕 -->
+              <div
+                v-if="!previewVideoPlaying"
+                class="video-preview-play-overlay"
+                @click="togglePreviewVideoPlay"
+              >
+                <button class="video-preview-play-btn-center">
+                  <PlayIcon :size="48" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="video-preview-controls">
+            <!-- 進度條 -->
+            <div class="video-progress-container">
+              <input
+                type="range"
+                class="video-progress-bar"
+                :value="previewVideoCurrentTime"
+                :max="previewVideoDuration || 100"
+                step="0.1"
+                @input="seekPreviewVideo"
+              >
+            </div>
+            <!-- 控制按鈕列 -->
+            <div class="video-controls-row">
+              <div class="video-controls-left">
+                <!-- 播放/暫停 -->
+                <button
+                  class="video-ctrl-btn"
+                  @click="togglePreviewVideoPlay"
+                >
+                  <PlayIcon
+                    v-if="!previewVideoPlaying"
+                    :size="20"
+                  />
+                  <PauseIcon
+                    v-else
+                    :size="20"
+                  />
+                </button>
+                <!-- 時間顯示 -->
+                <span class="video-time-display">
+                  {{ formatVideoTime(previewVideoCurrentTime) }} / {{ formatVideoTime(previewVideoDuration) }}
+                </span>
+              </div>
+              <div class="video-controls-right">
+                <!-- 音量控制 -->
+                <div class="video-volume-control">
+                  <button
+                    class="video-ctrl-btn"
+                    @click="togglePreviewVideoMute"
+                  >
+                    <VolumeMuteIcon
+                      v-if="previewVideoMuted"
+                      :size="20"
+                    />
+                    <VolumeIcon
+                      v-else
+                      :size="20"
+                    />
+                  </button>
+                  <input
+                    type="range"
+                    class="video-volume-slider"
+                    :value="previewVideoMuted ? 0 : previewVideoVolume"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    @input="changePreviewVideoVolume"
+                  >
+                </div>
+                <!-- 播放速度 -->
+                <div class="video-playback-rate">
+                  <button
+                    class="video-ctrl-btn playback-rate-btn"
+                    @click="togglePlaybackRateMenu"
+                  >
+                    {{ previewVideoPlaybackRate }}x
+                  </button>
+                  <div
+                    v-if="showPlaybackRateMenu"
+                    class="playback-rate-menu"
+                  >
+                    <button
+                      v-for="rate in [0.5, 0.75, 1, 1.25, 1.5, 2]"
+                      :key="rate"
+                      class="playback-rate-option"
+                      :class="{ active: previewVideoPlaybackRate === rate }"
+                      @click="setPreviewVideoPlaybackRate(rate)"
+                    >
+                      {{ rate }}x
+                    </button>
+                  </div>
+                </div>
+                <!-- 全螢幕 -->
+                <button
+                  class="video-ctrl-btn"
+                  title="全螢幕"
+                  @click="requestFullscreen"
+                >
+                  <MaximizeIcon :size="20" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -574,7 +846,12 @@ import {
   ReplyIcon,
   MoreVerticalIcon,
   ForwardIcon,
-  TrashIcon
+  TrashIcon,
+  PlayIcon,
+  PauseIcon,
+  VolumeIcon,
+  VolumeMuteIcon,
+  MaximizeIcon
 } from '@/components/icons'
 
 interface Props {
@@ -619,9 +896,10 @@ const attachmentProps = computed(() => ({
 }))
 
 const {
-  fileAttachments, // Used internally by imageAttachments and nonImageAttachments
+  fileAttachments, // Used internally by imageAttachments, videoAttachments, and documentAttachments
   imageAttachments,
-  nonImageAttachments,
+  videoAttachments,
+  documentAttachments,
   hasMultipleAttachments,
   isFileOnlyContent,
   messageStatus,
@@ -632,7 +910,7 @@ const {
   getAttachmentStatusClass
 } = useMessageAttachment(attachmentProps)
 
-// Mark fileAttachments as used (it's internally used by imageAttachments and nonImageAttachments)
+// Mark fileAttachments as used (it's internally used by imageAttachments, videoAttachments, and documentAttachments)
 void fileAttachments
 
 // Wrap handleAttachmentPreview to emit the preview event
@@ -699,6 +977,187 @@ const showImagePreview = ref(false)
 const zoomLevel = ref(1)
 const imageLoaded = ref(false)
 const imageError = ref(false)
+
+// Video player state
+/* eslint-disable no-undef */
+const videoPlaying = ref<Record<string, boolean>>({})
+const videoMuted = ref<Record<string, boolean>>({})
+const videoRefs = ref<Record<string, HTMLVideoElement | null>>({})
+
+// Video control methods
+const setVideoRef = (el: HTMLVideoElement | null, attachmentId: string) => {
+  videoRefs.value[attachmentId] = el
+}
+
+const toggleVideoPlay = (attachmentId: string) => {
+  const video = videoRefs.value[attachmentId]
+  if (!video) {
+    return
+  }
+
+  if (video.paused) {
+    video.play()
+    videoPlaying.value[attachmentId] = true
+  } else {
+    video.pause()
+    videoPlaying.value[attachmentId] = false
+  }
+}
+
+const toggleVideoMute = (attachmentId: string) => {
+  const video = videoRefs.value[attachmentId]
+  if (!video) {
+    return
+  }
+
+  video.muted = !video.muted
+  videoMuted.value[attachmentId] = video.muted
+}
+
+const onVideoPlay = (attachmentId: string) => {
+  videoPlaying.value[attachmentId] = true
+}
+
+const onVideoPause = (attachmentId: string) => {
+  videoPlaying.value[attachmentId] = false
+}
+
+const onVideoEnded = (attachmentId: string) => {
+  videoPlaying.value[attachmentId] = false
+}
+
+// Video preview modal state
+const showVideoPreview = ref(false)
+const previewVideoAttachment = ref<FileAttachment | null>(null)
+const previewVideoRef = ref<HTMLVideoElement | null>(null)
+const previewVideoPlaying = ref(false)
+const previewVideoMuted = ref(true)
+const previewVideoCurrentTime = ref(0)
+const previewVideoDuration = ref(0)
+const previewVideoVolume = ref(1)
+const previewVideoPlaybackRate = ref(1)
+const showPlaybackRateMenu = ref(false)
+
+// Video preview modal methods
+const openVideoPreview = (attachment: FileAttachment) => {
+  previewVideoAttachment.value = attachment
+  showVideoPreview.value = true
+  previewVideoPlaying.value = false
+  previewVideoMuted.value = true
+  previewVideoCurrentTime.value = 0
+  previewVideoDuration.value = 0
+  previewVideoPlaybackRate.value = 1
+  showPlaybackRateMenu.value = false
+}
+
+const closeVideoPreview = () => {
+  if (previewVideoRef.value) {
+    previewVideoRef.value.pause()
+  }
+  showVideoPreview.value = false
+  previewVideoAttachment.value = null
+  previewVideoPlaying.value = false
+}
+
+const setPreviewVideoRef = (el: HTMLVideoElement | null) => {
+  previewVideoRef.value = el
+}
+
+const togglePreviewVideoPlay = () => {
+  if (!previewVideoRef.value) {
+    return
+  }
+
+  if (previewVideoRef.value.paused) {
+    previewVideoRef.value.play()
+  } else {
+    previewVideoRef.value.pause()
+  }
+}
+
+const togglePreviewVideoMute = () => {
+  if (!previewVideoRef.value) {
+    return
+  }
+
+  previewVideoRef.value.muted = !previewVideoRef.value.muted
+  previewVideoMuted.value = previewVideoRef.value.muted
+}
+
+const onPreviewVideoPlay = () => {
+  previewVideoPlaying.value = true
+}
+
+const onPreviewVideoPause = () => {
+  previewVideoPlaying.value = false
+}
+
+const onPreviewVideoTimeUpdate = () => {
+  if (previewVideoRef.value) {
+    previewVideoCurrentTime.value = previewVideoRef.value.currentTime
+  }
+}
+
+const onPreviewVideoLoadedMetadata = () => {
+  if (previewVideoRef.value) {
+    previewVideoDuration.value = previewVideoRef.value.duration
+  }
+}
+
+const onPreviewVideoEnded = () => {
+  previewVideoPlaying.value = false
+}
+
+const seekPreviewVideo = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (previewVideoRef.value) {
+    previewVideoRef.value.currentTime = Number(target.value)
+  }
+}
+
+const changePreviewVideoVolume = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (previewVideoRef.value) {
+    previewVideoRef.value.volume = Number(target.value)
+    previewVideoVolume.value = Number(target.value)
+    previewVideoMuted.value = Number(target.value) === 0
+  }
+}
+
+const setPreviewVideoPlaybackRate = (rate: number) => {
+  if (previewVideoRef.value) {
+    previewVideoRef.value.playbackRate = rate
+    previewVideoPlaybackRate.value = rate
+  }
+  showPlaybackRateMenu.value = false
+}
+
+const togglePlaybackRateMenu = () => {
+  showPlaybackRateMenu.value = !showPlaybackRateMenu.value
+}
+
+const formatVideoTime = (seconds: number): string => {
+  if (isNaN(seconds) || !isFinite(seconds)) {
+    return '00:00'
+  }
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+const requestFullscreen = () => {
+  if (previewVideoRef.value) {
+    if (previewVideoRef.value.requestFullscreen) {
+      previewVideoRef.value.requestFullscreen()
+    }
+  }
+}
+
+const downloadPreviewVideo = () => {
+  if (previewVideoAttachment.value) {
+    downloadAttachment(previewVideoAttachment.value)
+  }
+}
 
 // Computed properties
 const isOutgoing = computed(() => {
@@ -2334,6 +2793,653 @@ const onImageError = () => {
 
   .attachment-status-indicator.status-failed::after {
     display: none; /* 移動端隱藏提示 */
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🎬 影片附件播放器樣式
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 影片附件容器 */
+.message-media.attachment-video {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 320px;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-fast);
+}
+
+.video-container:hover {
+  box-shadow: var(--shadow-lg);
+  transform: scale(1.01);
+}
+
+/* 影片元素 */
+.video-player {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+/* 控制層覆蓋 */
+.video-controls-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 1;
+  transition: opacity var(--transition-fast);
+}
+
+.video-controls-overlay.is-playing {
+  opacity: 0;
+}
+
+.video-container:hover .video-controls-overlay {
+  opacity: 1;
+}
+
+/* 居中播放按鈕 */
+.video-play-btn-center {
+  width: 64px;
+  height: 64px;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--gray-800);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.video-play-btn-center:hover {
+  background: white;
+  transform: scale(1.1);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.video-play-btn-center:active {
+  transform: scale(0.95);
+}
+
+/* 底部控制列 */
+.video-controls-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+}
+
+.video-control-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(4px);
+}
+
+.video-control-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.1);
+}
+
+.video-control-btn:active {
+  transform: scale(0.9);
+}
+
+/* 影片狀態指示器 */
+.attachment-status-indicator.video-status {
+  margin-top: 8px;
+  align-self: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   響應式調整 - 影片播放器
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .message-media.attachment-video {
+    max-width: 280px;
+  }
+
+  .video-player {
+    max-height: 300px;
+  }
+
+  .video-play-btn-center {
+    width: 52px;
+    height: 52px;
+  }
+
+  .video-play-btn-center svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .video-control-btn {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-media.attachment-video {
+    max-width: 240px;
+  }
+
+  .video-player {
+    max-height: 220px;
+  }
+
+  .video-play-btn-center {
+    width: 44px;
+    height: 44px;
+  }
+
+  .video-play-btn-center svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .video-controls-bar {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .video-control-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  .video-control-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* 觸控設備優化 */
+@media (pointer: coarse) {
+  .video-controls-overlay {
+    opacity: 1 !important;
+  }
+
+  .video-control-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+/* 展開按鈕 */
+.video-control-btn.expand-btn {
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🎬 影片預覽 Modal 樣式
+   ═══════════════════════════════════════════════════════════════ */
+
+.video-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.video-preview-modal {
+  background: var(--gray-900);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  width: 90vw;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 標題列 */
+.video-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  background: var(--gray-800);
+  border-bottom: 1px solid var(--gray-700);
+}
+
+.video-preview-title h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 var(--space-1) 0;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-preview-meta {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+
+.video-preview-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.video-preview-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--gray-700);
+  color: var(--gray-300);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.video-preview-btn:hover {
+  background: var(--gray-600);
+  color: white;
+}
+
+.video-preview-btn.close:hover {
+  background: var(--red-600);
+  color: white;
+}
+
+/* 影片內容區 */
+.video-preview-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  min-height: 300px;
+  max-height: calc(90vh - 200px);
+  position: relative;
+}
+
+.video-preview-player-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-preview-player {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.video-preview-play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.video-preview-play-btn-center {
+  width: 80px;
+  height: 80px;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--gray-800);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.video-preview-play-btn-center:hover {
+  background: white;
+  transform: scale(1.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* 控制列 */
+.video-preview-controls {
+  background: var(--gray-800);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--gray-700);
+}
+
+.video-progress-container {
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
+.video-progress-bar {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--gray-600);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  outline: none;
+}
+
+.video-progress-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.video-progress-bar::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.video-progress-bar::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+}
+
+.video-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.video-controls-left,
+.video-controls-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.video-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--gray-700);
+  color: var(--gray-300);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.video-ctrl-btn:hover {
+  background: var(--gray-600);
+  color: white;
+}
+
+.video-time-display {
+  font-size: 0.85rem;
+  color: var(--gray-400);
+  font-family: monospace;
+  min-width: 100px;
+}
+
+/* 音量控制 */
+.video-volume-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.video-volume-slider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--gray-600);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  outline: none;
+}
+
+.video-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.video-volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+}
+
+/* 播放速度選單 */
+.video-playback-rate {
+  position: relative;
+}
+
+.playback-rate-btn {
+  width: auto;
+  padding: 0 var(--space-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.playback-rate-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: var(--space-2);
+  background: var(--gray-700);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.playback-rate-option {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: none;
+  color: var(--gray-300);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.playback-rate-option:hover {
+  background: var(--gray-600);
+  color: white;
+}
+
+.playback-rate-option.active {
+  background: var(--primary-600);
+  color: white;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   響應式調整 - 影片預覽 Modal
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .video-preview-modal {
+    width: 95vw;
+    max-height: 95vh;
+  }
+
+  .video-preview-header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .video-preview-title h3 {
+    font-size: 0.9rem;
+    max-width: 200px;
+  }
+
+  .video-preview-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .video-preview-controls {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .video-controls-row {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .video-volume-slider {
+    width: 60px;
+  }
+
+  .video-time-display {
+    font-size: 0.75rem;
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .video-preview-header {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .video-preview-title h3 {
+    font-size: 0.85rem;
+    max-width: 150px;
+  }
+
+  .video-preview-meta {
+    font-size: 0.7rem;
+  }
+
+  .video-preview-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .video-preview-play-btn-center {
+    width: 60px;
+    height: 60px;
+  }
+
+  .video-preview-play-btn-center svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .video-preview-controls {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .video-ctrl-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .video-volume-control {
+    display: none; /* 手機版隱藏音量滑桿 */
+  }
+
+  .video-time-display {
+    font-size: 0.7rem;
+    min-width: 70px;
+  }
+}
+
+/* 觸控設備優化 - 影片預覽 Modal */
+@media (pointer: coarse) {
+  .video-ctrl-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .video-progress-bar {
+    height: 8px;
+  }
+
+  .video-progress-bar::-webkit-slider-thumb {
+    width: 18px;
+    height: 18px;
   }
 }
 </style>

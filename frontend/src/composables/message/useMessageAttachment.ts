@@ -14,7 +14,7 @@
 
 import { computed, type Ref, type ComputedRef } from 'vue'
 import type { Message } from '@/types'
-import { isImageFile } from '@/utils/message'
+import { isImageFile, isVideoFile } from '@/utils/message'
 import { MESSAGE_STATUS } from '@/constants/message-status'
 
 /**
@@ -170,11 +170,29 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
   })
 
   /**
-   * Filter non-image attachments
+   * Filter non-image attachments (legacy - use documentAttachments instead)
    * These will be displayed using Flex Message Card
    */
   const nonImageAttachments = computed(() => {
     return fileAttachments.value.filter((attachment) => !isImageFile(attachment))
+  })
+
+  /**
+   * Filter video attachments
+   * Uses isVideoFile utility to detect videos by MIME type or extension
+   */
+  const videoAttachments = computed(() => {
+    return fileAttachments.value.filter(isVideoFile)
+  })
+
+  /**
+   * Filter document attachments (non-image, non-video files)
+   * These will be displayed using Flex Message Card
+   */
+  const documentAttachments = computed(() => {
+    return fileAttachments.value.filter(
+      (attachment) => !isImageFile(attachment) && !isVideoFile(attachment)
+    )
   })
 
   /**
@@ -330,6 +348,8 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
     fileAttachments,
     imageAttachments,
     nonImageAttachments,
+    videoAttachments,
+    documentAttachments,
     hasMultipleAttachments,
     isFileOnlyContent,
     messageStatus,

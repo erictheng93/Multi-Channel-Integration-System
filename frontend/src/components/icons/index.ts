@@ -845,6 +845,130 @@ export const EditIcon = defineComponent<IconProps>({
 
 export const PlusIcon = createIcon('M12 5v14M5 12h14')
 
+// Video Player Icons
+export const PlayIcon = defineComponent<IconProps>({
+  name: 'PlayIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'currentColor',
+      stroke: 'none',
+      class: props.class || ''
+    }, [
+      h('polygon', { points: '5 3 19 12 5 21 5 3' })
+    ])
+  }
+})
+
+export const PauseIcon = defineComponent<IconProps>({
+  name: 'PauseIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'currentColor',
+      stroke: 'none',
+      class: props.class || ''
+    }, [
+      h('rect', { x: '6', y: '4', width: '4', height: '16' }),
+      h('rect', { x: '14', y: '4', width: '4', height: '16' })
+    ])
+  }
+})
+
+export const VolumeMuteIcon = defineComponent<IconProps>({
+  name: 'VolumeMuteIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('polygon', { points: '11 5 6 9 2 9 2 15 6 15 11 19 11 5', fill: 'currentColor' }),
+      h('line', { x1: '23', x2: '17', y1: '9', y2: '15' }),
+      h('line', { x1: '17', x2: '23', y1: '9', y2: '15' })
+    ])
+  }
+})
+
+export const MaximizeIcon = defineComponent<IconProps>({
+  name: 'MaximizeIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M8 3H5a2 2 0 0 0-2 2v3' }),
+      h('path', { d: 'M21 8V5a2 2 0 0 0-2-2h-3' }),
+      h('path', { d: 'M3 16v3a2 2 0 0 0 2 2h3' }),
+      h('path', { d: 'M16 21h3a2 2 0 0 0 2-2v-3' })
+    ])
+  }
+})
+
+export const MinimizeIcon = defineComponent<IconProps>({
+  name: 'MinimizeIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M8 3v3a2 2 0 0 1-2 2H3' }),
+      h('path', { d: 'M21 8h-3a2 2 0 0 1-2-2V3' }),
+      h('path', { d: 'M3 16h3a2 2 0 0 1 2 2v3' }),
+      h('path', { d: 'M16 21v-3a2 2 0 0 1 2-2h3' })
+    ])
+  }
+})
+
 export const TagIcon = defineComponent<IconProps>({
   name: 'TagIcon',
   props: {

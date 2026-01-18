@@ -11,5 +11,6 @@ export {
   formatFileSize,
   getFileExtension,
   getFileTypeClass,
-  isImageFile
+  isImageFile,
+  isVideoFile
 } from './formatting'
