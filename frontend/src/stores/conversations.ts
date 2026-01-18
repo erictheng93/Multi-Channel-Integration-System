@@ -6,7 +6,7 @@ import { messageApi } from '@/api/message'
 import { useAuthStore } from './auth'
 import { translateError } from '@/utils/error-handler'
 import { conversationCache, cacheManager } from '@/services/cacheManager'
-import { CONVERSATION_STATUS } from '@/constants/conversation-status'
+import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
 import { useWebSocketStore, type SubscriptionId } from './websocket'
 import type { WebSocketMessage } from '@/services/websocketClient'
 
@@ -1438,9 +1438,8 @@ export const useConversationsStore = defineStore('conversations', () => {
 
       case 'conversation_updated':
       case 'conversation_status_changed':
-      case 'conversation_assigned':
-      case 'conversation_transferred': {
-        // 對話狀態更新
+      case 'conversation_assigned': {
+        // 對話狀態更新（一般指派/更新）
         if (conversationId) {
           const status = data?.status as string | undefined
           const assignedAgentId = (data?.assignedUserId || data?.assignedAgentId) as string | undefined
@@ -1453,12 +1452,9 @@ export const useConversationsStore = defineStore('conversations', () => {
           if (status) updates.status = status as Conversation['status']
           if (assignedAgentId) {
             updates.assignedAgentId = assignedAgentId
-            // 🆕 Build assignedAgent object with name for UI display
-            // Use type assertion since UI only needs 'name' property for display
             updates.assignedAgent = {
               id: assignedAgentId,
-              name: assignedAgentName || assignedAgentId, // Fallback to ID if name unavailable
-              // Provide minimal required fields for type safety - UI only uses 'name'
+              name: assignedAgentName || assignedAgentId,
               email: '',
               displayName: assignedAgentName || assignedAgentId,
               role: 'agent' as const,
@@ -1468,15 +1464,13 @@ export const useConversationsStore = defineStore('conversations', () => {
           }
           if (assignedTeamId !== undefined) {
             updates.assignedTeamId = assignedTeamId
-            // 🆕 Build assignedTeam object with name for UI display
             if (assignedTeamId) {
               updates.assignedTeam = {
                 id: assignedTeamId,
-                name: assignedTeamName || `Team ${assignedTeamId}`, // Fallback to generic name
+                name: assignedTeamName || `Team ${assignedTeamId}`,
                 description: null
               }
             } else {
-              // Clear team assignment
               updates.assignedTeam = undefined
             }
           }
@@ -1486,11 +1480,184 @@ export const useConversationsStore = defineStore('conversations', () => {
             lastUpdateTime.value = new Date()
             console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`, { assignedAgentName, assignedTeamName })
           } else {
-            // 沒有具體更新內容，回退到輪詢
             pollConversations()
           }
         } else {
           pollConversations()
+        }
+        break
+      }
+
+      case 'conversation_transferred': {
+        // 🆕 對話轉移 - 處理跨團隊轉移的三種動作
+        const action = data?.action as 'removed' | 'assigned' | 'team_changed' | undefined
+
+        console.log('📦 [ConversationsStore] Conversation transferred event', {
+          conversationId,
+          action,
+          data
+        })
+
+        if (action === 'removed') {
+          // ❌ 從當前團隊移除：對話被轉移到其他團隊
+          // 從列表中移除該對話
+          if (conversationId) {
+            const index = conversations.value.findIndex(c => c.id === conversationId)
+            if (index !== -1) {
+              const removedConv = conversations.value[index]
+              const previousTeamId = removedConv?.assignedTeamId
+              conversations.value.splice(index, 1)
+              conversationCache.invalidateConversation(conversationId)
+              updateStatsFromConversations()
+              lastUpdateTime.value = new Date()
+              console.log(`🚫 [ConversationsStore] Conversation removed from list (transferred to another team)`, {
+                conversationId,
+                toTeamId: data?.toTeamId,
+                toTeamName: data?.toTeamName,
+                previousTeamId
+              })
+            }
+          }
+        } else if (action === 'assigned') {
+          // ✅ 新團隊接收：對話被轉移到當前團隊
+          // 將對話添加到列表頂部
+          const incomingConversation = data?.conversation as Record<string, unknown> | undefined
+          if (conversationId && incomingConversation) {
+            // 檢查是否已存在（避免重複添加）
+            const existingIndex = conversations.value.findIndex(c => c.id === conversationId)
+            if (existingIndex === -1) {
+              // 從傳入數據提取信息
+              const customerName = (incomingConversation.customerName as string) || '未知客戶'
+              const platform = (incomingConversation.platform as string) || 'line'
+              const status = (incomingConversation.status as string) || 'active'
+              const customerId = String(incomingConversation.customerId || conversationId)
+
+              // 構建完整的 Conversation 對象
+              const newConversation: Conversation = {
+                id: conversationId,
+                userId: customerId,
+                platform: platform as Platform,
+                status: status as ConversationStatus,
+                assignedTeamId: data?.toTeamId as number,
+                assignedTeam: data?.toTeamId ? {
+                  id: data.toTeamId as number,
+                  name: (data?.toTeamName as string) || `Team ${data.toTeamId}`,
+                  description: null
+                } : undefined,
+                assignedAgentId: incomingConversation.assignedAgentId as string | undefined,
+                assignedAgent: incomingConversation.assignedAgent as Conversation['assignedAgent'],
+                customer: {
+                  id: customerId,
+                  name: customerName,
+                  platform: platform as Platform,
+                  platformUserId: customerId,
+                  createdAt: Date.now()
+                },
+                lastMessage: incomingConversation.lastMessage as Conversation['lastMessage'],
+                lastMessageAt: (incomingConversation.lastMessageAt as number) || Date.now(),
+                unreadCount: (incomingConversation.unreadCount as number) || 0,
+                createdAt: (incomingConversation.createdAt as number) || Date.now(),
+                updatedAt: Date.now()
+              }
+
+              // 添加到列表頂部
+              conversations.value.unshift(newConversation)
+              conversationCache.setConversation(newConversation)
+              updateStatsFromConversations()
+              lastUpdateTime.value = new Date()
+              console.log(`✨ [ConversationsStore] Conversation added to list (transferred from another team)`, {
+                conversationId,
+                fromTeamId: data?.fromTeamId,
+                fromTeamName: data?.fromTeamName,
+                newTeamId: data?.toTeamId
+              })
+            } else {
+              // 已存在，更新團隊資訊
+              updateConversationStatus(conversationId, {
+                assignedTeamId: data?.toTeamId as number,
+                assignedTeam: {
+                  id: data?.toTeamId as number,
+                  name: (data?.toTeamName as string) || `Team ${data?.toTeamId}`,
+                  description: null
+                }
+              })
+              lastUpdateTime.value = new Date()
+              console.log(`🔄 [ConversationsStore] Conversation already exists, updated team info`, { conversationId })
+            }
+          } else {
+            // 沒有完整數據，回退到輪詢
+            console.log('⚠️ [ConversationsStore] No conversation data in assigned event, polling')
+            pollConversations()
+          }
+        } else if (action === 'team_changed') {
+          // 🔄 團隊變更通知：對話房間內的用戶收到
+          // 更新 Chat 視窗中的團隊標籤
+          if (conversationId) {
+            const toTeamId = data?.toTeamId as number | undefined
+            const toTeamName = (data?.toTeamName || data?.assignedTeamName) as string | undefined
+            const newTeam = data?.newTeam as { id: number; name: string } | undefined
+
+            updateConversationStatus(conversationId, {
+              assignedTeamId: toTeamId || newTeam?.id,
+              assignedTeam: toTeamId || newTeam?.id ? {
+                id: toTeamId || newTeam?.id || 0,
+                name: toTeamName || newTeam?.name || `Team ${toTeamId || newTeam?.id}`,
+                description: null
+              } : undefined
+            })
+            lastUpdateTime.value = new Date()
+            console.log(`🏷️ [ConversationsStore] Conversation team changed in chat window`, {
+              conversationId,
+              newTeamId: toTeamId || newTeam?.id,
+              newTeamName: toTeamName || newTeam?.name
+            })
+          }
+        } else {
+          // 沒有 action 字段（舊格式），回退到原有邏輯
+          if (conversationId) {
+            const status = data?.status as string | undefined
+            const assignedAgentId = (data?.assignedUserId || data?.assignedAgentId) as string | undefined
+            const assignedTeamId = data?.assignedTeamId as number | undefined
+            const assignedAgentName = data?.assignedAgentName as string | undefined
+            const assignedTeamName = data?.assignedTeamName as string | undefined
+
+            const updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'assignedAgent' | 'assignedTeam'>> = {}
+            if (status) updates.status = status as Conversation['status']
+            if (assignedAgentId) {
+              updates.assignedAgentId = assignedAgentId
+              updates.assignedAgent = {
+                id: assignedAgentId,
+                name: assignedAgentName || assignedAgentId,
+                email: '',
+                displayName: assignedAgentName || assignedAgentId,
+                role: 'agent' as const,
+                isActive: true,
+                createdAt: Date.now()
+              }
+            }
+            if (assignedTeamId !== undefined) {
+              updates.assignedTeamId = assignedTeamId
+              if (assignedTeamId) {
+                updates.assignedTeam = {
+                  id: assignedTeamId,
+                  name: assignedTeamName || `Team ${assignedTeamId}`,
+                  description: null
+                }
+              } else {
+                updates.assignedTeam = undefined
+              }
+            }
+
+            if (Object.keys(updates).length > 0) {
+              updateConversationStatus(conversationId, updates)
+              lastUpdateTime.value = new Date()
+              console.log(`✅ [ConversationsStore] Legacy transfer update for ${conversationId}`)
+            } else {
+              pollConversations()
+            }
+          } else {
+            pollConversations()
+          }
         }
         break
       }

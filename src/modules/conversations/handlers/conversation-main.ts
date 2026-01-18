@@ -1218,35 +1218,75 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
 
     await drizzleDb.insert(conversationTransfers).values(transferRecord);
 
-    // 🚀 WebSocket Broadcasting: Conversation Transfer
+    // 🚀 WebSocket Broadcasting: Dual-Team Conversation Transfer
+    // Uses new broadcastConversationTransferred() for proper team-scoped notifications
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
-      await broadcastService.broadcastConversationEvent({
-        type: 'conversation_transferred',
+
+      // 📦 Fetch conversation details for broadcast payload
+      const conversationDetails = await drizzleDb
+        .select({
+          id: conversations.id,
+          customerId: conversations.customerId,
+          customerName: customers.displayName,
+          platform: customers.platform,  // platform is from customers table
+          status: conversations.status,
+          lastMessageAt: conversations.lastMessageAt
+        })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(eq(conversations.id, conversationId))
+        .get();
+
+      // 📦 Fetch team names for broadcast
+      const fromTeamInfo = fromTeamId ? await drizzleDb
+        .select({ name: teams.name })
+        .from(teams)
+        .where(eq(teams.id, fromTeamId))
+        .get() : null;
+
+      const toTeamInfo = toTeamId ? await drizzleDb
+        .select({ name: teams.name })
+        .from(teams)
+        .where(eq(teams.id, toTeamId))
+        .get() : null;
+
+      // 🆕 Use new dual-team broadcast method
+      const broadcastResults = await broadcastService.broadcastConversationTransferred({
         conversationId,
-        userId: String(user.id),
-        data: {
-          from: {
-            teamId: fromTeamId,
-            userId: fromUserId
-          },
-          to: {
-            teamId: toTeamId,
-            userId: toUserId
-          },
-          transferredBy: {
-            id: user.id,
-            name: user.displayName,
-            role: user.role
-          },
-          reason,
-          timestamp
+        fromTeamId: fromTeamId || null,
+        toTeamId: toTeamId,
+        fromTeamName: fromTeamInfo?.name,
+        toTeamName: toTeamInfo?.name,
+        conversation: {
+          id: conversationId,
+          customerId: conversationDetails?.customerId || undefined,
+          customerName: conversationDetails?.customerName || '未知客戶',
+          platform: conversationDetails?.platform || undefined,
+          status: conversationDetails?.status || 'active',
+          lastMessage: conversationDetails?.lastMessageAt ? {
+            content: undefined,  // Content not needed for transfer notification
+            timestamp: new Date(conversationDetails.lastMessageAt).getTime()
+          } : undefined,
+          unreadCount: 0  // Will be recalculated by the receiving team
         },
-        priority: 'high'
+        transferredBy: {
+          id: String(user.id),
+          name: user.displayName || 'Unknown'
+        },
+        reason
       });
-      log.debug('WebSocket conversation transfer broadcasted');
+
+      log.debug('WebSocket dual-team transfer broadcasted', {
+        conversationId,
+        fromTeamId,
+        toTeamId,
+        results: broadcastResults
+      });
     } catch (broadcastError) {
-      log.warn('WebSocket: Transfer broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+      log.warn('WebSocket: Transfer broadcast failed, continuing', {
+        error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+      });
     }
 
     // 🔔 通知觸發：發送對話轉移通知給目標客服
