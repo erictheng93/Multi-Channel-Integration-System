@@ -1641,8 +1641,9 @@ const onImageError = () => {
 }
 
 .zoom-btn {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
+  padding: 0 8px;
   border: 1px solid var(--gray-300);
   background: white;
   color: var(--gray-600);

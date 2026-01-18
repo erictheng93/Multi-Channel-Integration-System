@@ -574,7 +574,7 @@
       <span class="sender-name">{{ senderName }}</span>
     </div>
 
-    <!-- Enhanced Image Preview Modal -->
+    <!-- Enhanced Image Preview Modal (supports both single images and attachment images) -->
     <Teleport
       v-if="showImagePreview"
       to="body"
@@ -589,13 +589,14 @@
         >
           <div class="preview-header">
             <div class="preview-title">
-              <h3>{{ attachmentName }}</h3>
-              <span class="preview-meta">{{ formatFileSize(attachmentSize || 0) }}</span>
+              <!-- 🔧 FIX: Use attachment data when available -->
+              <h3>{{ previewImageAttachment?.filename || attachmentName }}</h3>
+              <span class="preview-meta">{{ formatFileSize(previewImageAttachment?.fileSize || attachmentSize || 0) }}</span>
             </div>
             <div class="preview-actions">
               <button
                 class="preview-btn"
-                @click="downloadFile"
+                @click="previewImageAttachment ? downloadAttachment(previewImageAttachment) : downloadFile()"
               >
                 <DownloadIcon />
               </button>
@@ -609,9 +610,10 @@
           </div>
           <div class="preview-content">
             <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-              <img 
-                :src="attachmentUrl || ''" 
-                :alt="attachmentName" 
+              <!-- 🔧 FIX: Use attachment URL when available -->
+              <img
+                :src="previewImageAttachment?.fileUrl || attachmentUrl || ''"
+                :alt="previewImageAttachment?.filename || attachmentName"
                 class="preview-image"
                 style="max-width: 100%; max-height: 100%; object-fit: contain;"
                 :style="{ transform: `scale(${zoomLevel})` }"
@@ -831,7 +833,8 @@ import { MESSAGE_STATUS } from '@/constants/message-status'
 import {
   formatFileSize,
   getFileExtension,
-  getFileTypeClass
+  getFileTypeClass,
+  isImageFile
 } from '@/utils/message'
 import { useMessageTime, useMessageAttachment, useMessageActions, useMessageSticker, useMessageContent, type FileAttachment } from '@/composables/message'
 
@@ -913,8 +916,17 @@ const {
 // Mark fileAttachments as used (it's internally used by imageAttachments, videoAttachments, and documentAttachments)
 void fileAttachments
 
-// Wrap handleAttachmentPreview to emit the preview event
+// 🔧 FIX: Handle attachment preview - open modal for images, emit event for others
 const handleAttachmentPreview = (attachment: FileAttachment) => {
+  // For image attachments, open the local preview modal
+  if (isImageFile(attachment)) {
+    previewImageAttachment.value = attachment
+    showImagePreview.value = true
+    zoomLevel.value = 1
+    return
+  }
+
+  // For other attachments, emit the preview event
   handleAttachmentPreviewBase(attachment, (message) => emit('preview', message))
 }
 
@@ -977,6 +989,9 @@ const showImagePreview = ref(false)
 const zoomLevel = ref(1)
 const imageLoaded = ref(false)
 const imageError = ref(false)
+
+// 🆕 Image preview attachment state (for attachment images)
+const previewImageAttachment = ref<FileAttachment | null>(null)
 
 // Video player state
 /* eslint-disable no-undef */
@@ -1222,6 +1237,7 @@ const openImagePreview = () => {
 const closeImagePreview = () => {
   showImagePreview.value = false
   zoomLevel.value = 1
+  previewImageAttachment.value = null // 🔧 FIX: Clear attachment state
 }
 
 const zoomIn = () => {
@@ -1844,8 +1860,9 @@ const onImageError = () => {
 }
 
 .zoom-btn {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
+  padding: 0 8px;
   border: 1px solid var(--gray-300);
   background: white;
   color: var(--gray-600);
@@ -3029,9 +3046,9 @@ const onImageError = () => {
   background: var(--gray-900);
   border-radius: var(--radius-xl);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  width: 90vw;
-  max-width: 1000px;
-  max-height: 90vh;
+  width: 75vw; /* 3/4 screen width */
+  max-width: 1200px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3112,7 +3129,6 @@ const onImageError = () => {
   justify-content: center;
   background: #000;
   min-height: 300px;
-  max-height: calc(90vh - 200px);
   position: relative;
 }
 
@@ -3126,8 +3142,8 @@ const onImageError = () => {
 }
 
 .video-preview-player {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
