@@ -174,6 +174,78 @@ export interface DurableObjectEvent {
   } | undefined;
 }
 
+// =================== Conversation Transfer Types ===================
+
+/**
+ * 🆕 Conversation Transfer Action Types
+ * Used for dual-team notification when a conversation is transferred between teams
+ */
+export type ConversationTransferAction = 'removed' | 'assigned' | 'team_changed';
+
+/**
+ * 🆕 Conversation Transfer Event Data
+ * Payload structure for conversation_transferred WebSocket events
+ */
+export interface ConversationTransferredEventData {
+  /** Action type for the receiving party */
+  action: ConversationTransferAction;
+  /** Conversation ID being transferred */
+  conversationId: string;
+  /** Source team ID (null if no previous team) */
+  fromTeamId: number | null;
+  /** Destination team ID */
+  toTeamId: number;
+  /** Source team name */
+  fromTeamName?: string;
+  /** Destination team name */
+  toTeamName?: string;
+  /** Full conversation object (only included for 'assigned' action) */
+  conversation?: {
+    id: string;
+    customerId?: number;
+    customerName?: string;
+    platform?: string;
+    status?: string;
+    lastMessage?: {
+      content?: string;
+      timestamp?: number;
+    };
+    unreadCount?: number;
+    assignedTeamId?: number;
+    assignedTeam?: {
+      id: number;
+      name: string;
+    };
+  };
+  /** New team info (only included for 'team_changed' action) */
+  newTeam?: {
+    id: number;
+    name: string;
+  };
+  /** User who performed the transfer */
+  transferredBy: {
+    id: string;
+    name: string;
+  };
+  /** Transfer reason (optional) */
+  reason?: string;
+  /** Event timestamp */
+  timestamp: number;
+}
+
+/**
+ * 🆕 Conversation Transfer Broadcast Results
+ * Return type for broadcastConversationTransferred()
+ */
+export interface ConversationTransferBroadcastResult {
+  /** Whether the old team was notified of removal */
+  oldTeamNotified: boolean;
+  /** Whether the new team was notified of assignment */
+  newTeamNotified: boolean;
+  /** Whether the conversation room was notified of team change */
+  conversationRoomNotified: boolean;
+}
+
 // =================== Migration and Feature Flag Types ===================
 
 export interface MigrationConfig {

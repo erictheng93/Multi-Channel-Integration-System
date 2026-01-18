@@ -191,6 +191,218 @@ export class WebSocketBroadcastService {
   }
 
   /**
+   * 🆕 Broadcast conversation transferred events with dual-team notification
+   *
+   * This method handles the complete transfer workflow:
+   * 1. Notifies the OLD team that the conversation was removed from them
+   * 2. Notifies the NEW team that the conversation was assigned to them
+   * 3. Notifies anyone viewing the conversation that the team changed
+   */
+  async broadcastConversationTransferred(event: {
+    conversationId: string;
+    fromTeamId: number | null;
+    toTeamId: number;
+    fromTeamName?: string;
+    toTeamName?: string;
+    conversation: {
+      id: string;
+      customerId?: number;
+      customerName?: string;
+      platform?: string;
+      status?: string;
+      lastMessage?: {
+        content?: string;
+        timestamp?: number;
+      };
+      unreadCount?: number;
+    };
+    transferredBy: {
+      id: string;
+      name: string;
+    };
+    reason?: string;
+  }): Promise<{ oldTeamNotified: boolean; newTeamNotified: boolean; conversationRoomNotified: boolean }> {
+    const {
+      conversationId,
+      fromTeamId,
+      toTeamId,
+      fromTeamName,
+      toTeamName,
+      conversation,
+      transferredBy,
+      reason
+    } = event;
+
+    const timestamp = Date.now();
+    const results = {
+      oldTeamNotified: false,
+      newTeamNotified: false,
+      conversationRoomNotified: false
+    };
+
+    console.log('📦 [WebSocket Broadcast] Broadcasting conversation transfer', {
+      conversationId,
+      fromTeamId: fromTeamId || 'none',
+      toTeamId,
+      transferredBy: transferredBy.id
+    });
+
+    // 1. Notify OLD team that conversation was removed (if there was a previous team)
+    if (fromTeamId) {
+      try {
+        const removeEvent: DurableObjectEvent = {
+          id: crypto.randomUUID(),
+          type: 'conversation_transferred',
+          source: 'api',
+          timestamp,
+          conversationId,
+          data: {
+            action: 'removed',
+            conversationId,
+            fromTeamId,
+            toTeamId,
+            fromTeamName,
+            toTeamName,
+            transferredBy,
+            reason,
+            timestamp
+          },
+          priority: 'high',
+          deliveryOptions: {
+            broadcast: true,
+            targets: [
+              {
+                type: 'team' as const,
+                targets: [fromTeamId] as (string | number)[]
+              }
+            ],
+            persistent: false,
+            ttl: 300000 // 5 minutes
+          }
+        };
+
+        results.oldTeamNotified = await this.broadcastToTeamMembers(removeEvent, [fromTeamId]);
+        console.log('📤 [WebSocket Broadcast] Old team notified of removal', { conversationId, fromTeamId, success: results.oldTeamNotified });
+      } catch (error) {
+        console.error('❌ [WebSocket Broadcast] Failed to notify old team', { conversationId, fromTeamId, error });
+      }
+    }
+
+    // 2. Notify NEW team that conversation was assigned to them
+    try {
+      const assignEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: 'conversation_transferred',
+        source: 'api',
+        timestamp,
+        conversationId,
+        data: {
+          action: 'assigned',
+          conversationId,
+          fromTeamId,
+          toTeamId,
+          fromTeamName,
+          toTeamName,
+          // Include full conversation data for new team to add to their list
+          conversation: {
+            ...conversation,
+            assignedTeamId: toTeamId,
+            assignedTeam: {
+              id: toTeamId,
+              name: toTeamName || `Team ${toTeamId}`
+            }
+          },
+          transferredBy,
+          reason,
+          timestamp
+        },
+        priority: 'high',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            {
+              type: 'team' as const,
+              targets: [toTeamId] as (string | number)[]
+            },
+            // Also notify admins
+            {
+              type: 'global' as const,
+              targets: ['admin'] as (string | number)[],
+              filters: {
+                roles: ['admin']
+              }
+            }
+          ],
+          persistent: true,
+          ttl: 3600000 // 1 hour
+        }
+      };
+
+      results.newTeamNotified = await this.broadcastToTeamMembers(assignEvent, [toTeamId]);
+
+      // Also broadcast to admins
+      await this.broadcastToGlobal(assignEvent, {
+        type: 'global',
+        targets: ['admin'],
+        filters: { roles: ['admin'] }
+      });
+
+      console.log('📤 [WebSocket Broadcast] New team notified of assignment', { conversationId, toTeamId, success: results.newTeamNotified });
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] Failed to notify new team', { conversationId, toTeamId, error });
+    }
+
+    // 3. Notify the conversation room (anyone currently viewing the chat)
+    try {
+      const teamChangedEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: 'conversation_transferred',
+        source: 'api',
+        timestamp,
+        conversationId,
+        data: {
+          action: 'team_changed',
+          conversationId,
+          fromTeamId,
+          toTeamId,
+          fromTeamName,
+          toTeamName,
+          assignedTeamId: toTeamId,
+          assignedTeamName: toTeamName,
+          newTeam: {
+            id: toTeamId,
+            name: toTeamName || `Team ${toTeamId}`
+          },
+          transferredBy,
+          reason,
+          timestamp
+        },
+        priority: 'high',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            {
+              type: 'conversation' as const,
+              targets: [conversationId]
+            }
+          ],
+          persistent: false,
+          ttl: 300000 // 5 minutes
+        }
+      };
+
+      results.conversationRoomNotified = await this.broadcastToConversationRooms(teamChangedEvent, [conversationId]);
+      console.log('📤 [WebSocket Broadcast] Conversation room notified of team change', { conversationId, success: results.conversationRoomNotified });
+    } catch (error) {
+      console.error('❌ [WebSocket Broadcast] Failed to notify conversation room', { conversationId, error });
+    }
+
+    console.log('✅ [WebSocket Broadcast] Conversation transfer broadcast completed', { conversationId, results });
+
+    return results;
+  }
+
+  /**
    * Broadcast delayed message events
    */
   async broadcastDelayedMessageEvent(event: {
