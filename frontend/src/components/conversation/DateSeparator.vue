@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center my-6 mb-4 gap-3 md:my-4 md:mb-3 md:gap-2">
     <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
-    <div class="py-2 px-4 bg-gray-100 border border-gray-300 rounded-full text-xs font-semibold text-gray-600 whitespace-nowrap text-center min-w-[80px] md:py-1 md:px-3 md:text-[0.7rem] md:min-w-[60px] dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
+    <div class="py-2 px-4 bg-gray-900 border border-gray-900 rounded-full text-xs font-bold text-white whitespace-nowrap text-center shadow-sm min-w-[80px] md:py-1 md:px-3 md:text-[0.7rem] md:min-w-[60px] dark:bg-gray-100 dark:border-gray-100 dark:text-gray-900">
       {{ formattedDate }}
     </div>
     <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600" />
