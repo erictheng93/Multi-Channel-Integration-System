@@ -139,3 +139,37 @@ export function isImageFile(attachment: {
 
   return false
 }
+
+/**
+ * Checks if a file is a video based on MIME type or filename
+ *
+ * @param attachment - File attachment with optional mimeType and filename
+ * @returns True if the file is a video
+ *
+ * @example
+ * ```typescript
+ * isVideoFile({ mimeType: 'video/mp4' })           // Returns: true
+ * isVideoFile({ filename: 'movie.mov' })           // Returns: true
+ * isVideoFile({ mimeType: 'application/pdf' })     // Returns: false
+ * ```
+ */
+export function isVideoFile(attachment: {
+  mimeType?: string
+  filename?: string
+}): boolean {
+  // Check MIME type first (most reliable)
+  // If MIME type exists, trust it completely
+  // Use case-insensitive comparison for MIME types
+  if (attachment.mimeType) {
+    return attachment.mimeType.toLowerCase().startsWith('video/')
+  }
+
+  // Fallback to filename extension only when MIME type is not available
+  if (attachment.filename) {
+    const ext = attachment.filename.split('.').pop()?.toLowerCase()
+    const videoExts = ['mp4', 'mpeg', 'mov', 'avi', 'webm', 'ogg', 'mkv', 'm4v']
+    return videoExts.includes(ext || '')
+  }
+
+  return false
+}
