@@ -27,8 +27,10 @@ export const KV_TTL = {
   /** User sessions - 30 days */
   SESSION: 30 * 24 * 60 * 60, // 2,592,000 seconds
 
-  /** WebSocket connections - 5 minutes (auto-cleanup) */
-  WEBSOCKET_CONNECTION: 5 * 60, // 300 seconds
+  /** WebSocket connections - 30 minutes (extended to support long idle periods)
+   * 🔧 FIX: Increased from 5 min to 30 min to prevent connection state cleanup
+   * during user idle periods, which caused "暫無訊息" issue after reconnection */
+  WEBSOCKET_CONNECTION: 30 * 60, // 1800 seconds
 
   /** SSE connections - 5 minutes (legacy, being phased out) */
   SSE_CONNECTION: 5 * 60, // 300 seconds

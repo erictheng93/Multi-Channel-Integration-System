@@ -87,7 +87,8 @@ export function useConversationState(
     hasLoadedInitially,
     isInitialLoading,
     loadingHistory,
-    setHistoryLoading
+    setHistoryLoading,
+    confirmNoMessages  // 🔧 FIX: 確認訊息狀態
   } = loadingState
 
   // ===== Computed Properties =====
@@ -99,9 +100,11 @@ export function useConversationState(
 
   /**
    * 混合消息源：Unified Connection (WebSocket/SSE) + HTTP History
+   *
+   * 🔧 FIX: 優化優先級邏輯，處理 WebSocket 重連後訊息為空的情況
    */
   const messages = computed((): Message[] => {
-    // Priority 1: Unified Connection (WebSocket or SSE)
+    // Priority 1: Unified Connection (WebSocket or SSE) with messages
     if (unifiedIsConnected.value && unifiedMessages.value.length > 0) {
       const unifiedMessageIds = new Set(unifiedMessages.value.map(m => m.id))
 
@@ -116,6 +119,15 @@ export function useConversationState(
       )
 
       return merged
+    }
+
+    // 🔧 FIX: Priority 1.5 - WebSocket 連接但訊息為空時，使用 HTTP 訊息作為 fallback
+    // 這處理了重連後 unifiedMessages 尚未同步的情況，避免短暫顯示「暫無訊息」
+    if (unifiedIsConnected.value && unifiedMessages.value.length === 0) {
+      if (httpMessages.messages.value.length > 0) {
+        console.log('⚠️ [useConversationState] WebSocket connected but no messages, using HTTP fallback')
+      }
+      return httpMessages.messages.value
     }
 
     // Priority 2: HTTP API Messages (fallback)
@@ -295,6 +307,10 @@ export function useConversationState(
       if (httpMessages.messages.value.length > 0) {
         console.log('🔧 [useConversationState] Applying immediate messages update to prevent race condition')
         setMessagesImmediate(httpMessages.messages.value)
+      } else {
+        // 🔧 FIX: 確認真的沒有訊息
+        console.log('📭 [useConversationState] No messages found, confirming empty state')
+        confirmNoMessages()
       }
     } catch (error) {
       console.error('❌ [useConversationState] Failed to load conversation:', error)
@@ -311,6 +327,34 @@ export function useConversationState(
       console.log('✅ [useConversationState] Messages refreshed')
     } catch (error) {
       console.error('❌ [useConversationState] Failed to refresh messages:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 🔧 FIX: 重連後強制刷新訊息
+   * 解決問題：WebSocket 重連後 unifiedMessages 為空，導致顯示「暫無訊息」
+   *
+   * 與普通 refreshMessages 的區別：
+   * 1. 使用 setMessagesImmediate 立即更新（繞過防抖）
+   * 2. 專門用於重連場景的訊息同步
+   */
+  async function refreshMessagesAfterReconnection() {
+    console.log('🔄 [useConversationState] Refreshing messages after reconnection...')
+
+    try {
+      // 1. 重新載入 HTTP 訊息
+      await httpMessages.fetchMessages()
+
+      // 2. 立即更新 smoothMessages（繞過防抖）
+      if (httpMessages.messages.value.length > 0) {
+        setMessagesImmediate(httpMessages.messages.value)
+        console.log(`✅ [useConversationState] Refreshed ${httpMessages.messages.value.length} messages after reconnection`)
+      } else {
+        console.log('📭 [useConversationState] No messages found after reconnection refresh')
+      }
+    } catch (error) {
+      console.error('❌ [useConversationState] Failed to refresh messages after reconnection:', error)
       throw error
     }
   }
@@ -382,6 +426,7 @@ export function useConversationState(
     // Methods
     loadConversation,
     refreshMessages,
+    refreshMessagesAfterReconnection,  // 🔧 FIX: 重連後訊息同步
     loadMoreMessages,
     addMessage,
     resetLoadingState,

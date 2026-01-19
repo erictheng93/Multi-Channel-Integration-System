@@ -106,16 +106,54 @@ export function useWebSocketIntegration(
     }
   }
 
+  // 🔧 FIX: 追蹤前一個連接狀態，用於檢測重連
+  let previousConnectionState: ConnectionState = 'disconnected'
+
   /**
    * 處理統一連接狀態變化
    */
   function handleUnifiedStateChange(newState: ConnectionState) {
-    console.log(`[WebSocketIntegration] Unified connection state changed: ${newState}`)
+    console.log(`[WebSocketIntegration] Unified connection state changed: ${previousConnectionState} → ${newState}`)
+
+    const wasReconnecting = previousConnectionState === 'reconnecting'
+    previousConnectionState = newState
+
     unifiedConnectionState.value = newState
     unifiedIsConnected.value = newState === 'connected'
 
     // Update state composable
     state.setUnifiedConnected(newState === 'connected')
+
+    // 🔧 FIX: 重連成功後檢查並同步訊息
+    // 當從 reconnecting 狀態變為 connected 時，觸發訊息同步
+    if (newState === 'connected' && wasReconnecting) {
+      console.log('🔄 [WebSocketIntegration] Reconnected, checking message sync...')
+      triggerMessageSyncAfterReconnection()
+    }
+  }
+
+  /**
+   * 🔧 FIX: 重連後觸發訊息同步
+   * 解決問題：長時間閒置後 WebSocket 重連，但 unifiedMessages 為空
+   */
+  async function triggerMessageSyncAfterReconnection() {
+    try {
+      // 檢查 unifiedMessages 是否為空
+      const conn = unifiedConnection.value
+      const unifiedMsgCount = conn?.messages
+        ? ((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0
+        : 0
+
+      if (unifiedMsgCount === 0) {
+        console.log('📥 [WebSocketIntegration] Triggering message sync after reconnection (unifiedMessages is empty)')
+        await state.refreshMessagesAfterReconnection()
+        console.log('✅ [WebSocketIntegration] Message sync completed after reconnection')
+      } else {
+        console.log(`✅ [WebSocketIntegration] Reconnection sync skipped (${unifiedMsgCount} messages already loaded)`)
+      }
+    } catch (error) {
+      console.error('❌ [WebSocketIntegration] Message sync failed after reconnection:', error)
+    }
   }
 
   /**
