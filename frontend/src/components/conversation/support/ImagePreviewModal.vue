@@ -40,16 +40,14 @@
 
         <!-- Image Content -->
         <div class="preview-content">
-          <div class="image-wrapper">
-            <img
-              :src="imageUrl"
-              :alt="imageName || '图片'"
-              class="preview-image"
-              :style="{ transform: `scale(${currentZoom})` }"
-              loading="lazy"
-              @wheel="handleWheel"
-            >
-          </div>
+          <img
+            :src="imageUrl"
+            :alt="imageName || '图片'"
+            class="preview-image"
+            :style="imageStyle"
+            loading="lazy"
+            @wheel="handleWheel"
+          >
         </div>
 
         <!-- Zoom Controls -->
@@ -116,6 +114,17 @@ const zoomStep = 1.2
 const formattedSize = computed(() => {
   return props.imageSize ? formatFileSize(props.imageSize) : ''
 })
+
+// 🔧 FIX: 使用 computed style 確保樣式正確應用，避免 scoped CSS 與 Teleport 的問題
+const imageStyle = computed(() => ({
+  transform: `scale(${currentZoom.value})`,
+  maxWidth: 'calc(90vw - 96px)',
+  maxHeight: 'calc(90vh - 200px)',
+  width: 'auto',
+  height: 'auto',
+  objectFit: 'contain' as const,
+  display: 'block'
+}))
 
 const zoomIn = () => {
   currentZoom.value = Math.min(currentZoom.value * zoomStep, maxZoom)
@@ -294,24 +303,18 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  overflow: hidden;
+  overflow: auto;
   background: #f9fafb;
-}
-
-.image-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
+  /* 🔧 FIX: 允許 flex 子項目正確收縮 */
+  min-height: 0;
 }
 
 .preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  /* 🔧 關鍵尺寸由 inline style 控制以確保正確應用 */
   transition: transform 0.2s ease;
   cursor: move;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .preview-controls {
