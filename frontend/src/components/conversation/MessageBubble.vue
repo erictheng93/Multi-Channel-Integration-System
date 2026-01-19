@@ -127,30 +127,24 @@
         class="message-attachments-container"
       >
         <!-- 圖片附件：簡單顯示，不使用 Flex Message Card -->
+        <!-- 🔧 CLS FIX: 使用 aspect-ratio 預留空間，防止圖片載入後版面位移 -->
         <div
           v-for="attachment in imageAttachments"
           :key="attachment.id"
           class="message-media attachment-image"
         >
           <div
-            class="image-container"
+            class="image-container attachment-image-container"
             @click="handleAttachmentPreview(attachment)"
           >
-            <div
-              class="image-placeholder"
-              style="width: 300px; max-height: 400px;"
+            <img
+              :src="attachment.fileUrl"
+              :alt="attachment.filename"
+              class="message-image-content attachment-image-content"
+              loading="lazy"
+              @load="onImageLoad"
+              @error="onImageError"
             >
-              <img
-                :src="attachment.fileUrl"
-                :alt="attachment.filename"
-                class="message-image-content"
-                width="300"
-                style="width: 100%; height: auto; max-height: 400px; object-fit: contain; display: block;"
-                loading="lazy"
-                @load="onImageLoad"
-                @error="onImageError"
-              >
-            </div>
             <div class="image-overlay">
               <div class="image-actions">
                 <button
@@ -2499,6 +2493,25 @@ const onImageError = () => {
   align-self: flex-start;  /* 圖片本身靠左 */
 }
 
+/* 🔧 CLS FIX: 圖片附件使用 aspect-ratio 預留空間，防止圖片載入後版面位移 */
+.attachment-image-container {
+  width: 300px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 400px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment-image-content {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .attachment-status-indicator {
   display: inline-flex;
   align-items: center;
@@ -2834,6 +2847,9 @@ const onImageError = () => {
   cursor: pointer;
   box-shadow: var(--shadow-md);
   transition: all var(--transition-fast);
+  /* 🔧 CLS FIX: 使用 aspect-ratio 預留空間，防止視頻載入後版面位移 */
+  aspect-ratio: 16 / 9;
+  max-height: 400px;
 }
 
 .video-container:hover {
@@ -2842,10 +2858,10 @@ const onImageError = () => {
 }
 
 /* 影片元素 */
+/* 🔧 CLS FIX: 視頻元素填滿容器，配合 aspect-ratio 預留空間 */
 .video-player {
   width: 100%;
-  height: auto;
-  max-height: 400px;
+  height: 100%;
   display: block;
   object-fit: contain;
   background: #000;
@@ -2953,7 +2969,8 @@ const onImageError = () => {
     max-width: 280px;
   }
 
-  .video-player {
+  /* 🔧 CLS FIX: 移除 max-height，改用容器的 aspect-ratio 控制 */
+  .video-container {
     max-height: 300px;
   }
 
@@ -2978,7 +2995,8 @@ const onImageError = () => {
     max-width: 240px;
   }
 
-  .video-player {
+  /* 🔧 CLS FIX: 移除 max-height，改用容器的 aspect-ratio 控制 */
+  .video-container {
     max-height: 220px;
   }
 

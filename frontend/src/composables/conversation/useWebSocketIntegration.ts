@@ -133,26 +133,43 @@ export function useWebSocketIntegration(
   }
 
   /**
-   * 🔧 FIX: 重連後觸發訊息同步
-   * 解決問題：長時間閒置後 WebSocket 重連，但 unifiedMessages 為空
+   * 🔧 重連後觸發訊息同步（基於時間戳的智能同步）
+   *
+   * 舊邏輯：檢查 unifiedMessages.length === 0
+   * 新邏輯：使用 serverLastMessageAt vs clientLastTs 時間戳比較
+   *
+   * 注意：這個方法現在作為 fallback，主要同步由 connection_established 事件驅動
    */
   async function triggerMessageSyncAfterReconnection() {
     try {
-      // 檢查 unifiedMessages 是否為空
+      console.log('🔄 [WebSocketIntegration] Triggering reconnection sync check...')
+
+      // 🔧 新邏輯：基於時間戳的同步由 connection_established 事件處理
+      // 這裡作為 fallback，當 connection_established 未觸發時使用
       const conn = unifiedConnection.value
-      const unifiedMsgCount = conn?.messages
+      if (!conn) {
+        console.log('⚠️ [WebSocketIntegration] No connection for sync check')
+        return
+      }
+
+      // 檢查 unifiedMessages 是否為空
+      const unifiedMsgCount = conn.messages
         ? ((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0
         : 0
 
       if (unifiedMsgCount === 0) {
-        console.log('📥 [WebSocketIntegration] Triggering message sync after reconnection (unifiedMessages is empty)')
+        // Fallback: 如果 unifiedMessages 為空，使用 HTTP 刷新
+        console.log('📥 [WebSocketIntegration] Fallback: refreshing via HTTP (unifiedMessages is empty)')
         await state.refreshMessagesAfterReconnection()
-        console.log('✅ [WebSocketIntegration] Message sync completed after reconnection')
+        console.log('✅ [WebSocketIntegration] Fallback message sync completed')
       } else {
-        console.log(`✅ [WebSocketIntegration] Reconnection sync skipped (${unifiedMsgCount} messages already loaded)`)
+        // 主要同步邏輯：等待 connection_established 事件中的 serverLastMessageAt
+        // 這裡只記錄狀態，實際同步由 handleConnectionEstablished 處理
+        console.log(`✅ [WebSocketIntegration] Reconnection sync check passed (${unifiedMsgCount} messages in buffer)`)
+        console.log('💡 [WebSocketIntegration] Note: Timestamp-based sync is handled by connection_established event')
       }
     } catch (error) {
-      console.error('❌ [WebSocketIntegration] Message sync failed after reconnection:', error)
+      console.error('❌ [WebSocketIntegration] Reconnection sync check failed:', error)
     }
   }
 
@@ -160,16 +177,36 @@ export function useWebSocketIntegration(
    * 處理統一連接接收的消息
    * 🛡️ 方案 C: 使用小寫事件類型（customerWebSocketManager 已正規化）
    * 🔧 Phase 2: 支援 Correlation ID 匹配
+   * 🔧 重連同步: 支援 connection_established 和 sync_response 事件
    */
   function handleUnifiedMessage(message: unknown) {
     const msg = message as {
       type?: string
       message?: Message & { correlationId?: string }  // 🔧 Phase 2/3: 後端可能包含 correlationId
+      data?: {
+        type?: string
+        serverLastMessageAt?: string | null
+        missedMessages?: Message[]
+        missedCount?: number
+        syncedAt?: string
+      }
     }
 
     // 🛡️ 防禦性編程：再次正規化以防萬一（defense-in-depth）
     const eventType = normalizeEventType(msg.type || '')
     console.log('✅ [WebSocketIntegration] Received message:', eventType, message)
+
+    // 🔧 重連同步: 處理連接建立事件（含 serverLastMessageAt）
+    if (msg.data?.type === 'connection_established') {
+      handleConnectionEstablished(msg.data.serverLastMessageAt)
+      return
+    }
+
+    // 🔧 重連同步: 處理同步回應
+    if (msg.data?.type === 'sync_response' && msg.data.missedMessages) {
+      handleSyncResponse(msg.data.missedMessages)
+      return
+    }
 
     // Handle new_message events (小寫，由 customerWebSocketManager 正規化)
     if (eventType === WS_EVENTS.NEW_MESSAGE && msg.message) {
@@ -195,6 +232,91 @@ export function useWebSocketIntegration(
     // Handle TYPING events (Phase 2)
     // if (eventType === WS_EVENTS.TYPING_START) { ... }
     // if (eventType === WS_EVENTS.TYPING_STOP) { ... }
+  }
+
+  // =================== 🔧 重連同步機制 ===================
+
+  /**
+   * 🔧 重連同步: 處理連接建立事件
+   * 比較 serverLastMessageAt 和 clientLastTs，決定是否需要同步
+   */
+  function handleConnectionEstablished(serverLastMessageAt?: string | null) {
+    console.log('🔌 [WebSocketIntegration] Connection established', { serverLastMessageAt })
+
+    const clientLastTs = state.lastMessageTimestamp.value
+
+    // 比較時間戳
+    if (serverLastMessageAt && clientLastTs) {
+      const serverTime = new Date(serverLastMessageAt).getTime()
+      const clientTime = new Date(clientLastTs).getTime()
+
+      if (serverTime > clientTime) {
+        console.log('📥 [WebSocketIntegration] Server has newer messages, requesting sync...', {
+          serverTime: new Date(serverTime).toISOString(),
+          clientTime: new Date(clientTime).toISOString(),
+          diff: `${(serverTime - clientTime) / 1000}s`
+        })
+        requestMessageSync(clientLastTs)
+      } else {
+        console.log('✅ [WebSocketIntegration] Client is up to date')
+      }
+    } else if (serverLastMessageAt && !clientLastTs) {
+      // 客戶端沒有訊息但伺服器有，請求同步所有訊息
+      console.log('📥 [WebSocketIntegration] Client has no messages, requesting full sync...')
+      requestMessageSync(null)
+    } else {
+      console.log('✅ [WebSocketIntegration] No sync needed (server has no messages)')
+    }
+  }
+
+  /**
+   * 🔧 重連同步: 發送同步請求
+   * @param since - 客戶端最後訊息時間戳，null 表示請求所有訊息
+   */
+  function requestMessageSync(since: string | null) {
+    const conn = unifiedConnection.value
+    if (!conn) {
+      console.warn('⚠️ [WebSocketIntegration] Cannot request sync - no connection')
+      return
+    }
+
+    console.log('📤 [WebSocketIntegration] Sending sync_request...', { since, conversationId })
+
+    conn.send({
+      type: 'sync_request',
+      data: {
+        since,
+        conversationId
+      }
+    })
+  }
+
+  /**
+   * 🔧 重連同步: 處理同步回應
+   * 將遺漏的訊息加入狀態
+   */
+  function handleSyncResponse(missedMessages: Message[]) {
+    console.log(`📨 [WebSocketIntegration] Received sync_response with ${missedMessages.length} missed messages`)
+
+    if (missedMessages.length === 0) {
+      console.log('✅ [WebSocketIntegration] No missed messages')
+      return
+    }
+
+    let addedCount = 0
+    missedMessages.forEach(msg => {
+      // 使用現有的去重邏輯
+      // 注意：這裡使用 handlers.isSentMessage 檢查是否是本標籤發送的訊息
+      const messageId = msg.id
+      const correlationId = (msg.metadata as Record<string, unknown> | undefined)?.correlationId as string | undefined
+
+      if (!handlers.isSentMessage(messageId, correlationId)) {
+        state.addMessage(msg)
+        addedCount++
+      }
+    })
+
+    console.log(`✅ [WebSocketIntegration] Sync complete: added ${addedCount}/${missedMessages.length} messages`)
   }
 
   /**

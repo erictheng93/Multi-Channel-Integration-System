@@ -19,7 +19,7 @@ export interface WebSocketConnection {
 }
 
 export interface WebSocketMessage {
-  type: 'ping' | 'pong' | 'subscribe' | 'unsubscribe' | 'message' | 'event' | 'error';
+  type: 'ping' | 'pong' | 'subscribe' | 'unsubscribe' | 'message' | 'event' | 'error' | 'sync_request';
   id?: string;
   conversationId?: string;
   data?: unknown;

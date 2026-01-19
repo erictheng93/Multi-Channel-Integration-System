@@ -57,6 +57,9 @@ export function useConversationState(
   const searchResults = ref<Message[]>([])
   const isSearchActive = ref(false)
 
+  // ===== 🔧 重連同步: 追蹤最後訊息時間戳 =====
+  const lastMessageTimestamp = ref<string | null>(null)
+
   // ===== Smooth Loading =====
   const {
     messages: smoothMessages,
@@ -307,6 +310,20 @@ export function useConversationState(
       if (httpMessages.messages.value.length > 0) {
         console.log('🔧 [useConversationState] Applying immediate messages update to prevent race condition')
         setMessagesImmediate(httpMessages.messages.value)
+
+        // 🔧 FIX Phase 2: 同步更新 lastMessagesLength，防止 queueMessageUpdate 重複觸發
+        // 問題：setMessagesImmediate 後，flush:'post' watch 會調用 queueMessageUpdate
+        //       因為 lastMessagesLength 仍為 0，檢查 30 === 0 失敗，導致重複更新
+        // 解決：立即更新 lastMessagesLength，讓後續的 queueMessageUpdate 能正確跳過
+        lastMessagesLength = httpMessages.messages.value.length
+        console.log(`🔧 [useConversationState] Updated lastMessagesLength to ${lastMessagesLength} to prevent duplicate updates`)
+
+        // 🔧 重連同步: 初始化 lastMessageTimestamp
+        const lastMsg = httpMessages.messages.value[httpMessages.messages.value.length - 1]
+        if (lastMsg?.createdAt) {
+          lastMessageTimestamp.value = new Date(lastMsg.createdAt).toISOString()
+          console.log('📝 [useConversationState] Initialized lastMessageTimestamp:', lastMessageTimestamp.value)
+        }
       } else {
         // 🔧 FIX: 確認真的沒有訊息
         console.log('📭 [useConversationState] No messages found, confirming empty state')
@@ -349,7 +366,9 @@ export function useConversationState(
       // 2. 立即更新 smoothMessages（繞過防抖）
       if (httpMessages.messages.value.length > 0) {
         setMessagesImmediate(httpMessages.messages.value)
-        console.log(`✅ [useConversationState] Refreshed ${httpMessages.messages.value.length} messages after reconnection`)
+        // 🔧 FIX: 同步更新 lastMessagesLength，防止 queueMessageUpdate 重複觸發
+        lastMessagesLength = httpMessages.messages.value.length
+        console.log(`✅ [useConversationState] Refreshed ${httpMessages.messages.value.length} messages after reconnection (lastMessagesLength updated)`)
       } else {
         console.log('📭 [useConversationState] No messages found after reconnection refresh')
       }
@@ -373,9 +392,20 @@ export function useConversationState(
 
   /**
    * 添加消息到列表（由 useMessageHandlers 調用）
+   * 🔧 重連同步: 同時更新 lastMessageTimestamp
    */
   function addMessage(message: Message) {
     httpMessages.addMessage(message)
+
+    // 🔧 重連同步: 更新最後訊息時間戳
+    if (message.createdAt) {
+      const newTimestamp = new Date(message.createdAt).toISOString()
+      // 只有當新訊息比目前記錄的更新時才更新
+      if (!lastMessageTimestamp.value || newTimestamp > lastMessageTimestamp.value) {
+        lastMessageTimestamp.value = newTimestamp
+        console.log('📝 [useConversationState] Updated lastMessageTimestamp:', newTimestamp)
+      }
+    }
   }
 
   /**
@@ -416,6 +446,9 @@ export function useConversationState(
     isSearchActive,
     setSearchResults,
     clearSearch,
+
+    // 🔧 重連同步: 追蹤最後訊息時間戳
+    lastMessageTimestamp,
 
     // Unified Connection State (managed by useWebSocketIntegration)
     unifiedMessages,

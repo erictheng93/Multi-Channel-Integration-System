@@ -94,21 +94,21 @@ export class ConversationRoom implements DurableObject {
     this.MAX_CONNECTIONS = this.config.maxConnections || 100;
 
     /**
-     * Week 3-4 Optimization: Reduced message cache from 50 to 10 messages
+     * 🔧 重連同步優化: 增加訊息緩存到 50 條
      *
      * Rationale:
-     * - Cache is rarely read (no active API endpoint for history retrieval)
-     * - 10 messages cover "quick reconnect" scenarios adequately
-     * - Full history available via lazy load from D1 database
-     * - Memory savings: ~30KB per DO (80% reduction in cache size)
-     * - Storage write reduction: 80-90% with debounced writes
+     * - 10 條訊息約覆蓋 1-2 分鐘的對話
+     * - 50 條訊息可覆蓋 5-10 分鐘的斷線期間
+     * - 支援 WebSocket 重連後的訊息同步功能
+     * - 記憶體影響極小 (~50KB per DO)
      *
-     * Performance impact:
-     * - Memory: 100-150 KB/DO → 60-80 KB/DO (40% total reduction)
-     * - Storage writes: 100/min → 12/min (88% reduction)
-     * - DO startup: 15-20ms → 3-5ms (75% faster cache restore)
+     * 重連同步機制:
+     * - 客戶端斷線時記錄 lastMessageTimestamp
+     * - 重連後比對 serverLastMessageAt vs clientLastTs
+     * - 若 server 有較新訊息，發送 sync_request
+     * - 伺服器返回 since 時間後的遺漏訊息
      */
-    this.MAX_MESSAGE_HISTORY = this.config.maxMessageHistory || 10;
+    this.MAX_MESSAGE_HISTORY = this.config.maxMessageHistory || 50;
     this.INACTIVITY_TIMEOUT = this.config.inactivityTimeout || 300000;
 
     // Set shard metadata maxConnections
@@ -381,7 +381,7 @@ export class ConversationRoom implements DurableObject {
       await this.removeConnection(connectionId);
     });
 
-    // Send welcome message
+    // Send welcome message with serverLastMessageAt for reconnection sync
     this.sendMessage(connection, {
       type: 'event',
       data: {
@@ -389,7 +389,8 @@ export class ConversationRoom implements DurableObject {
         conversationId: this.conversationId,
         connectionId,
         participants: Array.from(this.participants),
-        mode: this.config.mode // Inform client of room mode
+        mode: this.config.mode, // Inform client of room mode
+        serverLastMessageAt: this.getLastMessageTimestamp() // 🔧 重連同步：伺服器最後訊息時間戳
       },
       timestamp: Date.now()
     });
@@ -428,6 +429,13 @@ export class ConversationRoom implements DurableObject {
       case 'event':
         if (this.isFullMode()) {
           await this.handleEventMessage(connection, message);
+        }
+        break;
+
+      // 🔧 重連同步：處理客戶端的同步請求
+      case 'sync_request':
+        if (this.isFullMode()) {
+          await this.handleSyncRequest(connection, message);
         }
         break;
 
@@ -715,6 +723,45 @@ export class ConversationRoom implements DurableObject {
 
   private getNextMessageOrder(): number {
     return ++this.messageCounter;
+  }
+
+  // =================== Reconnection Sync Helpers ===================
+
+  /**
+   * 🔧 重連同步：獲取最後訊息時間戳
+   * 用於 connection_established 事件，讓客戶端判斷是否需要同步
+   */
+  private getLastMessageTimestamp(): string | null {
+    if (!this.isFullMode() || this.messageHistory.length === 0) {
+      return null;
+    }
+    const lastMsg = this.messageHistory[this.messageHistory.length - 1];
+    // 優先使用 timestamp（數字格式），然後轉為 ISO 格式
+    if (lastMsg.timestamp) {
+      const ts = typeof lastMsg.timestamp === 'string'
+        ? parseInt(lastMsg.timestamp)
+        : lastMsg.timestamp;
+      return new Date(ts).toISOString();
+    }
+    return null;
+  }
+
+  /**
+   * 🔧 重連同步：獲取指定時間後的遺漏訊息
+   * @param since - ISO 8601 時間戳，返回此時間之後的訊息
+   */
+  private getMissedMessages(since?: string): RealtimeEvent[] {
+    if (!this.isFullMode() || !since || this.messageHistory.length === 0) {
+      return [];
+    }
+
+    const sinceTime = new Date(since).getTime();
+    return this.messageHistory.filter(msg => {
+      const msgTime = typeof msg.timestamp === 'string'
+        ? parseInt(msg.timestamp)
+        : (msg.timestamp || 0);
+      return msgTime > sinceTime;
+    });
   }
 
   // =================== Helper Methods ===================
@@ -1056,6 +1103,36 @@ export class ConversationRoom implements DurableObject {
       const broadcasts = otherConnections.map(conn => this.sendMessage(conn, broadcastMessage));
       await Promise.allSettled(broadcasts);
     }
+  }
+
+  /**
+   * 🔧 重連同步：處理客戶端的 sync_request 請求
+   * 返回客戶端斷線期間遺漏的訊息
+   */
+  private async handleSyncRequest(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
+    const data = message.data as { since?: string; conversationId?: string };
+    const since = data.since;
+
+    testSafeLog(`[ConversationRoom] Sync request from ${connection.connectionId}: since=${since || 'N/A'}`);
+
+    // 獲取遺漏的訊息
+    const missedMessages = this.getMissedMessages(since);
+
+    // 發送同步回應
+    this.sendMessage(connection, {
+      type: 'event',
+      data: {
+        type: 'sync_response',
+        conversationId: this.conversationId,
+        missedMessages,
+        missedCount: missedMessages.length,
+        syncedAt: new Date().toISOString(),
+        serverLastMessageAt: this.getLastMessageTimestamp()
+      },
+      timestamp: Date.now()
+    });
+
+    testSafeLog(`${getEmojiPrefix('CHECK')}[ConversationRoom] Sync response sent: ${missedMessages.length} missed messages`);
   }
 
   // =================== Week 2: Sharding RPC Handlers ===================

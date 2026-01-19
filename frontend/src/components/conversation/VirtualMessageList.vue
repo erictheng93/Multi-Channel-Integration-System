@@ -133,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+/* global ResizeObserver, ResizeObserverEntry */
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import type { Message } from '@/types'
@@ -238,6 +239,12 @@ const pendingScrollPreservation = ref(false) // 標記是否需要在下一次 D
 // 🔧 FIX: Debounce timers for load-more trigger visibility
 let hideLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
 let showLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
+
+// 🔧 FIX Phase 2: ResizeObserver 滾動補償
+// 用於監控虛擬列表內容高度變化，當圖片/影片載入完成導致高度增加時補償滾動位置
+let contentResizeObserver: ResizeObserver | null = null
+let previousContentHeight = 0
+let resizeCompensationPending = false
 
 // 🔧 FIX: Constants for scroll detection
 const SCROLL_DIRECTION_THRESHOLD = 10 // Minimum pixels to detect scroll direction change
@@ -877,6 +884,10 @@ onMounted(async () => {
     scrollContainer.value.addEventListener('scroll', handleScroll, { passive: true })
   }
 
+  // 🔧 FIX Phase 2: 設置 ResizeObserver 監控內容高度變化
+  // 這會在圖片/影片載入完成導致高度變化時自動補償滾動位置
+  setupContentResizeObserver()
+
   // Now scroll to bottom if we have messages
   if (!props.isSearchActive && displayedMessages.value.length > 0) {
     console.log(`🚀 [VirtualMessageList] Initial scroll to bottom with ${displayedMessages.value.length} messages`)
@@ -907,6 +918,92 @@ onMounted(async () => {
   // 🔧 FIX: Do NOT set isInitialScrollDone=true if no messages
   // The watch will handle scrolling when messages arrive later
 })
+
+/**
+ * 🔧 FIX Phase 2: ResizeObserver 滾動補償處理函數
+ * 當虛擬列表內容區域高度變化時（例如圖片載入完成），自動補償滾動位置
+ *
+ * 工作原理：
+ * 1. 監控 listContainer 的高度變化
+ * 2. 當高度增加且用戶在底部時，調整 scrollTop 保持底部位置
+ * 3. 使用 RAF 確保補償在下一幀執行，避免閃爍
+ *
+ * @param entries - ResizeObserver 回調的條目
+ */
+const handleContentResize = (entries: ResizeObserverEntry[]) => {
+  if (!scrollContainer.value || resizeCompensationPending) {
+    return
+  }
+
+  const entry = entries[0]
+  if (!entry) {return}
+
+  const newHeight = entry.contentRect.height
+  const heightDelta = newHeight - previousContentHeight
+
+  // 只在高度增加時處理（圖片/影片載入完成）
+  // 忽略微小變化（< 5px）以避免過度補償
+  if (heightDelta > 5 && previousContentHeight > 0) {
+    const container = scrollContainer.value
+    const { scrollTop, scrollHeight, clientHeight } = container
+
+    // 計算用戶是否接近底部（容差 150px）
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    const wasNearBottom = distanceFromBottom < 150
+
+    // 在 grace period 期間或用戶已在底部時進行補償
+    const shouldCompensate = wasNearBottom || recentlyScrolledToBottom.value || isUserAtBottom.value
+
+    if (shouldCompensate) {
+      resizeCompensationPending = true
+
+      // 使用 RAF 確保在下一幀執行補償
+      window.requestAnimationFrame(() => {
+        if (scrollContainer.value) {
+          const targetScroll = scrollContainer.value.scrollHeight - clientHeight
+          scrollContainer.value.scrollTop = targetScroll
+
+          console.log(`🔄 [ResizeObserver] Compensated scroll for height change: ` +
+            `+${Math.round(heightDelta)}px, scrollTop: ${Math.round(scrollTop)} → ${Math.round(targetScroll)}`)
+        }
+        resizeCompensationPending = false
+      })
+    } else {
+      console.log(`📏 [ResizeObserver] Height changed +${Math.round(heightDelta)}px but user not at bottom (distance: ${Math.round(distanceFromBottom)}px)`)
+    }
+  }
+
+  previousContentHeight = newHeight
+}
+
+/**
+ * 🔧 FIX Phase 2: 設置 ResizeObserver
+ * 在組件掛載時調用，監控虛擬列表內容區域
+ */
+const setupContentResizeObserver = () => {
+  if (!listContainer.value || contentResizeObserver) {
+    return
+  }
+
+  contentResizeObserver = new ResizeObserver(handleContentResize)
+  contentResizeObserver.observe(listContainer.value)
+
+  // 初始化 previousContentHeight
+  previousContentHeight = listContainer.value.getBoundingClientRect().height
+  console.log(`📐 [ResizeObserver] Initialized with height: ${Math.round(previousContentHeight)}px`)
+}
+
+/**
+ * 🔧 FIX Phase 2: 清理 ResizeObserver
+ * 在組件卸載時調用
+ */
+const cleanupContentResizeObserver = () => {
+  if (contentResizeObserver) {
+    contentResizeObserver.disconnect()
+    contentResizeObserver = null
+    console.log('📐 [ResizeObserver] Disconnected')
+  }
+}
 
 /**
  * 🔧 OPTIMIZED: Wait for scrollHeight to stabilize before scrolling
@@ -968,6 +1065,8 @@ onUnmounted(() => {
     clearTimeout(recentlyScrolledToBottomTimeout)
     recentlyScrolledToBottomTimeout = null
   }
+  // 🔧 FIX Phase 2: 清理 ResizeObserver
+  cleanupContentResizeObserver()
 })
 
 // Expose methods and template refs
