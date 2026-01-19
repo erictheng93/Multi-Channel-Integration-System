@@ -51,16 +51,18 @@
       <!-- High Performance Virtual Message List with WebSocket -->
       <div class="messages-container-wrapper">
         <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
+        <!-- 🔧 FIX: 骨架屏保持顯示直到滾動完成，確保平滑過渡 -->
         <MessageListSkeleton
-          v-show="isInitialLoading && !hasLoadedInitially"
+          v-show="!isScrollReady"
           :count="skeletonCount"
           :loading-text="skeletonLoadingText"
           class="skeleton-layer"
         />
 
         <!-- Empty State -->
+        <!-- 🔧 FIX: 增加 isEmptyStateConfirmed 條件，避免訊息同步期間閃爍 -->
         <div
-          v-show="hasLoadedInitially && displayedMessages.length === 0 && !isInitialLoading"
+          v-show="hasLoadedInitially && displayedMessages.length === 0 && !isInitialLoading && isEmptyStateConfirmed"
           class="empty-state-wrapper empty-layer"
         >
           <EmptyState
@@ -74,9 +76,12 @@
         </div>
 
         <!-- Virtual Message List -->
+        <!-- 🔧 FIX Phase 2: 使用 CSS visibility 而非 v-show -->
+        <!-- v-show 會導致 display:none，使 scrollHeight=0，滾動失敗 -->
+        <!-- visibility:hidden 保留佈局，scrollHeight 正常，滾動可以正確執行 -->
         <VirtualMessageList
-          v-show="!isInitialLoading || hasLoadedInitially"
           ref="virtualMessageListRef"
+          :class="{ 'invisible-until-ready': !isScrollReady }"
           :messages="messages"
           :displayed-messages="displayedMessages"
           :is-search-active="isSearchActive"
@@ -102,6 +107,7 @@
           @scroll="handleVirtualScroll"
           @new-message-while-scrolled="notification.show"
           @retry="retryFailedMessage"
+          @initial-scroll-complete="handleInitialScrollComplete"
         />
       </div>
 
@@ -171,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -267,6 +273,10 @@ const messageInputRef = ref<MessageInputInstance | null>(null)
 const keyboardShortcutsRef = ref(null)
 const animationClasses = computed(() => ({}))
 
+// 🔧 FIX: 滾動就緒狀態 - 解決 Race Condition 導致的畫面跳動問題
+// 只有在初始滾動完成後才顯示訊息列表，避免用戶看到從頂部跳到底部的過程
+const isScrollReady = ref(false)
+
 // 🎯 Composable integrations
 const searchPanel = useSearchPanel({
   onSearchResults: (results: Message[]) => setSearchResults(results),
@@ -323,6 +333,35 @@ const connectionStatusText = connectionText
 const skeletonLoadingText = loadingText
 const presence = computed(() => ({ typingUsers: typingUsers.value }))
 
+// 🔧 FIX: 延遲確認空狀態，避免閃爍
+// 問題：訊息同步期間，displayedMessages 暫時為空會導致閃爍顯示「暫無訊息」
+// 解決：延遲 200ms 確認空狀態，給訊息同步時間
+const isEmptyStateConfirmed = ref(false)
+let emptyStateTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  () => displayedMessages.value.length,
+  (length) => {
+    if (emptyStateTimer) {
+      clearTimeout(emptyStateTimer)
+      emptyStateTimer = null
+    }
+
+    if (length === 0 && hasLoadedInitially.value) {
+      // 延遲 200ms 確認空狀態，給訊息同步時間
+      emptyStateTimer = setTimeout(() => {
+        isEmptyStateConfirmed.value = true
+        // 🔧 FIX: 空狀態確認後也需要設置 isScrollReady，讓空狀態顯示出來
+        isScrollReady.value = true
+        console.log('✅ [ConversationDetail] Empty state confirmed, setting isScrollReady=true')
+      }, 200)
+    } else {
+      isEmptyStateConfirmed.value = false
+    }
+  },
+  { immediate: true }
+)
+
 // Map controller status class to ConnectionStatusBar expected type
 const statusBarClass = computed((): 'connected' | 'connecting' | 'disconnected' | 'error' => {
   const status = connectionStatusClass.value
@@ -347,7 +386,16 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => controller.cleanup())
+onUnmounted(() => {
+  controller.cleanup()
+  // 🔧 FIX: 清理空狀態計時器
+  if (emptyStateTimer) {
+    clearTimeout(emptyStateTimer)
+    emptyStateTimer = null
+  }
+  // 🔧 FIX: 重置滾動就緒狀態
+  isScrollReady.value = false
+})
 
 function goBack() { router.push('/conversations') }
 
@@ -418,6 +466,16 @@ async function handleMessageRecall(message: Message) {
 
 function handleMessageSelect(message: Message) {
   console.log('Select message:', message.id)
+}
+
+/**
+ * 🔧 FIX: 處理初始滾動完成事件
+ * 當 VirtualMessageList 完成初始滾動到底部後，設置 isScrollReady = true
+ * 這確保用戶看到的是已經滾動到底部的訊息列表，而不是從頂部跳到底部
+ */
+function handleInitialScrollComplete() {
+  console.log('✅ [ConversationDetail] Initial scroll complete, showing message list')
+  isScrollReady.value = true
 }
 
 function handleAttachmentUpload(attachment: unknown) {
@@ -511,6 +569,15 @@ defineExpose({
 .messages-layer {
   z-index: 10;
   transition: opacity 280ms ease-in 100ms;
+}
+
+/* 🔧 FIX Phase 2: 使用 visibility:hidden 而非 v-show 的 display:none */
+/* visibility:hidden 保留元素佈局，scrollHeight 可正確計算 */
+/* 這解決了 v-show 導致 scrollHeight=0 的問題 */
+.invisible-until-ready {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none; /* 防止隱藏時的意外點擊 */
 }
 
 .empty-state-wrapper {

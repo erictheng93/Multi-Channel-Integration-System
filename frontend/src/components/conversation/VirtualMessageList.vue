@@ -199,6 +199,7 @@ const emit = defineEmits<{
   scrollToBottom: []
   newMessageWhileScrolled: []
   retry: [messageId: string]  // Retry failed message
+  initialScrollComplete: []  // 🔧 FIX: 初始滾動完成事件，用於解決 Race Condition
 }>()
 
 // Refs
@@ -761,9 +762,10 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
       console.log('📨 [DisplayedMessageWatch] User not at bottom, showing notification')
       emit('newMessageWhileScrolled')
     }
-  } else if (oldCount === undefined && newCount > 0) {
+  } else if ((oldCount === undefined || oldCount === 0) && newCount > 0) {
     // Initial load - scroll to bottom ONLY if onMounted hasn't already done it
     // 🔧 FIX: Prevents race condition where both onMounted and watch scroll to bottom
+    // 🔧 FIX: Also handle oldCount === 0 case (Vue provides 0 as initial old value, not undefined)
     if (isInitialScrollDone.value) {
       console.log('📨 [DisplayedMessageWatch] Initial load detected, but onMounted already handled scroll - skipping')
       return
@@ -785,6 +787,10 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
 
     // Mark as done so future watches don't repeat
     isInitialScrollDone.value = true
+
+    // 🔧 FIX: 發送初始滾動完成事件，通知父組件可以顯示列表
+    emit('initialScrollComplete')
+    console.log('📨 [DisplayedMessageWatch] Emitted initialScrollComplete event')
   }
 })
 
@@ -822,6 +828,10 @@ onMounted(async () => {
     // 🔧 FIX: Mark initial scroll as done to prevent race condition with watch
     isInitialScrollDone.value = true
     console.log('🚀 [VirtualMessageList] Single optimized scroll complete, isInitialScrollDone=true')
+
+    // 🔧 FIX: 發送初始滾動完成事件，通知父組件可以顯示列表
+    emit('initialScrollComplete')
+    console.log('🚀 [VirtualMessageList] Emitted initialScrollComplete event')
   }
   // 🔧 FIX: Do NOT set isInitialScrollDone=true if no messages
   // The watch will handle scrolling when messages arrive later
