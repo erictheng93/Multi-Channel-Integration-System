@@ -215,6 +215,16 @@ const isProgrammaticScrolling = ref(false) // Guard to prevent scroll events dur
 const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrolling up
 const isInitialScrollDone = ref(false) // 🔧 FIX: Prevent race condition between onMounted and watch
 
+// 🔧 FIX: Grace period flag - prevents scroll events from resetting isUserAtBottom
+// after scrollToBottom completes. This handles the race condition where:
+// 1. scrollToBottom completes and sets isUserAtBottom = true
+// 2. Virtualizer adjusts heights, triggering scroll events
+// 3. These events would incorrectly set isUserAtBottom = false
+// 4. New messages arrive but auto-scroll doesn't happen
+const recentlyScrolledToBottom = ref(false)
+let recentlyScrolledToBottomTimeout: ReturnType<typeof setTimeout> | null = null
+const GRACE_PERIOD_MS = 1000 // Time to keep isUserAtBottom protected after scrollToBottom
+
 // 🔧 FIX: 滾動位置保持相關的狀態
 const scrollPositionBeforePrepend = ref<{
   scrollTop: number
@@ -374,7 +384,7 @@ const scrollToBottom = async (retries = 10, delay = 100) => {
     return
   }
 
-  console.log(`🔽 [ScrollToBottom] Starting scroll to bottom, items: ${virtualItems.value.length}`)
+  console.log(`🔽 [ScrollToBottom] Starting scroll to bottom, items: ${virtualItems.value.length}, lastIndex: ${lastIndex}`)
 
   // Set guard to prevent scroll events from triggering during programmatic scroll
   isProgrammaticScrolling.value = true
@@ -390,7 +400,6 @@ const scrollToBottom = async (retries = 10, delay = 100) => {
 
     const totalSize = virtualizer.value.getTotalSize()
     // Relaxed condition: just need totalSize > 0 and container exists
-    // Removed strict count comparison which caused race conditions
     return totalSize > 0
   }
 
@@ -401,29 +410,43 @@ const scrollToBottom = async (retries = 10, delay = 100) => {
       await nextTick()
 
       // Phase 2: Check if virtualizer is ready
-      if (isVirtualizerReady() && virtualizer.value?.scrollElement) {
+      if (isVirtualizerReady() && virtualizer.value) {
+        // 🔧 FIX: 使用 scrollToIndex 作為主要滾動方法
+        // 原本使用 container.scrollTop = scrollHeight，但這對虛擬列表無效
+        // 因為 scrollHeight 只反映已渲染內容的高度，未渲染的項目使用估算值 (100px)
+        // 當底部有圖片/影片時，估算值遠小於實際高度，導致滾動不到真正的底部
+        //
+        // scrollToIndex 會：
+        // 1. 先渲染目標項目
+        // 2. 測量實際高度
+        // 3. 計算正確的滾動位置
+        // 4. 執行滾動
+        virtualizer.value.scrollToIndex(lastIndex, { align: 'end' })
+
+        // 等待滾動完成
+        await waitForFrame()
+        await nextTick()
+
+        // 額外驗證：使用 scrollTop = scrollHeight 確保完全到底
         const container = virtualizer.value.scrollElement
+        if (container) {
+          const beforeScrollTop = container.scrollTop
+          container.scrollTop = container.scrollHeight
 
-        // Phase 3: Execute scroll - use scrollHeight for accurate positioning
-        // getTotalSize() uses estimated sizes which can be inaccurate for items like file attachments
-        // scrollHeight gives the actual rendered content height
-        const actualScrollHeight = container.scrollHeight
-        container.scrollTop = actualScrollHeight // This will be clamped to max scroll position
-
-        console.log(`✅ [ScrollToBottom] Scrolled on attempt ${attempt + 1}, scrollHeight: ${actualScrollHeight}`)
-
-        // 🔧 FIX: Removed Phase 4 & 5 verification scrolls (were causing "shaking")
-        // - Phase 4: 50ms delay + scrollToIndex (removed)
-        // - Phase 5: 150ms delayed re-scroll for dynamic content (removed in previous commit)
-        // Now relying on waitForStableScrollHeight() called BEFORE scrollToBottom()
-        // If this causes issues, revert to commit: 3f452cc
+          console.log(`✅ [ScrollToBottom] Scrolled on attempt ${attempt + 1}, ` +
+            `scrollToIndex(${lastIndex}), scrollTop: ${beforeScrollTop} → ${container.scrollTop}, ` +
+            `scrollHeight: ${container.scrollHeight}`)
+        }
 
         // Clear guard after successful scroll
         setTimeout(() => {
           isProgrammaticScrolling.value = false
           isUserAtBottom.value = true // We just scrolled to bottom
-          console.log('🔽 [ScrollToBottom] Success - guard cleared (no final verification)')
-        }, 100) // Reduced from 200ms since we removed the 150ms verification
+
+          // 🔧 FIX: Start grace period to protect isUserAtBottom from race conditions
+          startGracePeriod()
+          console.log('🔽 [ScrollToBottom] Success - guard cleared, grace period started')
+        }, 100)
 
         return // Success
       }
@@ -444,15 +467,15 @@ const scrollToBottom = async (retries = 10, delay = 100) => {
     await new Promise(resolve => setTimeout(resolve, 200))
 
     if (virtualizer.value) {
-      // Method 1: Direct scrollTop
+      // Method 1: scrollToIndex (primary - handles virtual list correctly)
+      virtualizer.value.scrollToIndex(virtualItems.value.length - 1, { align: 'end' })
+
+      // Method 2: Direct scrollTop as backup
+      await new Promise(resolve => setTimeout(resolve, 50))
       const container = virtualizer.value.scrollElement
       if (container) {
         container.scrollTop = container.scrollHeight
       }
-
-      // Method 2: scrollToIndex
-      await new Promise(resolve => setTimeout(resolve, 50))
-      virtualizer.value.scrollToIndex(virtualItems.value.length - 1, { align: 'end' })
     }
   } catch (error) {
     console.warn('❌ [ScrollToBottom] Final fallback failed:', error)
@@ -461,9 +484,35 @@ const scrollToBottom = async (retries = 10, delay = 100) => {
     setTimeout(() => {
       isProgrammaticScrolling.value = false
       isUserAtBottom.value = true // We just scrolled to bottom, so user is at bottom
-      console.log('🔽 [ScrollToBottom] Guard cleared, isUserAtBottom set to true')
+
+      // 🔧 FIX: Start grace period to protect isUserAtBottom from race conditions
+      startGracePeriod()
+      console.log('🔽 [ScrollToBottom] Guard cleared, isUserAtBottom set to true, grace period started')
     }, 100)
   }
+}
+
+/**
+ * 🔧 FIX: Start grace period after scrollToBottom
+ * During this period, scroll events cannot set isUserAtBottom to false
+ * This prevents race conditions with virtualizer height adjustments
+ */
+function startGracePeriod() {
+  // Clear any existing timeout
+  if (recentlyScrolledToBottomTimeout) {
+    clearTimeout(recentlyScrolledToBottomTimeout)
+  }
+
+  // Start grace period
+  recentlyScrolledToBottom.value = true
+  console.log(`🛡️ [GracePeriod] Started (${GRACE_PERIOD_MS}ms)`)
+
+  // End grace period after timeout
+  recentlyScrolledToBottomTimeout = setTimeout(() => {
+    recentlyScrolledToBottom.value = false
+    recentlyScrolledToBottomTimeout = null
+    console.log('🛡️ [GracePeriod] Ended')
+  }, GRACE_PERIOD_MS)
 }
 
 // Animation handling with smooth entrance
@@ -515,7 +564,17 @@ const handleScroll = () => {
   const isAtBottom = checkIfUserAtBottom()
   const isAtTop = checkIfUserAtTop()
 
-  isUserAtBottom.value = isAtBottom
+  // 🔧 FIX: Don't reset isUserAtBottom to false during grace period
+  // This prevents race conditions where virtualizer height adjustments
+  // trigger scroll events that incorrectly mark user as not at bottom
+  if (isAtBottom) {
+    isUserAtBottom.value = true
+  } else if (!recentlyScrolledToBottom.value) {
+    // Only set to false if NOT in grace period
+    isUserAtBottom.value = false
+  } else {
+    console.log('🛡️ [handleScroll] Grace period active - preserving isUserAtBottom = true')
+  }
 
   // 🔧 FIX: Check scroll direction with threshold to avoid flickering from micro-movements
   const scrollDelta = lastScrollTop.value - scrollTop
@@ -903,6 +962,11 @@ onUnmounted(() => {
   if (showLoadMoreTimeout) {
     clearTimeout(showLoadMoreTimeout)
     showLoadMoreTimeout = null
+  }
+  // 🔧 FIX: Clean up grace period timeout
+  if (recentlyScrolledToBottomTimeout) {
+    clearTimeout(recentlyScrolledToBottomTimeout)
+    recentlyScrolledToBottomTimeout = null
   }
 })
 
