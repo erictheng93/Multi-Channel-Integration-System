@@ -652,7 +652,11 @@ watch(() => props.isHistoryPrepending, (isPrepending, wasPrepending) => {
 watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
   console.log(`📨 [DisplayedMessageWatch] Displayed count changed: ${oldCount} → ${newCount}, virtualItems: ${virtualItems.value.length}`)
 
-  if (oldCount !== undefined && newCount > oldCount) {
+  // 🔧 FIX: 修正條件邏輯 - oldCount 必須大於 0 才視為「新訊息」
+  // 原本 bug：當 oldCount=0, newCount>0 時，0 !== undefined 為 true，
+  // 導致誤入「新訊息」路徑，跳過「初始載入」路徑，
+  // 使得 initialScrollComplete 事件從未發送
+  if (oldCount !== undefined && oldCount > 0 && newCount > oldCount) {
     // 🔧 FIX: Check if this is a history prepend operation
     const isHistoryPrepend = pendingScrollPreservation.value && scrollPositionBeforePrepend.value
 
