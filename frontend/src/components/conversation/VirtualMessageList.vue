@@ -778,10 +778,15 @@ watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
     await waitForStableScrollHeight()
     await scrollToBottom()
 
-    // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
-    await new Promise(resolve => setTimeout(resolve, 200))
+    // 🚀 Phase 2 優化：移除 200ms 固定延遲，改用 RAF
+    // 原本：setTimeout(200) 等待 DOM 穩定
+    // 現在：nextTick + RAF (~16ms) 已足夠，因為 waitForStableScrollHeight 已確保穩定
+    await nextTick()
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+    // 快速驗證，如果不在底部則再滾動一次
     if (!checkIfUserAtBottom()) {
-      console.log('📨 [DisplayedMessageWatch] Initial load post-scroll verification: not at bottom, scrolling again...')
+      console.log('📨 [DisplayedMessageWatch] Quick verification: not at bottom, scrolling again...')
       await scrollToBottom()
     }
 
@@ -818,10 +823,13 @@ onMounted(async () => {
     await waitForStableScrollHeight()
     await scrollToBottom()
 
-    // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
-    await new Promise(resolve => setTimeout(resolve, 200))
+    // 🚀 Phase 2 優化：移除 200ms 固定延遲，改用 RAF
+    await nextTick()
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+    // 快速驗證，如果不在底部則再滾動一次
     if (!checkIfUserAtBottom()) {
-      console.log('🚀 [VirtualMessageList] Post-scroll verification: not at bottom, scrolling again...')
+      console.log('🚀 [VirtualMessageList] Quick verification: not at bottom, scrolling again...')
       await scrollToBottom()
     }
 
@@ -841,8 +849,13 @@ onMounted(async () => {
  * 🔧 OPTIMIZED: Wait for scrollHeight to stabilize before scrolling
  * This ensures virtual list has fully rendered before we scroll
  * Replaces the old approach of scrolling twice
+ *
+ * 🚀 Phase 2 優化：減少等待時間
+ * - maxWaitMs: 500 → 250 (visibility:hidden 修復後，scrollHeight 計算更快)
+ * - checkIntervalMs: 50 → 25 (更快速的輪詢)
+ * - 實際效果：虛擬列表通常在 50-100ms 內穩定
  */
-const waitForStableScrollHeight = async (maxWaitMs = 500, checkIntervalMs = 50): Promise<void> => {
+const waitForStableScrollHeight = async (maxWaitMs = 250, checkIntervalMs = 25): Promise<void> => {
   if (!scrollContainer.value) {return}
 
   let lastScrollHeight = scrollContainer.value.scrollHeight
