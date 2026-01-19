@@ -121,6 +121,16 @@ export function createCustomerWebSocketConnection(
 
           console.log('📨 [CustomerWebSocket] Received:', eventType, data)
 
+          // 🔧 重連同步: 處理 event 類型訊息 (connection_established, sync_response)
+          if (eventType === 'event' && data.data) {
+            const innerType = data.data.type
+            console.log('📬 [CustomerWebSocket] Processing event:', innerType)
+
+            // 直接傳遞給回調，由 useWebSocketIntegration 處理
+            messageCallback?.(data)
+            return
+          }
+
           if (eventType === WS_EVENTS.NEW_MESSAGE && data.message) {
             // 🔧 FIX: 不再基於 senderId 跳過訊息
             // 改由 useCustomerMessages.addMessage() 的 ID 去重機制處理
@@ -211,10 +221,28 @@ export function createCustomerWebSocketConnection(
   }
 
   /**
-   * 發送消息（Customer API 不通過 WebSocket 發送，而是通過 HTTP POST）
+   * 發送消息到 WebSocket
+   * 🔧 重連同步: 支援 sync_request 等控制訊息
+   *
+   * 注意：一般聊天訊息仍通過 HTTP POST 發送，這裡主要用於:
+   * - sync_request: 重連後請求遺漏的訊息
+   * - ping/pong: 心跳檢測
+   * - typing indicators: 輸入狀態（Phase 2）
    */
-  const send = (_message: unknown) => {
-    console.warn('⚠️ [CustomerWebSocket] send() not supported - use HTTP API to send messages')
+  const send = (message: unknown) => {
+    if (!ws.value || ws.value.readyState !== globalThis.WebSocket.OPEN) {
+      console.warn('⚠️ [CustomerWebSocket] Cannot send - WebSocket not connected')
+      return
+    }
+
+    try {
+      const messageStr = typeof message === 'string' ? message : JSON.stringify(message)
+      ws.value.send(messageStr)
+      console.log('📤 [CustomerWebSocket] Sent:', message)
+    } catch (error) {
+      console.error('❌ [CustomerWebSocket] Send error:', error)
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)))
+    }
   }
 
   /**
