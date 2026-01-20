@@ -3,7 +3,7 @@
 // Supports unlimited team membership for agents
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
 import type { D1Database } from '@cloudflare/workers-types';
 
@@ -172,6 +172,9 @@ export class AgentTeamsService {
 
   /**
    * 將客服加入多個團隊
+   * 🚀 Phase 3 優化: 使用批量 DB 操作
+   * - 單次查詢檢查所有現有成員資格 (N 查詢 → 1 查詢)
+   * - 批量插入所有新成員資格 (N 插入 → 1 插入)
    */
   async addAgentToMultipleTeams(
     agentId: string,
@@ -184,35 +187,101 @@ export class AgentTeamsService {
       errors: []
     };
 
+    if (teamIds.length === 0) {
+      return result;
+    }
+
     const now = new Date().toISOString();
 
-    for (const teamId of teamIds) {
-      try {
-        // Check if already a member
-        const existing = await this.getAgentTeamMembership(agentId, teamId);
-        if (existing) {
-          result.skipped.push(teamId);
-          continue;
-        }
+    try {
+      // 🚀 Phase 3.1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
+      const existingMemberships = await this.db
+        .select({ teamId: agentTeams.teamId })
+        .from(agentTeams)
+        .where(and(
+          eq(agentTeams.agentId, agentId),
+          inArray(agentTeams.teamId, teamIds)
+        ));
 
-        // Add to team
+      const existingTeamIds = new Set(existingMemberships.map(m => m.teamId));
+
+      // 分類：已存在 vs 需要新增
+      const teamsToAdd: number[] = [];
+      for (const teamId of teamIds) {
+        if (existingTeamIds.has(teamId)) {
+          result.skipped.push(teamId);
+        } else {
+          teamsToAdd.push(teamId);
+        }
+      }
+
+      // 🚀 Phase 3.2: 批量插入新成員資格 (N 插入 → 1 插入)
+      if (teamsToAdd.length > 0) {
+        const valuesToInsert = teamsToAdd.map(teamId => ({
+          agentId,
+          teamId,
+          roleInTeam,
+          isPrimary: false,
+          joinedAt: now,
+          createdAt: now
+        }));
+
         await this.db
           .insert(agentTeams)
-          .values({
-            agentId,
-            teamId,
-            roleInTeam,
-            isPrimary: false,
-            joinedAt: now,
-            createdAt: now
-          });
+          .values(valuesToInsert);
 
-        result.added.push(teamId);
-      } catch (error) {
-        result.errors.push({
-          teamId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        result.added = teamsToAdd;
+      }
+
+      console.log('✅ [AgentTeamsService] Bulk add completed:', {
+        agentId,
+        requested: teamIds.length,
+        added: result.added.length,
+        skipped: result.skipped.length,
+        dbQueries: 2 // 1 SELECT + 1 INSERT (vs 2*N before)
+      });
+
+    } catch (error) {
+      // 如果批量操作失敗，記錄所有未處理的團隊為錯誤
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      for (const teamId of teamIds) {
+        if (!result.skipped.includes(teamId) && !result.added.includes(teamId)) {
+          result.errors.push({ teamId, error: errorMsg });
+        }
+      }
+      console.error('❌ [AgentTeamsService] Bulk add failed:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * 🆕 批量獲取多個團隊的成員數量
+   * 用於批量 WebSocket 廣播時一次獲取所有 memberCount
+   */
+  async getTeamMemberCounts(teamIds: number[]): Promise<Map<number, number>> {
+    if (teamIds.length === 0) {
+      return new Map();
+    }
+
+    const counts = await this.db
+      .select({
+        teamId: agentTeams.teamId,
+        count: sql<number>`count(*)`
+      })
+      .from(agentTeams)
+      .where(inArray(agentTeams.teamId, teamIds))
+      .groupBy(agentTeams.teamId);
+
+    const result = new Map<number, number>();
+    for (const { teamId, count } of counts) {
+      result.set(teamId, Number(count));
+    }
+
+    // 確保所有請求的 teamId 都有值（即使是 0）
+    for (const teamId of teamIds) {
+      if (!result.has(teamId)) {
+        result.set(teamId, 0);
       }
     }
 
