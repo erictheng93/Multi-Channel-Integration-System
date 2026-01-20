@@ -54,7 +54,7 @@
           </div>
         </div>
 
-        <!-- Role and Group -->
+        <!-- Role and Status -->
         <div class="form-row">
           <div class="form-group">
             <label class="form-label required">角色</label>
@@ -86,30 +86,11 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">部門/群組</label>
-            <input
-              v-model="formData.group"
-              type="text"
-              class="form-input"
-              :class="{ 'has-error': formErrors.group }"
-              placeholder="選填"
-              maxlength="100"
-            >
-            <span
-              v-if="formErrors.group"
-              class="error-message"
-            >
-              {{ formErrors.group }}
+            <label class="form-label">狀態</label>
+            <span :class="['status-badge', member.status]">
+              {{ member.status === 'active' ? '活躍' : member.status === 'inactive' ? '停用' : '待處理' }}
             </span>
           </div>
-        </div>
-
-        <!-- Status (Read-only) -->
-        <div class="form-group">
-          <label class="form-label">狀態</label>
-          <span :class="['status-badge', member.status]">
-            {{ member.status === 'active' ? '活躍' : member.status === 'inactive' ? '停用' : '待處理' }}
-          </span>
         </div>
       </div>
 
@@ -212,6 +193,14 @@
         <MultiTeamSelector
           :member-id="member.id"
           :all-teams="allTeams"
+          :deferred-mode="true"
+          :teams="displayTeams"
+          :pending-changes="pendingTeamChanges"
+          :loading="isSaving"
+          @add-team="handleAddTeam"
+          @remove-team="handleRemoveTeam"
+          @set-primary="handleSetPrimary"
+          @teams-loaded="handleTeamsLoaded"
         />
       </template>
 
@@ -254,7 +243,7 @@
  * MemberEditModal Component
  *
  * Modal for editing member details including:
- * - Profile information (name, email, role, group)
+ * - Profile information (name, email, role)
  * - Password reset (admin can reset all passwords except System Administration)
  * - Team assignments via MultiTeamSelector
  *
@@ -270,7 +259,7 @@ import { toRef } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import MultiTeamSelector from '@/components/team/multi-team/MultiTeamSelector.vue'
 import { useMemberEditForm } from '@/composables/team-management/useMemberEditForm'
-import type { TeamMember, Team } from '@/types'
+import type { TeamMember, Team, AgentTeamMembership } from '@/types'
 
 interface Props {
   /** Whether modal is visible */
@@ -309,11 +298,19 @@ const {
   isResettingPassword,
   showPasswordSection,
   isSystemAdmin,
+  // Team changes (deferred mode)
+  pendingTeamChanges,
+  displayTeams,
+  addTeamToPending,
+  removeTeamFromPending,
+  setPrimaryTeamPending,
+  initTeams,
+  // Methods
   saveChanges,
   resetPassword,
   resetForm,
   togglePasswordSection
-} = useMemberEditForm(memberRef, () => {
+} = useMemberEditForm(memberRef, undefined, () => {
   emit('save')
 })
 
@@ -340,6 +337,34 @@ const handleResetPassword = async () => {
 const handleClose = () => {
   resetForm()
   emit('close')
+}
+
+/**
+ * Handle adding team (deferred mode)
+ */
+const handleAddTeam = (teamId: number, teamName: string) => {
+  addTeamToPending(teamId, teamName)
+}
+
+/**
+ * Handle removing team (deferred mode)
+ */
+const handleRemoveTeam = (teamId: number) => {
+  removeTeamFromPending(teamId)
+}
+
+/**
+ * Handle setting primary team (deferred mode)
+ */
+const handleSetPrimary = (teamId: number) => {
+  setPrimaryTeamPending(teamId)
+}
+
+/**
+ * Handle teams loaded from server (initialize current teams)
+ */
+const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
+  initTeams(teams)
 }
 </script>
 

@@ -44,6 +44,7 @@ export {
   type MemberEditPasswordFormData,
   type MemberEditFormErrors,
   type MemberEditPasswordErrors,
+  type PendingTeamChange,
   type UseMemberEditFormReturn
 } from './useMemberEditForm'
 

@@ -3,25 +3,32 @@
     <div class="section-header">
       <h4>團隊分配</h4>
       <span
-        v-if="teamOperationStatus"
+        v-if="!deferredMode && teamOperationStatus"
         :class="['status-message', teamOperationStatus.type]"
       >
         {{ teamOperationStatus.message }}
+      </span>
+      <span
+        v-else-if="deferredMode && hasPendingChanges"
+        class="status-message pending"
+      >
+        有未儲存的變更
       </span>
     </div>
 
     <!-- Team Chips List -->
     <TeamChipList
-      :teams="memberTeams"
-      :loading="teamOperationLoading"
+      :teams="effectiveTeams"
+      :loading="effectiveLoading"
+      :pending-changes="deferredMode ? pendingChanges : []"
       @remove="handleRemoveTeam"
       @set-primary="handleSetPrimary"
     />
 
     <!-- Add Team Dropdown -->
     <TeamAddDropdown
-      :available-teams="availableTeamsToJoin"
-      :loading="teamOperationLoading"
+      :available-teams="effectiveAvailableTeams"
+      :loading="effectiveLoading"
       @add="handleAddTeam"
     />
   </div>
@@ -31,21 +38,25 @@
 /**
  * MultiTeamSelector Component
  *
- * Extracted from TeamMemberCard.vue
- * Orchestrates multi-team management with TeamChipList and TeamAddDropdown
+ * Orchestrates multi-team management with TeamChipList and TeamAddDropdown.
+ * Supports two modes:
+ * - Immediate mode: API calls are made immediately (default)
+ * - Deferred mode: Changes are staged and emitted for parent to save
  *
  * Features:
- * - Integrates useMemberTeams composable
+ * - Integrates useMemberTeams composable (immediate mode)
+ * - Accepts external state management (deferred mode)
  * - Displays current team memberships
  * - Allows adding/removing teams
  * - Shows operation status messages
  */
 
-import { type Ref } from 'vue'
+import { computed, toRef, watch } from 'vue'
 import TeamChipList from './TeamChipList.vue'
 import TeamAddDropdown from './TeamAddDropdown.vue'
 import { useMemberTeams } from '@/composables/team-management/useMemberTeams'
 import type { Team, AgentTeamMembership } from '@/types'
+import type { PendingTeamChange } from '@/composables/team-management/useMemberEditForm'
 
 interface Props {
   /** Member ID */
@@ -53,11 +64,57 @@ interface Props {
 
   /** All available teams */
   allTeams: Team[]
+
+  /**
+   * Enable deferred mode - changes are staged instead of saved immediately
+   * When true, the component emits events instead of making API calls
+   */
+  deferredMode?: boolean
+
+  /**
+   * (Deferred mode) Teams to display
+   * Should be the computed displayTeams from parent
+   */
+  teams?: AgentTeamMembership[]
+
+  /**
+   * (Deferred mode) Pending changes for visual indicators
+   */
+  pendingChanges?: PendingTeamChange[]
+
+  /**
+   * (Deferred mode) Loading state
+   */
+  loading?: boolean
 }
 
-const props = defineProps<Props>()
+interface Emits {
+  /** (Deferred mode) Emitted when user wants to add a team */
+  (_e: 'add-team', _teamId: number, _teamName: string): void
 
-// Initialize multi-team management composable
+  /** (Deferred mode) Emitted when user wants to remove a team */
+  (_e: 'remove-team', _teamId: number): void
+
+  /** (Deferred mode) Emitted when user wants to set primary team */
+  (_e: 'set-primary', _teamId: number): void
+
+  /** Emitted when teams are loaded (for parent to initialize) */
+  (_e: 'teams-loaded', _teams: AgentTeamMembership[]): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  deferredMode: false,
+  teams: () => [],
+  pendingChanges: () => [],
+  loading: false
+})
+
+const emit = defineEmits<Emits>()
+
+// Convert props.allTeams to a proper Ref for the composable
+const allTeamsRef = toRef(props, 'allTeams')
+
+// Initialize multi-team management composable (for immediate mode)
 const {
   memberTeams,
   availableTeamsToJoin,
@@ -67,30 +124,112 @@ const {
   addToTeam,
   removeFromTeam,
   setPrimaryTeam
-} = useMemberTeams(props.allTeams as unknown as Ref<Team[]>)
+} = useMemberTeams(allTeamsRef)
 
-// Load member teams on mount
-loadMemberTeams(props.memberId)
+/**
+ * Effective teams to display
+ * In deferred mode: use props.teams from parent
+ * In immediate mode: use memberTeams from composable
+ */
+const effectiveTeams = computed(() => {
+  if (props.deferredMode) {
+    return props.teams
+  }
+  return memberTeams.value
+})
+
+/**
+ * Effective available teams for dropdown
+ * In deferred mode: compute from allTeams - teams
+ * In immediate mode: use availableTeamsToJoin from composable
+ */
+const effectiveAvailableTeams = computed(() => {
+  if (props.deferredMode) {
+    const teamIds = props.teams.map(t => t.teamId)
+    return props.allTeams.filter(team => !teamIds.includes(team.id))
+  }
+  return availableTeamsToJoin.value
+})
+
+/**
+ * Effective loading state
+ */
+const effectiveLoading = computed(() => {
+  if (props.deferredMode) {
+    return props.loading
+  }
+  return teamOperationLoading.value
+})
+
+/**
+ * Check if there are pending changes (deferred mode only)
+ */
+const hasPendingChanges = computed(() => {
+  return props.pendingChanges.length > 0
+})
+
+/**
+ * Load member teams on mount (immediate mode only)
+ */
+const initializeTeams = async () => {
+  if (!props.deferredMode) {
+    await loadMemberTeams(props.memberId)
+  } else {
+    // In deferred mode, load teams and emit for parent to initialize
+    await loadMemberTeams(props.memberId)
+    emit('teams-loaded', memberTeams.value)
+  }
+}
+
+// Initialize on mount
+initializeTeams()
+
+// Watch for memberId changes (in case modal is reused)
+watch(
+  () => props.memberId,
+  () => {
+    initializeTeams()
+  }
+)
 
 /**
  * Handle adding member to a team
  */
 const handleAddTeam = async (teamId: number) => {
-  await addToTeam(props.memberId, teamId)
+  if (props.deferredMode) {
+    // Deferred mode: emit event for parent to handle
+    const team = props.allTeams.find(t => t.id === teamId)
+    emit('add-team', teamId, team?.name || `團隊 #${teamId}`)
+  } else {
+    // Immediate mode: call API directly
+    await addToTeam(props.memberId, teamId)
+  }
 }
 
 /**
  * Handle removing member from a team
  */
 const handleRemoveTeam = async (team: AgentTeamMembership) => {
-  await removeFromTeam(props.memberId, team.teamId)
+  if (props.deferredMode) {
+    // Deferred mode: emit event for parent to handle (no confirmation needed)
+    emit('remove-team', team.teamId)
+  } else {
+    // Immediate mode: call API directly (with confirmation)
+    await removeFromTeam(props.memberId, team.teamId)
+  }
 }
 
 /**
  * Handle setting a team as primary
  */
 const handleSetPrimary = async (team: AgentTeamMembership) => {
-  await setPrimaryTeam(props.memberId, team.teamId)
+  if (props.deferredMode) {
+    // Deferred mode: emit event for parent to handle
+    emit('set-primary', team.teamId)
+  } else {
+    // Immediate mode: call API directly
+    await setPrimaryTeam(props.memberId, team.teamId)
+  }
 }
 </script>
 
@@ -131,6 +270,12 @@ const handleSetPrimary = async (team: AgentTeamMembership) => {
   background: #fee2e2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+.status-message.pending {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
 }
 
 /* Responsive */
