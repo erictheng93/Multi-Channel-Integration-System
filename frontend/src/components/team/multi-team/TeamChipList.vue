@@ -13,28 +13,40 @@
       >
         <span class="chip-icon">{{ getChipIcon(team) }}</span>
         <span class="chip-name">{{ team.teamName || `團隊 #${team.teamId}` }}</span>
-        <span
-          v-if="isPendingAdd(team.teamId)"
-          class="chip-status"
-          title="待新增"
-        >
-          +
-        </span>
-        <span
-          v-if="isPendingRemove(team.teamId)"
-          class="chip-status remove"
-          title="待移除"
-        >
-          −
-        </span>
         <button
           type="button"
           class="chip-remove"
+          :class="{ 'is-cancel': isPendingRemove(team.teamId) }"
           :disabled="loading"
           :title="isPendingRemove(team.teamId) ? '取消移除' : `從「${team.teamName}」移除`"
           @click="$emit('remove', team)"
         >
-          ×
+          <svg
+            v-if="!isPendingRemove(team.teamId)"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+          <svg
+            v-else
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
         </button>
         <button
           v-if="!team.isPrimary && teams.length > 1 && !isPendingRemove(team.teamId)"
@@ -52,10 +64,27 @@
     <!-- Empty State -->
     <div
       v-if="teams.length === 0"
-      class="no-teams-message"
+      class="empty-state"
     >
-      <span class="empty-icon">📭</span>
-      <span>尚未加入任何群組</span>
+      <div class="empty-state-icon">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </div>
+      <span class="empty-state-text">尚未分配團隊</span>
+      <span class="empty-state-hint">點擊下方按鈕新增</span>
     </div>
   </div>
 </template>
@@ -226,43 +255,26 @@ const getChipIcon = (team: AgentTeamMembership): string => {
   max-width: 180px;
 }
 
-.chip-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  background: #22c55e;
-  border-radius: 50%;
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.chip-status.remove {
-  background: #ef4444;
-}
-
 /* Chip Action Buttons */
 .chip-remove,
 .chip-star {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
   padding: 0;
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(100, 116, 139, 0.2);
   border-radius: 50%;
-  font-size: 0.875rem;
-  font-weight: 700;
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
   backdrop-filter: blur(4px);
+}
+
+.chip-remove {
+  width: 26px;
+  height: 26px;
 }
 
 .chip-remove:hover:not(:disabled) {
@@ -272,14 +284,23 @@ const getChipIcon = (team: AgentTeamMembership): string => {
   transform: scale(1.1);
 }
 
-/* Special style for pending remove - clicking cancels */
-.is-pending-remove .chip-remove:hover:not(:disabled) {
-  background: #dcfce7;
+/* Cancel style - when clicking cancels a pending remove */
+.chip-remove.is-cancel {
+  background: rgba(220, 252, 231, 0.8);
   border-color: #22c55e;
   color: #16a34a;
 }
 
+.chip-remove.is-cancel:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+  transform: scale(1.1);
+}
+
 .chip-star {
+  width: 24px;
+  height: 24px;
   font-size: 1rem;
   line-height: 1;
 }
@@ -298,21 +319,40 @@ const getChipIcon = (team: AgentTeamMembership): string => {
 }
 
 /* Empty State */
-.no-teams-message {
+.empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 20px;
-  color: #94a3b8;
-  font-size: 0.9375rem;
-  font-style: italic;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border: 2px dashed #e2e8f0;
+  border-radius: 16px;
+  width: 100%;
 }
 
-.empty-icon {
-  font-size: 1.5rem;
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  border-radius: 50%;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.empty-state-text {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.empty-state-hint {
+  font-size: 0.8125rem;
+  color: #94a3b8;
 }
 
 /* Transition Animations */

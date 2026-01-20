@@ -9,7 +9,7 @@
         {{ teamOperationStatus.message }}
       </span>
       <span
-        v-else-if="deferredMode && hasPendingChanges"
+        v-else-if="deferredMode && hasPendingChanges && !hideStatusMessage"
         class="status-message pending"
       >
         有未儲存的變更
@@ -86,6 +86,11 @@ interface Props {
    * (Deferred mode) Loading state
    */
   loading?: boolean
+
+  /**
+   * Hide the status message (useful when parent shows it in header)
+   */
+  hideStatusMessage?: boolean
 }
 
 interface Emits {
@@ -106,7 +111,8 @@ const props = withDefaults(defineProps<Props>(), {
   deferredMode: false,
   teams: () => [],
   pendingChanges: () => [],
-  loading: false
+  loading: false,
+  hideStatusMessage: false
 })
 
 const emit = defineEmits<Emits>()
