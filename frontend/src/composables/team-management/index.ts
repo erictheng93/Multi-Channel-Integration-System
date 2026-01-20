@@ -38,5 +38,14 @@ export {
   type TeamStatsData
 } from './useTeamStats'
 
+export {
+  useMemberEditForm,
+  type MemberEditFormData,
+  type MemberEditPasswordFormData,
+  type MemberEditFormErrors,
+  type MemberEditPasswordErrors,
+  type UseMemberEditFormReturn
+} from './useMemberEditForm'
+
 // ==================== Common Types ====================
 export type { Team } from './useTeamManagementController'
