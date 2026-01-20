@@ -22,7 +22,6 @@
       :loading="effectiveLoading"
       :pending-changes="deferredMode ? pendingChanges : []"
       @remove="handleRemoveTeam"
-      @set-primary="handleSetPrimary"
     />
 
     <!-- Add Team Dropdown -->
@@ -100,9 +99,6 @@ interface Emits {
   /** (Deferred mode) Emitted when user wants to remove a team */
   (_e: 'remove-team', _teamId: number): void
 
-  /** (Deferred mode) Emitted when user wants to set primary team */
-  (_e: 'set-primary', _teamId: number): void
-
   /** Emitted when teams are loaded (for parent to initialize) */
   (_e: 'teams-loaded', _teams: AgentTeamMembership[]): void
 }
@@ -128,8 +124,7 @@ const {
   teamOperationStatus,
   loadMemberTeams,
   addToTeam,
-  removeFromTeam,
-  setPrimaryTeam
+  removeFromTeam
 } = useMemberTeams(allTeamsRef)
 
 /**
@@ -222,19 +217,6 @@ const handleRemoveTeam = async (team: AgentTeamMembership) => {
   } else {
     // Immediate mode: call API directly (with confirmation)
     await removeFromTeam(props.memberId, team.teamId)
-  }
-}
-
-/**
- * Handle setting a team as primary
- */
-const handleSetPrimary = async (team: AgentTeamMembership) => {
-  if (props.deferredMode) {
-    // Deferred mode: emit event for parent to handle
-    emit('set-primary', team.teamId)
-  } else {
-    // Immediate mode: call API directly
-    await setPrimaryTeam(props.memberId, team.teamId)
   }
 }
 </script>

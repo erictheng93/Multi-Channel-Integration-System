@@ -6,7 +6,6 @@
         :key="team.teamId"
         class="team-chip"
         :class="{
-          'is-primary': team.isPrimary,
           'is-pending-add': isPendingAdd(team.teamId),
           'is-pending-remove': isPendingRemove(team.teamId)
         }"
@@ -48,16 +47,6 @@
             <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
           </svg>
         </button>
-        <button
-          v-if="!team.isPrimary && teams.length > 1 && !isPendingRemove(team.teamId)"
-          type="button"
-          class="chip-star"
-          :disabled="loading"
-          title="設為主要團隊"
-          @click="$emit('set-primary', team)"
-        >
-          ☆
-        </button>
       </div>
     </TransitionGroup>
 
@@ -98,10 +87,8 @@
  *
  * Features:
  * - TransitionGroup animations for smooth chip add/remove
- * - Primary team indicator (⭐)
  * - Remove button (×) for each team
- * - Set as primary button (☆) for non-primary teams
- * - Pending change indicators (+ for add, − for remove)
+ * - Pending change indicators for add/remove operations
  * - Empty state display
  */
 
@@ -122,9 +109,6 @@ interface Props {
 interface Emits {
   /** Emitted when remove button is clicked */
   (_e: 'remove', _team: AgentTeamMembership): void
-
-  /** Emitted when set-as-primary button is clicked */
-  (_e: 'set-primary', _team: AgentTeamMembership): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,9 +141,6 @@ const getChipIcon = (team: AgentTeamMembership): string => {
   }
   if (isPendingAdd(team.teamId)) {
     return '➕'
-  }
-  if (team.isPrimary) {
-    return '⭐'
   }
   return '👥'
 }
@@ -196,20 +177,6 @@ const getChipIcon = (team: AgentTeamMembership): string => {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-color: #94a3b8;
-}
-
-.team-chip.is-primary {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-color: #fbbf24;
-  color: #92400e;
-  font-weight: 600;
-  box-shadow: 0 2px 6px rgba(251, 191, 36, 0.3);
-}
-
-.team-chip.is-primary:hover {
-  background: linear-gradient(135deg, #fde68a, #fcd34d);
-  border-color: #f59e0b;
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
 }
 
 /* Pending Add Style */
@@ -256,11 +223,12 @@ const getChipIcon = (team: AgentTeamMembership): string => {
 }
 
 /* Chip Action Buttons */
-.chip-remove,
-.chip-star {
+.chip-remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 26px;
+  height: 26px;
   padding: 0;
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(100, 116, 139, 0.2);
@@ -270,11 +238,6 @@ const getChipIcon = (team: AgentTeamMembership): string => {
   transition: all 0.2s ease;
   flex-shrink: 0;
   backdrop-filter: blur(4px);
-}
-
-.chip-remove {
-  width: 26px;
-  height: 26px;
 }
 
 .chip-remove:hover:not(:disabled) {
@@ -298,22 +261,7 @@ const getChipIcon = (team: AgentTeamMembership): string => {
   transform: scale(1.1);
 }
 
-.chip-star {
-  width: 24px;
-  height: 24px;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.chip-star:hover:not(:disabled) {
-  background: #fef3c7;
-  border-color: #fbbf24;
-  color: #f59e0b;
-  transform: scale(1.1);
-}
-
-.chip-remove:disabled,
-.chip-star:disabled {
+.chip-remove:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
