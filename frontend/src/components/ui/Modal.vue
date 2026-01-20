@@ -95,15 +95,18 @@ const handleClose = () => {
 }
 
 // 新方案: 精确的外部点击检测
+// 使用 composedPath() 而非 target，避免 Vue 重新渲染後元素被移除導致的誤判
 const handleClickOutside = (event: MouseEvent) => {
   if (!props.closeOnOverlay || !props.show) {
     return
   }
 
-  const target = event.target
+  // 使用 composedPath() 獲取點擊時的完整 DOM 路徑
+  // 即使元素在 Vue 重新渲染後被移除，路徑仍然保留
+  const path = event.composedPath()
 
-  // 检查点击是否在 modal-container 外部
-  if (containerRef.value && target instanceof HTMLElement && !containerRef.value.contains(target)) {
+  // 檢查 modal-container 是否在點擊路徑中
+  if (containerRef.value && !path.includes(containerRef.value)) {
     handleClose()
   }
 }
