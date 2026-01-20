@@ -468,6 +468,43 @@ export const useTeamStore = defineStore('team', () => {
   setupWebSocketListeners()
 
   /**
+   * 🆕 直接更新本地成員資料（不發送 API 請求）
+   * 用於 API 成功後的本地同步，避免全量重新載入
+   *
+   * @param memberId - 成員 ID
+   * @param data - 要更新的欄位
+   * @returns 是否成功找到並更新成員
+   */
+  const updateMemberLocal = (memberId: string, data: {
+    name?: string
+    displayName?: string
+    email?: string
+    role?: 'admin' | 'agent'
+    status?: 'active' | 'inactive'
+    teams?: Array<{ teamId: number; teamName?: string; roleInTeam: 'member' | 'lead' | 'supervisor'; isPrimary: boolean; joinedAt?: string }>
+  }): boolean => {
+    const member = members.value.find(m => m.id === memberId)
+    if (!member) {
+      console.warn(`[TeamStore] updateMemberLocal: Member ${memberId} not found`)
+      return false
+    }
+
+    // 更新欄位
+    if (data.name !== undefined) member.name = data.name
+    if (data.displayName !== undefined) member.name = data.displayName
+    if (data.email !== undefined) member.email = data.email
+    if (data.role !== undefined) member.role = data.role
+    if (data.status !== undefined) member.status = data.status
+    if (data.teams !== undefined) member.teams = data.teams
+
+    // 更新 updatedAt
+    member.updatedAt = new Date().toISOString()
+
+    console.log(`✅ [TeamStore] updateMemberLocal: Member ${memberId} updated locally`, data)
+    return true
+  }
+
+  /**
    * 🆕 直接更新本地團隊資料（不發送 API 請求）
    * 用於 API 成功後的本地同步，避免全量重新載入
    *
@@ -528,7 +565,8 @@ export const useTeamStore = defineStore('team', () => {
     $reset,
     // 🆕 WebSocket setup (exposed for manual re-setup if needed)
     setupWebSocketListeners,
-    // 🆕 直接更新本地團隊資料（用於最小化刷新）
+    // 🆕 直接更新本地資料（用於最小化刷新）
+    updateMemberLocal,
     updateTeamLocal
   }
 })

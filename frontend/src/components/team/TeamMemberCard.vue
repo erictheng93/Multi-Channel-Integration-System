@@ -4,6 +4,14 @@
     :class="{ 'modal-open': showEditModal }"
     @click="openEditModal"
   >
+    <!-- Drag Handle - Only this area triggers drag -->
+    <div
+      class="drag-handle"
+      @click.stop
+    >
+      <span class="drag-icon">⋮⋮</span>
+    </div>
+
     <div class="flex items-center gap-4 flex-1 rounded-xl p-2 -m-2">
       <div
         class="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0"
@@ -192,10 +200,29 @@ const formatDate = (date: string | Date) => {
 
 /* Member Card - Main container with hover effect */
 .member-card {
-  @apply bg-gray-50 rounded-2xl p-6;
-  @apply border border-gray-200 flex justify-between items-center;
+  @apply bg-gray-50 rounded-2xl p-6 pl-2;
+  @apply border border-gray-200 flex justify-between items-center gap-2;
   @apply transition-all duration-300 relative min-h-[120px] cursor-pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Drag Handle */
+.drag-handle {
+  @apply flex-shrink-0 w-8 h-full flex items-center justify-center;
+  @apply cursor-grab select-none text-gray-400;
+  @apply transition-colors duration-200 rounded-lg;
+}
+
+.drag-handle:hover {
+  @apply text-gray-600 bg-gray-200;
+}
+
+.drag-handle:active {
+  @apply cursor-grabbing text-primary-600;
+}
+
+.drag-icon {
+  @apply text-xl font-bold tracking-tighter;
 }
 
 .member-card:hover:not(.modal-open) {

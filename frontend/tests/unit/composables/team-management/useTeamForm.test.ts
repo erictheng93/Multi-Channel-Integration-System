@@ -22,6 +22,14 @@ vi.mock('@/api/team', () => {
   }
 })
 
+vi.mock('@/stores/team', () => {
+  return {
+    useTeamStore: vi.fn(() => ({
+      updateTeamLocal: vi.fn().mockReturnValue(true)
+    }))
+  }
+})
+
 vi.mock('@/composables/useConfirmDialog', () => {
   return {
     useConfirmDialog: vi.fn(() => ({
@@ -40,6 +48,7 @@ vi.mock('@/composables/useToast', () => {
 })
 
 import { teamApi } from '@/api/team'
+import { useTeamStore } from '@/stores/team'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 
@@ -48,6 +57,7 @@ describe('useTeamForm', () => {
   let mockShowWarning: ReturnType<typeof vi.fn>
   let mockShowSuccess: ReturnType<typeof vi.fn>
   let mockShowError: ReturnType<typeof vi.fn>
+  let mockUpdateTeamLocal: ReturnType<typeof vi.fn>
 
   const mockTeam = {
     id: 1,
@@ -63,11 +73,17 @@ describe('useTeamForm', () => {
     mockShowWarning = vi.fn().mockResolvedValue(true)
     mockShowSuccess = vi.fn()
     mockShowError = vi.fn()
+    mockUpdateTeamLocal = vi.fn().mockReturnValue(true)
 
     // Setup default API responses
     vi.mocked(teamApi.updateTeam).mockResolvedValue({
       success: true
     })
+
+    // Setup default store responses
+    vi.mocked(useTeamStore).mockReturnValue({
+      updateTeamLocal: mockUpdateTeamLocal
+    } as any)
 
     // Setup default composable responses
     vi.mocked(useConfirmDialog).mockReturnValue({

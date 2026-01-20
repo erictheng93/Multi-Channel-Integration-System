@@ -20,13 +20,22 @@
       >
         ⋮⋮
       </span>
-      <ChevronDownIcon class="chevron-icon" :class="{ 'is-open': isOpen }" />
+      <ChevronDownIcon
+        class="chevron-icon"
+        :class="{ 'is-open': isOpen }"
+      />
     </button>
 
     <Transition name="dropdown">
-      <div v-if="isOpen" class="dropdown-menu">
+      <div
+        v-if="isOpen"
+        class="dropdown-menu"
+      >
         <!-- Custom Mode Header - Show reset option -->
-        <div v-if="isCustomMode" class="custom-mode-header">
+        <div
+          v-if="isCustomMode"
+          class="custom-mode-header"
+        >
           <span class="custom-mode-text">目前為拖拽自訂順序</span>
           <button
             class="reset-button"
@@ -37,7 +46,9 @@
           </button>
         </div>
 
-        <div class="dropdown-header">排序方式</div>
+        <div class="dropdown-header">
+          排序方式
+        </div>
         <button
           v-for="option in options"
           :key="option.field"
