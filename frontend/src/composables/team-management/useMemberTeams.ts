@@ -81,6 +81,8 @@ export function useMemberTeams(allTeams: Ref<Team[]>): UseMemberTeamsReturn {
    * Excludes teams the member is already part of
    */
   const availableTeamsToJoin: ComputedRef<Team[]> = computed(() => {
+    // Guard: 確保 allTeams.value 存在，避免 undefined.filter() 錯誤
+    if (!allTeams.value) return []
     const memberTeamIds = memberTeams.value.map(t => t.teamId)
     return allTeams.value.filter(team => !memberTeamIds.includes(team.id))
   })
@@ -108,6 +110,12 @@ export function useMemberTeams(allTeams: Ref<Team[]>): UseMemberTeamsReturn {
    * Returns true if successful, false otherwise
    */
   const addToTeam = async (memberId: string, teamId: number): Promise<boolean> => {
+    // Guard: 確保 allTeams.value 存在
+    if (!allTeams.value) {
+      showError('團隊資料尚未載入')
+      return false
+    }
+
     // Find the team to add
     const teamToAdd = allTeams.value.find(t => t.id === teamId)
     if (!teamToAdd) {
