@@ -70,6 +70,11 @@ export interface PendingTeamChange {
 }
 
 /**
+ * Password match status for real-time validation feedback
+ */
+export type PasswordMatchStatus = 'idle' | 'mismatch' | 'match'
+
+/**
  * Return type for useMemberEditForm composable
  */
 export interface UseMemberEditFormReturn {
@@ -82,6 +87,7 @@ export interface UseMemberEditFormReturn {
   passwordErrors: Ref<MemberEditPasswordErrors>
   isFormValid: ComputedRef<boolean>
   isPasswordFormValid: ComputedRef<boolean>
+  passwordMatchStatus: ComputedRef<PasswordMatchStatus>
 
   // State
   isDirty: ComputedRef<boolean>
@@ -370,6 +376,30 @@ export function useMemberEditForm(
     if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) return false
 
     return true
+  })
+
+  /**
+   * Real-time password match status for immediate user feedback
+   * - 'idle': No password entered yet, no feedback needed
+   * - 'mismatch': Password entered but doesn't match confirm (show error)
+   * - 'match': Passwords match (show success)
+   */
+  const passwordMatchStatus = computed<PasswordMatchStatus>(() => {
+    const newPwd = passwordForm.value.newPassword
+    const confirmPwd = passwordForm.value.confirmPassword
+
+    // No password entered yet - don't show any status
+    if (newPwd.length === 0) {
+      return 'idle'
+    }
+
+    // Password entered - check if it matches confirm
+    if (newPwd === confirmPwd) {
+      return 'match'
+    }
+
+    // Passwords don't match
+    return 'mismatch'
   })
 
   // ==================== Methods ====================
@@ -696,6 +726,7 @@ export function useMemberEditForm(
     passwordErrors,
     isFormValid,
     isPasswordFormValid,
+    passwordMatchStatus,
 
     // State
     isDirty,

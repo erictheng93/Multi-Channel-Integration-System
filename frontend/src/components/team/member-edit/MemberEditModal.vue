@@ -1,10 +1,24 @@
 <template>
   <Modal
     :show="show"
-    :title="`編輯成員: ${member.name || member.loginId}`"
     size="lg"
     @close="handleClose"
   >
+    <template #header>
+      <div class="header-content">
+        <h3>編輯成員: {{ member.name || member.loginId }}</h3>
+        <span :class="['status-badge', member.status]">
+          {{ member.status === 'active' ? '活躍' : member.status === 'inactive' ? '停用' : '待處理' }}
+        </span>
+        <span
+          v-if="isDirty"
+          class="unsaved-indicator"
+        >
+          有未儲存的變更
+        </span>
+      </div>
+    </template>
+
     <div class="member-edit-content">
       <!-- Profile Edit Form -->
       <div class="form-section">
@@ -54,43 +68,34 @@
           </div>
         </div>
 
-        <!-- Role and Status -->
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label required">角色</label>
-            <select
-              v-model="formData.role"
-              class="form-select"
-              :class="{ 'has-error': formErrors.role }"
-              :disabled="isSystemAdmin"
-            >
-              <option value="agent">
-                客服人員
-              </option>
-              <option value="admin">
-                管理員
-              </option>
-            </select>
-            <span
-              v-if="formErrors.role"
-              class="error-message"
-            >
-              {{ formErrors.role }}
-            </span>
-            <span
-              v-if="isSystemAdmin"
-              class="field-hint"
-            >
-              系統管理員角色無法變更
-            </span>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">狀態</label>
-            <span :class="['status-badge', member.status]">
-              {{ member.status === 'active' ? '活躍' : member.status === 'inactive' ? '停用' : '待處理' }}
-            </span>
-          </div>
+        <!-- Role -->
+        <div class="form-group">
+          <label class="form-label required">角色</label>
+          <select
+            v-model="formData.role"
+            class="form-select"
+            :class="{ 'has-error': formErrors.role }"
+            :disabled="isSystemAdmin"
+          >
+            <option value="agent">
+              客服人員
+            </option>
+            <option value="admin">
+              管理員
+            </option>
+          </select>
+          <span
+            v-if="formErrors.role"
+            class="error-message"
+          >
+            {{ formErrors.role }}
+          </span>
+          <span
+            v-if="isSystemAdmin"
+            class="field-hint"
+          >
+            系統管理員角色無法變更
+          </span>
         </div>
       </div>
 
@@ -158,14 +163,24 @@
                 v-model="passwordForm.confirmPassword"
                 type="password"
                 class="form-input"
-                :class="{ 'has-error': passwordErrors.confirmPassword }"
+                :class="{
+                  'has-error': passwordMatchStatus === 'mismatch',
+                  'has-success': passwordMatchStatus === 'match'
+                }"
                 placeholder="請再次輸入新密碼"
               >
+              <!-- Real-time password match feedback -->
               <span
-                v-if="passwordErrors.confirmPassword"
+                v-if="passwordMatchStatus === 'mismatch'"
                 class="error-message"
               >
-                {{ passwordErrors.confirmPassword }}
+                密碼不一致
+              </span>
+              <span
+                v-else-if="passwordMatchStatus === 'match'"
+                class="success-message"
+              >
+                ✓ 密碼一致
               </span>
             </div>
 
@@ -197,6 +212,7 @@
           :teams="displayTeams"
           :pending-changes="pendingTeamChanges"
           :loading="isSaving"
+          :hide-status-message="true"
           @add-team="handleAddTeam"
           @remove-team="handleRemoveTeam"
           @set-primary="handleSetPrimary"
@@ -293,6 +309,7 @@ const {
   passwordErrors,
   isFormValid,
   isPasswordFormValid,
+  passwordMatchStatus,
   isDirty,
   isSaving,
   isResettingPassword,
@@ -369,6 +386,31 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
 </script>
 
 <style scoped>
+/* Header */
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.unsaved-indicator {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  margin-left: auto;
+}
+
 .member-edit-content {
   display: flex;
   flex-direction: column;
@@ -437,6 +479,14 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
+.form-input.has-success {
+  border-color: #16a34a;
+}
+
+.form-input.has-success:focus {
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
 .form-input:disabled,
 .form-select:disabled {
   background: #f8fafc;
@@ -456,6 +506,12 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
 .error-message {
   color: #ef4444;
   font-size: 0.75rem;
+}
+
+.success-message {
+  color: #16a34a;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .field-hint {
