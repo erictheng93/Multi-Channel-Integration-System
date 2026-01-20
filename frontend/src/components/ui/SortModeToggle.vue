@@ -3,8 +3,8 @@
     <button
       class="mode-button"
       :class="{ 'is-active': mode === 'auto' }"
-      @click="emit('change', 'auto')"
       :disabled="disabled"
+      @click="emit('change', 'auto')"
     >
       <AutoSortIcon class="mode-icon" />
       <span class="mode-label">自動排序</span>
@@ -12,8 +12,8 @@
     <button
       class="mode-button"
       :class="{ 'is-active': mode === 'custom' }"
-      @click="emit('change', 'custom')"
       :disabled="disabled"
+      @click="emit('change', 'custom')"
     >
       <DragIcon class="mode-icon" />
       <span class="mode-label">自訂順序</span>

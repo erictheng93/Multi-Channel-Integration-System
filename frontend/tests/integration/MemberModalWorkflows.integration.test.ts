@@ -152,7 +152,7 @@ describe('Member Modal Workflows - Integration Tests', () => {
           plugins: [createPinia()],
           stubs: {
             Modal: {
-              template: '<div class="modal-stub"><h2>{{ title }}</h2><slot /></div>',
+              template: '<div class="modal-stub"><slot name="header" /><slot /><slot name="footer" /></div>',
               props: ['show', 'title', 'size'],
               emits: ['close']
             }
@@ -162,14 +162,18 @@ describe('Member Modal Workflows - Integration Tests', () => {
 
       await nextTick()
 
-      // Modal should display member name in title
+      // Modal should display member name in title (header slot)
       expect(wrapper.text()).toContain('John Doe')
 
-      // Should display member email
-      expect(wrapper.text()).toContain('john@example.com')
+      // Should display member email in form input
+      const emailInput = wrapper.find('input[type="email"]')
+      expect(emailInput.exists()).toBe(true)
+      expect((emailInput.element as HTMLInputElement).value).toBe('john@example.com')
 
-      // Should display role (Chinese: 客服 for agent role)
-      expect(wrapper.text()).toContain('客服')
+      // Should display role dropdown with agent role options
+      const roleSelect = wrapper.find('select')
+      expect(roleSelect.exists()).toBe(true)
+      expect(wrapper.text()).toContain('客服人員')
     })
 
     it('should show admin notice for admin members', async () => {

@@ -20,6 +20,7 @@ import type { TeamMember, AgentTeamMembership, Team } from '@/types'
 import { teamApi } from '@/api/team'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useTeamStore } from '@/stores/team'
 
 /**
  * Form data for editing member profile
@@ -585,6 +586,14 @@ export function useMemberEditForm(
           return false
         }
 
+        // 🆕 最小化刷新：直接更新 store 中的成員資料
+        const teamStore = useTeamStore()
+        teamStore.updateMemberLocal(member.value.id, {
+          displayName: formData.value.displayName.trim(),
+          email: formData.value.email.trim(),
+          role: formData.value.role
+        })
+
         // Update original data to reflect saved state
         originalData.value = { ...formData.value }
       }
@@ -599,6 +608,18 @@ export function useMemberEditForm(
           // Update current teams to reflect the new state
           currentTeams.value = [...displayTeams.value]
           pendingTeamChanges.value = []
+
+          // 🆕 最小化刷新：更新 store 中成員的團隊列表
+          const teamStore = useTeamStore()
+          teamStore.updateMemberLocal(member.value.id, {
+            teams: displayTeams.value.map(t => ({
+              teamId: t.teamId,
+              teamName: t.teamName,
+              roleInTeam: t.roleInTeam,
+              isPrimary: t.isPrimary,
+              joinedAt: t.joinedAt
+            }))
+          })
         }
       }
 

@@ -60,6 +60,7 @@
         v-model="localMembers"
         class="members-list"
         :animation="200"
+        handle=".drag-handle"
         ghost-class="drag-ghost"
         chosen-class="drag-chosen"
         drag-class="drag-active"
@@ -223,17 +224,12 @@ function handleResetToAuto() {
 
 /* Draggable card styles */
 .draggable-card {
-  cursor: grab;
   transition: all 0.2s ease;
 }
 
 .draggable-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.draggable-card:active {
-  cursor: grabbing;
 }
 
 /* Drag states */
