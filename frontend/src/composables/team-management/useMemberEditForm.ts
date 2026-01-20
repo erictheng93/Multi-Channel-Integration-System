@@ -555,7 +555,11 @@ export function useMemberEditForm(
 
   /**
    * Execute API calls in background (non-blocking)
-   * Uses Promise.all for parallel execution
+   * Uses Promise.all for parallel execution and batch API for multiple team additions
+   *
+   * Phase 2 Optimization:
+   * - Multiple 'add' operations are batched into a single joinMultipleTeams call
+   * - Other operations (remove, set-primary) run in parallel
    *
    * @param snapshot - State snapshot for rollback on failure
    * @param profileDirty - Whether profile needs to be updated
@@ -567,9 +571,17 @@ export function useMemberEditForm(
     const memberId = snapshot.memberId
     const errors: string[] = []
 
-    console.log('🚀 [Background Save] Starting parallel API calls...', {
+    // Categorize pending changes
+    const addChanges = snapshot.pendingChanges.filter(c => c.type === 'add')
+    const removeChanges = snapshot.pendingChanges.filter(c => c.type === 'remove')
+    const setPrimaryChanges = snapshot.pendingChanges.filter(c => c.type === 'set-primary')
+
+    console.log('🚀 [Background Save] Starting optimized API calls...', {
       profileDirty,
-      teamChanges: snapshot.pendingChanges.length
+      addTeams: addChanges.length,
+      removeTeams: removeChanges.length,
+      setPrimary: setPrimaryChanges.length,
+      optimization: addChanges.length > 1 ? 'BATCH API' : 'SINGLE API'
     })
 
     try {
@@ -591,36 +603,88 @@ export function useMemberEditForm(
         )
       }
 
-      // Team change promises (parallel!)
-      for (const change of snapshot.pendingChanges) {
-        if (change.type === 'add') {
+      // 🚀 Phase 2: Use batch API for multiple team additions
+      if (addChanges.length > 0) {
+        if (addChanges.length === 1) {
+          // Single addition - use regular API
+          const change = addChanges[0]!
+          const changeTeamId = change.teamId
+          const changeTeamName = change.teamName
           apiPromises.push(
-            teamApi.joinTeam(memberId, change.teamId, { roleInTeam: 'member' })
+            teamApi.joinTeam(memberId, changeTeamId, { roleInTeam: 'member' })
               .then(response => ({
-                type: `add-team-${change.teamId}`,
+                type: `add-team-${changeTeamId}`,
                 success: response.success,
-                error: response.success ? undefined : `加入團隊「${change.teamName}」失敗: ${response.error}`
+                error: response.success ? undefined : `加入團隊「${changeTeamName}」失敗: ${response.error}`
               }))
           )
-        } else if (change.type === 'remove') {
+        } else {
+          // Multiple additions - use batch API (N requests → 1 request)
+          const teamIds = addChanges.map(c => c.teamId)
+          const teamNameMap = new Map(addChanges.map(c => [c.teamId, c.teamName]))
+
+          console.log('📦 [Batch API] Joining multiple teams in single request:', teamIds)
+
           apiPromises.push(
-            teamApi.leaveTeam(memberId, change.teamId)
-              .then(response => ({
-                type: `remove-team-${change.teamId}`,
-                success: response.success,
-                error: response.success ? undefined : `離開團隊失敗: ${response.error}`
-              }))
-          )
-        } else if (change.type === 'set-primary') {
-          apiPromises.push(
-            teamApi.setPrimaryTeam(memberId, change.teamId)
-              .then(response => ({
-                type: `set-primary-${change.teamId}`,
-                success: response.success,
-                error: response.success ? undefined : `設定主要團隊失敗: ${response.error}`
-              }))
+            teamApi.joinMultipleTeams(memberId, teamIds, 'member')
+              .then(response => {
+                if (!response.success) {
+                  return {
+                    type: 'add-teams-batch',
+                    success: false,
+                    error: `批量加入團隊失敗: ${response.error}`
+                  }
+                }
+
+                // Check for partial failures in batch response
+                const batchData = response.data
+                const batchErrors: string[] = []
+
+                if (batchData?.errors && batchData.errors.length > 0) {
+                  for (const err of batchData.errors) {
+                    const teamName = teamNameMap.get(err.teamId) || `團隊 #${err.teamId}`
+                    batchErrors.push(`加入「${teamName}」失敗: ${err.error}`)
+                  }
+                }
+
+                console.log('📦 [Batch API] Result:', {
+                  added: batchData?.added?.length || 0,
+                  skipped: batchData?.skipped?.length || 0,
+                  errors: batchData?.errors?.length || 0
+                })
+
+                return {
+                  type: 'add-teams-batch',
+                  success: batchErrors.length === 0,
+                  error: batchErrors.length > 0 ? batchErrors.join('\n') : undefined
+                }
+              })
           )
         }
+      }
+
+      // Remove team promises (no batch API available, run in parallel)
+      for (const change of removeChanges) {
+        apiPromises.push(
+          teamApi.leaveTeam(memberId, change.teamId)
+            .then(response => ({
+              type: `remove-team-${change.teamId}`,
+              success: response.success,
+              error: response.success ? undefined : `離開團隊失敗: ${response.error}`
+            }))
+        )
+      }
+
+      // Set primary team promises
+      for (const change of setPrimaryChanges) {
+        apiPromises.push(
+          teamApi.setPrimaryTeam(memberId, change.teamId)
+            .then(response => ({
+              type: `set-primary-${change.teamId}`,
+              success: response.success,
+              error: response.success ? undefined : `設定主要團隊失敗: ${response.error}`
+            }))
+        )
       }
 
       // Execute all API calls in parallel
