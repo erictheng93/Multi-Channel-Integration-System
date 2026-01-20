@@ -467,6 +467,39 @@ export const useTeamStore = defineStore('team', () => {
   // Auto-setup listeners when store is used
   setupWebSocketListeners()
 
+  /**
+   * 🆕 直接更新本地團隊資料（不發送 API 請求）
+   * 用於 API 成功後的本地同步，避免全量重新載入
+   *
+   * @param teamId - 團隊 ID
+   * @param data - 要更新的欄位
+   * @returns 是否成功找到並更新團隊
+   */
+  const updateTeamLocal = (teamId: number, data: {
+    name?: string
+    description?: string
+    isActive?: boolean
+    memberCount?: number
+  }): boolean => {
+    const team = teams.value.find(t => t.id === teamId)
+    if (!team) {
+      console.warn(`[TeamStore] updateTeamLocal: Team ${teamId} not found`)
+      return false
+    }
+
+    // 更新欄位
+    if (data.name !== undefined) team.name = data.name
+    if (data.description !== undefined) team.description = data.description
+    if (data.isActive !== undefined) team.isActive = data.isActive
+    if (data.memberCount !== undefined) team.memberCount = data.memberCount
+
+    // 更新 updatedAt
+    team.updatedAt = new Date().toISOString()
+
+    console.log(`✅ [TeamStore] updateTeamLocal: Team ${teamId} updated locally`, data)
+    return true
+  }
+
   return {
     // 狀態
     members,
@@ -494,6 +527,8 @@ export const useTeamStore = defineStore('team', () => {
     clearError,
     $reset,
     // 🆕 WebSocket setup (exposed for manual re-setup if needed)
-    setupWebSocketListeners
+    setupWebSocketListeners,
+    // 🆕 直接更新本地團隊資料（用於最小化刷新）
+    updateTeamLocal
   }
 })

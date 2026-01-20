@@ -191,12 +191,14 @@ const handleCancelEdit = () => {
 
 /**
  * Handle form submission
+ * 🆕 最小化刷新：useTeamForm.submitForm() 已直接更新 store，
+ *    不再需要 emit('team-updated') 觸發全量重新載入
  */
 const handleFormSubmit = async () => {
   const success = await teamForm.submitForm(props.team.id)
   if (success) {
     emit('cancel-edit') // Exit edit mode
-    emit('team-updated') // Notify parent to refresh
+    // 🆕 移除 emit('team-updated') - store 已在 submitForm 中直接更新
   }
 }
 
