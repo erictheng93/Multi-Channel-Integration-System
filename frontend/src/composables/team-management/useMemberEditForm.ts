@@ -71,6 +71,21 @@ export interface PendingTeamChange {
 }
 
 /**
+ * Snapshot for optimistic update rollback
+ * Captures the state before changes are applied
+ */
+export interface MemberEditSnapshot {
+  /** Original form data before changes */
+  originalData: MemberEditFormData
+  /** Current teams before changes */
+  currentTeams: AgentTeamMembership[]
+  /** Pending changes being applied */
+  pendingChanges: PendingTeamChange[]
+  /** Member ID for rollback */
+  memberId: string
+}
+
+/**
  * Password match status for real-time validation feedback
  */
 export type PasswordMatchStatus = 'idle' | 'mismatch' | 'match'
@@ -488,57 +503,174 @@ export function useMemberEditForm(
     return Object.keys(errors).length === 0
   }
 
-  /**
-   * Apply pending team changes via API
-   */
-  const applyTeamChanges = async (memberId: string): Promise<{ success: boolean; errors: string[] }> => {
-    const errors: string[] = []
+  // ==================== Optimistic Update Helpers ====================
 
-    // Process changes in order
-    for (const change of pendingTeamChanges.value) {
-      try {
-        if (change.type === 'add') {
-          const response = await teamApi.joinTeam(memberId, change.teamId, {
-            roleInTeam: 'member'
-          })
-          if (!response.success) {
-            errors.push(`加入團隊「${change.teamName}」失敗: ${response.error}`)
-          }
-        } else if (change.type === 'remove') {
-          const response = await teamApi.leaveTeam(memberId, change.teamId)
-          if (!response.success) {
-            errors.push(`離開團隊失敗: ${response.error}`)
-          }
-        } else if (change.type === 'set-primary') {
-          const response = await teamApi.setPrimaryTeam(memberId, change.teamId)
-          if (!response.success) {
-            errors.push(`設定主要團隊失敗: ${response.error}`)
-          }
-        }
-      } catch (error) {
-        console.error('Team change failed:', error)
-        errors.push(`團隊操作失敗`)
-      }
-    }
+  /**
+   * Create a snapshot of current state for potential rollback
+   * Used by optimistic update pattern
+   */
+  const createSnapshot = (): MemberEditSnapshot | null => {
+    if (!member.value) return null
 
     return {
-      success: errors.length === 0,
-      errors
+      originalData: { ...originalData.value },
+      currentTeams: [...currentTeams.value],
+      pendingChanges: [...pendingTeamChanges.value],
+      memberId: member.value.id
+    }
+  }
+
+  /**
+   * Rollback to snapshot state after failed background save
+   * Restores both local state and store state
+   */
+  const rollbackToSnapshot = (snapshot: MemberEditSnapshot) => {
+    console.warn('🔄 [Optimistic Update] Rolling back to snapshot...')
+
+    // Restore local state
+    originalData.value = { ...snapshot.originalData }
+    currentTeams.value = [...snapshot.currentTeams]
+    pendingTeamChanges.value = [...snapshot.pendingChanges]
+
+    // Restore form data to original
+    formData.value = { ...snapshot.originalData }
+
+    // Restore store state
+    const teamStore = useTeamStore()
+    teamStore.updateMemberLocal(snapshot.memberId, {
+      displayName: snapshot.originalData.displayName,
+      email: snapshot.originalData.email,
+      role: snapshot.originalData.role,
+      teams: snapshot.currentTeams.map(t => ({
+        teamId: t.teamId,
+        teamName: t.teamName,
+        roleInTeam: t.roleInTeam,
+        isPrimary: t.isPrimary,
+        joinedAt: t.joinedAt
+      }))
+    })
+
+    console.log('✅ [Optimistic Update] Rollback completed')
+  }
+
+  /**
+   * Execute API calls in background (non-blocking)
+   * Uses Promise.all for parallel execution
+   *
+   * @param snapshot - State snapshot for rollback on failure
+   * @param profileDirty - Whether profile needs to be updated
+   */
+  const executeBackgroundSave = async (
+    snapshot: MemberEditSnapshot,
+    profileDirty: boolean
+  ): Promise<void> => {
+    const memberId = snapshot.memberId
+    const errors: string[] = []
+
+    console.log('🚀 [Background Save] Starting parallel API calls...', {
+      profileDirty,
+      teamChanges: snapshot.pendingChanges.length
+    })
+
+    try {
+      // Collect all API promises for parallel execution
+      const apiPromises: Promise<{ type: string; success: boolean; error?: string }>[] = []
+
+      // Profile update promise
+      if (profileDirty) {
+        apiPromises.push(
+          teamApi.updateMember(memberId, {
+            displayName: formData.value.displayName.trim(),
+            email: formData.value.email.trim(),
+            role: formData.value.role
+          } as Partial<TeamMember>).then(response => ({
+            type: 'profile',
+            success: response.success,
+            error: response.error
+          }))
+        )
+      }
+
+      // Team change promises (parallel!)
+      for (const change of snapshot.pendingChanges) {
+        if (change.type === 'add') {
+          apiPromises.push(
+            teamApi.joinTeam(memberId, change.teamId, { roleInTeam: 'member' })
+              .then(response => ({
+                type: `add-team-${change.teamId}`,
+                success: response.success,
+                error: response.success ? undefined : `加入團隊「${change.teamName}」失敗: ${response.error}`
+              }))
+          )
+        } else if (change.type === 'remove') {
+          apiPromises.push(
+            teamApi.leaveTeam(memberId, change.teamId)
+              .then(response => ({
+                type: `remove-team-${change.teamId}`,
+                success: response.success,
+                error: response.success ? undefined : `離開團隊失敗: ${response.error}`
+              }))
+          )
+        } else if (change.type === 'set-primary') {
+          apiPromises.push(
+            teamApi.setPrimaryTeam(memberId, change.teamId)
+              .then(response => ({
+                type: `set-primary-${change.teamId}`,
+                success: response.success,
+                error: response.success ? undefined : `設定主要團隊失敗: ${response.error}`
+              }))
+          )
+        }
+      }
+
+      // Execute all API calls in parallel
+      const results = await Promise.all(apiPromises)
+
+      // Check for failures
+      for (const result of results) {
+        if (!result.success && result.error) {
+          errors.push(result.error)
+        }
+      }
+
+      if (errors.length > 0) {
+        console.error('❌ [Background Save] Some operations failed:', errors)
+        // Rollback and notify user
+        rollbackToSnapshot(snapshot)
+        showError('部分儲存失敗', errors.join('\n') + '\n\n已恢復原狀態')
+      } else {
+        console.log('✅ [Background Save] All operations completed successfully')
+      }
+
+    } catch (error) {
+      console.error('❌ [Background Save] Critical error:', error)
+      // Rollback and notify user
+      rollbackToSnapshot(snapshot)
+      showError('儲存失敗', '背景儲存時發生錯誤，已恢復原狀態')
     }
   }
 
   /**
    * Save changes to member profile and team assignments
+   *
+   * 🚀 Optimistic Update Pattern:
+   * 1. Validate form (blocking)
+   * 2. Role change confirmation if needed (blocking)
+   * 3. Create snapshot for rollback
+   * 4. Optimistically update Store (instant UI feedback)
+   * 5. Show success & trigger callback (user sees instant response)
+   * 6. Execute API calls in background (non-blocking, parallel)
+   * 7. On failure: rollback & notify user
    */
   const saveChanges = async (): Promise<boolean> => {
     if (!member.value) return false
 
-    // Validate form first
+    // ========== Step 1: Validate form (blocking) ==========
     if (!validateForm()) {
       return false
     }
 
-    // Check for role change and show confirmation
+    // ========== Step 2: Role change confirmation (blocking) ==========
     if (formData.value.role !== originalData.value.role) {
       const roleChangingTo = formData.value.role === 'admin' ? '管理員' : '客服人員'
       const roleChangingFrom = originalData.value.role === 'admin' ? '管理員' : '客服人員'
@@ -560,87 +692,71 @@ export function useMemberEditForm(
       }
     }
 
-    isSaving.value = true
-
-    try {
-      let profileSuccess = true
-      let teamSuccess = true
-      const teamErrors: string[] = []
-
-      // Check if profile has changes
-      const profileDirty =
-        formData.value.displayName !== originalData.value.displayName ||
-        formData.value.email !== originalData.value.email ||
-        formData.value.role !== originalData.value.role
-
-      // Save profile changes if dirty
-      if (profileDirty) {
-        const response = await teamApi.updateMember(member.value.id, {
-          displayName: formData.value.displayName.trim(),
-          email: formData.value.email.trim(),
-          role: formData.value.role
-        } as Partial<TeamMember>)
-
-        if (!response.success) {
-          showError('儲存失敗', response.error || '無法更新成員資料')
-          return false
-        }
-
-        // 🆕 最小化刷新：直接更新 store 中的成員資料
-        const teamStore = useTeamStore()
-        teamStore.updateMemberLocal(member.value.id, {
-          displayName: formData.value.displayName.trim(),
-          email: formData.value.email.trim(),
-          role: formData.value.role
-        })
-
-        // Update original data to reflect saved state
-        originalData.value = { ...formData.value }
-      }
-
-      // Apply team changes if any
-      if (hasTeamChanges.value) {
-        const result = await applyTeamChanges(member.value.id)
-        teamSuccess = result.success
-        teamErrors.push(...result.errors)
-
-        if (teamSuccess) {
-          // Update current teams to reflect the new state
-          currentTeams.value = [...displayTeams.value]
-          pendingTeamChanges.value = []
-
-          // 🆕 最小化刷新：更新 store 中成員的團隊列表
-          const teamStore = useTeamStore()
-          teamStore.updateMemberLocal(member.value.id, {
-            teams: displayTeams.value.map(t => ({
-              teamId: t.teamId,
-              teamName: t.teamName,
-              roleInTeam: t.roleInTeam,
-              isPrimary: t.isPrimary,
-              joinedAt: t.joinedAt
-            }))
-          })
-        }
-      }
-
-      // Show result
-      if (profileSuccess && teamSuccess) {
-        showSuccess('儲存成功', '成員資料已更新')
-        onSaveSuccess?.()
-        return true
-      } else if (teamErrors.length > 0) {
-        showError('部分儲存失敗', teamErrors.join('\n'))
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error('Save member failed:', error)
-      showError('儲存失敗', '發生錯誤，請稍後再試')
+    // ========== Step 3: Create snapshot for rollback ==========
+    const snapshot = createSnapshot()
+    if (!snapshot) {
+      console.error('Failed to create snapshot')
       return false
-    } finally {
-      isSaving.value = false
     }
+
+    // Check if profile has changes
+    const profileDirty =
+      formData.value.displayName !== originalData.value.displayName ||
+      formData.value.email !== originalData.value.email ||
+      formData.value.role !== originalData.value.role
+
+    // Check if there are any changes to save
+    if (!profileDirty && !hasTeamChanges.value) {
+      showSuccess('沒有變更', '資料沒有變動')
+      return true
+    }
+
+    console.log('🚀 [Optimistic Update] Starting save...', {
+      profileDirty,
+      teamChanges: pendingTeamChanges.value.length
+    })
+
+    // ========== Step 4: Optimistically update Store (instant!) ==========
+    const teamStore = useTeamStore()
+
+    // Update profile in store
+    if (profileDirty) {
+      teamStore.updateMemberLocal(member.value.id, {
+        displayName: formData.value.displayName.trim(),
+        email: formData.value.email.trim(),
+        role: formData.value.role
+      })
+    }
+
+    // Update teams in store
+    if (hasTeamChanges.value) {
+      teamStore.updateMemberLocal(member.value.id, {
+        teams: displayTeams.value.map(t => ({
+          teamId: t.teamId,
+          teamName: t.teamName,
+          roleInTeam: t.roleInTeam,
+          isPrimary: t.isPrimary,
+          joinedAt: t.joinedAt
+        }))
+      })
+    }
+
+    // Update local state to reflect "saved" state
+    originalData.value = { ...formData.value }
+    currentTeams.value = [...displayTeams.value]
+    pendingTeamChanges.value = []
+
+    // ========== Step 5: Show success & trigger callback (instant!) ==========
+    showSuccess('儲存成功', '成員資料已更新')
+    onSaveSuccess?.()
+
+    console.log('✅ [Optimistic Update] UI updated, starting background save...')
+
+    // ========== Step 6: Execute API calls in background (non-blocking) ==========
+    // Note: We don't await this - it runs in background
+    executeBackgroundSave(snapshot, profileDirty)
+
+    return true
   }
 
   /**
