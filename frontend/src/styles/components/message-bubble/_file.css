@@ -1,0 +1,225 @@
+/**
+ * MessageBubble File Styles
+ * File attachment container, icon, info, progress
+ */
+
+/* File message styles */
+.message-file-content {
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.file-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  transition: all var(--transition-fast);
+}
+
+.file-container:hover {
+  background: var(--gray-100);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.file-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  color: white;
+  flex-shrink: 0;
+}
+
+.file-type-image {
+  background: var(--green-500);
+}
+.file-type-document {
+  background: var(--blue-500);
+}
+.file-type-code {
+  background: var(--purple-500);
+}
+.file-type-archive {
+  background: var(--orange-500);
+}
+.file-type-default {
+  background: var(--gray-500);
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 600;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: var(--space-1);
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.file-type {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.file-progress {
+  margin-top: var(--space-2);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.progress-text {
+  font-size: 0.625rem;
+  color: var(--gray-500);
+  margin-left: var(--space-1);
+}
+
+.file-actions {
+  flex-shrink: 0;
+}
+
+.file-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.file-action-btn.primary {
+  background: var(--primary-500);
+  color: white;
+  border-color: var(--primary-600);
+}
+
+.file-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.file-action-btn.primary:hover {
+  background: var(--primary-600);
+}
+
+/* Make download links look like buttons */
+.file-action-btn[href] {
+  text-decoration: none;
+  display: inline-flex;
+}
+
+.file-action-btn[href]:visited {
+  color: inherit;
+}
+
+/* Multiple File Attachments Styles - Flex Message Card Style */
+.message-file-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1);
+  margin-bottom: var(--space-2);
+}
+
+/* When inside attachments container, reset the negative margin */
+.message-attachments-container .message-file-attachments {
+  margin: 0;
+}
+
+.message-file-attachments :deep(.file-attachment-card) {
+  margin: 0;
+  box-shadow: none;
+  border-radius: var(--radius-lg);
+}
+
+/* Remove the blue background for file attachment messages */
+.message-outgoing .message-content:has(.message-file-attachments),
+.message-outgoing .message-content:has(.message-attachments-container) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.message-outgoing .message-content:has(.message-file-attachments)::before,
+.message-outgoing .message-content:has(.message-attachments-container)::before {
+  display: none;
+}
+
+/* For incoming messages with file attachments */
+.message-incoming .message-content:has(.message-file-attachments),
+.message-incoming .message-content:has(.message-attachments-container) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.message-incoming .message-content:has(.message-file-attachments)::before,
+.message-incoming .message-content:has(.message-attachments-container)::before {
+  display: none;
+}
+
+/* Attachment wrapper */
+.attachment-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+/* FileAttachmentCard keeps full width, only status indicator on right */
+.attachment-wrapper > :first-child {
+  width: 100%;
+  align-self: stretch;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .message-file-content {
+    min-width: 200px;
+    max-width: 280px;
+  }
+
+  .file-container {
+    padding: var(--space-3);
+  }
+}

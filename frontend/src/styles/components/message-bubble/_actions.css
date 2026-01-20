@@ -1,0 +1,154 @@
+/**
+ * MessageBubble Actions Styles
+ * Message actions dropdown, action buttons
+ */
+
+/* Message Actions Styles */
+.message-actions {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: all var(--transition-fast);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1);
+}
+
+.message-actions.actions-outgoing {
+  right: -80px;
+}
+
+.message-actions:not(.actions-outgoing) {
+  left: -80px;
+}
+
+.message-bubble:hover .message-actions,
+.message-actions:hover {
+  opacity: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--gray-600);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.action-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-800);
+  transform: scale(1.1);
+}
+
+.action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.actions-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--space-1);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 120px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background: var(--gray-50);
+}
+
+.dropdown-item.danger {
+  color: var(--red-600);
+}
+
+.dropdown-item.danger:hover {
+  background: var(--red-50);
+  color: var(--red-700);
+}
+
+.dropdown-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Mobile optimizations for actions */
+@media (max-width: 768px) {
+  .message-actions {
+    position: static;
+    transform: none;
+    margin-top: var(--space-2);
+    align-self: flex-end;
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(2px);
+  }
+
+  .message-actions.actions-outgoing,
+  .message-actions:not(.actions-outgoing) {
+    right: auto;
+    left: auto;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .dropdown-item {
+    padding: var(--space-3);
+    font-size: 1rem;
+  }
+}
+
+/* Touch devices */
+@media (pointer: coarse) {
+  .message-actions {
+    opacity: 1;
+  }
+
+  .action-btn {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}

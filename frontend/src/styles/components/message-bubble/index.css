@@ -1,0 +1,31 @@
+/**
+ * MessageBubble Styles - Aggregator
+ * Imports all partial CSS files for the MessageBubble component
+ */
+
+/* Animations must be imported first so other files can reference them */
+@import './_animations.css';
+
+/* Core bubble layout and base styles */
+@import './_base.css';
+
+/* Media (image) styles */
+@import './_media.css';
+
+/* File attachment styles */
+@import './_file.css';
+
+/* Sticker styles */
+@import './_sticker.css';
+
+/* Message actions dropdown */
+@import './_actions.css';
+
+/* Attachment status indicators */
+@import './_status.css';
+
+/* Inline video player */
+@import './_video-inline.css';
+
+/* Video preview modal */
+@import './_video-preview.css';
