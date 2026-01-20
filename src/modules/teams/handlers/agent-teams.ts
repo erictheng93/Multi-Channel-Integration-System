@@ -200,6 +200,11 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
 /**
  * 批量將客服加入多個團隊
  * POST /api/teams/agent-teams/:agentId/join-multiple
+ *
+ * 🚀 Phase 3 優化:
+ * - Service 層使用批量 DB 操作 (2*N 查詢 → 2 查詢)
+ * - 批量獲取團隊資訊和 memberCount (1 次查詢)
+ * - 並行廣播所有 WebSocket 事件
  */
 agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
@@ -214,7 +219,10 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
+    const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB);
+
+    // 🚀 Phase 3: 使用批量 DB 操作
     const results = await service.addAgentToMultipleTeams(agentId, teamIds, roleInTeam || 'member');
 
     // Log activity
@@ -231,6 +239,65 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
         skipped: results.skipped,
         roleInTeam
       }
+    });
+
+    // 🚀 Phase 3: 批量 WebSocket 廣播
+    if (results.added.length > 0) {
+      try {
+        // 批量獲取團隊資訊 (1 次查詢)
+        const teamInfos = await db
+          .select({ id: teams.id, name: teams.name })
+          .from(teams)
+          .where(inArray(teams.id, results.added));
+
+        const teamNameMap = new Map(teamInfos.map(t => [t.id, t.name]));
+
+        // 批量獲取 agent 名稱 (1 次查詢)
+        const [agentInfo] = await db
+          .select({ displayName: agents.displayName })
+          .from(agents)
+          .where(eq(agents.id, agentId))
+          .limit(1);
+
+        const agentName = agentInfo?.displayName || agentId;
+
+        // 批量獲取 memberCount (1 次查詢)
+        const memberCounts = await service.getTeamMemberCounts(results.added);
+
+        // 並行廣播所有 WebSocket 事件
+        const broadcastPromises = results.added.map(teamId =>
+          triggerTeamMemberChangeEvent(c.env, {
+            type: 'added',
+            teamId,
+            teamName: teamNameMap.get(teamId) || `Team ${teamId}`,
+            agentId,
+            agentName,
+            memberCount: memberCounts.get(teamId) || 0,
+            changedBy: user.displayName || String(user.id)
+          })
+        );
+
+        // 不阻塞響應，並行執行廣播
+        Promise.allSettled(broadcastPromises).then(broadcastResults => {
+          const failed = broadcastResults.filter(r => r.status === 'rejected').length;
+          if (failed > 0) {
+            console.warn(`⚠️ [join-multiple] ${failed}/${results.added.length} WebSocket broadcasts failed`);
+          } else {
+            console.log(`✅ [join-multiple] All ${results.added.length} WebSocket broadcasts succeeded`);
+          }
+        });
+
+      } catch (broadcastError) {
+        // 廣播失敗不影響主要操作
+        console.warn('⚠️ [join-multiple] WebSocket broadcast error:', broadcastError);
+      }
+    }
+
+    console.log('✅ Agent added to multiple teams with batch optimization:', {
+      agentId,
+      added: results.added.length,
+      skipped: results.skipped.length,
+      errors: results.errors.length
     });
 
     return c.json({
