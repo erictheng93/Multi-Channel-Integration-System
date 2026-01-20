@@ -22,14 +22,6 @@
     <div class="member-edit-content">
       <!-- Profile Edit Form -->
       <div class="form-section">
-        <!-- Login ID (Read-only) -->
-        <div class="form-group full-width">
-          <label class="form-label">登入 ID (唯讀)</label>
-          <div class="readonly-field">
-            {{ member.loginId }}
-          </div>
-        </div>
-
         <!-- Display Name and Email -->
         <div class="form-row">
           <div class="form-group">
@@ -427,10 +419,6 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
   gap: 6px;
 }
 
-.form-group.full-width {
-  grid-column: 1 / -1;
-}
-
 .form-label {
   color: #64748b;
   font-size: 0.875rem;
@@ -483,15 +471,6 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
   background: #f8fafc;
   color: #94a3b8;
   cursor: not-allowed;
-}
-
-.readonly-field {
-  padding: 10px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.9375rem;
-  color: #64748b;
 }
 
 .error-message {
