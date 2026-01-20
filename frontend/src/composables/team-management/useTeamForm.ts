@@ -14,6 +14,7 @@
 
 import { ref, reactive, type Ref } from 'vue'
 import { teamApi } from '@/api/team'
+import { useTeamStore } from '@/stores/team'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 
@@ -57,6 +58,7 @@ export interface UseTeamFormReturn {
 }
 
 export function useTeamForm(): UseTeamFormReturn {
+  const teamStore = useTeamStore()
   const { showWarning } = useConfirmDialog()
   const { showSuccess, showError } = useToast()
 
@@ -145,6 +147,12 @@ export function useTeamForm(): UseTeamFormReturn {
       })
 
       if (response.success) {
+        // 🆕 最小化刷新：直接更新 store 中的單一團隊，避免全量重新載入
+        teamStore.updateTeamLocal(teamId, {
+          name: formData.name,
+          description: formData.description
+        })
+
         showSuccess('團隊更新成功')
         // Update initial form data to new values
         initialFormData = {
