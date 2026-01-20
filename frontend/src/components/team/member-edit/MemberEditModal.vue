@@ -215,7 +215,6 @@
           :hide-status-message="true"
           @add-team="handleAddTeam"
           @remove-team="handleRemoveTeam"
-          @set-primary="handleSetPrimary"
           @teams-loaded="handleTeamsLoaded"
         />
       </template>
@@ -320,7 +319,6 @@ const {
   displayTeams,
   addTeamToPending,
   removeTeamFromPending,
-  setPrimaryTeamPending,
   initTeams,
   // Methods
   saveChanges,
@@ -368,13 +366,6 @@ const handleAddTeam = (teamId: number, teamName: string) => {
  */
 const handleRemoveTeam = (teamId: number) => {
   removeTeamFromPending(teamId)
-}
-
-/**
- * Handle setting primary team (deferred mode)
- */
-const handleSetPrimary = (teamId: number) => {
-  setPrimaryTeamPending(teamId)
 }
 
 /**
