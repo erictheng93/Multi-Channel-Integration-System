@@ -71,6 +71,7 @@
         :form="controller.member.addMemberForm"
         :loading="controller.member.addMemberLoading.value"
         :show-password="controller.member.showAddPassword.value"
+        :teams="teams"
         @close="controller.member.closeAddMemberModal"
         @submit="controller.member.submitAddMember"
         @toggle-password="controller.member.toggleAddPasswordVisibility"

@@ -78,15 +78,33 @@
         </select>
       </div>
 
-      <!-- 部門/群組 -->
+      <!-- 指派團隊 -->
       <div class="form-group">
-        <label for="add-member-group">部門/群組</label>
-        <input
-          id="add-member-group"
+        <label for="add-member-team">指派團隊</label>
+        <select
+          id="add-member-team"
           v-model="form.group"
-          type="text"
-          placeholder="請輸入部門或群組名稱（選填）"
         >
+          <option value="">
+            不指派團隊（選填）
+          </option>
+          <option
+            v-for="team in activeTeams"
+            :key="team.id"
+            :value="team.name"
+          >
+            {{ team.name }}
+            <template v-if="team.memberCount !== undefined">
+              ({{ team.memberCount }} 位成員)
+            </template>
+          </option>
+        </select>
+        <small
+          v-if="activeTeams.length === 0"
+          class="form-hint form-hint-warning"
+        >
+          目前沒有可用的團隊，請先建立團隊
+        </small>
       </div>
 
       <!-- 狀態 -->
@@ -123,9 +141,19 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import { ROLES } from '@/constants/roles'
 import type { AddMemberFormData } from '@/composables/team-management'
+
+/** 團隊類型定義 */
+interface Team {
+  id: number
+  name: string
+  description?: string
+  isActive: boolean
+  memberCount?: number
+}
 
 interface Props {
   /** Modal visibility state */
@@ -139,6 +167,9 @@ interface Props {
 
   /** Password field visibility */
   showPassword: boolean
+
+  /** 可選擇的團隊列表 */
+  teams: Team[]
 }
 
 interface Emits {
@@ -147,8 +178,11 @@ interface Emits {
   (_e: 'toggle-password'): void
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+/** 只顯示啟用中的團隊 */
+const activeTeams = computed(() => props.teams.filter(team => team.isActive))
 
 function handleClose() {
   emit('close')
@@ -209,6 +243,10 @@ function togglePassword() {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.form-hint-warning {
+  color: #f59e0b;
 }
 
 /* Password Input */

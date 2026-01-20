@@ -1,5 +1,6 @@
 <template>
   <div
+    v-bind="$attrs"
     class="team-card"
     @click="showTeamDetails"
   >
@@ -95,6 +96,7 @@
     :form="memberOps.addMemberForm"
     :loading="memberOps.addMemberLoading.value"
     :show-password="memberOps.showAddPassword.value"
+    :teams="teamStore.teams"
     @close="closeAddMemberModal"
     @submit="handleMemberAdded"
     @toggle-password="memberOps.toggleAddPasswordVisibility"
@@ -113,8 +115,14 @@
   import { useToast } from '@/composables/useToast'
   import { useAuthStore } from '@/stores/auth'
   import { useQRCodeStore } from '@/stores/qrcode'
+  import { useTeamStore } from '@/stores/team'
   import { useMemberOperations } from '@/composables/team-management'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
+
+  // 禁用自動屬性繼承，手動綁定到主 div (解決 fragment 警告)
+  defineOptions({
+    inheritAttrs: false
+  })
 
   const props = defineProps<{
     team: Team
@@ -133,6 +141,7 @@
   const { showSuccess, showError } = useToast()
   const authStore = useAuthStore()
   const qrCodeStore = useQRCodeStore()
+  const teamStore = useTeamStore()
   const teamModal = useTeamModal()
 
   // 當前用戶資訊
