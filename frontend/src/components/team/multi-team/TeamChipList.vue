@@ -5,21 +5,39 @@
         v-for="team in teams"
         :key="team.teamId"
         class="team-chip"
-        :class="{ 'is-primary': team.isPrimary }"
+        :class="{
+          'is-primary': team.isPrimary,
+          'is-pending-add': isPendingAdd(team.teamId),
+          'is-pending-remove': isPendingRemove(team.teamId)
+        }"
       >
-        <span class="chip-icon">{{ team.isPrimary ? '⭐' : '👥' }}</span>
+        <span class="chip-icon">{{ getChipIcon(team) }}</span>
         <span class="chip-name">{{ team.teamName || `團隊 #${team.teamId}` }}</span>
+        <span
+          v-if="isPendingAdd(team.teamId)"
+          class="chip-status"
+          title="待新增"
+        >
+          +
+        </span>
+        <span
+          v-if="isPendingRemove(team.teamId)"
+          class="chip-status remove"
+          title="待移除"
+        >
+          −
+        </span>
         <button
           type="button"
           class="chip-remove"
           :disabled="loading"
-          :title="`從「${team.teamName}」移除`"
+          :title="isPendingRemove(team.teamId) ? '取消移除' : `從「${team.teamName}」移除`"
           @click="$emit('remove', team)"
         >
           ×
         </button>
         <button
-          v-if="!team.isPrimary && teams.length > 1"
+          v-if="!team.isPrimary && teams.length > 1 && !isPendingRemove(team.teamId)"
           type="button"
           class="chip-star"
           :disabled="loading"
@@ -46,18 +64,20 @@
 /**
  * TeamChipList Component
  *
- * Extracted from TeamMemberCard.vue (lines 160-206)
- * Displays team memberships as interactive chips with animations
+ * Displays team memberships as interactive chips with animations.
+ * Supports visual indicators for pending changes in deferred mode.
  *
  * Features:
  * - TransitionGroup animations for smooth chip add/remove
  * - Primary team indicator (⭐)
  * - Remove button (×) for each team
  * - Set as primary button (☆) for non-primary teams
+ * - Pending change indicators (+ for add, − for remove)
  * - Empty state display
  */
 
 import type { AgentTeamMembership } from '@/types'
+import type { PendingTeamChange } from '@/composables/team-management/useMemberEditForm'
 
 interface Props {
   /** List of teams the member belongs to */
@@ -65,6 +85,9 @@ interface Props {
 
   /** Loading state during operations */
   loading?: boolean
+
+  /** Pending changes for visual indicators (deferred mode) */
+  pendingChanges?: PendingTeamChange[]
 }
 
 interface Emits {
@@ -75,8 +98,42 @@ interface Emits {
   (_e: 'set-primary', _team: AgentTeamMembership): void
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  loading: false,
+  pendingChanges: () => []
+})
+
 defineEmits<Emits>()
+
+/**
+ * Check if a team has a pending add change
+ */
+const isPendingAdd = (teamId: number): boolean => {
+  return props.pendingChanges.some(c => c.type === 'add' && c.teamId === teamId)
+}
+
+/**
+ * Check if a team has a pending remove change
+ */
+const isPendingRemove = (teamId: number): boolean => {
+  return props.pendingChanges.some(c => c.type === 'remove' && c.teamId === teamId)
+}
+
+/**
+ * Get the appropriate icon for a team chip
+ */
+const getChipIcon = (team: AgentTeamMembership): string => {
+  if (isPendingRemove(team.teamId)) {
+    return '🗑️'
+  }
+  if (isPendingAdd(team.teamId)) {
+    return '➕'
+  }
+  if (team.isPrimary) {
+    return '⭐'
+  }
+  return '👥'
+}
 </script>
 
 <style scoped>
@@ -126,6 +183,35 @@ defineEmits<Emits>()
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
 }
 
+/* Pending Add Style */
+.team-chip.is-pending-add {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-color: #22c55e;
+  border-style: dashed;
+  color: #166534;
+}
+
+.team-chip.is-pending-add:hover {
+  background: linear-gradient(135deg, #bbf7d0, #86efac);
+  border-color: #16a34a;
+}
+
+/* Pending Remove Style */
+.team-chip.is-pending-remove {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-color: #ef4444;
+  border-style: dashed;
+  color: #991b1b;
+  opacity: 0.8;
+  text-decoration: line-through;
+}
+
+.team-chip.is-pending-remove:hover {
+  opacity: 1;
+  background: linear-gradient(135deg, #fecaca, #fca5a5);
+  border-color: #dc2626;
+}
+
 .chip-icon {
   font-size: 1.125rem;
   line-height: 1;
@@ -138,6 +224,24 @@ defineEmits<Emits>()
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 180px;
+}
+
+.chip-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: #22c55e;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.chip-status.remove {
+  background: #ef4444;
 }
 
 /* Chip Action Buttons */
@@ -166,6 +270,13 @@ defineEmits<Emits>()
   border-color: #ef4444;
   color: #dc2626;
   transform: scale(1.1);
+}
+
+/* Special style for pending remove - clicking cancels */
+.is-pending-remove .chip-remove:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #16a34a;
 }
 
 .chip-star {
