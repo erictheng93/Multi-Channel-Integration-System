@@ -6,16 +6,21 @@
   >
     <template #header>
       <div class="header-content">
-        <h3>編輯成員: {{ member.name || member.loginId }}</h3>
-        <span :class="['status-badge', member.status]">
-          {{ member.status === 'active' ? '活躍' : member.status === 'inactive' ? '停用' : '待處理' }}
-        </span>
-        <span
-          v-if="isDirty"
-          class="unsaved-indicator"
-        >
-          有未儲存的變更
-        </span>
+        <div class="header-title">
+          <span class="header-label">編輯成員</span>
+          <span class="header-name">{{ member.name || member.loginId }}</span>
+        </div>
+        <div class="header-badges">
+          <span :class="['status-badge', member.status]">
+            {{ member.status === 'active' ? '活躍' : member.status === 'inactive' ? '停用' : '待處理' }}
+          </span>
+          <span
+            v-if="isDirty"
+            class="unsaved-indicator"
+          >
+            有未儲存的變更
+          </span>
+        </div>
       </div>
     </template>
 
@@ -373,14 +378,37 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
 .header-content {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
 }
 
-.header-content h3 {
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.header-name {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
-  margin: 0;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+}
+
+.header-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .unsaved-indicator {
@@ -391,7 +419,6 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
   background: #fef3c7;
   color: #92400e;
   border: 1px solid #fde68a;
-  margin-left: auto;
 }
 
 .member-edit-content {
