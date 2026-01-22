@@ -111,7 +111,7 @@ export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.id),
   assignedTeamId: integer('assigned_team_id').references(() => teams.id),
-  assignedUserId: text('assigned_user_id').references(() => agents.id),
+  // Note: assignedUserId removed - only team assignment is supported now
   status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'closed'
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
   firstResponseAt: text('first_response_at'),
@@ -200,13 +200,12 @@ export const conversationSessions = sqliteTable('conversation_sessions', {
 });
 
 // Conversation transfers table - 對話轉移記錄
+// Note: fromUserId/toUserId removed - only team-based transfers are supported now
 export const conversationTransfers = sqliteTable('conversation_transfers', {
   id: integer('id').primaryKey(),
   conversationId: text('conversation_id').notNull().references(() => conversations.id),
   fromTeamId: integer('from_team_id').references(() => teams.id),
   toTeamId: integer('to_team_id').references(() => teams.id),
-  fromUserId: text('from_user_id').references(() => agents.id),
-  toUserId: text('to_user_id').references(() => agents.id),
   transferReason: text('transfer_reason'),
   transferredBy: text('transferred_by').notNull().references(() => agents.id),
   transferType: text('transfer_type').default('manual'),
