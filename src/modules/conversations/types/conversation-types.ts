@@ -57,7 +57,7 @@ export interface ConversationWithDetails extends Conversation {
 
 export interface ConversationAssignRequest {
   teamId?: number;
-  userId?: string;
+  // Note: userId removed - only team assignment is supported now
   reason?: string;
 }
 
@@ -143,7 +143,8 @@ export interface ConversationServiceInterface {
 
   // Assignment operations
   assignConversation(id: string, params: ConversationAssignRequest): Promise<ConversationAssignResponse>;
-  transferConversation(id: string, fromAgentId: string, toAgentId: string, reason?: string): Promise<ConversationTransfer>;
+  // Note: Individual transfer (fromAgentId, toAgentId) removed - only team-based transfer is supported now
+  transferConversation(id: string, fromTeamId: number | null, toTeamId: number, reason?: string): Promise<ConversationTransfer>;
 
   // Message operations
   addMessage(conversationId: string, message: NewMessage): Promise<Message>;

@@ -17,12 +17,13 @@ export interface User {
 }
 
 // 對話
+// Note: Individual assignment fields (assignedTo, assignedAgent) removed
+// Only team-based assignment is now supported
 export interface Conversation {
   id: string;
   userId: string;
   user?: User; // 關聯的使用者資料
-  assignedTo?: string;
-  assignedAgent?: Agent; // 關聯的客服資料
+  assignedTeamId?: number; // 團隊指派
   status: 'open' | 'assigned' | 'closed';
   lastMessageAt: number;
   unreadCount: number;
