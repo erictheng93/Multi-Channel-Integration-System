@@ -67,9 +67,9 @@ interface RawConversationData {
 }
 
 // 指派對話選項
+// Note: Individual assignment (userId) removed - only team-based assignment is supported now
 export interface AssignConversationOptions {
-  teamId?: number;    // 團隊 ID (指派給團隊)
-  userId?: string;    // 用戶 ID (指派給個人)
+  teamId: number;     // 團隊 ID (必填)
   reason?: string;    // 指派原因
 }
 
@@ -130,18 +130,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       description: rawData.assignedTeam.description
     } : undefined,
     assignedTeamId: rawData.assignedTeamId || undefined,
-    // 🔧 FIX: 处理嵌套的 assignedAgent 对象
-    assignedAgent: rawData.assignedAgent ? {
-      id: rawData.assignedAgent.id,
-      name: rawData.assignedAgent.name || rawData.assignedAgent.displayName || '',
-      displayName: rawData.assignedAgent.displayName || rawData.assignedAgent.name || '',
-      email: rawData.assignedAgent.email || '',
-      role: 'agent' as const, // 默認角色，因為後端可能不返回此字段
-      isActive: true, // 默認為活躍狀態
-      createdAt: Date.now() // 使用當前時間作為默認值
-    } : undefined,
-    assignedTo: rawData.assignedUserId || undefined,
-    assignedAgentId: rawData.assignedUserId || undefined,
+    // Note: Individual agent assignment removed - only team assignment is supported now
+    // assignedAgent, assignedTo, assignedAgentId fields are deprecated
     status: statusMap[rawData.status] || CONVERSATION_STATUS.PENDING,
     platform: customerPlatform,
     lastMessageAt: new Date(rawData.lastMessageAt).getTime(),
@@ -167,7 +157,8 @@ interface ConversationListParams {
   pageSize?: number;
   status?: 'open' | 'assigned' | 'closed';
   platform?: Platform;
-  assignedTo?: string;
+  // Note: assignedTo removed - use teamId for team-based filtering
+  teamId?: number;
   search?: string;
   tagIds?: number[];  // 標籤篩選
 }
@@ -188,11 +179,12 @@ interface ConversationStats {
 
 export const conversationApi = {
   // 獲取對話列表（向後兼容）
+  // Note: assignedTo filter removed - use teamId for team-based filtering
   getConversations: async (filters?: ConversationFilters): Promise<ApiResponse<Conversation[]>> => {
     const queryParams = new URLSearchParams();
     if (filters?.status) {queryParams.append('status', filters.status);}
     if (filters?.platform) {queryParams.append('platform', filters.platform);}
-    if (filters?.assignedTo) {queryParams.append('assignedTo', filters.assignedTo);}
+    if (filters?.teamId) {queryParams.append('teamId', filters.teamId.toString());}
     
     const queryString = queryParams.toString();
     const response = await apiClient.get<RawConversationData[]>(`/conversations${queryString ? `?${queryString}` : ''}`);
@@ -216,7 +208,8 @@ export const conversationApi = {
     if (params.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString());}
     if (params.status) {queryParams.append('status', params.status);}
     if (params.platform) {queryParams.append('platform', params.platform);}
-    if (params.assignedTo) {queryParams.append('assignedTo', params.assignedTo);}
+    // Note: assignedTo removed - use teamId for team-based filtering
+    if (params.teamId) {queryParams.append('teamId', params.teamId.toString());}
     if (params.search) {queryParams.append('search', params.search);}
     if (params.tagIds && params.tagIds.length > 0) {queryParams.append('tagIds', params.tagIds.join(','));}
     
@@ -317,31 +310,27 @@ export const conversationApi = {
     });
   },
 
-  // 指派對話 (支持團隊或個人指派)
+  // 指派對話 (僅支援團隊指派)
+  // Note: Individual assignment (userId) removed - only team-based assignment is supported now
   assignConversation: async (
     conversationId: string,
-    optionsOrAgentId: AssignConversationOptions | string
-  ): Promise<ApiResponse<Conversation>> => {  // 🔧 FIX: 返回完整的 Conversation 对象
+    options: AssignConversationOptions
+  ): Promise<ApiResponse<Conversation>> => {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
 
-    // 向後兼容：如果傳入的是字符串，視為 agentId
-    let options: AssignConversationOptions;
-    if (typeof optionsOrAgentId === 'string') {
-      options = { userId: optionsOrAgentId };
-    } else {
-      options = optionsOrAgentId;
-    }
-
-    // 驗證：至少需要 teamId 或 userId 其中之一
-    if (!options.teamId && !options.userId) {
-      return { success: false, error: '請指定團隊或客服人員' };
+    // 驗證：必須指定 teamId
+    if (!options.teamId) {
+      return { success: false, error: '請指定團隊' };
     }
 
     // 使用 POST 方法 (後端使用 POST)
     // Backend now returns complete conversation object with assignedTeam
-    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/assign`, options);
+    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/assign`, {
+      teamId: options.teamId,
+      reason: options.reason
+    });
 
     // 🔧 FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
     if (response.success && response.data) {
@@ -387,8 +376,7 @@ export const conversationApi = {
     options: {
       fromTeamId?: number;
       toTeamId: number;
-      fromUserId?: string;
-      toUserId?: string;
+      // Note: fromUserId and toUserId removed - only team-based transfer is supported
       reason?: string;
     }
   ): Promise<ApiResponse<Conversation>> => {
@@ -472,8 +460,12 @@ export const conversationApi = {
     return conversationApi.getConversation(conversationId);
   },
 
-  assign: async (conversationId: string, agentId: string): Promise<ApiResponse<Conversation>> => {
-    return conversationApi.assignConversation(conversationId, agentId);
+  /**
+   * @deprecated Individual assignment is no longer supported. Use assignConversation with teamId instead.
+   */
+  assign: async (_conversationId: string, _agentId: string): Promise<ApiResponse<Conversation>> => {
+    console.error('❌ [conversationApi.assign] Individual assignment is deprecated. Use assignConversation with teamId instead.')
+    return { success: false, error: '個人指派功能已停用，請使用團隊指派' }
   },
 
   close: async (conversationId: string): Promise<ApiResponse<void>> => {
@@ -485,12 +477,12 @@ export const conversationApi = {
   /**
    * 批量操作對話 (最多 100 筆)
    * 支援操作: assign, close, reopen, set_priority, add_tags, remove_tags
+   * Note: Individual assignment (userId) removed - only team-based assignment is supported now
    */
   bulkOperation: async (
     operation: 'assign' | 'close' | 'reopen' | 'set_priority' | 'add_tags' | 'remove_tags',
     conversationIds: string[],
     data?: {
-      userId?: string;
       teamId?: number;
       priority?: string;
       tagIds?: number[];
@@ -537,10 +529,11 @@ export const conversationApi = {
 
   /**
    * 批量指派對話
+   * Note: Individual assignment (userId) removed - only team-based assignment is supported now
    */
   bulkAssign: async (
     conversationIds: string[],
-    options: { userId?: string; teamId?: number }
+    options: { teamId: number }
   ): Promise<ApiResponse<{
     operation: string;
     affectedCount: number;

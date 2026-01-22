@@ -245,65 +245,56 @@ describe('Conversations API', () => {
   })
 
   describe('Conversation Management', () => {
-    it('should assign conversation successfully', async () => {
+    // Note: Individual assignment (userId) removed - only team-based assignment is supported now
+    it('should assign conversation to team successfully', async () => {
       const conversationId = 'conv-123'
-      const agentId = 'agent-456'
+      const teamId = 1
       const mockConversationData = {
         id: conversationId,
         customerId: 'customer-123',
         customerName: 'Test Customer',
         platform: 'line' as const,
-        status: 'open' as const,
-        assignedUserId: agentId,
+        status: 'assigned' as const,
+        assignedTeamId: teamId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
       const mockResponse = { success: true, data: mockConversationData }
       mockPost.mockResolvedValue(mockResponse)
 
-      const result = await conversationApi.assignConversation(conversationId, agentId)
+      const result = await conversationApi.assignConversation(conversationId, { teamId })
 
       expect(mockPost).toHaveBeenCalledWith(
         `/conversations/${conversationId}/assign`,
-        { userId: agentId }
+        { teamId, reason: undefined }
       )
       expect(result.success).toBe(true)
       expect(result.data).toBeDefined()
     })
 
-    it('should reject empty IDs for assignment', async () => {
-      const result1 = await conversationApi.assignConversation('', 'agent-123')
-      const result2 = await conversationApi.assignConversation('conv-123', '')
+    it('should reject empty conversation ID for assignment', async () => {
+      const result = await conversationApi.assignConversation('', { teamId: 1 })
 
-      expect(result1).toEqual({ success: false, error: '對話 ID 不能為空' })
-      expect(result2).toEqual({ success: false, error: '請指定團隊或客服人員' })
+      expect(result).toEqual({ success: false, error: '對話 ID 不能為空' })
       expect(mockPost).not.toHaveBeenCalled()
     })
 
-    it('should use alias assign method', async () => {
+    it('should reject missing teamId for assignment', async () => {
+      const result = await conversationApi.assignConversation('conv-123', { teamId: 0 } as any)
+
+      expect(result).toEqual({ success: false, error: '請指定團隊' })
+      expect(mockPost).not.toHaveBeenCalled()
+    })
+
+    it('should return error for deprecated alias assign method', async () => {
       const conversationId = 'conv-123'
       const agentId = 'agent-456'
-      const mockConversationData = {
-        id: conversationId,
-        customerId: 'customer-123',
-        customerName: 'Test Customer',
-        platform: 'line' as const,
-        status: 'open' as const,
-        assignedUserId: agentId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      const mockResponse = { success: true, data: mockConversationData }
-      mockPost.mockResolvedValue(mockResponse)
 
       const result = await conversationApi.assign(conversationId, agentId)
 
-      expect(mockPost).toHaveBeenCalledWith(
-        `/conversations/${conversationId}/assign`,
-        { userId: agentId }
-      )
-      expect(result.success).toBe(true)
-      expect(result.data).toBeDefined()
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('個人指派功能已停用，請使用團隊指派')
+      expect(mockPost).not.toHaveBeenCalled()
     })
 
     it('should close conversation with reason', async () => {
