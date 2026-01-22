@@ -228,12 +228,7 @@ export class SessionService implements SessionServiceInterface {
         return false;
       }
 
-      // Check if agent is directly assigned to this conversation
-      if (conversation.assignedUserId === userId) {
-        console.log(`✅ [SessionService] Agent ${userId} has direct assignment to conversation ${conversation.id}`);
-        return true;
-      }
-
+      // Note: Individual assignment (assignedUserId) removed - only team-based access control
       // Check if agent is in the same team as the conversation
       if (conversation.assignedTeamId) {
         const agent = await this.db

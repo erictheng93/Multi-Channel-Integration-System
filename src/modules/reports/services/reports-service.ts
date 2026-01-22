@@ -397,19 +397,34 @@ export class ReportsService implements ReportsServiceInterface {
     const { conversations, messages, agents } = await import('../../../db/schema');
     const { sql, gte, lte, count, eq, and, isNotNull } = await import('drizzle-orm');
 
-    // 查詢每個客服的對話數和消息數
-    const agentStats = await db
+    // Note: Individual assignment (assignedUserId) removed - using team-based reports
+    // 查詢每個團隊的對話數
+    const teamStats = await db
       .select({
-        agentId: conversations.assignedUserId,
+        teamId: conversations.assignedTeamId,
         conversationCount: count(),
       })
       .from(conversations)
       .where(and(
         gte(conversations.createdAt, startDate),
         lte(conversations.createdAt, endDate),
-        isNotNull(conversations.assignedUserId)
+        isNotNull(conversations.assignedTeamId)
       ))
-      .groupBy(conversations.assignedUserId);
+      .groupBy(conversations.assignedTeamId);
+
+    // Get agent stats by counting messages sent per agent
+    const agentStats = await db
+      .select({
+        agentId: messages.agentSenderId,
+        messageCount: count(),
+      })
+      .from(messages)
+      .where(and(
+        gte(messages.createdAt, startDate),
+        lte(messages.createdAt, endDate),
+        isNotNull(messages.agentSenderId)
+      ))
+      .groupBy(messages.agentSenderId);
 
     // 獲取客服詳細資訊
     const agentPerformance = await Promise.all(

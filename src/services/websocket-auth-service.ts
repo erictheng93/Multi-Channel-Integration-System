@@ -236,28 +236,26 @@ export class WebSocketAuthService {
     try {
       const dbClient = createDbClient(this.db);
 
-      // Query conversations where agent is directly assigned
-      const directAssigned = await dbClient
-        .select({ id: conversations.id })
-        .from(conversations)
-        .where(eq(conversations.assignedUserId, agentId));
+      // Note: Individual assignment (assignedUserId) removed - only team-based access control
+      // Query conversations assigned to agent's team
+      let conversationIds: string[] = [];
 
-      const conversationIds = directAssigned.map(c => c.id);
-
-      // If agent has team, also get team-assigned conversations (not directly assigned to another agent)
       if (teamId) {
         const teamAssigned = await dbClient
           .select({ id: conversations.id })
           .from(conversations)
-          .where(
-            and(
-              eq(conversations.assignedTeamId, teamId),
-              isNull(conversations.assignedUserId) // Not directly assigned to another agent
-            )
-          );
+          .where(eq(conversations.assignedTeamId, teamId));
 
-        conversationIds.push(...teamAssigned.map(c => c.id));
+        conversationIds = teamAssigned.map(c => c.id);
       }
+
+      // Include unassigned conversations (available pool)
+      const unassigned = await dbClient
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(isNull(conversations.assignedTeamId));
+
+      conversationIds.push(...unassigned.map(c => c.id));
 
       // Remove duplicates
       const uniqueIds = [...new Set(conversationIds)];

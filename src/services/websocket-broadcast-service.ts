@@ -394,6 +394,13 @@ export class WebSocketBroadcastService {
         timestamp?: number;
       };
       unreadCount?: number;
+      // Note: Individual agent assignment removed - only team assignment is supported now
+      // Team assignment info for real-time UI updates
+      assignedTeamId?: number;
+      assignedTeam?: {
+        id: number;
+        name: string;
+      };
     };
     transferredBy: {
       id: string;
@@ -558,6 +565,7 @@ export class WebSocketBroadcastService {
             id: toTeamId,
             name: toTeamName || `Team ${toTeamId}`
           },
+          // Note: assignedAgent/assignedAgentId removed - only team assignment is supported
           transferredBy,
           reason,
           timestamp
@@ -1432,6 +1440,19 @@ export class WebSocketBroadcastService {
       const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
       if (broadcasterStub) {
+        // 🔍 ENHANCED: Event flow tracing for duplicate event debugging
+        console.log('📤 [WebSocket Broadcast] ===== TEAM BROADCAST INITIATED =====');
+        console.log('📤 [WebSocket Broadcast] Broadcasting to teams', {
+          eventId: event.id,
+          eventType: event.type,
+          eventAction: (event.data as Record<string, unknown>)?.action,
+          targetTeamIds: teamIds,
+          conversationId: event.conversationId,
+          fromTeamId: (event.data as Record<string, unknown>)?.fromTeamId,
+          toTeamId: (event.data as Record<string, unknown>)?.toTeamId,
+          timestamp: new Date().toISOString()
+        });
+
         const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-to-teams', {
           method: 'POST',
           body: JSON.stringify({
@@ -1440,6 +1461,17 @@ export class WebSocketBroadcastService {
           }),
           headers: { 'Content-Type': 'application/json' }
         }));
+
+        if (response.ok) {
+          const result = await response.json() as { successful?: number; failed?: number };
+          console.log('✅ [WebSocket Broadcast] Team broadcast completed', {
+            eventId: event.id,
+            eventAction: (event.data as Record<string, unknown>)?.action,
+            targetTeamIds: teamIds,
+            successful: result.successful,
+            failed: result.failed
+          });
+        }
 
         return response.ok;
       }

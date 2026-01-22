@@ -29,9 +29,13 @@ export class ConversationService {
         agentId = bestAgent;
       }
 
-      // Update conversation
+      // Update conversation - assign to agent's team
+      // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
+      // When assigning an agent, we assign to their team instead
+      const agentData = await this.dbService.getAgentById(agentId);
+
       const conversation = await this.dbService.updateConversation(conversationId, {
-        assignedUserId: agentId, // Keep as string to match agents table TEXT id
+        assignedTeamId: agentData?.teamId || null,
         status: 'in-progress',
         updatedAt: new Date().toISOString()
       });
@@ -115,10 +119,15 @@ export class ConversationService {
   }
 
   // Bulk operations for admin dashboard
+  // Note: Individual assignment (agentId) replaced with team-based assignment
   async bulkAssignConversations(conversationIds: string[], agentId: string) {
     const lockIds = [];
-    
+
     try {
+      // Get the agent's team for team-based assignment
+      const agentData = await this.dbService.getAgentById(agentId);
+      const teamId = agentData?.teamId || undefined;
+
       // Acquire locks for all conversations
       for (const convId of conversationIds) {
         const lockId = await this.kv.acquireLock(`assign:${convId}`, 60);
@@ -128,17 +137,18 @@ export class ConversationService {
         lockIds.push({ convId, lockId });
       }
 
-      // Perform bulk update
+      // Perform bulk update with team assignment
       const result = await this.dbService.batchUpdateConversationStatus(
-        conversationIds, 
-        'in-progress', 
-        agentId // Keep as string to match database schema
+        conversationIds,
+        'in-progress',
+        teamId
       );
 
       // Publish bulk assignment event
       await this.kv.publishEvent('bulk_assignment', {
         conversationIds,
         agentId,
+        teamId,
         count: result,
         timestamp: new Date().toISOString()
       });
