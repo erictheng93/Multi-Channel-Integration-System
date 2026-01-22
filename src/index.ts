@@ -41,8 +41,8 @@ import { comparisonAPI } from '@modules/analytics/handlers/comparison-api';
 // Import Reports Module (separate from analytics for clarity)
 import reportsHandler from '@modules/reports/handlers/reports-main';
 
-// Import modular QR Code handler (complete version with all features)
-import { qrCodeRouter } from '@modules/qrcode/handlers/index';
+// REMOVED: Old QR Code module - migrated to new LIFF QR Code system
+// import { qrCodeRouter } from '@modules/qrcode/handlers/index';
 
 // Direct import for messaging handler (troubleshooting)
 import messagingMainHandler from './handlers/messaging-main';
@@ -909,8 +909,11 @@ app.route('/api/liff', liffHandler);
 
 log.info('LIFF endpoints registered (public)', {
   endpoints: [
-    'POST /api/liff/verify-token',
-    'POST /api/liff/bind-team'
+    'GET  /api/liff/health',
+    'GET  /api/liff/config',
+    'GET  /api/liff/teams/:teamId',
+    'POST /api/liff/assign-team',
+    'POST /api/liff/welcome'
   ]
 });
 

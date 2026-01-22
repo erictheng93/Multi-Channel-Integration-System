@@ -6,7 +6,7 @@
 import { Context } from 'hono';
 import { eq, and, ne, sql, desc } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { customers, conversations, messages, fileAttachments, qrCodes, teams } from '../db/schema';
+import { customers, conversations, messages, fileAttachments, teams } from '../db/schema';
 // 使用fileAttachments表的推斷類型而不是NewFileAttachment
 import { convertConversation } from '../utils/drizzle-converters';
 import type { 
@@ -882,7 +882,6 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     let assignedTeamId: number | null = null;
     let qrCodeToken: string | null = null;
     let existingConversation: any = null; // Declare at function scope for later use
-    let matchedRecentQR: { id: string; teamId: number } | null = null; // 用於後續更新使用次數
 
     // 嘗試從多種來源獲取追蹤參數
     // 方式 1: LINE 標準的 follow.param (如果可用)
@@ -955,40 +954,13 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           });
         }
         return null;
-      })(),
-
-      // Task 3 (原 Step 6): 最近 QR Code 匹配（作為 fallback）
-      (async (): Promise<{ source: 'recent_qr'; teamId: number; qrCodeId: string } | null> => {
-        try {
-          const recentQRCodes = await drizzleDb
-            .select()
-            .from(qrCodes)
-            .where(eq(qrCodes.isActive, true))
-            .orderBy(desc(qrCodes.createdAt))
-            .limit(1)
-            .all();
-
-          if (recentQRCodes.length > 0 && recentQRCodes[0]) {
-            const recentQR = recentQRCodes[0];
-            const qrCreatedAt = recentQR.createdAt ? new Date(recentQR.createdAt).getTime() : 0;
-            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-
-            if (qrCreatedAt > fiveMinutesAgo && recentQR.teamId) {
-              return { source: 'recent_qr', teamId: recentQR.teamId, qrCodeId: recentQR.id };
-            }
-          }
-        } catch (matchError) {
-          log.warn('LINE Follow: Recent QR code matching failed', {
-            error: matchError instanceof Error ? matchError.message : String(matchError)
-          });
-        }
-        return null;
       })()
     ]);
 
-    const [qrTokenResult, assignmentResult, recentQRResult] = teamFindTasks;
+    const [qrTokenResult, assignmentResult] = teamFindTasks;
 
-    // 按優先級選擇結果：assignment > qr_token > recent_qr
+    // 按優先級選擇結果：assignment > qr_token
+    // 注意：已移除舊的 recent_qr fallback (qrCodes 表)，統一使用新 LIFF 系統
     if (assignmentResult) {
       assignedTeamId = assignmentResult.teamId;
       console.log(`🎯 [LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
@@ -999,34 +971,13 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     } else if (qrTokenResult) {
       assignedTeamId = qrTokenResult.teamId;
       console.log(`✅ [LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
-    } else if (recentQRResult) {
-      assignedTeamId = recentQRResult.teamId;
-      matchedRecentQR = { id: recentQRResult.qrCodeId, teamId: recentQRResult.teamId };
-      console.log(`📋 [LINE Follow] 匹配到最近的 QR Code，指派到團隊: ${assignedTeamId}`);
-    }
-
-    // 如果使用了 recent_qr 匹配，更新 QR Code 使用次數
-    if (matchedRecentQR) {
-      try {
-        await drizzleDb
-          .update(qrCodes)
-          .set({
-            usageCount: sql`${qrCodes.usageCount} + 1`,
-            updatedAt: new Date().toISOString()
-          })
-          .where(eq(qrCodes.id, matchedRecentQR.id));
-      } catch (updateError) {
-        log.warn('LINE Follow: Failed to update QR code usage count', {
-          error: updateError instanceof Error ? updateError.message : String(updateError)
-        });
-      }
     }
 
     const teamFindDuration = Date.now() - teamFindStartTime;
     console.log(`⚡ [LINE Follow] 團隊查找完成 (並行優化)`, {
       duration: `${teamFindDuration}ms`,
       assignedTeamId,
-      source: assignmentResult ? 'assignment' : qrTokenResult ? 'qr_token' : recentQRResult ? 'recent_qr' : 'none'
+      source: assignmentResult ? 'assignment' : qrTokenResult ? 'qr_token' : 'none'
     });
 
     const timestamp = new Date().toISOString();

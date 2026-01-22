@@ -14,7 +14,8 @@ import { systemMainHandler } from '@modules/system';
 import { customerRouter } from '@modules/customer';
 import { sessionRouter } from '@modules/session';
 import { messageRouter } from '@modules/messaging';
-import { qrCodeRouter } from '@modules/qrcode';
+// REMOVED: Old QR Code module - migrated to new LIFF QR Code system
+// import { qrCodeRouter } from '@modules/qrcode';
 import { delayedMessageControllers } from '@modules/delayed-message';
 import { reportsHandler } from '@modules/reports';
 // import { realTimeHandlers } from './modules/real-time';
@@ -58,7 +59,8 @@ app.route('/api/system', systemMainHandler);
 app.route('/api/customers', customerRouter);
 app.route('/api/sessions', sessionRouter);
 app.route('/api/messages', messageRouter);
-app.route('/api/qrcode', qrCodeRouter);
+// REMOVED: Old QR Code module - migrated to new LIFF QR Code system
+// app.route('/api/qrcode', qrCodeRouter);
 app.route('/api/delayed-messages', delayedMessageControllers);
 app.route('/api/reports', reportsHandler);
 
