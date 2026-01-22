@@ -212,12 +212,12 @@ async function checkConversationAccess(
       }
     }
 
+    // Note: Individual assignment (assignedUserId) removed - only team-based access control
     console.warn(`⚠️ [Realtime Auth] 用戶無權訪問對話:`, {
       userId,
       conversationId,
       userRole,
       teamId,
-      assignedUserId: conversation.assigned_user_id,
       assignedTeamId: conversation.assigned_team_id
     });
 

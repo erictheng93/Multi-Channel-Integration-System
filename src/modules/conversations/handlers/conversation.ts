@@ -128,29 +128,24 @@ export const conversationHandler = {
   },
 
   // 指派對話
+  // Note: Individual assignment (userId) removed - only team-based assignment is supported now
   assign: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const conversationId = c.req.param('id');
       const assignData: ConversationAssignRequest = await c.req.json();
       const db = createDbClient(c.env.DB);
 
-      if (!assignData.teamId && !assignData.userId) {
+      if (!assignData.teamId) {
         return validationErrorResponse(c, [
-          { field: 'assignment', message: 'Either teamId or userId must be provided' }
+          { field: 'teamId', message: 'Team ID is required for assignment' }
         ]);
       }
 
-      // 更新對話指派
-      const updateData: any = {
+      // 更新對話指派 (只支援團隊指派)
+      const updateData = {
+        assignedTeamId: assignData.teamId,
         updatedAt: new Date().toISOString()
       };
-
-      if (assignData.teamId) {
-        updateData.teamId = assignData.teamId;
-      }
-      if (assignData.userId) {
-        updateData.assignedTo = assignData.userId;
-      }
 
       await db
         .update(conversations)
@@ -161,8 +156,8 @@ export const conversationHandler = {
         success: true,
         conversationId,
         assignedTo: {
-          type: assignData.teamId ? 'team' : 'user',
-          id: assignData.teamId || assignData.userId!,
+          type: 'team',
+          id: assignData.teamId,
           name: 'Assigned successfully'
         }
       });

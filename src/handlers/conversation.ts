@@ -223,6 +223,7 @@ conversations.post('/:id/messages', async (c) => {
     }
 
     // 🚀 事件驅動推送：立即推送新消息事件到隊列
+    // Note: assignedUserId removed - only team assignment is supported now
     try {
       await realtime.createEvent(
         'message_created',
@@ -242,7 +243,7 @@ conversations.post('/:id/messages', async (c) => {
         },
         {
           conversationId: parseInt(conversationId),
-          userIds: conversation.assignedUserId ? [parseInt(conversation.assignedUserId)] : []
+          userIds: []  // Team members will be notified via WebSocket broadcast
         },
         'high', // 消息創建是高優先級事件
         'user'
@@ -253,11 +254,11 @@ conversations.post('/:id/messages', async (c) => {
       // 不影響消息創建的成功，只記錄錯誤
     }
 
-    // 如果對話狀態是 pending，更新為 in-progress
+    // 如果對話狀態是 pending，更新為 in-progress (不再自動指派個人)
     if (conversation.status === CONVERSATION_STATUS.PENDING) {
       await dbService.updateConversation(conversationId, {
-        status: CONVERSATION_STATUS.IN_PROGRESS,
-        assignedUserId: agent!.id, // Keep as string - agents table uses TEXT id
+        status: CONVERSATION_STATUS.IN_PROGRESS
+        // Note: assignedUserId auto-assignment removed - only team assignment is supported
       });
 
       // 🚀 推送對話狀態更新事件
@@ -267,14 +268,14 @@ conversations.post('/:id/messages', async (c) => {
           {
             conversationId: parseInt(conversationId),
             status: CONVERSATION_STATUS.IN_PROGRESS,
-            assignedUserId: parseInt(agent!.id),
+            // Note: assignedUserId removed - only team assignment is supported
             customerName: conversation.customer?.displayName,
             updatedAt: new Date().toISOString(),
             changes: { status: { from: CONVERSATION_STATUS.PENDING, to: CONVERSATION_STATUS.IN_PROGRESS } }
           },
           {
             conversationId: parseInt(conversationId),
-            userIds: [parseInt(agent!.id)]
+            userIds: []  // Team members will be notified via WebSocket broadcast
           },
           'normal',
           'user'
@@ -341,10 +342,8 @@ conversations.patch('/:id/status', async (c) => {
     // 更新對話狀態
     const updates: any = { status };
 
-    // 如果狀態變為 in-progress 且沒有指派客服，指派當前客服
-    if (status === CONVERSATION_STATUS.IN_PROGRESS && !conversation.assignedUserId) {
-      updates.assignedUserId = agent!.id;
-    }
+    // Note: Individual assignment removed - only team assignment is supported now
+    // Status changes no longer auto-assign to individual agents
 
     const updatedConversation = await dbService.updateConversation(conversationId, updates);
 
@@ -398,45 +397,34 @@ conversations.post('/:id/mark-read', async (c) => {
   }
 });
 
-// 分配對話 - 僅管理員可執行
+// 分配對話 - 僅管理員可執行 (只支援團隊指派，個人指派已移除)
 conversations.post('/:id/assign', requireAdmin(), async (c) => {
   try {
     const conversationId = c.req.param('id');
     const agent = c.get('agent');
-    const { teamId, userId, reason } = await c.req.json();
+    const { teamId, reason } = await c.req.json();
+    // Note: userId removed - only team assignment is supported now
     const db = c.get('db');
     const kv = c.get('kv');
     const dbService = new DatabaseService(db, kv);
 
     // 管理員權限已由 requireAdmin() 中間件確認，移除冗餘檢查
 
-    // 🆕 P2-3: Get old conversation to track previous assignment for cache invalidation
-    const oldConversation = await dbService.getConversationById(conversationId);
-    const oldAssignedUserId = oldConversation?.assignedUserId;
+    // Validate teamId is provided
+    if (!teamId) {
+      return c.json({
+        success: false,
+        error: 'Team ID is required for assignment'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
 
     // ✅ 使用 DatabaseService.updateConversation 方法，自動處理緩存清除
     await dbService.updateConversation(conversationId, {
-      assignedTeamId: teamId || null,
-      assignedUserId: userId || null,
+      assignedTeamId: teamId,
       status: CONVERSATION_STATUS.ASSIGNED
     });
 
-    // 🆕 P2-3: Invalidate conversation cache for affected agents
-    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-
-    // Invalidate cache for previously assigned agent (if exists)
-    if (oldAssignedUserId && oldAssignedUserId !== userId) {
-      await authService.invalidateAgentConversationCache(oldAssignedUserId);
-      console.log(`🗑️  [Assign API] Invalidated conversation cache for old agent: ${oldAssignedUserId}`);
-    }
-
-    // Invalidate cache for newly assigned agent (if exists)
-    if (userId) {
-      await authService.invalidateAgentConversationCache(userId);
-      console.log(`🗑️  [Assign API] Invalidated conversation cache for new agent: ${userId}`);
-    }
-
-    // 🔧 FIX: 获取更新后的完整对话对象,包括 assignedTeam 和 assignedAgent
+    // 🔧 FIX: 获取更新后的完整对话对象,包括 assignedTeam
     const updatedConversation = await dbService.getConversationById(conversationId);
 
     if (!updatedConversation) {
@@ -450,8 +438,7 @@ conversations.post('/:id/assign', requireAdmin(), async (c) => {
       id: conversationId,
       status: updatedConversation.status,
       assignedTeamId: updatedConversation.assignedTeamId,
-      assignedTeam: updatedConversation.assignedTeam,
-      assignedUserId: updatedConversation.assignedUserId
+      assignedTeam: updatedConversation.assignedTeam
     });
 
     return c.json({
@@ -466,7 +453,7 @@ conversations.post('/:id/assign', requireAdmin(), async (c) => {
   }
 });
 
-// 取消指派對話
+// 取消指派對話 (只檢查團隊指派)
 conversations.post('/:id/unassign', requireAdmin(), async (c) => {
   try {
     const conversationId = c.req.param('id');
@@ -487,35 +474,27 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // 檢查對話是否已指派
-    if (!conversation.assignedTeamId && !conversation.assignedUserId) {
+    // 檢查對話是否已指派 (只檢查團隊)
+    if (!conversation.assignedTeamId) {
       return c.json({
         success: false,
         error: 'Conversation is not assigned'
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 記錄取消指派前的狀態
+    // 記錄取消指派前的狀態 (只記錄團隊)
     const previousAssignment = {
       teamId: conversation.assignedTeamId,
-      teamName: conversation.assignedTeam?.name,
-      userId: conversation.assignedUserId,
-      userName: conversation.assignedAgent?.name
+      teamName: conversation.assignedTeam?.name
     };
 
-    // 取消指派：清除 teamId 和 userId，將狀態改回 'open'
+    // 取消指派：清除 teamId，將狀態改回 'open'
     await dbService.updateConversation(conversationId, {
       assignedTeamId: null,
-      assignedUserId: null,
       status: 'open'
     });
 
-    // 🆕 P2-3: Invalidate conversation cache for previously assigned agent
-    if (previousAssignment.userId) {
-      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-      await authService.invalidateAgentConversationCache(previousAssignment.userId);
-      console.log(`🗑️  [Unassign API] Invalidated conversation cache for agent: ${previousAssignment.userId}`);
-    }
+    console.log(`✅ [Unassign API] Conversation unassigned from team: ${previousAssignment.teamId}`);
 
     // 獲取更新後的完整對話對象
     const updatedConversation = await dbService.getConversationById(conversationId);
@@ -543,17 +522,15 @@ conversations.post('/:id/unassign', requireAdmin(), async (c) => {
           conversationId,
           previousTeamId: previousAssignment.teamId,
           previousTeamName: previousAssignment.teamName,
-          previousUserId: previousAssignment.userId,
-          previousUserName: previousAssignment.userName,
+          // Note: previousUserId/previousUserName removed - only team-based assignment is supported
           reason: reason || 'No reason provided',
           unassignedBy: agent?.displayName || agent?.id,
           timestamp: Date.now()
         },
         {
           conversationId: conversationId,
-          // 通知之前指派的團隊或用戶
+          // 通知之前指派的團隊
           ...(previousAssignment.teamId && { teamId: previousAssignment.teamId }),
-          ...(previousAssignment.userId && { userId: previousAssignment.userId }),
           broadcast: true // 廣播給所有相關用戶
         },
         'high', // 高優先級通知
@@ -585,8 +562,7 @@ conversations.post('/:id/transfer', async (c) => {
     const {
       fromTeamId,
       toTeamId,
-      fromUserId,
-      toUserId,
+      // Note: fromUserId and toUserId removed - only team-based transfer is supported
       reason,
       transferType = 'manual'
     } = await c.req.json();
@@ -607,6 +583,14 @@ conversations.post('/:id/transfer', async (c) => {
       }, HTTP_STATUS.FORBIDDEN);
     }
 
+    // Validate toTeamId is provided
+    if (!toTeamId) {
+      return c.json({
+        success: false,
+        error: 'Target team ID is required for transfer'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
     // 獲取當前對話資訊
     const conversation = await drizzleDb.select()
       .from(conversationTable)
@@ -617,44 +601,28 @@ conversations.post('/:id/transfer', async (c) => {
       return notFoundResponse(c, 'Conversation');
     }
 
-    // 記錄轉移歷史
+    // 記錄轉移歷史 (只記錄團隊)
     await drizzleDb.insert(conversationTransfers)
       .values({
         conversationId: conversationId,
         fromTeamId: fromTeamId || conversation.assignedTeamId,
-        toTeamId: toTeamId || null,
-        fromUserId: fromUserId || conversation.assignedUserId,
-        toUserId: toUserId || null,
+        toTeamId: toTeamId,
+        // Note: fromUserId and toUserId removed - only team-based transfer
         transferReason: reason || null,
         transferredBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system',
         transferType: transferType
       });
 
-    // 更新對話指派
+    // 更新對話指派 (只更新團隊)
     await drizzleDb.update(conversationTable)
       .set({
-        assignedTeamId: toTeamId || null,
-        assignedUserId: toUserId || null,
+        assignedTeamId: toTeamId,
         status: 'transferred',
         updatedAt: sql`datetime('now')`
       })
       .where(eq(conversationTable.id, conversationId));
 
-    // 🆕 P1-4: Invalidate conversation cache for affected agents
-    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-
-    // Invalidate cache for source agent (fromUserId or previous assignedUserId)
-    const sourceAgentId = fromUserId || conversation.assignedUserId;
-    if (sourceAgentId) {
-      await authService.invalidateAgentConversationCache(sourceAgentId);
-      console.log(`🗑️  [Transfer API] Invalidated conversation cache for source agent: ${sourceAgentId}`);
-    }
-
-    // Invalidate cache for destination agent (toUserId)
-    if (toUserId && toUserId !== sourceAgentId) {
-      await authService.invalidateAgentConversationCache(toUserId);
-      console.log(`🗑️  [Transfer API] Invalidated conversation cache for destination agent: ${toUserId}`);
-    }
+    console.log(`✅ [Transfer API] Conversation transferred to team: ${toTeamId}`);
 
     return c.json({
       success: true,
@@ -793,11 +761,11 @@ const handlerMethods = {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const conversationId = c.req.param('id');
-      const { 
-        toTeamId, 
-        toUserId, 
-        reason, 
-        transferType = 'manual' 
+      // Note: toUserId removed - only team-based transfer is supported now
+      const {
+        toTeamId,
+        reason,
+        transferType = 'manual'
       } = await c.req.json();
       const payload = c.get('jwtPayload');
 
@@ -811,43 +779,29 @@ const handlerMethods = {
         return notFoundResponse(c, 'Conversation');
       }
 
-      // 記錄轉移歷史
+      // 記錄轉移歷史 (only team-based transfer is supported now)
       await drizzleDb.insert(conversationTransfers)
         .values({
           conversationId: conversationId,
           fromTeamId: conversation.assignedTeamId,
           toTeamId: toTeamId || null,
-          fromUserId: conversation.assignedUserId,
-          toUserId: toUserId || null,
+          // Note: fromUserId/toUserId removed - only team-based transfer
           transferReason: reason || null,
           transferredBy: payload?.userId ? (typeof payload.userId === 'string' ? payload.userId : payload.userId.toString()) : 'system',
           transferType: transferType
         });
 
-      // 更新對話指派
+      // 更新對話指派 (only team assignment is supported now)
       await drizzleDb.update(conversationTable)
         .set({
           assignedTeamId: toTeamId || null,
-          assignedUserId: toUserId || null,
+          // Note: assignedUserId removed - only team-based assignment
           status: 'transferred',
           updatedAt: sql`datetime('now')`
         })
         .where(eq(conversationTable.id, conversationId));
 
-      // 🆕 P1-4: Invalidate conversation cache for affected agents
-      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-
-      // Invalidate cache for source agent
-      if (conversation.assignedUserId) {
-        await authService.invalidateAgentConversationCache(conversation.assignedUserId);
-        console.log(`🗑️  [Transfer Handler] Invalidated cache for source agent: ${conversation.assignedUserId}`);
-      }
-
-      // Invalidate cache for destination agent
-      if (toUserId && toUserId !== conversation.assignedUserId) {
-        await authService.invalidateAgentConversationCache(toUserId);
-        console.log(`🗑️  [Transfer Handler] Invalidated cache for destination agent: ${toUserId}`);
-      }
+      // Note: Cache invalidation for individual agents removed - using team-based access control now
 
       return successResponse(c, null, 'Conversation transferred successfully');
 
@@ -962,29 +916,24 @@ const handlerMethods = {
       const tu = aliasedTable(agents, 'tu');
       const bu = aliasedTable(agents, 'bu');
       
+      // Note: fromUserId/toUserId removed - only team-based transfer is supported now
       const transfers = await drizzleDb
         .select({
           id: conversationTransfers.id,
           conversationId: conversationTransfers.conversationId,
           fromTeamId: conversationTransfers.fromTeamId,
           toTeamId: conversationTransfers.toTeamId,
-          fromUserId: conversationTransfers.fromUserId,
-          toUserId: conversationTransfers.toUserId,
           transferReason: conversationTransfers.transferReason,
           transferredBy: conversationTransfers.transferredBy,
           transferType: conversationTransfers.transferType,
           createdAt: conversationTransfers.createdAt,
           fromTeamName: ft.name,
           toTeamName: tt.name,
-          fromUserName: fu.displayName,
-          toUserName: tu.displayName,
           transferredByName: bu.displayName
         })
         .from(conversationTransfers)
         .leftJoin(ft, eq(conversationTransfers.fromTeamId, ft.id))
         .leftJoin(tt, eq(conversationTransfers.toTeamId, tt.id))
-        .leftJoin(fu, eq(conversationTransfers.fromUserId, fu.id))
-        .leftJoin(tu, eq(conversationTransfers.toUserId, tu.id))
         .leftJoin(bu, eq(conversationTransfers.transferredBy, bu.id))
         .where(eq(conversationTransfers.conversationId, conversationId))
         .orderBy(desc(conversationTransfers.createdAt));
@@ -999,14 +948,7 @@ const handlerMethods = {
           id: transfer.toTeamId,
           name: transfer.toTeamName
         } : null,
-        fromUser: transfer.fromUserId ? {
-          id: transfer.fromUserId,
-          name: transfer.fromUserName
-        } : null,
-        toUser: transfer.toUserId ? {
-          id: transfer.toUserId,
-          name: transfer.toUserName
-        } : null,
+        // Note: fromUser/toUser removed - only team-based transfer is supported now
         reason: transfer.transferReason,
         transferredBy: {
           id: transfer.transferredBy,
@@ -1040,48 +982,24 @@ const handlerMethods = {
 
       switch (operation) {
         case 'assign': {
-          if (!data?.userId && !data?.teamId) {
+          // Note: Individual assignment (userId) removed - only team-based assignment is supported now
+          if (!data?.teamId) {
             return validationErrorResponse(c, [
-              { field: 'data', message: 'User ID or Team ID is required for assignment' }
+              { field: 'data', message: 'Team ID is required for assignment' }
             ]);
           }
 
-          // 🆕 P1-4: Get old assignments for cache invalidation
-          const oldAssignments = await drizzleDb
-            .select({ id: conversationTable.id, assignedUserId: conversationTable.assignedUserId })
-            .from(conversationTable)
-            .where(inArray(conversationTable.id, conversationIdsArray));
-
           await drizzleDb.update(conversationTable)
             .set({
-              assignedUserId: data.userId || null,
+              // Note: assignedUserId removed - only team-based assignment
               assignedTeamId: data.teamId || null,
               status: CONVERSATION_STATUS.ASSIGNED,
               updatedAt: sql`datetime('now')`
             })
             .where(inArray(conversationTable.id, conversationIdsArray));
 
-          // 🆕 P1-4: Invalidate conversation cache for affected agents
-          const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-          const affectedAgentIds = new Set<string>();
-
-          // Collect old assigned agents
-          for (const conv of oldAssignments) {
-            if (conv.assignedUserId) {
-              affectedAgentIds.add(conv.assignedUserId);
-            }
-          }
-
-          // Add new assigned agent
-          if (data.userId) {
-            affectedAgentIds.add(data.userId);
-          }
-
-          // Invalidate cache for all affected agents
-          for (const agentId of affectedAgentIds) {
-            await authService.invalidateAgentConversationCache(agentId);
-          }
-          console.log(`🗑️  [Bulk Assign] Invalidated cache for ${affectedAgentIds.size} agent(s)`);
+          // Note: Cache invalidation for individual agents removed - using team-based access control now
+          console.log(`📦 [Bulk Assign] Assigned ${conversationIdsArray.length} conversations to team ${data.teamId}`);
           break;
         }
 
@@ -1171,9 +1089,10 @@ const handlerMethods = {
       const { strategy = 'round_robin', teamId } = await c.req.json();
 
       // 獲取未分配的對話 - 使用 Drizzle ORM
+      // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
       const baseConditions = [
         eq(conversationTable.status, CONVERSATION_STATUS.ACTIVE),
-        sql`${conversationTable.assignedUserId} IS NULL`
+        sql`${conversationTable.assignedTeamId} IS NULL`
       ];
       
       if (teamId) {
@@ -1196,63 +1115,27 @@ const handlerMethods = {
       let assignedCount = 0;
 
       if (strategy === 'round_robin') {
-        // 輪詢分配：找到工作量最少的客服 - 使用 Drizzle ORM
-        const agentConditions = [
-          eq(agents.isActive, true),
-          eq(agents.role, 'agent')
-        ];
-        
-        if (teamId) {
-          agentConditions.push(eq(agents.teamId, teamId));
-        }
-        
-        const availableAgents = await drizzleDb
-          .select({
-            id: agents.id,
-            workload: count(conversationTable.id).as('workload')
-          })
-          .from(agents)
-          .leftJoin(conversationTable, and(
-            eq(agents.id, conversationTable.assignedUserId),
-            inArray(conversationTable.status, [CONVERSATION_STATUS.ACTIVE, CONVERSATION_STATUS.ASSIGNED])
-          ))
-          .where(and(...agentConditions))
-          .groupBy(agents.id)
-          .orderBy(sql`workload ASC`, agents.id);
-
-        if (!availableAgents || availableAgents.length === 0) {
-          return errorResponse(c, 'No available agents found', 400);
+        // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
+        // Auto-assign to specified team or default team
+        if (!teamId) {
+          return errorResponse(c, 'Team ID is required for auto-assignment', 400);
         }
 
-        // 依序分配給工作量最少的客服
-        const agentsData = availableAgents;
-        let agentIndex = 0;
-        const assignedAgentIds = new Set<string>();
-
+        // Assign all unassigned conversations to the specified team
         for (const conv of unassignedConversations) {
-          const agentId = agentsData[agentIndex]?.id;
-
           await drizzleDb.update(conversationTable)
             .set({
-              assignedUserId: agentId,
+              assignedTeamId: teamId,
               status: CONVERSATION_STATUS.ASSIGNED,
               updatedAt: sql`datetime('now')`
             })
             .where(eq(conversationTable.id, conv.id));
 
-          if (agentId) {
-            assignedAgentIds.add(agentId);
-          }
           assignedCount++;
-          agentIndex = (agentIndex + 1) % agentsData.length;
         }
 
-        // 🆕 P1-4: Invalidate conversation cache for all assigned agents
-        const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-        for (const agentId of assignedAgentIds) {
-          await authService.invalidateAgentConversationCache(agentId);
-        }
-        console.log(`🗑️  [Auto Assign] Invalidated cache for ${assignedAgentIds.size} agent(s)`);
+        // Note: Cache invalidation for individual agents removed - using team-based access control now
+        console.log(`📦 [Auto Assign] Assigned ${assignedCount} conversations to team ${teamId}`);
       }
 
       return successResponse(c, {

@@ -50,11 +50,12 @@ feedbackHandler.post('/', async (c) => {
     const feedbackId = crypto.randomUUID();
     const now = new Date().toISOString();
 
+    // Note: Individual assignment (assignedUserId) removed - agentId must be provided explicitly
     await db.insert(customerFeedback).values({
       id: feedbackId,
       conversationId: body.conversationId,
       customerId: body.customerId,
-      agentId: body.agentId || conversation.assignedUserId || null,
+      agentId: body.agentId || null,
       rating: body.rating,
       comment: body.comment || null,
       feedbackType: body.feedbackType || 'satisfaction',

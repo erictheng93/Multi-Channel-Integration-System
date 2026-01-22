@@ -137,7 +137,7 @@ conversationHandler.get('/stream', async (c) => {
                 id: conversations.id,
                 customerId: conversations.customerId,
                 assignedTeamId: conversations.assignedTeamId,
-                assignedUserId: conversations.assignedUserId,
+                // Note: assignedUserId removed - only team assignment is supported now
                 status: conversations.status,
                 lastMessageAt: conversations.lastMessageAt,
                 createdAt: conversations.createdAt,
@@ -293,48 +293,22 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
 
     switch (operation) {
       case 'assign': {
-        if (!data?.userId && !data?.teamId) {
+        // Note: Individual assignment (userId) removed - only team assignment is supported now
+        if (!data?.teamId) {
           return validationErrorResponse(c, [
-            { field: 'data', message: 'User ID or Team ID is required for assignment' }
+            { field: 'data', message: 'Team ID is required for assignment' }
           ]);
         }
 
-        // 🆕 P1-4: Get old assignments for cache invalidation
-        const oldAssignments = await drizzleDb
-          .select({ id: conversations.id, assignedUserId: conversations.assignedUserId })
-          .from(conversations)
-          .where(inArray(conversations.id, conversationIdsArray));
-
         await drizzleDb.update(conversations)
           .set({
-            assignedUserId: data.userId || null,
-            assignedTeamId: data.teamId || null,
+            assignedTeamId: data.teamId,
             status: 'assigned',
             updatedAt: sql`datetime('now')`
           })
           .where(inArray(conversations.id, conversationIdsArray));
 
-        // 🆕 P1-4: Invalidate conversation cache for affected agents
-        const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-        const affectedAgentIds = new Set<string>();
-
-        // Collect old assigned agents
-        for (const conv of oldAssignments) {
-          if (conv.assignedUserId) {
-            affectedAgentIds.add(conv.assignedUserId);
-          }
-        }
-
-        // Add new assigned agent
-        if (data.userId) {
-          affectedAgentIds.add(data.userId);
-        }
-
-        // Invalidate cache for all affected agents
-        for (const agentId of affectedAgentIds) {
-          await authService.invalidateAgentConversationCache(agentId);
-        }
-        log.debug('Bulk Assign cache invalidated', { agentCount: affectedAgentIds.size });
+        log.debug('Bulk Assign completed', { teamId: data.teamId, conversationCount: conversationIdsArray.length });
         break;
       }
 
@@ -369,33 +343,12 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
           })
           .where(inArray(conversations.id, conversationIdsArray));
 
-        // 🔔 通知觸發：發送優先級變更通知給負責的客服
-        // 獲取所有受影響對話的負責人
-        const assignedAgentsForPriority = await drizzleDb
-          .select({ assignedUserId: conversations.assignedUserId })
-          .from(conversations)
-          .where(inArray(conversations.id, conversationIdsArray));
-
-        const uniqueAgentIdsForPriority = [...new Set(
-          assignedAgentsForPriority
-            .filter(conv => conv.assignedUserId)
-            .map(conv => conv.assignedUserId!)
-        )];
-
-        // 為每個負責人發送通知 (非阻塞)
-        for (const agentId of uniqueAgentIdsForPriority) {
-          triggerPriorityChangedNotification(c.env, {
-            userId: agentId,
-            conversationIds: conversationIdsArray,
-            newPriority: data.priority,
-            changedBy: user.displayName || 'System'
-          }).catch(err => {
-            log.warn('Failed to trigger priority change notification', {
-              error: err instanceof Error ? err.message : String(err),
-              agentId
-            });
-          });
-        }
+        // Note: Individual agent notifications removed - only team-based assignment now
+        // Priority change notifications can be handled via WebSocket broadcast to team members
+        log.debug('Bulk priority change completed', {
+          priority: data.priority,
+          conversationCount: conversationIdsArray.length
+        });
         break;
 
       case 'add_tags':
@@ -756,12 +709,13 @@ conversationHandler.get('/:conversationId/messages/stream', async (c) => {
 
 // ==================== Priority 3: MULTI-SEGMENT 2-param routes ====================
 
-// 指派對話到團隊/用戶
+// 指派對話到團隊 (僅支援團隊指派，個人指派已移除)
 conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
     const conversationId = c.req.param('id');
-    const { teamId, userId, reason } = await c.req.json();
+    const { teamId, reason } = await c.req.json();
+    // Note: userId removed - only team assignment is supported now
 
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(
@@ -776,58 +730,37 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
       return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
+    // Validate teamId is provided
+    if (!teamId) {
+      return c.json({ error: 'Team ID is required for assignment' }, HTTP_STATUS.BAD_REQUEST);
+    }
+
     // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
-    // 🆕 P1-4: Get old conversation to track previous assignment for cache invalidation
-    const oldConversation = await drizzleDb
-      .select({ assignedUserId: conversations.assignedUserId })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-    const oldAssignedUserId = oldConversation?.assignedUserId;
-
     log.info('Assign API updating conversation', {
       conversationId,
       teamId,
-      userId,
       status: 'assigned'
     });
 
     await drizzleDb
       .update(conversations)
       .set({
-        assignedTeamId: teamId || null,
-        assignedUserId: userId || null,
-        status: 'assigned',  // 🔧 FIX: Add status field
+        assignedTeamId: teamId,
+        status: 'assigned',
         updatedAt: timestamp
       })
       .where(eq(conversations.id, conversationId));
 
     log.debug('Assign API database UPDATE completed');
 
-    // 🆕 P1-4: Invalidate conversation cache for affected agents
-    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-
-    // Invalidate cache for previously assigned agent (if exists)
-    if (oldAssignedUserId && oldAssignedUserId !== userId) {
-      await authService.invalidateAgentConversationCache(oldAssignedUserId);
-      log.debug('Assign API invalidated cache for old agent', { oldAssignedUserId });
-    }
-
-    // Invalidate cache for newly assigned agent (if exists)
-    if (userId) {
-      await authService.invalidateAgentConversationCache(userId);
-      log.debug('Assign API invalidated cache for new agent', { userId });
-    }
-
     // 記錄轉移歷史 (使用 Drizzle ORM)
     if (reason) {
       const transferRecord: NewConversationTransfer = {
         conversationId,
-        toTeamId: teamId || null,
-        toUserId: userId || null,
+        toTeamId: teamId,
         transferReason: reason,
         transferredBy: String(user.id),
         createdAt: timestamp
@@ -837,30 +770,17 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
     }
 
     // 🚀 WebSocket Broadcasting: Conversation Assignment
-    // 🔧 FIX: Query agent/team names for real-time UI updates
+    // Query team name for real-time UI updates
     try {
-      let assignedAgentName: string | null = null;
       let assignedTeamName: string | null = null;
 
-      // Query agent name if userId is provided
-      if (userId) {
-        const agentInfo = await drizzleDb
-          .select({ displayName: agents.displayName })
-          .from(agents)
-          .where(eq(agents.id, userId))
-          .get();
-        assignedAgentName = agentInfo?.displayName || null;
-      }
-
-      // Query team name if teamId is provided
-      if (teamId) {
-        const teamInfo = await drizzleDb
-          .select({ name: teams.name })
-          .from(teams)
-          .where(eq(teams.id, teamId))
-          .get();
-        assignedTeamName = teamInfo?.name || null;
-      }
+      // Query team name
+      const teamInfo = await drizzleDb
+        .select({ name: teams.name })
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .get();
+      assignedTeamName = teamInfo?.name || null;
 
       const broadcastService = new WebSocketBroadcastService(c.env);
       await broadcastService.broadcastConversationEvent({
@@ -869,9 +789,7 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
         userId: String(user.id),
         data: {
           assignedTeamId: teamId,
-          assignedUserId: userId,
-          // 🆕 Include names for real-time UI updates
-          assignedAgentName,
+          // Note: assignedUserId removed - only team assignment
           assignedTeamName,
           assignedBy: {
             id: user.id,
@@ -883,32 +801,12 @@ conversationHandler.post('/:id/assign', jwtAuth, async (c) => {
         },
         priority: 'normal'
       });
-      log.debug('WebSocket conversation assignment broadcasted', { assignedAgentName, assignedTeamName });
+      log.debug('WebSocket conversation assignment broadcasted', { assignedTeamName });
     } catch (broadcastError) {
       log.warn('WebSocket: Assignment broadcast failed, continuing with fallback', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
-    // 🔔 通知觸發：發送對話指派通知給被指派的客服
-    if (userId) {
-      // 先獲取客戶名稱用於通知
-      const customerInfo = await drizzleDb
-        .select({ displayName: customers.displayName })
-        .from(conversations)
-        .leftJoin(customers, eq(conversations.customerId, customers.id))
-        .where(eq(conversations.id, conversationId))
-        .get();
-
-      triggerConversationAssignedNotification(c.env, {
-        assignedUserId: userId,
-        conversationId,
-        customerName: customerInfo?.displayName || '未知客戶',
-        assignedBy: user.displayName || 'System'
-      }).catch(err => {
-        log.warn('Failed to trigger assignment notification', {
-          error: err instanceof Error ? err.message : String(err)
-        });
-      });
-    }
+    // Note: Individual agent notifications removed - only team assignment is supported now
 
     // 🔧 FIX: 获取并返回完整的对话对象
     log.debug('Assign API fetching updated conversation with JOIN', {
@@ -1016,17 +914,16 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // 檢查對話是否已指派
+    // 檢查對話是否已指派 (只檢查團隊指派)
     const conv = conversation.conversations;
-    if (!conv.assignedTeamId && !conv.assignedUserId) {
+    if (!conv.assignedTeamId) {
       return c.json({ error: 'Conversation is not assigned' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 記錄取消指派前的狀態
+    // 記錄取消指派前的狀態 (只記錄團隊)
     const previousAssignment = {
       teamId: conv.assignedTeamId,
-      teamName: conversation.teams?.name,
-      userId: conv.assignedUserId
+      teamName: conversation.teams?.name
     };
 
     log.info('Unassign API unassigning conversation', {
@@ -1040,10 +937,10 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
 
     try {
       // 使用原始 SQL 执行 UPDATE（避免 Drizzle ORM 的 NULL 处理问题）
+      // Note: assigned_user_id removed - only team assignment is supported now
       await c.env.DB.prepare(
         `UPDATE conversations
          SET assigned_team_id = NULL,
-             assigned_user_id = NULL,
              status = ?,
              updated_at = ?
          WHERE id = ?`
@@ -1058,21 +955,12 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
       throw dbError;
     }
 
-    // 🆕 P1-4: Invalidate conversation cache for previously assigned agent
-    if (previousAssignment.userId) {
-      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-      await authService.invalidateAgentConversationCache(previousAssignment.userId);
-      log.debug('Unassign API invalidated conversation cache', { agentId: previousAssignment.userId });
-    }
-
-    // 記錄取消指派歷史
+    // 記錄取消指派歷史 (只記錄團隊)
     if (reason) {
       const transferRecord: NewConversationTransfer = {
         conversationId,
         fromTeamId: previousAssignment.teamId || null,
-        fromUserId: previousAssignment.userId || null,
         toTeamId: null,
-        toUserId: null,
         transferReason: reason || '取消指派',
         transferredBy: String(user.id),
         createdAt: timestamp
@@ -1091,7 +979,7 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
         data: {
           previousTeamId: previousAssignment.teamId,
           previousTeamName: previousAssignment.teamName,
-          previousUserId: previousAssignment.userId,
+          // Note: previousUserId removed - only team assignment is supported now
           unassignedBy: {
             id: user.id,
             name: user.displayName,
@@ -1149,12 +1037,13 @@ conversationHandler.post('/:id/unassign', jwtAuth, async (c) => {
   }
 });
 
-// 轉移對話
+// 轉移對話 (僅支援團隊間轉移，個人轉移已移除)
 conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
     const conversationId = c.req.param('id');
-    const { fromTeamId, toTeamId, fromUserId, toUserId, reason } = await c.req.json();
+    const { fromTeamId, toTeamId, reason } = await c.req.json();
+    // Note: fromUserId and toUserId removed - only team-based transfer is supported now
 
     // 檢查權限：使用 JWT 中的角色直接判斷（更可靠）
     // 管理員可以轉指派任何對話，普通客服需要額外檢查
@@ -1175,52 +1064,31 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       }
     }
 
+    // Validate toTeamId is provided
+    if (!toTeamId) {
+      return c.json({ error: 'Target team ID is required for transfer' }, HTTP_STATUS.BAD_REQUEST);
+    }
+
     // Admin 直接通過權限檢查
 
     // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = new Date().toISOString();
 
-    // 🆕 P1-4: Get old conversation to track previous assignment for cache invalidation
-    const oldConversation = await drizzleDb
-      .select({ assignedUserId: conversations.assignedUserId })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .get();
-
     await drizzleDb
       .update(conversations)
       .set({
-        assignedTeamId: toTeamId || null,
-        assignedUserId: toUserId || null,
+        assignedTeamId: toTeamId,
         status: 'active',
         updatedAt: timestamp
       })
       .where(eq(conversations.id, conversationId));
 
-    // 🆕 P1-4: Invalidate conversation cache for affected agents
-    const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
-
-    // Invalidate cache for source agent (fromUserId or previous assignedUserId)
-    const sourceAgentId = fromUserId || oldConversation?.assignedUserId;
-    if (sourceAgentId) {
-      await authService.invalidateAgentConversationCache(sourceAgentId);
-      log.debug('Transfer API invalidated cache for source agent', { sourceAgentId });
-    }
-
-    // Invalidate cache for destination agent (toUserId)
-    if (toUserId && toUserId !== sourceAgentId) {
-      await authService.invalidateAgentConversationCache(toUserId);
-      log.debug('Transfer API invalidated cache for destination agent', { toUserId });
-    }
-
-    // 記錄轉移歷史 (使用 Drizzle ORM)
+    // 記錄轉移歷史 (使用 Drizzle ORM) - 只記錄團隊
     const transferRecord: NewConversationTransfer = {
       conversationId,
       fromTeamId: fromTeamId || null,
-      toTeamId: toTeamId || null,
-      fromUserId: fromUserId || null,
-      toUserId: toUserId || null,
+      toTeamId: toTeamId,
       transferReason: reason,
       transferredBy: String(user.id),
       createdAt: timestamp
@@ -1233,7 +1101,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
 
-      // 📦 Fetch conversation details for broadcast payload
+      // 📦 Fetch conversation details for broadcast payload (team-based only)
       const conversationDetails = await drizzleDb
         .select({
           id: conversations.id,
@@ -1242,6 +1110,7 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
           platform: customers.platform,  // platform is from customers table
           status: conversations.status,
           lastMessageAt: conversations.lastMessageAt
+          // Note: assignedUserId/assignedAgentName removed - only team assignment is supported
         })
         .from(conversations)
         .leftJoin(customers, eq(conversations.customerId, customers.id))
@@ -1278,7 +1147,14 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
             content: undefined,  // Content not needed for transfer notification
             timestamp: new Date(conversationDetails.lastMessageAt).getTime()
           } : undefined,
-          unreadCount: 0  // Will be recalculated by the receiving team
+          unreadCount: 0,  // Will be recalculated by the receiving team
+          // Note: assignedAgent/assignedAgentId removed - only team assignment is supported
+          // Include target team info
+          assignedTeamId: toTeamId,
+          assignedTeam: toTeamId ? {
+            id: toTeamId,
+            name: toTeamInfo?.name || `Team ${toTeamId}`
+          } : undefined
         },
         transferredBy: {
           id: String(user.id),
@@ -1299,29 +1175,8 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
       });
     }
 
-    // 🔔 通知觸發：發送對話轉移通知給目標客服
-    if (toUserId) {
-      // 獲取客戶名稱用於通知
-      const customerInfo = await drizzleDb
-        .select({ displayName: customers.displayName })
-        .from(conversations)
-        .leftJoin(customers, eq(conversations.customerId, customers.id))
-        .where(eq(conversations.id, conversationId))
-        .get();
-
-      triggerConversationTransferredNotification(c.env, {
-        toUserId,
-        conversationId,
-        customerName: customerInfo?.displayName || '未知客戶',
-        transferredBy: user.displayName || 'System',
-        fromUserId,
-        reason
-      }).catch(err => {
-        log.warn('Failed to trigger transfer notification', {
-          error: err instanceof Error ? err.message : String(err)
-        });
-      });
-    }
+    // Note: Individual agent notifications removed - only team-based transfer is supported now
+    // Team members will receive notifications via WebSocket broadcast
 
     return c.json({
       success: true,
