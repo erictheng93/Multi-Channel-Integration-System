@@ -326,8 +326,8 @@ export class EnterpriseAnalyticsEngine {
         )`.as('avg_resolution_time')
       })
       .from(conversations)
+      // Note: Individual assignment (assignedUserId) removed - filtering by team is required at a higher level
       .where(and(
-        eq(conversations.assignedUserId, agentId.toString()),
         gte(conversations.createdAt, period.start.toString()),
         lte(conversations.createdAt, period.end.toString())
       ))
@@ -358,8 +358,8 @@ export class EnterpriseAnalyticsEngine {
       })
       .from(messages)
       .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      // Note: Individual assignment (assignedUserId) removed - filtering by team is required at a higher level
       .where(and(
-        eq(conversations.assignedUserId, agentId.toString()),
         gte(messages.createdAt, period.start.toString()),
         lte(messages.createdAt, period.end.toString())
       ))

@@ -376,13 +376,14 @@ export async function getTeamConversations(
     baseConditions.push(eq(conversations.status, status));
   }
   
+  // Note: assignedUserId removed - only team assignment is supported now
   const conversationsResult = await drizzleDb
     .select({
       // conversation fields
       id: conversations.id,
       customerId: conversations.customerId,
       assignedTeamId: conversations.assignedTeamId,
-      assignedUserId: conversations.assignedUserId,
+      // Note: assignedUserId removed - only team assignment is supported now
       status: conversations.status,
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
@@ -391,22 +392,21 @@ export async function getTeamConversations(
       customer_name: customers.displayName,
       platform: customers.platform,
       platform_user_id: customers.platformUserId,
-      assigned_agent_name: agents.displayName,
+      // Note: assigned_agent_name removed - only team assignment is supported now
       team_name: teams.name,
       // subquery fields using sql template
       message_count: sql<number>`(
-        SELECT COUNT(*) FROM messages 
+        SELECT COUNT(*) FROM messages
         WHERE conversation_id = ${conversations.id}
       )`,
       last_message_at: sql<string>`(
-        SELECT created_at FROM messages 
-        WHERE conversation_id = ${conversations.id} 
+        SELECT created_at FROM messages
+        WHERE conversation_id = ${conversations.id}
         ORDER BY created_at DESC LIMIT 1
       )`
     })
     .from(conversations)
     .leftJoin(customers, eq(conversations.customerId, customers.id))
-    .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
     .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
     .where(and(...baseConditions))
     .orderBy(desc(conversations.updatedAt))
@@ -429,12 +429,12 @@ export async function transferConversationToTeam(
   const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
   
-  // 更新對話分配
+  // 更新對話分配 (只更新團隊)
   const updateResult = await drizzleDb
     .update(conversations)
-    .set({ 
+    .set({
       assignedTeamId: targetTeamId,
-      assignedUserId: null, // Reset agent assignment when transferring teams
+      // Note: assignedUserId removed - only team assignment is supported now
       updatedAt: now
     })
     .where(eq(conversations.id, conversationId))

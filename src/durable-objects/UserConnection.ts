@@ -721,11 +721,11 @@ export class UserConnection implements DurableObject {
 
       const db = drizzle(this.env.DB, { schema });
 
-      // Get the conversation
+      // Get the conversation (only team assignment is checked now)
       const conversation = await db
         .select({
           id: schema.conversations.id,
-          assignedUserId: schema.conversations.assignedUserId,
+          // Note: assignedUserId removed - only team assignment is supported now
           assignedTeamId: schema.conversations.assignedTeamId,
         })
         .from(schema.conversations)
@@ -759,13 +759,8 @@ export class UserConnection implements DurableObject {
       }
 
       // For unassigned conversations, allow access (queue management)
-      if (!conversation.assignedUserId && !conversation.assignedTeamId) {
+      if (!conversation.assignedTeamId) {
         return action === 'read'; // Read-only for unassigned
-      }
-
-      // Check if user is assigned to this conversation
-      if (conversation.assignedUserId === userId) {
-        return true;
       }
 
       // Check if user is in the assigned team
@@ -888,12 +883,21 @@ export class UserConnection implements DurableObject {
     try {
       const { events } = await request.json() as { events: any[] };
 
-      // 🔍 DEBUG: Log received batch events
-      console.log(`🔍 [UserConnection] handleBatchEvents called for user ${this.userId}:`, {
-        eventCount: events?.length || 0,
-        eventTypes: events?.map(e => e.type) || [],
-        activeConnections: this.connections.size
-      });
+      // 🔍 ENHANCED DEBUG: Log received batch events with full details for duplicate tracking
+      console.log(`🔍 [UserConnection] ===== BATCH EVENTS RECEIVED =====`);
+      console.log(`🔍 [UserConnection] User: ${this.userId}, Connections: ${this.connections.size}`);
+      for (const event of (events || [])) {
+        console.log(`🔍 [UserConnection] Event detail:`, {
+          userId: this.userId,
+          eventId: event.id,
+          eventType: event.type,
+          eventAction: event.data?.action,
+          conversationId: event.conversationId,
+          fromTeamId: event.data?.fromTeamId,
+          toTeamId: event.data?.toTeamId,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       if (!events || !Array.isArray(events)) {
         return new Response(JSON.stringify({ error: 'Invalid events format' }), { status: 400 });
