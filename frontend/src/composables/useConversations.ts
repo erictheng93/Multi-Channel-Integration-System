@@ -55,13 +55,17 @@ export function useConversations() {
     selectedConversationId.value = conversationId
   }
 
-  const assignConversation = async (conversationId: string, agentId?: string) => {
+  /**
+   * 指派對話給團隊
+   * Note: Individual assignment (agentId) removed - only team-based assignment is supported now
+   */
+  const assignConversationToTeam = async (conversationId: string, teamId: number, teamName?: string) => {
     clearError()
     try {
-      if (!agentId) {
-        throw new Error('Agent ID is required')
+      if (!teamId) {
+        throw new Error('Team ID is required')
       }
-      await conversationsStore.assignConversation(conversationId, agentId)
+      await conversationsStore.assignConversationToTeam(conversationId, teamId, teamName)
       await refreshConversations()
     } catch (err) {
       handleError(err)
@@ -82,18 +86,19 @@ export function useConversations() {
     return conversations.value?.find((c: Conversation) => c.id === id) || null
   }
 
+  // Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
   const filterConversations = (filters: {
     status?: string
     platform?: string
-    assignedTo?: string
+    teamId?: number
     search?: string
   }) => {
     if (!conversations.value) {return []}
-    
+
     return conversations.value.filter((conversation: Conversation) => {
       if (filters.status && conversation.status !== filters.status) {return false}
       if (filters.platform && conversation.platform !== filters.platform) {return false}
-      if (filters.assignedTo && conversation.assignedAgentId !== filters.assignedTo) {return false}
+      if (filters.teamId && conversation.assignedTeamId !== filters.teamId) {return false}
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()
         const userName = conversation.customer?.name?.toLowerCase() || ''
@@ -121,7 +126,7 @@ export function useConversations() {
     fetchConversations,
     refreshConversations,
     selectConversation,
-    assignConversation,
+    assignConversationToTeam,
     closeConversation,
     getConversationById,
     filterConversations,

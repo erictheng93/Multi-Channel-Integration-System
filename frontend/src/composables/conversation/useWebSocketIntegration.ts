@@ -108,6 +108,8 @@ export function useWebSocketIntegration(
 
   // 🔧 FIX: 追蹤前一個連接狀態，用於檢測重連
   let previousConnectionState: ConnectionState = 'disconnected'
+  // 🆕 FIX: 追蹤是否已經首次連接成功，避免重複觸發
+  let hasConnectedOnce = false
 
   /**
    * 處理統一連接狀態變化
@@ -116,6 +118,7 @@ export function useWebSocketIntegration(
     console.log(`[WebSocketIntegration] Unified connection state changed: ${previousConnectionState} → ${newState}`)
 
     const wasReconnecting = previousConnectionState === 'reconnecting'
+    const wasConnecting = previousConnectionState === 'connecting'
     previousConnectionState = newState
 
     unifiedConnectionState.value = newState
@@ -129,6 +132,35 @@ export function useWebSocketIntegration(
     if (newState === 'connected' && wasReconnecting) {
       console.log('🔄 [WebSocketIntegration] Reconnected, checking message sync...')
       triggerMessageSyncAfterReconnection()
+    }
+
+    // 🆕 FIX: 首次連接成功時，如果 HTTP 訊息為空，重新載入訊息
+    // 解決問題：初始 HTTP 請求因權限失敗 (403) 後，WebSocket 連接成功但訊息未重新載入
+    if (newState === 'connected' && wasConnecting && !hasConnectedOnce) {
+      hasConnectedOnce = true
+      console.log('🔄 [WebSocketIntegration] First connection successful, checking if HTTP messages need refresh...')
+      triggerMessageSyncOnFirstConnection()
+    }
+  }
+
+  /**
+   * 🆕 首次連接時觸發訊息同步
+   * 當 WebSocket 首次連接成功且 HTTP 訊息為空時，重新載入訊息
+   */
+  async function triggerMessageSyncOnFirstConnection() {
+    try {
+      // 檢查 HTTP 訊息是否為空（可能是初始請求失敗導致）
+      const httpMsgCount = state.messages.value?.length ?? 0
+
+      if (httpMsgCount === 0) {
+        console.log('📥 [WebSocketIntegration] HTTP messages empty on first connection, refreshing via HTTP...')
+        await state.refreshMessagesAfterReconnection()
+        console.log('✅ [WebSocketIntegration] First connection message refresh completed')
+      } else {
+        console.log(`✅ [WebSocketIntegration] First connection: ${httpMsgCount} messages already loaded, no refresh needed`)
+      }
+    } catch (error) {
+      console.error('❌ [WebSocketIntegration] First connection message refresh failed:', error)
     }
   }
 
