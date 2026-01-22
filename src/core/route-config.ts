@@ -18,7 +18,8 @@ import {
 } from '../handlers';
 
 import messagingMainHandler from '../handlers/messaging-main';
-import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
+// REMOVED: Old QR Code module - migrated to new LIFF QR Code system
+// import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
 import fileMainHandler from '@modules/file-management/handlers/file-main';
 
 // 導入額�??��???
@@ -200,16 +201,17 @@ const integrationGroup = createRouteGroup({
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
-    }),
-    createRouteModule({
-      name: 'qr-codes',
-      path: '/qr-codes',
-      handler: qrCodeRouterSimple,
-      description: 'QR Code Generation and Management (Simple Router - WORKING)',
-      version: '1.0.0',
-      dependencies: ['auth'],
-      healthCheck: '/health'
     })
+    // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
+    // createRouteModule({
+    //   name: 'qr-codes',
+    //   path: '/qr-codes',
+    //   handler: qrCodeRouterSimple,
+    //   description: 'QR Code Generation and Management (Simple Router - WORKING)',
+    //   version: '1.0.0',
+    //   dependencies: ['auth'],
+    //   healthCheck: '/health'
+    // })
   ]
 });
 

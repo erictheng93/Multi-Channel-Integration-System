@@ -98,12 +98,8 @@ export function useQRCodeOperations(): UseQRCodeOperationsReturn {
       const cachedQRData = qrCodeStore.getQRCode(team.id)
       let qrCode = cachedQRData?.qrCodeUrl || ''
 
-      // 如果 Store 没有，尝试从 team 对象获取
-      if (!qrCode && team.qrCode) {
-        qrCode = team.qrCode
-      }
-
-      // 如果仍然没有，从 API 载入（但不自动生成）
+      // 如果 Store 没有，从 API 载入（但不自动生成）
+      // 注意：已移除舊系統 team.qrCode fallback，統一使用新 LIFF QR Code 系統 (team_liff_qr_codes 表)
       if (!qrCode) {
         const loadedQR = await qrCodeStore.loadQRCode(team.id, false) // force=false，不自动生成
         qrCode = loadedQR?.qrCodeUrl || ''
