@@ -905,4 +905,166 @@ async function getDistributedLockMetrics(env: Bindings): Promise<{
   }
 }
 
+/**
+ * GET /api/websocket/debug/connections
+ * 調試端點：檢查特定用戶的 WebSocket 連線狀態
+ * 用於診斷重複事件問題
+ */
+healthApp.get('/debug/connections', async (c) => {
+  try {
+    const userId = c.req.query('userId');
+
+    if (!c.env.MESSAGE_BROADCASTER) {
+      return c.json({ error: 'MESSAGE_BROADCASTER not available' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+    }
+
+    const broadcasterId = c.env.MESSAGE_BROADCASTER.idFromName('global');
+    const broadcasterStub = c.env.MESSAGE_BROADCASTER.get(broadcasterId);
+
+    const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/debug-connections', {
+      method: 'GET'
+    }));
+
+    if (response.ok) {
+      const data = await response.json() as {
+        registeredUsers: string[];
+        registeredConversations: string[];
+        activeConnections: number;
+        timestamp: number;
+      };
+
+      // 如果指定了 userId，過濾結果
+      if (userId) {
+        const userConnections = data.registeredUsers.filter(id => id.includes(userId));
+        return c.json({
+          userId,
+          connectionCount: userConnections.length,
+          connections: userConnections,
+          totalRegisteredUsers: data.registeredUsers.length,
+          totalActiveConnections: data.activeConnections,
+          timestamp: new Date(data.timestamp).toISOString()
+        }, HTTP_STATUS.OK);
+      }
+
+      return c.json({
+        registeredUsers: data.registeredUsers,
+        registeredUserCount: data.registeredUsers.length,
+        registeredConversations: data.registeredConversations,
+        registeredConversationCount: data.registeredConversations.length,
+        activeConnections: data.activeConnections,
+        timestamp: new Date(data.timestamp).toISOString()
+      }, HTTP_STATUS.OK);
+    }
+
+    return c.json({ error: 'Failed to fetch debug data' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  } catch (error) {
+    console.error('[WebSocket Debug] Error:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * GET /api/websocket/debug/team-members/:teamId
+ * 調試端點：檢查特定團隊的成員列表
+ */
+healthApp.get('/debug/team-members/:teamId', async (c) => {
+  try {
+    const teamId = c.req.param('teamId');
+
+    if (!c.env.DB) {
+      return c.json({ error: 'Database not available' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+    }
+
+    // 使用與 MessageBroadcaster.getTeamMembers 相同的查詢
+    const result = await c.env.DB.prepare(`
+      SELECT DISTINCT a.id, a.display_name, a.email, a.team_id as primary_team_id
+      FROM agents a
+      LEFT JOIN agent_teams at ON a.id = at.agent_id
+      WHERE (a.team_id = ?1 OR at.team_id = ?1)
+        AND a.is_active = 1
+        AND a.deleted_at IS NULL
+    `).bind(teamId).all();
+
+    return c.json({
+      teamId: parseInt(teamId),
+      memberCount: result.results?.length || 0,
+      members: result.results || [],
+      query: 'Same as MessageBroadcaster.getTeamMembers()'
+    }, HTTP_STATUS.OK);
+  } catch (error) {
+    console.error('[WebSocket Debug] Error:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * GET /api/websocket/debug/trace-team-broadcast
+ * 診斷端點：模擬團隊廣播流程，追蹤事件會發送給哪些用戶
+ */
+healthApp.get('/debug/trace-team-broadcast', async (c) => {
+  try {
+    const teamId = c.req.query('teamId');
+    const action = c.req.query('action') || 'test';
+
+    if (!teamId) {
+      return c.json({ error: 'teamId query parameter is required' }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (!c.env.DB) {
+      return c.json({ error: 'Database not available' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+    }
+
+    // 使用與 MessageBroadcaster.getTeamMembers 完全相同的查詢
+    const result = await c.env.DB.prepare(`
+      SELECT DISTINCT a.id, a.display_name, a.email, a.team_id as primary_team_id
+      FROM agents a
+      LEFT JOIN agent_teams at ON a.id = at.agent_id
+      WHERE (a.team_id = ?1 OR at.team_id = ?1)
+        AND a.is_active = 1
+        AND a.deleted_at IS NULL
+    `).bind(teamId).all();
+
+    const members = result.results || [];
+    const memberIds = members.map((m: any) => m.id);
+
+    console.log(`🔍 [DEBUG] Team broadcast trace for team ${teamId}:`, {
+      teamId,
+      action,
+      memberCount: members.length,
+      memberIds,
+      members: members.map((m: any) => ({
+        id: m.id,
+        name: m.display_name,
+        primaryTeamId: m.primary_team_id
+      }))
+    });
+
+    return c.json({
+      teamId: parseInt(teamId),
+      action,
+      wouldBroadcastTo: {
+        memberCount: members.length,
+        memberIds,
+        members: members.map((m: any) => ({
+          id: m.id,
+          displayName: m.display_name,
+          email: m.email,
+          primaryTeamId: m.primary_team_id
+        }))
+      },
+      query: 'Same as MessageBroadcaster.getTeamMembers()',
+      timestamp: new Date().toISOString()
+    }, HTTP_STATUS.OK);
+  } catch (error) {
+    console.error('[WebSocket Debug] Trace error:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
 export default healthApp;

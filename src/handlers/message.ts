@@ -199,11 +199,11 @@ export const messageHandler = {
             }
 
             // ✅ 使用 Drizzle ORM 獲取對話資訊（類型安全）
+            // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported
             const [conversationWithCustomer] = await db.select({
                 // Conversation fields
                 id: schema.conversations.id,
                 customerId: schema.conversations.customerId,
-                assignedUserId: schema.conversations.assignedUserId,
                 assignedTeamId: schema.conversations.assignedTeamId, // 🔒 Security: For team-scoped broadcast
                 status: schema.conversations.status,
                 // Customer platform info

@@ -442,14 +442,14 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       });
       
       try {
-        // 插入新對話
+        // 插入新對話 (只支援團隊指派，個人指派已移除)
         const insertResult = await drizzleDb
           .insert(conversations)
           .values({
             id: conversationId,
             customerId: user.id,
             assignedTeamId: null,
-            assignedUserId: null,
+            // Note: assignedUserId removed - only team assignment is supported now
             status: 'active',
             priority: 'normal',
             firstResponseAt: null,
@@ -737,35 +737,10 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       log.warn('LINE Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
-    // 🔔 通知觸發：根據對話指派狀態發送適當的通知
+    // 🔔 通知觸發：根據對話指派狀態發送適當的通知 (僅支援團隊指派)
     try {
-      // 情況 1: 已指派給個人客服 (優先使用個人指派)
-      if (conversation!.assignedUserId) {
-        console.log('📬 [LINE Webhook] Triggering notification for assigned user:', {
-          conversationId: conversation!.id,
-          assignedUserId: conversation!.assignedUserId,
-          scenario: 'individual_assignment'
-        });
-
-        await triggerNewMessageNotification(env, {
-          assignedUserId: conversation!.assignedUserId,
-          conversationId: conversation!.id,
-          senderName: user.displayName || '客戶',
-          messageContent: messageContent.substring(0, 100)
-        });
-
-        // 客戶回覆通知：如果客服已回覆過
-        if (conversation!.firstResponseAt) {
-          await triggerCustomerRespondedNotification(env, {
-            assignedUserId: conversation!.assignedUserId,
-            conversationId: conversation!.id,
-            customerName: user.displayName || '客戶',
-            messagePreview: messageContent.substring(0, 100)
-          });
-        }
-      }
-      // 情況 2: 已指派給團隊（但沒有指派個人客服）
-      else if (conversation!.assignedTeamId) {
+      // 情況 1: 已指派給團隊
+      if (conversation!.assignedTeamId) {
         console.log('📬 [LINE Webhook] Triggering notification for assigned team:', {
           conversationId: conversation!.id,
           assignedTeamId: conversation!.assignedTeamId,
@@ -784,7 +759,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           teamId: conversation!.assignedTeamId
         });
       }
-      // 情況 3: 未指派（沒有個人客服也沒有團隊）
+      // 情況 2: 未指派（沒有團隊）
       else {
         console.log('📬 [LINE Webhook] Triggering notification for unassigned conversation:', {
           conversationId: conversation!.id,
@@ -809,7 +784,6 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       log.warn('LINE Webhook: Failed to trigger notification', {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError),
         conversationId: conversation!.id,
-        assignedUserId: conversation!.assignedUserId,
         assignedTeamId: conversation!.assignedTeamId
       });
       // 不要讓通知失敗影響主流程
@@ -1051,7 +1025,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         .get();
 
       if (!existingConversation) {
-        // 創建新對話並指派團隊
+        // 創建新對話並指派團隊 (只支援團隊指派，個人指派已移除)
         const conversationId = uuidv4();
         await drizzleDb
           .insert(conversations)
@@ -1059,7 +1033,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             id: conversationId,
             customerId: existingCustomer.id,
             assignedTeamId: assignedTeamId,
-            assignedUserId: null,
+            // Note: assignedUserId removed - only team assignment is supported now
             status: 'active',
             priority: 'normal',
             internalNotes: JSON.stringify({
@@ -1146,8 +1120,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             data: {
               assignedTeamId,
               assignedTeamName: teamInfo?.name || null,
-              assignedUserId: null,
-              assignedAgentName: null,
+              // Note: assignedUserId/assignedAgentName removed - only team assignment is supported
               assignedBy: {
                 id: 'system',
                 name: 'Auto-Assignment',
@@ -1448,7 +1421,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       .get();
 
     if (!conversation) {
-      // 建立新對話（使用 UUID）
+      // 建立新對話（使用 UUID）(只支援團隊指派，個人指派已移除)
       const conversationId = uuidv4();
       const timestamp = new Date().toISOString();
       try {
@@ -1458,7 +1431,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
             id: conversationId,
             customerId: user.id,
             assignedTeamId: null,
-            assignedUserId: null,
+            // Note: assignedUserId removed - only team assignment is supported now
             status: 'active',
             priority: 'normal',
             firstResponseAt: null,
@@ -1577,32 +1550,23 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       log.warn('Facebook Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
-    // 🔔 通知觸發：如果對話已指派給客服，發送新訊息通知
-    if (conversation!.assignedUserId) {
-      triggerNewMessageNotification(env, {
-        assignedUserId: conversation!.assignedUserId,
-        conversationId: conversation!.id,
-        senderName: user.displayName || '客戶',
-        messageContent: messageContent.substring(0, 100)
-      }).catch(err => {
-        log.warn('Facebook Webhook: Failed to trigger notification', {
-          error: err instanceof Error ? err.message : String(err)
-        });
-      });
-
-      // 🔔 客戶回覆通知：如果客服已回覆過，發送客戶回覆通知
-      if (conversation!.firstResponseAt) {
-        triggerCustomerRespondedNotification(env, {
-          assignedUserId: conversation!.assignedUserId,
+    // Note: Individual agent notifications removed - only team assignment is supported now
+    // Team members will receive notifications via WebSocket broadcast
+    if (conversation!.assignedTeamId) {
+      // 動態導入 notification-trigger 函數
+      import('../utils/notification-trigger').then(({ triggerNewConversationNotification }) => {
+        triggerNewConversationNotification(env, {
           conversationId: conversation!.id,
-          customerName: user.displayName || '客戶',
-          messagePreview: messageContent.substring(0, 100)
+          customerName: user.displayName || 'Facebook User',
+          platform: 'Facebook',
+          messagePreview: messageContent.substring(0, 100),
+          teamId: conversation!.assignedTeamId ?? undefined
         }).catch(err => {
-          log.warn('Facebook Webhook: Failed to trigger customer responded notification', {
+          log.warn('Facebook Webhook: Failed to trigger team notification', {
             error: err instanceof Error ? err.message : String(err)
           });
         });
-      }
+      });
     }
 
     // 如果是多媒體訊息，下載並存儲到 R2
