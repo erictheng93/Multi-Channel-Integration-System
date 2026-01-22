@@ -5,7 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
-import { conversations, messages, customers, agents, conversationTransfers } from '@/db/schema';
+import { conversations, messages, customers, agents, teams, conversationTransfers } from '@/db/schema';
 import type {
   Conversation,
   NewConversation,
@@ -105,7 +105,7 @@ export class ConversationService implements ConversationServiceInterface {
       })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
-      .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
+      // Note: Agent join removed - only team assignment is supported now
       .where(eq(conversations.id, id))
       .limit(1);
 
@@ -125,8 +125,8 @@ export class ConversationService implements ConversationServiceInterface {
       ...result.conversation,
       customer: result.customer || undefined,
       latestMessage: latestMessage,
-      messageCount: result.messageCount || 0,
-      assignedAgent: result.agent || undefined
+      messageCount: result.messageCount || 0
+      // Note: assignedAgent removed - only team assignment is supported now
     };
   }
 
@@ -190,10 +190,11 @@ export class ConversationService implements ConversationServiceInterface {
     const actualLimit = Math.min(limit, 100);
 
     // Build where conditions
+    // Note: agentId filter removed - only team-based filtering is supported now
     const whereConditions = [];
     if (status) whereConditions.push(eq(conversations.status, status));
     if (teamId) whereConditions.push(eq(conversations.assignedTeamId, teamId));
-    if (agentId) whereConditions.push(eq(conversations.assignedUserId, agentId));
+    // Note: Individual agent filter (agentId) removed - only team assignment is supported
     if (customerId) whereConditions.push(eq(conversations.customerId, parseInt(customerId)));
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -242,7 +243,8 @@ export class ConversationService implements ConversationServiceInterface {
       })
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
-      .leftJoin(agents, eq(conversations.assignedUserId, agents.id))
+      // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
       .where(whereClause)
       .orderBy(desc(conversations.updatedAt))
       .limit(actualLimit)
@@ -296,14 +298,17 @@ export class ConversationService implements ConversationServiceInterface {
     });
   }
 
-  // Assign conversation
+  // Assign conversation (only team assignment is supported now)
   async assignConversation(id: string, params: ConversationAssignRequest): Promise<ConversationAssignResponse> {
+    // Note: userId removed - only team assignment is supported now
+    if (!params.teamId) {
+      throw new Error('Team ID is required for assignment');
+    }
+
     const updateData: any = {
+      assignedTeamId: params.teamId,
       updatedAt: new Date().toISOString()
     };
-
-    if (params.teamId) updateData.assignedTeamId = params.teamId;
-    if (params.userId) updateData.assignedUserId = params.userId;
 
     await this.db
       .update(conversations)
@@ -312,13 +317,12 @@ export class ConversationService implements ConversationServiceInterface {
 
     // Create transfer record if reason provided
     let transfer: ConversationTransfer | undefined;
-    if (params.reason && params.userId) {
+    if (params.reason) {
       const transferData: NewConversationTransfer = {
         conversationId: id,
-        toUserId: params.userId,
-        toTeamId: params.teamId || null,
+        toTeamId: params.teamId,
         transferReason: params.reason,
-        transferredBy: params.userId, // 假設是相同用戶進行轉移，實際應該從 context 獲取
+        transferredBy: 'system', // 應該從 context 獲取
         transferType: 'manual',
         createdAt: new Date().toISOString()
       };
@@ -343,32 +347,33 @@ export class ConversationService implements ConversationServiceInterface {
       success: true,
       conversationId: id,
       assignedTo: {
-        type: params.teamId ? 'team' : 'user',
-        id: params.teamId || params.userId!,
+        type: 'team',
+        id: params.teamId,
         name: 'Assigned successfully'
       },
       transfer
     };
   }
 
-  // Transfer conversation
-  async transferConversation(id: string, fromAgentId: string, toAgentId: string, reason?: string): Promise<ConversationTransfer> {
-    // Update conversation assignment
+  // Transfer conversation (only team-based transfer is supported now)
+  // @deprecated Use transferConversationToTeam instead
+  async transferConversation(id: string, fromTeamId: number | null, toTeamId: number, reason?: string): Promise<ConversationTransfer> {
+    // Update conversation assignment (team only)
     await this.db
       .update(conversations)
       .set({
-        assignedUserId: toAgentId,
+        assignedTeamId: toTeamId,
         updatedAt: new Date().toISOString()
       })
       .where(eq(conversations.id, id));
 
-    // Create transfer record
+    // Create transfer record (team-based)
     const transferData: NewConversationTransfer = {
       conversationId: id,
-      fromUserId: fromAgentId,
-      toUserId: toAgentId,
+      fromTeamId: fromTeamId,
+      toTeamId: toTeamId,
       transferReason: reason || 'Manual transfer',
-      transferredBy: fromAgentId,
+      transferredBy: 'system',
       transferType: 'manual',
       createdAt: new Date().toISOString()
     };

@@ -282,17 +282,8 @@ export class MemberService {
       .set({ assignedBy: 'deleted-user' })
       .where(eq(conversationTags.assignedBy, memberId));
 
-    // Step 9: 將對話轉移記錄相關欄位設為 null（保留轉移記錄）
-    await this.db
-      .update(conversationTransfers)
-      .set({ fromUserId: null })
-      .where(eq(conversationTransfers.fromUserId, memberId));
-
-    await this.db
-      .update(conversationTransfers)
-      .set({ toUserId: null })
-      .where(eq(conversationTransfers.toUserId, memberId));
-
+    // Step 9: 將對話轉移記錄相關欄位設為 'deleted-user'（保留轉移記錄）
+    // Note: fromUserId and toUserId removed - only team-based transfers are supported now
     await this.db
       .update(conversationTransfers)
       .set({ transferredBy: 'deleted-user' })

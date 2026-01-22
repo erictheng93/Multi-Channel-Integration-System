@@ -131,35 +131,25 @@ export class DatabaseService {
     const cached = await this.kv.getCache(`conversation:${id}`);
     if (cached) return cached;
 
-    // Fetch conversation with team and agent information using LEFT JOIN
+    // Fetch conversation with team information using LEFT JOIN
+    // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
     const result = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
-      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
       .where(eq(schema.conversations.id, id))
       .get();
 
     if (!result) return null;
 
-    // Enrich conversation with team and agent data
+    // Enrich conversation with team data
     const conversation = {
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
-      } : null,
-      assignedAgent: result.agents ? {
-        id: result.agents.id,
-        email: result.agents.email,
-        name: result.agents.displayName, // Map displayName to name for consistency
-        displayName: result.agents.displayName,
-        role: result.agents.role,
-        teamId: result.agents.teamId,
-        isActive: result.agents.isActive,
-        createdAt: result.agents.createdAt,
-        lastActive: result.agents.lastActive
       } : null
+      // Note: assignedAgent removed - only team-based assignment is supported now
     };
 
     // Cache the enriched conversation
@@ -175,39 +165,14 @@ export class DatabaseService {
       .limit(limit);
   }
 
-  async getConversationsByAgentId(assignedUserId: number, status?: string, limit: number = 50) {
-    const conditions = [eq(schema.conversations.assignedUserId, String(assignedUserId))];
-    if (status) {
-      conditions.push(eq(schema.conversations.status, status));
-    }
-
-    // 🔧 FIX: Add LEFT JOIN with teams and agents to include assignedTeam and assignedAgent
-    const results = await this.db.select()
-      .from(schema.conversations)
-      .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
-      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
-      .where(and(...conditions))
-      .orderBy(desc(schema.conversations.lastMessageAt))
-      .limit(limit);
-
-    // Enrich conversations with team and agent data
-    return results.map(result => ({
-      ...result.conversations,
-      assignedTeam: result.teams ? {
-        id: result.teams.id,
-        name: result.teams.name,
-        description: result.teams.description
-      } : null,
-      assignedAgent: result.agents ? {
-        id: result.agents.id,
-        email: result.agents.email,
-        name: result.agents.displayName,
-        displayName: result.agents.displayName,
-        role: result.agents.role,
-        isActive: result.agents.isActive,
-        lastActive: result.agents.lastActive
-      } : null
-    }));
+  /**
+   * @deprecated Individual assignment (assignedUserId) is no longer supported.
+   * Use getConversationsByTeamId instead for team-based queries.
+   */
+  async getConversationsByAgentId(_assignedUserId: number, status?: string, limit: number = 50) {
+    console.warn('[DatabaseService] getConversationsByAgentId is deprecated. Use getConversationsByTeamId instead.');
+    // Return empty array - individual agent queries are no longer supported
+    return [];
   }
 
   // Team-based conversation queries for role-based access control
@@ -217,35 +182,25 @@ export class DatabaseService {
       conditions.push(eq(schema.conversations.status, status));
     }
 
-    // 🔧 FIX: Add LEFT JOIN with teams to include assignedTeam and assignedAgent
-    // Get all conversations where the assigned agent belongs to the specified team
+    // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
+    // Get all conversations assigned to the specified team
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
-      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
       .where(and(
-        eq(schema.agents.teamId, teamId),
+        eq(schema.conversations.assignedTeamId, teamId),
         ...conditions
       ))
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
 
-    // Enrich conversations with team and agent data
+    // Enrich conversations with team data
     return results.map(result => ({
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
-      } : null,
-      assignedAgent: result.agents ? {
-        id: result.agents.id,
-        email: result.agents.email,
-        name: result.agents.displayName,
-        displayName: result.agents.displayName,
-        role: result.agents.role,
-        isActive: result.agents.isActive,
-        lastActive: result.agents.lastActive
       } : null
     }));
   }
@@ -256,32 +211,23 @@ export class DatabaseService {
       conditions.push(eq(schema.conversations.status, status));
     }
 
-    // 🔧 FIX: Add LEFT JOIN with teams and agents to include assignedTeam and assignedAgent
+    // Note: Individual assignment (assignedUserId) removed - only team-based access control
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
-      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
 
-    // Enrich conversations with team and agent data
+    // Enrich conversations with team data
     return results.map(result => ({
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
-      } : null,
-      assignedAgent: result.agents ? {
-        id: result.agents.id,
-        email: result.agents.email,
-        name: result.agents.displayName,
-        displayName: result.agents.displayName,
-        role: result.agents.role,
-        isActive: result.agents.isActive,
-        lastActive: result.agents.lastActive
       } : null
+      // Note: assignedAgent removed - only team-based assignment is supported now
     }));
   }
 
@@ -297,6 +243,7 @@ export class DatabaseService {
   }
 
   // 🆕 Get conversations for agent based on multi-team membership
+  // Note: Individual assignment (assignedUserId) removed - only team-based access control
   async getConversationsByAgentTeams(agentId: string, status?: string, limit: number = 50) {
     // Step 1: Get all team IDs this agent belongs to via agent_teams table
     const teamMemberships = await this.db
@@ -307,18 +254,13 @@ export class DatabaseService {
     const userTeamIds = teamMemberships.map(m => m.teamId);
     console.log(`🔍 [getConversationsByAgentTeams] Agent ${agentId} belongs to teams: [${userTeamIds.join(', ')}]`);
 
-    // Step 2: Build query conditions
+    // Step 2: Build query conditions (team-based only)
     const visibilityConditions = [
-      // Condition 1: Public pool - unassigned conversations (both fields NULL)
-      and(
-        isNull(schema.conversations.assignedTeamId),
-        isNull(schema.conversations.assignedUserId)
-      ),
-      // Condition 2: Personal assignment
-      eq(schema.conversations.assignedUserId, agentId)
+      // Condition 1: Public pool - unassigned conversations
+      isNull(schema.conversations.assignedTeamId)
     ];
 
-    // Condition 3: Team assignments (multi-team support)
+    // Condition 2: Team assignments (multi-team support)
     if (userTeamIds.length > 0) {
       visibilityConditions.push(
         inArray(schema.conversations.assignedTeamId, userTeamIds)
@@ -332,10 +274,10 @@ export class DatabaseService {
     }
 
     // Step 4: Execute query with LEFT JOINs for enriched data
+    // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
-      .leftJoin(schema.agents, eq(schema.conversations.assignedUserId, schema.agents.id))
       .where(
         allConditions.length > 0
           ? and(or(...visibilityConditions), ...allConditions)
@@ -346,22 +288,14 @@ export class DatabaseService {
 
     console.log(`📋 [getConversationsByAgentTeams] Found ${results.length} conversations for agent ${agentId}`);
 
-    // Enrich conversations with team and agent data
+    // Enrich conversations with team data
+    // Note: assignedAgent removed - only team-based assignment is supported now
     return results.map(result => ({
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
-      } : null,
-      assignedAgent: result.agents ? {
-        id: result.agents.id,
-        email: result.agents.email,
-        name: result.agents.displayName,
-        displayName: result.agents.displayName,
-        role: result.agents.role,
-        isActive: result.agents.isActive,
-        lastActive: result.agents.lastActive
       } : null
     }));
   }
@@ -385,8 +319,8 @@ export class DatabaseService {
         updatedConversation: conversation[0] ? {
           id: conversation[0].id,
           status: conversation[0].status,
-          assignedTeamId: conversation[0].assignedTeamId,
-          assignedUserId: conversation[0].assignedUserId
+          assignedTeamId: conversation[0].assignedTeamId
+          // Note: assignedUserId removed - only team-based assignment is supported now
         } : null
       });
 
@@ -495,27 +429,44 @@ export class DatabaseService {
     return await this.kv.getCache(`agent:${agentId}:status`);
   }
 
+  /**
+   * Get count of active conversations for an agent's team
+   * @deprecated Individual assignment (assignedUserId) is no longer supported.
+   * This now counts conversations assigned to the agent's team.
+   */
   async getActiveConversationCount(agentId: string) {
+    // Note: Individual assignment (assignedUserId) removed - count by team assignment instead
+    // First get the agent's team
+    const agent = await this.db.select({ teamId: schema.agents.teamId })
+      .from(schema.agents)
+      .where(eq(schema.agents.id, agentId))
+      .get();
+
+    if (!agent?.teamId) {
+      return 0;
+    }
+
     const conversations = await this.db.select().from(schema.conversations)
       .where(and(
-        eq(schema.conversations.assignedUserId, agentId.toString()),
+        eq(schema.conversations.assignedTeamId, agent.teamId),
         or(
           eq(schema.conversations.status, 'pending'),
           eq(schema.conversations.status, 'in-progress')
         )
       ));
-    
+
     return conversations.length;
   }
 
   // Batch operations with cache invalidation
-  async batchUpdateConversationStatus(conversationIds: string[], status: string, assignedUserId?: string) {
-    const updates = conversationIds.map(id => 
+  // Note: Individual assignment (assignedUserId) removed - use assignedTeamId instead
+  async batchUpdateConversationStatus(conversationIds: string[], status: string, assignedTeamId?: number) {
+    const updates = conversationIds.map(id =>
       this.db.update(schema.conversations)
-        .set({ 
-          status, 
-          assignedUserId: assignedUserId || null,
-          updatedAt: new Date().toISOString() 
+        .set({
+          status,
+          assignedTeamId: assignedTeamId || null,
+          updatedAt: new Date().toISOString()
         })
         .where(eq(schema.conversations.id, id))
     );
@@ -523,7 +474,7 @@ export class DatabaseService {
     await Promise.all(updates);
 
     // Batch cache invalidation
-    const cacheInvalidations = conversationIds.map(id => 
+    const cacheInvalidations = conversationIds.map(id =>
       this.kv.deleteCache(`conversation:${id}`)
     );
     await Promise.all(cacheInvalidations);
@@ -660,6 +611,7 @@ export class DatabaseService {
   }
 
   // Permission validation methods
+  // Note: Individual assignment (assignedUserId) removed - only team-based access control
   async canAgentAccessConversation(agent: schema.Agent, conversationId: string): Promise<boolean> {
     const conversation = await this.getConversationById(conversationId);
     if (!conversation) {
@@ -671,19 +623,14 @@ export class DatabaseService {
       return true;
     }
 
-    // For unassigned conversations (no assignedTeamId and no assignedUserId): all agents can see them (public pool)
-    if (!conversation.assignedTeamId && !conversation.assignedUserId) {
-      return true;
-    }
-
-    // If assigned to this specific user, allow access
-    if (conversation.assignedUserId === agent.id) {
+    // For unassigned conversations (no assignedTeamId): all agents can see them (public pool)
+    if (!conversation.assignedTeamId) {
       return true;
     }
 
     // For team-assigned conversations: check if agent belongs to that team via agent_teams table
     if (conversation.assignedTeamId) {
-      // 🆕 Query agent_teams table for multi-team membership check
+      // Query agent_teams table for multi-team membership check
       const membership = await this.db
         .select({ id: schema.agentTeams.id })
         .from(schema.agentTeams)

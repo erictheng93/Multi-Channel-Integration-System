@@ -117,35 +117,35 @@ export class PermissionService {
       return false;
     }
 
-    // 只能操作指派給自己的對話
+    // 只能操作指派給自己團隊的對話
+    // Note: Individual assignment (assignedUserId) removed - use team-based access control instead
     if (conditions.assigned) {
       if (resource === 'conversation' && context && (context as any).resourceId && db) {
-        // 查詢對話的assignedUserId
+        // 查詢對話的 assignedTeamId
         try {
           const drizzleDb = createDbClient(db);
           const conversation = await drizzleDb
-            .select({ assignedUserId: conversations.assignedUserId })
+            .select({ assignedTeamId: conversations.assignedTeamId })
             .from(conversations)
             .where(eq(conversations.id, (context as any).resourceId))
             .get();
-          
-          console.log(`🔍 Conversation assignment check - ConversationId: ${(context as any).resourceId}, AssignedUserId: ${conversation?.assignedUserId}, UserId: ${user.id}`);
-          
-          // 如果對話未指派給任何人，允許訪問
-          if (!conversation || !conversation.assignedUserId) {
+
+          console.log(`🔍 Conversation team assignment check - ConversationId: ${(context as any).resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.teamId}`);
+
+          // 如果對話未指派給任何團隊，允許訪問
+          if (!conversation || !conversation.assignedTeamId) {
             return true;
           }
-          
-          // 檢查是否指派給當前用戶
-          const userIdStr = typeof user.id === 'string' ? user.id : user.id.toString();
-          return conversation.assignedUserId === userIdStr;
+
+          // 檢查是否指派給用戶的團隊
+          return conversation.assignedTeamId === user.teamId;
         } catch (error) {
-          console.error('Failed to check conversation assignment:', error);
+          console.error('Failed to check conversation team assignment:', error);
           return false;
         }
       } else {
-        // 對於非對話資源，直接檢查assignedUserId
-        return (context as any).assignedUserId === user.id;
+        // 對於非對話資源，檢查 teamId
+        return (context as any).teamId === user.teamId;
       }
     }
 
@@ -285,17 +285,13 @@ export class PermissionService {
         console.log(`🔍 Agent ${userIdStr} belongs to teams: [${userTeamIds.join(', ')}]`);
 
         // 建立查詢條件
+        // Note: Individual assignment (assignedUserId) removed - only team-based access control
         const conditions = [
-          // 條件1: 未指派 (搶單池) - 兩個欄位都必須是 NULL，所有客服都可見
-          and(
-            isNull(conversations.assignedTeamId),
-            isNull(conversations.assignedUserId)
-          ),
-          // 條件2: 指派給我個人
-          eq(conversations.assignedUserId, userIdStr)
+          // 條件1: 未指派 (搶單池) - 所有客服都可見
+          isNull(conversations.assignedTeamId)
         ];
 
-        // 條件3: 指派給我所屬的任一團隊（多團隊支援）
+        // 條件2: 指派給我所屬的任一團隊（多團隊支援）
         if (userTeamIds.length > 0) {
           conditions.push(
             inArray(conversations.assignedTeamId, userTeamIds)
