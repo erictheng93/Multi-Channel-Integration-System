@@ -65,21 +65,19 @@
         </select>
       </div>
 
-      <!-- 指派状态筛选 -->
+      <!-- 團隊指派筛选 -->
+      <!-- Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now -->
       <div class="flex flex-col gap-1 md:w-full">
-        <label class="text-xs font-medium text-gray-700 uppercase tracking-wider">指派狀態</label>
+        <label class="text-xs font-medium text-gray-700 uppercase tracking-wider">團隊指派</label>
         <select
-          :value="filters.assignedTo"
+          :value="filters.teamId || ''"
           class="form-select"
-          @change="onFilterChange('assignedTo', ($event.target as HTMLSelectElement).value)"
+          @change="onFilterChange('teamId', ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : undefined)"
         >
           <option value="">
             全部
           </option>
-          <option value="me">
-            指派給我
-          </option>
-          <option value="unassigned">
+          <option value="0">
             未指派
           </option>
         </select>
@@ -197,7 +195,7 @@ const props = withDefaults(defineProps<ConversationFiltersProps>(), {
 })
 
 const emit = defineEmits<{
-  'update:filter': [key: keyof ConversationFilters, value: string | undefined]
+  'update:filter': [key: keyof ConversationFilters, value: string | number | undefined]
   'update:tag-filter': [tagIds: number[]]
   'toggle:tag': [tagId: number]
   'clear:tags': []
@@ -212,7 +210,7 @@ const selectedTagIds = computed(() => props.filters.tagIds || [])
 /**
  * 处理筛选变化
  */
-function onFilterChange(key: keyof ConversationFilters, value: string) {
+function onFilterChange(key: keyof ConversationFilters, value: string | number | undefined) {
   emit('update:filter', key, value || undefined)
 }
 

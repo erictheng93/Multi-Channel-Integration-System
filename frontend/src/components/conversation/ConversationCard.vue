@@ -166,7 +166,8 @@ const formattedUnreadCount = computed(() => {
 })
 
 const effectiveStatus = computed(() => {
-  if (props.conversation.assignedTeam || props.conversation.assignedAgent) {
+  // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
+  if (props.conversation.assignedTeam || props.conversation.assignedTeamId) {
     return 'assigned'
   }
   return props.conversation.status
@@ -210,9 +211,7 @@ const lastMessageText = computed(() => {
 })
 
 const assignedToDisplay = computed(() => {
-  if (props.conversation.assignedAgent?.name) {
-    return props.conversation.assignedAgent.name
-  }
+  // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
   if (props.conversation.assignedTeam?.name) {
     return props.conversation.assignedTeam.name
   }

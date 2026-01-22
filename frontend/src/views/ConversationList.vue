@@ -196,8 +196,9 @@ const isSyncing = computed(() => conversationsStore.syncStatus === 'connecting' 
 /**
  * 处理筛选更新
  */
-function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | undefined) {
-  controller.filters.updateFilter(key, value)
+function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | number | undefined) {
+  // Type assertion needed because child component emits simplified types
+  controller.filters.updateFilter(key, value as ConversationFiltersType[typeof key])
 }
 
 /**

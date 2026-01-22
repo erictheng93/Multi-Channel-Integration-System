@@ -69,11 +69,12 @@
           v-else
           class="max-h-[200px] overflow-y-auto"
         >
+          <!-- Note: Individual assignment removed - button now assigns to team -->
           <button
             v-for="member in teamMembers"
             :key="member.id"
             class="team-member-item"
-            :disabled="isAssigning || member.id === conversation.assignedAgentId"
+            :disabled="isAssigning"
             @click="handleAssignToMember(member)"
           >
             <div class="member-avatar">
@@ -87,24 +88,19 @@
                 {{ getRoleDisplayName(member.role) }}
               </div>
             </div>
-            <div
-              v-if="member.id === conversation.assignedAgentId"
-              class="text-green-600 flex-shrink-0"
-            >
-              <CheckIcon />
-            </div>
           </button>
         </div>
       </div>
     </div>
 
     <!-- 已指派狀態顯示 -->
+    <!-- Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now -->
     <div
-      v-if="conversation.status === CONVERSATION_STATUS.IN_PROGRESS && conversation.assignedAgent"
+      v-if="conversation.status === CONVERSATION_STATUS.IN_PROGRESS && conversation.assignedTeam"
       class="flex items-center gap-2 py-2 px-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-xs font-medium"
     >
       <UserCheckIcon class="w-3.5 h-3.5 flex-shrink-0" />
-      <span class="text-xs">{{ conversation.assignedAgent.name }}</span>
+      <span class="text-xs">{{ conversation.assignedTeam.name }}</span>
     </div>
   </div>
 </template>
@@ -122,7 +118,7 @@ import {
   TeamIcon,
   ChevronDownIcon,
   XIcon,
-  CheckIcon,
+  // Note: CheckIcon removed - individual assignment check marks no longer used
   UserCheckIcon
 } from '@/components/icons'
 import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
@@ -176,12 +172,12 @@ const showActions = computed(() => {
 
 const canAssignToMe = computed(() => {
   if (!currentAgent.value) {return false}
-  
-  // 如果已經指派給我，就不顯示「指派給我」按鈕
-  if (props.conversation.assignedAgentId === currentAgent.value.id) {
+
+  // Note: Individual assignment removed - now checks if already assigned to agent's team
+  if (props.conversation.assignedTeamId === currentAgent.value.teamId) {
     return false
   }
-  
+
   // 使用權限服務檢查是否可以指派給自己
   const teamMemberAgent = agentToTeamMember(currentAgent.value)
   return canAssignConversation(teamMemberAgent, props.conversation, currentAgent.value.id)
@@ -200,20 +196,28 @@ const canAssignToOthers = computed(() => {
 const handleAssignToMe = async () => {
   if (!currentAgent.value || isAssigning.value) {return}
 
+  // 使用當前用戶的團隊進行團隊指派
+  const teamId = currentAgent.value.teamId
+  if (!teamId) {
+    emit('error', '您尚未加入任何團隊，無法指派')
+    return
+  }
+
   isAssigning.value = true
   try {
-    const success = await conversationsStore.assignConversation(
+    const success = await conversationsStore.assignConversationToTeam(
       props.conversation.id,
-      currentAgent.value.id
+      teamId,
+      `我的團隊`
     )
-    
+
     if (success) {
-      emit('assigned', props.conversation, currentAgent.value.id)
+      emit('assigned', props.conversation, String(teamId))
     } else {
       emit('error', '指派失敗，請重試')
     }
   } catch (error) {
-    console.error('Quick assign to me failed:', error)
+    console.error('Quick assign to my team failed:', error)
     emit('error', '指派過程中發生錯誤')
   } finally {
     isAssigning.value = false
@@ -221,25 +225,33 @@ const handleAssignToMe = async () => {
 }
 
 const handleAssignToMember = async (member: TeamMember) => {
-  if (isAssigning.value || member.id === props.conversation.assignedAgentId) {
+  // Note: Individual assignment removed - now assigns to member's team
+  if (isAssigning.value) {
+    return
+  }
+
+  const teamId = member.teamId
+  if (!teamId) {
+    emit('error', `${member.name || member.loginId} 尚未加入任何團隊`)
     return
   }
 
   isAssigning.value = true
   try {
-    const success = await conversationsStore.assignConversation(
+    const success = await conversationsStore.assignConversationToTeam(
       props.conversation.id,
-      member.id
+      teamId,
+      `${member.name || member.loginId} 的團隊`
     )
-    
+
     if (success) {
-      emit('assigned', props.conversation, member.id)
+      emit('assigned', props.conversation, String(teamId))
       closeAssignMenu()
     } else {
-      emit('error', `指派給 ${member.name || member.loginId} 失敗`)
+      emit('error', `指派給 ${member.name || member.loginId} 的團隊失敗`)
     }
   } catch (error) {
-    console.error('Quick assign to member failed:', error)
+    console.error('Quick assign to member team failed:', error)
     emit('error', '指派過程中發生錯誤')
   } finally {
     isAssigning.value = false
