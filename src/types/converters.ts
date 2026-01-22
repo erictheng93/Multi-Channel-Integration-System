@@ -26,10 +26,11 @@ export function customerToUser(customer: Customer): User {
 }
 
 // 將資料庫對話記錄轉換為新的 Conversation 型別
+// Note: Individual assignment (assignedUserId, assignedAgent) removed - only team-based assignment is supported now
 export function dbConversationToConversation(
-  dbConv: DbConversation, 
+  dbConv: DbConversation,
   user?: User,
-  agent?: Agent
+  _agent?: Agent // Deprecated - kept for backwards compatibility
 ): Conversation {
   return {
     id: dbConv.id,
@@ -42,12 +43,12 @@ export function dbConversationToConversation(
       avatarUrl: '',
       createdAt: Date.now()
     },
-    assignedTo: dbConv.assignedUserId || '',
-    ...(agent && { assignedAgent: agent }),
-    status: dbConv.status === 'active' ? 'open' : 
+    // Team-based assignment
+    assignedTeamId: dbConv.assignedTeamId ?? undefined,
+    status: dbConv.status === 'active' ? 'open' :
             dbConv.status === 'pending' ? 'assigned' : 'closed',
-    lastMessageAt: dbConv.lastMessageAt ? 
-                   new Date(dbConv.lastMessageAt).getTime() : 
+    lastMessageAt: dbConv.lastMessageAt ?
+                   new Date(dbConv.lastMessageAt).getTime() :
                    new Date(dbConv.createdAt).getTime(),
     unreadCount: 0, // 需要從其他地方計算
     createdAt: new Date(dbConv.createdAt).getTime(),

@@ -52,7 +52,7 @@ export interface ConversationRoomState {
       displayName?: string;
     };
     assignedTeam?: number;
-    assignedAgent?: string;
+    // Note: assignedAgent removed - only team assignment is supported now
     status: 'active' | 'pending' | 'closed';
   };
 }

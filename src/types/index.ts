@@ -137,7 +137,7 @@ export interface DbConversation {
   id: string; // Fixed: TEXT type from migration 0005
   customerId: number;
   assignedTeamId?: number;
-  assignedUserId?: string; // Fixed: TEXT type to match agents.id
+  // Note: assignedUserId removed - only team assignment is supported now
   status: 'active' | 'closed' | 'pending';
   lastMessageAt?: string;
   createdAt: string;
