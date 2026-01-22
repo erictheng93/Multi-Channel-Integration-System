@@ -199,16 +199,6 @@ describe('ConversationDetail Empty State Delay Mechanism', () => {
       wrapper.unmount()
     })
 
-    // Note: This test is skipped due to complexity with fake timers and Vue reactivity.
-    // The underlying mechanism is tested via the integration test with the real component
-    // and by the "should NOT show empty state immediately" test.
-    it.skip('should show empty state after 200ms delay when messages are empty', async () => {
-      // The 200ms delay mechanism is verified through:
-      // 1. Integration test with real ConversationDetail component
-      // 2. Manual testing
-      // The fake timer + Vue reactivity interaction is complex to test in isolation.
-    })
-
     it('should NOT show empty state if messages arrive within 200ms', async () => {
       const wrapper = mount(EmptyStateTestComponent)
 
@@ -241,16 +231,6 @@ describe('ConversationDetail Empty State Delay Mechanism', () => {
       expect(wrapper.find('[data-testid="messages"]').isVisible()).toBe(true)
 
       wrapper.unmount()
-    })
-
-    // Note: This test is skipped due to complexity with fake timers and Vue reactivity.
-    // The mechanism is tested via the "should NOT show empty state if messages arrive within 200ms" test
-    // and the integration test with the real ConversationDetail component.
-    it.skip('should reset isEmptyStateConfirmed when messages arrive after empty state shown', async () => {
-      // The reset mechanism is verified through:
-      // 1. Integration test with real ConversationDetail component
-      // 2. The "should NOT show empty state if messages arrive within 200ms" test
-      // 3. Manual testing
     })
 
     it('should NOT show empty state during initial loading', async () => {
@@ -327,16 +307,6 @@ describe('ConversationDetail Empty State Delay Mechanism', () => {
       wrapper.unmount()
     })
 
-    // Note: This test is skipped due to complexity with fake timers and Vue reactivity.
-    // The debouncing mechanism is verified through:
-    // 1. Integration test with real ConversationDetail component
-    // 2. The "should handle rapid message count changes correctly" test
-    // 3. Manual testing
-    it.skip('should debounce empty state confirmation on rapid empty -> empty changes', async () => {
-      // The debouncing behavior is tested through:
-      // 1. The rapid message count changes test
-      // 2. Integration test with real ConversationDetail component
-    })
   })
 })
 

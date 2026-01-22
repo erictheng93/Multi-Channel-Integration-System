@@ -14,7 +14,7 @@ import type {
   MessageSendResponse,
 } from '../types/conversation-types';
 import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
-import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-service';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 
 export interface MessageServiceInterface {
   sendMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
