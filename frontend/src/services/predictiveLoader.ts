@@ -546,7 +546,8 @@ export class PredictiveLoader {
             delete cleanFilters.platform
           }
           
-          const apiParams: { page: number; pageSize: number; status?: 'open' | 'assigned' | 'closed'; platform?: Platform; assignedTo?: string } = {
+          // Note: Individual assignment (assignedTo) removed - use teamId instead
+          const apiParams: { page: number; pageSize: number; status?: 'open' | 'assigned' | 'closed'; platform?: Platform; teamId?: number } = {
             page: 1,
             pageSize: 20
           }
@@ -559,8 +560,9 @@ export class PredictiveLoader {
             apiParams.platform = cleanFilters.platform
           }
           
-          if (cleanFilters.assignedTo) {
-            apiParams.assignedTo = cleanFilters.assignedTo
+          // Note: Individual assignment (assignedTo) removed - use teamId instead
+          if (cleanFilters.teamId) {
+            apiParams.teamId = cleanFilters.teamId
           }
           const response = await conversationApi.list(apiParams)
           

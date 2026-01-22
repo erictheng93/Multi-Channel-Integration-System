@@ -141,9 +141,10 @@ export class PermissionService {
       return true
     }
 
-    // Agent 只能查看指派給自己的對話
+    // Note: Individual assignment (assignedAgentId) removed - use team-based access control
+    // Agent 只能查看指派給自己團隊的對話
     if (this.hasPermission(user, Permission.VIEW_ASSIGNED_CONVERSATIONS)) {
-      return conversation.assignedAgentId === user.id
+      return conversation.assignedTeamId === user.teamId
     }
 
     return false
@@ -187,8 +188,8 @@ export class PermissionService {
       return false
     }
 
-    // 檢查對話是否已指派（可能指派給團隊或個別客服）
-    const isAssigned = !!(conversation.assignedTeamId || conversation.assignedAgentId)
+    // 檢查對話是否已指派 (only team-based assignment is supported now)
+    const isAssigned = !!conversation.assignedTeamId
     if (!isAssigned) {
       return false
     }
@@ -203,10 +204,9 @@ export class PermissionService {
       return true
     }
 
-    // Note: 'team' role removed - simplified to 2-tier (admin/agent)
-
-    // Agent 可以取消自己的指派
-    if (conversation.assignedAgentId === user.id) {
+    // Note: Individual assignment (assignedAgentId) removed - use team-based access control
+    // Agent 可以取消自己團隊的指派
+    if (user.teamId && conversation.assignedTeamId === user.teamId) {
       return true
     }
 
@@ -228,11 +228,10 @@ export class PermissionService {
         return true
       }
 
-      // Note: 'team' role removed - simplified to 2-tier (admin/agent)
-
-      // Agent 只能關閉指派給自己的對話
+      // Note: Individual assignment (assignedAgentId) removed - use team-based access control
+      // Agent 只能關閉指派給自己團隊的對話
       if (user.role === 'agent') {
-        return conversation.assignedAgentId === user.id
+        return user.teamId ? conversation.assignedTeamId === user.teamId : false
       }
     }
 

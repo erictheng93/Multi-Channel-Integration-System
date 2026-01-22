@@ -46,11 +46,12 @@ export interface ConversationFiltersComposable {
 
 /**
  * 默认筛选条件
+ * Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
  */
 const DEFAULT_FILTERS: ConversationFilters = {
   status: '',
   platform: '',
-  assignedTo: undefined,
+  teamId: undefined,
   tagIds: []
 }
 
@@ -65,11 +66,12 @@ export function useConversationFilters(): ConversationFiltersComposable {
   const selectedTagIds = ref<number[]>([])
 
   // 计算属性：是否有活动的筛选条件
+  // Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
   const hasActiveFilters = computed<boolean>(() => {
     return (
       filters.value.status !== '' ||
       filters.value.platform !== '' ||
-      filters.value.assignedTo !== undefined ||
+      filters.value.teamId !== undefined ||
       (filters.value.tagIds !== undefined && filters.value.tagIds.length > 0)
     )
   })
@@ -156,29 +158,20 @@ export function useConversationFilters(): ConversationFiltersComposable {
 
   /**
    * 获取 API 查询参数
+   * Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
    *
-   * @param {string} currentAgentId - 当前代理 ID（用于 "me" 筛选）
    * @returns {Record<string, unknown>} API 查询参数对象
    *
    * @example
-   * const apiFilters = getApiFilters('agent-001')
-   * // { status: 'open', platform: 'line', assignedTo: 'agent-001' }
+   * const apiFilters = getApiFilters()
+   * // { status: 'open', platform: 'line', teamId: 1 }
    */
-  function getApiFilters(currentAgentId?: string): Record<string, unknown> {
+  function getApiFilters(): Record<string, unknown> {
     const apiFilters: Record<string, unknown> = { ...filters.value }
-
-    // 处理 assignedTo 特殊值
-    if (apiFilters.assignedTo === 'me' && currentAgentId) {
-      apiFilters.assignedTo = currentAgentId
-    } else if (apiFilters.assignedTo === 'unassigned') {
-      apiFilters.assignedTo = undefined
-    } else if (!apiFilters.assignedTo) {
-      delete apiFilters.assignedTo
-    }
 
     // 移除空字符串值
     Object.keys(apiFilters).forEach(key => {
-      if (apiFilters[key] === '') {
+      if (apiFilters[key] === '' || apiFilters[key] === undefined) {
         delete apiFilters[key]
       }
     })
