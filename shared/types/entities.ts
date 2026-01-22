@@ -55,17 +55,15 @@ export interface TeamInfo {
 }
 
 // 對話相關
+// Note: Individual assignment fields (assignedTo, assignedAgent, assignedAgentId, assignedUserId) removed
+// Only team-based assignment is now supported via assignedTeamId and assignedTeam
 export interface Conversation {
   id: EntityId
   userId: EntityId
   user?: User
   customer?: User // 向後兼容別名
-  assignedTo?: EntityId
-  assignedAgent?: Agent
-  assignedAgentId?: EntityId // 向後兼容字段
-  assignedUserId?: EntityId // 🆕 資料庫欄位名稱 (與 assignedAgentId 同義)
-  assignedTeamId?: number // 🆕 團隊指派欄位
-  assignedTeam?: TeamInfo | null // 🆕 團隊資訊 (包含完整資訊)
+  assignedTeamId?: number // 團隊指派欄位
+  assignedTeam?: TeamInfo | null // 團隊資訊 (包含完整資訊)
   status: ConversationStatus
   platform?: Platform // 向後兼容字段
   lastMessageAt: Timestamp
