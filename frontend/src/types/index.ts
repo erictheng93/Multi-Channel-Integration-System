@@ -75,7 +75,8 @@ export interface AppState {
 
 export interface ConversationFilters {
   status?: 'open' | 'assigned' | 'closed' | '' | undefined;
-  assignedTo?: string | undefined;
+  // Note: assignedTo removed - only team-based filtering is supported now
+  teamId?: number | undefined; // 團隊篩選
   platform?: Platform | '' | undefined;
   tagIds?: number[];  // 標籤篩選
 }
