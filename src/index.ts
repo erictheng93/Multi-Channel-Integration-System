@@ -574,10 +574,13 @@ app.get('/api/customer-ws', async (c) => {
     const schema = await import('./db/schema');
     const db = drizzle(c.env.DB, { schema });
 
+    const { and } = await import('drizzle-orm');
+
+    // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
     const conversation = await db.select({
       id: schema.conversations.id,
       customerId: schema.conversations.customerId,
-      assignedUserId: schema.conversations.assignedUserId,
+      assignedTeamId: schema.conversations.assignedTeamId,
     }).from(schema.conversations)
       .where(eq(schema.conversations.id, conversationId))
       .get();
@@ -586,13 +589,30 @@ app.get('/api/customer-ws', async (c) => {
       return c.json({ success: false, error: 'Conversation not found' }, 404);
     }
 
-    // Allow access if user is assigned, is admin, or owns the conversation
+    // Permission check - team-based access control
     const isAdmin = payload.role === 'admin';
-    const isAssigned = conversation.assignedUserId === String(payload.userId);
     const isCustomer = String(conversation.customerId) === String(payload.userId);
 
-    if (!isAdmin && !isAssigned && !isCustomer) {
-      log.warn('Customer WebSocket: Access denied', { userId: payload.userId, conversationId });
+    // Check if conversation is unassigned (public pool - everyone can access)
+    const isUnassigned = !conversation.assignedTeamId;
+
+    // Check if user belongs to the assigned team
+    let isTeamMember = false;
+    if (conversation.assignedTeamId && !isAdmin && !isCustomer) {
+      const membership = await db.select({ id: schema.agentTeams.id })
+        .from(schema.agentTeams)
+        .where(
+          and(
+            eq(schema.agentTeams.agentId, String(payload.userId)),
+            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
+          )
+        )
+        .limit(1);
+      isTeamMember = membership.length > 0;
+    }
+
+    if (!isAdmin && !isCustomer && !isUnassigned && !isTeamMember) {
+      log.warn('Customer WebSocket: Access denied', { userId: payload.userId, conversationId, assignedTeamId: conversation.assignedTeamId });
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 
@@ -671,10 +691,13 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
     const schema = await import('./db/schema');
     const db = drizzle(c.env.DB, { schema });
 
+    const { and } = await import('drizzle-orm');
+
+    // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
     const conversation = await db.select({
       id: schema.conversations.id,
       customerId: schema.conversations.customerId,
-      assignedUserId: schema.conversations.assignedUserId,
+      assignedTeamId: schema.conversations.assignedTeamId,
     }).from(schema.conversations)
       .where(eq(schema.conversations.id, conversationId))
       .get();
@@ -683,13 +706,30 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
       return c.json({ success: false, error: 'Conversation not found' }, 404);
     }
 
-    // Allow access if user is assigned, is admin, or owns the conversation
+    // Permission check - team-based access control
     const isAdmin = payload.role === 'admin';
-    const isAssigned = conversation.assignedUserId === String(payload.userId);
     const isCustomer = String(conversation.customerId) === String(payload.userId);
 
-    if (!isAdmin && !isAssigned && !isCustomer) {
-      log.warn('Customer Messages: Access denied', { userId: payload.userId, conversationId });
+    // Check if conversation is unassigned (public pool - everyone can access)
+    const isUnassigned = !conversation.assignedTeamId;
+
+    // Check if user belongs to the assigned team
+    let isTeamMember = false;
+    if (conversation.assignedTeamId && !isAdmin && !isCustomer) {
+      const membership = await db.select({ id: schema.agentTeams.id })
+        .from(schema.agentTeams)
+        .where(
+          and(
+            eq(schema.agentTeams.agentId, String(payload.userId)),
+            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
+          )
+        )
+        .limit(1);
+      isTeamMember = membership.length > 0;
+    }
+
+    if (!isAdmin && !isCustomer && !isUnassigned && !isTeamMember) {
+      log.warn('Customer Messages: Access denied', { userId: payload.userId, conversationId, assignedTeamId: conversation.assignedTeamId });
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 
@@ -763,15 +803,16 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
     const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
 
     // Validate user has access to this conversation
+    // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
     const { drizzle } = await import('drizzle-orm/d1');
-    const { eq } = await import('drizzle-orm');
+    const { eq, and } = await import('drizzle-orm');
     const schema = await import('./db/schema');
     const db = drizzle(c.env.DB, { schema });
 
     const conversation = await db.select({
       id: schema.conversations.id,
       customerId: schema.conversations.customerId,
-      assignedUserId: schema.conversations.assignedUserId,
+      assignedTeamId: schema.conversations.assignedTeamId,
     }).from(schema.conversations)
       .where(eq(schema.conversations.id, conversationId))
       .get();
@@ -780,13 +821,28 @@ app.post('/api/customer-conversations/:id/upload', async (c) => {
       return c.json({ success: false, error: 'Conversation not found' }, 404);
     }
 
-    // Allow access if user is assigned, is admin, or owns the conversation
+    // Permission check - team-based access control
     const isAdmin = payload.role === 'admin';
-    const isAssigned = conversation.assignedUserId === String(payload.userId);
     const isCustomer = String(conversation.customerId) === String(payload.userId);
+    const isUnassigned = !conversation.assignedTeamId;
 
-    if (!isAdmin && !isAssigned && !isCustomer) {
-      log.warn('Customer Upload: Access denied', { userId: payload.userId, conversationId });
+    // Check if user belongs to the assigned team
+    let isTeamMember = false;
+    if (conversation.assignedTeamId && !isAdmin && !isCustomer) {
+      const membership = await db.select({ id: schema.agentTeams.id })
+        .from(schema.agentTeams)
+        .where(
+          and(
+            eq(schema.agentTeams.agentId, String(payload.userId)),
+            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
+          )
+        )
+        .limit(1);
+      isTeamMember = membership.length > 0;
+    }
+
+    if (!isAdmin && !isCustomer && !isUnassigned && !isTeamMember) {
+      log.warn('Customer Upload: Access denied', { userId: payload.userId, conversationId, assignedTeamId: conversation.assignedTeamId });
       return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
     }
 

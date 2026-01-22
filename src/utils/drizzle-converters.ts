@@ -47,13 +47,13 @@ export function convertCustomer(drizzleCustomer: DrizzleCustomer): Customer {
 
 /**
  * 轉換 Drizzle Conversation 到業務邏輯 DbConversation
+ * Note: assignedUserId removed - only team assignment is supported now
  */
 export function convertConversation(drizzleConversation: DrizzleConversation): DbConversation {
   return {
     id: drizzleConversation.id,
     customerId: drizzleConversation.customerId,
     assignedTeamId: drizzleConversation.assignedTeamId ?? 0,
-    assignedUserId: drizzleConversation.assignedUserId ?? '',
     status: drizzleConversation.status as 'active' | 'closed' | 'pending',
     lastMessageAt: drizzleConversation.lastMessageAt ?? '',
     createdAt: drizzleConversation.createdAt || new Date().toISOString(),
@@ -190,14 +190,13 @@ export function prepareConversationInsert(conversationData: {
   customerId: number;
   status?: string;
   assignedTeamId?: number;
-  assignedUserId?: string;
+  // Note: assignedUserId removed - only team assignment is supported now
 }): any {
   const timestamp = new Date().toISOString();
   return {
     id: conversationData.id,
     customerId: conversationData.customerId,
     assignedTeamId: conversationData.assignedTeamId || null,
-    assignedUserId: conversationData.assignedUserId || null,
     status: conversationData.status || 'active',
     lastMessageAt: timestamp,
     createdAt: timestamp,

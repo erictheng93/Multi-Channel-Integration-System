@@ -87,6 +87,9 @@ async function broadcastNotificationViaWebSocket(
 /**
  * 新訊息通知觸發器
  * 當客戶發送新訊息時，通知負責的客服
+ *
+ * @deprecated Individual assignment is no longer supported. Use team-based notifications via WebSocket instead.
+ * This function is kept for backward compatibility but should not be called from main code paths.
  */
 export async function triggerNewMessageNotification(
   env: NotificationTriggerEnv,
@@ -142,6 +145,9 @@ export async function triggerNewMessageNotification(
 /**
  * 對話指派通知觸發器
  * 當對話被指派給客服時通知該客服
+ *
+ * @deprecated Individual assignment is no longer supported. Use team-based notifications via WebSocket instead.
+ * This function is kept for backward compatibility but should not be called from main code paths.
  */
 export async function triggerConversationAssignedNotification(
   env: NotificationTriggerEnv,
@@ -198,6 +204,9 @@ export async function triggerConversationAssignedNotification(
 /**
  * 對話轉移通知觸發器
  * 當對話被轉移時通知目標客服
+ *
+ * @deprecated Individual transfer notifications are no longer supported. Use team-based notifications via WebSocket instead.
+ * This function is kept for backward compatibility but should not be called from main code paths.
  */
 export async function triggerConversationTransferredNotification(
   env: NotificationTriggerEnv,
@@ -344,6 +353,9 @@ export async function triggerPriorityChangedNotification(
 /**
  * 客戶回覆通知觸發器
  * 當客戶回覆時通知負責的客服 (用於待處理對話)
+ *
+ * @deprecated Individual assignment is no longer supported. Use team-based notifications via WebSocket instead.
+ * This function is kept for backward compatibility but should not be called from main code paths.
  */
 export async function triggerCustomerRespondedNotification(
   env: NotificationTriggerEnv,

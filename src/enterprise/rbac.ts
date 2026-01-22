@@ -140,9 +140,9 @@ export class EnterpriseRBACManager {
         const { conversations } = await import('../db/schema');
         const db = drizzle(this.db);
         
+        // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
         const conversation = await db
           .select({
-            assignedUserId: conversations.assignedUserId,
             assignedTeamId: conversations.assignedTeamId
           })
           .from(conversations)
@@ -159,11 +159,13 @@ export class EnterpriseRBACManager {
           return { granted: true };
         }
 
-        // Agent 只能存取指派給自己的對話
-        if (userRole === ROLES.AGENT && conversation.assignedUserId === String(user.id)) {
+        // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
+        // Agent 只能存取同團隊的對話
+        if (userRole === ROLES.AGENT && user.teamId &&
+            conversation.assignedTeamId === user.teamId) {
           return { granted: true };
         }
-        
+
         return { granted: false, reason: 'No access to this conversation' };
       } catch (error) {
         console.error('Resource access check error:', error);

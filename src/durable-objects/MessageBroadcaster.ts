@@ -471,10 +471,32 @@ export class MessageBroadcaster implements DurableObject {
       const teamMembers = await this.getTeamMembers(teamId);
       let totalDelivered = 0;
 
+      // 🔍 詳細日誌：追蹤團隊廣播 (Enhanced for duplicate event debugging)
+      const eventAction = events[0]?.data?.action;
+      const eventId = events[0]?.id;
+      const conversationId = events[0]?.conversationId;
+      console.log('📨 [MessageBroadcaster] ===== TEAM DELIVERY START =====');
+      console.log('📨 [MessageBroadcaster] Delivering to team', {
+        teamId,
+        memberCount: teamMembers.length,
+        memberIds: teamMembers,
+        eventId,
+        eventAction,
+        eventType: events[0]?.type,
+        conversationId,
+        timestamp: new Date().toISOString()
+      });
+
       // Deliver to each team member
       const deliveryPromises = teamMembers.map(async (userId: string) => {
         try {
           const delivered = await this.deliverToUser(userId, events);
+          console.log('📬 [MessageBroadcaster] Delivered to user', {
+            userId,
+            teamId,
+            eventAction,
+            delivered
+          });
           return delivered;
         } catch (error) {
           log.error('Team member delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
