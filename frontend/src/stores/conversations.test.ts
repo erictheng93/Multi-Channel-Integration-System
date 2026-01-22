@@ -165,31 +165,40 @@ describe('Conversations Store', () => {
   })
 
   describe('Conversation Actions', () => {
-    it('should assign conversation successfully', async () => {
-      const mockResponse = { success: true }
+    // Note: Individual assignment (assignConversation) is deprecated
+    // Testing team-based assignment instead
+    it('should assign conversation to team successfully', async () => {
+      const teamId = 1
       const mockConversationData = {
         success: true,
         data: {
           id: 'conv-1',
           userId: '1',
           status: 'assigned' as const,
-          assignedAgentId: 'agent-2',
+          assignedTeamId: teamId,
           platform: 'line' as const,
           createdAt: Date.now(),
           lastMessageAt: Date.now()
         }
       }
-      mockConversationApi.assignConversation.mockResolvedValue(mockResponse)
-      mockConversationApi.getConversation.mockResolvedValue(mockConversationData)
-      
+      mockConversationApi.assignConversation.mockResolvedValue(mockConversationData)
+
       const { useConversationsStore } = await import('./conversations')
       const store = useConversationsStore()
-      
-      const result = await store.assignConversation('conv-1', 'agent-2')
-      
+
+      const result = await store.assignConversationToTeam('conv-1', teamId, 'Test Team')
+
       expect(result).toBe(true)
-      expect(mockConversationApi.assignConversation).toHaveBeenCalledWith('conv-1', 'agent-2')
-      expect(mockConversationApi.getConversation).toHaveBeenCalledWith('conv-1')
+      expect(mockConversationApi.assignConversation).toHaveBeenCalledWith('conv-1', { teamId })
+    })
+
+    it('should return false for deprecated individual assignment', async () => {
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      const result = await store.assignConversation('conv-1', 'agent-2')
+
+      expect(result).toBe(false)
     })
 
     it('should close conversation successfully', async () => {

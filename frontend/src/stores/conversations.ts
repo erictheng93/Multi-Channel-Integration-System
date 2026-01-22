@@ -50,10 +50,11 @@ export const useConversationsStore = defineStore('conversations', () => {
   })
 
   // Filters and Pagination
+  // Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now
   const filters = ref<ConversationFilters>({
     status: undefined,
     platform: undefined,
-    assignedTo: undefined
+    teamId: undefined
   })
   const pagination = ref({
     page: 1,
@@ -82,10 +83,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     conversations.value.filter(c => c.unreadCount && c.unreadCount > 0)
   )
 
-  const assignedToMeConversations = computed(() => {
-    const authStore = useAuthStore()
-    return conversations.value.filter(c => c.assignedAgentId === authStore.currentAgent?.id)
-  })
+  // Note: assignedToMeConversations removed - individual assignment is no longer supported
+  // Use team-based filtering instead via assignedTeamId
   
   // Enhanced computed properties for loading states
   const isLoading = computed(() => loading.value || refreshing.value || updating.value)
@@ -112,10 +111,10 @@ export const useConversationsStore = defineStore('conversations', () => {
     if (!existing || !updated) {return true}
 
     // Compare key fields that would affect UI rendering
-    // 🆕 Added assignedAgent and assignedTeam for real-time UI updates
+    // Note: assignedAgentId/assignedAgent removed - only team assignment is supported now
     const keyFields = [
       'id', 'status', 'unreadCount', 'lastMessageAt', 'lastMessage', 'priority',
-      'assignedAgentId', 'assignedTeamId', 'assignedAgent', 'assignedTeam', 'customerName', 'platform'
+      'assignedTeamId', 'assignedTeam', 'customerName', 'platform'
     ] as const
     
     return keyFields.some(field => {
@@ -314,11 +313,11 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   /**
    * 更新對話狀態（指派、狀態變更等）
-   * 🆕 Extended to support assignedAgent and assignedTeam objects for real-time UI updates
+   * Note: Individual assignment (assignedAgentId/assignedAgent) removed - only team assignment is supported now
    */
   const updateConversationStatus = (
     conversationId: string,
-    updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'unreadCount' | 'assignedAgent' | 'assignedTeam'>>
+    updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam'>>
   ) => {
     const index = conversations.value.findIndex(c => c.id === conversationId)
 
@@ -426,10 +425,11 @@ export const useConversationsStore = defineStore('conversations', () => {
     try {
       console.log(`🌐 [ConversationsStore] ${wasFromCache ? 'Background' : 'Initial'} API call`)
       
+      // Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
       const cleanFilters: Record<string, unknown> = {}
       if (filters.status) {cleanFilters.status = filters.status}
       if (filters.platform) {cleanFilters.platform = filters.platform}
-      if (filters.assignedTo) {cleanFilters.assignedTo = filters.assignedTo}
+      if (filters.teamId) {cleanFilters.teamId = filters.teamId}
 
       const response = await conversationApi.list({
         page,
@@ -499,8 +499,9 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     try {
       await cacheManager.prefetch(`conversations:page:${nextPage}`, async () => {
+        // Filter out empty values (handles both string '' and undefined/null)
         const cleanFilters = Object.fromEntries(
-          Object.entries(filters.value).filter(([_key, v]) => v && v !== '')
+          Object.entries(filters.value).filter(([_key, v]) => v !== undefined && v !== null && v !== '')
         )
         const response = await conversationApi.list({
           page: nextPage,
@@ -600,10 +601,11 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     try {
       // Clean undefined values for API call
+      // Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
       const cleanFilters: Record<string, unknown> = {}
       if (filters.value.status) {cleanFilters.status = filters.value.status}
       if (filters.value.platform) {cleanFilters.platform = filters.value.platform}
-      if (filters.value.assignedTo) {cleanFilters.assignedTo = filters.value.assignedTo}
+      if (filters.value.teamId) {cleanFilters.teamId = filters.value.teamId}
 
       const response = await conversationApi.list({
         page,
@@ -854,61 +856,14 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
-  const assignConversation = async (conversationId: string, agentId: string) => {
-    if (!conversationId || !agentId) {return false}
-
-    // Optimistic update
-    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
-    let originalConversation: Conversation | null = null
-
-    if (conversationIndex !== -1) {
-      const current = conversations.value[conversationIndex]
-      if (current) {
-        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
-        const updatedConversation: Conversation = {
-          ...current,
-          id: current.id,
-          userId: current.userId,
-          customer: current.customer,
-          assignedTo: agentId,
-          status: 'assigned' as const
-        }
-        conversations.value[conversationIndex] = updatedConversation
-      }
-    }
-
-    if (currentConversation.value && currentConversation.value.id === conversationId) {
-      currentConversation.value = {
-        ...currentConversation.value,
-        assignedAgentId: agentId,
-        status: 'assigned' as const
-      }
-    }
-
-    error.value = null
-
-    try {
-      const response = await conversationApi.assignConversation(conversationId, agentId)
-      if (response.success) {
-        // Refresh the specific conversation to get updated data
-        await fetchConversation(conversationId)
-        return true
-      } else {
-        // Revert optimistic update
-        if (originalConversation && conversationIndex !== -1) {
-          conversations.value[conversationIndex] = originalConversation
-        }
-        handleError(response.error, '對話指派失敗')
-        return false
-      }
-    } catch (err) {
-      // Revert optimistic update
-      if (originalConversation && conversationIndex !== -1) {
-        conversations.value[conversationIndex] = originalConversation
-      }
-      handleError(err, '網路錯誤，對話指派失敗')
-      return false
-    }
+  /**
+   * @deprecated Individual assignment is no longer supported. Use assignConversationToTeam instead.
+   * This function is kept for backward compatibility but will throw an error.
+   */
+  const assignConversation = async (_conversationId: string, _agentId: string) => {
+    console.error('❌ [ConversationsStore] Individual assignment (assignConversation) is deprecated. Use assignConversationToTeam instead.')
+    handleError(new Error('Individual assignment is no longer supported'), '請使用團隊指派功能')
+    return false
   }
 
   // 🆕 指派對話給團隊（僅管理員）
@@ -926,21 +881,19 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (current) {
         originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
         // 🔧 樂觀更新：立即更新UI顯示的所有字段（包括team對象）
+        // Note: Individual assignment fields removed - only team assignment is supported now
         const updatedConversation: Conversation = {
           ...current,
           id: current.id,
           userId: current.userId,
           customer: current.customer,
           status: 'assigned' as const,
-          assignedTeamId: teamId, // ✨ 新增：設置團隊ID
-          assignedTeam: teamName ? { // ✨ 新增：設置團隊對象（臨時）
+          assignedTeamId: teamId,
+          assignedTeam: teamName ? {
             id: teamId,
             name: teamName,
             description: null
-          } : undefined,
-          assignedTo: undefined, // 清除個人指派
-          assignedAgentId: undefined, // 清除代理指派
-          assignedAgent: undefined // 清除代理資訊
+          } : undefined
         }
         conversations.value[conversationIndex] = updatedConversation
         console.log(`⚡ [ConversationsStore] Optimistic update applied to list (team: ${teamName})`)
@@ -948,19 +901,17 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
 
     // 同時更新 currentConversation
+    // Note: Individual assignment fields removed - only team assignment is supported now
     if (currentConversation.value && currentConversation.value.id === conversationId) {
       currentConversation.value = {
         ...currentConversation.value,
         status: 'assigned' as const,
-        assignedTeamId: teamId, // ✨ 新增：設置團隊ID
-        assignedTeam: teamName ? { // ✨ 新增：設置團隊對象（臨時）
+        assignedTeamId: teamId,
+        assignedTeam: teamName ? {
           id: teamId,
           name: teamName,
           description: null
-        } : undefined,
-        assignedTo: undefined,
-        assignedAgentId: undefined,
-        assignedAgent: undefined
+        } : undefined
       }
       console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (team: ${teamName})`)
     }
@@ -1055,6 +1006,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (current) {
         originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
         // 🔧 樂觀更新：立即清除指派資訊
+        // Note: Individual assignment fields removed - only team assignment is supported now
         const updatedConversation: Conversation = {
           ...current,
           id: current.id,
@@ -1062,10 +1014,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           customer: current.customer,
           status: CONVERSATION_STATUS.PENDING,
           assignedTeamId: undefined,
-          assignedTeam: undefined,
-          assignedTo: undefined,
-          assignedAgentId: undefined,
-          assignedAgent: undefined
+          assignedTeam: undefined
         }
         conversations.value[conversationIndex] = updatedConversation
         console.log(`⚡ [ConversationsStore] Optimistic update applied to list (unassigned)`)
@@ -1073,15 +1022,13 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
 
     // 同時更新 currentConversation
+    // Note: Individual assignment fields removed - only team assignment is supported now
     if (currentConversation.value && currentConversation.value.id === conversationId) {
       currentConversation.value = {
         ...currentConversation.value,
         status: CONVERSATION_STATUS.PENDING,
         assignedTeamId: undefined,
-        assignedTeam: undefined,
-        assignedTo: undefined,
-        assignedAgentId: undefined,
-        assignedAgent: undefined
+        assignedTeam: undefined
       }
       console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (unassigned)`)
     }
@@ -1096,11 +1043,11 @@ export const useConversationsStore = defineStore('conversations', () => {
         // 使用 API 返回的完整對話對象更新
         if (response.data) {
           const updatedConv = response.data
+          // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported
           console.log(`📥 [ConversationsStore] Received updated conversation from unassign API:`, {
             id: updatedConv.id,
             status: updatedConv.status,
-            assignedTeamId: updatedConv.assignedTeamId,
-            assignedUserId: updatedConv.assignedUserId
+            assignedTeamId: updatedConv.assignedTeamId
           })
 
           // 更新列表中的對話
@@ -1537,28 +1484,14 @@ export const useConversationsStore = defineStore('conversations', () => {
       case 'conversation_status_changed':
       case 'conversation_assigned': {
         // 對話狀態更新（一般指派/更新）
+        // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
         if (conversationId) {
           const status = data?.status as string | undefined
-          const assignedAgentId = (data?.assignedUserId || data?.assignedAgentId) as string | undefined
           const assignedTeamId = data?.assignedTeamId as number | undefined
-          // 🆕 Extract agent/team names for real-time UI updates
-          const assignedAgentName = data?.assignedAgentName as string | undefined
           const assignedTeamName = data?.assignedTeamName as string | undefined
 
-          const updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'assignedAgent' | 'assignedTeam'>> = {}
+          const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
           if (status) updates.status = status as Conversation['status']
-          if (assignedAgentId) {
-            updates.assignedAgentId = assignedAgentId
-            updates.assignedAgent = {
-              id: assignedAgentId,
-              name: assignedAgentName || assignedAgentId,
-              email: '',
-              displayName: assignedAgentName || assignedAgentId,
-              role: 'agent' as const,
-              isActive: true,
-              createdAt: Date.now()
-            }
-          }
           if (assignedTeamId !== undefined) {
             updates.assignedTeamId = assignedTeamId
             if (assignedTeamId) {
@@ -1575,7 +1508,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
-            console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`, { assignedAgentName, assignedTeamName })
+            console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
           } else {
             pollConversations()
           }
@@ -1586,7 +1519,8 @@ export const useConversationsStore = defineStore('conversations', () => {
       }
 
       case 'conversation_unassigned': {
-        // 🆕 對話取消指派 - 清除團隊和客服指派
+        // 🆕 對話取消指派 - 清除團隊指派
+        // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
         if (conversationId) {
           const previousTeamId = data?.previousTeamId as number | undefined
           const previousTeamName = data?.previousTeamName as string | undefined
@@ -1597,16 +1531,14 @@ export const useConversationsStore = defineStore('conversations', () => {
             previousTeamName
           })
 
-          // 更新對話狀態：清除指派信息
+          // 更新對話狀態：清除團隊指派信息
           updateConversationStatus(conversationId, {
             status: 'active',
             assignedTeamId: undefined,
-            assignedTeam: undefined,
-            assignedAgentId: undefined,
-            assignedAgent: undefined
+            assignedTeam: undefined
           })
           lastUpdateTime.value = new Date()
-          console.log(`✅ [ConversationsStore] Cleared assignment for ${conversationId}`)
+          console.log(`✅ [ConversationsStore] Cleared team assignment for ${conversationId}`)
         } else {
           pollConversations()
         }
@@ -1623,8 +1555,32 @@ export const useConversationsStore = defineStore('conversations', () => {
           data
         })
 
+        // 🔍 DEBUG: 詳細記錄完整的 data 對象
+        console.log('🔍 [DEBUG] Full event data:', JSON.stringify(data, null, 2))
+
         if (action === 'removed') {
           // ❌ 從當前團隊移除：對話被轉移到其他團隊
+          // 🔒 安全檢查：只有當用戶屬於原團隊時才處理移除事件
+          // 這可以防止用戶收到不屬於自己團隊的移除事件
+          const fromTeamId = data?.fromTeamId as number | undefined
+          const authStore = useAuthStore()
+          const userTeamIds = authStore.allowedTeamIds || []
+          const isAdmin = authStore.currentAgent?.role === 'admin'
+
+          // 檢查用戶是否屬於原團隊（管理員可以看到所有團隊的事件）
+          const shouldProcessRemoval = isAdmin ||
+            (fromTeamId !== undefined && userTeamIds.includes(fromTeamId))
+
+          if (!shouldProcessRemoval) {
+            console.log(`🔒 [ConversationsStore] Ignoring removed event - user not in source team`, {
+              conversationId,
+              fromTeamId,
+              userTeamIds,
+              isAdmin
+            })
+            break // 忽略此事件
+          }
+
           // 從列表中移除該對話
           if (conversationId) {
             const index = conversations.value.findIndex(c => c.id === conversationId)
@@ -1645,6 +1601,26 @@ export const useConversationsStore = defineStore('conversations', () => {
           }
         } else if (action === 'assigned') {
           // ✅ 新團隊接收：對話被轉移到當前團隊
+          // 🔒 安全檢查：只有當用戶屬於目標團隊時才處理指派事件
+          const toTeamId = data?.toTeamId as number | undefined
+          const authStore = useAuthStore()
+          const userTeamIds = authStore.allowedTeamIds || []
+          const isAdmin = authStore.currentAgent?.role === 'admin'
+
+          // 檢查用戶是否屬於目標團隊（管理員可以看到所有團隊的事件）
+          const shouldProcessAssignment = isAdmin ||
+            (toTeamId !== undefined && userTeamIds.includes(toTeamId))
+
+          if (!shouldProcessAssignment) {
+            console.log(`🔒 [ConversationsStore] Ignoring assigned event - user not in target team`, {
+              conversationId,
+              toTeamId,
+              userTeamIds,
+              isAdmin
+            })
+            break // 忽略此事件
+          }
+
           // 將對話添加到列表頂部
           const incomingConversation = data?.conversation as Record<string, unknown> | undefined
           if (conversationId && incomingConversation) {
@@ -1658,6 +1634,7 @@ export const useConversationsStore = defineStore('conversations', () => {
               const customerId = String(incomingConversation.customerId || conversationId)
 
               // 構建完整的 Conversation 對象
+              // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
               const newConversation: Conversation = {
                 id: conversationId,
                 userId: customerId,
@@ -1669,8 +1646,6 @@ export const useConversationsStore = defineStore('conversations', () => {
                   name: (data?.toTeamName as string) || `Team ${data.toTeamId}`,
                   description: null
                 } : undefined,
-                assignedAgentId: incomingConversation.assignedAgentId as string | undefined,
-                assignedAgent: incomingConversation.assignedAgent as Conversation['assignedAgent'],
                 customer: {
                   id: customerId,
                   name: customerName,
@@ -1698,6 +1673,7 @@ export const useConversationsStore = defineStore('conversations', () => {
               })
             } else {
               // 已存在，更新團隊資訊
+              // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
               updateConversationStatus(conversationId, {
                 assignedTeamId: data?.toTeamId as number,
                 assignedTeam: {
@@ -1706,8 +1682,11 @@ export const useConversationsStore = defineStore('conversations', () => {
                   description: null
                 }
               })
+
               lastUpdateTime.value = new Date()
-              console.log(`🔄 [ConversationsStore] Conversation already exists, updated team info`, { conversationId })
+              console.log(`🔄 [ConversationsStore] Conversation already exists, updated team info`, {
+                conversationId
+              })
             }
           } else {
             // 沒有完整數據，回退到輪詢
@@ -1717,6 +1696,7 @@ export const useConversationsStore = defineStore('conversations', () => {
         } else if (action === 'team_changed') {
           // 🔄 團隊變更通知：對話房間內的用戶收到
           // 更新 Chat 視窗中的團隊標籤
+          // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
           if (conversationId) {
             const toTeamId = data?.toTeamId as number | undefined
             const toTeamName = (data?.toTeamName || data?.assignedTeamName) as string | undefined
@@ -1739,27 +1719,14 @@ export const useConversationsStore = defineStore('conversations', () => {
           }
         } else {
           // 沒有 action 字段（舊格式），回退到原有邏輯
+          // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
           if (conversationId) {
             const status = data?.status as string | undefined
-            const assignedAgentId = (data?.assignedUserId || data?.assignedAgentId) as string | undefined
             const assignedTeamId = data?.assignedTeamId as number | undefined
-            const assignedAgentName = data?.assignedAgentName as string | undefined
             const assignedTeamName = data?.assignedTeamName as string | undefined
 
-            const updates: Partial<Pick<Conversation, 'status' | 'assignedAgentId' | 'assignedTeamId' | 'assignedAgent' | 'assignedTeam'>> = {}
+            const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
             if (status) updates.status = status as Conversation['status']
-            if (assignedAgentId) {
-              updates.assignedAgentId = assignedAgentId
-              updates.assignedAgent = {
-                id: assignedAgentId,
-                name: assignedAgentName || assignedAgentId,
-                email: '',
-                displayName: assignedAgentName || assignedAgentId,
-                role: 'agent' as const,
-                isActive: true,
-                createdAt: Date.now()
-              }
-            }
             if (assignedTeamId !== undefined) {
               updates.assignedTeamId = assignedTeamId
               if (assignedTeamId) {
@@ -1912,7 +1879,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     // Computed
     allMessages,
     unreadConversations,
-    assignedToMeConversations,
+    // Note: assignedToMeConversations removed - individual assignment is no longer supported
     isLoading,
     showSkeleton,
     showShimmer,
