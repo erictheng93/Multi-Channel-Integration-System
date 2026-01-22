@@ -1160,6 +1160,103 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 🆕 轉移對話到另一個團隊（會觸發三方通知：舊團隊移除、新團隊添加、觀看者更新）
+  const transferConversationToTeam = async (
+    conversationId: string,
+    fromTeamId: number | undefined,
+    toTeamId: number,
+    toTeamName?: string,
+    reason?: string
+  ) => {
+    if (!conversationId || !toTeamId) { return false }
+
+    console.log(`📝 [ConversationsStore] Transferring conversation ${conversationId} from team ${fromTeamId} to team ${toTeamId} (${toTeamName || 'Unknown'})`)
+
+    // Optimistic update - 更新團隊資訊
+    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
+    let originalConversation: Conversation | null = null
+
+    if (conversationIndex !== -1) {
+      const current = conversations.value[conversationIndex]
+      if (current) {
+        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
+        const updatedConversation: Conversation = {
+          ...current,
+          assignedTeamId: toTeamId,
+          assignedTeam: {
+            id: toTeamId,
+            name: toTeamName || `Team ${toTeamId}`,
+            description: null
+          }
+        }
+        conversations.value[conversationIndex] = updatedConversation
+        console.log(`⚡ [ConversationsStore] Optimistic update applied (transfer)`)
+      }
+    }
+
+    // 同時更新 currentConversation
+    if (currentConversation.value && currentConversation.value.id === conversationId) {
+      currentConversation.value = {
+        ...currentConversation.value,
+        assignedTeamId: toTeamId,
+        assignedTeam: {
+          id: toTeamId,
+          name: toTeamName || `Team ${toTeamId}`,
+          description: null
+        }
+      }
+    }
+
+    error.value = null
+
+    try {
+      const response = await conversationApi.transferConversation(conversationId, {
+        fromTeamId,
+        toTeamId,
+        reason
+      })
+
+      if (response.success) {
+        console.log(`✅ [ConversationsStore] Transfer API call succeeded`)
+
+        // 使用 API 返回的完整對話對象更新
+        if (response.data) {
+          const updatedConv = response.data
+          if (conversationIndex !== -1) {
+            conversations.value[conversationIndex] = updatedConv
+          }
+          if (currentConversation.value && currentConversation.value.id === conversationId) {
+            currentConversation.value = updatedConv
+          }
+        }
+
+        return true
+      } else {
+        console.error(`❌ [ConversationsStore] Transfer API call failed:`, response.error)
+        // Revert optimistic update
+        if (originalConversation && conversationIndex !== -1) {
+          conversations.value[conversationIndex] = originalConversation
+        }
+        if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+          currentConversation.value = originalConversation
+        }
+        handleError(response.error, '轉移對話失敗')
+        return false
+      }
+    } catch (err) {
+      console.error(`❌ [ConversationsStore] Transfer failed with exception:`, err)
+      // Revert optimistic update
+      if (originalConversation && conversationIndex !== -1) {
+        conversations.value[conversationIndex] = originalConversation
+      }
+      if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
+        currentConversation.value = originalConversation
+      }
+      handleError(err, '轉移對話失敗')
+      return false
+    }
+  }
+
   const closeConversation = async (conversationId: string, reason?: string) => {
     if (!conversationId) {return false}
 
@@ -1488,6 +1585,34 @@ export const useConversationsStore = defineStore('conversations', () => {
         break
       }
 
+      case 'conversation_unassigned': {
+        // 🆕 對話取消指派 - 清除團隊和客服指派
+        if (conversationId) {
+          const previousTeamId = data?.previousTeamId as number | undefined
+          const previousTeamName = data?.previousTeamName as string | undefined
+
+          console.log('🔓 [ConversationsStore] Conversation unassigned', {
+            conversationId,
+            previousTeamId,
+            previousTeamName
+          })
+
+          // 更新對話狀態：清除指派信息
+          updateConversationStatus(conversationId, {
+            status: 'active',
+            assignedTeamId: undefined,
+            assignedTeam: undefined,
+            assignedAgentId: undefined,
+            assignedAgent: undefined
+          })
+          lastUpdateTime.value = new Date()
+          console.log(`✅ [ConversationsStore] Cleared assignment for ${conversationId}`)
+        } else {
+          pollConversations()
+        }
+        break
+      }
+
       case 'conversation_transferred': {
         // 🆕 對話轉移 - 處理跨團隊轉移的三種動作
         const action = data?.action as 'removed' | 'assigned' | 'team_changed' | undefined
@@ -1800,6 +1925,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     sendMessage,
     assignConversation,
     assignConversationToTeam,
+    transferConversationToTeam,
     unassignConversation,
     closeConversation,
     reopenConversation,

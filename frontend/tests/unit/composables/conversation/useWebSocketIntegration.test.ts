@@ -170,17 +170,6 @@ describe('useWebSocketIntegration', () => {
       }
     })
 
-    // Note: This test is skipped because it requires complex mock isolation
-    // that conflicts with module-level mocking. The actual behavior is tested
-    // via e2e/integration tests. The triggerMessageSyncAfterReconnection
-    // only calls refreshMessagesAfterReconnection when unifiedMessages is empty,
-    // which is the expected production behavior.
-    it.skip('should NOT trigger message sync when transitioning from reconnecting to connected WITH messages', async () => {
-      // This test requires isolating the mock to return messages,
-      // but vi.resetModules() affects all subsequent tests.
-      // The actual logic is covered by manual testing and e2e tests.
-    })
-
     it('should NOT trigger sync when first connecting (not reconnecting)', async () => {
       const { useWebSocketIntegration } = await import('@/composables/conversation/useWebSocketIntegration')
 

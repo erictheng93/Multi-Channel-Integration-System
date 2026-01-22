@@ -98,6 +98,40 @@ export const ROUTING_RULES: Record<string, RoutingRule> = {
   },
 
   /**
+   * 对话已转移 → conversations + 对话
+   * 支持三種動作：removed（從舊團隊移除）、assigned（添加到新團隊）、team_changed（團隊變更通知）
+   */
+  'conversation_transferred': (message) => {
+    const channels = ['conversations']
+    if (message.conversationId) {
+      channels.push(`conversation:${message.conversationId}`)
+    }
+    return channels
+  },
+
+  /**
+   * 对话状态变更 → conversations + 对话
+   */
+  'conversation_status_changed': (message) => {
+    const channels = ['conversations']
+    if (message.conversationId) {
+      channels.push(`conversation:${message.conversationId}`)
+    }
+    return channels
+  },
+
+  /**
+   * 对话取消指派 → conversations + 对话
+   */
+  'conversation_unassigned': (message) => {
+    const channels = ['conversations']
+    if (message.conversationId) {
+      channels.push(`conversation:${message.conversationId}`)
+    }
+    return channels
+  },
+
+  /**
    * 通知 → notifications channel
    */
   'notification': () => ['notifications'],

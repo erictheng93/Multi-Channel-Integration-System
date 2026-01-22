@@ -381,6 +381,45 @@ export const conversationApi = {
     return { success: false, error: response.error || '取消指派失敗' };
   },
 
+  // 轉移對話（從團隊A到團隊B，會觸發三方通知）
+  transferConversation: async (
+    conversationId: string,
+    options: {
+      fromTeamId?: number;
+      toTeamId: number;
+      fromUserId?: string;
+      toUserId?: string;
+      reason?: string;
+    }
+  ): Promise<ApiResponse<Conversation>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+
+    if (!options.toTeamId) {
+      return { success: false, error: '請指定目標團隊' };
+    }
+
+    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/transfer`, options);
+
+    // Transfer API 返回 { success: true, message: '...' }，不一定有 data
+    // 對話數據會通過 WebSocket 實時更新，所以只需要檢查 success
+    if (response.success) {
+      // 如果有返回 data，則轉換格式
+      if (response.data) {
+        const adaptedConversation = adaptConversationData(response.data);
+        return {
+          success: true,
+          data: adaptedConversation
+        };
+      }
+      // 沒有 data 也算成功（WebSocket 會推送更新）
+      return { success: true };
+    }
+
+    return { success: false, error: response.error || '轉移對話失敗' };
+  },
+
   // 關閉對話
   closeConversation: async (conversationId: string, reason?: string): Promise<ApiResponse<void>> => {
     if (!conversationId?.trim()) {

@@ -308,7 +308,7 @@ export class WebSocketBroadcastService {
    * Broadcast conversation events
    */
   async broadcastConversationEvent(event: {
-    type: 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'conversation_status_changed' | 'participant_joined' | 'participant_left';
+    type: 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'conversation_status_changed' | 'conversation_tags_updated' | 'participant_joined' | 'participant_left';
     conversationId: string;
     userId?: string;
     data: any;
@@ -511,15 +511,11 @@ export class WebSocketBroadcastService {
             {
               type: 'team' as const,
               targets: [toTeamId] as (string | number)[]
-            },
-            // Also notify admins
-            {
-              type: 'global' as const,
-              targets: ['admin'] as (string | number)[],
-              filters: {
-                roles: ['admin']
-              }
             }
+            // 🔒 Security Fix: Removed global target for admin notification
+            // The global target in deliveryOptions causes events to be broadcast
+            // to ALL users when processed by broadcastToWebSocket(), not just admins.
+            // Admins can see all conversations through the conversation list API.
           ],
           persistent: true,
           ttl: 3600000 // 1 hour
@@ -527,13 +523,6 @@ export class WebSocketBroadcastService {
       };
 
       results.newTeamNotified = await this.broadcastToTeamMembers(assignEvent, [toTeamId]);
-
-      // Also broadcast to admins
-      await this.broadcastToGlobal(assignEvent, {
-        type: 'global',
-        targets: ['admin'],
-        filters: { roles: ['admin'] }
-      });
 
       this.logger.debug('New team notified of assignment', undefined, {
         conversationId,

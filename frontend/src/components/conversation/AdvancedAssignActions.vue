@@ -460,25 +460,48 @@ const confirmAssignment = async () => {
   // 🔄 步骤 2: 后台同步到服务器
   isAssigning.value = true
   try {
-    const success = await conversationsStore.assignConversationToTeam(
-      props.conversation.id,
-      selectedTeamId,  // ✅ 使用保存的局部变量
-      teamName
-    )
+    let success: boolean
+
+    // 判斷是新指派還是轉指派
+    const isTransfer = props.conversation.assignedTeamId && props.conversation.assignedTeamId !== selectedTeamId
+
+    if (isTransfer) {
+      // 🔄 轉指派：使用 transfer API（會觸發三方通知：舊團隊移除、新團隊添加、觀看者更新）
+      const fromTeamId = props.conversation.assignedTeamId
+      const fromTeamName = props.conversation.assignedTeam?.name || `團隊 #${fromTeamId}`
+      console.log(`🔄 [AdvancedAssignActions] Using transfer API: ${fromTeamName} → ${teamName}`)
+
+      success = await conversationsStore.transferConversationToTeam(
+        props.conversation.id,
+        fromTeamId,
+        selectedTeamId,
+        teamName,
+        '管理員手動轉指派'
+      )
+    } else {
+      // 🆕 新指派：使用 assign API
+      console.log(`🆕 [AdvancedAssignActions] Using assign API: → ${teamName}`)
+
+      success = await conversationsStore.assignConversationToTeam(
+        props.conversation.id,
+        selectedTeamId,  // ✅ 使用保存的局部变量
+        teamName
+      )
+    }
 
     if (success) {
-      console.log(`✅ [AdvancedAssignActions] Assignment confirmed by server`)
+      console.log(`✅ [AdvancedAssignActions] ${isTransfer ? 'Transfer' : 'Assignment'} confirmed by server`)
       // 成功后不需要额外操作，UI已经更新
     } else {
-      console.error(`❌ [AdvancedAssignActions] Server rejected assignment`)
+      console.error(`❌ [AdvancedAssignActions] Server rejected ${isTransfer ? 'transfer' : 'assignment'}`)
       // 🔙 步骤 3: 失败时通知用户（不回滚UI，因为store会处理）
-      showError('指派失敗', `服務器拒絕指派，請稍後重試`)
-      emit('error', `指派給團隊 ${teamName} 失敗`)
+      showError(isTransfer ? '轉指派失敗' : '指派失敗', `服務器拒絕${isTransfer ? '轉指派' : '指派'}，請稍後重試`)
+      emit('error', `${isTransfer ? '轉指派' : '指派'}給團隊 ${teamName} 失敗`)
     }
   } catch (error) {
-    console.error('❌ [AdvancedAssignActions] Confirm assignment failed:', error)
-    showError('指派失敗', '指派過程中發生錯誤，請稍後重試')
-    emit('error', '指派過程中發生錯誤')
+    console.error('❌ [AdvancedAssignActions] Confirm assignment/transfer failed:', error)
+    showError('操作失敗', '操作過程中發生錯誤，請稍後重試')
+    emit('error', '操作過程中發生錯誤')
   } finally {
     isAssigning.value = false
   }

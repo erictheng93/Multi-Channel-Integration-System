@@ -12,7 +12,7 @@ import { ERROR_MESSAGES } from '@shared/utils/error-messages';
 import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { verifyJWT, getUserById } from '@modules/auth/services/auth';
-import { WebSocketBroadcastService } from '@shared/services/websocket-broadcast-service';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { successResponse, errorResponse, validationErrorResponse } from '@shared/utils/api-response';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { getSSECorsHeaders } from '@/config/cors';
@@ -1156,16 +1156,26 @@ conversationHandler.post('/:id/transfer', jwtAuth, async (c) => {
     const conversationId = c.req.param('id');
     const { fromTeamId, toTeamId, fromUserId, toUserId, reason } = await c.req.json();
 
-    // 檢查權限
-    const hasPermission = await PermissionService.checkPermission(
-      user.id,
-      'conversation',
-      'transfer'
-    );
+    // 檢查權限：使用 JWT 中的角色直接判斷（更可靠）
+    // 管理員可以轉指派任何對話，普通客服需要額外檢查
+    const userRole = user.role;
 
-    if (!hasPermission) {
-      return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
+    if (userRole !== 'admin') {
+      // 非管理員：檢查是否有權限操作此對話
+      const hasPermission = await PermissionService.checkPermission(
+        user.id,
+        'conversation',
+        'assign',  // 使用 assign 權限，因為 transfer 本質上是一種特殊的 assign
+        undefined,
+        c.env.DB
+      );
+
+      if (!hasPermission) {
+        return c.json({ error: 'Permission denied' }, HTTP_STATUS.FORBIDDEN);
+      }
     }
+
+    // Admin 直接通過權限檢查
 
     // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);

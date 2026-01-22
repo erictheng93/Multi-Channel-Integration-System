@@ -3,6 +3,7 @@
     :show="show"
     :title="`${team.name} 詳細資訊`"
     size="lg"
+    :close-on-overlay="false"
     @close="handleClose"
   >
     <div class="team-detail-content">
