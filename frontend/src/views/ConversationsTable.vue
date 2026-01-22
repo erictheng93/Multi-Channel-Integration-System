@@ -390,15 +390,12 @@ const getLastMessageText = (conversation: Conversation) => {
 }
 
 const getAssignedTo = (conversation: Conversation) => {
-  // 優先顯示個人指派
-  if (conversation.assignedAgent?.name) {
-    return `👤 ${conversation.assignedAgent.name}`
-  }
-  // 其次顯示團隊指派
+  // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
+  // 顯示團隊指派
   if (conversation.assignedTeam?.name) {
     return `👥 ${conversation.assignedTeam.name}`
   }
-  // 都沒有則顯示未指派
+  // 沒有則顯示未指派
   return '未指派'
 }
 

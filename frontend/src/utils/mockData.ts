@@ -20,7 +20,8 @@ const mockCustomers: Customer[] = [
   { id: '5', name: '林小雅', platform: 'line', platformUserId: 'line_002', avatarUrl: '', createdAt: Date.now() }
 ]
 
-const mockAgents: Agent[] = [
+// Note: Individual assignment removed - mockAgents exported for potential future use
+export const mockAgents: Agent[] = [
   { id: '1', name: '客服小王', displayName: '客服小王', email: 'wang@example.com', isOnline: true, platforms: ['line', 'facebook'], role: 'agent', isActive: true, createdAt: Date.now() },
   { id: '2', name: '客服小李', displayName: '客服小李', email: 'li@example.com', isOnline: true, platforms: ['line', 'facebook'], role: 'agent', isActive: true, createdAt: Date.now() },
   { id: '3', name: '主管小陳', displayName: '主管小陳', email: 'chen@example.com', isOnline: false, platforms, role: 'admin', isActive: true, createdAt: Date.now() }
@@ -32,7 +33,8 @@ export function generateMockConversations(count: number = 20): Conversation[] {
   for (let i = 1; i <= count; i++) {
     const customer = mockCustomers[Math.floor(Math.random() * mockCustomers.length)]
     const status = statuses[Math.floor(Math.random() * statuses.length)] || CONVERSATION_STATUS.PENDING
-    const assignedAgent = status === CONVERSATION_STATUS.IN_PROGRESS ? mockAgents[Math.floor(Math.random() * mockAgents.length)] : undefined
+    // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
+    const assignedTeamId = status === CONVERSATION_STATUS.IN_PROGRESS ? 1 : undefined
 
     if (!customer) {continue} // Skip if no customer found
 
@@ -40,18 +42,18 @@ export function generateMockConversations(count: number = 20): Conversation[] {
       id: `conv_${i}`,
       userId: customer.id,
       customer,
-      assignedTo: assignedAgent?.id,
-      assignedAgent,
+      assignedTeamId,
       platform: customer.platform,
       status,
       unreadCount: Math.random() > 0.5 ? Math.floor(Math.random() * 5) + 1 : 0,
       lastMessageAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
       createdAt: Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
       updatedAt: Date.now() - Math.random() * 24 * 60 * 60 * 1000,
+      // Note: Individual assignment removed - use team-based assignment now
       lastMessage: {
         id: `msg_${i}`,
         conversationId: `conv_${i}`,
-        senderId: Math.random() > 0.5 ? customer.id : (assignedAgent?.id || 'system'),
+        senderId: Math.random() > 0.5 ? customer.id : 'system',
         senderType: Math.random() > 0.5 ? 'customer' : 'agent',
         content: `這是第 ${i} 個對話的最後一則訊息`,
         timestamp: Date.now() - Math.random() * 24 * 60 * 60 * 1000,

@@ -46,7 +46,8 @@ export class AssignmentPermissionTests {
     console.log('🔍 Testing Admin Permissions...')
     const admin = createMockAgent('admin')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
-    const assignedConversation = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'other-agent' })
+    // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
+    const assignedConversation = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: 1 })
 
     const tests = [
       {
@@ -83,7 +84,8 @@ export class AssignmentPermissionTests {
     console.log('🔍 Testing Admin Permissions (team role removed)...')
     const teamLead = createMockAgent('admin') // Changed from 'team' to 'admin'
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
-    const assignedConversation = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'other-agent' })
+    // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
+    const assignedConversation = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: 1 })
 
     const tests = [
       {
@@ -125,8 +127,9 @@ export class AssignmentPermissionTests {
     console.log('🔍 Testing Agent Permissions...')
     const agent = createMockAgent('agent')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
-    const assignedToSelf = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: agent.id })
-    const assignedToOther = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'other-agent' })
+    // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
+    const assignedToSelf = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: agent.teamId })
+    const assignedToOther = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: 999 })
 
     const tests = [
       {
@@ -238,7 +241,8 @@ export class AssignmentUITests {
       {
         description: 'Admin reassigns conversation',
         user: createMockAgent('admin'),
-        conversation: createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedAgentId: 'old-agent' })
+        // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
+        conversation: createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: 1 })
       }
     ]
 

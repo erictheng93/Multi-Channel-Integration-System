@@ -30,12 +30,11 @@
                 :status="conversation.status"
               />
               <!-- 🆕 指派資訊徽章 -->
+              <!-- Note: Individual assignment removed - only team-based assignment is supported now -->
               <AssignmentBadge
                 v-if="conversation"
                 :team-id="conversation.assignedTeamId"
                 :team-name="conversation.assignedTeam?.name"
-                :agent-id="conversation.assignedUserId"
-                :agent-name="conversation.assignedAgent?.name"
               />
             </div>
 
@@ -85,10 +84,11 @@
         v-if="conversation && conversation.status !== CONVERSATION_STATUS.CLOSED"
         class="assign-action-wrapper"
       >
+        <!-- Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now -->
         <button
           class="assign-action-btn"
           :class="{
-            'has-assignment': conversation.assignedTeamId || conversation.assignedUserId,
+            'has-assignment': conversation.assignedTeamId,
             'opened': showAssignPanel
           }"
           @click="toggleAssignPanel"
@@ -96,7 +96,7 @@
           <!-- Status Indicator Dot -->
           <span
             class="status-dot"
-            :class="{ 'active': conversation.assignedTeamId || conversation.assignedUserId }"
+            :class="{ 'active': conversation.assignedTeamId }"
           />
 
           <!-- User Icon with Animation Container -->
@@ -106,10 +106,7 @@
 
           <!-- Text with Truncation -->
           <span class="button-text">
-            <span v-if="conversation.assignedUserId && conversation.assignedAgent?.name">
-              {{ conversation.assignedAgent.name }}
-            </span>
-            <span v-else-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
+            <span v-if="conversation.assignedTeamId && conversation.assignedTeam?.name">
               {{ conversation.assignedTeam.name }}
             </span>
             <span v-else>指派管理</span>
@@ -300,8 +297,8 @@ const toggleAssignPanel = () => {
     conversation: {
       id: props.conversation?.id,
       status: props.conversation?.status,
-      assignedTeamId: props.conversation?.assignedTeamId,
-      assignedUserId: props.conversation?.assignedUserId
+      assignedTeamId: props.conversation?.assignedTeamId
+      // Note: assignedUserId removed - only team-based assignment is supported now
     },
     timestamp: new Date().toISOString()
   })

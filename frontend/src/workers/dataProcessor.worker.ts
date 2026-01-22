@@ -30,6 +30,7 @@ function measurePerformance<T>(fn: () => T): { result: T; processingTime: number
 }
 
 // 處理對話列表數據
+// Note: Individual assignment (assignedTo, assignedAgent) removed - only team assignment is supported now
 function processConversations(conversations: unknown[]): Conversation[] {
   return conversations.map((conv: unknown) => {
     const conversation = conv as Record<string, unknown>
@@ -37,15 +38,15 @@ function processConversations(conversations: unknown[]): Conversation[] {
     return {
       id: conversation.id || '',
       userId: conversation.userId || conversation.customerId || conversation.customer_id || '',
-      user: conversation.user || { 
-        id: conversation.customerId || conversation.customer_id || '', 
+      user: conversation.user || {
+        id: conversation.customerId || conversation.customer_id || '',
         name: conversation.customerName || conversation.customer_name || 'Unknown Customer',
         platform: conversation.platform || 'line',
         platformUserId: conversation.customerId || conversation.customer_id || '',
         createdAt: Date.now()
       },
-      assignedTo: conversation.assignedTo || conversation.assigned_to,
-      assignedAgent: conversation.assignedAgent,
+      assignedTeamId: conversation.assignedTeamId || conversation.assigned_team_id,
+      assignedTeam: conversation.assignedTeam,
       status: conversation.status || 'open',
       platform: conversation.platform || 'line',
       lastMessageAt: conversation.lastMessageAt ? new Date(conversation.lastMessageAt as string).getTime() : Date.now(),
@@ -58,12 +59,13 @@ function processConversations(conversations: unknown[]): Conversation[] {
 }
 
 // 過濾對話
+// Note: Individual assignment filter (assignedTo) removed - only team-based filtering is supported now
 function filterConversations(
-  conversations: Conversation[], 
+  conversations: Conversation[],
   filters: {
     status?: string
     platform?: string
-    assignedTo?: string
+    teamId?: number
     search?: string
     dateRange?: { start: Date; end: Date }
     tags?: string[]
@@ -75,18 +77,19 @@ function filterConversations(
     if (filters.status && conv.status !== filters.status) {
       return false
     }
-    
+
     // 平台過濾
     if (filters.platform && conv.platform !== filters.platform) {
       return false
     }
-    
-    // 指派過濾
-    if (filters.assignedTo) {
-      if (filters.assignedTo === 'unassigned' && conv.assignedTo) {
+
+    // 團隊過濾 (replacing individual assignment filter)
+    if (filters.teamId !== undefined) {
+      if (filters.teamId === 0 && conv.assignedTeamId) {
+        // teamId=0 means unassigned
         return false
       }
-      if (filters.assignedTo !== 'unassigned' && conv.assignedTo !== filters.assignedTo) {
+      if (filters.teamId !== 0 && conv.assignedTeamId !== filters.teamId) {
         return false
       }
     }
@@ -245,9 +248,9 @@ function aggregateStats(conversations: Conversation[]) {
       stats.byPlatform[conv.platform] = (stats.byPlatform[conv.platform] || 0) + 1
     }
     
-    // 指派統計
-    const assignee = conv.assignedAgent?.name || 'Unassigned'
-    stats.byAssignee[assignee] = (stats.byAssignee[assignee] || 0) + 1
+    // 團隊統計 (replacing individual assignment)
+    const teamName = conv.assignedTeam?.name || 'Unassigned'
+    stats.byAssignee[teamName] = (stats.byAssignee[teamName] || 0) + 1
     
     // 逾期統計 (計算超過24小時的對話)
     const lastMessageTime = new Date(conv.lastMessageAt).getTime()

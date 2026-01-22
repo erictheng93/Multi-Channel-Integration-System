@@ -2,20 +2,19 @@
   <div class="advanced-assign-actions">
     <!-- 當前指派狀態 -->
     <div
-      v-if="(conversation.assignedTeamId || conversation.assignedAgentId) && conversation.status !== 'closed'"
+      v-if="conversation.assignedTeamId && conversation.status !== 'closed'"
       class="current-assignment"
     >
       <div class="assignment-info">
         <div class="assignee-avatar">
-          <TeamIcon v-if="conversation.assignedTeamId" />
-          <span v-else>{{ getInitials(conversation.assignedAgent?.name) }}</span>
+          <TeamIcon />
         </div>
         <div class="assignee-details">
           <div class="assignee-name">
             {{ getAssignedDisplayName() }}
           </div>
           <div class="assignee-role">
-            {{ conversation.assignedTeamId ? '團隊' : getRoleDisplayName(conversation.assignedAgent?.role) }}
+            團隊
           </div>
         </div>
       </div>
@@ -335,12 +334,13 @@ const selectedTeamName = computed(() => {
 
 // Methods
 const getAssignedDisplayName = () => {
+  // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
   if (props.conversation.assignedTeamId) {
     // 從 teams 列表中查找團隊名稱
     const team = teams.value.find(t => t.id === props.conversation.assignedTeamId)
     return team?.name || `團隊 #${props.conversation.assignedTeamId}`
   }
-  return props.conversation.assignedAgent?.name || '未知'
+  return '未指派'
 }
 
 const toggleTeamSelector = async () => {
@@ -512,17 +512,15 @@ const handleUnassign = async () => {
     return
   }
 
-  // 確認對話是否已指派
-  if (!props.conversation.assignedTeamId && !props.conversation.assignedAgentId) {
+  // 確認對話是否已指派 (only team-based assignment is supported now)
+  if (!props.conversation.assignedTeamId) {
     showError('無法取消指派', '此對話尚未指派')
     return
   }
 
   // 取得當前指派資訊用於提示
-  const assignedName = props.conversation.assignedAgent?.name ||
-                       props.conversation.assignedTeam?.name ||
-                       '未知'
-  const assignedType = props.conversation.assignedTeamId ? '團隊' : '客服人員'
+  const assignedName = props.conversation.assignedTeam?.name || '未知'
+  const assignedType = '團隊'
 
   // 顯示確認對話框
   const confirmed = await showWarning(
@@ -540,13 +538,12 @@ const handleUnassign = async () => {
   showSuccess('取消指派成功', `已成功取消對話指派`)
 
   // 立即發送 unassigned 事件（樂觀）
+  // Note: Individual assignment removed - only team-based assignment is supported now
   const optimisticConv: Conversation = {
     ...props.conversation,
     status: CONVERSATION_STATUS.PENDING,
     assignedTeamId: undefined,
-    assignedUserId: undefined,
-    assignedTeam: undefined,
-    assignedAgent: undefined
+    assignedTeam: undefined
   }
   emit('unassigned', optimisticConv)
 
@@ -580,12 +577,13 @@ const handleUnassign = async () => {
   }
 }
 
-const getInitials = (name: string | undefined): string => {
+// Note: Individual assignment UI removed - these functions kept for potential future use
+const _getInitials = (name: string | undefined): string => {
   if (!name) {return 'U'}
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-const getRoleDisplayName = (role: string | undefined): string => {
+const _getRoleDisplayName = (role: string | undefined): string => {
   if (!role) {return ''}
   const roleNames = {
     'admin': '管理員',
@@ -594,6 +592,10 @@ const getRoleDisplayName = (role: string | undefined): string => {
   }
   return roleNames[role as keyof typeof roleNames] || role
 }
+
+// Suppress unused variable warnings
+void _getInitials
+void _getRoleDisplayName
 
 // 🚀 优化：组件挂载时确保数据已预加载
 onMounted(async () => {
