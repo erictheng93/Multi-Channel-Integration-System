@@ -217,6 +217,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Message } from '@/types'
@@ -275,12 +276,15 @@ const { showConfirm } = useConfirm()
 const conversationId = computed(() => route.params.id as string)
 
 // 🆕 Transferred conversation state from store
+// 🔧 FIX: 使用 storeToRefs 保持 ref 的響應性，避免解構後失去追蹤
 const conversationsStore = useConversationsStore()
-const { transferredConversation, clearTransferredState, initializeRealtime } = conversationsStore
+const { transferredConversation } = storeToRefs(conversationsStore)
+const { clearTransferredState, initializeRealtime } = conversationsStore
 
 // Check if current conversation is transferred
+// 🔧 FIX: 現在 transferredConversation 是響應式的 ref，需要使用 .value
 const isCurrentConversationTransferred = computed(() => {
-  return transferredConversation?.conversationId === conversationId.value
+  return transferredConversation.value?.conversationId === conversationId.value
 })
 
 // Debug mode
