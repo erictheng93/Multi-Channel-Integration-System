@@ -22,6 +22,7 @@
  * - MESSAGE_READ: Message was read by recipient
  * - MESSAGE_RECALLED: Message was recalled by sender
  * - CONNECTION_STATE: Connection state changed
+ * - CONVERSATION_TRANSFERRED: Conversation transferred between teams
  */
 export const WS_EVENTS = {
   /** New message received */
@@ -52,7 +53,10 @@ export const WS_EVENTS = {
   HEARTBEAT: 'heartbeat',
 
   /** Error event */
-  ERROR: 'error'
+  ERROR: 'error',
+
+  /** Conversation transferred between teams */
+  CONVERSATION_TRANSFERRED: 'conversation_transferred'
 } as const;
 
 /**
@@ -114,7 +118,8 @@ export const WS_EVENT_LABELS: Record<WebSocketEventType, string> = {
   [WS_EVENTS.MESSAGE_RECALLED]: 'Message Recalled',
   [WS_EVENTS.CONNECTION_STATE]: 'Connection State',
   [WS_EVENTS.HEARTBEAT]: 'Heartbeat',
-  [WS_EVENTS.ERROR]: 'Error'
+  [WS_EVENTS.ERROR]: 'Error',
+  [WS_EVENTS.CONVERSATION_TRANSFERRED]: 'Conversation Transferred'
 };
 
 /**
@@ -130,7 +135,8 @@ export const WS_EVENT_DESCRIPTIONS: Record<WebSocketEventType, string> = {
   [WS_EVENTS.MESSAGE_RECALLED]: 'A message was recalled by the sender',
   [WS_EVENTS.CONNECTION_STATE]: 'The WebSocket connection state changed',
   [WS_EVENTS.HEARTBEAT]: 'Heartbeat signal for connection health monitoring',
-  [WS_EVENTS.ERROR]: 'An error occurred in the WebSocket connection'
+  [WS_EVENTS.ERROR]: 'An error occurred in the WebSocket connection',
+  [WS_EVENTS.CONVERSATION_TRANSFERRED]: 'The conversation was transferred to another team'
 };
 
 /**
