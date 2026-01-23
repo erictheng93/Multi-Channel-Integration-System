@@ -342,6 +342,13 @@ export const useConversationsStore = defineStore('conversations', () => {
     conversationCache.setConversation(updatedConversation)
     updateStatsFromConversations()
 
+    // 🆕 FIX: 同步更新 currentConversation，確保對話詳情頁即時反映變更
+    // 這解決了 WebSocket 事件 (如 conversation_transferred) 更新列表但不更新詳情頁的問題
+    if (currentConversation.value && currentConversation.value.id === conversationId) {
+      currentConversation.value = updatedConversation
+      console.log(`🔄 [ConversationsStore] Also updated currentConversation for ${conversationId}`)
+    }
+
     console.log(`✅ [ConversationsStore] Status update applied to conversation ${conversationId}`, updates)
     return true
   }
