@@ -129,8 +129,9 @@
       />
 
       <!-- Enhanced Message Input with WebSocket features -->
+      <!-- 🆕 UX: Hide input when conversation is transferred to non-member team -->
       <div
-        v-if="conversation?.status !== CONVERSATION_STATUS.CLOSED"
+        v-if="conversation?.status !== CONVERSATION_STATUS.CLOSED && !isCurrentConversationTransferred"
         class="input-section"
       >
         <MessageInput
@@ -165,14 +166,43 @@
         />
       </div>
 
-      <!-- Closed State -->
+      <!-- Closed State - Only when conversation is closed (not transferred) -->
       <div
-        v-else
+        v-else-if="conversation?.status === CONVERSATION_STATUS.CLOSED && !isCurrentConversationTransferred"
         class="closed-state"
       >
         <div class="closed-message">
           <XCircleIcon />
           <span>此對話已結束</span>
+        </div>
+      </div>
+
+      <!-- 🆕 Transferred State - Input disabled with informative message -->
+      <div
+        v-else-if="isCurrentConversationTransferred"
+        class="transferred-state"
+      >
+        <div class="transferred-input-message">
+          <svg
+            class="transferred-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line
+              x1="5"
+              y1="12"
+              x2="19"
+              y2="12"
+            />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+          <span>此對話已轉移至其他團隊，您無法再發送訊息</span>
         </div>
       </div>
     </div>
@@ -653,6 +683,31 @@ defineExpose({
 
 .closed-message svg {
   width: 20px;
+}
+
+/* 🆕 Transferred State Styles */
+.transferred-state {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-top: 1px solid #f59e0b;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transferred-input-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.transferred-icon {
+  flex-shrink: 0;
+  color: #d97706;
   height: 20px;
   color: #ef4444;
 }
@@ -669,6 +724,15 @@ defineExpose({
 
   .closed-state {
     padding: 16px;
+  }
+
+  .transferred-state {
+    padding: 16px;
+  }
+
+  .transferred-input-message {
+    font-size: 13px;
+    gap: 8px;
   }
 }
 </style>
