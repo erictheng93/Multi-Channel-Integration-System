@@ -168,12 +168,13 @@ const formatTime = (isoTime: string): string => {
 
 <style scoped>
 /* ====== Transferred Conversation Banner Styles ====== */
+/* 🎨 Warning amber/yellow color scheme for transfer notification */
 .transferred-conversation-banner {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-left: 4px solid #3b82f6;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #f59e0b;
   padding: 16px 24px;
   margin: 0;
-  border-bottom: 1px solid #3b82f6;
+  border-bottom: 1px solid #f59e0b;
 }
 
 .banner-content {
@@ -186,13 +187,13 @@ const formatTime = (isoTime: string): string => {
 
 .banner-icon {
   flex-shrink: 0;
-  color: #3b82f6;
+  color: #d97706;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(245, 158, 11, 0.15);
   border-radius: 50%;
 }
 
@@ -206,22 +207,22 @@ const formatTime = (isoTime: string): string => {
 .banner-text strong {
   font-size: 16px;
   font-weight: 600;
-  color: #1e40af;
+  color: #92400e;
 }
 
 .banner-hint {
   font-size: 14px;
-  color: #1d4ed8;
+  color: #b45309;
 }
 
 .team-name {
-  color: #1e3a8a;
+  color: #78350f;
   font-weight: 600;
 }
 
 .transfer-time {
   font-size: 12px;
-  color: #60a5fa;
+  color: #d97706;
   margin-top: 2px;
 }
 
@@ -230,7 +231,7 @@ const formatTime = (isoTime: string): string => {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #3b82f6;
+  background: #f59e0b;
   color: white;
   border: none;
   border-radius: 8px;
@@ -242,14 +243,14 @@ const formatTime = (isoTime: string): string => {
 }
 
 .back-btn:hover {
-  background: #2563eb;
+  background: #d97706;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
 }
 
 .back-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
 }
 
 .back-btn svg {
