@@ -25,9 +25,17 @@
 
       <!-- 🆕 Closed Conversation Banner Component -->
       <ClosedConversationBanner
-        :is-visible="conversation?.status === CONVERSATION_STATUS.CLOSED"
+        :is-visible="conversation?.status === CONVERSATION_STATUS.CLOSED && !isCurrentConversationTransferred"
         :loading="conversationActions.isClosing.value"
         @reopen="conversationActions.reopen"
+      />
+
+      <!-- 🆕 Transferred Conversation Banner Component -->
+      <TransferredConversationBanner
+        :is-visible="isCurrentConversationTransferred"
+        :team-name="transferredConversation?.toTeamName"
+        :transferred-at="transferredConversation?.transferredAt"
+        @back="handleTransferredBack"
       />
 
       <!-- Enhanced Search Panel (toggleable from header) -->
@@ -218,10 +226,14 @@ import { MessageCircleIcon, XCircleIcon } from '@/components/icons'
 import {
   DragDropOverlay,
   ClosedConversationBanner,
+  TransferredConversationBanner,
   NewMessageNotification,
   QuickReplies,
   ConnectionStatusBar,
 } from '@/components/conversation'
+
+// Store for transferred conversation state
+import { useConversationsStore } from '@/stores/conversations'
 
 const MessageSearch = defineAsyncComponent(() => import('@/components/conversation/MessageSearch.vue'))
 const KeyboardShortcuts = defineAsyncComponent(() => import('@/components/ui/KeyboardShortcuts.vue'))
@@ -231,6 +243,15 @@ const router = useRouter()
 const { showSuccess, showError } = useToast()
 const { showConfirm } = useConfirm()
 const conversationId = computed(() => route.params.id as string)
+
+// 🆕 Transferred conversation state from store
+const conversationsStore = useConversationsStore()
+const { transferredConversation, clearTransferredState, initializeRealtime } = conversationsStore
+
+// Check if current conversation is transferred
+const isCurrentConversationTransferred = computed(() => {
+  return transferredConversation?.conversationId === conversationId.value
+})
 
 // Debug mode
 const isDevDebugMode = ref(false)
@@ -374,6 +395,10 @@ const statusBarClass = computed((): 'connected' | 'connecting' | 'disconnected' 
 // Lifecycle
 onMounted(async () => {
   try {
+    // 🆕 FIX: 初始化 ConversationsStore 的實時同步
+    // 確保在對話詳情頁也能接收到轉移事件並更新 currentConversation
+    await initializeRealtime()
+
     await controller.initialize()
     if (virtualMessageListRef.value) {
       setScrollTarget({
@@ -395,9 +420,17 @@ onUnmounted(() => {
   }
   // 🔧 FIX: 重置滾動就緒狀態
   isScrollReady.value = false
+  // 🆕 清理轉移狀態
+  clearTransferredState()
 })
 
 function goBack() { router.push('/conversations') }
+
+// 🆕 Handler for transferred conversation - clear state and navigate back
+function handleTransferredBack() {
+  clearTransferredState()
+  goBack()
+}
 
 // Message event handlers (use controller methods directly)
 const handleMessageSent = controller.onMessageSent

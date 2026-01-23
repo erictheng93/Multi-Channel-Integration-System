@@ -342,6 +342,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
 // getUserByUsername function removed - using email for authentication instead
 
 // ✅ 優化：單次查詢完整認證（使用原始SQL避免Drizzle問題）
+// 🔧 FIX: 現在也查詢 agent_teams 以填充 allowedTeamIds 和 teamRoles
 export async function authenticateUser(
   db: D1Database,
   email: string,
@@ -375,7 +376,36 @@ export async function authenticateUser(
     return { user: null, accountStatus: 'wrong_password', passwordPolicy: user.password_policy || 'changeable' };
   }
 
-  // 認證成功，返回用戶資訊
+  // 🔧 FIX: 查詢 agent_teams 以獲取多團隊成員資格
+  // 這解決了 WebSocket 事件不會發送給正確團隊成員的問題
+  const teamMembershipsQuery = `
+    SELECT team_id, role_in_team
+    FROM agent_teams
+    WHERE agent_id = ?
+  `;
+  const teamMembershipsResult = await db.prepare(teamMembershipsQuery).bind(user.id).all();
+  const teamMemberships = (teamMembershipsResult.results || []) as Array<{ team_id: number; role_in_team: string }>;
+
+  // 構建 allowedTeamIds 和 teamRoles (合併主團隊 + agent_teams)
+  const allowedTeamIds: number[] = [];
+  const teamRoles: Record<number, TeamRoleInTeam> = {};
+
+  // 加入主團隊 (如果存在)
+  if (user.team_id) {
+    allowedTeamIds.push(user.team_id);
+    teamRoles[user.team_id] = 'member'; // 主團隊預設角色
+  }
+
+  // 加入 agent_teams 中的所有團隊
+  for (const membership of teamMemberships) {
+    if (!allowedTeamIds.includes(membership.team_id)) {
+      allowedTeamIds.push(membership.team_id);
+    }
+    // 使用 agent_teams 中的角色 (可能覆蓋主團隊的預設角色)
+    teamRoles[membership.team_id] = (membership.role_in_team as TeamRoleInTeam) || 'member';
+  }
+
+  // 認證成功，返回用戶資訊（現在包含多團隊資料）
   const authenticatedUser = convertAgent({
     id: user.id,
     email: user.email,
@@ -392,8 +422,13 @@ export async function authenticateUser(
     lastLoginAt: null
   });
 
+  // 🔧 FIX: 添加多團隊資料到返回的用戶對象
   return {
-    user: authenticatedUser,
+    user: {
+      ...authenticatedUser,
+      allowedTeamIds,
+      teamRoles
+    },
     passwordPolicy: user.password_policy || 'changeable',
     accountStatus: 'success'
   };
