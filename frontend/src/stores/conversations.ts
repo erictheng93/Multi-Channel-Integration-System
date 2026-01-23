@@ -21,6 +21,13 @@ export const useConversationsStore = defineStore('conversations', () => {
   const conversations = ref<Conversation[]>([])
   const currentConversation = ref<Conversation | null>(null)
   const messages = ref<Message[]>([])
+
+  // 🆕 Transferred conversation state - tracks when a conversation is transferred while viewing
+  const transferredConversation = ref<{
+    conversationId: string
+    toTeamName: string
+    transferredAt: string
+  } | null>(null)
   
   // Enhanced loading states for smooth UX
   const loading = ref(false) // Initial load
@@ -97,6 +104,11 @@ export const useConversationsStore = defineStore('conversations', () => {
   // Utility functions
   const clearError = () => {
     error.value = null
+  }
+
+  // 🆕 Clear transferred conversation state
+  const clearTransferredState = () => {
+    transferredConversation.value = null
   }
 
   const handleError = (err: unknown, defaultMessage: string) => {
@@ -319,38 +331,63 @@ export const useConversationsStore = defineStore('conversations', () => {
     conversationId: string,
     updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'unreadCount' | 'assignedTeam'>>
   ) => {
+    let listUpdated = false
+    let currentUpdated = false
+
+    // 1. 嘗試更新列表中的對話
     const index = conversations.value.findIndex(c => c.id === conversationId)
 
-    if (index === -1) {
-      console.log(`⚠️ [ConversationsStore] Conversation ${conversationId} not found for status update`)
-      return false
+    if (index !== -1) {
+      const conversation = conversations.value[index]
+      if (conversation) {
+        const updatedConversation: Conversation = {
+          ...conversation,
+          ...updates,
+          updatedAt: Date.now() // Unix timestamp in milliseconds
+        }
+
+        conversations.value.splice(index, 1, updatedConversation)
+        conversationCache.setConversation(updatedConversation)
+        updateStatsFromConversations()
+        listUpdated = true
+
+        // 如果這也是當前對話，同步更新
+        if (currentConversation.value && currentConversation.value.id === conversationId) {
+          currentConversation.value = updatedConversation
+          currentUpdated = true
+        }
+
+        console.log(`✅ [ConversationsStore] Status update applied to conversation ${conversationId}`, {
+          updates,
+          listUpdated,
+          currentUpdated
+        })
+      }
     }
 
-    const conversation = conversations.value[index]
-    if (!conversation) {
-      console.log(`⚠️ [ConversationsStore] Conversation object is undefined at index ${index}`)
-      return false
+    // 2. 🆕 FIX: 即使對話不在列表中，也要嘗試更新 currentConversation
+    // 這解決了轉移事件導致對話從列表移除後，詳情頁無法更新的問題
+    if (!currentUpdated && currentConversation.value && currentConversation.value.id === conversationId) {
+      console.log(`🔍 [ConversationsStore] Conversation not in list, but updating currentConversation:`, {
+        conversationId,
+        updates
+      })
+
+      currentConversation.value = {
+        ...currentConversation.value,
+        ...updates,
+        updatedAt: Date.now()
+      }
+      currentUpdated = true
+
+      console.log(`🔄 [ConversationsStore] Updated currentConversation (not in list) for ${conversationId}`)
     }
 
-    const updatedConversation: Conversation = {
-      ...conversation,
-      ...updates,
-      updatedAt: Date.now() // Unix timestamp in milliseconds
+    if (!listUpdated && !currentUpdated) {
+      console.log(`⚠️ [ConversationsStore] Conversation ${conversationId} not found in list or currentConversation`)
     }
 
-    conversations.value.splice(index, 1, updatedConversation)
-    conversationCache.setConversation(updatedConversation)
-    updateStatsFromConversations()
-
-    // 🆕 FIX: 同步更新 currentConversation，確保對話詳情頁即時反映變更
-    // 這解決了 WebSocket 事件 (如 conversation_transferred) 更新列表但不更新詳情頁的問題
-    if (currentConversation.value && currentConversation.value.id === conversationId) {
-      currentConversation.value = updatedConversation
-      console.log(`🔄 [ConversationsStore] Also updated currentConversation for ${conversationId}`)
-    }
-
-    console.log(`✅ [ConversationsStore] Status update applied to conversation ${conversationId}`, updates)
-    return true
+    return listUpdated || currentUpdated
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1570,9 +1607,25 @@ export const useConversationsStore = defineStore('conversations', () => {
           // 🔒 安全檢查：只有當用戶屬於原團隊時才處理移除事件
           // 這可以防止用戶收到不屬於自己團隊的移除事件
           const fromTeamId = data?.fromTeamId as number | undefined
+          const toTeamId = data?.toTeamId as number | undefined
           const authStore = useAuthStore()
           const userTeamIds = authStore.allowedTeamIds || []
           const isAdmin = authStore.currentAgent?.role === 'admin'
+
+          // 🆕 FIX: 檢查用戶是否也屬於目標團隊
+          // 如果用戶同時屬於原團隊和目標團隊，不應該移除對話
+          // 因為對話會通過 'assigned' 事件更新團隊信息，仍然對用戶可見
+          const userBelongsToTargetTeam = toTeamId !== undefined && userTeamIds.includes(toTeamId)
+
+          if (userBelongsToTargetTeam && !isAdmin) {
+            console.log(`🔒 [ConversationsStore] Ignoring removed event - user belongs to target team`, {
+              conversationId,
+              fromTeamId,
+              toTeamId,
+              userTeamIds
+            })
+            break // 忽略此事件，對話會通過 assigned 事件更新
+          }
 
           // 檢查用戶是否屬於原團隊（管理員可以看到所有團隊的事件）
           const shouldProcessRemoval = isAdmin ||
@@ -1603,6 +1656,21 @@ export const useConversationsStore = defineStore('conversations', () => {
                 toTeamId: data?.toTeamId,
                 toTeamName: data?.toTeamName,
                 previousTeamId
+              })
+            }
+
+            // 🆕 FIX: 如果是當前查看的對話，設置 transferred 狀態給詳情頁顯示
+            // 這解決了 AC1: 轉出團隊客服詳情頁需要顯示 "已轉移" 訊息的需求
+            if (currentConversation.value?.id === conversationId) {
+              const toTeamName = (data?.toTeamName as string) || '其他團隊'
+              transferredConversation.value = {
+                conversationId,
+                toTeamName,
+                transferredAt: new Date().toISOString()
+              }
+              console.log(`🔄 [ConversationsStore] Also updated currentConversation for ${conversationId} - marked as transferred`, {
+                toTeamName,
+                transferredAt: transferredConversation.value.transferredAt
               })
             }
           }
@@ -1672,6 +1740,18 @@ export const useConversationsStore = defineStore('conversations', () => {
               conversationCache.setConversation(newConversation)
               updateStatsFromConversations()
               lastUpdateTime.value = new Date()
+
+              // 🆕 FIX: 同步更新 currentConversation（如果用戶正在查看這個對話）
+              // 這解決了對話被轉移後，詳情頁團隊標籤不更新的問題
+              if (currentConversation.value && currentConversation.value.id === conversationId) {
+                currentConversation.value = newConversation
+                console.log(`🔄 [ConversationsStore] Also updated currentConversation from assigned event`, {
+                  conversationId,
+                  newTeamId: data?.toTeamId,
+                  newTeamName: data?.toTeamName
+                })
+              }
+
               console.log(`✨ [ConversationsStore] Conversation added to list (transferred from another team)`, {
                 conversationId,
                 fromTeamId: data?.fromTeamId,
@@ -1832,6 +1912,12 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   // ✅ 方案 B 阶段 3: 使用全局 WebSocket Store 的新实现
   const initializeRealtime = async () => {
+    // 🆕 FIX: 防止重複訂閱 - 如果已經訂閱過，直接返回
+    if (conversationsSubscriptionId) {
+      console.log(`✅ [ConversationsStore] Already subscribed to conversations (ID: ${conversationsSubscriptionId.substring(0, 8)}), skipping`)
+      return
+    }
+
     console.log('🚀 [ConversationsStore] Initializing real-time sync (Phase B3)...')
 
     updating.value = true
@@ -1844,6 +1930,11 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     // 订阅 conversations channel
     conversationsSubscriptionId = wsStore.subscribe('conversations', (message) => {
+      console.log('📩 [ConversationsStore] Received message on conversations channel:', {
+        type: message.type,
+        conversationId: message.conversationId,
+        action: (message.data as Record<string, unknown>)?.action
+      })
       handleRealtimeUpdate(message)
     })
 
@@ -1882,6 +1973,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     pagination,
     stats,
     syncStatus, // ✅ 阶段 2: 暴露 WebSocket 连接状态
+    transferredConversation, // 🆕 轉移狀態追蹤
 
     // Computed
     allMessages,
@@ -1912,6 +2004,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     clearMessages,
     setConversations,
     clearError,
+    clearTransferredState, // 🆕 清除轉移狀態
 
     // Optimistic updates and cache strategies
     optimisticUpdateConversation,
