@@ -66,3 +66,12 @@ backups/*
 monitoring/
 archive/
 nul
+test-results/
+
+# 開發工具臨時檔案
+frontend/.gemini-clipboard/
+.gemini-clipboard/
+
+# 生成的 QR Code 檔案
+team*_qr.svg
+*_qr.svg
