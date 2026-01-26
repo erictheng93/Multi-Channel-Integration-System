@@ -3,7 +3,7 @@
 
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, or, desc, sql, ne } from 'drizzle-orm';
+import { eq, and, or, desc, sql, ne, isNull } from 'drizzle-orm';
 import {
   agents,
   messages,
@@ -18,7 +18,7 @@ import {
   activities
 } from '@/db/schema';
 import { hashPassword } from '@/utils/auth';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import type {
   TeamMember,
   AddTeamMemberRequest,
@@ -26,7 +26,9 @@ import type {
   UpdateMemberRoleRequest,
   UpdateMemberRequest,
   MemberListQuery,
-  MemberListResponse
+  MemberListResponse,
+  BulkDeleteResult,
+  RestoreResult
 } from '../types/member-types';
 
 export class MemberService {
@@ -65,6 +67,7 @@ export class MemberService {
 
   /**
    * 獲取成員列表
+   * 自動過濾已軟刪除的成員 (deletedAt IS NULL)
    */
   async listMembers(query: MemberListQuery): Promise<MemberListResponse> {
     const page = query.page || 1;
@@ -73,6 +76,9 @@ export class MemberService {
 
     // Build where conditions
     const conditions = [];
+
+    // 🔑 Filter out soft-deleted members
+    conditions.push(isNull(agents.deletedAt));
 
     if (query.teamId !== undefined) {
       conditions.push(eq(agents.teamId, query.teamId));
@@ -126,8 +132,26 @@ export class MemberService {
 
   /**
    * 獲取單個成員
+   * 自動過濾已軟刪除的成員
    */
   async getMember(memberId: string): Promise<TeamMember | null> {
+    const [member] = await this.db
+      .select()
+      .from(agents)
+      .where(and(
+        eq(agents.id, memberId),
+        isNull(agents.deletedAt)
+      ))
+      .limit(1);
+
+    return member ? this.formatMember(member) : null;
+  }
+
+  /**
+   * 獲取單個成員 (包含已刪除的)
+   * 用於恢復操作
+   */
+  async getMemberIncludingDeleted(memberId: string): Promise<TeamMember | null> {
     const [member] = await this.db
       .select()
       .from(agents)
@@ -218,7 +242,150 @@ export class MemberService {
   }
 
   /**
-   * 刪除成員
+   * 軟刪除成員 (Soft Delete)
+   *
+   * 只設定 deletedAt 時間戳，不清理外鍵關聯。
+   * 這樣可以在 undo 時間窗口內 (10-30 秒) 恢復成員。
+   *
+   * @param memberId - 要刪除的成員 ID
+   * @param deletedBy - 執行刪除的用戶 ID
+   * @returns Promise<boolean> - 刪除是否成功
+   */
+  async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
+    const now = new Date().toISOString();
+
+    const [updated] = await this.db
+      .update(agents)
+      .set({
+        deletedAt: now,
+        updatedAt: now
+      })
+      .where(and(
+        eq(agents.id, memberId),
+        isNull(agents.deletedAt) // 確保只刪除未被刪除的成員
+      ))
+      .returning();
+
+    return !!updated;
+  }
+
+  /**
+   * 批量軟刪除成員
+   *
+   * @param memberIds - 要刪除的成員 ID 列表 (最多 50 個)
+   * @param deletedBy - 執行刪除的用戶 ID
+   * @returns Promise<BulkDeleteResult> - 刪除結果，包含成功和失敗的成員
+   */
+  async bulkSoftDeleteMembers(
+    memberIds: string[],
+    deletedBy: string
+  ): Promise<BulkDeleteResult> {
+    const deleted: string[] = [];
+    const failed: { memberId: string; error: string }[] = [];
+
+    // 限制批量操作數量
+    const MAX_BULK_SIZE = 50;
+    if (memberIds.length > MAX_BULK_SIZE) {
+      return {
+        deleted: [],
+        failed: memberIds.map(id => ({
+          memberId: id,
+          error: `批量操作限制為 ${MAX_BULK_SIZE} 個成員`
+        })),
+        deletedMembers: []
+      };
+    }
+
+    // 獲取要刪除的成員信息（用於恢復）
+    const deletedMembers: TeamMember[] = [];
+
+    for (const memberId of memberIds) {
+      try {
+        // 先獲取成員信息
+        const member = await this.getMember(memberId);
+        if (!member) {
+          failed.push({ memberId, error: '成員不存在' });
+          continue;
+        }
+
+        // 執行軟刪除
+        const success = await this.deleteMember(memberId, deletedBy);
+
+        if (success) {
+          deleted.push(memberId);
+          deletedMembers.push(member);
+        } else {
+          failed.push({ memberId, error: '刪除失敗' });
+        }
+      } catch (err) {
+        failed.push({
+          memberId,
+          error: err instanceof Error ? err.message : '未知錯誤'
+        });
+      }
+    }
+
+    return { deleted, failed, deletedMembers };
+  }
+
+  /**
+   * 恢復已軟刪除的成員
+   *
+   * @param memberId - 要恢復的成員 ID
+   * @returns Promise<TeamMember | null> - 恢復的成員，如果失敗則為 null
+   */
+  async restoreMember(memberId: string): Promise<TeamMember | null> {
+    const now = new Date().toISOString();
+
+    const [restored] = await this.db
+      .update(agents)
+      .set({
+        deletedAt: null,
+        updatedAt: now
+      })
+      .where(and(
+        eq(agents.id, memberId),
+        sql`${agents.deletedAt} IS NOT NULL` // 只恢復已刪除的成員
+      ))
+      .returning();
+
+    return restored ? this.formatMember(restored) : null;
+  }
+
+  /**
+   * 批量恢復已軟刪除的成員
+   *
+   * @param memberIds - 要恢復的成員 ID 列表
+   * @returns Promise<RestoreResult> - 恢復結果
+   */
+  async bulkRestoreMembers(memberIds: string[]): Promise<RestoreResult> {
+    const restored: TeamMember[] = [];
+    const failed: { memberId: string; error: string }[] = [];
+
+    for (const memberId of memberIds) {
+      try {
+        const member = await this.restoreMember(memberId);
+        if (member) {
+          restored.push(member);
+        } else {
+          failed.push({ memberId, error: '成員不存在或未被刪除' });
+        }
+      } catch (err) {
+        failed.push({
+          memberId,
+          error: err instanceof Error ? err.message : '未知錯誤'
+        });
+      }
+    }
+
+    return { restored, failed };
+  }
+
+  /**
+   * 硬刪除成員 (Hard Delete)
+   *
+   * ⚠️ 永久刪除，無法恢復！
+   * 僅用於 Undo 時間窗口過期後的清理作業。
    *
    * 處理外鍵約束（依順序處理所有引用 agents 表的外鍵）：
    * 1. 刪除 notifications（用戶刪除後通知無意義）
@@ -235,7 +402,7 @@ export class MemberService {
    * 12. task_reminders 會自動級聯刪除（onDelete: cascade）
    * 13. 最後刪除成員帳號
    */
-  async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
+  async hardDeleteMember(memberId: string, deletedBy: string): Promise<boolean> {
     // Step 1: 刪除該成員的通知（用戶刪除後通知無意義）
     await this.db
       .delete(notifications)

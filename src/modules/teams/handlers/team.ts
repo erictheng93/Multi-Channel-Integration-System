@@ -220,6 +220,55 @@ app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) 
   }
 });
 
+// 🆕 Bulk remove members from team (requires 'lead' role in team)
+app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+    const body = await c.req.json() as { agentIds: string[] };
+
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (!body.agentIds || !Array.isArray(body.agentIds) || body.agentIds.length === 0) {
+      return c.json({
+        success: false,
+        error: 'agentIds array is required and cannot be empty'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Limit to 50 members per request
+    if (body.agentIds.length > 50) {
+      return c.json({
+        success: false,
+        error: 'Cannot remove more than 50 members at once'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const result = await teamService.bulkRemoveMembers(teamId, body.agentIds);
+
+    return c.json({
+      success: true,
+      data: {
+        removed: result.removed,
+        failed: result.failed,
+        removedCount: result.removed.length
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Bulk remove team members error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to bulk remove team members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
 // Deactivate QR code
 // Phase 1 ?��?：�??��???KV 快�?
 // 🚀 Phase 2 RBAC: requires 'supervisor' role in team

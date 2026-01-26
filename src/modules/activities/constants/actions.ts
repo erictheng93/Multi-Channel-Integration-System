@@ -18,6 +18,8 @@ export const ACTIVITY_ACTIONS = {
   USER_CREATE: 'user_create',
   USER_UPDATE: 'user_update',
   USER_DELETE: 'user_delete',
+  USER_BULK_DELETE: 'user_bulk_delete', // 批量刪除成員
+  USER_RESTORE: 'user_restore', // 恢復已刪除成員
 
   // 系統設定 (System Settings)
   SETTINGS_UPDATE: 'settings_update',

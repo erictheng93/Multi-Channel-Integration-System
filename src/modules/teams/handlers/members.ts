@@ -13,14 +13,19 @@ import {
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
-import { desc, sql } from 'drizzle-orm';
+import { desc, sql, isNull } from 'drizzle-orm';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   AddTeamMemberRequest,
   UpdateMemberStatusRequest,
   UpdateMemberRoleRequest,
   UpdateMemberRequest,
-  DeleteMemberRequest
+  DeleteMemberRequest,
+  BulkDeleteMembersRequest,
+  BulkDeleteMembersResponse,
+  RestoreMembersRequest,
+  RestoreMembersResponse,
+  UndoTokenData
 } from '../types/member-types';
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
@@ -43,6 +48,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 使用直接的數據庫查詢來獲取所有成員
+    // 🔑 Filter out soft-deleted members
     const db = createDbClient(c.env.DB);
     const members = await db
       .select({
@@ -59,6 +65,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
         teamId: agents.teamId // Legacy: primary team for backward compatibility
       })
       .from(agents)
+      .where(isNull(agents.deletedAt))
       .orderBy(desc(agents.createdAt));
 
     // Fetch multi-team membership information
@@ -352,7 +359,7 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
 });
 
 /**
- * 刪除成員
+ * 刪除成員 (軟刪除)
  * DELETE /api/teams/members/:memberId
  */
 membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => {
@@ -379,7 +386,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // Delete member
+    // Soft delete member
     await memberService.deleteMember(memberId, String(user.id));
 
     // Log activity
@@ -408,6 +415,206 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete member'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 批量刪除成員 (軟刪除)
+ * POST /api/teams/members/bulk-delete
+ *
+ * 支持 Undo 功能：
+ * - 生成 undoToken，存儲在 KV 中 (30 秒 TTL)
+ * - 前端可使用此 token 在 10 秒內調用 restore 端點恢復
+ */
+membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const data: BulkDeleteMembersRequest = await c.req.json();
+
+    // Validation
+    if (!data.memberIds || !Array.isArray(data.memberIds) || data.memberIds.length === 0) {
+      return c.json({
+        success: false,
+        error: 'memberIds is required and must be a non-empty array'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Check limit
+    const MAX_BULK_SIZE = 50;
+    if (data.memberIds.length > MAX_BULK_SIZE) {
+      return c.json({
+        success: false,
+        error: `Cannot delete more than ${MAX_BULK_SIZE} members at once`
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Cannot delete yourself
+    if (data.memberIds.includes(String(user.id))) {
+      return c.json({
+        success: false,
+        error: 'Cannot delete your own account'
+      }, HTTP_STATUS.FORBIDDEN);
+    }
+
+    const memberService = new MemberService(c.env.DB);
+
+    // Execute bulk soft delete
+    const result = await memberService.bulkSoftDeleteMembers(
+      data.memberIds,
+      String(user.id)
+    );
+
+    // Generate undo token if any members were deleted
+    let undoToken = '';
+    let undoExpiresAt = '';
+
+    if (result.deleted.length > 0) {
+      undoToken = `undo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const expiresAt = new Date(Date.now() + 30 * 1000); // 30 seconds TTL
+      undoExpiresAt = expiresAt.toISOString();
+
+      // Store undo data in KV
+      const undoData: UndoTokenData = {
+        memberIds: result.deleted,
+        deletedBy: String(user.id),
+        deletedAt: new Date().toISOString(),
+        reason: data.reason
+      };
+
+      await c.env.KV.put(
+        `undo:members:${undoToken}`,
+        JSON.stringify(undoData),
+        { expirationTtl: 30 } // 30 seconds TTL
+      );
+    }
+
+    // Log activity
+    if (result.deleted.length > 0) {
+      const activityService = new ActivityService(c.env.DB);
+      await activityService.logActivity({
+        userId: String(user.id),
+        userName: user.displayName || String(user.id),
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_BULK_DELETE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: result.deleted.join(','),
+        details: {
+          deletedCount: result.deleted.length,
+          deletedMemberIds: result.deleted,
+          reason: data.reason
+        }
+      });
+    }
+
+    const response: BulkDeleteMembersResponse = {
+      deleted: result.deleted,
+      failed: result.failed,
+      undoToken,
+      undoExpiresAt,
+      deletedCount: result.deleted.length
+    };
+
+    return c.json({
+      success: true,
+      data: response,
+      message: `Successfully deleted ${result.deleted.length} member(s)`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Bulk delete members error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to bulk delete members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 恢復已刪除的成員
+ * POST /api/teams/members/restore
+ *
+ * 支持兩種模式：
+ * 1. undoToken: 使用 KV 中存儲的 token 獲取成員 ID
+ * 2. memberIds: 直接指定要恢復的成員 ID
+ */
+membersHandler.post('/restore', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const data: RestoreMembersRequest = await c.req.json();
+
+    let memberIdsToRestore: string[] = [];
+
+    // Mode 1: Use undo token
+    if (data.undoToken) {
+      const undoDataStr = await c.env.KV.get(`undo:members:${data.undoToken}`);
+
+      if (!undoDataStr) {
+        return c.json({
+          success: false,
+          error: 'Undo token expired or invalid'
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const undoData: UndoTokenData = JSON.parse(undoDataStr);
+      memberIdsToRestore = undoData.memberIds;
+
+      // Delete the token after use
+      await c.env.KV.delete(`undo:members:${data.undoToken}`);
+    }
+    // Mode 2: Direct member IDs
+    else if (data.memberIds && Array.isArray(data.memberIds) && data.memberIds.length > 0) {
+      memberIdsToRestore = data.memberIds;
+    }
+    else {
+      return c.json({
+        success: false,
+        error: 'Either undoToken or memberIds is required'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const memberService = new MemberService(c.env.DB);
+
+    // Execute bulk restore
+    const result = await memberService.bulkRestoreMembers(memberIdsToRestore);
+
+    // Log activity
+    if (result.restored.length > 0) {
+      const activityService = new ActivityService(c.env.DB);
+      await activityService.logActivity({
+        userId: String(user.id),
+        userName: user.displayName || String(user.id),
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_RESTORE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: result.restored.map(m => m.id).join(','),
+        details: {
+          restoredCount: result.restored.length,
+          restoredMemberIds: result.restored.map(m => m.id),
+          restoredMemberEmails: result.restored.map(m => m.email)
+        }
+      });
+    }
+
+    const response: RestoreMembersResponse = {
+      restored: result.restored,
+      failed: result.failed,
+      restoredCount: result.restored.length
+    };
+
+    return c.json({
+      success: true,
+      data: response,
+      message: `Successfully restored ${result.restored.length} member(s)`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Restore members error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to restore members'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

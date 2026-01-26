@@ -6,11 +6,14 @@
  * - 密码重置管理
  * - 角色和状态切换
  * - 表单状态管理
+ * - 🆕 批量选择和删除操作
+ * - 🆕 Undo 机制
  *
  * @module composables/team-management/useMemberOperations
  */
 
 import { ref, reactive, computed, type Ref, type ComputedRef } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
@@ -60,6 +63,18 @@ export interface UseMemberOperationsReturn {
   updateMemberRole: (memberId: string, role: string) => Promise<void>
   toggleMemberStatus: (member: TeamMember) => Promise<void>
   removeMember: (member: TeamMember) => Promise<void>
+
+  // 🆕 Selection Mode (批量操作)
+  isSelectionMode: Ref<boolean>
+  selectedMemberIds: Ref<Set<string>>
+  selectedCount: ComputedRef<number>
+  toggleSelectionMode: () => void
+  toggleMemberSelection: (memberId: string) => void
+  selectAllMembers: (currentUserId: string) => void
+  deselectAllMembers: () => void
+
+  // 🆕 Bulk Operations
+  bulkDeleteMembers: (currentUserId: string) => Promise<void>
 }
 
 // ==================== Composable ====================
@@ -327,6 +342,106 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     }
   }
 
+  // ==================== Selection Mode (批量操作) ====================
+
+  // 使用 storeToRefs 獲取響應式狀態
+  const { isSelectionMode, selectedMemberIds, selectedCount } = storeToRefs(teamStore)
+
+  /**
+   * 進入/退出選擇模式
+   */
+  function toggleSelectionMode() {
+    teamStore.toggleSelectionMode()
+  }
+
+  /**
+   * 切換單個成員的選擇狀態
+   */
+  function toggleMemberSelection(memberId: string) {
+    teamStore.toggleMemberSelection(memberId)
+  }
+
+  /**
+   * 選擇所有成員（排除當前用戶）
+   */
+  function selectAllMembers(currentUserId: string) {
+    teamStore.selectAllMembers([currentUserId])
+  }
+
+  /**
+   * 取消所有選擇
+   */
+  function deselectAllMembers() {
+    teamStore.deselectAllMembers()
+  }
+
+  // ==================== Bulk Operations ====================
+
+  /**
+   * 批量刪除成員（帶確認彈窗和 Undo）
+   */
+  async function bulkDeleteMembers(currentUserId: string) {
+    const selectedIds = Array.from(selectedMemberIds.value)
+
+    // 過濾掉當前用戶（防止自刪）
+    const idsToDelete = selectedIds.filter(id => id !== currentUserId)
+
+    if (idsToDelete.length === 0) {
+      showError('無法刪除', '請選擇要移除的成員')
+      return
+    }
+
+    // 獲取選中成員的名稱
+    const selectedMembers = teamStore.members.filter(m => idsToDelete.includes(m.id))
+    const memberNames = selectedMembers.map(m => m.name || m.loginId).join('、')
+
+    // 顯示確認彈窗
+    const confirmed = await showDanger(
+      '確認批量移除成員',
+      `您確定要移除以下 ${idsToDelete.length} 位成員嗎？\n\n${memberNames}\n\n此操作可在 10 秒內撤銷。`,
+      {
+        confirmText: `確認移除 ${idsToDelete.length} 位成員`,
+        cancelText: '取消'
+      }
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      // 執行批量刪除
+      const result = await teamStore.bulkDeleteMembers(idsToDelete)
+
+      // 顯示 Undo Toast (10 秒持續時間)
+      showSuccess(
+        '成功移除成員',
+        `已移除 ${result.deletedCount} 位成員`,
+        {
+          duration: 10000,
+          showProgress: true,
+          actionText: '復原',
+          onAction: async () => {
+            try {
+              // 使用 undoToken 恢復成員
+              await teamStore.restoreMembers({ undoToken: result.undoToken })
+              showSuccess('已復原', `已成功恢復 ${result.deletedCount} 位成員`)
+            } catch (err) {
+              console.error('復原失敗:', err)
+              showError('復原失敗', '無法恢復成員，可能已超過時限')
+            }
+          }
+        }
+      )
+    } catch (error) {
+      console.error('批量刪除失敗:', error)
+      const errorMessage = error instanceof Error
+        ? error.message
+        : '批量刪除失敗，請稍後重試'
+      showError('批量刪除失敗', errorMessage)
+    }
+  }
+
   // ==================== Return ====================
 
   return {
@@ -354,6 +469,18 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     // Member Operations
     updateMemberRole,
     toggleMemberStatus,
-    removeMember
+    removeMember,
+
+    // 🆕 Selection Mode (批量操作)
+    isSelectionMode,
+    selectedMemberIds,
+    selectedCount,
+    toggleSelectionMode,
+    toggleMemberSelection,
+    selectAllMembers,
+    deselectAllMembers,
+
+    // 🆕 Bulk Operations
+    bulkDeleteMembers
   }
 }

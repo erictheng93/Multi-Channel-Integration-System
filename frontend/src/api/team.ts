@@ -82,9 +82,53 @@ export const teamApi = {
     return apiClient.delete(`/teams/invitations/${invitationId}`)
   },
 
-  // 移除團隊成員
+  // 移除團隊成員 (軟刪除)
   removeMember: async (memberId: string): Promise<ApiResponse<void>> => {
     return apiClient.delete(`/teams/members/${memberId}`)
+  },
+
+  // ==================== Bulk Operations ====================
+
+  /**
+   * 批量刪除成員 (軟刪除)
+   * @param memberIds 要刪除的成員 ID 列表 (最多 50 個)
+   * @param reason 刪除原因 (可選)
+   * @returns 包含 undoToken 的響應，可用於 10 秒內恢復
+   */
+  bulkDeleteMembers: async (memberIds: string[], reason?: string): Promise<ApiResponse<{
+    deleted: string[];
+    failed: { memberId: string; error: string }[];
+    undoToken: string;
+    undoExpiresAt: string;
+    deletedCount: number;
+  }>> => {
+    return apiClient.post('/teams/members/bulk-delete', {
+      memberIds,
+      reason
+    })
+  },
+
+  /**
+   * 恢復已刪除的成員
+   * 支持兩種模式：
+   * 1. undoToken: 使用 KV 中存儲的 token 獲取成員 ID
+   * 2. memberIds: 直接指定要恢復的成員 ID
+   */
+  restoreMembers: async (options: {
+    undoToken?: string;
+    memberIds?: string[];
+  }): Promise<ApiResponse<{
+    restored: Array<{
+      id: string;
+      email: string;
+      name: string;
+      displayName: string;
+      role: string;
+    }>;
+    failed: { memberId: string; error: string }[];
+    restoredCount: number;
+  }>> => {
+    return apiClient.post('/teams/members/restore', options)
   },
 
   // 更新成員角色
@@ -468,6 +512,40 @@ export const teamApi = {
     } catch (error) {
       console.error('Remove member from team failed:', error)
       return { success: false, error: '網路錯誤，無法從團隊移除成員' }
+    }
+  },
+
+  // 🆕 批量從團隊移除成員
+  bulkRemoveMembersFromTeam: async (teamId: number, agentIds: string[]): Promise<ApiResponse<{
+    removed: string[];
+    failed: { agentId: string; error: string }[];
+    removedCount: number;
+  }>> => {
+    try {
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      if (!agentIds || agentIds.length === 0) {
+        return { success: false, error: '成員 ID 列表不能為空' }
+      }
+      if (agentIds.length > 50) {
+        return { success: false, error: '每次最多移除 50 位成員' }
+      }
+
+      const response = await apiClient.post<{
+        removed: string[];
+        failed: { agentId: string; error: string }[];
+        removedCount: number;
+      }>(`/teams/${teamId}/members/bulk-remove`, { agentIds })
+
+      if (response.success) {
+        return response
+      }
+
+      return { success: false, error: response.error || '批量移除成員失敗' }
+    } catch (error) {
+      console.error('Bulk remove members from team failed:', error)
+      return { success: false, error: '網路錯誤，無法批量移除成員' }
     }
   },
 

@@ -4,7 +4,26 @@
       v-for="member in members"
       :key="member.id"
       class="member-item"
+      :class="{
+        'selection-mode': isSelectionMode,
+        'selected': isSelectionMode && selectedMemberIds.has(member.id)
+      }"
+      @click="handleItemClick(member)"
     >
+      <!-- 🆕 Selection Checkbox (shown in selection mode) -->
+      <div
+        v-if="isSelectionMode"
+        class="selection-checkbox"
+        @click.stop="$emit('toggle-selection', member.id)"
+      >
+        <input
+          type="checkbox"
+          :checked="selectedMemberIds.has(member.id)"
+          class="checkbox-input"
+          @click.stop="$emit('toggle-selection', member.id)"
+        >
+      </div>
+
       <!-- Member Avatar -->
       <div class="member-avatar">
         {{ getInitials(member) }}
@@ -16,8 +35,9 @@
         <span class="member-role">{{ getRoleDisplayName(member.role) }}</span>
       </div>
 
-      <!-- Remove Button -->
+      <!-- Remove Button (hidden in selection mode) -->
       <button
+        v-if="!isSelectionMode"
         class="btn-remove"
         :disabled="removingMemberId === member.id"
         title="從團隊移除"
@@ -40,6 +60,8 @@
  * - Avatar with initials
  * - Member name and role display
  * - Remove button with loading state
+ * - 🆕 Selection mode with checkboxes
+ * - 🆕 Visual feedback for selected items
  * - Responsive grid layout
  */
 
@@ -51,15 +73,39 @@ interface Props {
 
   /** ID of member currently being removed (for loading state) */
   removingMemberId: string | null
+
+  /** 🆕 Whether selection mode is active */
+  isSelectionMode?: boolean
+
+  /** 🆕 Set of selected member IDs */
+  selectedMemberIds?: Set<string>
 }
 
 interface Emits {
   /** Emitted when remove button is clicked */
   (_e: 'remove-member', _member: TeamMember): void
+
+  /** 🆕 Emitted when member selection is toggled */
+  (_e: 'toggle-selection', _memberId: string): void
 }
 
-defineProps<Props>()
-defineEmits<Emits>()
+const props = withDefaults(defineProps<Props>(), {
+  isSelectionMode: false,
+  selectedMemberIds: () => new Set()
+})
+
+const emit = defineEmits<Emits>()
+
+/**
+ * Handle item click
+ * In selection mode: toggle selection
+ * Normal mode: no action (remove button handles removal)
+ */
+const handleItemClick = (member: TeamMember) => {
+  if (props.isSelectionMode) {
+    emit('toggle-selection', member.id)
+  }
+}
 
 /**
  * Get initials from member name or loginId
@@ -123,6 +169,53 @@ const getRoleDisplayName = (role: string): string => {
   background: #f8fafc;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 🆕 Selection Mode Styles */
+.member-item.selection-mode {
+  cursor: pointer;
+}
+
+.member-item.selection-mode:hover:not(.selected) {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.member-item.selected {
+  background: #eef2ff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.member-item.selected:hover {
+  background: #e0e7ff;
+}
+
+/* 🆕 Selection Checkbox */
+.selection-checkbox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.checkbox-input {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid #d1d5db;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  accent-color: #6366f1;
+}
+
+.checkbox-input:checked {
+  border-color: #6366f1;
+}
+
+.checkbox-input:hover {
+  border-color: #6366f1;
 }
 
 .member-avatar {
