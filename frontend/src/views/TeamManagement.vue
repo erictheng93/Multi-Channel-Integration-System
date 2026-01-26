@@ -34,6 +34,9 @@
         :sort-state="memberSorting.sortState.value"
         :current-sort-label="memberSorting.currentSortLabel.value"
         :sort-mode="memberSortMode.sortMode.value"
+        :is-selection-mode="controller.member.isSelectionMode.value"
+        :selected-member-ids="controller.member.selectedMemberIds.value"
+        :selected-count="controller.member.selectedCount.value"
         @add-member="controller.member.openAddMemberModal"
         @update-role="controller.member.updateMemberRole"
         @toggle-status="controller.member.toggleMemberStatus"
@@ -43,6 +46,10 @@
         @sort-toggle="memberSorting.toggleSortOrder"
         @sort-mode-change="memberSortMode.setSortMode"
         @custom-order-change="memberSortMode.updateCustomOrder"
+        @toggle-selection-mode="controller.member.toggleSelectionMode"
+        @toggle-member-selection="controller.member.toggleMemberSelection"
+        @select-all="() => controller.member.selectAllMembers(currentUserId || '')"
+        @bulk-delete="() => controller.member.bulkDeleteMembers(currentUserId || '')"
       />
 
       <!-- Team Management Section -->

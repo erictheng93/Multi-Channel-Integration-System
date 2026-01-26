@@ -259,7 +259,9 @@ const { showWarning } = useConfirmDialog()
 // Toast notifications
 const { showSuccess, showError } = useToast()
 
-// 🚀 优化：使用预加载的团队数据（computed 实时获取最新缓存）
+// 🚀 优化：使用预加载的团队数据
+// 🆕 響應式整合：preloadService.getTeams() 現在返回 shallowRef.value
+//    當快取更新時，teamsRef 會變化，觸發此 computed 自動重新計算
 const teams = computed(() => {
   const cachedTeams = preloadService.getTeams()
   return cachedTeams.map(team => ({

@@ -7,8 +7,43 @@
         人員管理 Staff Management ({{ members.length }})
       </h2>
       <div class="header-actions">
-        <!-- Sort Dropdown -->
+        <!-- 🆕 Bulk Selection Mode Toggle -->
+        <button
+          class="btn btn-outline"
+          :class="{ 'btn-outline-active': isSelectionMode }"
+          @click="emit('toggle-selection-mode')"
+        >
+          <CheckSquareIcon v-if="isSelectionMode" />
+          <SquareIcon v-else />
+          {{ isSelectionMode ? '取消選擇' : '批量選擇' }}
+        </button>
+
+        <!-- 🆕 Bulk Actions (shown when in selection mode) -->
+        <template v-if="isSelectionMode && (selectedCount ?? 0) > 0">
+          <span class="selection-count">
+            已選擇 {{ selectedCount ?? 0 }} 位
+          </span>
+          <button
+            class="btn btn-danger"
+            @click="emit('bulk-delete')"
+          >
+            <TrashIcon />
+            移除選取
+          </button>
+        </template>
+
+        <!-- 🆕 Select All (shown when in selection mode) -->
+        <button
+          v-if="isSelectionMode"
+          class="btn btn-outline"
+          @click="emit('select-all')"
+        >
+          全選
+        </button>
+
+        <!-- Sort Dropdown (hidden in selection mode) -->
         <SortDropdown
+          v-if="!isSelectionMode"
           :options="sortOptions"
           :current-field="sortState.field"
           :current-label="isCustomMode ? '自訂順序' : currentSortLabel"
@@ -19,6 +54,7 @@
           @reset-to-auto="handleResetToAuto"
         />
         <PrimaryActionButton
+          v-if="!isSelectionMode"
           class="add-member-btn"
           text="新增成員"
           :icon="PlusIcon"
@@ -75,11 +111,14 @@
           :all-teams="allTeams"
           :current-user-id="currentUserId"
           :loading="loading"
+          :is-selection-mode="isSelectionMode"
+          :is-selected="selectedMemberIds?.has(member.id) ?? false"
           class="draggable-card"
           @update-role="(memberId: string, role: string) => emit('update-role', memberId, role)"
           @toggle-status="(m) => emit('toggle-status', m)"
           @reset-password="(m) => emit('reset-password', m)"
           @remove-member="(m) => emit('remove-member', m)"
+          @toggle-selection="(memberId: string) => emit('toggle-member-selection', memberId)"
         />
       </VueDraggable>
     </div>
@@ -98,6 +137,9 @@ import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
+import CheckSquareIcon from '@/components/icons/CheckSquareIcon.vue'
+import SquareIcon from '@/components/icons/SquareIcon.vue'
+import TrashIcon from '@/components/icons/TrashIcon.vue'
 
 interface Props {
   members: TeamMember[]
@@ -110,6 +152,10 @@ interface Props {
   currentSortLabel: string
   // Sort mode props
   sortMode: SortMode
+  // 🆕 Selection mode props
+  isSelectionMode?: boolean
+  selectedMemberIds?: Set<string>
+  selectedCount?: number
 }
 
 interface Emits {
@@ -122,6 +168,11 @@ interface Emits {
   (_e: 'sort-toggle'): void
   (_e: 'sort-mode-change', _mode: SortMode): void
   (_e: 'custom-order-change', _ids: string[]): void
+  // 🆕 Selection mode emits
+  (_e: 'toggle-selection-mode'): void
+  (_e: 'toggle-member-selection', _memberId: string): void
+  (_e: 'select-all'): void
+  (_e: 'bulk-delete'): void
 }
 
 const props = defineProps<Props>()
@@ -215,7 +266,7 @@ function handleResetToAuto() {
   flex: 1;
 }
 
-/* Push add member button to the right */
+/* 🆕 Push add member button to the right */
 .add-member-btn {
   margin-left: auto;
 }
@@ -274,6 +325,55 @@ function handleResetToAuto() {
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* 🆕 Outline Button */
+.btn-outline {
+  background: white;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-outline:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-outline-active {
+  background: #eef2ff;
+  color: #4f46e5;
+  border-color: #6366f1;
+}
+
+.btn-outline-active:hover {
+  background: #e0e7ff;
+}
+
+/* 🆕 Danger Button */
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* 🆕 Selection Count Badge */
+.selection-count {
+  padding: 0.5rem 1rem;
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 
 @media (max-width: 768px) {
