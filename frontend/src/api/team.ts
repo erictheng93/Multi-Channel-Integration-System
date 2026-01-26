@@ -133,6 +133,59 @@ export const teamApi = {
   },
 
   /**
+   * 批量編輯成員 (個別變更)
+   * 每個成員可有不同的 profile 和團隊變更
+   */
+  batchEditMembers: async (
+    members: Array<{
+      memberId: string;
+      profile?: {
+        displayName?: string;
+        email?: string;
+        role?: 'admin' | 'agent';
+      };
+      teamChanges?: {
+        add?: number[];
+        remove?: number[];
+      };
+    }>,
+    reason?: string
+  ): Promise<ApiResponse<{
+    results: Array<{
+      memberId: string;
+      success: boolean;
+      error?: string;
+      profileUpdated: boolean;
+      teamsAdded: number[];
+      teamsRemoved: number[];
+    }>;
+    successCount: number;
+    failedCount: number;
+    skipped: { memberId: string; reason: string }[];
+    undoToken?: string;
+    undoExpiresAt?: string;
+  }>> => {
+    return apiClient.post('/teams/members/batch-edit', {
+      members,
+      reason
+    })
+  },
+
+  /**
+   * 撤銷批量編輯
+   */
+  undoBatchEdit: async (undoToken: string): Promise<ApiResponse<{
+    restoredCount: number;
+    results: Array<{
+      memberId: string;
+      success: boolean;
+      error?: string;
+    }>;
+  }>> => {
+    return apiClient.post('/teams/members/batch-edit/undo', { undoToken })
+  },
+
+  /**
    * 恢復已刪除的成員
    * 支持兩種模式：
    * 1. undoToken: 使用 KV 中存儲的 token 獲取成員 ID

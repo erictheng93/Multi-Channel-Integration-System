@@ -197,3 +197,88 @@ export interface BulkUpdateMembersResponse {
   /** 已更新的成員數量 */
   updatedCount: number;
 }
+
+// ==================== Batch Edit Operations (Per-member changes) ====================
+
+/**
+ * 單個成員的編輯資料
+ */
+export interface MemberEditData {
+  /** 成員 ID */
+  memberId: string;
+  /** Profile 更新 (可選) */
+  profile?: {
+    displayName?: string;
+    email?: string;
+    role?: 'admin' | 'agent';
+  };
+  /** 團隊變更 (可選) */
+  teamChanges?: {
+    /** 要加入的團隊 ID */
+    add?: number[];
+    /** 要離開的團隊 ID */
+    remove?: number[];
+  };
+}
+
+/**
+ * 批量編輯成員請求 (每個成員可有不同變更)
+ */
+export interface BatchEditMembersRequest {
+  /** 成員編輯資料列表 (最多 50 個) */
+  members: MemberEditData[];
+  /** 操作原因 (可選) */
+  reason?: string;
+}
+
+/**
+ * 單個成員的編輯結果
+ */
+export interface MemberEditResult {
+  /** 成員 ID */
+  memberId: string;
+  /** 是否成功 */
+  success: boolean;
+  /** 錯誤訊息 (如果失敗) */
+  error?: string;
+  /** Profile 更新結果 */
+  profileUpdated: boolean;
+  /** 團隊新增結果 */
+  teamsAdded: number[];
+  /** 團隊移除結果 */
+  teamsRemoved: number[];
+}
+
+/**
+ * 批量編輯成員響應
+ */
+export interface BatchEditMembersResponse {
+  /** 各成員的編輯結果 */
+  results: MemberEditResult[];
+  /** 成功更新的成員數量 */
+  successCount: number;
+  /** 失敗的成員數量 */
+  failedCount: number;
+  /** 被跳過的成員 (如自己) */
+  skipped: { memberId: string; reason: string }[];
+  /** 原始資料 (用於撤銷) */
+  originalData?: MemberEditData[];
+  /** Undo token (用於恢復) */
+  undoToken?: string;
+  /** Undo 過期時間 */
+  undoExpiresAt?: string;
+}
+
+/**
+ * 批量編輯 Undo Token 數據
+ */
+export interface BatchEditUndoTokenData {
+  /** 原始成員資料 */
+  originalMembers: MemberEditData[];
+  /** 執行編輯的用戶 ID */
+  editedBy: string;
+  /** 編輯時間 */
+  editedAt: string;
+  /** 操作原因 */
+  reason?: string;
+}

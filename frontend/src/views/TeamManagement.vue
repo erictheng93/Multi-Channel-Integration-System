@@ -146,6 +146,8 @@
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
+import { useToast } from '@/composables/useToast'
+import { teamApi } from '@/api/team'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import TeamStatsOverview from '@/components/team/TeamStatsOverview.vue'
@@ -162,6 +164,9 @@ import BulkEditMemberModal from '@/components/team/BulkEditMemberModal.vue'
 // Initialize main controller
 const controller = useTeamManagementController()
 
+// Toast notifications
+const { showSuccess, showError } = useToast()
+
 // Auth store for current user
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.currentAgent?.id)
@@ -175,14 +180,57 @@ const selectedMembersForBulkEdit = computed(() => {
   return members.value.filter(m => selectedIds.has(m.id))
 })
 
-// Handler for bulk edit saved
-const handleBulkEditSaved = () => {
+/** Payload from bulk edit saved event */
+interface BulkEditSavedPayload {
+  updatedCount: number
+  undoToken?: string
+  undoExpiresAt?: string
+}
+
+/**
+ * Handler for bulk edit saved
+ * Shows undo toast with 10-second countdown if undo token is available
+ */
+const handleBulkEditSaved = (payload: BulkEditSavedPayload) => {
   // Exit selection mode after successful bulk edit
   if (controller.member.isSelectionMode.value) {
     controller.member.toggleSelectionMode()
   }
+
   // Refresh data to ensure UI is up to date
   controller.refresh()
+
+  // Show undo toast if undo token is available
+  if (payload.undoToken) {
+    showSuccess(
+      '批量編輯成功',
+      `已成功更新 ${payload.updatedCount} 位成員`,
+      {
+        duration: 10000,
+        showProgress: true,
+        actionText: '復原',
+        onAction: async () => {
+          try {
+            const response = await teamApi.undoBatchEdit(payload.undoToken!)
+
+            if (response.success && response.data) {
+              showSuccess('已復原', `已成功恢復 ${response.data.restoredCount} 位成員的資料`)
+              // Refresh to reflect restored data
+              controller.refresh()
+            } else {
+              showError('復原失敗', response.error || '無法恢復成員資料')
+            }
+          } catch (err) {
+            console.error('復原失敗:', err)
+            showError('復原失敗', '無法恢復成員資料，可能已超過時限')
+          }
+        }
+      }
+    )
+  } else {
+    // No undo token, just show simple success message
+    showSuccess('批量編輯成功', `已成功更新 ${payload.updatedCount} 位成員`)
+  }
 }
 
 // ==================== Lifecycle ====================

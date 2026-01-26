@@ -29,8 +29,12 @@ import type {
   MemberListResponse,
   BulkDeleteResult,
   RestoreResult,
-  BulkUpdateResult
+  BulkUpdateResult,
+  MemberEditData,
+  MemberEditResult,
+  BatchEditMembersResponse
 } from '../types/member-types';
+import { AgentTeamsService } from './agent-teams-service';
 
 export class MemberService {
   private db: ReturnType<typeof drizzle>;
@@ -606,6 +610,207 @@ export class MemberService {
     }
 
     return { updated, failed, skipped, updatedMembers };
+  }
+
+  /**
+   * 批量編輯成員 (Per-member changes)
+   *
+   * 🚀 優化: 支持每個成員有不同的 profile 和團隊變更
+   * - 批量處理 profile 更新 (displayName, email, role)
+   * - 批量處理團隊加入/離開
+   * - 返回原始資料用於撤銷
+   *
+   * @param members 成員編輯資料列表
+   * @param editedBy 執行編輯的用戶 ID
+   * @param database D1 資料庫 (用於創建 AgentTeamsService)
+   */
+  async batchEditMembers(
+    members: MemberEditData[],
+    editedBy: string,
+    database: D1Database
+  ): Promise<{ results: MemberEditResult[]; skipped: { memberId: string; reason: string }[]; originalData: MemberEditData[] }> {
+    const results: MemberEditResult[] = [];
+    const skipped: { memberId: string; reason: string }[] = [];
+    const originalData: MemberEditData[] = [];
+
+    // 限制批量操作數量
+    const MAX_BATCH_SIZE = 50;
+    if (members.length > MAX_BATCH_SIZE) {
+      return {
+        results: members.map(m => ({
+          memberId: m.memberId,
+          success: false,
+          error: `批量操作限制為 ${MAX_BATCH_SIZE} 個成員`,
+          profileUpdated: false,
+          teamsAdded: [],
+          teamsRemoved: []
+        })),
+        skipped: [],
+        originalData: []
+      };
+    }
+
+    if (members.length === 0) {
+      return { results, skipped, originalData };
+    }
+
+    // Create AgentTeamsService for team operations
+    const agentTeamsService = new AgentTeamsService(database);
+
+    // 收集所有需要處理的成員 ID
+    const memberIds = members.map(m => m.memberId);
+
+    try {
+      // 🚀 Step 1: 批量查詢現有成員資料 (用於驗證和收集原始資料)
+      const existingMembers = await this.db
+        .select()
+        .from(agents)
+        .where(and(
+          inArray(agents.id, memberIds),
+          isNull(agents.deletedAt)
+        ));
+
+      const existingMemberMap = new Map(
+        existingMembers.map(m => [m.id, m])
+      );
+
+      // 🚀 Step 2: 批量獲取所有成員的當前團隊 (用於收集原始資料)
+      const allAgentTeams = await agentTeamsService.getAllAgentsWithTeams();
+
+      // 🚀 Step 3: 處理每個成員
+      for (const memberData of members) {
+        const { memberId, profile, teamChanges } = memberData;
+
+        // 跳過自己
+        if (memberId === editedBy) {
+          skipped.push({ memberId, reason: '無法編輯自己的帳號' });
+          continue;
+        }
+
+        // 檢查成員是否存在
+        const existingMember = existingMemberMap.get(memberId);
+        if (!existingMember) {
+          results.push({
+            memberId,
+            success: false,
+            error: '成員不存在',
+            profileUpdated: false,
+            teamsAdded: [],
+            teamsRemoved: []
+          });
+          continue;
+        }
+
+        // 收集原始資料 (用於撤銷)
+        const currentTeams = allAgentTeams.get(memberId) || [];
+        originalData.push({
+          memberId,
+          profile: {
+            displayName: existingMember.displayName || undefined,
+            email: existingMember.email || undefined,
+            role: existingMember.role as 'admin' | 'agent'
+          },
+          teamChanges: {
+            add: currentTeams.map(t => t.teamId),
+            remove: []
+          }
+        });
+
+        const result: MemberEditResult = {
+          memberId,
+          success: true,
+          profileUpdated: false,
+          teamsAdded: [],
+          teamsRemoved: []
+        };
+
+        try {
+          // 🚀 Step 3.1: 更新 Profile (如果有變更)
+          if (profile && (profile.displayName || profile.email || profile.role)) {
+            const updateData: Record<string, string> = {};
+
+            if (profile.displayName !== undefined) {
+              updateData.displayName = profile.displayName;
+            }
+            if (profile.email !== undefined) {
+              updateData.email = profile.email;
+            }
+            if (profile.role !== undefined) {
+              updateData.role = profile.role;
+            }
+
+            if (Object.keys(updateData).length > 0) {
+              updateData.updatedAt = new Date().toISOString();
+
+              await this.db
+                .update(agents)
+                .set(updateData)
+                .where(eq(agents.id, memberId));
+
+              result.profileUpdated = true;
+            }
+          }
+
+          // 🚀 Step 3.2: 處理團隊變更
+          if (teamChanges) {
+            // 加入團隊
+            if (teamChanges.add && teamChanges.add.length > 0) {
+              const addResult = await agentTeamsService.addAgentToMultipleTeams(
+                memberId,
+                teamChanges.add,
+                'member'
+              );
+              result.teamsAdded = addResult.added;
+            }
+
+            // 離開團隊
+            if (teamChanges.remove && teamChanges.remove.length > 0) {
+              for (const teamId of teamChanges.remove) {
+                try {
+                  await agentTeamsService.removeAgentFromTeam(memberId, teamId);
+                  result.teamsRemoved.push(teamId);
+                } catch (removeError) {
+                  console.error(`Failed to remove member ${memberId} from team ${teamId}:`, removeError);
+                }
+              }
+            }
+          }
+
+        } catch (memberError) {
+          result.success = false;
+          result.error = memberError instanceof Error ? memberError.message : '更新失敗';
+        }
+
+        results.push(result);
+      }
+
+      console.log('📦 [Member Batch Edit] 批量編輯完成:', {
+        total: members.length,
+        success: results.filter(r => r.success).length,
+        failed: results.filter(r => !r.success).length,
+        skipped: skipped.length
+      });
+
+    } catch (err) {
+      // 如果批量操作失敗，將所有未處理的成員標記為失敗
+      const errorMsg = err instanceof Error ? err.message : '批量編輯失敗';
+      for (const memberData of members) {
+        if (!results.some(r => r.memberId === memberData.memberId) &&
+            !skipped.some(s => s.memberId === memberData.memberId)) {
+          results.push({
+            memberId: memberData.memberId,
+            success: false,
+            error: errorMsg,
+            profileUpdated: false,
+            teamsAdded: [],
+            teamsRemoved: []
+          });
+        }
+      }
+      console.error('批量編輯成員錯誤:', err);
+    }
+
+    return { results, skipped, originalData };
   }
 
   /**
