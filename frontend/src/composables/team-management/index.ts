@@ -48,5 +48,12 @@ export {
   type UseMemberEditFormReturn
 } from './useMemberEditForm'
 
+export {
+  useSelectMemberToTeam,
+  type UseSelectMemberToTeamReturn,
+  type TeamRoleInTeam,
+  type AvailableMember
+} from './useSelectMemberToTeam'
+
 // ==================== Common Types ====================
 export type { Team } from './useTeamManagementController'

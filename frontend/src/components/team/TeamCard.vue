@@ -90,22 +90,20 @@
     </template>
   </TeamDetailModal>
 
-  <!-- 新增成員 Modal -->
-  <AddMemberModal
-    :visible="memberOps.addMemberModal.value"
-    :form="memberOps.addMemberForm"
-    :loading="memberOps.addMemberLoading.value"
-    :show-password="memberOps.showAddPassword.value"
-    :teams="teamStore.teams"
-    @close="closeAddMemberModal"
-    @submit="handleMemberAdded"
-    @toggle-password="memberOps.toggleAddPasswordVisibility"
+  <!-- 選擇成員加入團隊 Modal -->
+  <SelectMemberToTeamModal
+    :visible="showSelectMemberModal"
+    :team-id="team.id"
+    :team-name="team.name"
+    :current-member-ids="currentMemberIds"
+    @close="closeSelectMemberModal"
+    @members-added="handleMembersAdded"
   />
 </template>
 
 <script setup lang="ts">
   import { ref, watch, computed } from 'vue'
-  import AddMemberModal from '@/components/team/AddMemberModal.vue'
+  import SelectMemberToTeamModal from '@/components/team/SelectMemberToTeamModal.vue'
   import TeamQRSection from '@/components/team/qr-section/TeamQRSection.vue'
   import TeamMemberSection from '@/components/team/member-section/TeamMemberSection.vue'
   import TeamDetailModal from '@/components/team/modal/TeamDetailModal.vue'
@@ -115,8 +113,6 @@
   import { useToast } from '@/composables/useToast'
   import { useAuthStore } from '@/stores/auth'
   import { useQRCodeStore } from '@/stores/qrcode'
-  import { useTeamStore } from '@/stores/team'
-  import { useMemberOperations } from '@/composables/team-management'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
   // 禁用自動屬性繼承，手動綁定到主 div (解決 fragment 警告)
@@ -141,7 +137,6 @@
   const { showSuccess, showError } = useToast()
   const authStore = useAuthStore()
   const qrCodeStore = useQRCodeStore()
-  const teamStore = useTeamStore()
   const teamModal = useTeamModal()
 
   // 當前用戶資訊
@@ -151,8 +146,11 @@
   const members = ref<TeamMember[]>([])
   const loadingMembers = ref(false)
 
-  // 成員管理狀態 - 使用 useMemberOperations composable
-  const memberOps = useMemberOperations()
+  // 選擇成員加入團隊 Modal 狀態
+  const showSelectMemberModal = ref(false)
+
+  // 計算當前團隊成員 ID 列表（用於過濾已在團隊中的成員）
+  const currentMemberIds = computed(() => members.value.map(m => m.id))
 
   // LIFF QR Code 狀態
   const currentQRCode = ref<LiffQRCode | null>(null)
@@ -223,22 +221,22 @@
     }
   }
 
-  // 顯示新增成員 Modal
+  // 顯示選擇成員加入團隊 Modal
   const openAddMemberModal = () => {
-    memberOps.openAddMemberModal()
+    showSelectMemberModal.value = true
   }
 
-  // 關閉新增成員 Modal
-  const closeAddMemberModal = () => {
-    memberOps.closeAddMemberModal()
+  // 關閉選擇成員 Modal
+  const closeSelectMemberModal = () => {
+    showSelectMemberModal.value = false
   }
 
-  // 提交新增成員
-  const handleMemberAdded = async () => {
-    // 調用 memberOps 的提交方法
-    await memberOps.submitAddMember()
+  // 成員添加成功後的處理
+  const handleMembersAdded = async () => {
+    // 關閉 Modal
+    showSelectMemberModal.value = false
 
-    // 成功後刷新成員列表
+    // 刷新成員列表
     await loadTeamMembers()
 
     // 通知父組件更新（用於更新團隊卡片上的成員數量）
@@ -389,7 +387,7 @@
     () => {
       teamModal.closeModal()
       members.value = []
-      memberOps.addMemberModal.value = false
+      showSelectMemberModal.value = false
       currentQRCode.value = null
     }
   )
