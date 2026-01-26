@@ -16,11 +16,67 @@
         >
           {{ changedMemberCount }} 位有變更
         </span>
+        <span
+          v-if="useVirtualScroll"
+          class="virtual-badge"
+        >
+          虛擬滾動已啟用
+        </span>
       </div>
     </div>
 
-    <!-- Members List (Scrollable) -->
-    <div class="members-list-container">
+    <!-- Members List (Virtual Scrolling for large lists) -->
+    <div
+      v-if="useVirtualScroll"
+      ref="scrollContainerRef"
+      class="members-list-container virtual-scroll"
+    >
+      <div
+        class="members-list virtual"
+        :style="{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative'
+        }"
+      >
+        <div
+          v-for="virtualItem in virtualizer.getVirtualItems()"
+          :key="getMemberEntry(virtualItem.index)?.[0] || virtualItem.index"
+          :ref="(el) => el && virtualizer.measureElement(el as Element)"
+          :data-index="virtualItem.index"
+          class="virtual-item"
+          :style="{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            transform: `translateY(${virtualItem.start}px)`
+          }"
+        >
+          <BulkMemberEditCard
+            v-if="getMemberEntry(virtualItem.index)"
+            :member="getMemberEntry(virtualItem.index)![1].originalMember"
+            :form-data="getMemberEntry(virtualItem.index)![1].formData"
+            :errors="getMemberEntry(virtualItem.index)![1].errors"
+            :pending-team-changes="getMemberEntry(virtualItem.index)![1].pendingTeamChanges"
+            :display-teams="getDisplayTeams(getMemberEntry(virtualItem.index)![0])"
+            :all-teams="allTeams"
+            :is-dirty="isMemberDirty(getMemberEntry(virtualItem.index)![0])"
+            :current-user-id="currentUserId"
+            @update:field="handleFieldUpdate"
+            @add-team="handleAddTeam"
+            @remove-team="handleRemoveTeam"
+            @teams-loaded="handleTeamsLoaded"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Regular Members List (For small lists) -->
+    <div
+      v-else
+      class="members-list-container"
+    >
       <div class="members-list">
         <BulkMemberEditCard
           v-for="[memberId, state] in memberStates"
@@ -88,15 +144,23 @@
  * - Email
  * - Role (角色)
  * - Team Assignment (團隊分配)
+ *
+ * Features:
+ * - Virtual scrolling for 10+ members (performance optimization)
+ * - Individual form state per member
+ * - Deferred save mode for all changes
  */
 
-import { computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import Modal from '@/components/ui/Modal.vue'
 import BulkMemberEditCard from '@/components/team/BulkMemberEditCard.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
 import WarningIcon from '@/components/icons/WarningIcon.vue'
 import { useBulkMemberEdit, type BulkMemberEditState } from '@/composables/team-management/useBulkMemberEdit'
 import type { TeamMember, Team, AgentTeamMembership } from '@/types'
+
+// ==================== Type Definitions ====================
 
 interface Props {
   /** Modal visibility state */
@@ -112,16 +176,32 @@ interface Props {
   currentUserId?: string
 }
 
+interface SavedPayload {
+  updatedCount: number
+  undoToken?: string
+  undoExpiresAt?: string
+}
+
 interface Emits {
   (_e: 'close'): void
-  (_e: 'saved'): void
+  (_e: 'saved', _payload: SavedPayload): void
 }
+
+// ==================== Define Macros ====================
 
 const props = withDefaults(defineProps<Props>(), {
   currentUserId: ''
 })
 
 const emit = defineEmits<Emits>()
+
+// ==================== Constants ====================
+
+/** Threshold for enabling virtual scrolling */
+const VIRTUAL_SCROLL_THRESHOLD = 10
+
+// Refs for virtual scrolling
+const scrollContainerRef = ref<HTMLElement>()
 
 // Initialize bulk edit composable
 const {
@@ -145,6 +225,36 @@ const {
  * Number of members being edited
  */
 const memberCount = computed(() => props.selectedMembers.length)
+
+/**
+ * Whether to use virtual scrolling (10+ members)
+ */
+const useVirtualScroll = computed(() => memberCount.value >= VIRTUAL_SCROLL_THRESHOLD)
+
+/**
+ * Convert Map to array for virtual scrolling
+ */
+const memberStatesList = computed(() => Array.from(memberStates.value.entries()))
+
+/**
+ * Get member entry by index (type-safe helper for virtual scrolling)
+ */
+function getMemberEntry(index: number): [string, BulkMemberEditState] | undefined {
+  return memberStatesList.value[index]
+}
+
+/**
+ * Virtual list setup for large member counts
+ */
+const virtualizer = useVirtualizer({
+  get count() {
+    return memberStatesList.value.length
+  },
+  getScrollElement: () => scrollContainerRef.value || null,
+  estimateSize: () => 280, // Estimated height for member card
+  overscan: 3, // Render 3 extra items above/below visible area
+  measureElement: (element) => element?.getBoundingClientRect().height || 280
+})
 
 /**
  * Watch for visibility changes to initialize/reset
@@ -209,7 +319,11 @@ async function handleSubmit() {
   const result = await saveAllChanges(props.currentUserId || '')
 
   if (result.success || result.updatedCount > 0) {
-    emit('saved')
+    emit('saved', {
+      updatedCount: result.updatedCount,
+      undoToken: result.undoToken,
+      undoExpiresAt: result.undoExpiresAt
+    })
     emit('close')
   }
 }
@@ -241,6 +355,7 @@ async function handleSubmit() {
   gap: 0.75rem;
   color: #0369a1;
   font-size: 0.9375rem;
+  flex-wrap: wrap;
 }
 
 .changes-badge {
@@ -253,6 +368,16 @@ async function handleSubmit() {
   font-weight: 500;
 }
 
+.virtual-badge {
+  padding: 0.25rem 0.625rem;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  color: #1e40af;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
 /* Members List Container */
 .members-list-container {
   max-height: 50vh;
@@ -261,10 +386,24 @@ async function handleSubmit() {
   padding: 0 1.5rem;
 }
 
+.members-list-container.virtual-scroll {
+  /* Fixed height for virtual scrolling */
+  height: 50vh;
+}
+
 .members-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.members-list.virtual {
+  /* Virtual list uses absolute positioning */
+  gap: 0;
+}
+
+.virtual-item {
+  padding-bottom: 1rem; /* Gap between items */
 }
 
 /* Warning Note */

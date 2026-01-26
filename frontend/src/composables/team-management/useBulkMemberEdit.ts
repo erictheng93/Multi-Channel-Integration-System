@@ -113,7 +113,13 @@ export interface UseBulkMemberEditReturn {
   isMemberValid: (_memberId: string) => boolean
 
   /** Save all changes */
-  saveAllChanges: (_currentUserId: string) => Promise<{ success: boolean; updatedCount: number; errors: string[] }>
+  saveAllChanges: (_currentUserId: string) => Promise<{
+    success: boolean
+    updatedCount: number
+    errors: string[]
+    undoToken?: string
+    undoExpiresAt?: string
+  }>
 
   /** Reset all states */
   reset: () => void
@@ -445,19 +451,37 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
   }
 
   /**
-   * Save all changes
+   * Save all changes using batch API
+   * 🚀 優化: 使用單一批量 API 請求取代多次個別請求
    */
   async function saveAllChanges(
     currentUserId: string
-  ): Promise<{ success: boolean; updatedCount: number; errors: string[] }> {
+  ): Promise<{
+    success: boolean
+    updatedCount: number
+    errors: string[]
+    undoToken?: string
+    undoExpiresAt?: string
+  }> {
     const errors: string[] = []
     let updatedCount = 0
 
     isLoading.value = true
 
     try {
-      // Collect all members that need updating
-      const membersToUpdate: BulkMemberEditState[] = []
+      // Collect all members that need updating and build batch request
+      const batchMembers: Array<{
+        memberId: string
+        profile?: {
+          displayName?: string
+          email?: string
+          role?: 'admin' | 'agent'
+        }
+        teamChanges?: {
+          add?: number[]
+          remove?: number[]
+        }
+      }> = []
 
       for (const [memberId, state] of memberStates.value) {
         // Skip current user
@@ -476,84 +500,98 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
           continue
         }
 
-        membersToUpdate.push(state)
+        // Build member edit data
+        const memberEdit: typeof batchMembers[0] = { memberId }
+
+        // Check profile changes
+        const profileDirty =
+          state.formData.displayName !== state.originalFormData.displayName ||
+          state.formData.email !== state.originalFormData.email ||
+          state.formData.role !== state.originalFormData.role
+
+        if (profileDirty) {
+          memberEdit.profile = {}
+          if (state.formData.displayName !== state.originalFormData.displayName) {
+            memberEdit.profile.displayName = state.formData.displayName.trim()
+          }
+          if (state.formData.email !== state.originalFormData.email) {
+            memberEdit.profile.email = state.formData.email.trim()
+          }
+          if (state.formData.role !== state.originalFormData.role) {
+            memberEdit.profile.role = state.formData.role
+          }
+        }
+
+        // Check team changes
+        if (state.pendingTeamChanges.length > 0) {
+          const addChanges = state.pendingTeamChanges.filter(c => c.type === 'add')
+          const removeChanges = state.pendingTeamChanges.filter(c => c.type === 'remove')
+
+          memberEdit.teamChanges = {}
+          if (addChanges.length > 0) {
+            memberEdit.teamChanges.add = addChanges.map(c => c.teamId)
+          }
+          if (removeChanges.length > 0) {
+            memberEdit.teamChanges.remove = removeChanges.map(c => c.teamId)
+          }
+        }
+
+        batchMembers.push(memberEdit)
       }
 
-      if (membersToUpdate.length === 0) {
+      if (batchMembers.length === 0) {
         showError('無變更', '沒有需要儲存的變更')
-        return { success: false, updatedCount: 0, errors }
+        return { success: false, updatedCount: 0, errors, undoToken: undefined, undoExpiresAt: undefined }
       }
 
-      // Process each member
-      for (const state of membersToUpdate) {
-        const memberName = state.originalMember.name || state.originalMember.loginId
+      // 🚀 Single batch API call
+      const response = await teamApi.batchEditMembers(batchMembers)
 
-        try {
-          // Check what needs to be updated
-          const profileDirty =
-            state.formData.displayName !== state.originalFormData.displayName ||
-            state.formData.email !== state.originalFormData.email ||
-            state.formData.role !== state.originalFormData.role
+      if (!response.success) {
+        showError('批量編輯失敗', response.error || '未知錯誤')
+        return { success: false, updatedCount: 0, errors: [response.error || '未知錯誤'], undoToken: undefined, undoExpiresAt: undefined }
+      }
 
-          // Update profile if changed
-          if (profileDirty) {
-            const response = await teamApi.updateMember(state.memberId, {
-              displayName: state.formData.displayName.trim(),
-              email: state.formData.email.trim(),
-              role: state.formData.role
-            } as Partial<TeamMember>)
+      const data = response.data!
+      updatedCount = data.successCount
 
-            if (!response.success) {
-              errors.push(`${memberName}: ${response.error || '更新失敗'}`)
-              continue
+      // Collect errors from failed results
+      for (const result of data.results) {
+        if (!result.success && result.error) {
+          const state = memberStates.value.get(result.memberId)
+          const memberName = state?.originalMember.name || state?.originalMember.loginId || result.memberId
+          errors.push(`${memberName}: ${result.error}`)
+        }
+      }
+
+      // Update local store for successful updates
+      for (const result of data.results) {
+        if (result.success) {
+          const state = memberStates.value.get(result.memberId)
+          if (state) {
+            // Update profile in store
+            if (result.profileUpdated) {
+              teamStore.updateMemberLocal(result.memberId, {
+                displayName: state.formData.displayName.trim(),
+                email: state.formData.email.trim(),
+                role: state.formData.role
+              })
             }
 
-            // Update store
-            teamStore.updateMemberLocal(state.memberId, {
-              displayName: state.formData.displayName.trim(),
-              email: state.formData.email.trim(),
-              role: state.formData.role
-            })
+            // Update teams in store
+            if (result.teamsAdded.length > 0 || result.teamsRemoved.length > 0) {
+              const displayTeams = getDisplayTeams(result.memberId)
+              teamStore.updateMemberLocal(result.memberId, {
+                teams: displayTeams.map(t => ({
+                  teamId: t.teamId,
+                  teamName: t.teamName,
+                  roleInTeam: t.roleInTeam,
+                  isPrimary: t.isPrimary,
+                  joinedAt: t.joinedAt
+                }))
+              })
+            }
           }
-
-          // Process team changes
-          if (state.pendingTeamChanges.length > 0) {
-            const addChanges = state.pendingTeamChanges.filter(c => c.type === 'add')
-            const removeChanges = state.pendingTeamChanges.filter(c => c.type === 'remove')
-
-            // Add teams
-            if (addChanges.length === 1) {
-              const change = addChanges[0]
-              if (change) {
-                await teamApi.joinTeam(state.memberId, change.teamId, { roleInTeam: 'member' })
-              }
-            } else if (addChanges.length > 1) {
-              const teamIds = addChanges.map(c => c.teamId)
-              await teamApi.joinMultipleTeams(state.memberId, teamIds, 'member')
-            }
-
-            // Remove teams
-            for (const change of removeChanges) {
-              await teamApi.leaveTeam(state.memberId, change.teamId)
-            }
-
-            // Update store with new teams
-            const displayTeams = getDisplayTeams(state.memberId)
-            teamStore.updateMemberLocal(state.memberId, {
-              teams: displayTeams.map(t => ({
-                teamId: t.teamId,
-                teamName: t.teamName,
-                roleInTeam: t.roleInTeam,
-                isPrimary: t.isPrimary,
-                joinedAt: t.joinedAt
-              }))
-            })
-          }
-
-          updatedCount++
-        } catch (error) {
-          console.error(`Error updating member ${state.memberId}:`, error)
-          errors.push(`${memberName}: ${error instanceof Error ? error.message : '更新失敗'}`)
         }
       }
 
@@ -568,7 +606,20 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
       return {
         success: errors.length === 0,
         updatedCount,
-        errors
+        errors,
+        undoToken: data.undoToken,
+        undoExpiresAt: data.undoExpiresAt
+      }
+    } catch (error) {
+      console.error('Batch edit error:', error)
+      const errorMsg = error instanceof Error ? error.message : '批量編輯失敗'
+      showError('批量編輯失敗', errorMsg)
+      return {
+        success: false,
+        updatedCount: 0,
+        errors: [errorMsg],
+        undoToken: undefined,
+        undoExpiresAt: undefined
       }
     } finally {
       isLoading.value = false

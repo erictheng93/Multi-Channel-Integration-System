@@ -27,7 +27,10 @@ import type {
   RestoreMembersResponse,
   UndoTokenData,
   BulkUpdateMembersRequest,
-  BulkUpdateMembersResponse
+  BulkUpdateMembersResponse,
+  BatchEditMembersRequest,
+  BatchEditMembersResponse,
+  BatchEditUndoTokenData
 } from '../types/member-types';
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
@@ -714,6 +717,229 @@ membersHandler.post('/bulk-update', jwtAuth, requireManagerOrAdmin(), async (c) 
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to bulk update members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 批量編輯成員 (個別變更)
+ * POST /api/teams/members/batch-edit
+ *
+ * 支持每個成員有不同的 profile 和團隊變更
+ * - Profile: displayName, email, role
+ * - Teams: add/remove teams
+ * - 返回 undo token 用於撤銷
+ */
+membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const data: BatchEditMembersRequest = await c.req.json();
+
+    // Validation: members required
+    if (!data.members || !Array.isArray(data.members) || data.members.length === 0) {
+      return c.json({
+        success: false,
+        error: 'members is required and must be a non-empty array'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Check limit
+    const MAX_BATCH_SIZE = 50;
+    if (data.members.length > MAX_BATCH_SIZE) {
+      return c.json({
+        success: false,
+        error: `Cannot edit more than ${MAX_BATCH_SIZE} members at once`
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Validate each member has at least one change
+    for (const member of data.members) {
+      if (!member.memberId) {
+        return c.json({
+          success: false,
+          error: 'Each member must have a memberId'
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const hasProfileChange = member.profile &&
+        (member.profile.displayName !== undefined ||
+         member.profile.email !== undefined ||
+         member.profile.role !== undefined);
+
+      const hasTeamChange = member.teamChanges &&
+        ((member.teamChanges.add && member.teamChanges.add.length > 0) ||
+         (member.teamChanges.remove && member.teamChanges.remove.length > 0));
+
+      if (!hasProfileChange && !hasTeamChange) {
+        return c.json({
+          success: false,
+          error: `Member ${member.memberId} has no changes specified`
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+    }
+
+    const memberService = new MemberService(c.env.DB);
+
+    // Execute batch edit
+    const result = await memberService.batchEditMembers(
+      data.members,
+      String(user.id),
+      c.env.DB
+    );
+
+    // Calculate success/failed counts
+    const successCount = result.results.filter(r => r.success).length;
+    const failedCount = result.results.filter(r => !r.success).length;
+
+    // Generate undo token if there were successful edits
+    let undoToken: string | undefined;
+    let undoExpiresAt: string | undefined;
+
+    if (successCount > 0 && result.originalData.length > 0) {
+      undoToken = `batch-edit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const expiresAt = new Date(Date.now() + 10 * 1000); // 10 seconds
+      undoExpiresAt = expiresAt.toISOString();
+
+      // Store undo data in KV
+      const undoData: BatchEditUndoTokenData = {
+        originalMembers: result.originalData,
+        editedBy: String(user.id),
+        editedAt: new Date().toISOString(),
+        reason: data.reason
+      };
+
+      await c.env.KV.put(
+        `undo:batch-edit:${undoToken}`,
+        JSON.stringify(undoData),
+        { expirationTtl: 60 } // 60 seconds TTL
+      );
+    }
+
+    // Log activity if any members were updated
+    if (successCount > 0) {
+      const activityService = new ActivityService(c.env.DB);
+      await activityService.logActivity({
+        userId: String(user.id),
+        userName: user.displayName || String(user.id),
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_BULK_UPDATE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: result.results.filter(r => r.success).map(r => r.memberId).join(','),
+        details: {
+          updatedCount: successCount,
+          failedCount,
+          skippedCount: result.skipped.length,
+          reason: data.reason
+        }
+      });
+    }
+
+    const response: BatchEditMembersResponse = {
+      results: result.results,
+      successCount,
+      failedCount,
+      skipped: result.skipped,
+      undoToken,
+      undoExpiresAt
+    };
+
+    return c.json({
+      success: true,
+      data: response,
+      message: `Successfully edited ${successCount} member(s)`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Batch edit members error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to batch edit members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 撤銷批量編輯
+ * POST /api/teams/members/batch-edit/undo
+ */
+membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const { undoToken } = await c.req.json();
+
+    if (!undoToken) {
+      return c.json({
+        success: false,
+        error: 'undoToken is required'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Get undo data from KV
+    const undoDataStr = await c.env.KV.get(`undo:batch-edit:${undoToken}`);
+    if (!undoDataStr) {
+      return c.json({
+        success: false,
+        error: 'Undo token expired or invalid'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const undoData: BatchEditUndoTokenData = JSON.parse(undoDataStr);
+
+    // Verify the user who is undoing is the same who edited
+    if (undoData.editedBy !== String(user.id)) {
+      return c.json({
+        success: false,
+        error: 'Only the user who made the changes can undo them'
+      }, HTTP_STATUS.FORBIDDEN);
+    }
+
+    const memberService = new MemberService(c.env.DB);
+
+    // Restore original data
+    const result = await memberService.batchEditMembers(
+      undoData.originalMembers,
+      String(user.id),
+      c.env.DB
+    );
+
+    // Delete the undo token
+    await c.env.KV.delete(`undo:batch-edit:${undoToken}`);
+
+    const successCount = result.results.filter(r => r.success).length;
+
+    // Log activity
+    if (successCount > 0) {
+      const activityService = new ActivityService(c.env.DB);
+      await activityService.logActivity({
+        userId: String(user.id),
+        userName: user.displayName || String(user.id),
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_BULK_UPDATE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: result.results.filter(r => r.success).map(r => r.memberId).join(','),
+        details: {
+          action: 'undo',
+          restoredCount: successCount
+        }
+      });
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        restoredCount: successCount,
+        results: result.results
+      },
+      message: `Successfully restored ${successCount} member(s)`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Undo batch edit error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to undo batch edit'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
