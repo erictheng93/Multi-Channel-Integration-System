@@ -172,10 +172,15 @@ describe('useQRCodeOperations', () => {
       expect(operations.currentTeam.value).toEqual(mockTeam)
     })
 
-    it('should use QR code from team object if available', async () => {
+    it('should use QR code from store cache if available', async () => {
+      // Note: team.qrCode fallback removed - unified to new LIFF QR Code system (team_liff_qr_codes table)
+      // Now we need to mock the store to return a cached QR code
+      mockGetQRCodeFn.mockReturnValue({ qrCodeUrl: 'data:image/png;base64,cached-qr-code' })
+
       await operations.viewQR(mockTeam)
 
       expect(operations.currentQRCode.value).toBeTruthy()
+      expect(operations.currentQRCode.value).toBe('data:image/png;base64,cached-qr-code')
     })
 
     it('should handle errors gracefully', async () => {

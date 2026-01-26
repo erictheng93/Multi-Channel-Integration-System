@@ -1114,28 +1114,48 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           const { WebSocketBroadcastService } = await import('../services/websocket-broadcast-service');
           const broadcastService = new WebSocketBroadcastService(env);
 
-          await broadcastService.broadcastConversationEvent({
-            type: 'conversation_assigned',
+          // 🆕 使用 broadcastConversationTransferred 以便前端 Reconciliation
+          // 這會觸發前端的 'assigned' action，替換之前的 pending 對話
+          await broadcastService.broadcastConversationTransferred({
             conversationId: broadcastConversationId,
-            data: {
-              assignedTeamId,
-              assignedTeamName: teamInfo?.name || null,
-              // Note: assignedUserId/assignedAgentName removed - only team assignment is supported
-              assignedBy: {
-                id: 'system',
-                name: 'Auto-Assignment',
-                role: 'system'
+            fromTeamId: null,
+            toTeamId: assignedTeamId,
+            toTeamName: teamInfo?.name,
+            conversation: {
+              id: broadcastConversationId,
+              customerId: existingCustomer.id,
+              customerName: displayName,
+              platform: 'line',
+              status: 'active',
+              lastMessage: {
+                content: '已加入',
+                timestamp: Date.now()
               },
-              reason: 'QR Code Follow - Auto Assignment',
-              timestamp
+              unreadCount: 0,
+              assignedTeamId: assignedTeamId,
+              assignedTeam: teamInfo ? {
+                id: teamInfo.id,
+                name: teamInfo.name
+              } : undefined,
+              // 🆕 Reconciliation 標記：讓前端知道這是 Webhook 確認的真實對話
+              _liffMetadata: {
+                isPending: false,
+                lineUserId: userId, // 用於匹配和替換 pending 對話
+                isWebhookConfirmation: true
+              }
+            } as any,
+            transferredBy: {
+              id: 'system',
+              name: 'Auto-Assignment'
             },
-            priority: 'normal'
+            reason: 'QR Code Follow - Auto Assignment'
           });
 
-          console.log('✅ [LINE Follow] WebSocket broadcast sent for auto-assignment:', {
+          console.log('✅ [LINE Follow] WebSocket broadcast sent for auto-assignment (with reconciliation):', {
             conversationId: broadcastConversationId,
             teamId: assignedTeamId,
-            teamName: teamInfo?.name
+            teamName: teamInfo?.name,
+            lineUserId: userId.substring(0, 10) + '...'
           });
         } catch (broadcastError) {
           log.warn('LINE Follow: WebSocket broadcast failed (non-blocking)', {

@@ -1,8 +1,8 @@
 # 团队选择器性能优化总结报告
 
-**优化日期**: 2025-01-05
-**优化范围**: 团队选择器加载性能优化
-**实施状态**: ✅ Phase 1 & 2 完成，📋 Phase 3 规划完成
+**优化日期**: 2025-01-05 (Phase 1-3), 2025-01-26 (Plan C)
+**优化范围**: 团队选择器加载性能优化 + Vue 响应式重构
+**实施状态**: ✅ Phase 1-3 完成，✅ Plan C Pinia Store 重构完成
 
 ---
 
@@ -237,6 +237,173 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 - 数据一致性保障
 
 **实施时间**: 6 周（已规划，待批准）
+
+---
+
+## ✅ Plan C: Pinia Store 完整重構（2025-01-26）
+
+### 背景：間歇性 Bug 發現
+
+在 Phase 1-3 完成後，發現了一個間歇性 Bug：
+
+```
+問題：「選擇指派團隊」對話框偶爾顯示「沒有找到可用的團隊」，
+      即使團隊實際存在。刷新頁面後問題消失。
+```
+
+### 根本原因分析
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    舊架構問題                                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Vue Computed                 PreloadService               │
+│   ┌─────────────┐             ┌─────────────────┐          │
+│   │ computed:   │  ───────>   │ cache: Map()    │          │
+│   │   teams     │             │ (非響應式!)      │          │
+│   └─────────────┘             └─────────────────┘          │
+│                                                             │
+│   ❌ Vue computed 無法追蹤 Map 內部變化                      │
+│   ❌ 快取更新時，computed 不會重新計算                       │
+│   ❌ 導致 UI 顯示過時的空陣列                                │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Plan C 解決方案：Pinia Store 重構
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    新架構（Plan C）                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Vue Component              PreloadService (Facade)        │
+│   ┌─────────────┐           ┌─────────────────────────┐    │
+│   │ computed:   │           │ teamsRef: ShallowRef    │    │
+│   │   teams     │   <───    │     ↑ auto-sync         │    │
+│   └─────────────┘           └───────────┬─────────────┘    │
+│                                         │ delegates to     │
+│                             ┌───────────▼─────────────┐    │
+│                             │   usePreloadStore       │    │
+│                             │   (Pinia Store)         │    │
+│                             │ ┌─────────────────────┐ │    │
+│                             │ │ teams: shallowRef   │ │    │
+│                             │ │ (✅ 完全響應式!)    │ │    │
+│                             │ └─────────────────────┘ │    │
+│                             └─────────────────────────┘    │
+│                                                             │
+│   ✅ Pinia shallowRef 是完全響應式的                        │
+│   ✅ 快取更新時，Vue computed 自動重新計算                   │
+│   ✅ UI 永遠顯示最新數據                                     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 實作細節
+
+#### 1. 新增 Pinia Store: `frontend/src/stores/preload.ts`
+
+```typescript
+export const usePreloadStore = defineStore('preload', () => {
+  // ✅ shallowRef 提供完整 Vue 響應式
+  const teams = shallowRef<Team[]>([])
+  const teamsCache = ref<CacheEntry<Team[]> | null>(null)
+  const loading = ref(false)
+  const initialized = ref(false)
+
+  // Stale-While-Revalidate 策略
+  function getTeams(): Team[] {
+    if (teamsCache.value && isCacheValid(teamsCache.value)) {
+      return teams.value // 快取有效，直接返回
+    }
+    if (teamsCache.value && !isCacheValid(teamsCache.value)) {
+      preloadTeams() // 後台刷新
+      return teams.value // 返回過期數據
+    }
+    preloadTeams() // 觸發載入
+    return teams.value // 返回空陣列（將自動更新）
+  }
+
+  return { teams, getTeams, ensureTeamsLoaded, refreshTeams, ... }
+})
+```
+
+#### 2. 重構 Facade: `frontend/src/services/preloadService.ts`
+
+```typescript
+class PreloadService {
+  // 向後兼容的響應式引用
+  public readonly teamsRef: ShallowRef<Team[]> = shallowRef<Team[]>([])
+
+  // 使用 storeToRefs 自動同步
+  private setupAutoSync(): void {
+    const { teams: storeTeamsRef } = storeToRefs(this._store)
+    this._watchStopHandle = watch(
+      storeTeamsRef,
+      (newTeams) => {
+        if (this.teamsRef.value !== newTeams) {
+          this.teamsRef.value = newTeams
+        }
+      },
+      { immediate: true, flush: 'sync' }
+    )
+  }
+
+  // 所有方法委託給 Pinia store
+  getTeams(): Team[] {
+    const teams = this.store.getTeams()
+    return this.teamsRef.value
+  }
+}
+```
+
+#### 3. 單元測試: `frontend/src/services/__tests__/preloadService.test.ts`
+
+- **34 個測試案例** 覆蓋所有 API 方法
+- 測試重點：
+  - 快取管理（有效、過期、不存在）
+  - API 調用與錯誤處理
+  - Stale-While-Revalidate 策略
+  - 響應式 teamsRef 行為
+  - 初始化與清理流程
+  - Pinia Store 整合
+
+### 驗證結果
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    驗證結果                                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ✅ 單元測試：34/34 通過                                     │
+│  ✅ TypeScript 類型檢查：通過                                │
+│  ✅ 生產構建：成功                                           │
+│                                                             │
+│  瀏覽器整合測試：                                            │
+│  ✅ 冷啟動測試：團隊正確載入                                 │
+│  ✅ 團隊選擇對話框：5 個團隊全部顯示                         │
+│  ✅ 快速連續操作：3 次開關無錯誤                             │
+│  ✅ 刷新功能：正常運作                                       │
+│  ✅ DevTools 驗證：Pinia Store 狀態正確                      │
+│                                                             │
+│  🎯 Bug 狀態：「沒有找到可用的團隊」錯誤已完全修復           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 修改的文件（Plan C）
+
+| 文件 | 變更類型 | 說明 |
+|------|---------|------|
+| `frontend/src/stores/preload.ts` | 新增 | Pinia Store 實作 |
+| `frontend/src/services/preloadService.ts` | 重構 | 改為 Facade pattern |
+| `frontend/src/services/__tests__/preloadService.test.ts` | 新增 | 34 個單元測試 |
+
+### 向後兼容性
+
+- **100% 向後兼容**：所有現有程式碼繼續使用 `preloadService.getTeams()` 無需修改
+- **遷移路徑**：新程式碼建議直接使用 `usePreloadStore()`
 
 ---
 

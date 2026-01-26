@@ -194,6 +194,66 @@ liffHandler.post('/assign-team', async (c) => {
 
     log.info('Team assignment created', { assignmentId, lineUserId, teamId });
 
+    // === 🆕 LIFF 預通知 WebSocket 廣播 ===
+    // 在用戶加好友之前，通過 WebSocket 通知前端創建 "pending" 對話
+    // 這將用戶感知延遲從 2-8 秒縮短到 < 500ms
+    try {
+      const { WebSocketBroadcastService } = await import('../services/websocket-broadcast-service');
+      const broadcastService = new WebSocketBroadcastService(c.env);
+
+      const pendingConversationId = `pending-${assignmentId}`;
+      const scannedAt = Date.now();
+
+      await broadcastService.broadcastConversationTransferred({
+        conversationId: pendingConversationId,
+        fromTeamId: null,
+        toTeamId: teamId,
+        toTeamName: team.name,
+        conversation: {
+          id: pendingConversationId,
+          customerName: displayName || 'LINE 用戶',
+          platform: 'line',
+          status: 'pending',
+          lastMessage: {
+            content: '正在加入...',
+            timestamp: scannedAt
+          },
+          unreadCount: 0,
+          assignedTeamId: teamId,
+          assignedTeam: {
+            id: teamId,
+            name: team.name
+          },
+          // 🆕 LIFF Metadata 用於前端識別和 Reconciliation
+          _liffMetadata: {
+            isPending: true,
+            lineUserId: lineUserId,
+            assignmentId: assignmentId,
+            scannedAt: scannedAt
+          }
+        } as any, // Cast to any to allow _liffMetadata extension
+        transferredBy: {
+          id: 'system',
+          name: 'QR Code Scan'
+        },
+        reason: 'LIFF QR Code Pre-Assignment'
+      });
+
+      log.info('LIFF pre-notification sent', {
+        assignmentId,
+        teamId,
+        pendingConversationId,
+        lineUserId: lineUserId.substring(0, 10) + '...'
+      });
+    } catch (broadcastError) {
+      // 非阻塞 - 廣播失敗不影響主流程
+      log.warn('LIFF pre-notification failed (non-blocking)', {
+        error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError),
+        assignmentId,
+        teamId
+      });
+    }
+
     return c.json({
       success: true,
       data: {

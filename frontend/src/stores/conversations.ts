@@ -47,6 +47,12 @@ export const useConversationsStore = defineStore('conversations', () => {
   // ✅ 方案 B 阶段 3: 全局 WebSocket 订阅
   const wsStore = useWebSocketStore()
   let conversationsSubscriptionId: SubscriptionId | null = null
+
+  // 🆕 LIFF 預通知：Pending 對話清理配置
+  const PENDING_CONVERSATION_TTL = 60000 // 60 秒後清理未完成的 pending 對話
+  const PENDING_CLEANUP_INTERVAL = 30000 // 每 30 秒檢查一次
+  let pendingConversationCleanupInterval: ReturnType<typeof setInterval> | null = null
+
   const syncStatus = computed<SyncStatus>(() => {
     // 映射全局 WebSocket 状态到本地状态（向后兼容）
     const globalState = wsStore.connectionState
@@ -1699,9 +1705,51 @@ export const useConversationsStore = defineStore('conversations', () => {
           // 將對話添加到列表頂部
           const incomingConversation = data?.conversation as Record<string, unknown> | undefined
           if (conversationId && incomingConversation) {
+            // 🆕 LIFF 預通知：檢查傳入數據是否有 LIFF metadata
+            const liffMetadata = incomingConversation?._liffMetadata as {
+              isPending?: boolean
+              lineUserId?: string
+              assignmentId?: string
+              scannedAt?: number
+            } | undefined
+
+            // 🆕 LIFF Reconciliation：用 lineUserId 檢查是否有對應的 pending 對話
+            const existingPendingIndex = liffMetadata?.lineUserId
+              ? conversations.value.findIndex(c =>
+                  (c as any)._liffMetadata?.lineUserId === liffMetadata.lineUserId
+                )
+              : -1
+
+            // 🆕 如果收到的是真實對話（非 pending-），需要替換現有的 pending 對話
+            if (existingPendingIndex !== -1 && !conversationId.startsWith('pending-')) {
+              // Reconciliation: 移除 pending，準備添加真實對話
+              const removedPending = conversations.value[existingPendingIndex]
+              conversations.value.splice(existingPendingIndex, 1)
+              console.log(`🔄 [ConversationsStore] Reconciled pending → real conversation`, {
+                pendingId: (removedPending as any)?.id,
+                realConversationId: conversationId,
+                lineUserId: liffMetadata?.lineUserId?.substring(0, 10) + '...'
+              })
+            }
+
             // 檢查是否已存在（避免重複添加）
             const existingIndex = conversations.value.findIndex(c => c.id === conversationId)
             if (existingIndex === -1) {
+              // 🆕 如果是 pending 對話，檢查是否已有相同 lineUserId 的 pending（避免重複掃碼）
+              if (liffMetadata?.isPending && liffMetadata?.lineUserId) {
+                const duplicatePendingIndex = conversations.value.findIndex(c =>
+                  (c as any)._liffMetadata?.lineUserId === liffMetadata.lineUserId &&
+                  (c as any)._liffMetadata?.isPending === true
+                )
+                if (duplicatePendingIndex !== -1) {
+                  console.log(`🚫 [ConversationsStore] Ignoring duplicate pending conversation`, {
+                    conversationId,
+                    lineUserId: liffMetadata.lineUserId.substring(0, 10) + '...'
+                  })
+                  break // 忽略重複的 pending 對話
+                }
+              }
+
               // 從傳入數據提取信息
               const customerName = (incomingConversation.customerName as string) || '未知客戶'
               const platform = (incomingConversation.platform as string) || 'line'
@@ -1732,7 +1780,9 @@ export const useConversationsStore = defineStore('conversations', () => {
                 lastMessageAt: (incomingConversation.lastMessageAt as number) || Date.now(),
                 unreadCount: (incomingConversation.unreadCount as number) || 0,
                 createdAt: (incomingConversation.createdAt as number) || Date.now(),
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
+                // 🆕 保留 LIFF metadata 用於 UI 顯示和 Reconciliation
+                ...(liffMetadata && { _liffMetadata: liffMetadata } as any)
               }
 
               // 添加到列表頂部
@@ -1740,6 +1790,16 @@ export const useConversationsStore = defineStore('conversations', () => {
               conversationCache.setConversation(newConversation)
               updateStatsFromConversations()
               lastUpdateTime.value = new Date()
+
+              // 🆕 Log 區分 pending 和真實對話
+              if (liffMetadata?.isPending) {
+                console.log(`⏳ [ConversationsStore] Pending conversation added (LIFF pre-notification)`, {
+                  conversationId,
+                  teamId: data?.toTeamId,
+                  customerName,
+                  lineUserId: liffMetadata.lineUserId?.substring(0, 10) + '...'
+                })
+              }
 
               // 🆕 FIX: 同步更新 currentConversation（如果用戶正在查看這個對話）
               // 這解決了對話被轉移後，詳情頁團隊標籤不更新的問題
@@ -1911,6 +1971,36 @@ export const useConversationsStore = defineStore('conversations', () => {
   // ═══════════════════════════════════════════════════════════════════
 
   // ✅ 方案 B 阶段 3: 使用全局 WebSocket Store 的新实现
+  // 🆕 LIFF 預通知：清理超時的 pending 對話
+  // 用戶掃碼但未加好友的情況下，60 秒後自動清理
+  const cleanupStalePendingConversations = () => {
+    const now = Date.now()
+    const staleIndices: number[] = []
+
+    conversations.value.forEach((conv, index) => {
+      const metadata = (conv as any)?._liffMetadata
+      if (metadata?.isPending && metadata?.scannedAt) {
+        if (now - metadata.scannedAt > PENDING_CONVERSATION_TTL) {
+          staleIndices.push(index)
+        }
+      }
+    })
+
+    if (staleIndices.length > 0) {
+      // 反向移除以避免索引錯位
+      staleIndices.reverse().forEach(index => {
+        const removed = conversations.value[index]
+        conversations.value.splice(index, 1)
+        console.log(`🧹 [ConversationsStore] Cleaned up stale pending conversation`, {
+          conversationId: (removed as any)?.id,
+          lineUserId: (removed as any)?._liffMetadata?.lineUserId?.substring(0, 10) + '...',
+          age: `${Math.round((now - ((removed as any)?._liffMetadata?.scannedAt || 0)) / 1000)}s`
+        })
+      })
+      updateStatsFromConversations()
+    }
+  }
+
   const initializeRealtime = async () => {
     // 🆕 FIX: 防止重複訂閱 - 如果已經訂閱過，直接返回
     if (conversationsSubscriptionId) {
@@ -1938,6 +2028,15 @@ export const useConversationsStore = defineStore('conversations', () => {
       handleRealtimeUpdate(message)
     })
 
+    // 🆕 LIFF 預通知：啟動 pending 對話清理定時器
+    if (!pendingConversationCleanupInterval) {
+      pendingConversationCleanupInterval = setInterval(
+        cleanupStalePendingConversations,
+        PENDING_CLEANUP_INTERVAL
+      )
+      console.log('🕐 [ConversationsStore] Started pending conversation cleanup timer (30s interval)')
+    }
+
     updating.value = false
 
     console.log(`✅ [ConversationsStore] Subscribed to conversations (ID: ${conversationsSubscriptionId?.substring(0, 8)})`)
@@ -1951,6 +2050,13 @@ export const useConversationsStore = defineStore('conversations', () => {
       wsStore.unsubscribe(conversationsSubscriptionId)
       conversationsSubscriptionId = null
       console.log('✅ [ConversationsStore] Unsubscribed from conversations')
+    }
+
+    // 🆕 LIFF 預通知：停止 pending 對話清理定時器
+    if (pendingConversationCleanupInterval) {
+      clearInterval(pendingConversationCleanupInterval)
+      pendingConversationCleanupInterval = null
+      console.log('🕐 [ConversationsStore] Stopped pending conversation cleanup timer')
     }
 
     // 清理状态

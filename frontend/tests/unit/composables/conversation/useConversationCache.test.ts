@@ -125,15 +125,15 @@ describe('useConversationCache', () => {
     it('应该包含多个筛选条件', () => {
       const { generateCacheKey } = cacheComposable
 
+      // Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now
       const filters: ConversationFilters = {
         status: 'open',
         platform: 'line',
-        assignedTo: 'agent-001',
         tagIds: [1, 2, 3]
       }
 
       const key = generateCacheKey(filters, 2)
-      expect(key).toBe('conversation-list:status=open:platform=line:assigned=agent-001:tags=1,2,3:page=2')
+      expect(key).toBe('conversation-list:status=open:platform=line:tags=1,2,3:page=2')
     })
   })
 
