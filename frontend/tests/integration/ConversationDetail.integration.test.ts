@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
 import { ref, computed } from 'vue'
 import ConversationDetail from '@/views/ConversationDetail.vue'
 
@@ -80,8 +81,13 @@ const AppLayoutStub = {
 
 describe('ConversationDetail Integration', () => {
   let router: any
+  let pinia: ReturnType<typeof createPinia>
 
   beforeEach(() => {
+    // Setup Pinia before each test
+    pinia = createPinia()
+    setActivePinia(pinia)
+
     router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -97,7 +103,7 @@ describe('ConversationDetail Integration', () => {
   const mountComponent = () => {
     return mount(ConversationDetail, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
         stubs: {
           AppLayout: AppLayoutStub,
           ConversationHeader: true,

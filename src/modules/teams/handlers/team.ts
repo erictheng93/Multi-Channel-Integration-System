@@ -5,7 +5,10 @@ import { Hono } from 'hono';
 import { TeamService } from '@modules/teams/services/team-service';
 import { TeamQRService } from '@modules/teams/services/qr-service';
 import { TeamActivityService } from '@modules/teams/services/activity-service';
+import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { generateTeamQRCode } from '@/services/liff-qrcode-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
+import { triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type {
   TeamListRequest,
@@ -27,8 +30,8 @@ import {
   requireAdmin
 } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
-import { teams, qrCodes, teamLiffQrCodes } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { teams, qrCodes, teamLiffQrCodes, agents } from '@/db/schema';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -158,6 +161,180 @@ app.get('/search/:query', async (c) => {
 
 // ==================== Priority 4: MULTI-SEGMENT PARAMETERIZED ====================
 // 3-segment routes (most specific first)
+// ⚠️ IMPORTANT: Static segment routes MUST come BEFORE dynamic parameter routes!
+// Order: bulk-remove, batch → :agentId
+
+// 🆕 Bulk remove members from team (requires 'lead' role in team)
+app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), async (c) => {
+  try {
+    const teamId = parseInt(c.req.param('id'));
+    const body = await c.req.json() as { agentIds: string[] };
+
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (!body.agentIds || !Array.isArray(body.agentIds) || body.agentIds.length === 0) {
+      return c.json({
+        success: false,
+        error: 'agentIds array is required and cannot be empty'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Limit to 50 members per request
+    if (body.agentIds.length > 50) {
+      return c.json({
+        success: false,
+        error: 'Cannot remove more than 50 members at once'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const teamService = new TeamService(c.env.DB);
+    const result = await teamService.bulkRemoveMembers(teamId, body.agentIds);
+
+    return c.json({
+      success: true,
+      data: {
+        removed: result.removed,
+        failed: result.failed,
+        removedCount: result.removed.length
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Bulk remove team members error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to bulk remove team members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+// 🚀 Phase 2: Batch add members to team (requires 'lead' role in team)
+// 優化：1 API 請求 + 2-3 DB 查詢 (vs 原本 N API 請求 + 6*N DB 查詢)
+app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), async (c) => {
+  try {
+    const user = c.get('user');
+    const teamId = parseInt(c.req.param('id'));
+    const body = await c.req.json() as {
+      agentIds: string[];
+      roleInTeam?: 'member' | 'lead' | 'supervisor';
+    };
+
+    // Validation
+    if (!teamId || isNaN(teamId)) {
+      return c.json({
+        success: false,
+        error: 'Invalid team ID'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (!body.agentIds || !Array.isArray(body.agentIds) || body.agentIds.length === 0) {
+      return c.json({
+        success: false,
+        error: 'agentIds array is required'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (body.agentIds.length > 50) {
+      return c.json({
+        success: false,
+        error: 'Cannot add more than 50 members at once'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const roleInTeam = body.roleInTeam || 'member';
+    if (!['member', 'lead', 'supervisor'].includes(roleInTeam)) {
+      return c.json({
+        success: false,
+        error: 'Invalid roleInTeam'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const db = createDbClient(c.env.DB);
+    const agentTeamsService = new AgentTeamsService(c.env.DB);
+
+    // Get team name for response and activity logging
+    const teamInfo = await db
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .get();
+
+    if (!teamInfo) {
+      return c.json({
+        success: false,
+        error: 'Team not found'
+      }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // 🚀 Batch add members (2-3 DB queries vs 6*N before)
+    const result = await agentTeamsService.addMembersToTeam(teamId, body.agentIds, roleInTeam);
+
+    // Activity log (non-blocking)
+    const activityService = new ActivityService(c.env.DB);
+    activityService.logActivity({
+      userId: String(user.id),
+      userName: user.displayName || String(user.id),
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.MEMBER_ADD,
+      resourceType: RESOURCE_TYPES.TEAM,
+      resourceId: String(teamId),
+      details: {
+        agentIds: result.added,
+        skipped: result.skipped,
+        roleInTeam,
+        batchOperation: true
+      }
+    }).catch(err => console.error('Activity log failed:', err));
+
+    // WebSocket broadcasts for added members (non-blocking)
+    if (result.added.length > 0) {
+      // Get agent names for broadcasts
+      const agentInfos = await db
+        .select({ id: agents.id, displayName: agents.displayName })
+        .from(agents)
+        .where(inArray(agents.id, result.added));
+
+      const agentNameMap = new Map(agentInfos.map(a => [a.id, a.displayName || a.id]));
+      const memberCount = await agentTeamsService.getTeamMemberCount(teamId);
+
+      // Trigger broadcasts for each added member (parallel, non-blocking)
+      Promise.allSettled(result.added.map(agentId =>
+        triggerTeamMemberChangeEvent(c.env, {
+          type: 'added',
+          teamId,
+          teamName: teamInfo.name,
+          agentId,
+          agentName: agentNameMap.get(agentId),
+          memberCount,
+          changedBy: user.displayName || String(user.id)
+        })
+      )).catch(err => console.error('WebSocket broadcasts failed:', err));
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        added: result.added,
+        skipped: result.skipped,
+        errors: result.errors,
+        addedCount: result.added.length
+      },
+      timestamp: new Date().toISOString()
+    }, result.added.length > 0 ? HTTP_STATUS.CREATED : HTTP_STATUS.OK);
+  } catch (error) {
+    console.error('Batch add members error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to batch add members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
 // Update team member (🚀 Phase 2: requires 'lead' role in team)
 app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => {
   try {
@@ -216,55 +393,6 @@ app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) 
     return c.json({
       success: false,
       error: 'Failed to remove team member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-  }
-});
-
-// 🆕 Bulk remove members from team (requires 'lead' role in team)
-app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), async (c) => {
-  try {
-    const teamId = parseInt(c.req.param('id'));
-    const body = await c.req.json() as { agentIds: string[] };
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
-    if (!body.agentIds || !Array.isArray(body.agentIds) || body.agentIds.length === 0) {
-      return c.json({
-        success: false,
-        error: 'agentIds array is required and cannot be empty'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
-    // Limit to 50 members per request
-    if (body.agentIds.length > 50) {
-      return c.json({
-        success: false,
-        error: 'Cannot remove more than 50 members at once'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
-    const teamService = new TeamService(c.env.DB);
-    const result = await teamService.bulkRemoveMembers(teamId, body.agentIds);
-
-    return c.json({
-      success: true,
-      data: {
-        removed: result.removed,
-        failed: result.failed,
-        removedCount: result.removed.length
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Bulk remove team members error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to bulk remove team members'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

@@ -40,7 +40,7 @@ This is a **Multi-Channel Customer Support System** built with Cloudflare Worker
 - **State Management**: Pinia stores for reactive state management
 - **Router**: Vue Router 4 with authentication guards
 - **Build Tool**: Vite with production optimization
-- **Testing**: Vitest with 132+ comprehensive tests
+- **Testing**: Vitest with 166+ comprehensive tests
 - **UI Features**:
   - Responsive design with modern CSS
   - Virtual scrolling for large datasets (@tanstack/vue-virtual)
@@ -304,8 +304,10 @@ bun run build:bun        # Production build (hybrid: npx + bun)
 - `frontend/src/main.ts` - Application entry point with WebSocket initialization
 - `frontend/src/App.vue` - Root component
 - `frontend/src/stores/` - Pinia state management with real-time event handling
+  - `frontend/src/stores/preload.ts` - **Global preload store** for teams data with TTL caching and Stale-While-Revalidate strategy
 - `frontend/src/api/` - API client modules
 - `frontend/src/services/` - WebSocket client services and connection management
+  - `frontend/src/services/preloadService.ts` - **Preload service facade** (backward compatibility layer over usePreloadStore)
 - `frontend/src/composables/` - Vue composables for WebSocket functionality and UI interactions
   - `frontend/src/composables/useConfirmDialog.ts` - **Global confirmation dialog system** with singleton pattern and promise-based API
   - `frontend/src/composables/useListSorting.ts` - **Dynamic sorting system** with field selection, order toggle, drag-and-drop, and localStorage persistence
@@ -340,7 +342,7 @@ const wsUrl = getWebSocketUrl(); // Auto protocol conversion
 
 ## Testing Strategy
 
-**Frontend:** 132+ tests with 100% pass rate (components, stores, WebSocket, real-time features)
+**Frontend:** 166+ tests with 100% pass rate (components, stores, services, WebSocket, real-time features)
 
 **Backend:** Handler tests, API integration tests, WebSocket infrastructure tests, load testing (1000+ connections)
 
@@ -465,7 +467,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 - **Integration Ready**: Webhook handlers prepared for multiple messaging platforms
 
 ### **Technical Excellence**
-- **Modern Vue 3 Frontend**: Composition API, Pinia stores, and comprehensive testing (132+ tests)
+- **Modern Vue 3 Frontend**: Composition API, Pinia stores, and comprehensive testing (166+ tests)
 - **Cloudflare Workers Backend**: Edge computing with Hono framework and Drizzle ORM
 - **Production Ready**: Complete CI/CD pipeline with health monitoring and deployment verification
 - **Performance Optimized**: Virtual scrolling, lazy loading, and efficient data management

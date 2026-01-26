@@ -66,7 +66,17 @@
 
         <!-- Status Row -->
         <div class="status-row">
+          <!-- 🆕 Pending Badge for LIFF Pre-notification -->
           <div
+            v-if="isPendingConversation"
+            class="pending-badge"
+          >
+            <span class="pending-icon">⏳</span>
+            <span>等待加入</span>
+          </div>
+
+          <div
+            v-else
             class="status-pill"
             :class="`status-${effectiveStatus}`"
           >
@@ -216,6 +226,11 @@ const assignedToDisplay = computed(() => {
     return props.conversation.assignedTeam.name
   }
   return null
+})
+
+// 🆕 LIFF 預通知：檢測是否為 pending 對話
+const isPendingConversation = computed(() => {
+  return (props.conversation as any)?._liffMetadata?.isPending === true
 })
 
 const conversationAriaLabel = computed(() => {
@@ -554,6 +569,36 @@ const formatTime = (date: Date | string | number) => {
 
 .status-pill.status-closed .status-dot {
   background: var(--apple-gray);
+}
+
+/* 🆕 Pending Badge for LIFF Pre-notification */
+.pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 7px;
+  background: rgba(254, 243, 199, 0.8);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #92400e;
+  animation: pending-pulse 2s ease-in-out infinite;
+}
+
+.pending-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+@keyframes pending-pulse {
+  0%, 100% {
+    opacity: 1;
+    background: rgba(254, 243, 199, 0.8);
+  }
+  50% {
+    opacity: 0.7;
+    background: rgba(254, 243, 199, 0.5);
+  }
 }
 
 /* Assigned Badge */

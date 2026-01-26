@@ -49,6 +49,17 @@ export interface BulkAddResult {
   errors: { teamId: number; error: string }[];
 }
 
+/**
+ * 🚀 Phase 2 優化: 批量將多位成員加入單一團隊的結果
+ * - 一次 API 請求處理多位成員
+ * - DB 查詢從 30 次減少到 2-3 次
+ */
+export interface BatchAddMembersResult {
+  added: string[];      // 成功加入的 agentId 列表
+  skipped: string[];    // 已存在於團隊的 agentId 列表
+  errors: { agentId: string; error: string }[];  // 失敗的記錄
+}
+
 export class AgentTeamsService {
   private db: ReturnType<typeof drizzle>;
 
@@ -250,6 +261,96 @@ export class AgentTeamsService {
         }
       }
       console.error('❌ [AgentTeamsService] Bulk add failed:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * 🚀 Phase 2 優化: 批量將多位成員加入單一團隊
+   * - 適用於「選擇成員加入團隊」Modal 的批量操作
+   * - 單次查詢檢查所有現有成員資格 (N 查詢 → 1 查詢)
+   * - 批量插入所有新成員資格 (N 插入 → 1 插入)
+   * - DB 查詢從 6*N 降至 2-3 次
+   *
+   * @param teamId 目標團隊 ID
+   * @param agentIds 要加入的客服 ID 陣列
+   * @param roleInTeam 團隊內角色 (預設: member)
+   */
+  async addMembersToTeam(
+    teamId: number,
+    agentIds: string[],
+    roleInTeam: string = 'member'
+  ): Promise<BatchAddMembersResult> {
+    const result: BatchAddMembersResult = {
+      added: [],
+      skipped: [],
+      errors: []
+    };
+
+    if (agentIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date().toISOString();
+
+    try {
+      // 🚀 Step 1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
+      const existingMemberships = await this.db
+        .select({ agentId: agentTeams.agentId })
+        .from(agentTeams)
+        .where(and(
+          eq(agentTeams.teamId, teamId),
+          inArray(agentTeams.agentId, agentIds)
+        ));
+
+      const existingAgentIds = new Set(existingMemberships.map(m => m.agentId));
+
+      // 分類：已存在 vs 需要新增
+      const agentsToAdd: string[] = [];
+      for (const agentId of agentIds) {
+        if (existingAgentIds.has(agentId)) {
+          result.skipped.push(agentId);
+        } else {
+          agentsToAdd.push(agentId);
+        }
+      }
+
+      // 🚀 Step 2: 批量插入新成員資格 (N 插入 → 1 插入)
+      if (agentsToAdd.length > 0) {
+        const valuesToInsert = agentsToAdd.map(agentId => ({
+          agentId,
+          teamId,
+          roleInTeam,
+          isPrimary: false,
+          joinedAt: now,
+          createdAt: now
+        }));
+
+        await this.db
+          .insert(agentTeams)
+          .values(valuesToInsert);
+
+        result.added = agentsToAdd;
+      }
+
+      console.log('✅ [AgentTeamsService] Batch add members to team completed:', {
+        teamId,
+        requested: agentIds.length,
+        added: result.added.length,
+        skipped: result.skipped.length,
+        dbQueries: 2 // 1 SELECT + 1 INSERT (vs 6*N before)
+      });
+
+    } catch (error) {
+      // 如果批量操作失敗，記錄所有未處理的成員為錯誤
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      for (const agentId of agentIds) {
+        if (!result.skipped.includes(agentId) && !result.added.includes(agentId)) {
+          result.errors.push({ agentId, error: errorMsg });
+        }
+      }
+      console.error('❌ [AgentTeamsService] Batch add members to team failed:', error);
     }
 
     return result;

@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
 import { ref, nextTick } from 'vue'
 
 // ===== Mock Setup =====
@@ -312,9 +313,14 @@ describe('ConversationDetail Empty State Delay Mechanism', () => {
 
 describe('ConversationDetail Integration with Empty State', () => {
   let router: ReturnType<typeof createRouter>
+  let pinia: ReturnType<typeof createPinia>
 
   beforeEach(async () => {
     vi.useFakeTimers()
+
+    // Setup Pinia before each test
+    pinia = createPinia()
+    setActivePinia(pinia)
 
     router = createRouter({
       history: createMemoryHistory(),
@@ -346,7 +352,7 @@ describe('ConversationDetail Integration with Empty State', () => {
 
     const wrapper = mount(ConversationDetail, {
       global: {
-        plugins: [router],
+        plugins: [pinia, router],
         stubs: {
           AppLayout: AppLayoutStub,
           ConversationHeader: true,

@@ -93,9 +93,9 @@ describe('useConversationFilters', () => {
         filtersComposable
 
       // 设置多个筛选条件
+      // Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now
       updateFilter('status', 'open')
       updateFilter('platform', 'line')
-      updateFilter('assignedTo', 'agent-001')
       updateTagFilter([1, 2])
 
       expect(hasActiveFilters.value).toBe(true)
@@ -105,30 +105,14 @@ describe('useConversationFilters', () => {
 
       expect(filters.value.status).toBe('')
       expect(filters.value.platform).toBe('')
-      expect(filters.value.assignedTo).toBeUndefined()
       expect(filters.value.tagIds).toEqual([])
       expect(hasActiveFilters.value).toBe(false)
     })
   })
 
   describe('getApiFilters', () => {
-    it('应该正确处理 "me" assignedTo 值', () => {
-      const { updateFilter, getApiFilters } = filtersComposable
-
-      updateFilter('assignedTo', 'me')
-      const apiFilters = getApiFilters('agent-001')
-
-      expect(apiFilters.assignedTo).toBe('agent-001')
-    })
-
-    it('应该正确处理 "unassigned" assignedTo 值', () => {
-      const { updateFilter, getApiFilters } = filtersComposable
-
-      updateFilter('assignedTo', 'unassigned')
-      const apiFilters = getApiFilters()
-
-      expect(apiFilters.assignedTo).toBeUndefined()
-    })
+    // Note: Individual assignment (assignedTo) tests removed - only team-based filtering is supported now
+    // The following tests for 'me' and 'unassigned' assignedTo values have been deprecated
 
     it('应该移除空字符串值', () => {
       const { updateFilter, getApiFilters } = filtersComposable
@@ -176,12 +160,7 @@ describe('useConversationFilters', () => {
       expect(hasActiveFilters.value).toBe(true)
     })
 
-    it('当 assignedTo 筛选有值时应该为 true', () => {
-      const { hasActiveFilters, updateFilter } = filtersComposable
-
-      updateFilter('assignedTo', 'agent-001')
-      expect(hasActiveFilters.value).toBe(true)
-    })
+    // Note: Individual assignment (assignedTo) test removed - only team-based filtering is supported now
 
     it('当有标签筛选时应该为 true', () => {
       const { hasActiveFilters, updateTagFilter } = filtersComposable

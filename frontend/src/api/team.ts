@@ -549,6 +549,47 @@ export const teamApi = {
     }
   },
 
+  /**
+   * 🚀 Phase 2 優化：批量將多位成員加入單一團隊
+   * - 1 API 請求 (vs 原本 N 請求)
+   * - 2-3 DB 查詢 (vs 原本 6*N 查詢)
+   * - 用戶等待時間: ~200ms (vs 原本 ~1000ms for 5 members)
+   *
+   * @param teamId 目標團隊 ID
+   * @param agentIds 要加入的成員 ID 列表 (最多 50 個)
+   * @param roleInTeam 團隊內角色 (預設: member)
+   */
+  batchAddMembersToTeam: async (
+    teamId: number,
+    agentIds: string[],
+    roleInTeam?: 'member' | 'lead' | 'supervisor'
+  ): Promise<ApiResponse<{
+    added: string[];
+    skipped: string[];
+    errors: { agentId: string; error: string }[];
+    addedCount: number;
+  }>> => {
+    try {
+      if (!teamId) {
+        return { success: false, error: '團隊 ID 不能為空' }
+      }
+      if (!agentIds || agentIds.length === 0) {
+        return { success: false, error: '成員 ID 列表不能為空' }
+      }
+      if (agentIds.length > 50) {
+        return { success: false, error: '每次最多新增 50 位成員' }
+      }
+
+      return apiClient.post(`/teams/${teamId}/members/batch`, {
+        agentIds,
+        roleInTeam: roleInTeam || 'member'
+      })
+    } catch (error) {
+      console.error('Batch add members failed:', error)
+      return { success: false, error: '網路錯誤，無法批量新增成員' }
+    }
+  },
+
   // ============================================================
   // Multi-Team Membership APIs (Migration 0028)
   // 多團隊成員關係 API - 支援客服加入無限團隊
