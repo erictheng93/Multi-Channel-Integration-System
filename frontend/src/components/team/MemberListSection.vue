@@ -24,6 +24,13 @@
             已選擇 {{ selectedCount ?? 0 }} 位
           </span>
           <button
+            class="btn btn-primary"
+            @click="emit('bulk-edit')"
+          >
+            <EditIcon />
+            批量編輯
+          </button>
+          <button
             class="btn btn-danger"
             @click="emit('bulk-delete')"
           >
@@ -140,6 +147,7 @@ import PlusIcon from '@/components/icons/PlusIcon.vue'
 import CheckSquareIcon from '@/components/icons/CheckSquareIcon.vue'
 import SquareIcon from '@/components/icons/SquareIcon.vue'
 import TrashIcon from '@/components/icons/TrashIcon.vue'
+import EditIcon from '@/components/icons/EditIcon.vue'
 
 interface Props {
   members: TeamMember[]
@@ -172,6 +180,7 @@ interface Emits {
   (_e: 'toggle-selection-mode'): void
   (_e: 'toggle-member-selection', _memberId: string): void
   (_e: 'select-all'): void
+  (_e: 'bulk-edit'): void
   (_e: 'bulk-delete'): void
 }
 

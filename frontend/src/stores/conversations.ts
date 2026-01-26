@@ -53,6 +53,11 @@ export const useConversationsStore = defineStore('conversations', () => {
   const PENDING_CLEANUP_INTERVAL = 30000 // 每 30 秒檢查一次
   let pendingConversationCleanupInterval: ReturnType<typeof setInterval> | null = null
 
+  // 🆕 Background Sync 配置 (Optimistic UI + Background Sync 模式)
+  const BACKGROUND_SYNC_INTERVAL = 30000 // 每 30 秒同步一次
+  let backgroundSyncInterval: ReturnType<typeof setInterval> | null = null
+  let isPageVisible = true // 追蹤頁面可見性
+
   const syncStatus = computed<SyncStatus>(() => {
     // 映射全局 WebSocket 状态到本地状态（向后兼容）
     const globalState = wsStore.connectionState
@@ -2001,6 +2006,72 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // 🆕 Background Sync 機制 (Optimistic UI + Background Sync 模式)
+  // 確保即使 WebSocket 事件丟失，也能在 30 秒內同步到最新狀態
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * 啟動背景同步定時器
+   * 每 30 秒自動同步一次對話列表
+   */
+  const startBackgroundSync = () => {
+    if (backgroundSyncInterval) {
+      console.log('⏰ [ConversationsStore] Background sync already running, skipping')
+      return
+    }
+
+    backgroundSyncInterval = setInterval(async () => {
+      // 只在頁面可見時執行同步
+      if (!isPageVisible) {
+        console.log('⏸️ [ConversationsStore] Page hidden, skipping background sync')
+        return
+      }
+
+      console.log('🔄 [ConversationsStore] Background sync triggered (30s interval)')
+      await pollConversations()
+    }, BACKGROUND_SYNC_INTERVAL)
+
+    console.log('⏰ [ConversationsStore] Started background sync timer (30s interval)')
+  }
+
+  /**
+   * 停止背景同步定時器
+   */
+  const stopBackgroundSync = () => {
+    if (backgroundSyncInterval) {
+      clearInterval(backgroundSyncInterval)
+      backgroundSyncInterval = null
+      console.log('⏰ [ConversationsStore] Stopped background sync timer')
+    }
+  }
+
+  /**
+   * 處理頁面可見性變化
+   * 頁面隱藏時暫停同步，頁面可見時立即同步並恢復定時器
+   */
+  const handleVisibilityChange = () => {
+    const wasVisible = isPageVisible
+    isPageVisible = document.visibilityState === 'visible'
+
+    if (isPageVisible && !wasVisible) {
+      // 頁面從隱藏變為可見，立即觸發一次同步
+      console.log('👁️ [ConversationsStore] Page became visible, triggering immediate sync')
+      pollConversations()
+    } else if (!isPageVisible && wasVisible) {
+      console.log('👁️ [ConversationsStore] Page became hidden, pausing sync')
+    }
+  }
+
+  /**
+   * 觸發重連後同步
+   * 當 WebSocket 重新連接後，立即同步數據以捕獲錯過的事件
+   */
+  const triggerReconnectionSync = async () => {
+    console.log('🔌 [ConversationsStore] Reconnection detected, triggering immediate sync')
+    await pollConversations()
+  }
+
   const initializeRealtime = async () => {
     // 🆕 FIX: 防止重複訂閱 - 如果已經訂閱過，直接返回
     if (conversationsSubscriptionId) {
@@ -2037,6 +2108,13 @@ export const useConversationsStore = defineStore('conversations', () => {
       console.log('🕐 [ConversationsStore] Started pending conversation cleanup timer (30s interval)')
     }
 
+    // 🆕 Background Sync: 啟動背景同步機制
+    startBackgroundSync()
+
+    // 🆕 Background Sync: 監聽頁面可見性變化
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    console.log('👁️ [ConversationsStore] Added visibility change listener')
+
     updating.value = false
 
     console.log(`✅ [ConversationsStore] Subscribed to conversations (ID: ${conversationsSubscriptionId?.substring(0, 8)})`)
@@ -2058,6 +2136,13 @@ export const useConversationsStore = defineStore('conversations', () => {
       pendingConversationCleanupInterval = null
       console.log('🕐 [ConversationsStore] Stopped pending conversation cleanup timer')
     }
+
+    // 🆕 Background Sync: 停止背景同步
+    stopBackgroundSync()
+
+    // 🆕 Background Sync: 移除頁面可見性監聽
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    console.log('👁️ [ConversationsStore] Removed visibility change listener')
 
     // 清理状态
     error.value = null
@@ -2129,6 +2214,9 @@ export const useConversationsStore = defineStore('conversations', () => {
     // Real-time sync (Phase B1)
     initializeRealtime,
     cleanup,
+
+    // 🆕 Background Sync (Optimistic UI + Background Sync 模式)
+    triggerReconnectionSync,
 
     // 🚀 Real-time direct updates (Phase B4)
     updateConversationFromWebSocketMessage,

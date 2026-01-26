@@ -109,6 +109,30 @@ export const teamApi = {
   },
 
   /**
+   * 批量更新成員 (角色和狀態)
+   * @param memberIds 要更新的成員 ID 列表 (最多 50 個)
+   * @param updates 要更新的欄位
+   * @param reason 更新原因 (可選)
+   * @returns 批量更新結果
+   */
+  bulkUpdateMembers: async (
+    memberIds: string[],
+    updates: { role?: 'admin' | 'agent'; isActive?: boolean },
+    reason?: string
+  ): Promise<ApiResponse<{
+    updated: string[];
+    failed: { memberId: string; error: string }[];
+    skipped: { memberId: string; reason: string }[];
+    updatedCount: number;
+  }>> => {
+    return apiClient.post('/teams/members/bulk-update', {
+      memberIds,
+      updates,
+      reason
+    })
+  },
+
+  /**
    * 恢復已刪除的成員
    * 支持兩種模式：
    * 1. undoToken: 使用 KV 中存儲的 token 獲取成員 ID

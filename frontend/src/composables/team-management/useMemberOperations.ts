@@ -37,6 +37,13 @@ export interface PasswordResetFormData {
   confirmPassword: string
 }
 
+export interface BulkEditFormData {
+  updateRole: boolean
+  role: 'admin' | 'agent'
+  updateStatus: boolean
+  isActive: boolean
+}
+
 export interface UseMemberOperationsReturn {
   // Add Member Modal
   addMemberModal: Ref<boolean>
@@ -75,6 +82,15 @@ export interface UseMemberOperationsReturn {
 
   // 🆕 Bulk Operations
   bulkDeleteMembers: (currentUserId: string) => Promise<void>
+
+  // 🆕 Bulk Edit Modal
+  bulkEditModal: Ref<boolean>
+  bulkEditForm: BulkEditFormData
+  bulkEditLoading: Ref<boolean>
+  isBulkEditFormValid: ComputedRef<boolean>
+  openBulkEditModal: () => void
+  closeBulkEditModal: () => void
+  submitBulkEdit: (currentUserId: string) => Promise<void>
 }
 
 // ==================== Composable ====================
@@ -442,6 +458,137 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     }
   }
 
+  // ==================== Bulk Edit Modal ====================
+
+  const bulkEditModal = ref(false)
+  const bulkEditLoading = ref(false)
+
+  const bulkEditForm = reactive<BulkEditFormData>({
+    updateRole: false,
+    role: ROLES.AGENT,
+    updateStatus: false,
+    isActive: true
+  })
+
+  /**
+   * 表單驗證：至少勾選一個更新選項
+   */
+  const isBulkEditFormValid = computed(() => {
+    return bulkEditForm.updateRole || bulkEditForm.updateStatus
+  })
+
+  /**
+   * 打開批量編輯模態框
+   */
+  function openBulkEditModal() {
+    resetBulkEditForm()
+    bulkEditModal.value = true
+  }
+
+  /**
+   * 關閉批量編輯模態框
+   */
+  function closeBulkEditModal() {
+    bulkEditModal.value = false
+    resetBulkEditForm()
+  }
+
+  /**
+   * 重置批量編輯表單
+   */
+  function resetBulkEditForm() {
+    Object.assign(bulkEditForm, {
+      updateRole: false,
+      role: ROLES.AGENT,
+      updateStatus: false,
+      isActive: true
+    })
+  }
+
+  /**
+   * 提交批量編輯
+   */
+  async function submitBulkEdit(currentUserId: string) {
+    if (!isBulkEditFormValid.value) {
+      showError('無效操作', '請至少選擇一個要變更的欄位')
+      return
+    }
+
+    const selectedIds = Array.from(selectedMemberIds.value)
+
+    // 過濾掉當前用戶（防止自我更新）
+    const idsToUpdate = selectedIds.filter(id => id !== currentUserId)
+
+    if (idsToUpdate.length === 0) {
+      showError('無法更新', '請選擇要編輯的成員（不能選擇自己）')
+      return
+    }
+
+    // 構建更新資料
+    const updates: { role?: 'admin' | 'agent'; isActive?: boolean } = {}
+    if (bulkEditForm.updateRole) {
+      updates.role = bulkEditForm.role
+    }
+    if (bulkEditForm.updateStatus) {
+      updates.isActive = bulkEditForm.isActive
+    }
+
+    // 獲取選中成員的名稱（用於確認彈窗）
+    const selectedMembers = teamStore.members.filter(m => idsToUpdate.includes(m.id))
+    const memberNames = selectedMembers.map(m => m.name || m.loginId).slice(0, 5).join('、')
+    const moreCount = idsToUpdate.length > 5 ? `...等 ${idsToUpdate.length} 位` : ''
+
+    // 構建變更描述
+    const changes: string[] = []
+    if (updates.role) {
+      changes.push(`角色變更為「${updates.role === 'admin' ? '管理員' : '客服人員'}」`)
+    }
+    if (updates.isActive !== undefined) {
+      changes.push(`狀態變更為「${updates.isActive ? '啟用' : '停用'}」`)
+    }
+
+    // 顯示確認彈窗
+    const confirmed = await showDanger(
+      '確認批量編輯',
+      `您確定要對以下 ${idsToUpdate.length} 位成員套用變更嗎？\n\n成員：${memberNames}${moreCount}\n\n變更內容：\n${changes.map(c => `• ${c}`).join('\n')}`,
+      {
+        confirmText: `確認變更 ${idsToUpdate.length} 位成員`,
+        cancelText: '取消'
+      }
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    bulkEditLoading.value = true
+    try {
+      // 執行批量更新
+      const result = await teamStore.bulkUpdateMembers(idsToUpdate, updates)
+
+      // 關閉 Modal
+      closeBulkEditModal()
+
+      // 顯示成功訊息
+      const skippedCount = result.skipped?.length || 0
+      let message = `已成功更新 ${result.updatedCount} 位成員`
+      if (skippedCount > 0) {
+        message += `（${skippedCount} 位被跳過）`
+      }
+
+      showSuccess('批量編輯成功', message)
+
+    } catch (error) {
+      console.error('批量編輯失敗:', error)
+      const errorMessage = error instanceof Error
+        ? error.message
+        : '批量編輯失敗，請稍後重試'
+      showError('批量編輯失敗', errorMessage)
+    } finally {
+      bulkEditLoading.value = false
+    }
+  }
+
   // ==================== Return ====================
 
   return {
@@ -481,6 +628,15 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     deselectAllMembers,
 
     // 🆕 Bulk Operations
-    bulkDeleteMembers
+    bulkDeleteMembers,
+
+    // 🆕 Bulk Edit Modal
+    bulkEditModal,
+    bulkEditForm,
+    bulkEditLoading,
+    isBulkEditFormValid,
+    openBulkEditModal,
+    closeBulkEditModal,
+    submitBulkEdit
   }
 }

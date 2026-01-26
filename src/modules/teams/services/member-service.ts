@@ -3,7 +3,7 @@
 
 import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, or, desc, sql, ne, isNull } from 'drizzle-orm';
+import { eq, and, or, desc, sql, ne, isNull, inArray } from 'drizzle-orm';
 import {
   agents,
   messages,
@@ -28,7 +28,8 @@ import type {
   MemberListQuery,
   MemberListResponse,
   BulkDeleteResult,
-  RestoreResult
+  RestoreResult,
+  BulkUpdateResult
 } from '../types/member-types';
 
 export class MemberService {
@@ -272,6 +273,11 @@ export class MemberService {
   /**
    * 批量軟刪除成員
    *
+   * 🚀 Phase 2 優化: 使用批量 DB 操作
+   * - 1 次批量查詢 (vs 原本 N 次)
+   * - 1 次批量更新 (vs 原本 N 次)
+   * - 總共 2 次 DB 查詢 (vs 原本 2*N 次)
+   *
    * @param memberIds - 要刪除的成員 ID 列表 (最多 50 個)
    * @param deletedBy - 執行刪除的用戶 ID
    * @returns Promise<BulkDeleteResult> - 刪除結果，包含成功和失敗的成員
@@ -282,6 +288,7 @@ export class MemberService {
   ): Promise<BulkDeleteResult> {
     const deleted: string[] = [];
     const failed: { memberId: string; error: string }[] = [];
+    const deletedMembers: TeamMember[] = [];
 
     // 限制批量操作數量
     const MAX_BULK_SIZE = 50;
@@ -296,33 +303,68 @@ export class MemberService {
       };
     }
 
-    // 獲取要刪除的成員信息（用於恢復）
-    const deletedMembers: TeamMember[] = [];
+    if (memberIds.length === 0) {
+      return { deleted, failed, deletedMembers };
+    }
 
-    for (const memberId of memberIds) {
-      try {
-        // 先獲取成員信息
-        const member = await this.getMember(memberId);
-        if (!member) {
-          failed.push({ memberId, error: '成員不存在' });
-          continue;
-        }
+    try {
+      // 🚀 Step 1: 批量查詢現有成員 (N 查詢 → 1 查詢)
+      const existingMembers = await this.db
+        .select()
+        .from(agents)
+        .where(and(
+          inArray(agents.id, memberIds),
+          isNull(agents.deletedAt)  // 只查詢未被刪除的成員
+        ));
 
-        // 執行軟刪除
-        const success = await this.deleteMember(memberId, deletedBy);
+      // 建立已存在成員的 Map (用於快速查找)
+      const existingMemberMap = new Map(
+        existingMembers.map(m => [m.id, m])
+      );
 
-        if (success) {
-          deleted.push(memberId);
-          deletedMembers.push(member);
-        } else {
-          failed.push({ memberId, error: '刪除失敗' });
-        }
-      } catch (err) {
-        failed.push({
-          memberId,
-          error: err instanceof Error ? err.message : '未知錯誤'
-        });
+      // 找出不存在的成員 ID
+      const notFoundIds = memberIds.filter(id => !existingMemberMap.has(id));
+      notFoundIds.forEach(memberId => {
+        failed.push({ memberId, error: '成員不存在' });
+      });
+
+      // 取得要刪除的成員 ID 列表
+      const idsToDelete = memberIds.filter(id => existingMemberMap.has(id));
+
+      if (idsToDelete.length === 0) {
+        return { deleted, failed, deletedMembers };
       }
+
+      // 🚀 Step 2: 批量軟刪除 (N 更新 → 1 更新)
+      const now = new Date().toISOString();
+      await this.db
+        .update(agents)
+        .set({
+          deletedAt: now,
+          updatedAt: now
+        })
+        .where(inArray(agents.id, idsToDelete));
+
+      // 記錄成功刪除的成員
+      idsToDelete.forEach(memberId => {
+        deleted.push(memberId);
+        const member = existingMemberMap.get(memberId);
+        if (member) {
+          deletedMembers.push(this.formatMember(member));
+        }
+      });
+
+      console.log(`📦 [Member Bulk Delete] 批量軟刪除 ${deleted.length} 位成員 (2 DB 查詢)`);
+
+    } catch (err) {
+      // 如果批量操作失敗，將所有成員標記為失敗
+      const errorMsg = err instanceof Error ? err.message : '批量刪除失敗';
+      memberIds.forEach(memberId => {
+        if (!failed.some(f => f.memberId === memberId)) {
+          failed.push({ memberId, error: errorMsg });
+        }
+      });
+      console.error('批量軟刪除成員錯誤:', err);
     }
 
     return { deleted, failed, deletedMembers };
@@ -355,6 +397,11 @@ export class MemberService {
   /**
    * 批量恢復已軟刪除的成員
    *
+   * 🚀 Phase 2 優化: 使用批量 DB 操作
+   * - 1 次批量查詢 (驗證已刪除的成員)
+   * - 1 次批量更新 (恢復成員)
+   * - 總共 2 次 DB 查詢 (vs 原本 N 次)
+   *
    * @param memberIds - 要恢復的成員 ID 列表
    * @returns Promise<RestoreResult> - 恢復結果
    */
@@ -362,23 +409,203 @@ export class MemberService {
     const restored: TeamMember[] = [];
     const failed: { memberId: string; error: string }[] = [];
 
-    for (const memberId of memberIds) {
-      try {
-        const member = await this.restoreMember(memberId);
-        if (member) {
-          restored.push(member);
-        } else {
-          failed.push({ memberId, error: '成員不存在或未被刪除' });
-        }
-      } catch (err) {
-        failed.push({
-          memberId,
-          error: err instanceof Error ? err.message : '未知錯誤'
-        });
+    if (memberIds.length === 0) {
+      return { restored, failed };
+    }
+
+    try {
+      // 🚀 Step 1: 批量查詢已刪除的成員 (N 查詢 → 1 查詢)
+      const deletedMembers = await this.db
+        .select()
+        .from(agents)
+        .where(and(
+          inArray(agents.id, memberIds),
+          sql`${agents.deletedAt} IS NOT NULL`  // 只查詢已刪除的成員
+        ));
+
+      // 建立已刪除成員的 Map
+      const deletedMemberMap = new Map(
+        deletedMembers.map(m => [m.id, m])
+      );
+
+      // 找出不存在或未被刪除的成員 ID
+      const notFoundIds = memberIds.filter(id => !deletedMemberMap.has(id));
+      notFoundIds.forEach(memberId => {
+        failed.push({ memberId, error: '成員不存在或未被刪除' });
+      });
+
+      // 取得要恢復的成員 ID 列表
+      const idsToRestore = memberIds.filter(id => deletedMemberMap.has(id));
+
+      if (idsToRestore.length === 0) {
+        return { restored, failed };
       }
+
+      // 🚀 Step 2: 批量恢復 (N 更新 → 1 更新)
+      const now = new Date().toISOString();
+      await this.db
+        .update(agents)
+        .set({
+          deletedAt: null,
+          updatedAt: now
+        })
+        .where(inArray(agents.id, idsToRestore));
+
+      // 記錄成功恢復的成員
+      idsToRestore.forEach(memberId => {
+        const member = deletedMemberMap.get(memberId);
+        if (member) {
+          restored.push(this.formatMember(member));
+        }
+      });
+
+      console.log(`📦 [Member Bulk Restore] 批量恢復 ${restored.length} 位成員 (2 DB 查詢)`);
+
+    } catch (err) {
+      // 如果批量操作失敗，將所有成員標記為失敗
+      const errorMsg = err instanceof Error ? err.message : '批量恢復失敗';
+      memberIds.forEach(memberId => {
+        if (!failed.some(f => f.memberId === memberId)) {
+          failed.push({ memberId, error: errorMsg });
+        }
+      });
+      console.error('批量恢復成員錯誤:', err);
     }
 
     return { restored, failed };
+  }
+
+  /**
+   * 批量更新成員
+   *
+   * 🚀 Phase 2 優化: 使用批量 DB 操作
+   * - 1 次批量查詢現有成員
+   * - 1 次批量更新
+   * - 總共 2 次 DB 查詢 (vs 原本 N 次)
+   *
+   * @param memberIds - 要更新的成員 ID 列表 (最多 50 個)
+   * @param updates - 要更新的欄位 (role, isActive)
+   * @param updatedBy - 執行更新的用戶 ID
+   * @returns Promise<BulkUpdateResult> - 更新結果
+   */
+  async bulkUpdateMembers(
+    memberIds: string[],
+    updates: { role?: 'admin' | 'agent'; isActive?: boolean },
+    updatedBy: string
+  ): Promise<BulkUpdateResult> {
+    const updated: string[] = [];
+    const failed: { memberId: string; error: string }[] = [];
+    const skipped: { memberId: string; reason: string }[] = [];
+    const updatedMembers: TeamMember[] = [];
+
+    // 限制批量操作數量
+    const MAX_BULK_SIZE = 50;
+    if (memberIds.length > MAX_BULK_SIZE) {
+      return {
+        updated: [],
+        failed: memberIds.map(id => ({
+          memberId: id,
+          error: `批量操作限制為 ${MAX_BULK_SIZE} 個成員`
+        })),
+        skipped: [],
+        updatedMembers: []
+      };
+    }
+
+    if (memberIds.length === 0) {
+      return { updated, failed, skipped, updatedMembers };
+    }
+
+    // 驗證至少有一個更新欄位
+    if (updates.role === undefined && updates.isActive === undefined) {
+      return {
+        updated: [],
+        failed: memberIds.map(id => ({
+          memberId: id,
+          error: '至少需要一個更新欄位'
+        })),
+        skipped: [],
+        updatedMembers: []
+      };
+    }
+
+    try {
+      // 🚀 Step 1: 批量查詢現有成員 (N 查詢 → 1 查詢)
+      const existingMembers = await this.db
+        .select()
+        .from(agents)
+        .where(and(
+          inArray(agents.id, memberIds),
+          isNull(agents.deletedAt) // 只查詢未被刪除的成員
+        ));
+
+      // 建立已存在成員的 Map (用於快速查找)
+      const existingMemberMap = new Map(
+        existingMembers.map(m => [m.id, m])
+      );
+
+      // 找出不存在的成員 ID
+      const notFoundIds = memberIds.filter(id => !existingMemberMap.has(id));
+      notFoundIds.forEach(memberId => {
+        failed.push({ memberId, error: '成員不存在' });
+      });
+
+      // 過濾出可更新的成員 ID（排除不存在的和自己）
+      const idsToUpdate = memberIds.filter(id => {
+        if (!existingMemberMap.has(id)) {
+          return false;
+        }
+        // 不能更新自己
+        if (id === updatedBy) {
+          skipped.push({ memberId: id, reason: '無法變更自己的角色或狀態' });
+          return false;
+        }
+        return true;
+      });
+
+      if (idsToUpdate.length === 0) {
+        return { updated, failed, skipped, updatedMembers };
+      }
+
+      // 🚀 Step 2: 批量更新 (N 更新 → 1 更新)
+      const now = new Date().toISOString();
+      const updateData: any = { updatedAt: now };
+      if (updates.role !== undefined) updateData.role = updates.role;
+      if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
+
+      await this.db
+        .update(agents)
+        .set(updateData)
+        .where(inArray(agents.id, idsToUpdate));
+
+      // 記錄成功更新的成員並返回更新後的資料
+      idsToUpdate.forEach(memberId => {
+        updated.push(memberId);
+        const originalMember = existingMemberMap.get(memberId);
+        if (originalMember) {
+          // 合併更新後的資料
+          const updatedMember = {
+            ...originalMember,
+            ...updateData
+          };
+          updatedMembers.push(this.formatMember(updatedMember));
+        }
+      });
+
+      console.log(`📦 [Member Bulk Update] 批量更新 ${updated.length} 位成員 (2 DB 查詢)`);
+
+    } catch (err) {
+      // 如果批量操作失敗，將所有成員標記為失敗
+      const errorMsg = err instanceof Error ? err.message : '批量更新失敗';
+      memberIds.forEach(memberId => {
+        if (!failed.some(f => f.memberId === memberId) && !skipped.some(s => s.memberId === memberId)) {
+          failed.push({ memberId, error: errorMsg });
+        }
+      });
+      console.error('批量更新成員錯誤:', err);
+    }
+
+    return { updated, failed, skipped, updatedMembers };
   }
 
   /**

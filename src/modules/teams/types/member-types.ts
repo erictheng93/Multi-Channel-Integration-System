@@ -150,3 +150,50 @@ export interface UndoTokenData {
   /** 刪除原因 */
   reason?: string;
 }
+
+// ==================== Bulk Update Operations ====================
+
+/**
+ * 批量更新成員請求
+ */
+export interface BulkUpdateMembersRequest {
+  /** 要更新的成員 ID 列表 (最多 50 個) */
+  memberIds: string[];
+  /** 要更新的欄位 */
+  updates: {
+    /** 新角色 (可選) */
+    role?: 'admin' | 'agent';
+    /** 新狀態 (可選) */
+    isActive?: boolean;
+  };
+  /** 更新原因 (可選) */
+  reason?: string;
+}
+
+/**
+ * 批量更新結果
+ */
+export interface BulkUpdateResult {
+  /** 成功更新的成員 ID */
+  updated: string[];
+  /** 更新失敗的成員 */
+  failed: { memberId: string; error: string }[];
+  /** 被跳過的成員 (如自己) */
+  skipped: { memberId: string; reason: string }[];
+  /** 已更新的成員信息 */
+  updatedMembers: TeamMember[];
+}
+
+/**
+ * 批量更新成員響應
+ */
+export interface BulkUpdateMembersResponse {
+  /** 成功更新的成員 ID */
+  updated: string[];
+  /** 更新失敗的成員 */
+  failed: { memberId: string; error: string }[];
+  /** 被跳過的成員 */
+  skipped: { memberId: string; reason: string }[];
+  /** 已更新的成員數量 */
+  updatedCount: number;
+}

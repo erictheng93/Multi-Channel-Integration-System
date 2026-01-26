@@ -49,6 +49,7 @@
         @toggle-selection-mode="controller.member.toggleSelectionMode"
         @toggle-member-selection="controller.member.toggleMemberSelection"
         @select-all="() => controller.member.selectAllMembers(currentUserId || '')"
+        @bulk-edit="controller.member.openBulkEditModal"
         @bulk-delete="() => controller.member.bulkDeleteMembers(currentUserId || '')"
       />
 
@@ -127,6 +128,16 @@
         @close="controller.member.closePasswordResetModal"
         @submit="controller.member.submitPasswordReset"
       />
+
+      <!-- Bulk Edit Member Modal -->
+      <BulkEditMemberModal
+        :visible="controller.member.bulkEditModal.value"
+        :selected-members="selectedMembersForBulkEdit"
+        :all-teams="teams"
+        :current-user-id="currentUserId"
+        @close="controller.member.closeBulkEditModal"
+        @saved="handleBulkEditSaved"
+      />
     </div>
   </AppLayout>
 </template>
@@ -144,6 +155,7 @@ import AddMemberModal from '@/components/team/AddMemberModal.vue'
 import AddTeamModal from '@/components/team/AddTeamModal.vue'
 import EditTeamModal from '@/components/team/EditTeamModal.vue'
 import PasswordResetModal from '@/components/team/PasswordResetModal.vue'
+import BulkEditMemberModal from '@/components/team/BulkEditMemberModal.vue'
 
 // ==================== Controller & State ====================
 
@@ -156,6 +168,22 @@ const currentUserId = computed(() => authStore.currentAgent?.id)
 
 // Extract state from controller
 const { loading, teams, members, stats, memberSorting, teamSorting, memberSortMode, teamSortMode } = controller
+
+// Computed: Get selected members for bulk edit
+const selectedMembersForBulkEdit = computed(() => {
+  const selectedIds = controller.member.selectedMemberIds.value
+  return members.value.filter(m => selectedIds.has(m.id))
+})
+
+// Handler for bulk edit saved
+const handleBulkEditSaved = () => {
+  // Exit selection mode after successful bulk edit
+  if (controller.member.isSelectionMode.value) {
+    controller.member.toggleSelectionMode()
+  }
+  // Refresh data to ensure UI is up to date
+  controller.refresh()
+}
 
 // ==================== Lifecycle ====================
 
