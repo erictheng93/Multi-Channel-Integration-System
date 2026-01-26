@@ -1,11 +1,31 @@
 <template>
   <div
     class="member-card"
-    :class="{ 'modal-open': showEditModal }"
-    @click="openEditModal"
+    :class="{
+      'modal-open': showEditModal,
+      'selection-mode': isSelectionMode,
+      'selected': isSelected
+    }"
+    @click="handleCardClick"
   >
-    <!-- Drag Handle - Only this area triggers drag -->
+    <!-- 🆕 Selection Checkbox (shown in selection mode) -->
     <div
+      v-if="isSelectionMode"
+      class="selection-checkbox"
+      @click.stop="toggleSelection"
+    >
+      <input
+        type="checkbox"
+        :checked="isSelected"
+        :disabled="isCurrentUser"
+        class="checkbox-input"
+        @click.stop="toggleSelection"
+      >
+    </div>
+
+    <!-- Drag Handle - Only this area triggers drag (hidden in selection mode) -->
+    <div
+      v-if="!isSelectionMode"
       class="drag-handle"
       @click.stop
     >
@@ -117,17 +137,26 @@ interface Props {
 
   /** List of all teams for multi-team selection */
   allTeams: Team[]
+
+  /** 🆕 Whether selection mode is active */
+  isSelectionMode?: boolean
+
+  /** 🆕 Whether this member is selected */
+  isSelected?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   currentUserId: '',
-  loading: false
+  loading: false,
+  isSelectionMode: false,
+  isSelected: false
 })
 
 const emit = defineEmits<{
   toggleStatus: [member: TeamMember]
   resetPassword: [member: TeamMember]
   removeMember: [member: TeamMember]
+  toggleSelection: [memberId: string]
 }>()
 
 // Ensure emit is recognized as used (TypeScript doesn't detect template usage)
@@ -135,6 +164,32 @@ if (typeof emit !== 'undefined') { /* noop */ }
 
 // Modal state
 const showEditModal = ref(false)
+
+/**
+ * 🆕 Handle card click
+ * - In selection mode: toggle selection
+ * - Normal mode: open edit modal
+ */
+const handleCardClick = (event: Event) => {
+  if (props.isSelectionMode) {
+    // In selection mode, clicking the card toggles selection
+    if (!isCurrentUser.value) {
+      toggleSelection()
+    }
+  } else {
+    // Normal mode: open edit modal
+    openEditModal(event)
+  }
+}
+
+/**
+ * 🆕 Toggle member selection
+ */
+const toggleSelection = () => {
+  if (!isCurrentUser.value) {
+    emit('toggleSelection', props.member.id)
+  }
+}
 
 // Modal control functions
 const openEditModal = (event: Event) => {
@@ -225,13 +280,47 @@ const formatDate = (date: string | Date) => {
   @apply text-xl font-bold tracking-tighter;
 }
 
-.member-card:hover:not(.modal-open) {
+.member-card:hover:not(.modal-open):not(.selection-mode) {
   @apply -translate-y-0.5 bg-gray-100 border-gray-300;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 
 .member-card.modal-open {
   @apply transform-none transition-none;
+}
+
+/* 🆕 Selection Mode Styles */
+.member-card.selection-mode {
+  @apply cursor-pointer;
+}
+
+.member-card.selection-mode:hover:not(.selected) {
+  @apply bg-blue-50 border-blue-200;
+}
+
+.member-card.selected {
+  @apply bg-indigo-50 border-indigo-300;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* 🆕 Selection Checkbox */
+.selection-checkbox {
+  @apply flex-shrink-0 w-10 h-full flex items-center justify-center;
+  @apply cursor-pointer;
+}
+
+.checkbox-input {
+  @apply w-5 h-5 rounded border-2 border-gray-300;
+  @apply cursor-pointer transition-all duration-200;
+  accent-color: #6366f1;
+}
+
+.checkbox-input:checked {
+  @apply border-indigo-500;
+}
+
+.checkbox-input:disabled {
+  @apply cursor-not-allowed opacity-50;
 }
 
 /* Avatar Placeholder - Gradient background */

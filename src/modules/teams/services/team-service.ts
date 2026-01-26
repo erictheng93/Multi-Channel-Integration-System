@@ -349,6 +349,74 @@ export class TeamService implements TeamServiceInterface {
     }
   }
 
+  // 🆕 Bulk remove members from team
+  async bulkRemoveMembers(teamId: number, agentIds: string[]): Promise<{
+    removed: string[];
+    failed: { agentId: string; error: string }[];
+  }> {
+    const removed: string[] = [];
+    const failed: { agentId: string; error: string }[] = [];
+
+    if (agentIds.length === 0) {
+      return { removed, failed };
+    }
+
+    // Limit to 50 members per batch
+    const idsToProcess = agentIds.slice(0, 50);
+
+    try {
+      // Verify which agents belong to this team
+      const validAgents = await this.db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(
+          and(
+            inArray(agents.id, idsToProcess),
+            eq(agents.teamId, teamId)
+          )
+        );
+
+      const validAgentIds = validAgents.map(a => a.id);
+      const invalidAgentIds = idsToProcess.filter(id => !validAgentIds.includes(id));
+
+      // Mark invalid agents as failed
+      invalidAgentIds.forEach(agentId => {
+        failed.push({
+          agentId,
+          error: `Agent not found in team (teamId: ${teamId})`
+        });
+      });
+
+      // Batch update valid agents
+      if (validAgentIds.length > 0) {
+        await this.db
+          .update(agents)
+          .set({
+            teamId: null,
+            updatedAt: new Date().toISOString()
+          })
+          .where(inArray(agents.id, validAgentIds));
+
+        removed.push(...validAgentIds);
+        console.log(`📦 [Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
+      }
+
+      return { removed, failed };
+    } catch (error) {
+      console.error('Bulk remove team members error:', error);
+      // If batch operation fails, mark all as failed
+      idsToProcess.forEach(agentId => {
+        if (!removed.includes(agentId)) {
+          failed.push({
+            agentId,
+            error: `Removal failed: ${error instanceof Error ? error.message : String(error)}`
+          });
+        }
+      });
+      return { removed, failed };
+    }
+  }
+
   // Update team member
   async updateMember(teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
     const updateData: any = {

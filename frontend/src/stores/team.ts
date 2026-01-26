@@ -28,6 +28,13 @@ export const useTeamStore = defineStore('team', () => {
   // ✅ Loading counter to prevent race conditions when multiple operations run in parallel
   let loadingCounter = 0
 
+  // ==================== Selection State (批量操作) ====================
+  const selectedMemberIds = ref<Set<string>>(new Set())
+  const isSelectionMode = ref(false)
+
+  // 計算已選擇的數量
+  const selectedCount = computed(() => selectedMemberIds.value.size)
+
   // 統計數據
   const stats = computed(() => ({
     totalMembers: members.value.length,
@@ -279,6 +286,117 @@ export const useTeamStore = defineStore('team', () => {
       members.value = originalMembers
       error.value = (err as Error)?.message || '移除成員失敗'
       console.error('移除成員失敗:', err)
+      throw err
+    }
+  }
+
+  // ==================== Selection Operations (批量操作) ====================
+
+  /**
+   * 進入/退出選擇模式
+   */
+  const toggleSelectionMode = () => {
+    isSelectionMode.value = !isSelectionMode.value
+    if (!isSelectionMode.value) {
+      // 退出選擇模式時清空選擇
+      selectedMemberIds.value.clear()
+    }
+  }
+
+  /**
+   * 切換單個成員的選擇狀態
+   */
+  const toggleMemberSelection = (memberId: string) => {
+    if (selectedMemberIds.value.has(memberId)) {
+      selectedMemberIds.value.delete(memberId)
+    } else {
+      selectedMemberIds.value.add(memberId)
+    }
+    // 觸發響應式更新
+    selectedMemberIds.value = new Set(selectedMemberIds.value)
+  }
+
+  /**
+   * 選擇所有成員
+   * @param excludeIds 要排除的成員 ID（如當前用戶）
+   */
+  const selectAllMembers = (excludeIds: string[] = []) => {
+    const allIds = members.value
+      .filter(m => !excludeIds.includes(m.id))
+      .map(m => m.id)
+    selectedMemberIds.value = new Set(allIds)
+  }
+
+  /**
+   * 取消所有選擇
+   */
+  const deselectAllMembers = () => {
+    selectedMemberIds.value.clear()
+    selectedMemberIds.value = new Set()
+  }
+
+  /**
+   * 批量刪除成員（樂觀更新）
+   * @param memberIds 要刪除的成員 ID 列表
+   * @param reason 刪除原因（可選）
+   * @returns 包含 undoToken 的響應
+   */
+  const bulkDeleteMembers = async (memberIds: string[], reason?: string) => {
+    // ① 保存原始列表（用於失敗恢復）
+    const originalMembers = [...members.value]
+
+    // ② 樂觀更新：立即從列表中移除
+    members.value = members.value.filter(m => !memberIds.includes(m.id))
+    error.value = null
+
+    // ③ 退出選擇模式
+    deselectAllMembers()
+    isSelectionMode.value = false
+
+    try {
+      // ④ 調用 API
+      const response = await teamApi.bulkDeleteMembers(memberIds, reason)
+
+      if (!response.success || !response.data) {
+        // ⑤ API 失敗，恢復原列表
+        members.value = originalMembers
+        error.value = response.error || '批量刪除失敗'
+        throw new Error(response.error || '批量刪除失敗')
+      }
+
+      // ⑥ 返回結果（包含 undoToken）
+      return response.data
+    } catch (err: unknown) {
+      // ⑤ 發生錯誤，恢復原列表
+      members.value = originalMembers
+      error.value = (err as Error)?.message || '批量刪除失敗'
+      console.error('批量刪除失敗:', err)
+      throw err
+    }
+  }
+
+  /**
+   * 恢復已刪除的成員
+   * @param options 恢復選項（undoToken 或 memberIds）
+   */
+  const restoreMembers = async (options: { undoToken?: string; memberIds?: string[] }) => {
+    error.value = null
+
+    try {
+      const response = await teamApi.restoreMembers(options)
+
+      if (!response.success || !response.data) {
+        error.value = response.error || '恢復成員失敗'
+        throw new Error(response.error || '恢復成員失敗')
+      }
+
+      // 重新載入成員列表以獲取最新狀態
+      await loadMembers()
+
+      return response.data
+    } catch (err: unknown) {
+      error.value = (err as Error)?.message || '恢復成員失敗'
+      console.error('恢復成員失敗:', err)
       throw err
     }
   }
@@ -546,6 +664,11 @@ export const useTeamStore = defineStore('team', () => {
     error,
     stats,
 
+    // 🆕 Selection State (批量操作)
+    selectedMemberIds,
+    isSelectionMode,
+    selectedCount,
+
     // 動作
     loadMembers,
     loadInvitations,
@@ -563,6 +686,15 @@ export const useTeamStore = defineStore('team', () => {
     cancelInvitation,
     clearError,
     $reset,
+
+    // 🆕 Selection Operations (批量操作)
+    toggleSelectionMode,
+    toggleMemberSelection,
+    selectAllMembers,
+    deselectAllMembers,
+    bulkDeleteMembers,
+    restoreMembers,
+
     // 🆕 WebSocket setup (exposed for manual re-setup if needed)
     setupWebSocketListeners,
     // 🆕 直接更新本地資料（用於最小化刷新）
