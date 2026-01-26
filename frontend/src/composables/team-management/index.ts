@@ -17,7 +17,8 @@ export {
   useMemberOperations,
   type UseMemberOperationsReturn,
   type AddMemberFormData,
-  type PasswordResetFormData
+  type PasswordResetFormData,
+  type BulkEditFormData
 } from './useMemberOperations'
 
 export {
@@ -54,6 +55,13 @@ export {
   type TeamRoleInTeam,
   type AvailableMember
 } from './useSelectMemberToTeam'
+
+export {
+  useBulkMemberEdit,
+  type UseBulkMemberEditReturn,
+  type BulkMemberEditState,
+  type PendingTeamChange as BulkPendingTeamChange
+} from './useBulkMemberEdit'
 
 // ==================== Common Types ====================
 export type { Team } from './useTeamManagementController'

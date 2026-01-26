@@ -25,7 +25,9 @@ import type {
   BulkDeleteMembersResponse,
   RestoreMembersRequest,
   RestoreMembersResponse,
-  UndoTokenData
+  UndoTokenData,
+  BulkUpdateMembersRequest,
+  BulkUpdateMembersResponse
 } from '../types/member-types';
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
@@ -615,6 +617,103 @@ membersHandler.post('/restore', jwtAuth, requireManagerOrAdmin(), async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to restore members'
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 批量更新成員 (角色和狀態)
+ * POST /api/teams/members/bulk-update
+ *
+ * 支持批量更新成員的角色和/或狀態
+ * - 用戶不能變更自己的角色或狀態
+ * - 最多支持 50 個成員
+ */
+membersHandler.post('/bulk-update', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const user = c.get('user');
+    const data: BulkUpdateMembersRequest = await c.req.json();
+
+    // Validation: memberIds required
+    if (!data.memberIds || !Array.isArray(data.memberIds) || data.memberIds.length === 0) {
+      return c.json({
+        success: false,
+        error: 'memberIds is required and must be a non-empty array'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Check limit
+    const MAX_BULK_SIZE = 50;
+    if (data.memberIds.length > MAX_BULK_SIZE) {
+      return c.json({
+        success: false,
+        error: `Cannot update more than ${MAX_BULK_SIZE} members at once`
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Validation: at least one update field required
+    if (!data.updates || (data.updates.role === undefined && data.updates.isActive === undefined)) {
+      return c.json({
+        success: false,
+        error: 'At least one update field (role or isActive) is required'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Validation: role value
+    if (data.updates.role !== undefined && !['admin', 'agent'].includes(data.updates.role)) {
+      return c.json({
+        success: false,
+        error: 'Invalid role value. Must be "admin" or "agent"'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const memberService = new MemberService(c.env.DB);
+
+    // Execute bulk update
+    const result = await memberService.bulkUpdateMembers(
+      data.memberIds,
+      data.updates,
+      String(user.id)
+    );
+
+    // Log activity if any members were updated
+    if (result.updated.length > 0) {
+      const activityService = new ActivityService(c.env.DB);
+      await activityService.logActivity({
+        userId: String(user.id),
+        userName: user.displayName || String(user.id),
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_BULK_UPDATE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: result.updated.join(','),
+        details: {
+          updatedCount: result.updated.length,
+          updatedMemberIds: result.updated,
+          updates: data.updates,
+          reason: data.reason
+        }
+      });
+    }
+
+    const response: BulkUpdateMembersResponse = {
+      updated: result.updated,
+      failed: result.failed,
+      skipped: result.skipped,
+      updatedCount: result.updated.length
+    };
+
+    return c.json({
+      success: true,
+      data: response,
+      message: `Successfully updated ${result.updated.length} member(s)`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Bulk update members error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to bulk update members'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

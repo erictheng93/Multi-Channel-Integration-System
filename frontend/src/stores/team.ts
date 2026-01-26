@@ -401,6 +401,66 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
+  /**
+   * 批量更新成員（樂觀更新）
+   * @param memberIds 要更新的成員 ID 列表
+   * @param updates 要更新的欄位 (role, isActive)
+   * @param reason 更新原因（可選）
+   * @returns 批量更新結果
+   */
+  const bulkUpdateMembers = async (
+    memberIds: string[],
+    updates: { role?: 'admin' | 'agent'; isActive?: boolean },
+    reason?: string
+  ) => {
+    // ① 保存原始資料（用於失敗恢復）
+    const originalMembers = members.value.map(m => {
+      if (memberIds.includes(m.id)) {
+        return { ...m }
+      }
+      return m
+    })
+
+    // ② 樂觀更新：立即更新 UI
+    members.value = members.value.map(m => {
+      if (memberIds.includes(m.id)) {
+        const updated = { ...m }
+        if (updates.role !== undefined) updated.role = updates.role
+        if (updates.isActive !== undefined) {
+          updated.status = updates.isActive ? 'active' : 'inactive'
+        }
+        return updated
+      }
+      return m
+    })
+    error.value = null
+
+    // ③ 退出選擇模式
+    deselectAllMembers()
+    isSelectionMode.value = false
+
+    try {
+      // ④ 調用 API
+      const response = await teamApi.bulkUpdateMembers(memberIds, updates, reason)
+
+      if (!response.success || !response.data) {
+        // ⑤ API 失敗，恢復原列表
+        members.value = originalMembers
+        error.value = response.error || '批量更新失敗'
+        throw new Error(response.error || '批量更新失敗')
+      }
+
+      // ⑥ 返回結果
+      return response.data
+    } catch (err: unknown) {
+      // ⑤ 發生錯誤，恢復原列表
+      members.value = originalMembers
+      error.value = (err as Error)?.message || '批量更新失敗'
+      console.error('批量更新失敗:', err)
+      throw err
+    }
+  }
+
   const resetPassword = async (memberId: string) => {
     try {
       loading.value = true
@@ -693,6 +753,7 @@ export const useTeamStore = defineStore('team', () => {
     selectAllMembers,
     deselectAllMembers,
     bulkDeleteMembers,
+    bulkUpdateMembers,
     restoreMembers,
 
     // 🆕 WebSocket setup (exposed for manual re-setup if needed)
