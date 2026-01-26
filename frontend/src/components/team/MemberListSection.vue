@@ -19,6 +19,7 @@
           @reset-to-auto="handleResetToAuto"
         />
         <PrimaryActionButton
+          class="add-member-btn"
           text="新增成員"
           :icon="PlusIcon"
           :loading="loading"
@@ -211,6 +212,12 @@ function handleResetToAuto() {
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+  flex: 1;
+}
+
+/* Push add member button to the right */
+.add-member-btn {
+  margin-left: auto;
 }
 
 .content-body {
