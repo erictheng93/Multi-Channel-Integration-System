@@ -562,9 +562,10 @@ export class WebSocketBroadcastService {
     const broadcastPromises: Promise<{ type: string; success: boolean }>[] = [];
 
     // Old team broadcast (only if fromTeamId exists)
+    // 🆕 Include admins so they see conversation transfers in real-time
     if (removeEvent && fromTeamId) {
       broadcastPromises.push(
-        this.broadcastToTeamMembers(removeEvent, [fromTeamId])
+        this.broadcastToTeamMembers(removeEvent, [fromTeamId], true) // includeAdmins = true
           .then(success => ({ type: 'oldTeam', success }))
           .catch(error => {
             this.logger.error('Failed to notify old team', undefined, {
@@ -578,8 +579,9 @@ export class WebSocketBroadcastService {
     }
 
     // New team broadcast
+    // 🆕 Include admins so they see new conversations assigned to teams in real-time
     broadcastPromises.push(
-      this.broadcastToTeamMembers(assignEvent, [toTeamId])
+      this.broadcastToTeamMembers(assignEvent, [toTeamId], true) // includeAdmins = true
         .then(success => ({ type: 'newTeam', success }))
         .catch(error => {
           this.logger.error('Failed to notify new team', undefined, {
@@ -1462,9 +1464,12 @@ export class WebSocketBroadcastService {
   }
 
   /**
-   * Broadcast to team members
+   * Broadcast to team members (and optionally admins)
+   * @param event - The event to broadcast
+   * @param teamIds - Target team IDs
+   * @param includeAdmins - If true, also broadcast to all admin users (default: false)
    */
-  private async broadcastToTeamMembers(event: DurableObjectEvent, teamIds: number[]): Promise<boolean> {
+  private async broadcastToTeamMembers(event: DurableObjectEvent, teamIds: number[], includeAdmins: boolean = false): Promise<boolean> {
     try {
       // Use MessageBroadcaster for efficient team-wide distribution
       if (!this.env.MESSAGE_BROADCASTER) {
@@ -1483,17 +1488,24 @@ export class WebSocketBroadcastService {
           eventType: event.type,
           eventAction: (event.data as Record<string, unknown>)?.action,
           targetTeamIds: teamIds,
+          includeAdmins, // 🆕 Log whether admins are included
           conversationId: event.conversationId,
           fromTeamId: (event.data as Record<string, unknown>)?.fromTeamId,
           toTeamId: (event.data as Record<string, unknown>)?.toTeamId,
           timestamp: new Date().toISOString()
         });
 
-        const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/broadcast-to-teams', {
+        // 🆕 Use different endpoint based on includeAdmins flag
+        const endpoint = includeAdmins
+          ? 'https://message-broadcaster/broadcast-to-teams-and-admins'
+          : 'https://message-broadcaster/broadcast-to-teams';
+
+        const response = await broadcasterStub.fetch(new Request(endpoint, {
           method: 'POST',
           body: JSON.stringify({
             event,
-            teamIds
+            teamIds,
+            ...(includeAdmins && { includeAdmins: true }) // 🆕 Pass flag to broadcaster
           }),
           headers: { 'Content-Type': 'application/json' }
         }));
@@ -1504,6 +1516,7 @@ export class WebSocketBroadcastService {
             eventId: event.id,
             eventAction: (event.data as Record<string, unknown>)?.action,
             targetTeamIds: teamIds,
+            includeAdmins,
             successful: result.successful,
             failed: result.failed
           });
