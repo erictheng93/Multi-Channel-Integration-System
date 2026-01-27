@@ -5,8 +5,8 @@
  * Phase B3: Migrated to use global WebSocket Store with subscription pattern
  */
 
-import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
-import { useWebSocketStore, type SubscriptionId } from '@/stores/websocket'
+import { ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue'
+import { useWebSocketStore, type SubscriptionId, type WebSocketConnectionState } from '@/stores/websocket'
 import type { WebSocketMessage } from '@/services/websocketClient'
 import type { Activity, ActivityType, ActivityPriority } from '@/types/activity'
 import type { Message } from '@/types'
@@ -287,18 +287,93 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
     addActivity(activity)
   }
 
+  // ==================== Connection State Watcher ====================
+
+  /**
+   * 上一次連線狀態（用於偵測狀態變化）
+   */
+  let previousConnectionState: WebSocketConnectionState | null = null
+
+  /**
+   * 監聽連線狀態變化，添加對應的活動記錄
+   * 這是事件驅動的方式，只有當狀態真正改變時才會添加活動
+   */
+  function setupConnectionStateWatcher() {
+    watch(
+      () => wsStore.connectionState,
+      (newState, oldState) => {
+        // 避免重複處理相同狀態
+        if (newState === previousConnectionState) {
+          return
+        }
+        previousConnectionState = newState
+
+        console.log(`🔄 [ActivityStream] Connection state: ${oldState} → ${newState}`)
+
+        switch (newState) {
+          case 'connecting':
+            addActivity(createActivity(
+              'system-info',
+              '正在連接',
+              '即時更新服務連接中...',
+              { timestamp: Date.now() }
+            ))
+            break
+
+          case 'connected':
+            addActivity(createActivity(
+              'system-success',
+              '即時更新已啟用',
+              oldState === 'reconnecting'
+                ? '重新連線成功，即時更新已恢復'
+                : '已成功連接即時更新服務',
+              { timestamp: Date.now() }
+            ))
+            break
+
+          case 'reconnecting':
+            addActivity(createActivity(
+              'system-warning',
+              '正在重新連線',
+              `連線中斷，正在嘗試重新連線 (第 ${wsStore.reconnectAttempts} 次)...`,
+              { timestamp: Date.now(), attempt: wsStore.reconnectAttempts }
+            ))
+            break
+
+          case 'error':
+            addActivity(createActivity(
+              'system-error',
+              '連線失敗',
+              '即時更新服務連線失敗，新訊息可能延遲顯示',
+              { timestamp: Date.now(), error: wsStore.lastError?.message }
+            ))
+            break
+
+          case 'disconnected':
+            // 只有從連線狀態變成斷線時才顯示
+            if (oldState === 'connected' || oldState === 'reconnecting') {
+              addActivity(createActivity(
+                'system-warning',
+                '即時更新已暫停',
+                '連線已中斷，請點擊重新連線按鈕恢復即時更新',
+                { timestamp: Date.now() }
+              ))
+            }
+            break
+        }
+      },
+      { immediate: false } // 不立即觸發，等待真正的狀態變化
+    )
+  }
+
   // Lifecycle
   onMounted(async () => {
     if (autoConnect) {
-      await setupWebSocketListeners()
+      // 設置連線狀態監聽器（事件驅動）
+      setupConnectionStateWatcher()
 
-      // 添加一个欢迎活动
-      addActivity(createActivity(
-        'system-success',
-        '活動流已啟動',
-        'WebSocket 活動流已成功連接',
-        { timestamp: Date.now() }
-      ))
+      // 設置 WebSocket 訂閱
+      await setupWebSocketListeners()
     }
   })
 
@@ -320,6 +395,10 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
     loading,
     error,
     isConnected: computed(() => wsStore.isConnected),
+    isConnecting: computed(() => wsStore.isConnecting),
+    connectionState: computed(() => wsStore.connectionState),
+    reconnectAttempts: computed(() => wsStore.reconnectAttempts),
+    latency: computed(() => wsStore.latency),
 
     // Computed
     highPriorityActivities,
@@ -334,6 +413,7 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
         activitySubscriptionId = null
       }
     },
+    reconnect: () => wsStore.reconnect(),
     clearActivities,
     addManualActivity,
     setupWebSocketListeners
