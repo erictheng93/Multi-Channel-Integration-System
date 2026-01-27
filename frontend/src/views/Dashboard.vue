@@ -57,9 +57,14 @@
         <ActivityFeedCard
           :activities="importantActivities"
           :is-connected="activityStreamConnected"
+          :is-connecting="activityStreamConnecting"
+          :connection-state="activityConnectionState"
+          :reconnect-attempts="activityReconnectAttempts"
+          :latency="activityLatency"
           :get-activity-icon="getActivityIcon"
           :format-time="formatTime"
           :loading="loading"
+          @reconnect="reconnectActivityStream"
         />
       </div>
 
@@ -170,6 +175,11 @@ const { stats, loading: statsLoading, refresh: refreshStats } = useDashboardStat
 const {
   activities: importantActivities,
   isConnected: activityStreamConnected,
+  isConnecting: activityStreamConnecting,
+  connectionState: activityConnectionState,
+  reconnectAttempts: activityReconnectAttempts,
+  latency: activityLatency,
+  reconnect: reconnectActivityStream,
   getActivityIcon,
   formatTime
 } = useDashboardActivities({

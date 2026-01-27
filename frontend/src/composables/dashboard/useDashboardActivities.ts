@@ -78,6 +78,11 @@ export function useDashboardActivities(options: UseDashboardActivitiesOptions = 
 
   const activities = activityStreamData.activities
   const isConnected = activityStreamData.isConnected
+  const isConnecting = activityStreamData.isConnecting
+  const connectionState = activityStreamData.connectionState
+  const reconnectAttempts = activityStreamData.reconnectAttempts
+  const latency = activityStreamData.latency
+  const reconnect = activityStreamData.reconnect
 
   /**
    * 筛选重要活动
@@ -147,9 +152,34 @@ export function useDashboardActivities(options: UseDashboardActivitiesOptions = 
     importantActivities,
 
     /**
-     * WebSocket 连接状态
+     * WebSocket 连接状态（boolean）
      */
     isConnected,
+
+    /**
+     * 是否正在連線中
+     */
+    isConnecting,
+
+    /**
+     * WebSocket 連線狀態（詳細）
+     */
+    connectionState,
+
+    /**
+     * 重連嘗試次數
+     */
+    reconnectAttempts,
+
+    /**
+     * 連線延遲（毫秒）
+     */
+    latency,
+
+    /**
+     * 重新連線方法
+     */
+    reconnect,
 
     /**
      * 获取活动图标

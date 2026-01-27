@@ -61,6 +61,7 @@ interface WebSocketStats {
   reconnectAttempts: number
   uptime: number
   subscriptionCount: number
+  latency: number // 延遲毫秒數
 }
 
 // ==================== Constants ====================
@@ -101,11 +102,18 @@ export const useWebSocketStore = defineStore('websocket', () => {
     messagesReceived: 0,
     reconnectAttempts: 0,
     uptime: 0,
-    subscriptionCount: 0
+    subscriptionCount: 0,
+    latency: 0
   })
 
   // 连接时间（用于计算 uptime）
   let connectedAt = 0
+
+  // 心跳發送時間（用於計算延遲）
+  let lastHeartbeatSentAt = 0
+
+  // 延遲（獨立的 ref，方便響應式訪問）
+  const latency = ref(0)
 
   // ==================== Computed ====================
 
@@ -247,12 +255,29 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
   /**
    * 处理心跳
+   * @param heartbeatLatency 心跳延遲（如果 wsClient 提供的話）
    */
-  const handleHeartbeat = () => {
+  const handleHeartbeat = (heartbeatLatency?: number) => {
     // 心跳收到，更新 uptime
     if (connectedAt > 0) {
       stats.value.uptime = Math.floor((Date.now() - connectedAt) / 1000)
     }
+
+    // 更新延遲（如果有提供）
+    if (typeof heartbeatLatency === 'number' && heartbeatLatency > 0) {
+      latency.value = heartbeatLatency
+      stats.value.latency = heartbeatLatency
+    } else if (lastHeartbeatSentAt > 0) {
+      // 如果沒有提供延遲，使用估算值
+      const estimatedLatency = Date.now() - lastHeartbeatSentAt
+      if (estimatedLatency < RECONNECT_CONFIG.heartbeatTimeout) {
+        latency.value = estimatedLatency
+        stats.value.latency = estimatedLatency
+      }
+    }
+
+    // 重置心跳發送時間
+    lastHeartbeatSentAt = Date.now()
   }
 
   // ==================== Public API ====================
@@ -443,6 +468,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     lastError,
     reconnectAttempts,
     stats,
+    latency,
 
     // Computed
     isConnected,
