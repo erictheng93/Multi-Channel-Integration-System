@@ -5,6 +5,7 @@ import { conversationApi } from '@/api/conversations'
 import { messageApi } from '@/api/message'
 import { useAuthStore } from './auth'
 import { translateError } from '@/utils/error-handler'
+import { normalizeTeamId } from '@/utils/type-normalization'
 import { conversationCache, cacheManager } from '@/services/cacheManager'
 import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
 import { useWebSocketStore, type SubscriptionId } from './websocket'
@@ -1617,8 +1618,9 @@ export const useConversationsStore = defineStore('conversations', () => {
           // ❌ 從當前團隊移除：對話被轉移到其他團隊
           // 🔒 安全檢查：只有當用戶屬於原團隊時才處理移除事件
           // 這可以防止用戶收到不屬於自己團隊的移除事件
-          const fromTeamId = data?.fromTeamId as number | undefined
-          const toTeamId = data?.toTeamId as number | undefined
+          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
+          const fromTeamId = normalizeTeamId(data?.fromTeamId)
+          const toTeamId = normalizeTeamId(data?.toTeamId)
           const authStore = useAuthStore()
           const userTeamIds = authStore.allowedTeamIds || []
           const isAdmin = authStore.currentAgent?.role === 'admin'
@@ -1688,7 +1690,8 @@ export const useConversationsStore = defineStore('conversations', () => {
         } else if (action === 'assigned') {
           // ✅ 新團隊接收：對話被轉移到當前團隊
           // 🔒 安全檢查：只有當用戶屬於目標團隊時才處理指派事件
-          const toTeamId = data?.toTeamId as number | undefined
+          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
+          const toTeamId = normalizeTeamId(data?.toTeamId)
           const authStore = useAuthStore()
           const userTeamIds = authStore.allowedTeamIds || []
           const isAdmin = authStore.currentAgent?.role === 'admin'
@@ -1763,15 +1766,16 @@ export const useConversationsStore = defineStore('conversations', () => {
 
               // 構建完整的 Conversation 對象
               // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
+              // 🔧 FIX: Use already-normalized toTeamId from boundary
               const newConversation: Conversation = {
                 id: conversationId,
                 userId: customerId,
                 platform: platform as Platform,
                 status: status as ConversationStatus,
-                assignedTeamId: data?.toTeamId as number,
-                assignedTeam: data?.toTeamId ? {
-                  id: data.toTeamId as number,
-                  name: (data?.toTeamName as string) || `Team ${data.toTeamId}`,
+                assignedTeamId: toTeamId,
+                assignedTeam: toTeamId ? {
+                  id: toTeamId,
+                  name: (data?.toTeamName as string) || `Team ${toTeamId}`,
                   description: null
                 } : undefined,
                 customer: {
@@ -1826,13 +1830,14 @@ export const useConversationsStore = defineStore('conversations', () => {
             } else {
               // 已存在，更新團隊資訊
               // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
+              // 🔧 FIX: Use already-normalized toTeamId from boundary
               updateConversationStatus(conversationId, {
-                assignedTeamId: data?.toTeamId as number,
-                assignedTeam: {
-                  id: data?.toTeamId as number,
-                  name: (data?.toTeamName as string) || `Team ${data?.toTeamId}`,
+                assignedTeamId: toTeamId,
+                assignedTeam: toTeamId ? {
+                  id: toTeamId,
+                  name: (data?.toTeamName as string) || `Team ${toTeamId}`,
                   description: null
-                }
+                } : undefined
               })
 
               lastUpdateTime.value = new Date()
@@ -1849,32 +1854,36 @@ export const useConversationsStore = defineStore('conversations', () => {
           // 🔄 團隊變更通知：對話房間內的用戶收到
           // 更新 Chat 視窗中的團隊標籤
           // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
+          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
           if (conversationId) {
-            const toTeamId = data?.toTeamId as number | undefined
+            const toTeamId = normalizeTeamId(data?.toTeamId)
             const toTeamName = (data?.toTeamName || data?.assignedTeamName) as string | undefined
-            const newTeam = data?.newTeam as { id: number; name: string } | undefined
+            const newTeam = data?.newTeam as { id: unknown; name: string } | undefined
+            const newTeamId = normalizeTeamId(newTeam?.id)
+            const effectiveTeamId = toTeamId ?? newTeamId
 
             updateConversationStatus(conversationId, {
-              assignedTeamId: toTeamId || newTeam?.id,
-              assignedTeam: toTeamId || newTeam?.id ? {
-                id: toTeamId || newTeam?.id || 0,
-                name: toTeamName || newTeam?.name || `Team ${toTeamId || newTeam?.id}`,
+              assignedTeamId: effectiveTeamId,
+              assignedTeam: effectiveTeamId ? {
+                id: effectiveTeamId,
+                name: toTeamName || newTeam?.name || `Team ${effectiveTeamId}`,
                 description: null
               } : undefined
             })
             lastUpdateTime.value = new Date()
             console.log(`🏷️ [ConversationsStore] Conversation team changed in chat window`, {
               conversationId,
-              newTeamId: toTeamId || newTeam?.id,
+              newTeamId: effectiveTeamId,
               newTeamName: toTeamName || newTeam?.name
             })
           }
         } else {
           // 沒有 action 字段（舊格式），回退到原有邏輯
           // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
+          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
           if (conversationId) {
             const status = data?.status as string | undefined
-            const assignedTeamId = data?.assignedTeamId as number | undefined
+            const assignedTeamId = normalizeTeamId(data?.assignedTeamId)
             const assignedTeamName = data?.assignedTeamName as string | undefined
 
             const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
