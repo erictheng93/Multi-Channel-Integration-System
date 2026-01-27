@@ -116,51 +116,60 @@ describe('ActivityFeedCard', () => {
       const wrapper = mount(ActivityFeedCard, {
         props: {
           ...defaultProps,
-          isConnected: true
+          isConnected: true,
+          connectionState: 'connected' // 使用新的 connectionState prop
         },
         global: { stubs: defaultGlobalStubs }
       })
 
       const status = wrapper.find('.connection-status')
       expect(status.classes()).toContain('connected')
-      expect(status.text()).toBe('● 已連線')
+      expect(status.text()).toBe('● 即時更新中') // 組件更新後的新文字
     })
 
     it('断连时应该显示未连线状态', () => {
       const wrapper = mount(ActivityFeedCard, {
         props: {
           ...defaultProps,
-          isConnected: false
+          isConnected: false,
+          connectionState: 'disconnected' // 使用新的 connectionState prop
         },
         global: { stubs: defaultGlobalStubs }
       })
 
       const status = wrapper.find('.connection-status')
       expect(status.classes()).toContain('disconnected')
-      expect(status.text()).toBe('○ 未連線')
+      expect(status.text()).toBe('○ 即時更新已暫停') // 組件更新後的新文字
     })
 
-    it('应该显示连接模式', () => {
-      const wrapper = mount(ActivityFeedCard, {
-        props: defaultProps,
-        global: { stubs: defaultGlobalStubs }
-      })
-
-      const subtitle = wrapper.find('.card-subtitle')
-      expect(subtitle.text()).toContain('WebSocket 模式')
-    })
-
-    it('应该显示自定义连接模式', () => {
+    it('正在连接时应该显示连接中状态', () => {
       const wrapper = mount(ActivityFeedCard, {
         props: {
           ...defaultProps,
-          connectionMode: 'Polling 模式'
+          isConnected: false,
+          connectionState: 'connecting'
         },
         global: { stubs: defaultGlobalStubs }
       })
 
-      const subtitle = wrapper.find('.card-subtitle')
-      expect(subtitle.text()).toContain('Polling 模式')
+      const status = wrapper.find('.connection-status')
+      expect(status.classes()).toContain('connecting')
+      expect(status.text()).toBe('◐ 正在連接...')
+    })
+
+    it('连接错误时应该显示错误状态', () => {
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          isConnected: false,
+          connectionState: 'error'
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      const status = wrapper.find('.connection-status')
+      expect(status.classes()).toContain('error')
+      expect(status.text()).toBe('✕ 連線失敗')
     })
   })
 
@@ -360,14 +369,15 @@ describe('ActivityFeedCard', () => {
       const wrapper = mount(ActivityFeedCard, {
         props: {
           ...defaultProps,
-          isConnected: true
+          isConnected: true,
+          connectionState: 'connected' // 需要設置 connectionState 來控制 CSS class
         },
         global: { stubs: defaultGlobalStubs }
       })
 
       expect(wrapper.find('.connection-status').classes()).toContain('connected')
 
-      await wrapper.setProps({ isConnected: false })
+      await wrapper.setProps({ isConnected: false, connectionState: 'disconnected' })
       expect(wrapper.find('.connection-status').classes()).toContain('disconnected')
     })
   })
