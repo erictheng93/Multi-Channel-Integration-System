@@ -64,6 +64,7 @@ const createMockActivity = (id: string, priority: 'high' | 'medium' | 'low' = 'm
 let mockConversations = ref<Conversation[]>([])
 let mockActivities = ref<Activity[]>([])
 let mockIsActivityStreamConnected = ref(false)
+let mockActivityConnectionState = ref<'connected' | 'connecting' | 'reconnecting' | 'disconnected' | 'error'>('disconnected')
 
 vi.mock('@/composables/useConversations', () => {
   const { ref, computed } = require('vue')
@@ -138,7 +139,7 @@ vi.mock('@/composables/useActivityStream', () => {
 
 // Mock useDashboardActivities to properly filter and slice activities
 vi.mock('@/composables/dashboard/useDashboardActivities', () => {
-  const { computed } = require('vue')
+  const { computed, ref } = require('vue')
   // Simple stub components for icons
   const IconStub = { template: '<svg></svg>' }
   return {
@@ -153,6 +154,11 @@ vi.mock('@/composables/dashboard/useDashboardActivities', () => {
           return filtered
         }),
         isConnected: computed(() => mockIsActivityStreamConnected.value),
+        isConnecting: ref(false),
+        connectionState: computed(() => mockActivityConnectionState.value),
+        reconnectAttempts: ref(0),
+        latency: ref(0),
+        reconnect: vi.fn(),
         getActivityIcon: () => IconStub,
         formatTime: (date: Date) => {
           const now = new Date()
@@ -272,6 +278,7 @@ describe('Dashboard.vue', () => {
     mockConversations.value = []
     mockActivities.value = []
     mockIsActivityStreamConnected.value = false
+    mockActivityConnectionState.value = 'disconnected'
 
     // 清除所有 mock 調用記錄
     vi.clearAllMocks()
@@ -522,6 +529,7 @@ describe('Dashboard.vue', () => {
   describe('WebSocket 活動流', () => {
     it('應該顯示 WebSocket 連接狀態', async () => {
       mockIsActivityStreamConnected.value = true
+      mockActivityConnectionState.value = 'connected'
 
       const wrapper = mount(Dashboard, {
         global: {
@@ -542,6 +550,7 @@ describe('Dashboard.vue', () => {
 
     it('斷線時應該顯示斷線狀態', async () => {
       mockIsActivityStreamConnected.value = false
+      mockActivityConnectionState.value = 'disconnected'
 
       const wrapper = mount(Dashboard, {
         global: {

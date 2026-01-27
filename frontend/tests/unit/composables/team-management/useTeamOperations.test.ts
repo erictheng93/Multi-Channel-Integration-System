@@ -254,11 +254,11 @@ describe('useTeamOperations', () => {
 
       await operations.submitAddTeam()
 
-      // Note: description becomes empty because resetAddTeamForm() is called before API call
-      // This appears to be a bug in the implementation but we test actual behavior
+      // The implementation correctly saves description before resetting form
+      // (see useTeamOperations.ts line 192: const teamDescription = addTeamForm.description)
       expect(mockTeamApi.createTeam).toHaveBeenCalledWith({
         name: 'New Team',
-        description: ''  // Empty because form is reset before API call
+        description: 'Team Description'
       })
       expect(mockToast.showSuccess).toHaveBeenCalledWith(
         '新增團隊成功',
