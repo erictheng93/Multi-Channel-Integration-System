@@ -16,11 +16,12 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   html: '',
-  allowedTags: () => ['span', 'img', 'div'],
+  allowedTags: () => ['span', 'img', 'div', 'a'],
   allowedAttributes: () => ({
     span: ['class', 'title', 'style'],
     img: ['src', 'alt', 'title', 'class', 'style', 'width', 'height', 'data-sticker-package', 'data-sticker-id', 'data-sticker-type'],
-    div: ['class', 'style']
+    div: ['class', 'style'],
+    a: ['href', 'target', 'rel', 'class', 'title']
   })
 })
 
@@ -64,6 +65,9 @@ const sanitizeHtml = (html: string): string => {
           if (attr === 'src' && !isValidImageSrc(value)) {
             continue
           }
+          if (attr === 'href' && !isValidHref(value)) {
+            continue
+          }
           if (attr === 'style' && !isValidStyle(value)) {
             continue
           }
@@ -105,6 +109,20 @@ const isValidImageSrc = (src: string): boolean => {
     const url = new URL(src, window.location.origin)
     // 只允许HTTP/HTTPS协议
     return ['http:', 'https:', 'data:'].includes(url.protocol)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 验证链接href是否安全
+ * Validates that link href only uses http/https protocols
+ */
+const isValidHref = (href: string): boolean => {
+  try {
+    const url = new URL(href, window.location.origin)
+    // 只允许HTTP/HTTPS协议（不允许javascript:, data:等）
+    return ['http:', 'https:'].includes(url.protocol)
   } catch {
     return false
   }
@@ -233,5 +251,25 @@ onMounted(renderSafeHtml)
   vertical-align: middle;
   object-fit: contain;
   margin: 0 1px;
+}
+
+/* Clickable link styles - 可点击链接样式 */
+.safe-html-container :deep(a),
+.safe-html-container :deep(.message-link) {
+  color: #2563eb; /* Blue color like Image #2 */
+  text-decoration: underline;
+  cursor: pointer;
+  word-break: break-all; /* Handle long URLs */
+}
+
+.safe-html-container :deep(a:hover),
+.safe-html-container :deep(.message-link:hover) {
+  color: #1d4ed8; /* Darker blue on hover */
+  text-decoration: underline;
+}
+
+.safe-html-container :deep(a:visited),
+.safe-html-container :deep(.message-link:visited) {
+  color: #7c3aed; /* Purple for visited links */
 }
 </style>
