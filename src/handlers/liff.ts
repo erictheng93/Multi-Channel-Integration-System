@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '../types';
 import { createDbClient } from '../db/drizzle-factory';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, ne, sql } from 'drizzle-orm';
 import { customers, conversations, teams, customerTeamAssignments } from '../db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '../utils/logger';
@@ -293,6 +293,138 @@ liffHandler.post('/welcome', async (c) => {
 
     if (!team) {
       return c.json({ success: false, error: '團隊不存在' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // === 🆕 同步對話團隊指派 (修復舊用戶掃 QR Code 無法指派問題) ===
+    // 當用戶已是 LINE OA 好友時，掃描 QR Code 不會觸發 follow webhook
+    // 因此需要在 welcome API 中同步處理對話指派
+    try {
+      // 查詢客戶
+      const customer = await db
+        .select()
+        .from(customers)
+        .where(and(
+          eq(customers.platformUserId, lineUserId),
+          eq(customers.platform, 'line')
+        ))
+        .get();
+
+      if (customer) {
+        // 查詢現有對話 (排除已關閉的)
+        const existingConversation = await db
+          .select()
+          .from(conversations)
+          .where(and(
+            eq(conversations.customerId, customer.id),
+            ne(conversations.status, 'closed')
+          ))
+          .get();
+
+        const timestamp = new Date().toISOString();
+
+        if (existingConversation) {
+          // 更新現有對話的團隊指派 (如果團隊不同)
+          const oldTeamId = existingConversation.assignedTeamId;
+
+          if (oldTeamId !== teamId) {
+            await db
+              .update(conversations)
+              .set({
+                assignedTeamId: teamId,
+                updatedAt: timestamp
+              })
+              .where(eq(conversations.id, existingConversation.id));
+
+            // WebSocket 廣播 - 通知前端對話已轉移
+            const { WebSocketBroadcastService } = await import('../services/websocket-broadcast-service');
+            const broadcastService = new WebSocketBroadcastService(c.env);
+
+            await broadcastService.broadcastConversationTransferred({
+              conversationId: existingConversation.id,
+              fromTeamId: oldTeamId,
+              toTeamId: teamId,
+              toTeamName: team.name,
+              conversation: {
+                id: existingConversation.id,
+                customerId: customer.id,
+                customerName: customer.displayName ?? undefined,
+                platform: 'line',
+                status: existingConversation.status,
+                assignedTeamId: teamId,
+              },
+              transferredBy: { id: 'system', name: 'QR Code Scan' },
+              reason: 'LIFF QR Code - Existing Friend Reassignment'
+            });
+
+            log.info('Conversation reassigned via welcome API', {
+              conversationId: existingConversation.id,
+              fromTeamId: oldTeamId,
+              toTeamId: teamId,
+              customerId: customer.id
+            });
+          } else {
+            log.info('Conversation already assigned to correct team', {
+              conversationId: existingConversation.id,
+              teamId
+            });
+          }
+        } else {
+          // 建立新對話 (舊用戶但無現有對話的情況)
+          const conversationId = uuidv4();
+          await db
+            .insert(conversations)
+            .values({
+              id: conversationId,
+              customerId: customer.id,
+              assignedTeamId: teamId,
+              status: 'active',
+              priority: 'normal',
+              lastMessageAt: timestamp,
+              createdAt: timestamp,
+              updatedAt: timestamp
+            });
+
+          // WebSocket 廣播新對話
+          const { WebSocketBroadcastService } = await import('../services/websocket-broadcast-service');
+          const broadcastService = new WebSocketBroadcastService(c.env);
+
+          await broadcastService.broadcastConversationTransferred({
+            conversationId,
+            fromTeamId: null,
+            toTeamId: teamId,
+            toTeamName: team.name,
+            conversation: {
+              id: conversationId,
+              customerId: customer.id,
+              customerName: customer.displayName ?? undefined,
+              platform: 'line',
+              status: 'active',
+              assignedTeamId: teamId,
+            },
+            transferredBy: { id: 'system', name: 'QR Code Scan' },
+            reason: 'LIFF QR Code - New Conversation for Existing Friend'
+          });
+
+          log.info('New conversation created via welcome API', {
+            conversationId,
+            customerId: customer.id,
+            teamId
+          });
+        }
+      } else {
+        // 客戶不存在 - 這通常不應該發生，因為用戶已是好友
+        log.warn('Customer not found for welcome message', {
+          lineUserId: lineUserId.substring(0, 10) + '...',
+          teamId
+        });
+      }
+    } catch (syncError) {
+      // 非阻塞 - 同步失敗不影響發送歡迎訊息
+      log.warn('Conversation sync failed (non-blocking)', {
+        error: syncError instanceof Error ? syncError.message : String(syncError),
+        lineUserId: lineUserId.substring(0, 10) + '...',
+        teamId
+      });
     }
 
     // Send welcome message via LINE API
