@@ -46,15 +46,6 @@ export class ResourceSelector {
   }
 
   /**
-   * 獲取代理佇列
-   * @deprecated AGENT_QUEUE is deprecated. Use DelayedMessageBuffer Durable Object instead.
-   */
-  getAgentQueue(): Queue<unknown> | null {
-    console.warn('⚠️ [DEPRECATED] getAgentQueue() is deprecated. Use DelayedMessageBuffer Durable Object instead.');
-    return null;
-  }
-
-  /**
    * 獲取當前環境
    */
   getEnvironment(): string {
@@ -84,7 +75,6 @@ export class ResourceSelector {
       SESSIONS: this.getSessionsKV(),
       CACHE: this.getCacheKV(),
       R2_BUCKET: this.getR2Bucket(),
-      // AGENT_QUEUE removed - deprecated, use DelayedMessageBuffer Durable Object
       environment: this.environment
     };
   }

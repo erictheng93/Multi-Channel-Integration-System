@@ -10,7 +10,7 @@ import {
   requireAdmin,
   requireManagerOrAdmin
 } from '@/middleware/auth';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { desc, sql, isNull } from 'drizzle-orm';

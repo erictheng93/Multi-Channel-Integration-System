@@ -25,7 +25,7 @@ import {
   unauthorizedResponse,
   handleApiError
 } from '../utils/api-response';
-import { ActivityService } from '../services/activity-service';
+import { ActivityService } from '../modules/activities';
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 import { createContextLogger } from '../utils/logger';
 

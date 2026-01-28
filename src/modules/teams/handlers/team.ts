@@ -7,7 +7,7 @@ import { TeamQRService } from '@modules/teams/services/qr-service';
 import { TeamActivityService } from '@modules/teams/services/activity-service';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { generateTeamQRCode } from '@/services/liff-qrcode-service';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type {
