@@ -251,7 +251,42 @@ export class LayeredEmojiProcessor {
   }
 
   /**
-   * 完整处理方法 - 使用Layer 1 + Layer 2
+   * 将URL转换为可点击的链接
+   * Converts URLs in text to clickable anchor tags
+   *
+   * Features:
+   * - Opens in new window (target="_blank")
+   * - Security attributes (rel="noopener noreferrer")
+   * - Supports http/https protocols only
+   */
+  private linkifyUrls(text: string): string {
+    if (!text) {return text;}
+
+    // URL pattern that matches http/https URLs
+    // Handles common URL characters including encoded characters like %E7%B7%9A
+    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/gi;
+
+    return text.replace(urlPattern, (url) => {
+      // Validate URL for security
+      try {
+        const parsedUrl = new URL(url);
+        // Only allow http and https protocols
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+          return url; // Return original text if not http/https
+        }
+      } catch {
+        return url; // Return original text if URL is invalid
+      }
+
+      // Create anchor tag with security attributes
+      // - target="_blank": Opens in new window/tab
+      // - rel="noopener noreferrer": Security best practice for external links
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="message-link">${url}</a>`;
+    });
+  }
+
+  /**
+   * 完整处理方法 - 使用Layer 1 + Layer 2 + URL Linkification
    * 用于消息详情页等可以接受稍慢响应的场景
    */
   async processWithBothLayers(text: string): Promise<string> {
@@ -264,10 +299,10 @@ export class LayeredEmojiProcessor {
     for (const match of matches) {
       const fullMatch = match[0]; // "(description)"
       const description = match[1]; // "description"
-      
+
       if (description) {
         this.stats.totalProcessed++;
-        
+
         // Layer 1: 静态映射表查找 (优先)
         let emoji = getEmoji(description);
         if (emoji) {
@@ -288,6 +323,9 @@ export class LayeredEmojiProcessor {
         this.stats.misses++;
       }
     }
+
+    // Layer 3: URL Linkification - Convert URLs to clickable links
+    processedText = this.linkifyUrls(processedText);
 
     return processedText;
   }
