@@ -131,23 +131,34 @@ export class DatabaseService {
     const cached = await this.kv.getCache(`conversation:${id}`);
     if (cached) return cached;
 
-    // Fetch conversation with team information using LEFT JOIN
+    // Fetch conversation with team and customer information using LEFT JOINs
     // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
+    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
     const result = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
       .where(eq(schema.conversations.id, id))
       .get();
 
     if (!result) return null;
 
-    // Enrich conversation with team data
+    // Enrich conversation with team and customer data
     const conversation = {
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
+      } : null,
+      customer: result.customers ? {
+        id: result.customers.id,
+        name: result.customers.displayName || 'Unknown',
+        displayName: result.customers.displayName,
+        platform: result.customers.platform,
+        platformUserId: result.customers.platformUserId,
+        avatarUrl: result.customers.avatarUrl,
+        createdAt: result.customers.createdAt
       } : null
       // Note: assignedAgent removed - only team-based assignment is supported now
     };
@@ -184,9 +195,11 @@ export class DatabaseService {
 
     // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
     // Get all conversations assigned to the specified team
+    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
       .where(and(
         eq(schema.conversations.assignedTeamId, teamId),
         ...conditions
@@ -194,13 +207,22 @@ export class DatabaseService {
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
 
-    // Enrich conversations with team data
+    // Enrich conversations with team and customer data
     return results.map(result => ({
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
+      } : null,
+      customer: result.customers ? {
+        id: result.customers.id,
+        name: result.customers.displayName || 'Unknown',
+        displayName: result.customers.displayName,
+        platform: result.customers.platform,
+        platformUserId: result.customers.platformUserId,
+        avatarUrl: result.customers.avatarUrl,
+        createdAt: result.customers.createdAt
       } : null
     }));
   }
@@ -212,20 +234,31 @@ export class DatabaseService {
     }
 
     // Note: Individual assignment (assignedUserId) removed - only team-based access control
+    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
 
-    // Enrich conversations with team data
+    // Enrich conversations with team and customer data
     return results.map(result => ({
       ...result.conversations,
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
+      } : null,
+      customer: result.customers ? {
+        id: result.customers.id,
+        name: result.customers.displayName || 'Unknown',
+        displayName: result.customers.displayName,
+        platform: result.customers.platform,
+        platformUserId: result.customers.platformUserId,
+        avatarUrl: result.customers.avatarUrl,
+        createdAt: result.customers.createdAt
       } : null
       // Note: assignedAgent removed - only team-based assignment is supported now
     }));
@@ -275,9 +308,11 @@ export class DatabaseService {
 
     // Step 4: Execute query with LEFT JOINs for enriched data
     // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
+    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
+      .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
       .where(
         allConditions.length > 0
           ? and(or(...visibilityConditions), ...allConditions)
@@ -288,7 +323,7 @@ export class DatabaseService {
 
     console.log(`📋 [getConversationsByAgentTeams] Found ${results.length} conversations for agent ${agentId}`);
 
-    // Enrich conversations with team data
+    // Enrich conversations with team and customer data
     // Note: assignedAgent removed - only team-based assignment is supported now
     return results.map(result => ({
       ...result.conversations,
@@ -296,6 +331,15 @@ export class DatabaseService {
         id: result.teams.id,
         name: result.teams.name,
         description: result.teams.description
+      } : null,
+      customer: result.customers ? {
+        id: result.customers.id,
+        name: result.customers.displayName || 'Unknown',
+        displayName: result.customers.displayName,
+        platform: result.customers.platform,
+        platformUserId: result.customers.platformUserId,
+        avatarUrl: result.customers.avatarUrl,
+        createdAt: result.customers.createdAt
       } : null
     }));
   }

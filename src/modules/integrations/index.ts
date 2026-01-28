@@ -427,8 +427,7 @@ export const PLATFORM_CAPABILITIES = {
       broadcast: true,
       multicast: true,
       push: true,
-      userProfile: true,
-      friendStatus: true
+      userProfile: true
     }
   },
   facebook: {

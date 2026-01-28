@@ -106,6 +106,11 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
                          rawData.platformUserId ||
                          ''
 
+  // 🆕 Extract customer createdAt (prefer nested customer.createdAt if available)
+  const customerCreatedAt = rawData.customer?.createdAt
+    ? new Date(rawData.customer.createdAt).getTime()
+    : new Date(rawData.createdAt).getTime()
+
   return {
     id: rawData.id,
     userId: customerId ? customerId.toString() : '',
@@ -114,14 +119,16 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       name: customerName,
       platform: customerPlatform,
       platformUserId,
-      createdAt: new Date(rawData.createdAt).getTime()
+      avatarUrl: rawData.customer?.avatarUrl,
+      createdAt: customerCreatedAt
     },
     customer: {
       id: customerId ? customerId.toString() : '',
       name: customerName,
       platform: customerPlatform,
       platformUserId,
-      createdAt: new Date(rawData.createdAt).getTime()
+      avatarUrl: rawData.customer?.avatarUrl,
+      createdAt: customerCreatedAt
     },
     // 🔧 FIX: 处理嵌套的 assignedTeam 对象
     assignedTeam: rawData.assignedTeam ? {

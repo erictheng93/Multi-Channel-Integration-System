@@ -36,6 +36,13 @@
                 :team-id="conversation.assignedTeamId"
                 :team-name="conversation.assignedTeam?.name"
               />
+
+              <!-- 🆕 New Customer Badge - Shows for customers who joined within 7 days -->
+              <NewCustomerBadge
+                v-if="conversation?.customer?.createdAt"
+                :created-at="conversation.customer.createdAt"
+                size="medium"
+              />
             </div>
 
             <!-- 客戶標籤顯示區 -->
@@ -170,6 +177,8 @@ import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon }
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
+// 🆕 New Customer Badge Component
+import NewCustomerBadge from '../ui/NewCustomerBadge.vue'
 import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'

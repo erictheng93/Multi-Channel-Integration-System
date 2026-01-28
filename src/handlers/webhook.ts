@@ -128,8 +128,8 @@ export const webhookHandler = {
           // 🆕 處理 QR Code 加好友事件
           await processLineFollowEvent(c.env, event);
         } else if (event.type === 'unfollow') {
-          // 記錄取消關注事件
-          console.log('👋 [LINE Webhook] User unfollowed:', event.source?.userId?.substring(0, 10) + '...');
+          // 🆕 處理取消關注事件 - 更新好友狀態為 blocked
+          await processLineUnfollowEvent(c.env, event);
         } else {
           console.log('🔄 [LINE Webhook] Skipping event:', event.type);
         }
@@ -1269,6 +1269,88 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
   } catch (error) {
     log.error('LINE Follow: Error processing follow event', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userIdPrefix: userId.slice(0, 8)
+    });
+    throw error;
+  }
+}
+
+/**
+ * 🆕 處理 LINE Unfollow 事件
+ * 當用戶取消關注官方帳號時，更新好友狀態為 'blocked'
+ */
+export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) {
+  const userId = event.source.userId;
+
+  console.log('👋 [LINE Unfollow] Processing unfollow event:', {
+    userId: userId?.substring(0, 10) + '...',
+    timestamp: event.timestamp
+  });
+
+  if (!userId) {
+    log.warn('LINE Unfollow: No userId in unfollow event');
+    return;
+  }
+
+  try {
+    const drizzleDb = createDbClient(env.DB);
+    const timestamp = new Date().toISOString();
+
+    // 查找現有客戶
+    const existingCustomer = await drizzleDb
+      .select()
+      .from(customers)
+      .where(and(
+        eq(customers.platformUserId, userId),
+        eq(customers.platform, 'line')
+      ))
+      .get();
+
+    if (!existingCustomer) {
+      console.log('⚠️ [LINE Unfollow] Customer not found for unfollowed user:', userId.substring(0, 10) + '...');
+      return;
+    }
+
+    // 更新客戶的最後更新時間
+    await drizzleDb
+      .update(customers)
+      .set({
+        updatedAt: timestamp
+      })
+      .where(eq(customers.id, existingCustomer.id));
+
+    console.log('✅ [LINE Unfollow] Customer unfollow recorded:', {
+      customerId: existingCustomer.id,
+      displayName: existingCustomer.displayName
+    });
+
+    // 記錄活動
+    try {
+      const activityService = new ActivityService(env.DB);
+      await activityService.logActivity({
+        userId: 'system',
+        userName: 'Webhook Handler',
+        userRole: 'system',
+        action: 'customer_unfollowed',
+        resourceType: 'customer',
+        resourceId: String(existingCustomer.id),
+        details: {
+          platform: 'line',
+          platformUserId: userId,
+          displayName: existingCustomer.displayName,
+          timestamp
+        }
+      });
+      console.log('✅ [LINE Unfollow] Activity logged');
+    } catch (activityError) {
+      log.warn('LINE Unfollow: Failed to log activity', {
+        error: activityError instanceof Error ? activityError.message : String(activityError)
+      });
+    }
+
+  } catch (error) {
+    log.error('LINE Unfollow: Error processing unfollow event', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userIdPrefix: userId.slice(0, 8)
     });
