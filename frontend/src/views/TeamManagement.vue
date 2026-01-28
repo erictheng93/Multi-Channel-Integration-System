@@ -211,7 +211,10 @@ const handleBulkEditSaved = (payload: BulkEditSavedPayload) => {
         actionText: '復原',
         onAction: async () => {
           try {
-            const response = await teamApi.undoBatchEdit(payload.undoToken!)
+            if (!payload.undoToken) {
+              return
+            }
+            const response = await teamApi.undoBatchEdit(payload.undoToken)
 
             if (response.success && response.data) {
               showSuccess('已復原', `已成功恢復 ${response.data.restoredCount} 位成員的資料`)
