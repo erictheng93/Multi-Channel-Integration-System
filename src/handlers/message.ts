@@ -565,7 +565,7 @@ export const messageHandler = {
 
             // ✅ 記錄活動以觸發 SSE 更新 (為了向後相容性保留)
             try {
-                const { ActivityService } = await import('../services/activity-service');
+                const { ActivityService } = await import('../modules/activities');
                 const activityService = new ActivityService(c.env.DB);
                 const activity = await activityService.logActivity({
                     userId: agent.id,

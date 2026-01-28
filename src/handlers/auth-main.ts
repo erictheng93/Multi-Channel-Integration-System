@@ -14,7 +14,7 @@ import {
   requireRole,
   rateLimit
 } from '../middleware/auth';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../modules/activities';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';

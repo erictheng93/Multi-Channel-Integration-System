@@ -8,7 +8,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { jwtAuth, requireManagerOrAdmin, requireTeamRole } from '@/middleware/auth';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/services/activity-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { teams, conversations, agents } from '@/db/schema';
 import { HTTP_STATUS } from '@/constants/http-status';

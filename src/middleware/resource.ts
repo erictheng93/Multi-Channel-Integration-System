@@ -22,7 +22,6 @@ export function resourceMiddleware() {
     c.env.SESSIONS = resources.SESSIONS;
     c.env.CACHE = resources.CACHE;
     c.env.R2_BUCKET = resources.R2_BUCKET;
-    // AGENT_QUEUE removed - deprecated, use DelayedMessageBuffer Durable Object
 
     // Set KV alias for backward compatibility
     c.env.KV = resources.SESSIONS;
@@ -59,7 +58,6 @@ export function resourceMiddleware() {
  */
 export function validateResourcesMiddleware() {
   return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
-    // AGENT_QUEUE removed from required resources - deprecated
     const requiredResources = ['DB', 'SESSIONS', 'CACHE', 'R2_BUCKET'];
     const missingResources: string[] = [];
 

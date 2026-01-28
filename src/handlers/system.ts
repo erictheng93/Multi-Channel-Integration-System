@@ -20,7 +20,7 @@ import {
   // validationErrorResponse, 
   handleApiError 
 } from '../utils/api-response'
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../services/activity-service'
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../modules/activities'
 import { createDbClient } from '../db/drizzle-factory'
 import { sql, gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '../db/schema'
