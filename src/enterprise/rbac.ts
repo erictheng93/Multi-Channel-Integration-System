@@ -18,7 +18,7 @@ export interface Role {
   displayName: string;
   description: string;
   permissions: Permission[];
-  level: number; // 0=admin, 1=team, 2=agent
+  level: number; // 0=admin, 1=agent
 }
 
 // 權限檢查結果
@@ -85,30 +85,18 @@ export class EnterpriseRBACManager {
       return { granted: true, userRole };
     }
 
-    // Team 角色權限
-    if (userRole === ROLES.TEAM) {
-      const teamPermissions = [
-        'conversation:view', 'conversation:assign', 'conversation:transfer',
+    // Agent 權限 (包含舊 Team 角色的權限，統一使用 team role 系統控制)
+    // Note: Team-specific permissions (team:manage_agents, analytics:view_team, etc.)
+    // are now controlled by team roles (Member/Lead/Supervisor) instead of system role
+    if (userRole === ROLES.AGENT) {
+      const agentPermissions = [
+        'conversation:view', 'conversation:respond', 'conversation:assign', 'conversation:transfer',
         'customer:view', 'customer:edit',
-        'team:view', 'team:manage_agents',
+        'team:view',
         'message:send', 'message:recall',
         'analytics:view_team'
       ];
-      
-      const permission = `${resource}:${action}`;
-      if (teamPermissions.includes(permission)) {
-        return { granted: true, userRole };
-      }
-    }
 
-    // Agent 基本權限
-    if (userRole === ROLES.AGENT) {
-      const agentPermissions = [
-        'conversation:view', 'conversation:respond',
-        'customer:view',
-        'message:send', 'message:recall'
-      ];
-      
       const permission = `${resource}:${action}`;
       if (agentPermissions.includes(permission)) {
         return { granted: true, userRole };
@@ -153,14 +141,8 @@ export class EnterpriseRBACManager {
           return { granted: false, reason: 'Conversation not found' };
         }
 
-        // Team 可存取同團隊的對話
-        if (userRole === ROLES.TEAM && user.teamId &&
-            conversation.assignedTeamId === user.teamId) {
-          return { granted: true };
-        }
-
-        // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
         // Agent 只能存取同團隊的對話
+        // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
         if (userRole === ROLES.AGENT && user.teamId &&
             conversation.assignedTeamId === user.teamId) {
           return { granted: true };
@@ -179,7 +161,6 @@ export class EnterpriseRBACManager {
   // 取得所需角色
   private getRequiredRole(resource: string, action: string): string {
     const adminActions = ['system:*', 'user:create', 'user:delete', 'team:create', 'team:delete'];
-    const teamActions = ['team:manage', 'analytics:view_team', 'conversation:assign'];
 
     const permission = `${resource}:${action}`;
 
@@ -187,10 +168,8 @@ export class EnterpriseRBACManager {
       return ROLES.ADMIN;
     }
 
-    if (teamActions.includes(permission)) {
-      return ROLES.TEAM;
-    }
-
+    // All other permissions require agent role
+    // Team-specific permissions are controlled by team roles (Member/Lead/Supervisor)
     return ROLES.AGENT;
   }
 
@@ -222,21 +201,13 @@ export class EnterpriseRBACManager {
           permissions: [],
           level: 0
         },
-        [ROLES.TEAM]: {
-          id: ROLES.TEAM,
-          name: ROLES.TEAM,
-          displayName: 'Team Leader',
-          description: 'Team management access',
-          permissions: [],
-          level: 1
-        },
         [ROLES.AGENT]: {
           id: ROLES.AGENT,
           name: ROLES.AGENT,
           displayName: 'Agent',
-          description: 'Basic agent access',
+          description: 'Agent access within assigned teams',
           permissions: [],
-          level: 2
+          level: 1
         }
       };
       

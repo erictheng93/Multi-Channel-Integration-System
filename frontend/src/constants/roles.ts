@@ -9,16 +9,19 @@
 
 /**
  * System roles enum
+ *
+ * The system uses a simplified 2-tier role hierarchy:
+ * - ADMIN: Full system access, can manage teams and all resources
+ * - AGENT: Can handle conversations and customer interactions within assigned teams
+ *
+ * Team-specific permissions are controlled by team roles (Member/Lead/Supervisor).
  */
 export const ROLES = {
   /** Administrator role - full system access */
   ADMIN: 'admin',
 
   /** Agent role - can handle conversations within assigned teams */
-  AGENT: 'agent',
-
-  /** @deprecated Team role - kept for backward compatibility */
-  TEAM: 'team'
+  AGENT: 'agent'
 } as const;
 
 /**
@@ -41,8 +44,7 @@ export const ACTIVE_ROLES = [ROLES.ADMIN, ROLES.AGENT] as const;
  */
 export const ROLE_LABELS: Record<Role, string> = {
   [ROLES.ADMIN]: '管理員',
-  [ROLES.AGENT]: '客服',
-  [ROLES.TEAM]: '團隊成員 (已棄用)'
+  [ROLES.AGENT]: '客服'
 };
 
 /**
@@ -50,8 +52,7 @@ export const ROLE_LABELS: Record<Role, string> = {
  */
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   [ROLES.ADMIN]: '完整系統權限，可管理團隊、客服和所有資源',
-  [ROLES.AGENT]: '可處理客戶對話並管理團隊內的指派資源',
-  [ROLES.TEAM]: '已棄用角色 - 請使用客服角色'
+  [ROLES.AGENT]: '可處理客戶對話並管理團隊內的指派資源'
 };
 
 /**
