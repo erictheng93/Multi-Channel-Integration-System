@@ -19,8 +19,6 @@ import { getSSECorsHeaders } from '@/config/cors';
 import { WebSocketAuthService } from '@/services/websocket-auth-service';
 import { createContextLogger } from '@/utils/logger';
 import {
-  triggerConversationAssignedNotification,
-  triggerConversationTransferredNotification,
   triggerPriorityChangedNotification
 } from '@/utils/notification-trigger';
 

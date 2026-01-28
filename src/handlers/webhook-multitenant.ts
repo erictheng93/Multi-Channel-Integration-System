@@ -14,7 +14,8 @@ import type { ChannelIntegration } from '@modules/integrations/types/channel-typ
 
 // Import existing webhook types and validation
 import type { LineWebhookBody } from '../types';
-import { validateLineWebhook, verifyLineSignature } from './webhook';
+import { isLineWebhookBody } from '../services/webhook-validation';
+import { verifyWebhookSignature } from '../services/webhook-signature-service';
 
 // Import existing message processing (will be modified)
 import { processLineMessage, processLineFollowEvent } from './webhook';
@@ -93,9 +94,14 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     }
 
     // Verify signature with team's channel secret
-    const isValid = await verifyLineSignature(body, signature, channel.lineChannelSecret);
+    const signatureResult = await verifyWebhookSignature(
+      'line',
+      body,
+      { 'x-line-signature': signature },
+      channel.lineChannelSecret
+    );
 
-    if (!isValid) {
+    if (!signatureResult.valid) {
       console.error('❌ [LINE Webhook] Invalid signature for team', teamId);
       console.log('   Received signature:', signature.substring(0, 20) + '...');
 
@@ -117,7 +123,7 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     }
 
     // Validate webhook structure
-    if (!validateLineWebhook(data)) {
+    if (!isLineWebhookBody(data)) {
       console.error('❌ [LINE Webhook] Invalid webhook payload structure');
       return errorResponse(c, 'Invalid webhook payload');
     }
@@ -224,9 +230,14 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
     }
 
     // Verify signature using global env variable
-    const isValid = await verifyLineSignature(body, signature, c.env.LINE_CHANNEL_SECRET);
+    const signatureResult = await verifyWebhookSignature(
+      'line',
+      body,
+      { 'x-line-signature': signature },
+      c.env.LINE_CHANNEL_SECRET
+    );
 
-    if (!isValid) {
+    if (!signatureResult.valid) {
       console.error('❌ [LINE Webhook] Invalid signature');
       console.log('   Received signature:', signature.substring(0, 20) + '...');
       return unauthorizedResponse(c, 'Invalid signature');
@@ -242,7 +253,7 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
       return errorResponse(c, 'Invalid JSON payload');
     }
 
-    if (!validateLineWebhook(data)) {
+    if (!isLineWebhookBody(data)) {
       console.error('❌ [LINE Webhook] Invalid webhook payload structure');
       return errorResponse(c, 'Invalid webhook payload');
     }

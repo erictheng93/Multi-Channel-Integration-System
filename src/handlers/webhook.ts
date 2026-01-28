@@ -49,7 +49,6 @@ import {
   parseFacebookMessage as parseFacebookMessageContent,
   hasDownloadableMedia
 } from '../services/platform-message-parser';
-import { triggerNewMessageNotification, triggerCustomerRespondedNotification } from '../utils/notification-trigger';
 
 export const webhookHandler = {
   // 處理 Line Webhook
@@ -168,7 +167,7 @@ export const webhookHandler = {
       }
 
       // 輸入驗證
-      if (!validateFacebookWebhook(body)) {
+      if (!isFacebookWebhookBody(body)) {
         return errorResponse(c, 'Invalid webhook payload');
       }
 
@@ -192,45 +191,9 @@ export const webhookHandler = {
   }
 };
 
-// ==================== DEPRECATED FUNCTIONS ====================
-// 🚨 These functions are deprecated and will be removed in a future version.
-// Please use the shared services from:
-// - src/services/webhook-validation.ts
-// - src/services/webhook-signature-service.ts
-// - src/services/platform-message-parser.ts
-
-/**
- * @deprecated Use `validateLineWebhook` from `src/services/webhook-validation.ts` instead.
- * This function is kept for backward compatibility with external imports.
- */
-export function validateLineWebhook(data: unknown): data is LineWebhookBody {
-  // Delegate to shared service
-  return isLineWebhookBody(data);
-}
-
-/**
- * @deprecated Use `validateFacebookWebhook` from `src/services/webhook-validation.ts` instead.
- * This function is kept for backward compatibility.
- */
-function validateFacebookWebhook(data: unknown): data is FacebookWebhookBody {
-  // Delegate to shared service
-  return isFacebookWebhookBody(data);
-}
-
 // 安全日誌記錄函數
 function logSecurely(platform: string, userId: string, messageLength: number) {
   console.log(`Processed ${platform} message from user [${userId.slice(0, 8)}...]: [${messageLength} chars]`);
-}
-
-/**
- * @deprecated Use `verifyWebhookSignature` from `src/services/webhook-signature-service.ts` instead.
- * The new service provides timing-safe comparison and better error handling.
- * This function is kept for backward compatibility with external imports.
- */
-export async function verifyLineSignature(body: string, signature: string, secret: string): Promise<boolean> {
-  // Delegate to shared service with timing-safe comparison
-  const result = await verifyWebhookSignature('line', body, { 'x-line-signature': signature }, secret);
-  return result.valid;
 }
 
 // 處理 Line 訊息

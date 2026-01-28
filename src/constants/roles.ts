@@ -14,17 +14,15 @@
  * - ADMIN: Full system access, can manage teams and all resources
  * - AGENT: Can handle conversations and customer interactions within assigned teams
  *
- * Note: 'team' role has been deprecated but kept for backward compatibility
+ * Team-specific permissions are controlled by team roles (Member/Lead/Supervisor)
+ * defined in the agent_teams junction table.
  */
 export const ROLES = {
   /** Administrator role - full system access */
   ADMIN: 'admin',
 
   /** Agent role - can handle conversations within assigned teams */
-  AGENT: 'agent',
-
-  /** @deprecated Team role - kept for backward compatibility, use AGENT instead */
-  TEAM: 'team'
+  AGENT: 'agent'
 } as const;
 
 /**
@@ -59,8 +57,7 @@ export const ACTIVE_ROLES = [ROLES.ADMIN, ROLES.AGENT] as const;
  */
 export const ROLE_LABELS: Record<Role, string> = {
   [ROLES.ADMIN]: 'Administrator',
-  [ROLES.AGENT]: 'Agent',
-  [ROLES.TEAM]: 'Team Member (Deprecated)'
+  [ROLES.AGENT]: 'Agent'
 };
 
 /**
@@ -68,8 +65,7 @@ export const ROLE_LABELS: Record<Role, string> = {
  */
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   [ROLES.ADMIN]: 'Full system access with ability to manage teams, agents, and all resources',
-  [ROLES.AGENT]: 'Can handle customer conversations and manage assigned resources within teams',
-  [ROLES.TEAM]: 'Deprecated role - please use Agent role instead'
+  [ROLES.AGENT]: 'Can handle customer conversations and manage assigned resources within teams'
 };
 
 /**
