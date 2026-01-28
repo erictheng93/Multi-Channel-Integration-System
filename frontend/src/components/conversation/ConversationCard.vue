@@ -84,6 +84,13 @@
             <span class="status-text">{{ statusDisplayText }}</span>
           </div>
 
+          <!-- 🆕 New Customer Badge - Shows for customers who joined within 7 days -->
+          <NewCustomerBadge
+            v-if="conversation.customer?.createdAt"
+            :created-at="conversation.customer.createdAt"
+            compact
+          />
+
           <!-- Assigned Badge -->
           <div
             v-if="assignedToDisplay"
@@ -124,6 +131,8 @@ import {
   UserCheckIcon,
   ChevronRightIcon
 } from '@/components/icons'
+// 🆕 New Customer Badge Component
+import NewCustomerBadge from '@/components/ui/NewCustomerBadge.vue'
 
 interface Props {
   conversation: Conversation

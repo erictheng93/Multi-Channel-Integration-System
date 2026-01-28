@@ -641,8 +641,7 @@ class IntegrationMainHandler {
         broadcast: false,
         multicast: false,
         push: false,
-        userProfile: false,
-        friendStatus: false
+        userProfile: false
       }
     };
 

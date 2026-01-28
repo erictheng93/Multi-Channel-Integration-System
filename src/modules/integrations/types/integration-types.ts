@@ -156,7 +156,6 @@ export interface PlatformFeatures {
     multicast: boolean;
     push: boolean;
     userProfile: boolean;
-    friendStatus: boolean;
   };
 }
 
@@ -689,8 +688,7 @@ export const DEFAULT_PLATFORM_FEATURES: PlatformFeatures = {
     broadcast: false,
     multicast: false,
     push: false,
-    userProfile: false,
-    friendStatus: false
+    userProfile: false
   }
 };
 
@@ -713,8 +711,7 @@ export const PLATFORM_CAPABILITIES: Record<IntegrationPlatform, Partial<Platform
       broadcast: true,
       multicast: true,
       push: true,
-      userProfile: true,
-      friendStatus: true
+      userProfile: true
     }
   },
 
@@ -733,8 +730,7 @@ export const PLATFORM_CAPABILITIES: Record<IntegrationPlatform, Partial<Platform
       broadcast: true,
       multicast: false,
       push: false,
-      userProfile: true,
-      friendStatus: false
+      userProfile: true
     }
   },
 
