@@ -239,7 +239,8 @@ const assignedToDisplay = computed(() => {
 
 // 🆕 LIFF 預通知：檢測是否為 pending 對話
 const isPendingConversation = computed(() => {
-  return (props.conversation as any)?._liffMetadata?.isPending === true
+  const conversation = props.conversation as { _liffMetadata?: { isPending?: boolean } }
+  return conversation._liffMetadata?.isPending === true
 })
 
 const conversationAriaLabel = computed(() => {
