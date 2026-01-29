@@ -16,9 +16,15 @@
           fill="currentColor"
         />
       </svg>
-      <span v-if="!compact" class="badge-text">{{ badgeText }}</span>
+      <span
+        v-if="!compact"
+        class="badge-text"
+      >{{ badgeText }}</span>
     </div>
-    <span v-if="showJoinedTime" class="joined-time">{{ joinedTimeText }}</span>
+    <span
+      v-if="showJoinedTime"
+      class="joined-time"
+    >{{ joinedTimeText }}</span>
   </div>
 </template>
 
