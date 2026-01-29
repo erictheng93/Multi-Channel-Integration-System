@@ -206,6 +206,7 @@ export const messageHandler = {
                 customerId: schema.conversations.customerId,
                 assignedTeamId: schema.conversations.assignedTeamId, // 🔒 Security: For team-scoped broadcast
                 status: schema.conversations.status,
+                firstResponseAt: schema.conversations.firstResponseAt, // 用於判斷是否為首次回覆
                 // Customer platform info
                 platform: schema.customers.platform,
                 platformUserId: schema.customers.platformUserId,
@@ -479,6 +480,22 @@ export const messageHandler = {
                 ? 'sending'  // LINE 非同步：等待 Queue Consumer 處理
                 : (sendResult ? 'sent' : 'failed');  // 同步：立即知道結果
 
+            // 準備對話更新資料（包含首次回覆時間判斷）
+            const conversationUpdateData: {
+                lastMessageAt: string;
+                updatedAt: string;
+                firstResponseAt?: string;
+            } = {
+                lastMessageAt: sentAt,
+                updatedAt: sentAt
+            };
+
+            // 如果這是客服首次回覆（firstResponseAt 為空），設置首次回覆時間
+            if (!conversationWithCustomer.firstResponseAt) {
+                conversationUpdateData.firstResponseAt = sentAt;
+                console.log(`🎯 [First Response] Setting firstResponseAt for conversation ${conversationId}`);
+            }
+
             await db.batch([
                 // 更新訊息發送狀態
                 db.update(schema.messages)
@@ -488,12 +505,9 @@ export const messageHandler = {
                         sentAt: sentAt
                     })
                     .where(eq(schema.messages.id, messageId)),
-                // 更新對話的最後訊息時間
+                // 更新對話的最後訊息時間（及首次回覆時間）
                 db.update(schema.conversations)
-                    .set({
-                        lastMessageAt: sentAt,
-                        updatedAt: sentAt
-                    })
+                    .set(conversationUpdateData)
                     .where(eq(schema.conversations.id, conversationId))
             ]);
             console.log(`📦 [DB Batch] Message status (${deliveryStatus}) + conversation timestamp updated in single batch`);
