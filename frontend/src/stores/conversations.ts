@@ -136,9 +136,10 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     // Compare key fields that would affect UI rendering
     // Note: assignedAgentId/assignedAgent removed - only team assignment is supported now
+    // 🔧 新增 firstResponseAt：用於狀態徽章（待處理/處理中）的變更檢測
     const keyFields = [
       'id', 'status', 'unreadCount', 'lastMessageAt', 'lastMessage', 'priority',
-      'assignedTeamId', 'assignedTeam', 'customerName', 'platform'
+      'assignedTeamId', 'assignedTeam', 'customerName', 'platform', 'firstResponseAt'
     ] as const
     
     return keyFields.some(field => {
@@ -271,6 +272,11 @@ export const useConversationsStore = defineStore('conversations', () => {
       ...conversation,
       lastMessageAt: nowTimestamp,
       updatedAt: nowTimestamp,
+      // 🔧 修復：當客服首次回覆時，設置 firstResponseAt（用於狀態徽章顯示）
+      // 保留現有值優先，避免覆蓋已有的首次回覆時間
+      firstResponseAt: messageData.senderType === 'agent'
+        ? (conversation.firstResponseAt || nowTimestamp)
+        : conversation.firstResponseAt,
       // 更新 lastMessage（如果有內容）
       lastMessage: messageData.content ? {
         id: crypto.randomUUID(), // 臨時 ID
@@ -308,7 +314,9 @@ export const useConversationsStore = defineStore('conversations', () => {
     console.log(`✅ [ConversationsStore] Real-time update applied to conversation ${conversationId}`, {
       lastMessage: messageData.content?.substring(0, 30),
       unreadCount: updatedConversation.unreadCount,
-      movedToTop: moveToTop
+      movedToTop: moveToTop,
+      firstResponseAt: updatedConversation.firstResponseAt, // 🔧 除錯用：追蹤狀態變更
+      senderType: messageData.senderType
     })
 
     return true
