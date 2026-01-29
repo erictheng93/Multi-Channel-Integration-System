@@ -68,6 +68,7 @@ export interface Conversation {
   lastMessageAt: Timestamp
   lastMessage?: Message // 向後兼容字段
   unreadCount: number
+  firstResponseAt?: Timestamp | null // 首次回應時間（用於判斷處理狀態）
   createdAt: Timestamp | Date // 支援兩種格式
   updatedAt: Timestamp | Date // 支援兩種格式
 }

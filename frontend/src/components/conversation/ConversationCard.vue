@@ -185,27 +185,27 @@ const formattedUnreadCount = computed(() => {
 })
 
 const effectiveStatus = computed(() => {
-  // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
-  if (props.conversation.assignedTeam || props.conversation.assignedTeamId) {
+  // 簡化狀態邏輯：基於 firstResponseAt 判斷
+  // - 有 firstResponseAt（客服已回覆）→ 'assigned'（處理中）
+  // - 無 firstResponseAt（尚未回覆）→ 'pending'（待處理）
+  if (props.conversation.firstResponseAt) {
     return 'assigned'
   }
-  return props.conversation.status
+  return 'pending'
 })
 
 const statusDisplayText = computed(() => {
+  // 簡化為 2 種狀態
   const statusMap: Record<string, string> = {
-    'open': '待處理',
     'pending': '待處理',
-    'active': '進行中',
-    'assigned': '處理中',
-    'in-progress': '處理中',
-    'closed': '已結束'
+    'assigned': '處理中'
   }
   return statusMap[effectiveStatus.value] || effectiveStatus.value
 })
 
 const isOnline = computed(() =>
-  effectiveStatus.value === 'active' || effectiveStatus.value === 'pending'
+  // 待處理的對話顯示為活躍狀態（新對話）
+  effectiveStatus.value === 'pending'
 )
 
 const customerName = computed(() =>

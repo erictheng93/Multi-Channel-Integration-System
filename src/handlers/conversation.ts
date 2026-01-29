@@ -254,6 +254,14 @@ conversations.post('/:id/messages', async (c) => {
       // 不影響消息創建的成功，只記錄錯誤
     }
 
+    // 如果這是客服首次回覆（firstResponseAt 為空），設置首次回覆時間
+    if (!conversation.firstResponseAt) {
+      await dbService.updateConversation(conversationId, {
+        firstResponseAt: new Date().toISOString()
+      });
+      console.log(`🎯 [First Response] Set firstResponseAt for conversation ${conversationId}`);
+    }
+
     // 如果對話狀態是 pending，更新為 in-progress (不再自動指派個人)
     if (conversation.status === CONVERSATION_STATUS.PENDING) {
       await dbService.updateConversation(conversationId, {
