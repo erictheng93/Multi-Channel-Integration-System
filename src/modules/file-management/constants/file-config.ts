@@ -31,7 +31,12 @@ export const ALLOWED_MIME_TYPES = {
     'video/quicktime',
     'video/x-msvideo',
     'video/webm',
-    'video/ogg'
+    'video/ogg',
+    'video/x-m4v',
+    'video/x-matroska',
+    'video/x-flv',
+    'video/x-ms-wmv',
+    'video/3gpp'
   ],
   AUDIO: [
     'audio/mpeg',
@@ -66,7 +71,7 @@ export const ALLOWED_MIME_TYPES = {
 // File extensions mapping
 export const FILE_EXTENSIONS = {
   IMAGE: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.tiff'],
-  VIDEO: ['.mp4', '.mpeg', '.mov', '.avi', '.webm', '.ogg'],
+  VIDEO: ['.mp4', '.mpeg', '.mov', '.avi', '.webm', '.ogg', '.m4v', '.mkv', '.flv', '.wmv', '.3gp'],
   AUDIO: ['.mp3', '.wav', '.ogg', '.aac', '.m4a', '.flac'],
   DOCUMENT: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.rtf'],
   ARCHIVE: ['.zip', '.rar', '.tar', '.gz', '.7z']
@@ -88,6 +93,11 @@ export const MIME_TO_EXTENSION = {
   'video/x-msvideo': '.avi',
   'video/webm': '.webm',
   'video/ogg': '.ogg',
+  'video/x-m4v': '.m4v',
+  'video/x-matroska': '.mkv',
+  'video/x-flv': '.flv',
+  'video/x-ms-wmv': '.wmv',
+  'video/3gpp': '.3gp',
   'audio/mpeg': '.mp3',
   'audio/mp3': '.mp3',
   'audio/wav': '.wav',
