@@ -16,7 +16,6 @@
 
 ### 3.
 - ****`system_settings` `database/schema.sql`
-- ****`invitations`
 
 
 #### 1.
@@ -97,13 +96,9 @@ GET /api/system/health -
 ### API
 ```
 GET /api/team/members -
-POST /api/team/invite -
-GET /api/team/invitations -
-DELETE /api/team/invitations/:id -
 PUT /api/team/members/:id/status -
 DELETE /api/team/members/:id -
-GET /api/invites/:token -
-POST /api/invites/:token/accept -
+POST /api/team/members - (Direct Add)
 ```
 
 
@@ -134,22 +129,8 @@ CREATE TABLE system_settings (
 );
 ```
 
-### invitations
-```sql
-CREATE TABLE invitations (
- id TEXT PRIMARY KEY,
- email TEXT NOT NULL,
- name TEXT NOT NULL,
- role TEXT NOT NULL,
- token TEXT UNIQUE NOT NULL,
- invited_by TEXT NOT NULL,
- created_at INTEGER NOT NULL,
- expires_at INTEGER NOT NULL,
- used_at INTEGER,
- used_by TEXT,
- FOREIGN KEY (invited_by) REFERENCES agents(id)
-);
-```
+### Note
+邀請系統已移除，改用直接添加成員的方式管理團隊人員。
 
 
 - `tests/unit/views/SystemSettings.test.ts`

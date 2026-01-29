@@ -21,7 +21,6 @@ export type DatabaseId = number
 // 狀態類型
 export type ConnectionStatus = 'connected' | 'disconnected' | 'error'
 export type UploadStatus = 'pending' | 'uploaded' | 'failed' | 'deleted'
-export type InvitationStatus = 'pending' | 'used' | 'expired'
 
 // 系統設定相關
 export type Theme = 'light' | 'dark' | 'auto'

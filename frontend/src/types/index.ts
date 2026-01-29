@@ -180,41 +180,6 @@ export interface TeamMember {
   primaryTeamName?: string;
 }
 
-export interface Invitation {
-  id: string;
-  email: string;
-  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
-  token: string;
-  message?: string;
-  invitedBy: string;
-  inviterName: string;
-  createdAt: Date | string;
-  expiresAt: Date | string;
-}
-
-export interface InvitationRequest {
-  email: string;
-  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
-  message?: string;
-  useQR?: boolean;
-}
-
-// 邀請接受請求
-export interface AcceptInvitationRequest {
-  token: string;
-  name: string;
-  password: string;
-}
-
-// 邀請請求類型
-export interface InviteRequest {
-  email: string;
-  role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
-  message?: string;
-  useQR?: boolean;
-}
-
 // 訊息過濾器
 export interface MessageFilters {
   conversationId?: string;

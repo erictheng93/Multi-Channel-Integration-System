@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useTeamStore } from '@/stores/team'
 import { useAsyncData } from './useAsyncData'
 import { useError } from './useError'
-import type { TeamMember, InviteRequest, Invitation } from '@/types'
+import type { TeamMember } from '@/types'
 
 export function useTeam() {
   const teamStore = useTeamStore()
@@ -24,65 +24,26 @@ export function useTeam() {
     }
   )
 
-  // 異步數據 - 邀請列表
-  const {
-    data: invitations,
-    pending: invitationsLoading,
-    execute: fetchInvitations,
-    refresh: refreshInvitations
-  } = useAsyncData(
-    'team-invitations',
-    () => teamStore.loadInvitations(),
-    {
-      immediate: true,
-      transform: () => teamStore.invitations
-    }
-  )
-
   // 計算屬性
-  const activeMembers = computed(() => 
+  const activeMembers = computed(() =>
     members.value?.filter((m: TeamMember) => m.status === 'active') || []
   )
 
-  const inactiveMembers = computed(() => 
+  const inactiveMembers = computed(() =>
     members.value?.filter((m: TeamMember) => m.status === 'inactive') || []
   )
 
-  const adminMembers = computed(() => 
+  const adminMembers = computed(() =>
     members.value?.filter((m: TeamMember) => m.role === 'admin') || []
   )
 
-  const agentMembers = computed(() => 
+  const agentMembers = computed(() =>
     members.value?.filter((m: TeamMember) => m.role === 'agent') || []
   )
 
-  const pendingInvitations = computed(() => 
-    invitations.value?.filter((i: Invitation) => i.status === 'pending') || []
-  )
-
-  const expiredInvitations = computed(() => 
-    invitations.value?.filter((i: Invitation) => i.status === 'expired') || []
-  )
-
-  const usedInvitations = computed(() => 
-    invitations.value?.filter((i: Invitation) => i.status === 'accepted') || []
-  )
-
-  const loading = computed(() => membersLoading.value || invitationsLoading.value)
+  const loading = computed(() => membersLoading.value)
 
   // 方法
-  const inviteMember = async (inviteData: InviteRequest) => {
-    clearError()
-    try {
-      await teamStore.inviteMember(inviteData)
-      await refreshInvitations()
-      return true
-    } catch (err) {
-      handleError(err)
-      return false
-    }
-  }
-
   const updateMemberStatus = async (memberId: string, isActive: boolean) => {
     clearError()
     try {
@@ -108,43 +69,15 @@ export function useTeam() {
     }
   }
 
-  const revokeInvitation = async (invitationId: string) => {
-    clearError()
-    try {
-      await teamStore.cancelInvitation(invitationId)
-      await refreshInvitations()
-      return true
-    } catch (err) {
-      handleError(err)
-      return false
-    }
-  }
-
-  const resendInvitation = async (invitationId: string) => {
-    clearError()
-    try {
-      await teamStore.resendInvitation(invitationId)
-      await refreshInvitations()
-      return true
-    } catch (err) {
-      handleError(err)
-      return false
-    }
-  }
-
   const getMemberById = (id: string) => {
     return members.value?.find((m: TeamMember) => m.id === id) || null
   }
 
-  const getInvitationById = (id: string) => {
-    return invitations.value?.find((i: Invitation) => i.id === id) || null
-  }
-
   const searchMembers = (query: string) => {
     if (!members.value || !query.trim()) {return members.value || []}
-    
+
     const searchLower = query.toLowerCase()
-    return members.value.filter((member: TeamMember) => 
+    return members.value.filter((member: TeamMember) =>
       (member.name || member.loginId).toLowerCase().includes(searchLower) ||
       (member.email || '').toLowerCase().includes(searchLower) ||
       member.loginId.toLowerCase().includes(searchLower)
@@ -157,7 +90,7 @@ export function useTeam() {
     search?: string
   }) => {
     if (!members.value) {return []}
-    
+
     return members.value.filter((member: TeamMember) => {
       if (filters.role && member.role !== filters.role) {return false}
       if (filters.isActive !== undefined && (member.status === 'active') !== filters.isActive) {return false}
@@ -195,29 +128,19 @@ export function useTeam() {
   return {
     // 數據
     members,
-    invitations,
     activeMembers,
     inactiveMembers,
     adminMembers,
     agentMembers,
-    pendingInvitations,
-    expiredInvitations,
-    usedInvitations,
     loading,
     error,
 
     // 方法
     fetchMembers,
     refreshMembers,
-    fetchInvitations,
-    refreshInvitations,
-    inviteMember,
     updateMemberStatus,
     deleteMember,
-    revokeInvitation,
-    resendInvitation,
     getMemberById,
-    getInvitationById,
     searchMembers,
     filterMembers,
     getMemberStats,

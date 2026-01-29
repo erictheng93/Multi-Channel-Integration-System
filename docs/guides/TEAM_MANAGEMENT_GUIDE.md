@@ -8,12 +8,11 @@
 3. [團隊生命週期管理](#-團隊生命週期管理-team-lifecycle)
 4. [成員管理](#-成員管理-member-management)
 5. [密碼政策管理](#-密碼政策管理-password-policy)
-6. [邀請系統](#-邀請系統-invitation-system)
-7. [團隊範圍資源](#-團隊範圍資源-team-scoped-resources)
-8. [QR Code 整合](#-qr-code-整合-qr-code-integration)
-9. [權限與訪問控制](#-權限與訪問控制-permissions--access-control)
-10. [最佳實踐](#-最佳實踐-best-practices)
-11. [常見問題](#-常見問題-faq)
+6. [團隊範圍資源](#-團隊範圍資源-team-scoped-resources)
+7. [QR Code 整合](#-qr-code-整合-qr-code-integration)
+8. [權限與訪問控制](#-權限與訪問控制-permissions--access-control)
+9. [最佳實踐](#-最佳實踐-best-practices)
+10. [常見問題](#-常見問題-faq)
 
 ---
 
@@ -68,7 +67,7 @@
 │                                                         │
 │  ✅ 2-層級角色系統      ✅ 團隊 CRUD 操作                 │
 │  ✅ 成員生命週期管理     ✅ 密碼政策控制                  │
-│  ✅ 邀請系統           ✅ QR Code 整合                   │
+│  ✅ 直接成員添加        ✅ QR Code 整合                   │
 │  ✅ 團隊範圍標籤        ✅ 績效統計                       │
 │  ✅ 活動日誌           ✅ 資源隔離                       │
 │                                                         │
@@ -623,68 +622,6 @@ await fetch('/api/teams/members/agent-001/reset', {
 ```
 
 ---
-
-## 📧 邀請系統 (Invitation System)
-
-### 邀請流程（如啟用）
-
-```
-┌──────────────────────────────────────────────────────────┐
-│              邀請流程圖                                     │
-└──────────────────────────────────────────────────────────┘
-
-  管理員發送邀請
-         ↓
-    生成邀請連結/QR Code
-         ↓
-    發送郵件給新成員
-         ↓
-  新成員點擊連結/掃描 QR Code
-         ↓
-    填寫註冊資料
-         ↓
-    設置初始密碼
-         ↓
-    帳號創建完成
-         ↓
-   自動加入團隊
-```
-
-### 創建邀請（如啟用）
-
-**API 端點**: `POST /api/teams/:teamId/invitations`
-
-```javascript
-await fetch('/api/teams/1/invitations', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${adminToken}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    email: 'newmember@company.com',
-    role: 'agent',
-    expiresIn: 7  // 7 天有效期
-  })
-});
-```
-
-### 接受邀請（如啟用）
-
-**API 端點**: `POST /api/invitations/:token/accept`
-
-```javascript
-await fetch(`/api/invitations/${invitationToken}/accept`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    displayName: '新成員',
-    password: 'secure123456'
-  })
-});
-```
 
 ---
 

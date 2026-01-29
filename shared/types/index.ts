@@ -35,7 +35,6 @@ export type {
   FileAttachment,
   FileAttachmentData, // 檔案附件資料 (前端 UI 顯示用)
   TeamMember,
-  Invitation,
   SystemSettings,
   SystemInfo,
   SystemStats,
@@ -57,7 +56,6 @@ export type {
   ConversationFilters,
   SendMessageRequest,
   MessageFilters,
-  InviteRequest,
   UpdateMemberRequest,
   UpdateSystemSettingsRequest,
   FileUploadRequest,

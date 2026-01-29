@@ -5,7 +5,6 @@ import { Hono } from 'hono';
 import teamHandlers from '@modules/teams/handlers/team';
 import membersHandler from '@modules/teams/handlers/members';
 import passwordHandler from '@modules/teams/handlers/password';
-import invitationsHandler from '@modules/teams/handlers/invitations';
 import agentTeamsHandler from '@modules/teams/handlers/agent-teams';
 import type { Bindings } from '@/types';
 
@@ -21,9 +20,6 @@ app.route('/agent-teams', agentTeamsHandler);
 
 // Mount member management handlers (before /:id routes)
 app.route('/members', membersHandler);
-
-// Mount invitation handlers (before /:id routes)
-app.route('/invitations', invitationsHandler);
 
 // Mount password management handlers on /members
 // Note: change-password is mounted separately in main index.ts under /api/auth

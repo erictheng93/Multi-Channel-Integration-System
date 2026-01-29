@@ -12,7 +12,6 @@ import type {
   DeliveryStatus,
   ConnectionStatus,
   UploadStatus,
-  InvitationStatus,
   Theme,
   Language,
   Density,
@@ -143,19 +142,6 @@ export interface TeamMember {
   isActive: boolean
   createdAt: Date
   lastActive?: Date
-}
-
-export interface Invitation {
-  id: EntityId
-  email: string
-  name: string
-  role: UserRole
-  token: string
-  createdAt: Date
-  expiresAt: Date
-  usedAt?: Date
-  invitedByName: string
-  status: InvitationStatus
 }
 
 // 系統設定

@@ -43,15 +43,10 @@
  - `POST /api/webhooks/line`
  - `POST /api/webhooks/facebook`
  - `POST /api/webhook` ()
-- **** (8/8): 100%
+- **** (3/3): 100%
  - `GET /team/members`
- - `POST /team/invite`
- - `POST /team/invite/:token/accept`
- - `GET /team/invite/:token`
  - `PUT /team/members/:id/status`
  - `DELETE /team/members/:id`
- - `GET /team/invitations`
- - `DELETE /team/invitations/:id`
 - **** (10/10): 100%
  - `GET /system/info`
  - `GET /system/settings`
