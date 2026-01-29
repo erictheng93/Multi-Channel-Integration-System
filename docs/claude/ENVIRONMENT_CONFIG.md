@@ -272,7 +272,7 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 - Clear browser cache and reload
 - Verify `.env` file is in correct directory
 
-See `docs/reports/HARDCODE_REMOVAL_COMPLETION_REPORT.md` for complete migration documentation.
+See `docs/history/reports/HARDCODE_REMOVAL_COMPLETION_REPORT.md` for complete migration documentation.
 
 ## Related Files
 

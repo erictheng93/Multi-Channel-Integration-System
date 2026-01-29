@@ -516,17 +516,74 @@
 
   <script>
     // ========================================
-    // Configuration
+    // Configuration - Dynamic Loading with Fallbacks
     // ========================================
-    const CONFIG = {
+    const FALLBACK_CONFIG = {
       LIFF_ID: '2008756115-vWtFyDMA',
-      // API_ENDPOINT: Priority order - URL param > window global > production default
-      API_ENDPOINT: new URLSearchParams(window.location.search).get('api')
-        || window.MCIS_API_ENDPOINT
-        || 'https://multi-channel.imfinethankyouandyou.com',
-      LINE_OA_ID: '110xsqef', // Without @ symbol
-      AUTO_CLOSE_DELAY: 2000, // 2 seconds
+      API_ENDPOINT: 'https://multi-channel.imfinethankyouandyou.com',
+      LINE_OA_ID: '110xsqef',
+      AUTO_CLOSE_DELAY: 2000,
     };
+
+    /**
+     * 取得 API 端點 - 優先順序：URL 參數 > window 全域變數 > Fallback
+     */
+    function getApiEndpoint() {
+      const urlParam = new URLSearchParams(window.location.search).get('api');
+      if (urlParam) return urlParam;
+      if (window.MCIS_API_ENDPOINT) return window.MCIS_API_ENDPOINT;
+      return FALLBACK_CONFIG.API_ENDPOINT;
+    }
+
+    // 初始配置 (將由 loadConfig() 更新)
+    let CONFIG = {
+      LIFF_ID: FALLBACK_CONFIG.LIFF_ID,
+      API_ENDPOINT: getApiEndpoint(),
+      LINE_OA_ID: FALLBACK_CONFIG.LINE_OA_ID,
+      AUTO_CLOSE_DELAY: FALLBACK_CONFIG.AUTO_CLOSE_DELAY,
+      _loaded: false,
+    };
+
+    /**
+     * 從 API 動態載入配置
+     * 成功：更新 CONFIG 物件
+     * 失敗：使用 FALLBACK_CONFIG (靜默失敗)
+     */
+    async function loadConfig() {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(`${CONFIG.API_ENDPOINT}/api/liff/config`, {
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' }
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success && result.data) {
+          CONFIG.LIFF_ID = result.data.liffId || CONFIG.LIFF_ID;
+          CONFIG.LINE_OA_ID = result.data.lineOaId || CONFIG.LINE_OA_ID;
+          CONFIG.AUTO_CLOSE_DELAY = result.data.autoCloseDelay || CONFIG.AUTO_CLOSE_DELAY;
+          if (result.data.apiEndpoint) {
+            CONFIG.API_ENDPOINT = result.data.apiEndpoint;
+          }
+          CONFIG._loaded = true;
+          console.log('✅ Config loaded from API:', {
+            liffId: CONFIG.LIFF_ID.substring(0, 10) + '...',
+            lineOaId: CONFIG.LINE_OA_ID,
+            apiEndpoint: CONFIG.API_ENDPOINT
+          });
+          return true;
+        }
+        throw new Error('Invalid response format');
+      } catch (error) {
+        console.warn('⚠️ Using fallback config:', error.message);
+        return false;
+      }
+    }
 
     // ========================================
     // State Management
@@ -749,8 +806,10 @@
     // ========================================
     // Application Entry Point
     // ========================================
-    window.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM loaded, initializing LIFF...');
+    window.addEventListener('DOMContentLoaded', async () => {
+      console.log('DOM loaded, loading config...');
+      await loadConfig();
+      console.log('Config ready, initializing LIFF...');
       initializeLIFF();
     });
 

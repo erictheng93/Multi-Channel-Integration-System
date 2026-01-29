@@ -1,154 +1,176 @@
+# 📚 Documentation Index
 
-
-## (`architecture/`)
-
-- [](architecture/ARCHITECTURE_IMPROVEMENT_PLAN.md) -
-
-## API (`api/`)
-
-- [API ](api/API_CLIENT_UPDATE.md) - API
-- [API ](api/API_ENDPOINTS_FIX_REPORT.md) - API
-- [API ](api/API_IMPLEMENTATION_STATUS.md) - API
-- [API ](api/API_STANDARDIZATION_COMPLETE.md) - API
-- [API ](api/API_STANDARDIZATION_SUCCESS_REPORT.md) -
-- [API ](api/api-endpoints.md) - API
-- [](api/USER_SCENARIO_DOCUMENTATION_UPDATE.md) -
-
-## (`monitoring/`)
-
-- [API ](monitoring/API_MONITOR_DEMO.md) - API
-- [API ](monitoring/API_MONITOR_IMPROVEMENTS.md) -
-- [API ](monitoring/API_MONITOR_FINAL_UPDATES.md) -
-
-## (`features/`)
-
-- [](features/activity-log.md) -
-- [](features/DELAYED_MESSAGE_FEATURE.md) -
-- [Drizzle KV ](features/DRIZZLE_KV_INTEGRATION.md) -
-- [ Drizzle KV](features/MIGRATION_TO_DRIZZLE_KV.md) -
-- [](features/PERMISSION_SYSTEM_GUIDE.md) -
-- [](features/USER_MANUAL.md) -
-
-## (`guides/`)
-
-
-- [](guides/activity-log-deployment.md) -
-- [API ](guides/API_TESTING_GUIDE.md) - API
-- [](guides/DOMAIN_VERIFICATION_REPORT.md) -
-- [](NEW_USER_DEPLOYMENT_GUIDE.md) -
-- [](guides/DEPLOYMENT_GUIDE.md) -
-- [](guides/QUICK_START.md) -
-- [](guides/LOCAL_DEVELOPMENT_SETUP.md) -
-- [Terraform ](guides/TERRAFORM_QUICK_START.md) -
-
-
-- [](guides/CUSTOMER_COLLECTION_GUIDE.md) -
-- [LINE ID ](guides/LINE_ID_COLLECTION_VERIFICATION.md) - LINE
-- [](guides/DATA_PERSISTENCE_GUIDE.md) -
-
-
-- [](guides/MIGRATION_PLAN.md) -
-- [](guides/SYSTEM_HEALTH_REPORT.md) -
-- [](guides/RESOURCE_RENAMING_GUIDE.md) -
-
-## (`troubleshooting/`)
-
-- [LINE Webhook ](troubleshooting/debug-line-webhook.md) - LINE Webhook
-
-## (`deployment/`)
-
-- [](deployment/ENVIRONMENT_CLEANUP_REPORT.md) -
-
-## (`migration/`)
-
-- [Drizzle ](migration/DRIZZLE_MIGRATION_CHECKLIST.md) -
-
-## (`implementation/`)
-
-
-- [Claude ](implementation/CLAUDE_DEVELOPMENT_GUIDE.md) -
-- [](implementation/CONVERSATION_SYSTEM_COMPLETION.md) -
-- [ 100% ](implementation/CONVERSATION_SYSTEM_100_PERCENT_COMPLETE.md) -
-- [](implementation/SINGLE_ENTRY_POINT_CONSOLIDATION.md) -
-
-
-- [](implementation/FRONTEND_MODERNIZATION_COMPLETE.md) -
-- [](implementation/LOGIN_COMPONENT_MODERNIZATION.md) -
-- [TypeScript ](implementation/TYPESCRIPT_ERROR_RESOLUTION_REPORT.md) -
-
-
-- [](implementation/AUTH_TEAM_IMPLEMENTATION.md) -
-- [](implementation/TEAM_MANAGEMENT_IMPLEMENTATION_COMPLETE.md) -
-- [](implementation/SYSTEM_SETTINGS_COMPLETE_IMPLEMENTATION.md) -
-- [](implementation/activity-log-implementation.md) -
-
-
-- [Drizzle KV ](implementation/DRIZZLE_KV_INTEGRATION_SUMMARY.md) -
-- [](implementation/TYPE_COVERAGE_ANALYSIS.md) - TypeScript
-- [TypeScript ](implementation/TYPESCRIPT_OPTIMIZATION_COMPLETION.md) -
-
-## (`testing/`)
-
-
-- [](testing/testing-guide.md) -
-- [](testing/activity-log-testing.md) -
-- [](testing/FRONTEND_TEST_COMPLETION_REPORT.md) -
-- [](testing/CORE_FUNCTION_TEST_SUMMARY.md) -
-- [](testing/HANDLER_TEST_SUMMARY.md) - API
-- [](testing/FINAL_TESTING_OPTIMIZATION_PLAN.md) -
-
-## (`enterprise/`)
-
-- [](enterprise/ANALYTICS_DESIGN.md) -
-- [](enterprise/AUDIT_LOGGING_DESIGN.md) -
-- [](enterprise/ENTERPRISE_FEATURES_GUIDE.md) -
-- [RBAC ](enterprise/RBAC_DESIGN.md) -
-
-
-- [README.md](README.md) -
-- [](BUSINESS_ANALYSIS.md) -
-- [](CHANGE_LOG.md) -
-- [](CURRENT_STATUS.md) -
-- [](PERFORMANCE_OPTIMIZATION.md) -
-- [](SCHEMA.md) -
-
-
-- [](DELAYED_MESSAGE_DEPLOYMENT.md) -
-- [](DELAYED_MESSAGING_GUIDE.md) -
-- [MVP README](MVP-README.md) -
-
-
-1. [](guides/QUICK_START.md) -
-2. [](guides/LOCAL_DEVELOPMENT_SETUP.md) -
-3. [API ](guides/API_TESTING_GUIDE.md) - API
-
-
-1. [Claude ](implementation/CLAUDE_DEVELOPMENT_GUIDE.md) -
-2. [API ](api/api-endpoints.md) - API
-3. [](testing/TESTING_GUIDE.md) -
-
-
-1. [](NEW_USER_DEPLOYMENT_GUIDE.md) -
-2. [](guides/DEPLOYMENT_GUIDE.md) -
-3. [](guides/DOMAIN_VERIFICATION_REPORT.md) -
-4. [](guides/SYSTEM_HEALTH_REPORT.md) -
-
-
-1. [](features/USER_MANUAL.md) -
-2. [](features/PERMISSION_SYSTEM_GUIDE.md) -
-3. [](features/DELAYED_MESSAGE_FEATURE.md) -
-
-
-- ****: 2025-08-13
-- ****: v2.0
-- ****:
-
-
-1.
-2.
-3.
-4.
+> Multi-Channel Customer Support System - Documentation Navigation
 
 ---
 
-**
+## 🗂️ Directory Structure Overview
+
+```
+docs/
+├── reference/          # API 參考文檔、規格書、編碼標準
+├── guides/             # 用戶指南、部署指南、故障排除
+├── architecture/       # 系統架構設計、WebSocket、資料庫
+├── development/        # 開發者文檔、測試、組件
+├── claude/             # Claude Code 專用參考文檔
+└── history/            # 歷史記錄、實現報告、遷移記錄
+```
+
+---
+
+## 📖 Reference (`reference/`)
+
+### API Reference (`reference/api/`)
+- [API Reference](reference/api/API_REFERENCE.md) - Complete API reference documentation
+- [Messaging API](reference/api/MESSAGING_API_REFERENCE.md) - Messaging endpoints (17 endpoints)
+- [Tag API](reference/api/TAG_API_REFERENCE.md) - Tag management API
+
+#### API Modules (`reference/api/modules/`)
+- [Analytics API](reference/api/modules/ANALYTICS_API.md) - Analytics and reporting
+- [Collaboration API](reference/api/modules/COLLABORATION_API.md) - Team collaboration
+- [WebSocket API](reference/api/modules/WEBSOCKET_API.md) - Real-time communication
+
+### Specifications (`reference/specifications/`)
+- [BRD](reference/specifications/BRD.md) - Business Requirements Document
+- [FRS](reference/specifications/FRS.md) - Functional Requirements Specification
+- [NFR](reference/specifications/NFR.md) - Non-Functional Requirements
+- [SRS](reference/specifications/SRS.md) - System Requirements Specification
+
+### Standards (`reference/standards/`)
+- Coding standards and best practices
+
+---
+
+## 📘 Guides (`guides/`)
+
+### Deployment (`guides/deployment/`)
+- [Deployment Guide](guides/deployment/DEPLOYMENT_GUIDE.md) - Production deployment
+- [Customer Deployment](guides/deployment/CUSTOMER_DEPLOYMENT_GUIDE.md) - Customer setup
+- [Web Installer](guides/deployment/WEB_INSTALLER_DOCUMENTATION.md) - Self-hosted deployment
+
+### Features (`guides/features/`)
+- Feature usage guides and tutorials
+
+### Troubleshooting (`guides/troubleshooting/`)
+- [Debug LINE Webhook](guides/troubleshooting/debug-line-webhook.md) - LINE webhook debugging
+- Problem resolution guides
+
+### General Guides
+- [BUN Migration Guide](guides/BUN_MIGRATION_GUIDE.md) - Bun runtime migration
+- [CORS Configuration](guides/CORS_CONFIGURATION_GUIDE.md) - CORS setup guide
+- [KV Best Practices](guides/KV_BEST_PRACTICES.md) - Cloudflare KV optimization
+- [Team Management Guide](guides/TEAM_MANAGEMENT_GUIDE.md) - Team management features
+
+---
+
+## 🏗️ Architecture (`architecture/`)
+
+### WebSocket (`architecture/websocket/`)
+- [WebSocket Final Architecture](architecture/websocket/WEBSOCKET_FINAL_ARCHITECTURE.md) - Complete WebSocket design
+- [Durable Objects Complete](architecture/websocket/DURABLE_OBJECTS_COMPLETE.md) - DO implementation
+
+### Database (`architecture/database/`)
+- Database design and migrations
+
+### Security (`architecture/security/`)
+- Security architecture and implementation
+
+### Performance (`architecture/performance/`)
+- Performance optimization guides
+
+### General Architecture
+- [Schema](architecture/SCHEMA.md) - Database schema reference
+- [Module Dependency](architecture/MODULE_DEPENDENCY_DIAGRAM.md) - Module relationships
+- [Hardcoding Best Practices](architecture/HARDCODING_BEST_PRACTICES.md) - Constants management
+
+---
+
+## 💻 Development (`development/`)
+
+### Testing (`development/testing/`)
+- [Testing Guide](development/testing/testing-guide.md) - Testing methodology
+- [WebSocket Testing](development/testing/WEBSOCKET_TESTING_GUIDE.md) - WebSocket test infrastructure
+- [Frontend Test Report](development/testing/FRONTEND_TEST_COMPLETION_REPORT.md) - Frontend test coverage
+
+### Components (`development/components/`)
+- Component documentation and usage
+
+### Tools (`development/tools/`)
+- Development tools and utilities
+
+### Frontend (`development/frontend/`)
+- Frontend-specific development guides
+
+### Analytics (`development/analytics/`)
+- Analytics implementation guides
+
+### Monitoring (`development/monitoring/`)
+- API monitoring and observability
+
+---
+
+## 🤖 Claude Code (`claude/`)
+
+- [INDEX](claude/INDEX.md) - Claude Code documentation index
+- [Environment Config](claude/ENVIRONMENT_CONFIG.md) - Environment configuration guide
+- [Testing](claude/TESTING.md) - Testing strategy and infrastructure
+- [Route Registration](claude/ROUTE_REGISTRATION.md) - Route registration rules
+- [Web Installer](claude/WEB_INSTALLER.md) - Web installer documentation
+- [Team Management](claude/TEAM_MANAGEMENT.md) - Team management architecture
+
+---
+
+## 📜 History (`history/`)
+
+> Archived documentation including implementation reports, migration records, and historical references.
+
+### Implementation (`history/implementation/`)
+- Historical implementation reports
+
+### Migration (`history/migration/`)
+- Migration records and changelogs
+
+### Refactoring (`history/refactoring/`)
+- Refactoring plans and summaries
+
+### Reports (`history/reports/`)
+- Analysis reports, feature reports, security audits
+
+### Fixes (`history/fixes/`)
+- Bug fix documentation
+
+---
+
+## 🚀 Quick Start
+
+### For New Developers
+1. Read [CLAUDE.md](../CLAUDE.md) - Project overview
+2. Review [Environment Config](claude/ENVIRONMENT_CONFIG.md) - Setup guide
+3. Check [Testing Guide](development/testing/testing-guide.md) - Testing methodology
+
+### For Deployment
+1. Review [Deployment Guide](guides/deployment/DEPLOYMENT_GUIDE.md)
+2. Follow [Web Installer](guides/deployment/WEB_INSTALLER_DOCUMENTATION.md) for self-hosted setup
+
+### For API Integration
+1. Start with [API Reference](reference/api/API_REFERENCE.md)
+2. Review specific module APIs in `reference/api/modules/`
+
+---
+
+## 📊 Documentation Statistics
+
+| Category | Files | Description |
+|----------|-------|-------------|
+| reference/ | 33 | API docs, specifications, standards |
+| guides/ | 104 | User guides, deployment, troubleshooting |
+| architecture/ | 40 | System design, WebSocket, database |
+| development/ | 83 | Testing, components, tools |
+| claude/ | 8 | Claude Code specific docs |
+| history/ | 186 | Archived reports and records |
+
+**Total: 458 documents**
+
+---
+
+*Last updated: 2025-01-29*

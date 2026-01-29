@@ -52,11 +52,19 @@ liffHandler.get('/config', async (c) => {
 
     log.info('LIFF config retrieved', { liffId: liffId.substring(0, 10) });
 
+    const defaultLineBotId = '@110xsqef';
+    const resolvedLineBotId = lineBotId || defaultLineBotId;
+
     return c.json({
       success: true,
       data: {
         liffId: liffId,
-        lineBotId: lineBotId || '@110xsqef'
+        lineBotId: resolvedLineBotId,
+        // 新增欄位 - 供 LIFF 前端動態配置使用
+        lineOaId: resolvedLineBotId.replace('@', ''),
+        apiEndpoint: c.env.BACKEND_URL || '',
+        autoCloseDelay: 2000,
+        version: '2.0.0'
       }
     });
 
