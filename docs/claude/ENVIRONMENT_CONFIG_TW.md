@@ -272,7 +272,7 @@ app.get('/api/example', async (c) => {
 - 清除瀏覽器緩存並重新加載
 - 驗證 `.env` 文件是否在正確的目錄中
 
-完整的遷移文檔請參閱 `docs/reports/HARDCODE_REMOVAL_COMPLETION_REPORT.md`。
+完整的遷移文檔請參閱 `docs/history/reports/HARDCODE_REMOVAL_COMPLETION_REPORT.md`。
 
 ## 相關文件
 

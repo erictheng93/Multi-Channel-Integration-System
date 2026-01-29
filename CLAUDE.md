@@ -211,7 +211,7 @@ bun run build:bun        # Production build (hybrid: npx + bun)
 - `better-sqlite3` uses `bun:sqlite` adapter for tests
 - Husky hooks remain on npx (stability)
 
-**📖 Complete Guide:** See [`docs/BUN_MIGRATION_GUIDE.md`](docs/BUN_MIGRATION_GUIDE.md) for:
+**📖 Complete Guide:** See [`docs/guides/BUN_MIGRATION_GUIDE.md`](docs/guides/BUN_MIGRATION_GUIDE.md) for:
 - Complete API migration patterns
 - Rollback procedures (< 5 minutes)
 - Troubleshooting guide
@@ -564,12 +564,12 @@ The system is production-ready and deployed on Cloudflare infrastructure:
 - Frontend role-based UI implementation
 
 ### Messaging Module Documentation
-- `docs/api/MESSAGING_API_REFERENCE.md` - Complete API documentation for all 17 messaging endpoints
-- `docs/reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Implementation report with metrics and test status
+- `docs/reference/api/MESSAGING_API_REFERENCE.md` - Complete API documentation for all 17 messaging endpoints
+- `docs/history/reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Implementation report with metrics and test status
 - Full endpoint coverage: health checks, CRUD, bulk operations, attachments, forwarding, tagging, export
 
 ### CORS Configuration Documentation
-- `docs/CORS_CONFIGURATION_GUIDE.md` - **Complete CORS configuration guide**
+- `docs/guides/CORS_CONFIGURATION_GUIDE.md` - **Complete CORS configuration guide**
   - Unified CORS architecture explanation
   - How to add new allowed domains
   - WebSocket-specific CORS handling
@@ -661,7 +661,7 @@ For detailed information on specific topics, see:
 - **[Route Registration](docs/claude/ROUTE_REGISTRATION.md)** - Critical routing order rules and debugging
 - **[Web Installer](docs/claude/WEB_INSTALLER.md)** - Self-hosted deployment system documentation
 - **[Team Management](docs/claude/TEAM_MANAGEMENT.md)** - Dual role architecture, multi-team support, sorting system (NEW)
-- **[Hardcoding Best Practices](docs/HARDCODING_BEST_PRACTICES.md)** - Constants management and coding standards
+- **[Hardcoding Best Practices](docs/architecture/HARDCODING_BEST_PRACTICES.md)** - Constants management and coding standards
 
 ---
 

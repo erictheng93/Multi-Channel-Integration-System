@@ -186,5 +186,5 @@ cd frontend && npm run test
 
 - `frontend/vitest.config.ts` - Frontend test configuration
 - `tests/helpers/` - Test utility functions and mocking helpers
-- `docs/reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Messaging handler test results
+- `docs/history/reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Messaging handler test results
 - `docs/BUN_MIGRATION_GUIDE.md` - Complete Bun migration guide with testing instructions
