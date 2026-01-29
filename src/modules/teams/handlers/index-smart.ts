@@ -5,7 +5,6 @@ import { Hono } from 'hono';
 import teamHandlers from '@modules/teams/handlers/team';
 import membersHandler from '@modules/teams/handlers/members';
 import passwordHandler from '@modules/teams/handlers/password';
-import invitationsHandler from '@modules/teams/handlers/invitations';
 import type { Bindings } from '@/types';
 import { createSmartRegistry, RoutePriority } from '@/core/smart-route-registry';
 
@@ -21,12 +20,6 @@ registry.addMany([
     handler: membersHandler,
     priority: RoutePriority.SPECIFIC,
     description: 'Member management endpoints'
-  },
-  {
-    path: '/invitations',
-    handler: invitationsHandler,
-    priority: RoutePriority.SPECIFIC,
-    description: 'Invitation management endpoints'
   },
   {
     path: '/members',

@@ -7,7 +7,6 @@
 
 1. **QR ** - `PUT /api/teams/:id/qr-codes/:qrCodeId/deactivate`
 2. **** - `GET /api/team/members/:id`
-3. **** - Client-side feature toggle
 
 ## (Prerequisites)
 
@@ -249,87 +248,6 @@ curl -X GET https://your-api-domain.example.com/api/team/members/non-existent-me
 
 ---
 
-## 3:
-## Verification 3: Frontend Invitation Feature Toggle
-
-### (Feature Information)
-
-- ****: `frontend/src/api/team.ts:14-18`
-- ****: `VITE_ENABLE_INVITATION`
-- ****: `false` ()
-
-### (Verification Steps)
-
-#### Step 1:
-
-```bash
-
-cat frontend/src/api/team.ts | grep -A 5 "isInvitationEnabled"
-```
-
-****:
-```typescript
-isInvitationEnabled: (): boolean => {
- //
- // false
- return import.meta.env.VITE_ENABLE_INVITATION === 'true' || false
-},
-```
-
-#### Step 2:
-
- `isInvitationEnabled()` :
-
-1. `inviteMember` (line 44-52)
-2. `resendInvitation` (line 55-63)
-3. `cancelInvitation` (line 66-74)
-4. `acceptInvitation` (line 137-147)
-5. `declineInvitation` (line 150-158)
-6. `validateInvitation` (line 171-178)
-7. `generateQRInvite` (line 190-197)
-
-#### Step 3:
-
-```bash
-# 1:
-curl -X POST https://your-api-domain.example.com/api/teams/invite \
- -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
- -H "Content-Type: application/json" \
- -d '{
- "email": "test@example.com",
- "role": "agent"
- }'
-
-# 2:
-curl -X POST https://your-api-domain.example.com/api/team/invitations/test-id/resend \
- -H "Authorization: Bearer $TEST_AUTH_TOKEN"
-
-# 3:
-curl -X DELETE https://your-api-domain.example.com/api/team/invitations/test-id \
- -H "Authorization: Bearer $TEST_AUTH_TOKEN"
-
-# 4: QR
-curl -X POST https://your-api-domain.example.com/api/teams/qr-invite \
- -H "Authorization: Bearer $TEST_AUTH_TOKEN" \
- -H "Content-Type: application/json" \
- -d '{
- "email": "test@example.com",
- "role": "agent"
- }'
-```
-
-**** ():
-- : `404 Not Found` `500 Internal Server Error`
-- :
-
-#### Step 4: UI ()
-
-:
-
-1.
-2.
-3. ,: ","
-
 ---
 
 
@@ -356,13 +274,12 @@ npm run test:coverage -- tests/api-endpoint-fixes-verification.test.ts
 ```
 
 
-- ****: 30
+- ****: 20
 - ****:
  1. QR (7 tests)
  2. (5 tests)
- 3. (5 tests)
+ 3. (3 tests)
  4. (3 tests)
- 5. (3 tests)
 
 ---
 
@@ -389,12 +306,6 @@ npm run test:coverage -- tests/api-endpoint-fixes-verification.test.ts
 - [ ] ISO 8601
 
 
-- [ ] `isInvitationEnabled()`
-- [ ] `false`
-- [ ]
-- [ ]
-- [ ] ( 404)
-- [ ] UI ()
 
 ---
 
@@ -455,7 +366,6 @@ Environment: Production / Staging
 
 - QR : PASS / FAIL
 - : PASS / FAIL
-- : PASS / FAIL
 
 
 ### 1. QR
@@ -465,12 +375,6 @@ Environment: Production / Staging
 - [/]
 
 ### 2.
-- [/]
-- [/]
-- [/]
-- [/]
-
-### 3.
 - [/]
 - [/]
 - [/]
@@ -501,13 +405,12 @@ Environment: Production / Staging
 
 :
 
-1. 30
+1. 20
 2.
 3.
 4. CORS
 5.
 6.
-7.
 
 ---
 

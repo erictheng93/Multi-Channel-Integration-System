@@ -66,16 +66,6 @@ const router = createRouter({
       }
     },
     {
-      path: '/invite/:token',
-      name: 'InviteAcceptance',
-      component: () => import('@/views/InviteAcceptance.vue'),
-      meta: {
-        requiresAuth: false,
-        layout: 'blank',
-        title: '接受邀請'
-      }
-    },
-    {
       path: '/activities',
       name: 'ActivityLog',
       component: () => import('@/views/ActivityLog.vue'),

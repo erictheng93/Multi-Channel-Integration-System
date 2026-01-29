@@ -203,50 +203,6 @@
  - successResponse
 
 
- #3:
-
-
- : frontend/src/api/team.ts
-
- 1. (lines 14-18)
-
- isInvitationEnabled: (): boolean => {
- return import.meta.env
- .VITE_ENABLE_INVITATION === 'true'
- || false
- }
-
-
- 2. ( 7 )
-
- inviteMember: async (request) => {
- if (!teamApi.isInvitationEnabled()) {
- return {
- success: false,
- error: ',
- '
- }
- }
- return apiClient.post(...)
- }
-
-
- 3. :
- inviteMember (line 44-52)
- resendInvitation (line 55-63)
- cancelInvitation (line 66-74)
- acceptInvitation (line 137-147)
- declineInvitation (line 150-158)
- validateInvitation (line 171-178)
- generateQRInvite (line 190-197)
-
- :
- - /
- - (false)
- - API
- -
- -
-
 ```
 
 ---
@@ -372,35 +328,7 @@ GET /api/team/members/agent-001
 ### 3:
 
 ```
-: ,
-
- ():
-
 :
-
-: POST /api/teams/invite { email, role }
-: 404 Not Found
-
-:
- ()
-
-
- ():
-
-:
-
-:
-if (!teamApi.isInvitationEnabled()) {
- return {
- success: false,
- error: ', (Direct Member Add)'
- }
-}
-
-:
- : ","
- :
-
 
 :
 
@@ -425,7 +353,7 @@ POST /api/team/members
  }
 }
 
- ,
+
 ```
 
 ---
@@ -617,8 +545,7 @@ POST /api/team/members
  -
  -
 
- 3. (5 tests)
- -
+ 3. (3 tests)
  -
  -
 

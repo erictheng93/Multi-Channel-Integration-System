@@ -115,12 +115,6 @@ export interface MessageFilters {
 }
 
 // 團隊管理 API
-export interface InviteRequest {
-  email: string
-  name: string
-  role: 'admin' | 'agent'
-}
-
 export interface UpdateMemberRequest {
   name?: string
   role?: 'admin' | 'agent'

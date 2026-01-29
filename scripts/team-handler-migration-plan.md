@@ -2,7 +2,9 @@
 
 **目標**: 將所有舊版 team handler 函數遷移到模組化結構
 
-**當前狀態**: 52% 已遷移 (13/25 功能)
+**當前狀態**: 65% 已遷移 (13/20 功能)
+
+> **注意**: 邀請系統已移除，改用直接添加成員的方式。
 
 ---
 
@@ -29,26 +31,21 @@
 |---|--------|----------|----------|----------|
 | 1 | `getTeamMembers` | GET /api/teams/members | 獲取所有團隊成員 | src/handlers/team.ts:48 |
 | 2 | `addTeamMember` | POST /api/team/members | 添加成員到團隊 | src/handlers/team.ts:91 |
-| 3 | `inviteMember` | POST /api/team/invite | 發送成員邀請 | src/handlers/team.ts:188 |
-| 4 | `acceptInvite` | - | 接受邀請 (未使用?) | src/handlers/team.ts:196 |
-| 5 | `getInviteInfo` | - | 獲取邀請信息 (未使用?) | src/handlers/team.ts:204 |
-| 6 | `updateMemberStatus` | PUT /api/team/members/:id/status | 更新成員狀態 | src/handlers/team.ts:212 |
-| 7 | `updateMemberRole` | PUT /api/team/members/:id/role | 更新成員角色 | src/handlers/team.ts:273 |
-| 8 | `resetMemberPassword` | POST /api/team/members/:id/reset-password | 重置成員密碼 | src/handlers/team.ts:333 |
-| 9 | `resetPasswordWithPolicy` | POST /api/team/members/:id/reset-password-policy | 帶策略重置密碼 | src/handlers/team.ts:360 |
-| 10 | `changePassword` | POST /api/auth/change-password | 更改密碼 | src/handlers/team.ts:461 |
-| 11 | `getMemberPassword` | GET /api/team/members/:id/password | 獲取成員密碼 | src/handlers/team.ts:570 |
-| 12 | `updateMember` | PUT /api/team/members/:id | 更新成員信息 | src/handlers/team.ts:609 |
-| 13 | `migratePasswords` | POST /api/team/migrate-passwords | 遷移密碼 (臨時) | src/handlers/team.ts:760 |
-| 14 | `deleteMember` | DELETE /api/team/members/:id | 刪除成員 | src/handlers/team.ts:786 |
-| 15 | `getInvitations` | GET /api/team/invitations | 獲取邀請列表 | src/handlers/team.ts:826 |
-| 16 | `revokeInvitation` | DELETE /api/team/invitations/:id | 撤銷邀請 | src/handlers/team.ts:834 |
+| 3 | `updateMemberStatus` | PUT /api/team/members/:id/status | 更新成員狀態 | src/handlers/team.ts:212 |
+| 4 | `updateMemberRole` | PUT /api/team/members/:id/role | 更新成員角色 | src/handlers/team.ts:273 |
+| 5 | `resetMemberPassword` | POST /api/team/members/:id/reset-password | 重置成員密碼 | src/handlers/team.ts:333 |
+| 6 | `resetPasswordWithPolicy` | POST /api/team/members/:id/reset-password-policy | 帶策略重置密碼 | src/handlers/team.ts:360 |
+| 7 | `changePassword` | POST /api/auth/change-password | 更改密碼 | src/handlers/team.ts:461 |
+| 8 | `getMemberPassword` | GET /api/team/members/:id/password | 獲取成員密碼 | src/handlers/team.ts:570 |
+| 9 | `updateMember` | PUT /api/team/members/:id | 更新成員信息 | src/handlers/team.ts:609 |
+| 10 | `migratePasswords` | POST /api/team/migrate-passwords | 遷移密碼 (臨時) | src/handlers/team.ts:760 |
+| 11 | `deleteMember` | DELETE /api/team/members/:id | 刪除成員 | src/handlers/team.ts:786 |
 
 ---
 
 ## 🎯 遷移策略
 
-### 階段1: 成員管理端點 (Functions #2, #6, #7, #12, #14)
+### 階段1: 成員管理端點 (Functions #2, #3, #4, #9, #11)
 
 **目標文件**: `src/modules/teams/handlers/members.ts` (新建)
 
@@ -70,7 +67,7 @@ DELETE /api/teams/:teamId/members/:memberId           // 從 deleteMember
 
 ---
 
-### 階段2: 密碼管理端點 (Functions #8, #9, #10, #11)
+### 階段2: 密碼管理端點 (Functions #5, #6, #7, #8)
 
 **目標文件**: `src/modules/teams/handlers/password.ts` (新建)
 
@@ -90,29 +87,7 @@ GET  /api/teams/members/:memberId/password                // getMemberPassword (
 
 ---
 
-### 階段3: 邀請系統端點 (Functions #3, #4, #5, #15, #16)
-
-**目標文件**: `src/modules/teams/handlers/invitations.ts` (新建)
-
-**遷移內容**:
-- `inviteMember` → 發送成員邀請
-- `acceptInvite` → 接受邀請
-- `getInviteInfo` → 獲取邀請詳情
-- `getInvitations` → 列出所有邀請
-- `revokeInvitation` → 撤銷邀請
-
-**路由映射**:
-```typescript
-POST   /api/teams/invitations               // inviteMember
-GET    /api/teams/invitations               // getInvitations
-GET    /api/teams/invitations/:inviteId     // getInviteInfo
-POST   /api/teams/invitations/:inviteId/accept  // acceptInvite
-DELETE /api/teams/invitations/:inviteId     // revokeInvitation
-```
-
----
-
-### 階段4: 遷移工具端點 (Function #13)
+### 階段3: 遷移工具端點 (Function #10)
 
 **目標文件**: `src/modules/teams/handlers/migration.ts` (新建)
 
@@ -128,7 +103,7 @@ POST /api/teams/admin/migrate-passwords  // migratePasswords
 
 ---
 
-### 階段5: 重複函數處理 (Function #1)
+### 階段4: 重複函數處理 (Function #1)
 
 **處理方式**:
 - `getTeamMembers` 已在模組化 handler 中實現
@@ -143,19 +118,16 @@ POST /api/teams/admin/migrate-passwords  // migratePasswords
 src/modules/teams/
 ├── handlers/
 │   ├── team.ts              ✅ 已存在 - 團隊CRUD + QR Code
-│   ├── members.ts           🆕 新建 - 成員管理
-│   ├── password.ts          🆕 新建 - 密碼管理
-│   ├── invitations.ts       🆕 新建 - 邀請系統
+│   ├── members.ts           ✅ 已存在 - 成員管理
+│   ├── password.ts          ✅ 已存在 - 密碼管理
 │   ├── migration.ts         🆕 新建 - 遷移工具 (臨時)
-│   └── index.ts             🔧 更新 - 導出所有 handlers
+│   └── index.ts             ✅ 已存在 - 導出所有 handlers
 ├── services/
-│   ├── member-service.ts    🆕 新建 - 成員業務邏輯
-│   ├── password-service.ts  🆕 新建 - 密碼業務邏輯
-│   └── invitation-service.ts 🆕 新建 - 邀請業務邏輯
+│   ├── member-service.ts    ✅ 已存在 - 成員業務邏輯
+│   └── password-service.ts  🆕 新建 - 密碼業務邏輯
 └── types/
-    ├── member-types.ts      🆕 新建 - 成員類型定義
-    ├── password-types.ts    🆕 新建 - 密碼類型定義
-    └── invitation-types.ts  🆕 新建 - 邀請類型定義
+    ├── member-types.ts      ✅ 已存在 - 成員類型定義
+    └── password-types.ts    🆕 新建 - 密碼類型定義
 ```
 
 ---
@@ -185,15 +157,7 @@ src/modules/teams/
 - [ ] 更新路由註冊
 - [ ] 測試所有密碼管理端點
 
-### Step 4: 實施階段3 - 邀請系統
-- [ ] 創建 `src/modules/teams/handlers/invitations.ts`
-- [ ] 創建 `src/modules/teams/services/invitation-service.ts`
-- [ ] 創建 `src/modules/teams/types/invitation-types.ts`
-- [ ] 遷移 5 個邀請系統函數
-- [ ] 更新路由註冊
-- [ ] 測試所有邀請端點
-
-### Step 5: 清理階段
+### Step 4: 清理階段
 - [ ] 更新 src/index.ts:300 使用新版 getTeamMembers
 - [ ] 從 src/handlers/team.ts 刪除已遷移函數
 - [ ] 更新所有導入引用
@@ -230,19 +194,18 @@ src/modules/teams/
 ```
 階段1 (成員管理):     4-6 小時
 階段2 (密碼管理):     3-4 小時
-階段3 (邀請系統):     3-4 小時
-階段4 (遷移工具):     1-2 小時
-階段5 (清理):         2-3 小時
+階段3 (遷移工具):     1-2 小時
+階段4 (清理):         2-3 小時
 測試 & 部署:         3-4 小時
 ─────────────────────────────
-總計:                16-23 小時 (2-3 個工作日)
+總計:                13-19 小時 (2 個工作日)
 ```
 
 ---
 
 ## ✅ 成功標準
 
-- [ ] 所有 15 個舊函數已遷移
+- [ ] 所有 11 個舊函數已遷移
 - [ ] src/handlers/team.ts 僅保留臨時兼容代碼
 - [ ] 所有路由測試通過
 - [ ] 無回歸錯誤

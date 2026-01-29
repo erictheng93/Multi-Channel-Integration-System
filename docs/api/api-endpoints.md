@@ -268,33 +268,6 @@ Facebook Webhook
 
 **:** `Authorization: Bearer <admin_token>`
 
-### POST /team/invite
-
-
-**:**
-```json
-{
- "email": "new@example.com",
- "name": "New Member",
- "role": "agent"
-}
-```
-
-**:** `Authorization: Bearer <admin_token>`
-
-### POST /team/invite/:token/accept
-
-
-**:**
-```json
-{
- "password": "password123"
-}
-```
-
-### GET /team/invite/:token
-
-
 ### PUT /team/members/:id/status
 
 
@@ -308,16 +281,6 @@ Facebook Webhook
 **:** `Authorization: Bearer <admin_token>`
 
 ### DELETE /team/members/:id
-
-
-**:** `Authorization: Bearer <admin_token>`
-
-### GET /team/invitations
-
-
-**:** `Authorization: Bearer <admin_token>`
-
-### DELETE /team/invitations/:id
 
 
 **:** `Authorization: Bearer <admin_token>`

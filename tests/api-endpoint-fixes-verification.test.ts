@@ -28,7 +28,7 @@ describe('API Endpoint Fixes Verification', () => {
 
   beforeAll(() => {
     if (!TEST_TOKEN) {
-      console.warn('? ï? TEST_AUTH_TOKEN not set. Tests will fail if authentication is required.');
+      console.warn('?ï¿½ï¿½? TEST_AUTH_TOKEN not set. Tests will fail if authentication is required.');
     }
     authHeaders = {
       'Content-Type': 'application/json',
@@ -258,88 +258,7 @@ describe('API Endpoint Fixes Verification', () => {
     });
   });
 
-  describe('3. Frontend Invitation Feature Toggle', () => {
-    test('should verify invitation endpoints are disabled by default', async () => {
-      // Test inviteMember endpoint (should return feature disabled error)
-      const inviteResponse = await fetch(
-        `${API_BASE_URL}/teams/invite`,
-        {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            email: 'test@example.com',
-            role: 'agent'
-          })
-        }
-      );
-
-      // Backend should return 404 or feature disabled error
-      expect([404, 500]).toContain(inviteResponse.status);
-    });
-
-    test('should verify resend invitation endpoint is disabled', async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/team/invitations/test-invitation-id/resend`,
-        {
-          method: 'POST',
-          headers: authHeaders
-        }
-      );
-
-      // Should return 404 since backend has disabled invitations
-      expect([404, 500]).toContain(response.status);
-    });
-
-    test('should verify cancel invitation endpoint is disabled', async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/team/invitations/test-invitation-id`,
-        {
-          method: 'DELETE',
-          headers: authHeaders
-        }
-      );
-
-      // Should return 404 since backend has disabled invitations
-      expect([404, 500]).toContain(response.status);
-    });
-
-    test('should verify QR invite generation endpoint is disabled', async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/teams/qr-invite`,
-        {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            email: 'test@example.com',
-            role: 'agent'
-          })
-        }
-      );
-
-      // Should return 404 since backend has disabled invitations
-      expect([404, 500]).toContain(response.status);
-    });
-
-    test('should verify accept invitation endpoint is disabled', async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/teams/invitations/accept`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token: 'test-token',
-            name: 'Test User',
-            password: 'test-password'
-          })
-        }
-      );
-
-      // Should return 404 since backend has disabled invitations
-      expect([404, 500]).toContain(response.status);
-    });
-  });
-
-  describe('4. Integration Tests - All Endpoints Working Together', () => {
+  describe('3. Integration Tests - All Endpoints Working Together', () => {
     test('should successfully complete full workflow: create team member, get details, create QR, deactivate QR', async () => {
       // Step 1: Get current team member details
       const memberResponse = await fetch(

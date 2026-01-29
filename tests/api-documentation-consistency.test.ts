@@ -165,13 +165,8 @@ describe('API Documentation Consistency', () => {
       
       // 團隊管理端點
       'GET /team/members',
-      'POST /team/invite',
-      'POST /team/invite/:token/accept',
-      'GET /team/invite/:token',
       'PUT /team/members/:id/status',
       'DELETE /team/members/:id',
-      'GET /team/invitations',
-      'DELETE /team/invitations/:id',
       
       // 系統管理端點
       'GET /system/info',
@@ -199,7 +194,7 @@ describe('API Documentation Consistency', () => {
       
       expect(authEndpoints.length).toBeGreaterThanOrEqual(2)
       expect(conversationEndpoints.length).toBeGreaterThanOrEqual(7)
-      expect(teamEndpoints.length).toBeGreaterThanOrEqual(8)
+      expect(teamEndpoints.length).toBeGreaterThanOrEqual(3) // Reduced after removing invitation system
       expect(systemEndpoints.length).toBeGreaterThanOrEqual(10)
       expect(webhookEndpoints.length).toBeGreaterThanOrEqual(2)
     })
@@ -246,11 +241,8 @@ describe('API Documentation Consistency', () => {
 
     const adminRequiredEndpoints = [
       'GET /team/members',
-      'POST /team/invite',
       'PUT /team/members/:id/status',
       'DELETE /team/members/:id',
-      'GET /team/invitations',
-      'DELETE /team/invitations/:id',
       'GET /system/settings',
       'PUT /system/settings',
       'POST /system/integrations/:platform/test',

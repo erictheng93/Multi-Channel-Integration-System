@@ -24,7 +24,7 @@
 
 ## 🔴 高嚴重度衝突 (HIGH SEVERITY) - 立即修復
 
-### 1. `modules/teams` - 根路徑衝突 (12 個衝突)
+### 1. `modules/teams` - 根路徑衝突 (8 個衝突)
 
 **問題**: 多個子處理器都註冊了 `/` 路由，導致路由覆蓋
 
@@ -32,13 +32,11 @@
 ❌ GET /
    📍 src/modules/teams/handlers/team.ts:67
    📍 src/modules/teams/handlers/members.ts:27
-   📍 src/modules/teams/handlers/invitations.ts:78
    📍 src/modules/teams/handlers/index.ts:28
 
 ❌ POST /
    📍 src/modules/teams/handlers/team.ts:140
    📍 src/modules/teams/handlers/members.ts:87
-   📍 src/modules/teams/handlers/invitations.ts:22
    📍 src/modules/teams/handlers/index.ts:28
 
 ❌ ROUTE /members (重複註冊)
@@ -49,7 +47,6 @@
 **根本原因**:
 - `team.ts` 使用 `app.get('/', ...)` 處理團隊列表
 - `members.ts` 使用 `app.get('/', ...)` 處理成員列表
-- `invitations.ts` 使用 `app.get('/', ...)` 處理邀請列表
 - `index.ts` 通過 `app.route('/', teamHandler)` 再次註冊
 
 **影響**:
@@ -63,7 +60,6 @@
 // index.ts
 app.route('/teams', teamHandler);        // GET /teams, POST /teams
 app.route('/teams/members', membersHandler);    // GET /teams/members
-app.route('/teams/invitations', invitationsHandler); // GET /teams/invitations
 
 // team.ts - 改為特定路徑
 app.get('/teams', listTeams);
@@ -87,7 +83,6 @@ export default membersApp;
 
 // index.ts
 app.route('/members', membersHandler); // 掛載到 /members
-app.route('/invitations', invitationsHandler); // 掛載到 /invitations
 app.route('/', teamHandler); // 根路由處理團隊 CRUD
 ```
 

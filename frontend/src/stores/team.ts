@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { teamApi } from '@/api/team'
-import type { TeamMember, Invitation } from '@/types'
+import type { TeamMember } from '@/types'
 import { getWebSocketManager, type TeamMemberEventData, type TeamUpdateEventData } from '@/services/websocketManager'
 
 // 團隊類型定義
@@ -20,7 +20,6 @@ interface Team {
 export const useTeamStore = defineStore('team', () => {
   // 狀態
   const members = ref<TeamMember[]>([])
-  const invitations = ref<Invitation[]>([])
   const teams = ref<Team[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -67,24 +66,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  const loadInvitations = async () => {
-    try {
-      loading.value = true
-      error.value = null
-      const response = await teamApi.getInvitations()
-      if (response.success && response.data) {
-        invitations.value = response.data
-      } else {
-        error.value = '載入邀請列表失敗'
-      }
-    } catch (err: unknown) {
-      error.value = (err as Error)?.message || '載入邀請列表失敗'
-      console.error('載入邀請失敗:', err)
-    } finally {
-      loading.value = false
-    }
-  }
-
   const loadTeams = async () => {
     try {
       // ✅ Increment counter and set loading state
@@ -112,7 +93,6 @@ export const useTeamStore = defineStore('team', () => {
   const loadAll = async () => {
     await Promise.all([
       loadMembers(),
-      loadInvitations(),
       loadTeams()
     ])
   }
@@ -147,32 +127,6 @@ export const useTeamStore = defineStore('team', () => {
       error.value = (err as Error)?.message || '新增成員失敗'
       console.error('新增成員失敗:', err)
       throw err
-    }
-  }
-
-  const inviteMember = async (request: {
-    email: string
-    role: 'admin' | 'agent' // Simplified from 3-tier to 2-tier role system
-    message?: string
-    useQR?: boolean
-  }) => {
-    try {
-      loading.value = true
-      error.value = null
-      const response = await teamApi.inviteMember(request)
-      if (response.success && response.data) {
-        await loadInvitations() // 重新載入邀請列表
-        return response.data
-      } else {
-        error.value = '發送邀請失敗'
-        throw new Error('發送邀請失敗')
-      }
-    } catch (err: unknown) {
-      error.value = (err as Error)?.message || '發送邀請失敗'
-      console.error('發送邀請失敗:', err)
-      throw err
-    } finally {
-      loading.value = false
     }
   }
 
@@ -525,45 +479,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  const resendInvitation = async (invitationId: string) => {
-    try {
-      loading.value = true
-      error.value = null
-      const response = await teamApi.resendInvitation(invitationId)
-      if (!response.success) {
-        error.value = '重新發送邀請失敗'
-        throw new Error('重新發送邀請失敗')
-      }
-    } catch (err: unknown) {
-      error.value = (err as Error)?.message || '重新發送邀請失敗'
-      console.error('重新發送邀請失敗:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const cancelInvitation = async (invitationId: string) => {
-    try {
-      loading.value = true
-      error.value = null
-      const response = await teamApi.cancelInvitation(invitationId)
-      if (response.success) {
-        // 從本地狀態中移除
-        invitations.value = invitations.value.filter(i => i.id !== invitationId)
-      } else {
-        error.value = '取消邀請失敗'
-        throw new Error('取消邀請失敗')
-      }
-    } catch (err: unknown) {
-      error.value = (err as Error)?.message || '取消邀請失敗'
-      console.error('取消邀請失敗:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
   const clearError = () => {
     error.value = null
   }
@@ -571,7 +486,6 @@ export const useTeamStore = defineStore('team', () => {
   // 重置狀態
   const $reset = () => {
     members.value = []
-    invitations.value = []
     teams.value = []
     loading.value = false
     error.value = null
@@ -718,7 +632,6 @@ export const useTeamStore = defineStore('team', () => {
   return {
     // 狀態
     members,
-    invitations,
     teams,
     loading,
     error,
@@ -731,19 +644,15 @@ export const useTeamStore = defineStore('team', () => {
 
     // 動作
     loadMembers,
-    loadInvitations,
     loadTeams,
     loadAll,
     addMember,
-    inviteMember,
     updateMemberRole,
     updateMemberStatus,
     updateMember,
     removeMember,
     resetPassword,
     resetPasswordWithPolicy,
-    resendInvitation,
-    cancelInvitation,
     clearError,
     $reset,
 
