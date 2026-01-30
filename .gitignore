@@ -19,10 +19,12 @@ bun.lock   # Bun lockfile variant
 
 # env - 所有環境變數檔案
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
 !.env.*.example
-.env.production
+!.env.development
+!.env.production
 .env.terraform
 .dev.vars
 tests/.env
