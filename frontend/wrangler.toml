@@ -9,16 +9,54 @@ compatibility_date = "2024-01-01"
 
 # Pages 專案設定 (使用 .pages.toml 而不是此處的 build 配置)
 
-# 環境變數 (在 Cloudflare Dashboard 中設定)
-# ⚠️ IMPORTANT: Configure these via Cloudflare Dashboard for production
+# 環境變數 - 通過 wrangler.toml 管理
+# ============================================================================
 [env.production.vars]
-# VITE_API_BASE_URL = "https://your-api-domain.example.com"  # Set in Dashboard
-# VITE_BACKEND_URL = "https://your-api-domain.example.com"  # Set in Dashboard
-# VITE_FRONTEND_URL = "https://your-frontend-domain.example.com"  # Set in Dashboard
-VITE_DEV_MODE = "false"
-VITE_ENABLE_DEBUG_LOGS = "false"
+# 核心 URL 配置
+VITE_BACKEND_URL = "https://multi-channel.imfinethankyouandyou.com"
+VITE_FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
+VITE_WEBSOCKET_URL = "wss://multi-channel.imfinethankyouandyou.com"
+VITE_STORAGE_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
 
+# 環境標識
+VITE_ENV = "production"
+VITE_DEV_MODE = "false"
+
+# 調試配置 (生產環境關閉)
+VITE_ENABLE_DEBUG_LOGS = "false"
+VITE_DEBUG = "false"
+VITE_WEBSOCKET_DEBUG = "false"
+
+# WebSocket 配置
+VITE_WEBSOCKET_ENABLED = "true"
+VITE_WEBSOCKET_AUTO_RECONNECT = "true"
+VITE_WEBSOCKET_RECONNECT_DELAY = "3000"
+VITE_WEBSOCKET_MAX_RETRIES = "10"
+
+# 功能開關
+VITE_ENABLE_SEARCH_CACHE = "true"
+VITE_ENABLE_PERFORMANCE_MONITORING = "true"
+VITE_ENABLE_EXPERIMENTAL_FEATURES = "false"
+
+# ============================================================================
 [env.preview.vars]
-# VITE_API_BASE_URL = "https://your-api-domain.example.com"  # Set in Dashboard
+# Preview 環境使用相同的後端
+VITE_BACKEND_URL = "https://multi-channel.imfinethankyouandyou.com"
+VITE_FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
+VITE_WEBSOCKET_URL = "wss://multi-channel.imfinethankyouandyou.com"
+VITE_STORAGE_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+
+VITE_ENV = "preview"
 VITE_DEV_MODE = "true"
 VITE_ENABLE_DEBUG_LOGS = "true"
+VITE_DEBUG = "true"
+VITE_WEBSOCKET_DEBUG = "true"
+
+VITE_WEBSOCKET_ENABLED = "true"
+VITE_WEBSOCKET_AUTO_RECONNECT = "true"
+VITE_WEBSOCKET_RECONNECT_DELAY = "5000"
+VITE_WEBSOCKET_MAX_RETRIES = "5"
+
+VITE_ENABLE_SEARCH_CACHE = "true"
+VITE_ENABLE_PERFORMANCE_MONITORING = "true"
+VITE_ENABLE_EXPERIMENTAL_FEATURES = "true"
