@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
-      port: 3000,
+      port: parseInt(env.VITE_PORT || '5173'), // Use env var or default to 5173 (avoids Windows reserved range 2904-3003)
       proxy: {
         '/api': {
           target: apiBaseUrl,

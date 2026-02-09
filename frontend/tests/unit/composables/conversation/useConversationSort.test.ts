@@ -56,7 +56,7 @@ describe('useConversationSort', () => {
     it('应该初始化为默认排序配置', () => {
       const { sortBy, sortOrder } = sortComposable
 
-      expect(sortBy.value).toBe('lastMessageAt')
+      expect(sortBy.value).toBe('updatedAt')
       expect(sortOrder.value).toBe('desc')
     })
 
