@@ -129,15 +129,20 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
-/* Link styling within text messages */
+/* Link styling within text messages
+   Colors are context-aware via _base.css parent selectors:
+   - .message-incoming a → blue on white
+   - .message-outgoing a → white on blue
+   Inherits from parent for proper contrast */
 .message-text :deep(a) {
-  color: #3b82f6;
+  color: inherit;
   text-decoration: underline;
-  transition: color 0.2s ease;
+  text-underline-offset: 2px;
+  transition: opacity 0.2s ease;
 }
 
 .message-text :deep(a:hover) {
-  color: #2563eb;
+  opacity: 0.85;
 }
 
 /* Emoji sizing */
