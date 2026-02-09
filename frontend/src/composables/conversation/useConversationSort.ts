@@ -64,7 +64,7 @@ const SORT_FIELD_LABELS: Record<SortField, string> = {
  * @returns {ConversationSortComposable} 排序相关的状态和方法
  */
 export function useConversationSort(
-  initialField: SortField = 'lastMessageAt',
+  initialField: SortField = 'updatedAt',
   initialOrder: SortOrder = 'desc'
 ): ConversationSortComposable {
   // 状态

@@ -134,12 +134,14 @@ export const useConversationsStore = defineStore('conversations', () => {
   const hasConversationChanged = (existing: Conversation, updated: Conversation): boolean => {
     if (!existing || !updated) {return true}
 
-    // Compare key fields that would affect UI rendering
+    // Compare key fields that would affect UI rendering or sorting
     // Note: assignedAgentId/assignedAgent removed - only team assignment is supported now
     // 🔧 新增 firstResponseAt：用於狀態徽章（待處理/處理中）的變更檢測
+    // 🔧 新增 updatedAt, createdAt：用於排序的變更檢測，避免 stale 排序值
     const keyFields = [
       'id', 'status', 'unreadCount', 'lastMessageAt', 'lastMessage', 'priority',
-      'assignedTeamId', 'assignedTeam', 'customerName', 'platform', 'firstResponseAt'
+      'assignedTeamId', 'assignedTeam', 'customerName', 'platform', 'firstResponseAt',
+      'updatedAt', 'createdAt'
     ] as const
     
     return keyFields.some(field => {

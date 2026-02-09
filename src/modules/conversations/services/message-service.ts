@@ -1,9 +1,7 @@
 // Message Service for Conversations Module
 // 訊息服務層
 
-import { createDbClient } from '@/db/drizzle-factory';
-import { drizzle } from 'drizzle-orm/d1';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, desc, and, inArray } from 'drizzle-orm';
 import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -26,11 +24,14 @@ export interface MessageServiceInterface {
 }
 
 export class MessageService implements MessageServiceInterface {
-  private db: DrizzleD1Database;
+  private db: Database;
   private bindings: Bindings;
 
   constructor(bindings: Bindings) {
-    this.db = drizzle(bindings.DB);
+    // 🔧 FIX: Use createDbClient with casing: 'camelCase' instead of raw drizzle()
+    // Raw drizzle() missing casing option caused conversations.updatedAt and lastMessageAt
+    // to not be updated in batch operations (column name mismatch)
+    this.db = createDbClient(bindings.DB);
     this.bindings = bindings;
   }
 
@@ -80,26 +81,27 @@ export class MessageService implements MessageServiceInterface {
         })
       };
 
-      const batchOperations = [];
-      batchOperations.push(this.db.insert(messages).values(messageData));
+      // Step 3: Insert message
+      await this.db.insert(messages).values(messageData);
+      console.log(`[MessageService] ✅ Message inserted: ${messageId}`);
 
+      // Step 3b: Link attachments if any
       if (request.attachmentIds && request.attachmentIds.length > 0) {
-        batchOperations.push(
-          this.db
-            .update(fileAttachments)
-            .set({ messageId: messageId })
-            .where(inArray(fileAttachments.id, request.attachmentIds))
-        );
+        await this.db
+          .update(fileAttachments)
+          .set({ messageId: messageId })
+          .where(inArray(fileAttachments.id, request.attachmentIds));
+        console.log(`[MessageService] 📎 Linked ${request.attachmentIds.length} attachments`);
       }
 
-      batchOperations.push(
-        this.db
-          .update(conversations)
-          .set({ lastMessageAt: timestamp, updatedAt: timestamp })
-          .where(eq(conversations.id, request.conversationId))
-      );
-
-      await this.db.batch(batchOperations as any);
+      // Step 3c: Update conversation timestamps (explicit standalone UPDATE)
+      // Previously used db.batch() with dynamic array + `as any` cast, which silently
+      // dropped the UPDATE operation on D1. Using explicit sequential calls instead.
+      await this.db
+        .update(conversations)
+        .set({ lastMessageAt: timestamp, updatedAt: timestamp })
+        .where(eq(conversations.id, request.conversationId));
+      console.log(`[MessageService] ✅ Conversation timestamps updated - updatedAt set to ${timestamp}`);
 
       const insertedMessage = { ...messageData, updatedAt: timestamp };
 
@@ -511,9 +513,7 @@ export class MessageService implements MessageServiceInterface {
         deliveryStatus = 'failed';
       }
 
-      // Step 3: Prepare DB operations for Batch Execution
-      const batchOperations = [];
-
+      // Step 3: Insert message
       const messageData: NewMessage = {
         id: messageId,
         conversationId: request.conversationId,
@@ -533,28 +533,26 @@ export class MessageService implements MessageServiceInterface {
           ...(errorMessage && { error: errorMessage })
         })
       };
-      batchOperations.push(this.db.insert(messages).values(messageData));
+      await this.db.insert(messages).values(messageData);
 
+      // Step 3b: Link attachments if any
       if (request.attachmentIds && request.attachmentIds.length > 0) {
-        batchOperations.push(
-          this.db
-            .update(fileAttachments)
-            .set({ messageId: messageId })
-            .where(inArray(fileAttachments.id, request.attachmentIds))
-        );
+        await this.db
+          .update(fileAttachments)
+          .set({ messageId: messageId })
+          .where(inArray(fileAttachments.id, request.attachmentIds));
       }
 
-      batchOperations.push(
-        this.db
-          .update(conversations)
-          .set({
-            lastMessageAt: timestamp,
-            updatedAt: timestamp
-          })
-          .where(eq(conversations.id, request.conversationId))
-      );
-
-      await this.db.batch(batchOperations as any);
+      // Step 3c: Update conversation timestamps (explicit standalone UPDATE)
+      // Previously used db.batch() with dynamic array + `as any` cast, which silently
+      // dropped the UPDATE operation on D1. Using explicit sequential calls instead.
+      await this.db
+        .update(conversations)
+        .set({
+          lastMessageAt: timestamp,
+          updatedAt: timestamp
+        })
+        .where(eq(conversations.id, request.conversationId));
 
       const insertedMessage = {
         ...messageData,

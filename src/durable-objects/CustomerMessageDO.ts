@@ -329,6 +329,14 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         console.log(`✅ [CustomerMessageDO] Message created: ${messageId}`);
 
+        // 🔧 FIX: Update conversation timestamps (updatedAt + lastMessageAt)
+        // This was missing, causing conversations to not re-sort after new messages
+        await db
+          .update(conversations)
+          .set({ lastMessageAt: createdAt, updatedAt: createdAt })
+          .where(eq(conversations.id, conversationId));
+        console.log(`✅ [CustomerMessageDO] Conversation timestamps updated: ${createdAt}`);
+
         // 🔧 FIX: Fetch linked attachments for response
         let linkedAttachments: any[] = [];
         if (hasAttachments) {

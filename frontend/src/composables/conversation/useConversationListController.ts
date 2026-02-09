@@ -22,13 +22,14 @@
 
 import { ref, computed, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth, useConversations } from '@/composables'
+import { useAuth } from '@/composables'
 import { useConversationsStore } from '@/stores/conversations'
 import { useConversationFilters } from './useConversationFilters'
 import { useConversationSort } from './useConversationSort'
 import { useConversationCache } from './useConversationCache'
 import type { Conversation } from '@/types'
 import { translateError } from '@/utils/error-handler'
+import { conversationCache as storeLevelCache } from '@/services/cacheManager'
 import toast from '@/composables/useToast'
 
 export interface ConversationListControllerComposable {
@@ -78,7 +79,6 @@ const MAX_RETRY_COUNT = 3
 export function useConversationListController(): ConversationListControllerComposable {
   const router = useRouter()
   const { currentAgent } = useAuth()
-  const { conversations: storeConversations } = useConversations()
   const conversationsStore = useConversationsStore()
 
   // 初始化子 composables
@@ -98,23 +98,28 @@ export function useConversationListController(): ConversationListControllerCompo
   const hasNetworkError = ref(false)
   const retryCount = ref(0)
 
-  // 计算属性
+  // 计算属性 - 直接使用 Pinia Store 的 conversations（修復排序未生效的問題）
+  // 原本透過 useConversations() → useAsyncData({ immediate: false }) 鏈路，
+  // 因為 execute() 從未被呼叫，data 永遠是 null，導致排序無法套用
   const conversations = computed(() => {
-    let result = storeConversations.value
+    const storeData = conversationsStore.conversations
 
-    // 应用客户端排序
-    if (result.length > 0) {
-      result = sort.applySortToConversations(result)
+    // 应用客户端排序（updatedAt DESC - 最新處理的對話排在最上面）
+    if (storeData && storeData.length > 0) {
+      return sort.applySortToConversations(storeData)
     }
 
-    return result
+    return storeData || []
   })
 
   const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
   const totalConversations = computed(() => total.value)
-  const unreadCount = computed(() =>
-    storeConversations.value.filter((c: Conversation) => c.unreadCount && c.unreadCount > 0).length
-  )
+  const unreadCount = computed(() => {
+    const storeData = conversationsStore.conversations
+    return storeData
+      ? storeData.filter((c: Conversation) => c.unreadCount && c.unreadCount > 0).length
+      : 0
+  })
   const canLoadMore = computed(() => conversationsStore.canLoadMore)
 
   /**
@@ -176,17 +181,17 @@ export function useConversationListController(): ConversationListControllerCompo
    * @private
    */
   async function refreshCacheInBackground(
-    apiFilters: Record<string, unknown>,
+    _apiFilters: Record<string, unknown>,
     cacheKey: string
   ): Promise<void> {
     try {
-      const result = await conversationsStore.loadWithCache(apiFilters, currentPage.value)
+      // 🔧 使用 refreshConversations (直接 API 呼叫) 而非 loadWithCache
+      // loadWithCache 可能從 store cacheManager 返回 stale 資料，覆蓋 controller 快取的正確資料
+      await conversationsStore.refreshConversations()
 
-      if (result?.fresh) {
-        total.value = conversationsStore.pagination.total
-        await cache.setCachedData(cacheKey, conversations.value)
-        console.log('🔄 [Controller] Background cache refresh completed')
-      }
+      total.value = conversationsStore.pagination.total
+      await cache.setCachedData(cacheKey, conversations.value)
+      console.log('🔄 [Controller] Background cache refresh completed')
     } catch (error) {
       console.warn('[Controller] Background refresh failed:', error)
     }
@@ -239,14 +244,24 @@ export function useConversationListController(): ConversationListControllerCompo
     currentPage.value = 1
 
     try {
-      // 使缓存失效
-      await cache.invalidateCache()
+      // 🔧 使兩層快取同時失效，避免 stale 資料覆蓋 fresh 資料
+      await cache.invalidateCache()       // Layer 1: Controller localStorage 快取
+      storeLevelCache.invalidateAll()     // Layer 2: Store cacheManager 快取
 
-      // 刷新 store
+      // 🔧 直接從 API 重新載入（不再呼叫 loadConversations 避免被快取覆蓋）
       await conversationsStore.refreshConversations()
 
-      // 重新载入
-      await loadConversations()
+      // 更新分頁資訊
+      total.value = conversationsStore.pagination.total
+
+      // 更新 Controller 快取（存入已排序的資料）
+      const cacheKey = cache.generateCacheKey(filters.filters.value, currentPage.value)
+      await cache.setCachedData(cacheKey, conversations.value)
+
+      // 清除错误状态
+      loadError.value = null
+      hasNetworkError.value = false
+      retryCount.value = 0
     } catch (error) {
       console.error('[Controller] Refresh failed:', error)
       handleLoadError(error)
