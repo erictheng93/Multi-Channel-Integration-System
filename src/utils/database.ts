@@ -397,6 +397,7 @@ export async function getMessageStats(
       sessionId: messages.sessionId,
       sessionSequence: messages.sessionSequence,
       metadata: messages.metadata,
+      senderName: messages.senderName,
       sentAt: messages.sentAt,
       createdAt: messages.createdAt,
       deletedAt: messages.deletedAt,

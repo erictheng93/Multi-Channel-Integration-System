@@ -3,16 +3,16 @@
 
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
-import type { Bindings, JWTPayload } from '../../../types';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@shared/database/schema';
-import { jwtAuth } from '../../../middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
   errorResponse,
   badRequestResponse,
   notFoundResponse
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 
 const forwardingRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -130,6 +130,7 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
           metadata: JSON.stringify(forwardMetadata),
           isSent: true,
           deliveryStatus: 'sent',
+          senderName: userPayload.displayName || null,
           sentAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
         };

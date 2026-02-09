@@ -550,6 +550,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           isSent: true,
           deliveryStatus: 'delivered',
           metadata: mediaData ? JSON.stringify(mediaData) : null,
+          senderName: user.displayName || null,
           createdAt: timestamp
         });
 
@@ -1566,6 +1567,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
         isSent: true,
         deliveryStatus: 'delivered',
         metadata: mediaData ? JSON.stringify(mediaData) : null,
+        senderName: user.displayName || null,
         createdAt: timestamp
       });
 

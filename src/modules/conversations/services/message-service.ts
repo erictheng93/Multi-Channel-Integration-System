@@ -71,6 +71,7 @@ export class MessageService implements MessageServiceInterface {
         platformMessageId: null,
         isSent: false,
         deliveryStatus: 'pending',
+        senderName: request.senderName || null,
         createdAt: timestamp,
         metadata: JSON.stringify({
           ...request.metadata,
@@ -523,6 +524,7 @@ export class MessageService implements MessageServiceInterface {
         platformMessageId,
         isSent,
         deliveryStatus,
+        senderName: request.senderName || null,
         createdAt: timestamp,
         metadata: JSON.stringify({
           ...request.metadata,
@@ -583,6 +585,7 @@ export class MessageService implements MessageServiceInterface {
           platformMessageId: null,
           isSent: false,
           deliveryStatus: 'failed',
+          senderName: request.senderName || null,
           createdAt: timestamp,
           metadata: JSON.stringify({
             ...request.metadata,

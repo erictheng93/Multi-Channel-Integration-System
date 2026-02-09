@@ -3,7 +3,7 @@
 
 import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, count, sql } from 'drizzle-orm';
-import { delayedMessages, messageRecallLogs, conversations, customers, messages } from '@/db/schema';
+import { delayedMessages, messageRecallLogs, conversations, customers, messages, agents } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
   DelayedMessageStorage,
@@ -265,6 +265,14 @@ export class StorageService implements DelayedMessageStorage {
    */
   async saveMessageRecord(messageId: string, conversationId: string, agentId: string, content: string, messageType: string, timestamp: Date): Promise<boolean> {
     try {
+      // 查詢發送者名稱快照
+      let senderName: string | null = null;
+      try {
+        const agent = await this.db.select({ displayName: agents.displayName })
+          .from(agents).where(eq(agents.id, agentId)).get();
+        senderName = agent?.displayName || null;
+      } catch { /* 查詢失敗不影響訊息儲存 */ }
+
       await this.db.insert(messages).values({
         id: messageId,
         conversationId,
@@ -274,6 +282,7 @@ export class StorageService implements DelayedMessageStorage {
         messageType,
         isSent: true,
         deliveryStatus: 'sent',
+        senderName,
         sentAt: timestamp.toISOString(),
         createdAt: timestamp.toISOString()
       });

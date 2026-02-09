@@ -364,6 +364,10 @@
         <time class="message-time">
           {{ formatTime(message.timestamp || message.createdAt) }}
         </time>
+        <!-- Agent attribution for internal QA -->
+        <span v-if="isOutgoing && message.senderName" class="agent-attribution">
+          {{ message.senderName }}
+        </span>
 
         <!-- ⚡ Enhanced Message Status with Optimistic UI -->
         <div
@@ -698,10 +702,10 @@
   })
 
   const senderName = computed(() => {
-    if (props.message.senderType === 'customer') {
-      return '客戶'
+    if (props.message.senderType === 'customer' || props.message.senderType === 'user') {
+      return props.message.senderName || '客戶'
     }
-    return '客服'
+    return props.message.senderName || '客服'
   })
 
   const senderInitials = computed(() => {

@@ -3,17 +3,17 @@
 
 import { Hono } from 'hono';
 import { eq, and, isNull } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
-import type { Bindings, JWTPayload } from '../../../types';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations, customers, agents, fileAttachments } from '@shared/database/schema';
-import { jwtAuth } from '../../../middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
   errorResponse,
   badRequestResponse,
   notFoundResponse,
   forbiddenResponse
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -370,6 +370,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
       metadata: metadata ? JSON.stringify(metadata) : null,
       isSent: true,
       deliveryStatus: 'sent',
+      senderName: userPayload.displayName || null,
       sentAt: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };

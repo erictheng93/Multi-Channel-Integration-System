@@ -247,6 +247,7 @@ export const messages = sqliteTable('messages', {
   sessionId: text('session_id'),
   sessionSequence: integer('session_sequence').default(1),
   metadata: text('metadata'),
+  senderName: text('sender_name'), // 發送者名稱快照（持久化保存，不受帳號刪除或更名影響）
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
