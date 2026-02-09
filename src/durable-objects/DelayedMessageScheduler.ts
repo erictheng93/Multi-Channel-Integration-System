@@ -1256,11 +1256,19 @@ export class DelayedMessageScheduler implements DurableObject {
   private async storeMessageInDatabase(message: PendingMessage): Promise<void> {
     try {
       const { drizzle } = await import('drizzle-orm/d1');
-      const { messages, conversations } = await import('../db/schema');
+      const { messages, conversations, agents } = await import('../db/schema');
       const { eq } = await import('drizzle-orm');
 
       const db = drizzle(this.env.DB);
       const now = new Date().toISOString();
+
+      // 查詢發送者名稱快照
+      let senderName: string | null = null;
+      try {
+        const agent = await db.select({ displayName: agents.displayName })
+          .from(agents).where(eq(agents.id, message.agentId)).get();
+        senderName = agent?.displayName || null;
+      } catch { /* 查詢失敗不影響訊息發送 */ }
 
       // 🔧 使用事務確保原子性操作
       await db.batch([
@@ -1281,6 +1289,7 @@ export class DelayedMessageScheduler implements DurableObject {
             originalScheduledAt: message.scheduledAt,
             retryCount: message.retryCount || 0
           }),
+          senderName: senderName,
           createdAt: now
         }),
 

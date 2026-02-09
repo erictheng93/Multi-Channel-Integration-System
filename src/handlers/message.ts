@@ -49,10 +49,11 @@ export const messageHandler = {
                 agentSenderId: schema.messages.agentSenderId,
                 content: schema.messages.content,
                 messageType: schema.messages.messageType,
+                senderName: schema.messages.senderName, // 持久化的發送者名稱快照
                 createdAt: schema.messages.createdAt,
-                // Customer info
+                // Customer info (fallback for old messages without senderName)
                 customerName: schema.customers.displayName,
-                // Agent info
+                // Agent info (fallback for old messages without senderName)
                 agentName: schema.agents.displayName,
             })
             .from(schema.messages)
@@ -136,6 +137,10 @@ export const messageHandler = {
                 mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
                 platform: 'line' as const, // 需要從 conversation->customer 獲取
                 createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
+                // 🆕 發送者名稱：優先使用持久化快照，回退到 JOIN 查詢（相容舊訊息）
+                senderName: row.senderName
+                    || (row.senderType === 'customer' ? row.customerName : row.agentName)
+                    || undefined,
                 // 🆕 加入 file_attachments 以支援 Flex Card 顯示
                 file_attachments: attachmentsMap.get(row.id) || undefined
             }));
@@ -240,6 +245,7 @@ export const messageHandler = {
                         isSent: false,
                         deliveryStatus: 'pending',
                         metadata: JSON.stringify({ attachmentIds }),
+                        senderName: agent.displayName || null,
                         createdAt: now
                     }),
                     db.update(schema.fileAttachments)
@@ -259,6 +265,7 @@ export const messageHandler = {
                     isSent: false,
                     deliveryStatus: 'pending',
                     metadata: null,
+                    senderName: agent.displayName || null,
                     createdAt: now
                 });
             }

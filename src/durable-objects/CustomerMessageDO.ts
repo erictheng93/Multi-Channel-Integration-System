@@ -236,12 +236,14 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         // JWT format: header.payload.signature
         // Payload contains: { userId, displayName, email, role, ... }
         let agentId: string;
+        let agentDisplayName: string | null = null;
         try {
           const parts = sessionId.split('.');
           if (parts.length === 3) {
             // Decode the payload (base64url)
             const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
             agentId = payload.userId || sessionId;
+            agentDisplayName = payload.displayName || null;
           } else {
             // Not a JWT, use as-is (for backward compatibility with direct user ID)
             agentId = sessionId;
@@ -305,6 +307,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           sessionId: null as string | null,
           sessionSequence: 1,
           metadata: metadata,
+          senderName: agentDisplayName, // 持久化發送者名稱快照
           createdAt: createdAt
         };
 

@@ -3,15 +3,15 @@
 
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
-import { createDbClient } from '../../../db/drizzle-factory';
-import type { Bindings, JWTPayload } from '../../../types';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@shared/database/schema';
-import { jwtAuth } from '../../../middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
   errorResponse,
   badRequestResponse
-} from '../../../utils/api-response';
+} from '@/utils/api-response';
 
 const bulkRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -99,6 +99,7 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
           metadata: msgData.metadata ? JSON.stringify(msgData.metadata) : null,
           isSent: true,
           deliveryStatus: 'sent',
+          senderName: userPayload.displayName || null,
           sentAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
         };

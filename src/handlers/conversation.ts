@@ -206,6 +206,7 @@ conversations.post('/:id/messages', async (c) => {
       agentSenderId: agent!.id, // Use correct schema field name
       content,
       messageType,
+      senderName: agent!.displayName || null,
     });
 
     // 如果有附件，更新附件的 messageId

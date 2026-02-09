@@ -76,6 +76,7 @@ export interface MessageSendRequest {
   conversationId: string;
   content: string;
   senderId: string;
+  senderName?: string; // 發送者名稱快照（持久化保存）
   messageType?: 'text' | 'image' | 'file' | 'quick_reply';
   metadata?: Record<string, any>;
   replyToId?: string;

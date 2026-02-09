@@ -547,6 +547,7 @@ app.post('/bulk-create', jwtAuth, async (c) => {
           metadata: msgData.metadata ? JSON.stringify(msgData.metadata) : null,
           isSent: true,
           deliveryStatus: 'sent',
+          senderName: userPayload.displayName || null,
           sentAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
         };
@@ -850,8 +851,9 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
         sessionId: messages.sessionId,
         sessionSequence: messages.sessionSequence,
         metadata: messages.metadata,
+        storedSenderName: messages.senderName, // 持久化的發送者名稱快照
         createdAt: messages.createdAt,
-        // 發送者資訊
+        // 發送者資訊 (fallback for old messages)
         customerName: customers.displayName,
         customerPlatform: customers.platform,
         agentName: agents.displayName,
@@ -870,6 +872,10 @@ app.get('/conversation/:conversationId', jwtAuth, async (c) => {
       id: msg.id,
       conversationId: msg.conversationId,
       senderType: msg.senderType,
+      // 發送者名稱：優先使用持久化快照，回退到 JOIN 查詢（相容舊訊息）
+      senderName: msg.storedSenderName
+        || (msg.senderType === 'agent' ? msg.agentName : msg.customerName)
+        || null,
       senderInfo: msg.senderType === 'agent' ? {
         id: msg.agentSenderId,
         name: msg.agentName,
@@ -1299,6 +1305,7 @@ app.post('/:id/forward', jwtAuth, async (c) => {
           metadata: JSON.stringify(forwardMetadata),
           isSent: true,
           deliveryStatus: 'sent',
+          senderName: userPayload.displayName || null,
           sentAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
         };
@@ -1930,6 +1937,7 @@ app.post('/', jwtAuth, async (c) => {
       metadata: metadata ? JSON.stringify(metadata) : null,
       isSent: true,
       deliveryStatus: 'sent',
+      senderName: userPayload.displayName || null,
       sentAt: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };

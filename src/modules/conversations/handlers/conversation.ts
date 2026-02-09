@@ -191,6 +191,7 @@ export const conversationHandler = {
         agentSenderId: typeof user.id === 'string' ? user.id : user.id.toString(),
         customerSenderId: null as number | null,
         metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : null,
+        senderName: user.displayName || null,
         createdAt: new Date().toISOString()
       };
 
