@@ -58,6 +58,48 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* ─── Apple-inspired: Links in outgoing bubbles ─── */
+.message-outgoing .message-content a,
+.message-outgoing .message-content .message-link {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.6);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.message-outgoing .message-content a:hover,
+.message-outgoing .message-content .message-link:hover {
+  color: #ffffff;
+  text-decoration-color: rgba(255, 255, 255, 1);
+}
+
+.message-outgoing .message-content a:visited,
+.message-outgoing .message-content .message-link:visited {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ─── Apple-inspired: Links in incoming bubbles ─── */
+.message-incoming .message-content a,
+.message-incoming .message-content .message-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: rgba(37, 99, 235, 0.4);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.message-incoming .message-content a:hover,
+.message-incoming .message-content .message-link:hover {
+  color: #1d4ed8;
+  text-decoration-color: rgba(29, 78, 216, 0.8);
+}
+
+.message-incoming .message-content a:visited,
+.message-incoming .message-content .message-link:visited {
+  color: #6d28d9;
+}
+
 .message-incoming .message-time {
   color: var(--gray-500);
 }
@@ -154,7 +196,7 @@
 
 .agent-attribution {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.8);
   margin-left: 4px;
   font-style: italic;
 }

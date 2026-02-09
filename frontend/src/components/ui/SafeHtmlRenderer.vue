@@ -254,22 +254,23 @@ onMounted(renderSafeHtml)
 }
 
 /* Clickable link styles - 可点击链接样式 */
+/* Colors are now context-aware via _base.css parent selectors:
+   - .message-incoming a → blue on white (high contrast)
+   - .message-outgoing a → white on blue (high contrast)
+   Fallback defaults below for non-message contexts */
 .safe-html-container :deep(a),
 .safe-html-container :deep(.message-link) {
-  color: #2563eb; /* Blue color like Image #2 */
+  color: inherit;
   text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
   cursor: pointer;
   word-break: break-all; /* Handle long URLs */
+  transition: opacity 0.2s ease;
 }
 
 .safe-html-container :deep(a:hover),
 .safe-html-container :deep(.message-link:hover) {
-  color: #1d4ed8; /* Darker blue on hover */
-  text-decoration: underline;
-}
-
-.safe-html-container :deep(a:visited),
-.safe-html-container :deep(.message-link:visited) {
-  color: #7c3aed; /* Purple for visited links */
+  opacity: 0.85;
 }
 </style>
