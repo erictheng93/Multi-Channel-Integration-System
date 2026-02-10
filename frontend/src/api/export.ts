@@ -73,7 +73,7 @@ export async function exportMessages(filters: ExportFilters = {}): Promise<ApiRe
   const queryString = params.toString()
 
   try {
-    const token = localStorage.getItem('auth_token')
+    const token = localStorage.getItem('token')
     const baseUrl = import.meta.env.DEV ? '/api' : `${(await import('@/config/runtime')).getBackendUrl()}/api`
 
     const response = await fetch(`${baseUrl}/messages/export${queryString ? `?${queryString}` : ''}`, {

@@ -170,7 +170,7 @@ export const activitiesApi = {
       const response = await fetch(`/activities/export${queryString ? `?${queryString}` : ''}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Accept': 'text/csv'
         }
       })

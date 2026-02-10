@@ -7,7 +7,7 @@ export function diagnoseWebSocket() {
   console.log('🔍 ===== WebSocket 诊断开始 =====')
 
   // 1. 检查 localStorage 中的 auth token
-  const token = localStorage.getItem('auth_token')
+  const token = localStorage.getItem('token')
   console.log('1️⃣ Auth Token:', token ? '✅ 存在' : '❌ 缺失')
 
   // 2. 检查全局 WebSocket 连接
