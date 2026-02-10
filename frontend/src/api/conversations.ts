@@ -20,7 +20,7 @@ interface RawConversationData {
   customer_id?: number
   assignedTeamId: number | null
   assignedUserId: string | null
-  status: ConversationStatus | 'open' | 'assigned' // Support legacy status values
+  status: ConversationStatus | 'open' // Support legacy status values
   lastMessageAt: string
   createdAt: string
   updatedAt: string
@@ -82,11 +82,12 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
     'active': CONVERSATION_STATUS.ACTIVE,
     'pending': CONVERSATION_STATUS.PENDING,
     'in-progress': CONVERSATION_STATUS.IN_PROGRESS,
-    'open': CONVERSATION_STATUS.ACTIVE, // Legacy: map old 'open' to 'active'
-    'assigned': CONVERSATION_STATUS.IN_PROGRESS, // Legacy: map old 'assigned' to 'in-progress'
+    'assigned': CONVERSATION_STATUS.ASSIGNED,
     'waiting': CONVERSATION_STATUS.WAITING,
-    'closed': CONVERSATION_STATUS.CLOSED,
-    'resolved': CONVERSATION_STATUS.RESOLVED
+    // Legacy mappings (backward compat)
+    'open': CONVERSATION_STATUS.ACTIVE,
+    'closed': CONVERSATION_STATUS.ACTIVE,
+    'resolved': CONVERSATION_STATUS.ACTIVE
   }
 
   const customerId = rawData.customerId || rawData.customer_id
@@ -162,7 +163,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
 interface ConversationListParams {
   page?: number;
   pageSize?: number;
-  status?: 'open' | 'assigned' | 'closed';
+  status?: 'active' | 'assigned' | 'pending';
   platform?: Platform;
   // Note: assignedTo removed - use teamId for team-based filtering
   teamId?: number;
@@ -178,9 +179,9 @@ interface SendMessageRequest {
 
 interface ConversationStats {
   total: number;
-  open: number;
+  active: number;
   assigned: number;
-  closed: number;
+  pending: number;
   unreadCount: number;
 }
 
@@ -415,21 +416,7 @@ export const conversationApi = {
     return { success: false, error: response.error || '轉移對話失敗' };
   },
 
-  // 關閉對話
-  closeConversation: async (conversationId: string, reason?: string): Promise<ApiResponse<void>> => {
-    if (!conversationId?.trim()) {
-      return { success: false, error: '對話 ID 不能為空' };
-    }
-    return apiClient.put(`/conversations/${conversationId}/close`, reason ? { reason } : undefined);
-  },
-
-  // 重新開啟對話
-  reopenConversation: async (conversationId: string): Promise<ApiResponse<void>> => {
-    if (!conversationId?.trim()) {
-      return { success: false, error: '對話 ID 不能為空' };
-    }
-    return apiClient.put(`/conversations/${conversationId}/reopen`);
-  },
+  // Note: closeConversation and reopenConversation removed - closed status no longer exists
 
   // 標記對話為已讀
   markAsRead: async (conversationId: string): Promise<ApiResponse<void>> => {
@@ -473,10 +460,6 @@ export const conversationApi = {
   assign: async (_conversationId: string, _agentId: string): Promise<ApiResponse<Conversation>> => {
     console.error('❌ [conversationApi.assign] Individual assignment is deprecated. Use assignConversation with teamId instead.')
     return { success: false, error: '個人指派功能已停用，請使用團隊指派' }
-  },
-
-  close: async (conversationId: string): Promise<ApiResponse<void>> => {
-    return conversationApi.closeConversation(conversationId);
   },
 
   // ==================== 批量操作 ====================

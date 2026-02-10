@@ -27,14 +27,14 @@
           <option value="">
             所有狀態
           </option>
-          <option value="open">
-            待處理
+          <option value="active">
+            進行中
           </option>
           <option value="assigned">
             已指派
           </option>
-          <option value="closed">
-            已關閉
+          <option value="pending">
+            待處理
           </option>
         </select>
       </div>

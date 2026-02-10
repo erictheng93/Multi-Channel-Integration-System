@@ -26,6 +26,14 @@
 
         <button
           class="btn btn-secondary"
+          @click="onExport"
+        >
+          <DownloadIcon />
+          匯出記錄
+        </button>
+
+        <button
+          class="btn btn-secondary"
           :disabled="isRefreshing"
           @click="onRefresh"
         >
@@ -39,7 +47,7 @@
 
 <script setup lang="ts">
 import type { SyncStatus } from '@/composables/conversation/useConversationSync'
-import { RefreshIcon } from '@/components/icons'
+import { RefreshIcon, DownloadIcon } from '@/components/icons'
 import CacheStatusIndicator from './CacheStatusIndicator.vue'
 import SyncStatusIndicator from './SyncStatusIndicator.vue'
 
@@ -58,10 +66,15 @@ defineProps<ConversationHeaderProps>()
 
 const emit = defineEmits<{
   refresh: []
+  export: []
 }>()
 
 function onRefresh() {
   emit('refresh')
+}
+
+function onExport() {
+  emit('export')
 }
 </script>
 

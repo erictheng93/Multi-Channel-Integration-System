@@ -4,12 +4,12 @@ import { useConversationsStore } from '@/stores/conversations'
 import { useAsyncData } from './useAsyncData'
 import { useError } from './useError'
 import type { Conversation } from '@/types'
-import { CONVERSATION_STATUS, isOpenConversation, isClosedConversation } from '@/constants/conversation-status'
+import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
 
 export function useConversations() {
   const conversationsStore = useConversationsStore()
   const { error, handleError, clearError } = useError()
-  
+
   // 狀態
   const selectedConversationId = ref<string | null>(null)
 
@@ -42,11 +42,7 @@ export function useConversations() {
     conversations.value?.filter((c: Conversation) => c.status === CONVERSATION_STATUS.IN_PROGRESS) || []
   )
 
-  const closedConversations = computed(() =>
-    conversations.value?.filter((c: Conversation) => isClosedConversation(c.status)) || []
-  )
-
-  const unreadCount = computed(() => 
+  const unreadCount = computed(() =>
     conversations.value?.reduce((sum: number, c: Conversation) => sum + (c.unreadCount || 0), 0) || 0
   )
 
@@ -66,16 +62,6 @@ export function useConversations() {
         throw new Error('Team ID is required')
       }
       await conversationsStore.assignConversationToTeam(conversationId, teamId, teamName)
-      await refreshConversations()
-    } catch (err) {
-      handleError(err)
-    }
-  }
-
-  const closeConversation = async (conversationId: string) => {
-    clearError()
-    try {
-      await conversationsStore.closeConversation(conversationId)
       await refreshConversations()
     } catch (err) {
       handleError(err)
@@ -117,7 +103,6 @@ export function useConversations() {
     selectedConversation,
     openConversations,
     assignedConversations,
-    closedConversations,
     unreadCount,
     loading,
     error,
@@ -127,7 +112,6 @@ export function useConversations() {
     refreshConversations,
     selectConversation,
     assignConversationToTeam,
-    closeConversation,
     getConversationById,
     filterConversations,
     clearError

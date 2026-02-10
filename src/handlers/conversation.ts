@@ -312,7 +312,7 @@ conversations.patch('/:id/status', async (c) => {
     const agent = c.get('agent');
     const { status } = await c.req.json();
 
-    if (![CONVERSATION_STATUS.PENDING, CONVERSATION_STATUS.IN_PROGRESS, CONVERSATION_STATUS.CLOSED].includes(status)) {
+    if (![CONVERSATION_STATUS.ACTIVE, CONVERSATION_STATUS.PENDING, CONVERSATION_STATUS.IN_PROGRESS, CONVERSATION_STATUS.ASSIGNED, CONVERSATION_STATUS.WAITING].includes(status)) {
       return c.json({
         success: false,
         error: 'Invalid status'
@@ -1013,22 +1013,14 @@ const handlerMethods = {
         }
 
         case 'close':
-          await drizzleDb.update(conversationTable)
-            .set({
-              status: CONVERSATION_STATUS.CLOSED,
-              updatedAt: sql`datetime('now')`
-            })
-            .where(inArray(conversationTable.id, conversationIdsArray));
-          break;
+          return validationErrorResponse(c, [
+            { field: 'operation', message: 'Close operation is no longer supported' }
+          ]);
 
         case 'reopen':
-          await drizzleDb.update(conversationTable)
-            .set({
-              status: CONVERSATION_STATUS.ACTIVE,
-              updatedAt: sql`datetime('now')`
-            })
-            .where(inArray(conversationTable.id, conversationIdsArray));
-          break;
+          return validationErrorResponse(c, [
+            { field: 'operation', message: 'Reopen operation is no longer supported' }
+          ]);
 
         case 'set_priority':
           if (!data?.priority) {

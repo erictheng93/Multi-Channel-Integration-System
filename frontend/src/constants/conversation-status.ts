@@ -4,6 +4,8 @@
  * Frontend mirror of backend conversation status constants.
  * Must be kept in sync with src/constants/conversation-status.ts
  *
+ * Valid statuses: active, pending, in-progress, assigned, waiting
+ *
  * @module constants/conversation-status
  */
 
@@ -16,8 +18,7 @@ export const CONVERSATION_STATUS = {
   ACTIVE: 'active',
   PENDING: 'pending',
   IN_PROGRESS: 'in-progress',
-  CLOSED: 'closed',
-  RESOLVED: 'resolved',
+  ASSIGNED: 'assigned',
   WAITING: 'waiting'
 } as const;
 
@@ -38,8 +39,7 @@ export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.ACTIVE]: '進行中',
   [CONVERSATION_STATUS.PENDING]: '待處理',
   [CONVERSATION_STATUS.IN_PROGRESS]: '處理中',
-  [CONVERSATION_STATUS.CLOSED]: '已關閉',
-  [CONVERSATION_STATUS.RESOLVED]: '已解決',
+  [CONVERSATION_STATUS.ASSIGNED]: '已指派',
   [CONVERSATION_STATUS.WAITING]: '等待中'
 };
 
@@ -50,8 +50,7 @@ export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.ACTIVE]: 'text-green-600 bg-green-50 border-green-200',
   [CONVERSATION_STATUS.PENDING]: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   [CONVERSATION_STATUS.IN_PROGRESS]: 'text-blue-600 bg-blue-50 border-blue-200',
-  [CONVERSATION_STATUS.CLOSED]: 'text-gray-600 bg-gray-50 border-gray-200',
-  [CONVERSATION_STATUS.RESOLVED]: 'text-purple-600 bg-purple-50 border-purple-200',
+  [CONVERSATION_STATUS.ASSIGNED]: 'text-cyan-600 bg-cyan-50 border-cyan-200',
   [CONVERSATION_STATUS.WAITING]: 'text-orange-600 bg-orange-50 border-orange-200'
 };
 
@@ -62,27 +61,20 @@ export const CONVERSATION_STATUS_ICONS: Record<ConversationStatus, string> = {
   [CONVERSATION_STATUS.ACTIVE]: '🟢',
   [CONVERSATION_STATUS.PENDING]: '🟡',
   [CONVERSATION_STATUS.IN_PROGRESS]: '🔵',
-  [CONVERSATION_STATUS.CLOSED]: '⚫',
-  [CONVERSATION_STATUS.RESOLVED]: '✅',
+  [CONVERSATION_STATUS.ASSIGNED]: '👤',
   [CONVERSATION_STATUS.WAITING]: '⏸️'
 };
 
 /**
  * Open statuses (conversation can receive messages)
+ * All statuses are open since closed/resolved have been removed
  */
 export const OPEN_CONVERSATION_STATUSES = [
   CONVERSATION_STATUS.ACTIVE,
   CONVERSATION_STATUS.PENDING,
   CONVERSATION_STATUS.IN_PROGRESS,
+  CONVERSATION_STATUS.ASSIGNED,
   CONVERSATION_STATUS.WAITING
-] as const;
-
-/**
- * Closed statuses (conversation archived)
- */
-export const CLOSED_CONVERSATION_STATUSES = [
-  CONVERSATION_STATUS.CLOSED,
-  CONVERSATION_STATUS.RESOLVED
 ] as const;
 
 /**
@@ -94,16 +86,10 @@ export function isValidConversationStatus(status: string): status is Conversatio
 
 /**
  * Check if a conversation is open (accepts both frontend and shared types)
+ * All conversations are open since closed/resolved have been removed
  */
 export function isOpenConversation(status: ConversationStatus | SharedConversationStatus): boolean {
   return OPEN_CONVERSATION_STATUSES.includes(status as typeof OPEN_CONVERSATION_STATUSES[number]);
-}
-
-/**
- * Check if a conversation is closed (accepts both frontend and shared types)
- */
-export function isClosedConversation(status: ConversationStatus | SharedConversationStatus): boolean {
-  return CLOSED_CONVERSATION_STATUSES.includes(status as typeof CLOSED_CONVERSATION_STATUSES[number]);
 }
 
 /**

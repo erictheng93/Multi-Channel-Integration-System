@@ -54,7 +54,7 @@ export function convertConversation(drizzleConversation: DrizzleConversation): D
     id: drizzleConversation.id,
     customerId: drizzleConversation.customerId,
     assignedTeamId: drizzleConversation.assignedTeamId ?? 0,
-    status: drizzleConversation.status as 'active' | 'closed' | 'pending',
+    status: (drizzleConversation.status || 'active') as DbConversation['status'],
     lastMessageAt: drizzleConversation.lastMessageAt ?? '',
     createdAt: drizzleConversation.createdAt || new Date().toISOString(),
     updatedAt: drizzleConversation.updatedAt || new Date().toISOString()

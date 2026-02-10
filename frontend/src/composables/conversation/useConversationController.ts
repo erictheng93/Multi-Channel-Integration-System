@@ -191,8 +191,6 @@ export function useConversationController(
     recallMessage: actions.recallMessage,
 
     // ===== 對話操作 =====
-    closeConversation: actions.closeConversation,
-    reopenConversation: actions.reopenConversation,
     refreshMessages: actions.refreshMessages,
     loadMoreMessages: actions.loadMoreMessages,
 

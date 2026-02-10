@@ -401,7 +401,7 @@ export class PredictiveLoader {
   private getTimeBasedFilters(hour: number, _day: number): ConversationFilters | null {
     // 工作時間偏好
     if (hour >= 9 && hour <= 17) {
-      return { status: 'open' } // 工作時間更關注待處理的對話
+      return { status: 'active' } // 工作時間更關注待處理的對話
     }
     
     // 晚上時間偏好
@@ -439,10 +439,10 @@ export class PredictiveLoader {
       const lastTransition = statusTransitions[statusTransitions.length - 1]
       
       // 預測下一個狀態
-      let nextStatus: 'open' | 'assigned' | 'closed' = 'open'
-      if (lastTransition?.to === 'open') {nextStatus = 'assigned'}
-      else if (lastTransition?.to === 'assigned') {nextStatus = 'closed'}
-      else if (lastTransition?.to === 'closed') {nextStatus = 'open'}
+      let nextStatus: 'active' | 'assigned' | 'pending' = 'active'
+      if (lastTransition?.to === 'active') {nextStatus = 'assigned'}
+      else if (lastTransition?.to === 'assigned') {nextStatus = 'pending'}
+      else if (lastTransition?.to === 'pending') {nextStatus = 'active'}
       
       return {
         confidence: 0.65,
@@ -547,13 +547,13 @@ export class PredictiveLoader {
           }
           
           // Note: Individual assignment (assignedTo) removed - use teamId instead
-          const apiParams: { page: number; pageSize: number; status?: 'open' | 'assigned' | 'closed'; platform?: Platform; teamId?: number } = {
+          const apiParams: { page: number; pageSize: number; status?: 'active' | 'assigned' | 'pending'; platform?: Platform; teamId?: number } = {
             page: 1,
             pageSize: 20
           }
           
           if (cleanFilters.status) {
-            apiParams.status = cleanFilters.status as 'open' | 'assigned' | 'closed'
+            apiParams.status = cleanFilters.status as 'active' | 'assigned' | 'pending'
           }
           
           if (cleanFilters.platform) {

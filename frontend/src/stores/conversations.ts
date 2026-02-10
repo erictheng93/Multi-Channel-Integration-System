@@ -85,9 +85,9 @@ export const useConversationsStore = defineStore('conversations', () => {
   // Stats
   const stats = ref({
     total: 0,
-    open: 0,
+    active: 0,
     assigned: 0,
-    closed: 0,
+    pending: 0,
     unreadCount: 0
   })
 
@@ -330,16 +330,14 @@ export const useConversationsStore = defineStore('conversations', () => {
   const updateStatsFromConversations = () => {
     stats.value = {
       total: conversations.value.length,
-      open: conversations.value.filter(c =>
-        c.status === CONVERSATION_STATUS.PENDING ||
+      active: conversations.value.filter(c =>
         c.status === CONVERSATION_STATUS.ACTIVE
       ).length,
       assigned: conversations.value.filter(c =>
         c.status === CONVERSATION_STATUS.IN_PROGRESS
       ).length,
-      closed: conversations.value.filter(c =>
-        c.status === CONVERSATION_STATUS.CLOSED ||
-        c.status === CONVERSATION_STATUS.RESOLVED
+      pending: conversations.value.filter(c =>
+        c.status === CONVERSATION_STATUS.PENDING
       ).length,
       unreadCount: conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
     }
@@ -1270,129 +1268,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
-  const closeConversation = async (conversationId: string, reason?: string) => {
-    if (!conversationId) {return false}
-
-    // Optimistic update
-    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
-    let originalConversation: Conversation | null = null
-
-    if (conversationIndex !== -1) {
-      const current = conversations.value[conversationIndex]
-      if (current) {
-        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
-        const updatedConversation: Conversation = {
-          ...current,
-          id: current.id,
-          userId: current.userId,
-          customer: current.customer,
-          status: 'closed' as const
-        }
-        conversations.value[conversationIndex] = updatedConversation
-      }
-    }
-
-    if (currentConversation.value && currentConversation.value.id === conversationId) {
-      currentConversation.value = {
-        ...currentConversation.value,
-        status: 'closed' as const
-      }
-    }
-
-    error.value = null
-
-    try {
-      const response = await conversationApi.closeConversation(conversationId, reason)
-      if (response.success) {
-        return true
-      } else {
-        // Revert optimistic update
-        if (originalConversation && conversationIndex !== -1) {
-          conversations.value[conversationIndex] = originalConversation
-        }
-        handleError(response.error, '對話結束失敗')
-        return false
-      }
-    } catch (err) {
-      // Revert optimistic update
-      if (originalConversation && conversationIndex !== -1) {
-        conversations.value[conversationIndex] = originalConversation
-      }
-      handleError(err, '網路錯誤，對話結束失敗')
-      return false
-    }
-  }
-
-  // 🆕 重新打開對話 (撤銷關閉操作)
-  const reopenConversation = async (conversationId: string) => {
-    if (!conversationId) {return false}
-
-    console.log(`📝 [ConversationsStore] Reopening conversation ${conversationId}`)
-
-    // Optimistic update - 將狀態改回 'open'
-    const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
-    let originalConversation: Conversation | null = null
-
-    if (conversationIndex !== -1) {
-      const current = conversations.value[conversationIndex]
-      if (current) {
-        originalConversation = JSON.parse(JSON.stringify(current)) as Conversation
-        const updatedConversation: Conversation = {
-          ...current,
-          id: current.id,
-          userId: current.userId,
-          customer: current.customer,
-          status: CONVERSATION_STATUS.ACTIVE
-        }
-        conversations.value[conversationIndex] = updatedConversation
-        console.log(`⚡ [ConversationsStore] Optimistic update applied to list (reopened)`)
-      }
-    }
-
-    // 同時更新 currentConversation
-    if (currentConversation.value && currentConversation.value.id === conversationId) {
-      currentConversation.value = {
-        ...currentConversation.value,
-        status: CONVERSATION_STATUS.ACTIVE
-      }
-      console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation (reopened)`)
-    }
-
-    error.value = null
-
-    try {
-      const response = await conversationApi.reopenConversation(conversationId)
-      if (response.success) {
-        console.log(`✅ [ConversationsStore] Reopen API call succeeded`)
-
-        // 刷新對話以獲取最新狀態
-        await fetchConversation(conversationId)
-        return true
-      } else {
-        console.error(`❌ [ConversationsStore] Reopen API call failed:`, response.error)
-        // Revert optimistic update
-        if (originalConversation && conversationIndex !== -1) {
-          conversations.value[conversationIndex] = originalConversation
-        }
-        if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
-          currentConversation.value = originalConversation
-        }
-        handleError(response.error, '重新打開對話失敗')
-        return false
-      }
-    } catch (err) {
-      console.error(`❌ [ConversationsStore] Reopen failed with exception:`, err)
-      // Revert optimistic update
-      if (originalConversation && conversationIndex !== -1) {
-        conversations.value[conversationIndex] = originalConversation
-      }
-      if (currentConversation.value && currentConversation.value.id === conversationId && originalConversation) {
-        currentConversation.value = originalConversation
-      }
-      handleError(err, '網路錯誤，重新打開對話失敗')
-      return false
-    }
-  }
+  // Note: closeConversation and reopenConversation have been removed
+  // Closed/resolved statuses are no longer part of the conversation lifecycle
 
   const markAsRead = async (conversationId: string) => {
     if (!conversationId) {return false}
@@ -1463,9 +1340,9 @@ export const useConversationsStore = defineStore('conversations', () => {
         // Fallback to calculating from local conversations
         stats.value = {
           total: conversations.value.length,
-          open: conversations.value.filter(c => c.status === CONVERSATION_STATUS.PENDING || c.status === CONVERSATION_STATUS.ACTIVE).length,
+          active: conversations.value.filter(c => c.status === CONVERSATION_STATUS.ACTIVE).length,
           assigned: conversations.value.filter(c => c.status === CONVERSATION_STATUS.IN_PROGRESS).length,
-          closed: conversations.value.filter(c => c.status === CONVERSATION_STATUS.CLOSED || c.status === CONVERSATION_STATUS.RESOLVED).length,
+          pending: conversations.value.filter(c => c.status === CONVERSATION_STATUS.PENDING).length,
           unreadCount: conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
         }
       }
@@ -1473,9 +1350,9 @@ export const useConversationsStore = defineStore('conversations', () => {
       // Fallback to calculating from local conversations
       stats.value = {
         total: conversations.value.length,
-        open: conversations.value.filter(c => c.status === CONVERSATION_STATUS.PENDING || c.status === CONVERSATION_STATUS.ACTIVE).length,
+        active: conversations.value.filter(c => c.status === CONVERSATION_STATUS.ACTIVE).length,
         assigned: conversations.value.filter(c => c.status === CONVERSATION_STATUS.IN_PROGRESS).length,
-        closed: conversations.value.filter(c => c.status === CONVERSATION_STATUS.CLOSED || c.status === CONVERSATION_STATUS.RESOLVED).length,
+        pending: conversations.value.filter(c => c.status === CONVERSATION_STATUS.PENDING).length,
         unreadCount: conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
       }
       handleError(err, '統計資料載入失敗')
@@ -1968,16 +1845,14 @@ export const useConversationsStore = defineStore('conversations', () => {
         // 更新统计信息
         stats.value = {
           total: conversationList.length,
-          open: conversationList.filter(c =>
-            c.status === CONVERSATION_STATUS.PENDING ||
+          active: conversationList.filter(c =>
             c.status === CONVERSATION_STATUS.ACTIVE
           ).length,
           assigned: conversationList.filter(c =>
             c.status === CONVERSATION_STATUS.IN_PROGRESS
           ).length,
-          closed: conversationList.filter(c =>
-            c.status === CONVERSATION_STATUS.CLOSED ||
-            c.status === CONVERSATION_STATUS.RESOLVED
+          pending: conversationList.filter(c =>
+            c.status === CONVERSATION_STATUS.PENDING
           ).length,
           unreadCount: conversationList.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
         }
@@ -2203,8 +2078,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     assignConversationToTeam,
     transferConversationToTeam,
     unassignConversation,
-    closeConversation,
-    reopenConversation,
+    // closeConversation and reopenConversation removed - closed status no longer exists
     markAsRead,
     loadMore,
     loadMoreConversations,

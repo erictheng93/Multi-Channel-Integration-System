@@ -24,7 +24,7 @@ export interface Conversation {
   userId: string;
   user?: User; // 關聯的使用者資料
   assignedTeamId?: number; // 團隊指派
-  status: 'open' | 'assigned' | 'closed';
+  status: 'active' | 'pending' | 'in-progress' | 'assigned' | 'waiting';
   lastMessageAt: number;
   unreadCount: number;
   createdAt: number;

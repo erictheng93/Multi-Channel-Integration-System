@@ -9,25 +9,17 @@
     >
       <!-- 📎 Drag-and-Drop Overlay Component -->
       <DragDropOverlay
-        :is-visible="dragDrop.isDragging.value && conversation?.status !== CONVERSATION_STATUS.CLOSED"
+        :is-visible="dragDrop.isDragging.value"
       />
 
       <!-- Simplified Header Component -->
       <ConversationHeader
         :conversation="conversation"
         :loading="loading"
-        :closing="conversationActions.isClosing.value"
         @back="goBack"
-        @close="conversationActions.close"
         @refresh="handleRefreshMessages"
         @search="searchPanel.toggle"
-      />
-
-      <!-- 🆕 Closed Conversation Banner Component -->
-      <ClosedConversationBanner
-        :is-visible="conversation?.status === CONVERSATION_STATUS.CLOSED && !isCurrentConversationTransferred"
-        :loading="conversationActions.isClosing.value"
-        @reopen="conversationActions.reopen"
+        @export="showExportDialog = true"
       />
 
       <!-- 🆕 Transferred Conversation Banner Component -->
@@ -131,7 +123,7 @@
       <!-- Enhanced Message Input with WebSocket features -->
       <!-- 🆕 UX: Hide input when conversation is transferred to non-member team -->
       <div
-        v-if="conversation?.status !== CONVERSATION_STATUS.CLOSED && !isCurrentConversationTransferred"
+        v-if="!isCurrentConversationTransferred"
         class="input-section"
       >
         <MessageInput
@@ -166,16 +158,8 @@
         />
       </div>
 
-      <!-- Closed State - Only when conversation is closed (not transferred) -->
-      <div
-        v-else-if="conversation?.status === CONVERSATION_STATUS.CLOSED && !isCurrentConversationTransferred"
-        class="closed-state"
-      >
-        <div class="closed-message">
-          <XCircleIcon />
-          <span>此對話已結束</span>
-        </div>
-      </div>
+      <!-- Transferred State - Show when conversation is transferred -->
+
 
       <!-- 🆕 Transferred State - Input disabled with informative message -->
       <div
@@ -211,6 +195,15 @@
     <Suspense>
       <KeyboardShortcuts ref="keyboardShortcutsRef" />
     </Suspense>
+
+    <!-- 匯出對話記錄對話框 -->
+    <ExportDialog
+      :show="showExportDialog"
+      :conversation-id="conversationId"
+      :conversation-title="conversation?.customer?.name || '對話記錄'"
+      @close="showExportDialog = false"
+      @update:show="showExportDialog = $event"
+    />
   </AppLayout>
 </template>
 
@@ -221,7 +214,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Message } from '@/types'
-import { CONVERSATION_STATUS } from '@/constants/conversation-status'
+
 
 // Component instance types
 interface VirtualMessageListInstance {
@@ -238,7 +231,7 @@ interface MessageInputInstance {
 // 🚀 Refactored Composables
 import { useConversationController } from '@/composables/conversation'
 import { useSearchPanel } from '@/composables/useSearchPanel'
-import { useConversationActions } from '@/composables/useConversationActions'
+
 import { useNewMessageNotification } from '@/composables/useNewMessageNotification'
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useQuickReplies } from '@/composables/useQuickReplies'
@@ -251,12 +244,12 @@ import MessageListSkeleton from '@/components/conversation/MessageListSkeleton.v
 import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue'
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
-import { MessageCircleIcon, XCircleIcon } from '@/components/icons'
+import ExportDialog from '@/components/conversation/ExportDialog.vue'
+import { MessageCircleIcon } from '@/components/icons'
 
 // Extracted sub-components
 import {
   DragDropOverlay,
-  ClosedConversationBanner,
   TransferredConversationBanner,
   NewMessageNotification,
   QuickReplies,
@@ -274,6 +267,9 @@ const router = useRouter()
 const { showSuccess, showError } = useToast()
 const { showConfirm } = useConfirm()
 const conversationId = computed(() => route.params.id as string)
+
+// Export dialog state
+const showExportDialog = ref(false)
 
 // 🆕 Transferred conversation state from store
 // 🔧 FIX: 使用 storeToRefs 保持 ref 的響應性，避免解構後失去追蹤
@@ -341,15 +337,7 @@ const searchPanel = useSearchPanel({
   autoFocus: true,
 })
 
-const conversationActions = useConversationActions(controller, {
-  confirmBeforeClose: true,
-  toastMessages: {
-    closeSuccess: '對話已關閉',
-    closeError: '關閉失敗',
-    reopenSuccess: '對話已重新打開',
-    reopenError: '重新打開失敗',
-  },
-})
+// Note: Close/reopen conversation actions removed - status cleanup
 
 const notification = useNewMessageNotification({
   scrollToBottom,

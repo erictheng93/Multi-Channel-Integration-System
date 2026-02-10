@@ -74,7 +74,7 @@ export interface AppState {
 }
 
 export interface ConversationFilters {
-  status?: 'open' | 'assigned' | 'closed' | '' | undefined;
+  status?: 'active' | 'assigned' | 'pending' | '' | undefined;
   // Note: assignedTo removed - only team-based filtering is supported now
   teamId?: number | undefined; // 團隊篩選
   platform?: Platform | '' | undefined;

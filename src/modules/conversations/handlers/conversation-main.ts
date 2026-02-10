@@ -310,23 +310,13 @@ conversationHandler.post('/bulk', jwtAuth, async (c) => {
         break;
       }
 
-      case 'close':
-        await drizzleDb.update(conversations)
-          .set({
-            status: 'closed',
-            updatedAt: sql`datetime('now')`
-          })
-          .where(inArray(conversations.id, conversationIdsArray));
-        break;
+      // Note: 'close' and 'reopen' bulk operations removed - closed status no longer exists
 
+      case 'close':
       case 'reopen':
-        await drizzleDb.update(conversations)
-          .set({
-            status: 'active',
-            updatedAt: sql`datetime('now')`
-          })
-          .where(inArray(conversations.id, conversationIdsArray));
-        break;
+        return validationErrorResponse(c, [
+          { field: 'operation', message: 'close/reopen operations are no longer supported' }
+        ]);
 
       case 'set_priority':
         if (!data?.priority) {

@@ -441,7 +441,7 @@ export class MessageNormalizationService {
     try {
       // Find active conversation for customer
       const existing = await db
-        .prepare("SELECT id FROM conversations WHERE customer_id = ? AND status != 'closed' ORDER BY created_at DESC LIMIT 1")
+        .prepare("SELECT id FROM conversations WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1")
         .bind(customerId)
         .first<{ id: string }>();
 

@@ -133,7 +133,7 @@ describe('ConversationDetail Integration', () => {
       expect(wrapper.findComponent({ name: 'DragDropOverlay' }).exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'QuickReplies' }).exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'NewMessageNotification' }).exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'ClosedConversationBanner' }).exists()).toBe(true)
+      // ClosedConversationBanner removed - closed status no longer supported
       expect(wrapper.findComponent({ name: 'ConnectionStatusBar' }).exists()).toBe(true)
     })
 
@@ -220,7 +220,7 @@ describe('ConversationDetail Integration', () => {
       // Before: ~320 lines of template code
       // After: ~171 lines with component composition
       expect(wrapper.findComponent({ name: 'DragDropOverlay' }).exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'ClosedConversationBanner' }).exists()).toBe(true)
+      // ClosedConversationBanner removed - closed status no longer supported
       expect(wrapper.findComponent({ name: 'NewMessageNotification' }).exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'QuickReplies' }).exists()).toBe(true)
       expect(wrapper.findComponent({ name: 'ConnectionStatusBar' }).exists()).toBe(true)

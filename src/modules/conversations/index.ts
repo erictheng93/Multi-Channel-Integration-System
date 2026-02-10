@@ -28,9 +28,10 @@ export const CONVERSATION_CONSTANTS = {
   MAX_PAGE_SIZE: 100,
   CONVERSATION_STATUS: {
     ACTIVE: 'active',
-    RESOLVED: 'resolved',
     PENDING: 'pending',
-    CLOSED: 'closed'
+    ASSIGNED: 'assigned',
+    IN_PROGRESS: 'in-progress',
+    WAITING: 'waiting'
   }
 } as const;
 
