@@ -24,7 +24,7 @@ export interface ScrollTarget {
 // ===== Composable =====
 
 export function useConversationActions(
-  conversationId: string,
+  _conversationId: string,
   state: ConversationState,
   websocket: WebSocketIntegration
 ) {
@@ -32,48 +32,6 @@ export function useConversationActions(
   const scrollTarget = ref<ScrollTarget | null>(null)
 
   // ===== Conversation Operations =====
-
-  /**
-   * 關閉對話
-   */
-  async function closeConversation(): Promise<boolean> {
-    try {
-      console.log('🔄 [ConversationActions] Closing conversation:', conversationId)
-      const success = await state.conversationsStore.closeConversation(conversationId)
-
-      if (success) {
-        console.log('✅ [ConversationActions] Conversation closed successfully')
-        return true
-      } else {
-        console.error('❌ [ConversationActions] Failed to close conversation: Server returned failure')
-        return false
-      }
-    } catch (error) {
-      console.error('❌ [ConversationActions] Exception when closing conversation:', error)
-      return false
-    }
-  }
-
-  /**
-   * 重新打開已關閉的對話
-   */
-  async function reopenConversation(): Promise<boolean> {
-    try {
-      console.log('🔄 [ConversationActions] Reopening conversation:', conversationId)
-      const success = await state.conversationsStore.reopenConversation(conversationId)
-
-      if (success) {
-        console.log('✅ [ConversationActions] Conversation reopened successfully')
-        return true
-      } else {
-        console.error('❌ [ConversationActions] Failed to reopen conversation')
-        return false
-      }
-    } catch (error) {
-      console.error('❌ [ConversationActions] Exception when reopening:', error)
-      return false
-    }
-  }
 
   /**
    * 撤回消息
@@ -178,8 +136,6 @@ export function useConversationActions(
 
   return {
     // Conversation Operations
-    closeConversation,
-    reopenConversation,
     recallMessage,
 
     // UI Operations

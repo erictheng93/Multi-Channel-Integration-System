@@ -45,8 +45,7 @@ export function dbConversationToConversation(
     },
     // Team-based assignment
     assignedTeamId: dbConv.assignedTeamId ?? undefined,
-    status: dbConv.status === 'active' ? 'open' :
-            dbConv.status === 'pending' ? 'assigned' : 'closed',
+    status: dbConv.status || 'active',
     lastMessageAt: dbConv.lastMessageAt ?
                    new Date(dbConv.lastMessageAt).getTime() :
                    new Date(dbConv.createdAt).getTime(),

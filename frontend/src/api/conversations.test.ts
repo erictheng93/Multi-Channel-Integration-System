@@ -36,13 +36,13 @@ describe('Conversations API', () => {
     })
 
     it('should get conversations with filters', async () => {
-      const filters = { status: 'open' as const, platform: 'line' as const }
+      const filters = { status: 'active' as const, platform: 'line' as const }
       const mockResponse = { success: true, data: [] }
       mockGet.mockResolvedValue(mockResponse)
-      
+
       const result = await conversationApi.getConversations(filters)
-      
-      expect(mockGet).toHaveBeenCalledWith('/conversations?status=open&platform=line')
+
+      expect(mockGet).toHaveBeenCalledWith('/conversations?status=active&platform=line')
       expect(result).toEqual(mockResponse)
     })
 
@@ -68,16 +68,16 @@ describe('Conversations API', () => {
     it('should get conversation stats', async () => {
       const mockStats = {
         total: 100,
-        open: 30,
+        active: 30,
         assigned: 50,
-        closed: 20,
+        pending: 20,
         unreadCount: 15
       }
       const mockResponse = { success: true, data: mockStats }
       mockGet.mockResolvedValue(mockResponse)
-      
+
       const result = await conversationApi.getStats()
-      
+
       expect(mockGet).toHaveBeenCalledWith('/conversations/stats')
       expect(result).toEqual(mockResponse)
     })
@@ -297,59 +297,7 @@ describe('Conversations API', () => {
       expect(mockPost).not.toHaveBeenCalled()
     })
 
-    it('should close conversation with reason', async () => {
-      const conversationId = 'conv-123'
-      const reason = 'Issue resolved'
-      const mockResponse = { success: true }
-      mockPut.mockResolvedValue(mockResponse)
-      
-      const result = await conversationApi.closeConversation(conversationId, reason)
-      
-      expect(mockPut).toHaveBeenCalledWith(
-        `/conversations/${conversationId}/close`,
-        { reason }
-      )
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should close conversation without reason', async () => {
-      const conversationId = 'conv-123'
-      const mockResponse = { success: true }
-      mockPut.mockResolvedValue(mockResponse)
-      
-      const result = await conversationApi.closeConversation(conversationId)
-      
-      expect(mockPut).toHaveBeenCalledWith(
-        `/conversations/${conversationId}/close`,
-        undefined
-      )
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should use alias close method', async () => {
-      const conversationId = 'conv-123'
-      const mockResponse = { success: true }
-      mockPut.mockResolvedValue(mockResponse)
-      
-      const result = await conversationApi.close(conversationId)
-      
-      expect(mockPut).toHaveBeenCalledWith(
-        `/conversations/${conversationId}/close`,
-        undefined
-      )
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should reopen conversation', async () => {
-      const conversationId = 'conv-123'
-      const mockResponse = { success: true }
-      mockPut.mockResolvedValue(mockResponse)
-      
-      const result = await conversationApi.reopenConversation(conversationId)
-      
-      expect(mockPut).toHaveBeenCalledWith(`/conversations/${conversationId}/reopen`)
-      expect(result).toEqual(mockResponse)
-    })
+    // Note: closeConversation, reopenConversation, close alias tests removed - status cleanup
 
     it('should mark conversation as read', async () => {
       const conversationId = 'conv-123'
@@ -419,20 +367,20 @@ describe('Conversations API', () => {
 
     it('should search with filters', async () => {
       const query = 'urgent'
-      const filters = { status: 'open' as const, platform: 'line' as const }
-      const mockResponse = { 
-        success: true, 
-        data: { 
+      const filters = { status: 'active' as const, platform: 'line' as const }
+      const mockResponse = {
+        success: true,
+        data: {
           items: [],
-          total: 0 
-        } 
+          total: 0
+        }
       }
       mockGet.mockResolvedValue(mockResponse)
-      
+
       await conversationApi.search(query, filters)
-      
+
       expect(mockGet).toHaveBeenCalledWith(
-        '/conversations?status=open&platform=line&search=urgent'
+        '/conversations?status=active&platform=line&search=urgent'
       )
     })
 

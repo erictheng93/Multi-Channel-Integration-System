@@ -294,7 +294,7 @@ export class ConversationService implements ConversationServiceInterface {
     return this.listConversations({
       page: params.page,
       limit: params.limit,
-      status: params.filters?.status?.[0] as 'open' | 'closed' | 'pending' | undefined,
+      status: params.filters?.status?.[0] as 'active' | 'assigned' | 'pending' | undefined,
     });
   }
 
@@ -440,21 +440,8 @@ export class ConversationService implements ConversationServiceInterface {
     return this.updateConversation(id, { status });
   }
 
-  // Close conversation
-  async closeConversation(id: string, reason?: string): Promise<Conversation> {
-    return this.updateConversation(id, {
-      status: 'closed',
-      closedAt: new Date().toISOString()
-    });
-  }
-
-  // Reopen conversation
-  async reopenConversation(id: string): Promise<Conversation> {
-    return this.updateConversation(id, {
-      status: 'open',
-      closedAt: null
-    });
-  }
+  // Note: closeConversation and reopenConversation have been removed
+  // Closed/resolved statuses are no longer part of the conversation lifecycle
 
   // Get conversation metrics
   async getConversationMetrics(filters?: any): Promise<ConversationMetrics> {
@@ -463,15 +450,10 @@ export class ConversationService implements ConversationServiceInterface {
       .select({ count: count() })
       .from(conversations);
 
-    const [openCount] = await this.db
+    const [activeCount] = await this.db
       .select({ count: count() })
       .from(conversations)
-      .where(eq(conversations.status, 'open'));
-
-    const [closedCount] = await this.db
-      .select({ count: count() })
-      .from(conversations)
-      .where(eq(conversations.status, 'closed'));
+      .where(eq(conversations.status, 'active'));
 
     // Get team distribution
     const teamDistribution = await this.db
@@ -485,8 +467,8 @@ export class ConversationService implements ConversationServiceInterface {
 
     return {
       totalConversations: totalCount?.count || 0,
-      openConversations: openCount?.count || 0,
-      closedConversations: closedCount?.count || 0,
+      openConversations: activeCount?.count || 0,
+      closedConversations: 0, // closed status removed
       avgResponseTime: 0, // Would require message analysis
       avgResolutionTime: 0, // Would require time calculation
       teamDistribution: teamDistribution.map(item => ({

@@ -9,6 +9,7 @@
           :is-syncing="isSyncing"
           :is-refreshing="controller.isRefreshing.value"
           @refresh="handleRefresh"
+          @export="showExportDialog = true"
         />
       </div>
 
@@ -147,11 +148,17 @@
         </button>
       </div>
     </div>
+    <!-- 匯出對話記錄對話框 -->
+    <ExportDialog
+      :show="showExportDialog"
+      @close="showExportDialog = false"
+      @update:show="showExportDialog = $event"
+    />
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
 import {
   useConversationListController,
@@ -168,6 +175,7 @@ import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import SmartVirtualScrollList from '@/components/ui/SmartVirtualScrollList.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
+import ExportDialog from '@/components/conversation/ExportDialog.vue'
 import { ConversationHeader, ConversationFilters } from '@/components/conversation-list'
 import { ChatIcon } from '@/components/icons'
 
@@ -179,6 +187,9 @@ const ChevronLeftIcon = {
 const ChevronRightIcon = {
   template: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>`
 }
+
+// Export dialog state
+const showExportDialog = ref(false)
 
 // Initialize composables
 const conversationsStore = useConversationsStore()

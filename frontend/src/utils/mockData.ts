@@ -9,7 +9,7 @@ const platforms: Platform[] = ['line', 'facebook']
 const statuses: ConversationStatus[] = [
   CONVERSATION_STATUS.PENDING,
   CONVERSATION_STATUS.IN_PROGRESS,
-  CONVERSATION_STATUS.CLOSED
+  CONVERSATION_STATUS.ACTIVE
 ]
 
 const mockCustomers: Customer[] = [

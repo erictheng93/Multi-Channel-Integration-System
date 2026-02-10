@@ -86,9 +86,18 @@
         <SearchIcon :size="18" />
       </button>
 
+      <!-- 匯出對話記錄按鈕 -->
+      <button
+        class="header-action-btn"
+        title="匯出此對話記錄"
+        @click="$emit('export')"
+      >
+        <DownloadIcon :size="18" />
+      </button>
+
       <!-- 指派管理按鈕 - Redesigned -->
       <div
-        v-if="conversation && conversation.status !== CONVERSATION_STATUS.CLOSED"
+        v-if="conversation"
         class="assign-action-wrapper"
       >
         <!-- Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now -->
@@ -173,7 +182,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon } from '@/components/icons'
+import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -184,7 +193,7 @@ import AdvancedAssignActions from './AdvancedAssignActions.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
 import { useToast } from '@/composables/useToast'
-import { CONVERSATION_STATUS } from '@/constants/conversation-status'
+// Note: CONVERSATION_STATUS.CLOSED removed - status cleanup
 
 interface Props {
   conversation?: Conversation
@@ -199,6 +208,7 @@ defineEmits<{
   // close: []  // 暫時移除 - 結束對話功能未來再加入
   refresh: []
   search: []
+  export: []
 }>()
 
 const customerTags = ref<Tag[]>([])

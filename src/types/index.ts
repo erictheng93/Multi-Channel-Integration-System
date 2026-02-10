@@ -138,7 +138,7 @@ export interface DbConversation {
   customerId: number;
   assignedTeamId?: number;
   // Note: assignedUserId removed - only team assignment is supported now
-  status: 'active' | 'closed' | 'pending';
+  status: 'active' | 'pending' | 'in-progress' | 'assigned' | 'waiting';
   lastMessageAt?: string;
   createdAt: string;
   updatedAt: string;

@@ -292,31 +292,7 @@ describe('useConversationController', () => {
   })
 
   describe('對話操作', () => {
-    it('should close conversation successfully', async () => {
-      // Setup mock to return success
-      mockUpdateConversationStatus.mockResolvedValue({ success: true })
-      mockUpdateConversationStatusStore.mockResolvedValue(undefined)
-
-      await controller.closeConversation()
-
-      // 驗證方法存在且可調用（不驗證具體實現）
-      expect(controller.closeConversation).toBeDefined()
-    })
-
-    it('should reopen conversation successfully', async () => {
-      // Setup conversation as closed first
-      if (mockCurrentConversation.value) {
-        mockCurrentConversation.value.status = 'closed'
-      }
-
-      mockUpdateConversationStatus.mockResolvedValue({ success: true })
-      mockUpdateConversationStatusStore.mockResolvedValue(undefined)
-
-      await controller.reopenConversation()
-
-      // 驗證方法存在且可調用（不驗證具體實現）
-      expect(controller.reopenConversation).toBeDefined()
-    })
+    // closeConversation and reopenConversation removed - closed status no longer supported
 
     it('should refresh messages', async () => {
       // Setup mock

@@ -27,7 +27,7 @@ export interface LatestMessageSummary {
 export interface ConversationListRequest {
   page?: number;
   limit?: number;
-  status?: 'open' | 'closed' | 'pending';
+  status?: 'active' | 'assigned' | 'pending' | 'in-progress' | 'waiting';
   teamId?: number;
   agentId?: string;
   customerId?: string;
@@ -94,7 +94,7 @@ export interface MessageSendResponse {
 }
 
 export interface ConversationStatusUpdateRequest {
-  status: 'open' | 'closed' | 'pending';
+  status: 'active' | 'assigned' | 'pending' | 'in-progress' | 'waiting';
   reason?: string;
   notes?: string;
 }
@@ -153,8 +153,6 @@ export interface ConversationServiceInterface {
 
   // Status operations
   updateStatus(id: string, status: string, reason?: string): Promise<Conversation>;
-  closeConversation(id: string, reason?: string): Promise<Conversation>;
-  reopenConversation(id: string): Promise<Conversation>;
 
   // Analytics
   getConversationMetrics(filters?: any): Promise<ConversationMetrics>;
@@ -163,7 +161,7 @@ export interface ConversationServiceInterface {
 // Event types for real-time updates
 export interface ConversationEvent {
   type: 'conversation.created' | 'conversation.updated' | 'conversation.assigned' |
-        'conversation.closed' | 'message.sent' | 'message.received';
+        'message.sent' | 'message.received';
   conversationId: string;
   data: any;
   timestamp: string;

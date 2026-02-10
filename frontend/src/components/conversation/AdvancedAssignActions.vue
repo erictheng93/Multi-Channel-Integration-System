@@ -2,7 +2,7 @@
   <div class="advanced-assign-actions">
     <!-- 當前指派狀態 -->
     <div
-      v-if="conversation.assignedTeamId && conversation.status !== 'closed'"
+      v-if="conversation.assignedTeamId"
       class="current-assignment"
     >
       <div class="assignment-info">

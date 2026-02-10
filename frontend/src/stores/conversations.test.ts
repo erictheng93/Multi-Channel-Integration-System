@@ -7,7 +7,6 @@ const mockConversationApi = {
   getConversation: vi.fn(),
   getMessages: vi.fn(),
   assignConversation: vi.fn(),
-  closeConversation: vi.fn(),
   markAsRead: vi.fn(),
   getStats: vi.fn()
 }
@@ -77,9 +76,9 @@ describe('Conversations Store', () => {
       
       expect(store.stats).toEqual({
         total: 0,
-        open: 0,
+        active: 0,
         assigned: 0,
-        closed: 0,
+        pending: 0,
         unreadCount: 0
       })
     })
@@ -201,27 +200,16 @@ describe('Conversations Store', () => {
       expect(result).toBe(false)
     })
 
-    it('should close conversation successfully', async () => {
-      const mockResponse = { success: true }
-      mockConversationApi.closeConversation.mockResolvedValue(mockResponse)
-      
-      const { useConversationsStore } = await import('./conversations')
-      const store = useConversationsStore()
-      
-      const result = await store.closeConversation('conv-1', 'Issue resolved')
-      
-      expect(result).toBe(true)
-      expect(mockConversationApi.closeConversation).toHaveBeenCalledWith('conv-1', 'Issue resolved')
-    })
+    // Note: closeConversation test removed - status cleanup
   })
 
   describe('Statistics', () => {
     it('should load stats successfully', async () => {
       const mockStats = {
         total: 100,
-        open: 30,
+        active: 30,
         assigned: 50,
-        closed: 20,
+        pending: 20,
         unreadCount: 15
       }
       const mockResponse = { success: true, data: mockStats }

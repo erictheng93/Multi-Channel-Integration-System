@@ -153,13 +153,8 @@ export class PermissionService {
   /**
    * 檢查用戶是否可以指派對話
    */
-  static canAssignConversation(user: TeamMember | null, conversation: Conversation, targetUserId?: string): boolean {
+  static canAssignConversation(user: TeamMember | null, _conversation: Conversation, targetUserId?: string): boolean {
     if (!user) {return false}
-
-    // 不能指派已關閉的對話
-    if (conversation.status === 'closed') {
-      return false
-    }
 
     // 指派給自己
     if (targetUserId === user.id) {
@@ -194,11 +189,6 @@ export class PermissionService {
       return false
     }
 
-    // 不能取消指派已關閉的對話
-    if (conversation.status === 'closed') {
-      return false
-    }
-
     // Admin 可以取消任何指派
     if (this.hasPermission(user, Permission.UNASSIGN_CONVERSATIONS) && user.role === 'admin') {
       return true
@@ -216,25 +206,11 @@ export class PermissionService {
   /**
    * 檢查用戶是否可以關閉對話
    */
-  static canCloseConversation(user: TeamMember | null, conversation: Conversation): boolean {
-    if (!user || conversation.status === 'closed') {
-      return false
-    }
-
-    // 如果有關閉對話權限
-    if (this.hasPermission(user, Permission.CLOSE_CONVERSATIONS)) {
-      // Admin 可以關閉任何對話
-      if (user.role === 'admin') {
-        return true
-      }
-
-      // Note: Individual assignment (assignedAgentId) removed - use team-based access control
-      // Agent 只能關閉指派給自己團隊的對話
-      if (user.role === 'agent') {
-        return user.teamId ? conversation.assignedTeamId === user.teamId : false
-      }
-    }
-
+  /**
+   * Close conversation is no longer supported.
+   * Always returns false.
+   */
+  static canCloseConversation(_user: TeamMember | null, _conversation: Conversation): boolean {
     return false
   }
 

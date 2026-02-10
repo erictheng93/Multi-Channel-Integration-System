@@ -4,7 +4,6 @@
     :class="{
       'is-selected': selected,
       'has-unread': hasUnreadMessages,
-      'is-closed': conversation.status === CONVERSATION_STATUS.CLOSED,
       'is-hovered': isHovered
     }"
     :data-status="effectiveStatus"
@@ -382,10 +381,6 @@ const formatTime = (date: Date | string | number) => {
   background: linear-gradient(135deg, rgba(255, 59, 48, 0.04) 0%, var(--apple-bg) 50%);
 }
 
-.conversation-card-apple.is-closed {
-  opacity: 0.6;
-}
-
 /* ============================================
    CARD INNER LAYOUT
    ============================================ */
@@ -570,15 +565,6 @@ const formatTime = (date: Date | string | number) => {
 .status-pill.status-assigned .status-dot,
 .status-pill.status-in-progress .status-dot {
   background: var(--apple-blue);
-}
-
-.status-pill.status-closed {
-  background: rgba(142, 142, 147, 0.12);
-  color: var(--apple-gray);
-}
-
-.status-pill.status-closed .status-dot {
-  background: var(--apple-gray);
 }
 
 /* 🆕 Pending Badge for LIFF Pre-notification */

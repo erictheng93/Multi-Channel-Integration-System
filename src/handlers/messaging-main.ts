@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import { eq, and, desc, count, isNull } from 'drizzle-orm';
+import { eq, and, desc, count, isNull, gte, lte } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import type { Bindings, JWTPayload } from '../types';
 import { messages, conversations, customers, agents, fileAttachments } from '@shared/database/schema';
@@ -300,27 +300,97 @@ app.get('/tags', jwtAuth, async (c) => {
 // ======================== 訊息匯出功能 (Message Export) ========================
 
 /**
- * 匯出訊息為JSON/CSV格式
+ * 取得匯出篩選選項 - 客戶列表
+ * GET /api/messages/export/customers
+ *
+ * ⚠️ ROUTING PRIORITY: 必須註冊在 /export 之前（Hono 路由順序）
+ */
+app.get('/export/customers', jwtAuth, async (c) => {
+  try {
+    const db = createDbClient(c.env.DB);
+
+    const customerList = await db
+      .select({
+        id: customers.id,
+        displayName: customers.displayName,
+        platform: customers.platform,
+        platformUserId: customers.platformUserId
+      })
+      .from(customers)
+      .orderBy(customers.displayName)
+      .limit(200);
+
+    return c.json({
+      success: true,
+      data: customerList,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Get export customers error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get customers',
+      timestamp: new Date().toISOString()
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 取得匯出篩選選項 - 客服列表
+ * GET /api/messages/export/agents
+ */
+app.get('/export/agents', jwtAuth, async (c) => {
+  try {
+    const db = createDbClient(c.env.DB);
+
+    const agentList = await db
+      .select({
+        id: agents.id,
+        displayName: agents.displayName,
+        role: agents.role
+      })
+      .from(agents)
+      .where(eq(agents.isActive, true))
+      .orderBy(agents.displayName)
+      .limit(200);
+
+    return c.json({
+      success: true,
+      data: agentList,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Get export agents error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get agents',
+      timestamp: new Date().toISOString()
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * 匯出訊息為 JSON/CSV/TXT 格式
  * GET /api/messages/export
  */
-
-
 app.get('/export', jwtAuth, async (c) => {
   try {
     const userPayload = c.get('jwtPayload') as JWTPayload;
 
     // 取得查詢參數
-    const format = c.req.query('format') || 'json'; // 'json' or 'csv'
+    const format = c.req.query('format') || 'json'; // 'json', 'csv', or 'txt'
     const conversationId = c.req.query('conversationId');
     const dateFrom = c.req.query('dateFrom');
     const dateTo = c.req.query('dateTo');
+    const customerId = c.req.query('customerId');
+    const agentId = c.req.query('agentId');
     const limit = Math.min(1000, parseInt(c.req.query('limit') || '100'));
 
     // 驗證格式
-    if (!['json', 'csv'].includes(format)) {
+    if (!['json', 'csv', 'txt'].includes(format)) {
       return c.json({
         success: false,
-        error: 'Invalid format. Must be "json" or "csv"',
+        error: 'Invalid format. Must be "json", "csv", or "txt"',
         timestamp: new Date().toISOString()
       }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -328,34 +398,62 @@ app.get('/export', jwtAuth, async (c) => {
     const db = createDbClient(c.env.DB);
 
     // 構建查詢條件
-    const whereConditions: any[] = [eq(messages.isRecalled, false)];
+    const whereConditions: any[] = [
+      eq(messages.isRecalled, false)
+    ];
 
     if (conversationId) {
       whereConditions.push(eq(messages.conversationId, conversationId));
     }
 
-    // 獲取訊息列表
+    // 日期篩選（修復：之前接受參數但未套用到查詢）
+    if (dateFrom) {
+      whereConditions.push(gte(messages.createdAt, dateFrom));
+    }
+    if (dateTo) {
+      whereConditions.push(lte(messages.createdAt, dateTo));
+    }
+
+    // 客戶篩選（透過 conversation 關聯）
+    if (customerId) {
+      whereConditions.push(eq(conversations.customerId, parseInt(customerId)));
+    }
+
+    // 客服人員篩選
+    if (agentId) {
+      whereConditions.push(eq(messages.agentSenderId, agentId));
+    }
+
+    // 獲取訊息列表 - 需要 JOIN conversations 以支援客戶篩選
     const messageList = await db
       .select({
         id: messages.id,
         conversationId: messages.conversationId,
         senderType: messages.senderType,
+        senderName: messages.senderName,
         content: messages.content,
         messageType: messages.messageType,
         sentAt: messages.sentAt,
         deliveryStatus: messages.deliveryStatus,
         metadata: messages.metadata,
         createdAt: messages.createdAt,
-        // 發送者資訊
+        // 發送者資訊（fallback）
         agentName: agents.displayName,
         customerName: customers.displayName
       })
       .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
       .leftJoin(agents, eq(messages.agentSenderId, agents.id))
       .leftJoin(customers, eq(messages.customerSenderId, customers.id))
       .where(and(...whereConditions))
       .orderBy(desc(messages.createdAt))
       .limit(limit);
+
+    // 取得發送者名稱的輔助函數（優先使用持久化的 senderName）
+    const getSenderName = (msg: typeof messageList[0]): string => {
+      if (msg.senderName) return msg.senderName;
+      return msg.senderType === 'agent' ? (msg.agentName || '') : (msg.customerName || '');
+    };
 
     if (format === 'json') {
       // JSON格式匯出
@@ -366,7 +464,7 @@ app.get('/export', jwtAuth, async (c) => {
             id: msg.id,
             conversationId: msg.conversationId,
             senderType: msg.senderType,
-            senderName: msg.senderType === 'agent' ? msg.agentName : msg.customerName,
+            senderName: getSenderName(msg),
             content: msg.content,
             messageType: msg.messageType,
             sentAt: msg.sentAt,
@@ -383,6 +481,8 @@ app.get('/export', jwtAuth, async (c) => {
               conversationId,
               dateFrom,
               dateTo,
+              customerId,
+              agentId,
               limit
             }
           }
@@ -390,7 +490,7 @@ app.get('/export', jwtAuth, async (c) => {
         timestamp: new Date().toISOString()
       });
 
-    } else {
+    } else if (format === 'csv') {
       // CSV格式匯出
       const csvHeaders = [
         'Message ID',
@@ -405,13 +505,12 @@ app.get('/export', jwtAuth, async (c) => {
       ].join(',');
 
       const csvRows = messageList.map(msg => {
-        const senderName = msg.senderType === 'agent' ? msg.agentName : msg.customerName;
         return [
           msg.id,
           msg.conversationId,
           msg.senderType,
-          senderName || '',
-          `"${msg.content.replace(/"/g, '""')}"`, // Escape quotes
+          `"${(getSenderName(msg)).replace(/"/g, '""')}"`,
+          `"${msg.content.replace(/"/g, '""')}"`,
           msg.messageType,
           msg.sentAt || '',
           msg.deliveryStatus || '',
@@ -421,12 +520,72 @@ app.get('/export', jwtAuth, async (c) => {
 
       const csvContent = [csvHeaders, ...csvRows].join('\n');
 
-      // Return Response directly with correct CSV headers
       return new Response(csvContent, {
         status: 200,
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
           'Content-Disposition': `attachment; filename="messages_export_${Date.now()}.csv"`
+        }
+      });
+
+    } else {
+      // TXT 純文字格式匯出
+      const lines: string[] = [];
+
+      // Header 區塊
+      lines.push('========================================');
+      lines.push('  對話記錄匯出');
+      lines.push('========================================');
+      lines.push(`匯出時間: ${new Date().toISOString()}`);
+      lines.push(`總筆數: ${messageList.length}`);
+      if (conversationId) lines.push(`對話 ID: ${conversationId}`);
+      if (dateFrom) lines.push(`起始日期: ${dateFrom}`);
+      if (dateTo) lines.push(`結束日期: ${dateTo}`);
+      if (customerId) lines.push(`客戶 ID: ${customerId}`);
+      if (agentId) lines.push(`客服 ID: ${agentId}`);
+      lines.push('========================================');
+      lines.push('');
+
+      // 按 conversationId 分組
+      const grouped = new Map<string, typeof messageList>();
+      for (const msg of messageList) {
+        const convId = msg.conversationId;
+        if (!grouped.has(convId)) {
+          grouped.set(convId, []);
+        }
+        grouped.get(convId)!.push(msg);
+      }
+
+      for (const [convId, convMessages] of grouped) {
+        lines.push(`--- 對話: ${convId} ---`);
+        lines.push('');
+
+        // 按時間正序排列（聊天記錄通常由舊到新）
+        const sorted = [...convMessages].sort((a, b) =>
+          (a.createdAt || '').localeCompare(b.createdAt || '')
+        );
+
+        for (const msg of sorted) {
+          const time = msg.createdAt
+            ? new Date(msg.createdAt).toLocaleString('zh-TW', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false
+              })
+            : '未知時間';
+          const name = getSenderName(msg) || msg.senderType || '未知';
+          lines.push(`[${time}] ${name}: ${msg.content}`);
+        }
+
+        lines.push('');
+      }
+
+      const txtContent = lines.join('\n');
+
+      return new Response(txtContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="chat_export_${Date.now()}.txt"`
         }
       });
     }

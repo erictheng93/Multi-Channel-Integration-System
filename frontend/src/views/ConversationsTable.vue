@@ -12,14 +12,14 @@
               <option value="">
                 所有狀態
               </option>
-              <option value="open">
-                待處理
+              <option value="active">
+                進行中
               </option>
               <option value="assigned">
                 已指派
               </option>
-              <option value="closed">
-                已關閉
+              <option value="pending">
+                待處理
               </option>
             </select>
             <select
@@ -367,12 +367,14 @@ const getPlatformText = (platform: string) => {
 }
 
 const getStatusText = (status: string) => {
-  const statusMap = {
-    open: '待處理',
+  const statusMap: Record<string, string> = {
+    active: '進行中',
     assigned: '已指派',
-    closed: '已關閉'
+    pending: '待處理',
+    'in-progress': '處理中',
+    waiting: '等待中'
   }
-  return statusMap[status as keyof typeof statusMap] || status
+  return statusMap[status] || status
 }
 
 const formatTime = (date: Date | number) => {
@@ -965,16 +967,24 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.status-badge.open {
-  background-color: #f39c12;
+.status-badge.active {
+  background-color: #27ae60;
 }
 
 .status-badge.assigned {
   background-color: #3498db;
 }
 
-.status-badge.closed {
-  background-color: #95a5a6;
+.status-badge.pending {
+  background-color: #f39c12;
+}
+
+.status-badge.in-progress {
+  background-color: #2980b9;
+}
+
+.status-badge.waiting {
+  background-color: #e67e22;
 }
 
 .last-message {
