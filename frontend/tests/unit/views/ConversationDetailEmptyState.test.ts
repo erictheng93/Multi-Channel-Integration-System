@@ -23,10 +23,85 @@ const mockDisplayedMessages = ref<Array<{ id: string }>>([])
 const mockHasLoadedInitially = ref(false)
 const mockIsInitialLoading = ref(true)
 
+// Mock stores used by ConversationDetail.vue
+vi.mock('@/stores/conversations', () => ({
+  useConversationsStore: vi.fn(() => ({
+    currentConversation: ref(null),
+    conversations: ref([]),
+    loading: ref(false),
+    fetchConversation: vi.fn(),
+    updateConversationStatus: vi.fn(),
+    addMessage: vi.fn(),
+    transferredConversation: ref(null),
+    clearTransferredState: vi.fn(),
+    initializeRealtime: vi.fn().mockResolvedValue(undefined)
+  }))
+}))
+
+// Mock composables used by ConversationDetail.vue
+vi.mock('@/composables/useToast', () => ({
+  useToast: vi.fn(() => ({
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+    showWarning: vi.fn(),
+    showInfo: vi.fn()
+  }))
+}))
+
+vi.mock('@/composables/useConfirm', () => ({
+  useConfirm: vi.fn(() => ({
+    showConfirm: vi.fn().mockResolvedValue(false)
+  }))
+}))
+
+vi.mock('@/composables/useSearchPanel', () => ({
+  useSearchPanel: vi.fn(() => ({
+    isOpen: ref(false),
+    searchRef: ref(null),
+    toggle: vi.fn(),
+    open: vi.fn(),
+    close: vi.fn(),
+    handleSearchResults: vi.fn(),
+    handleSearchClear: vi.fn()
+  }))
+}))
+
+vi.mock('@/composables/useNewMessageNotification', () => ({
+  useNewMessageNotification: vi.fn(() => ({
+    isVisible: ref(false),
+    scrollToNewest: vi.fn(),
+    dismiss: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    handleScroll: vi.fn()
+  }))
+}))
+
+vi.mock('@/composables/useDragAndDrop', () => ({
+  useDragAndDrop: vi.fn(() => ({
+    isDragging: ref(false),
+    dragFiles: ref([]),
+    onDragEnter: vi.fn(),
+    onDragLeave: vi.fn(),
+    onDragOver: vi.fn(),
+    onDrop: vi.fn()
+  }))
+}))
+
+vi.mock('@/composables/useQuickReplies', () => ({
+  useQuickReplies: vi.fn(() => ({
+    quickReplies: ref([]),
+    showQuickReplies: ref(false),
+    filteredReplies: ref([]),
+    selectReply: vi.fn(),
+    toggleQuickReplies: vi.fn()
+  }))
+}))
+
 // Mock the controller composable
 vi.mock('@/composables/conversation', () => ({
   useConversationController: vi.fn(() => ({
-    conversation: ref({ id: '1', status: 'open', title: 'Test Conversation' }),
+    conversation: ref({ id: '1', status: 'active', title: 'Test Conversation' }),
     messages: ref([]),
     displayedMessages: mockDisplayedMessages,
     loading: ref(false),
@@ -63,8 +138,6 @@ vi.mock('@/composables/conversation', () => ({
     onTypingStop: vi.fn(),
     loadMoreMessages: vi.fn(),
     retryMessage: vi.fn(),
-    closeConversation: vi.fn().mockResolvedValue(true),
-    reopenConversation: vi.fn().mockResolvedValue(true),
     refreshMessages: vi.fn().mockResolvedValue(undefined),
     onScroll: vi.fn(() => ({ isAtBottom: true })),
     recallMessage: vi.fn().mockResolvedValue(true),
@@ -366,7 +439,8 @@ describe('ConversationDetail Integration with Empty State', () => {
           ClosedConversationBanner: true,
           NewMessageNotification: true,
           QuickReplies: true,
-          ConnectionStatusBar: true
+          ConnectionStatusBar: true,
+          ExportDialog: true
         }
       }
     })
