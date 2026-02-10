@@ -122,7 +122,7 @@ describe('useConversationController', () => {
     mockCurrentConversation.value = {
       id: conversationId,
       userId: 'user-001',
-      status: 'open',
+      status: 'active',
       platform: 'line',
       lastMessageAt: Date.now(),
       unreadCount: 0,
