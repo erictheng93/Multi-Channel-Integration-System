@@ -131,7 +131,6 @@
                   class="submenu-item"
                   :class="{ active: $route.path === '/reports/dashboard' }"
                 >
-                  <span class="submenu-icon">📊</span>
                   <span>儀表板</span>
                 </router-link>
 
@@ -140,7 +139,6 @@
                   class="submenu-item"
                   :class="{ active: $route.path === '/reports/templates' }"
                 >
-                  <span class="submenu-icon">📋</span>
                   <span>模板</span>
                 </router-link>
 
@@ -149,8 +147,99 @@
                   class="submenu-item"
                   :class="{ active: $route.path === '/reports/generate' }"
                 >
-                  <span class="submenu-icon">⚙️</span>
                   <span>生成報表</span>
+                </router-link>
+
+                <router-link
+                  to="/reports/export"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/reports/export' }"
+                >
+                  <span>匯出對話記錄</span>
+                </router-link>
+              </div>
+            </transition>
+          </div>
+
+          <!-- Expandable Settings Item -->
+          <div
+            v-else-if="item.path === '/settings'"
+            class="nav-item-group"
+          >
+            <div
+              class="nav-item expandable"
+              :class="{ active: $route.path.startsWith('/settings') }"
+              @click="toggleSettingsSubmenu"
+            >
+              <component
+                :is="item.icon"
+                class="nav-icon"
+              />
+              <span
+                v-if="!sidebarCollapsed || isMobile"
+                class="nav-text"
+              >{{ item.label }}</span>
+              <span
+                v-if="!sidebarCollapsed || isMobile"
+                class="expand-icon"
+                :class="{ expanded: isSettingsExpanded }"
+              >
+                ▶
+              </span>
+            </div>
+
+            <!-- Settings Submenu -->
+            <transition name="submenu">
+              <div
+                v-show="isSettingsExpanded && (!sidebarCollapsed || isMobile)"
+                class="submenu"
+              >
+                <router-link
+                  to="/settings/general"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/settings/general' }"
+                >
+                  <span>一般設定</span>
+                </router-link>
+
+                <router-link
+                  to="/settings/integrations/line"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/settings/integrations/line' }"
+                >
+                  <span>LINE OA</span>
+                </router-link>
+
+                <router-link
+                  to="/settings/integrations/facebook"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/settings/integrations/facebook' }"
+                >
+                  <span>Facebook</span>
+                </router-link>
+
+                <router-link
+                  to="/settings/advanced"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/settings/advanced' }"
+                >
+                  <span>進階設定</span>
+                </router-link>
+
+                <router-link
+                  to="/settings/maintenance/backup"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/settings/maintenance/backup' }"
+                >
+                  <span>備份管理</span>
+                </router-link>
+
+                <router-link
+                  to="/settings/maintenance/cache"
+                  class="submenu-item"
+                  :class="{ active: $route.path === '/settings/maintenance/cache' }"
+                >
+                  <span>快取管理</span>
                 </router-link>
               </div>
             </transition>
@@ -303,6 +392,7 @@
   const showUserMenu = ref(false)
   const isMobile = shallowRef(false)
   const isReportsExpanded = ref(false)
+  const isSettingsExpanded = ref(false)
 
   const baseNavigationItems = [
     { path: '/dashboard', label: '儀表板', icon: DashboardIcon },
@@ -419,6 +509,10 @@
     isReportsExpanded.value = !isReportsExpanded.value
   }
 
+  const toggleSettingsSubmenu = () => {
+    isSettingsExpanded.value = !isSettingsExpanded.value
+  }
+
   // Fix: Debounced resize handler to prevent recursive updates
   let resizeTimeout: ReturnType<typeof setTimeout>
 
@@ -517,18 +611,24 @@
 
   // Watch route changes to update UI state
   // Use flush: 'post' to prevent recursive updates during render
+  // Use immediate: true so expandable menus are open on initial page load / refresh
   watch(
     () => route.path,
     newPath => {
-      // Auto-expand reports submenu when navigating to reports
-      if (newPath.startsWith('/reports/')) {
+      // Auto-expand reports submenu when on any reports route
+      if (newPath.startsWith('/reports')) {
         isReportsExpanded.value = true
+      }
+
+      // Auto-expand settings submenu when on any settings route
+      if (newPath.startsWith('/settings')) {
+        isSettingsExpanded.value = true
       }
 
       // Close user menu when route changes
       showUserMenu.value = false
     },
-    { flush: 'post' }
+    { flush: 'post', immediate: true }
   )
 
   onMounted(async () => {
@@ -701,6 +801,32 @@
   .sidebar-nav {
     flex: 1;
     padding: var(--space-4);
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0; /* required for flex child to shrink and scroll */
+  }
+
+  /* Thin scrollbar for sidebar nav */
+  .sidebar-nav::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+  }
+
+  .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .sidebar-nav {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
   }
 
   /* Nav Item Group for Expandable Items */
@@ -803,15 +929,11 @@
     font-weight: 600;
   }
 
-  .submenu-icon {
-    font-size: 1rem;
-  }
-
   /* Submenu Animation */
   .submenu-enter-active,
   .submenu-leave-active {
     transition: all 0.3s ease;
-    max-height: 200px;
+    max-height: 300px;
   }
 
   .submenu-enter-from,

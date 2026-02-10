@@ -326,10 +326,19 @@ export function useConversationListController(): ConversationListControllerCompo
   async function initialize(): Promise<void> {
     console.log('🚀 [Controller] Initializing')
 
+    // Sync controller filters to store so background polling/refresh respects them
+    watch(
+      () => filters.filters.value,
+      (newFilters) => {
+        conversationsStore.setActiveFilters(newFilters)
+      },
+      { deep: true, immediate: true }
+    )
+
     // 载入初始数据
     await loadConversations()
 
-    // 监听筛选变化
+    // 监听筛选变化 → reload conversations when filter changes
     watch(
       () => filters.filters.value,
       () => {

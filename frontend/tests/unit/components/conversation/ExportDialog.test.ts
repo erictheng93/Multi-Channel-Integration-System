@@ -4,10 +4,9 @@
  * 測試覆蓋範圍：
  * - 基礎渲染（標題、表單元素）
  * - Props 傳遞（conversationId、conversationTitle）
- * - 格式選擇（JSON/CSV/TXT）
+ * - 格式選擇（JSON/CSV/TXT segmented control）
  * - 日期範圍選擇
- * - 客戶/客服篩選下拉選單
- * - 最大筆數選擇
+ * - 客戶篩選下拉選單
  * - 匯出流程（成功、失敗、loading 狀態）
  * - 關閉行為
  * - 條件顯示邏輯
@@ -22,12 +21,10 @@ import ExportDialog from '@/components/conversation/ExportDialog.vue'
 // Mock dependencies
 const mockExportMessages = vi.fn()
 const mockGetExportCustomers = vi.fn()
-const mockGetExportAgents = vi.fn()
 
 vi.mock('@/api/export', () => ({
   exportMessages: (...args: unknown[]) => mockExportMessages(...args),
-  getExportCustomers: () => mockGetExportCustomers(),
-  getExportAgents: () => mockGetExportAgents()
+  getExportCustomers: () => mockGetExportCustomers()
 }))
 
 const mockShowSuccess = vi.fn()
@@ -50,11 +47,6 @@ describe('ExportDialog.vue', () => {
     { id: 2, displayName: 'Customer B', platform: 'line', platformUserId: 'U002' }
   ]
 
-  const defaultAgents = [
-    { id: 'agent-1', displayName: 'Agent A', role: 'admin' },
-    { id: 'agent-2', displayName: 'Agent B', role: 'agent' }
-  ]
-
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -65,7 +57,6 @@ describe('ExportDialog.vue', () => {
 
     // Default mock responses
     mockGetExportCustomers.mockResolvedValue({ success: true, data: defaultCustomers })
-    mockGetExportAgents.mockResolvedValue({ success: true, data: defaultAgents })
 
     // Mock URL.createObjectURL / revokeObjectURL (not available in JSDOM)
     if (!window.URL.createObjectURL) {
@@ -118,12 +109,12 @@ describe('ExportDialog.vue', () => {
       expect(modal).toBeNull()
     })
 
-    it('應該渲染格式選擇下拉選單', async () => {
+    it('應該渲染格式 segmented control', async () => {
       wrapper = createWrapper()
       await nextTick()
 
-      const selects = document.querySelectorAll('.form-select')
-      expect(selects.length).toBeGreaterThanOrEqual(1)
+      const segments = document.querySelectorAll('.segment')
+      expect(segments.length).toBe(3) // JSON, CSV, TXT
     })
 
     it('應該渲染日期範圍輸入', async () => {
@@ -142,31 +133,31 @@ describe('ExportDialog.vue', () => {
       expect(footer).toBeTruthy()
 
       const buttons = footer!.querySelectorAll('button')
-      expect(buttons.length).toBe(2) // 取消 + 匯出
+      expect(buttons.length).toBe(2) // 匯出 + 取消
     })
   })
 
   // ==================== 對話資訊顯示 ====================
 
-  describe('對話資訊 Banner', () => {
-    it('有 conversationTitle 時應該顯示 Banner', async () => {
+  describe('對話資訊 Card', () => {
+    it('有 conversationTitle 時應該顯示 info card', async () => {
       wrapper = createWrapper({
         conversationId: 'conv-123',
         conversationTitle: 'Test Customer'
       })
       await nextTick()
 
-      const banner = document.querySelector('.export-info-banner')
-      expect(banner).toBeTruthy()
-      expect(banner!.textContent).toContain('Test Customer')
+      const card = document.querySelector('.export-info-card')
+      expect(card).toBeTruthy()
+      expect(card!.textContent).toContain('Test Customer')
     })
 
-    it('沒有 conversationTitle 時不應該顯示 Banner', async () => {
+    it('沒有 conversationTitle 時不應該顯示 info card', async () => {
       wrapper = createWrapper()
       await nextTick()
 
-      const banner = document.querySelector('.export-info-banner')
-      expect(banner).toBeNull()
+      const card = document.querySelector('.export-info-card')
+      expect(card).toBeNull()
     })
   })
 
@@ -177,35 +168,33 @@ describe('ExportDialog.vue', () => {
       wrapper = createWrapper()
       await flushPromises()
 
-      // 全部的 select 數量（格式 + 客戶 + 客服 + 筆數 = 4）
-      const selects = document.querySelectorAll('.form-select')
-      expect(selects.length).toBe(4)
+      // 客戶篩選 select 應該存在
+      const selects = document.querySelectorAll('.apple-select')
+      expect(selects.length).toBe(1) // 客戶篩選
     })
 
     it('有 conversationId 時應該隱藏客戶篩選下拉', async () => {
       wrapper = createWrapper({ conversationId: 'conv-123' })
       await flushPromises()
 
-      // 格式 + 客服 + 筆數 = 3（客戶篩選被隱藏）
-      const selects = document.querySelectorAll('.form-select')
-      expect(selects.length).toBe(3)
+      // 客戶篩選被隱藏，沒有 select 了
+      const selects = document.querySelectorAll('.apple-select')
+      expect(selects.length).toBe(0)
     })
   })
 
   // ==================== 篩選選項載入 ====================
 
   describe('篩選選項載入', () => {
-    it('打開時應該載入客戶和客服列表', async () => {
+    it('打開時應該載入客戶列表', async () => {
       wrapper = createWrapper()
       await flushPromises()
 
       expect(mockGetExportCustomers).toHaveBeenCalledTimes(1)
-      expect(mockGetExportAgents).toHaveBeenCalledTimes(1)
     })
 
     it('載入失敗時不應該崩潰', async () => {
       mockGetExportCustomers.mockResolvedValue({ success: false, error: 'Server error' })
-      mockGetExportAgents.mockResolvedValue({ success: false, error: 'Server error' })
 
       wrapper = createWrapper()
       await flushPromises()
@@ -219,9 +208,8 @@ describe('ExportDialog.vue', () => {
       wrapper = createWrapper()
       await flushPromises()
 
-      // 找到第二個 select（客戶篩選），包含 "全部用戶" + 2 customers
-      const selects = document.querySelectorAll('.form-select')
-      const customerSelect = selects[1] // 第二個是客戶下拉
+      // 找到客戶篩選 select，包含 "全部用戶" + 2 customers
+      const customerSelect = document.querySelector('.apple-select')
       const options = customerSelect?.querySelectorAll('option')
       expect(options!.length).toBe(3) // "全部用戶" + 2 customers
     })
@@ -230,19 +218,20 @@ describe('ExportDialog.vue', () => {
   // ==================== 格式選擇 ====================
 
   describe('格式選擇', () => {
-    it('預設格式應該是 JSON', async () => {
+    it('預設格式應該是 JSON（active segment）', async () => {
       wrapper = createWrapper()
       await nextTick()
 
-      const formatSelect = document.querySelector('.form-select') as HTMLSelectElement
-      expect(formatSelect.value).toBe('json')
+      const activeSegment = document.querySelector('.segment.active')
+      expect(activeSegment).toBeTruthy()
+      expect(activeSegment!.textContent).toContain('JSON')
     })
 
     it('應該顯示格式提示文字', async () => {
       wrapper = createWrapper()
       await nextTick()
 
-      const hint = document.querySelector('.form-hint')
+      const hint = document.querySelector('.section-hint')
       expect(hint).toBeTruthy()
       expect(hint!.textContent).toContain('結構化')
     })
@@ -258,9 +247,9 @@ describe('ExportDialog.vue', () => {
       wrapper = createWrapper()
       await flushPromises()
 
-      // 點擊匯出按鈕
+      // 點擊匯出按鈕 (primary button is first in footer)
       const footer = document.querySelector('.modal-footer')
-      const exportBtn = footer!.querySelectorAll('button')[1]
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
       await flushPromises()
 
@@ -274,9 +263,8 @@ describe('ExportDialog.vue', () => {
       wrapper = createWrapper()
       await flushPromises()
 
-      // 點擊匯出按鈕
       const footer = document.querySelector('.modal-footer')
-      const exportBtn = footer!.querySelectorAll('button')[1]
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
       await flushPromises()
 
@@ -291,7 +279,7 @@ describe('ExportDialog.vue', () => {
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
-      const exportBtn = footer!.querySelectorAll('button')[1]
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
       await nextTick()
 
@@ -309,7 +297,7 @@ describe('ExportDialog.vue', () => {
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
-      const exportBtn = footer!.querySelectorAll('button')[1]
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
       await flushPromises()
 
@@ -329,7 +317,7 @@ describe('ExportDialog.vue', () => {
       await nextTick()
 
       const footer = document.querySelector('.modal-footer')
-      const cancelBtn = footer!.querySelectorAll('button')[0]
+      const cancelBtn = footer!.querySelector('.btn-apple-text') as HTMLButtonElement
       cancelBtn.click()
       await nextTick()
 
@@ -347,9 +335,9 @@ describe('ExportDialog.vue', () => {
       await wrapper.setProps({ show: true })
       await flushPromises()
 
-      // 格式應該重置為 json
-      const formatSelect = document.querySelector('.form-select') as HTMLSelectElement
-      expect(formatSelect?.value).toBe('json')
+      // 預設 segment 應為 JSON
+      const activeSegment = document.querySelector('.segment.active')
+      expect(activeSegment!.textContent).toContain('JSON')
     })
   })
 
@@ -363,7 +351,7 @@ describe('ExportDialog.vue', () => {
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
-      const exportBtn = footer!.querySelectorAll('button')[1]
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
       await flushPromises()
 
@@ -377,7 +365,7 @@ describe('ExportDialog.vue', () => {
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
-      const exportBtn = footer!.querySelectorAll('button')[1]
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
       await flushPromises()
 

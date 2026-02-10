@@ -5,6 +5,7 @@
  * Part of SystemSettings.vue refactoring
  */
 
+// Core form components (existing)
 export { default as SettingsHeader } from './SettingsHeader.vue'
 export { default as SettingsNav } from './SettingsNav.vue'
 export { default as GeneralSettingsForm } from './GeneralSettingsForm.vue'
@@ -13,3 +14,16 @@ export { default as FacebookIntegrationForm } from './FacebookIntegrationForm.vu
 export { default as AdvancedSettingsForm } from './AdvancedSettingsForm.vue'
 export { default as BackupManager } from './BackupManager.vue'
 export { default as CacheManager } from './CacheManager.vue'
+
+// Sidebar navigation
+export { default as SettingsSidebar } from './SettingsSidebar.vue'
+
+// Page wrappers (for nested routes)
+export {
+  GeneralSettingsPage,
+  LineIntegrationPage,
+  FacebookIntegrationPage,
+  AdvancedSettingsPage,
+  BackupPage,
+  CacheMaintenancePage
+} from './pages'

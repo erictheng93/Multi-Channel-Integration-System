@@ -2,59 +2,80 @@
   <Modal
     :show="show"
     title="匯出對話記錄"
-    size="lg"
+    size="md"
     @close="handleClose"
   >
     <div class="export-form">
       <!-- 對話資訊（從對話詳情頁進入時顯示） -->
       <div
         v-if="conversationTitle"
-        class="export-info-banner"
+        class="export-info-card"
       >
-        <div class="info-icon">
-          <ChatIcon :size="16" />
+        <div class="info-icon-wrap">
+          <ChatIcon :size="18" />
         </div>
-        <div class="info-text">
-          <span class="info-label">匯出對話：</span>
-          <span class="info-value">{{ conversationTitle }}</span>
+        <div class="info-content">
+          <span class="info-eyebrow">匯出對話</span>
+          <span class="info-title">{{ conversationTitle }}</span>
         </div>
       </div>
 
-      <!-- 格式選擇 -->
-      <div class="form-group">
-        <label class="form-label">匯出格式</label>
-        <select
-          v-model="filters.format"
-          class="form-select"
-        >
-          <option value="json">JSON - 結構化資料</option>
-          <option value="csv">CSV - 試算表格式</option>
-          <option value="txt">TXT - 純文字聊天記錄</option>
-        </select>
-        <p class="form-hint">
+      <!-- 格式選擇 — Segmented Control -->
+      <div class="form-section">
+        <label class="section-label">匯出格式</label>
+        <div class="segmented-control">
+          <button
+            v-for="option in formatOptions"
+            :key="option.value"
+            class="segment"
+            :class="{ active: filters.format === option.value }"
+            @click="filters.format = option.value"
+          >
+            <component
+              :is="option.icon"
+              :size="16"
+              class="segment-icon"
+            />
+            <span class="segment-label">{{ option.label }}</span>
+          </button>
+        </div>
+        <p class="section-hint">
           {{ formatHints[filters.format] }}
         </p>
       </div>
 
       <!-- 日期範圍 -->
-      <div class="form-group">
-        <label class="form-label">日期範圍</label>
+      <div class="form-section">
+        <label class="section-label">日期範圍</label>
         <div class="date-range">
-          <div class="date-field">
-            <label class="date-label">起始日期</label>
+          <div class="date-pill">
+            <label class="date-eyebrow">起始日期</label>
             <input
               v-model="filters.dateFrom"
               type="datetime-local"
-              class="form-input"
+              class="date-input"
             >
           </div>
-          <span class="date-separator">至</span>
-          <div class="date-field">
-            <label class="date-label">結束日期</label>
+          <div class="date-arrow">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </div>
+          <div class="date-pill">
+            <label class="date-eyebrow">結束日期</label>
             <input
               v-model="filters.dateTo"
               type="datetime-local"
-              class="form-input"
+              class="date-input"
             >
           </div>
         </div>
@@ -63,113 +84,104 @@
       <!-- LINE 用戶篩選（從對話列表進入時才顯示） -->
       <div
         v-if="!conversationId"
-        class="form-group"
+        class="form-section"
       >
-        <label class="form-label">LINE 用戶</label>
-        <select
-          v-model="filters.customerId"
-          class="form-select"
-          :disabled="loadingOptions"
-        >
-          <option value="">全部用戶</option>
-          <option
-            v-for="customer in customerOptions"
-            :key="customer.id"
-            :value="customer.id.toString()"
+        <label class="section-label">LINE 用戶</label>
+        <div class="select-wrap">
+          <select
+            v-model="filters.customerId"
+            class="apple-select"
+            :disabled="loadingOptions"
           >
-            {{ customer.displayName || '未知用戶' }}
-            <template v-if="customer.platform">
-              ({{ customer.platform }})
-            </template>
-          </option>
-        </select>
-      </div>
-
-      <!-- 客服人員篩選 -->
-      <div class="form-group">
-        <label class="form-label">客服人員</label>
-        <select
-          v-model="filters.agentId"
-          class="form-select"
-          :disabled="loadingOptions"
+            <option value="">
+              {{ loadingOptions ? '載入中...' : '全部用戶' }}
+            </option>
+            <option
+              v-for="customer in customerOptions"
+              :key="customer.id"
+              :value="customer.id.toString()"
+            >
+              {{ customer.displayName || '未知用戶' }}
+              <template v-if="customer.platform">
+                ({{ customer.platform }})
+              </template>
+            </option>
+          </select>
+          <div class="select-chevron">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </div>
+        <p
+          v-if="customerLoadError"
+          class="section-error"
         >
-          <option value="">全部客服</option>
-          <option
-            v-for="agent in agentOptions"
-            :key="agent.id"
-            :value="agent.id"
-          >
-            {{ agent.displayName || '未知客服' }}
-            <template v-if="agent.role">
-              ({{ agent.role === 'admin' ? '管理員' : '客服' }})
-            </template>
-          </option>
-        </select>
-      </div>
-
-      <!-- 最大筆數 -->
-      <div class="form-group">
-        <label class="form-label">最大筆數</label>
-        <select
-          v-model="filters.limit"
-          class="form-select"
-        >
-          <option :value="100">100 筆</option>
-          <option :value="500">500 筆</option>
-          <option :value="1000">1000 筆</option>
-        </select>
+          {{ customerLoadError }}
+        </p>
       </div>
     </div>
 
     <template #footer>
-      <button
-        class="btn btn-secondary"
-        :disabled="exporting"
-        @click="handleClose"
-      >
-        取消
-      </button>
-      <button
-        class="btn btn-primary"
-        :disabled="exporting"
-        @click="handleExport"
-      >
-        <template v-if="exporting">
-          <span class="spinner" />
-          匯出中...
-        </template>
-        <template v-else>
-          <DownloadIcon :size="16" />
-          匯出
-        </template>
-      </button>
+      <div class="apple-footer">
+        <button
+          class="btn-apple-primary"
+          :disabled="exporting"
+          @click="handleExport"
+        >
+          <template v-if="exporting">
+            <span class="apple-spinner" />
+            匯出中...
+          </template>
+          <template v-else>
+            <DownloadIcon :size="18" />
+            匯出對話記錄
+          </template>
+        </button>
+        <button
+          class="btn-apple-text"
+          :disabled="exporting"
+          @click="handleClose"
+        >
+          取消
+        </button>
+      </div>
     </template>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, defineComponent, h, type Component, type VNode } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import { DownloadIcon, ChatIcon } from '@/components/icons'
 import { useToast } from '@/composables/useToast'
 import {
   exportMessages,
   getExportCustomers,
-  getExportAgents,
   type ExportFormat,
-  type ExportCustomerOption,
-  type ExportAgentOption
+  type ExportCustomerOption
 } from '@/api/export'
 
 interface Props {
   show: boolean
   conversationId?: string
   conversationTitle?: string
+  initialFormat?: ExportFormat
 }
 
 const props = withDefaults(defineProps<Props>(), {
   conversationId: undefined,
-  conversationTitle: undefined
+  conversationTitle: undefined,
+  initialFormat: undefined
 })
 
 const emit = defineEmits<{
@@ -177,22 +189,60 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// SVG icon helper — uses defineComponent for proper TypeScript typing
+function createSvgIcon(children: () => VNode[]): Component {
+  return defineComponent({
+    props: { size: { type: Number, default: 16 } },
+    render(): VNode {
+      return h('svg', {
+        width: this.size, height: this.size,
+        viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+        'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+      }, children())
+    }
+  })
+}
+
+const JsonIcon = createSvgIcon(() => [
+  h('path', { d: 'M4 6h2a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 0-2 2v1a2 2 0 0 1-2 2H4' }),
+  h('path', { d: 'M20 6h-2a2 2 0 0 0-2 2v1a2 2 0 0 1-2 2 2 2 0 0 1 2 2v1a2 2 0 0 0 2 2h2' })
+])
+
+const CsvIcon = createSvgIcon(() => [
+  h('rect', { x: '3', y: '3', width: '18', height: '18', rx: '2' }),
+  h('line', { x1: '3', y1: '9', x2: '21', y2: '9' }),
+  h('line', { x1: '3', y1: '15', x2: '21', y2: '15' }),
+  h('line', { x1: '9', y1: '3', x2: '9', y2: '21' }),
+  h('line', { x1: '15', y1: '3', x2: '15', y2: '21' })
+])
+
+const TxtIcon = createSvgIcon(() => [
+  h('path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' }),
+  h('polyline', { points: '14 2 14 8 20 8' }),
+  h('line', { x1: '8', y1: '13', x2: '16', y2: '13' }),
+  h('line', { x1: '8', y1: '17', x2: '12', y2: '17' })
+])
+
 const { showSuccess, showError } = useToast()
 
 // 狀態
 const exporting = ref(false)
 const loadingOptions = ref(false)
+const customerLoadError = ref('')
 const customerOptions = ref<ExportCustomerOption[]>([])
-const agentOptions = ref<ExportAgentOption[]>([])
 
 const filters = reactive({
   format: 'json' as ExportFormat,
   dateFrom: '',
   dateTo: '',
-  customerId: '',
-  agentId: '',
-  limit: 100
+  customerId: ''
 })
+
+const formatOptions = [
+  { value: 'json' as ExportFormat, label: 'JSON', icon: JsonIcon },
+  { value: 'csv' as ExportFormat, label: 'CSV', icon: CsvIcon },
+  { value: 'txt' as ExportFormat, label: 'TXT', icon: TxtIcon }
+]
 
 const formatHints: Record<ExportFormat, string> = {
   json: '適合程式處理和資料分析，包含完整結構化資訊',
@@ -203,20 +253,17 @@ const formatHints: Record<ExportFormat, string> = {
 // 載入篩選選項
 async function loadFilterOptions() {
   loadingOptions.value = true
+  customerLoadError.value = ''
   try {
-    const [customersResult, agentsResult] = await Promise.all([
-      getExportCustomers(),
-      getExportAgents()
-    ])
-
+    const customersResult = await getExportCustomers()
     if (customersResult.success && customersResult.data) {
       customerOptions.value = customersResult.data
-    }
-
-    if (agentsResult.success && agentsResult.data) {
-      agentOptions.value = agentsResult.data
+    } else {
+      customerLoadError.value = customersResult.error || '無法載入用戶列表'
+      console.warn('Export customers API returned:', customersResult)
     }
   } catch (error) {
+    customerLoadError.value = '載入用戶列表失敗，請稍後再試'
     console.error('Failed to load export filter options:', error)
   } finally {
     loadingOptions.value = false
@@ -233,9 +280,7 @@ async function handleExport() {
       conversationId: props.conversationId || undefined,
       dateFrom: filters.dateFrom ? new Date(filters.dateFrom).toISOString() : undefined,
       dateTo: filters.dateTo ? new Date(filters.dateTo).toISOString() : undefined,
-      customerId: filters.customerId || undefined,
-      agentId: filters.agentId || undefined,
-      limit: filters.limit
+      customerId: filters.customerId || undefined
     }
 
     const result = await exportMessages(exportFilters)
@@ -245,13 +290,12 @@ async function handleExport() {
       return
     }
 
-    // 下載檔案（參考 ActivityLog.vue 的 Blob 下載模式）
+    // 下載檔案
     const blob = result.data
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
 
-    // 生成檔案名稱
     const now = new Date()
     const dateStr = now.toISOString().slice(0, 10)
     const extensions: Record<ExportFormat, string> = {
@@ -281,14 +325,12 @@ function handleClose() {
   emit('update:show', false)
 }
 
-// 重置篩選條件
 function resetFilters() {
-  filters.format = 'json'
+  filters.format = props.initialFormat || 'json'
   filters.dateFrom = ''
   filters.dateTo = ''
   filters.customerId = ''
-  filters.agentId = ''
-  filters.limit = 100
+  customerLoadError.value = ''
 }
 
 // 打開時載入篩選選項
@@ -301,177 +343,328 @@ watch(() => props.show, (isShow) => {
 </script>
 
 <style scoped>
+/* ─── Apple Design System ─── */
 .export-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
-.export-info-banner {
+/* ─── Conversation Info Card ─── */
+.export-info-card {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: var(--primary-50, #eef2ff);
-  border: 1px solid var(--primary-200, #c7d2fe);
-  border-radius: 0.5rem;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.06) 0%, rgba(88, 86, 214, 0.06) 100%);
+  border: 1px solid rgba(0, 122, 255, 0.12);
+  border-radius: 0.875rem;
 }
 
-.info-icon {
+.info-icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  background: var(--primary-100, #e0e7ff);
-  border-radius: 50%;
-  color: var(--primary-600, #4f46e5);
+  width: 2.25rem;
+  height: 2.25rem;
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+  border-radius: 0.625rem;
+  color: white;
   flex-shrink: 0;
 }
 
-.info-text {
-  font-size: 0.875rem;
-}
-
-.info-label {
-  color: var(--gray-600, #4b5563);
-}
-
-.info-value {
-  font-weight: 600;
-  color: var(--gray-900, #111827);
-}
-
-.form-group {
+.info-content {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 0.125rem;
+  min-width: 0;
 }
 
-.form-label {
-  font-size: 0.875rem;
+.info-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: rgba(0, 122, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-title {
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: var(--gray-700, #374151);
+  color: var(--gray-900, #1d1d1f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.form-select,
-.form-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--gray-300, #d1d5db);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  color: var(--gray-900, #111827);
-  background-color: white;
-  transition: border-color 0.15s, box-shadow 0.15s;
+/* ─── Form Sections ─── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.form-select:focus,
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary-500, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+.section-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-500, #86868b);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
-.form-select:disabled {
-  background-color: var(--gray-100, #f3f4f6);
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.form-hint {
+.section-hint {
   font-size: 0.75rem;
-  color: var(--gray-500, #6b7280);
+  color: var(--gray-400, #aeaeb2);
   margin: 0;
+  line-height: 1.4;
 }
 
+.section-error {
+  font-size: 0.75rem;
+  color: #ff3b30;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ─── Segmented Control ─── */
+.segmented-control {
+  display: flex;
+  background: var(--gray-100, #f5f5f7);
+  border-radius: 0.625rem;
+  padding: 0.1875rem;
+  gap: 0.125rem;
+}
+
+.segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5625rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gray-500, #86868b);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  position: relative;
+}
+
+.segment:hover:not(.active) {
+  color: var(--gray-700, #1d1d1f);
+}
+
+.segment.active {
+  background: white;
+  color: var(--gray-900, #1d1d1f);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
+.segment-icon {
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.segment.active .segment-icon {
+  opacity: 1;
+  color: #007AFF;
+}
+
+.segment-label {
+  line-height: 1;
+}
+
+/* ─── Date Range ─── */
 .date-range {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.75rem;
 }
 
-.date-field {
+.date-pill {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.date-label {
-  font-size: 0.75rem;
-  color: var(--gray-500, #6b7280);
-}
-
-.date-separator {
-  font-size: 0.875rem;
-  color: var(--gray-400, #9ca3af);
-  padding-bottom: 0.625rem;
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+.date-eyebrow {
+  font-size: 0.6875rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
+  color: var(--gray-400, #aeaeb2);
+  padding-left: 0.125rem;
 }
 
-.btn:disabled {
-  opacity: 0.6;
+.date-input {
+  width: 100%;
+  padding: 0.5625rem 0.75rem;
+  border: 1px solid var(--gray-200, #e5e5ea);
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  color: var(--gray-900, #1d1d1f);
+  background-color: var(--gray-50, #fafafa);
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  font-family: inherit;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #007AFF;
+  background-color: white;
+  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.15);
+}
+
+.date-arrow {
+  color: var(--gray-300, #d1d1d6);
+  flex-shrink: 0;
+  padding-top: 1.125rem;
+}
+
+/* ─── Custom Select ─── */
+.select-wrap {
+  position: relative;
+}
+
+.apple-select {
+  width: 100%;
+  padding: 0.5625rem 2.25rem 0.5625rem 0.75rem;
+  border: 1px solid var(--gray-200, #e5e5ea);
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  color: var(--gray-900, #1d1d1f);
+  background-color: var(--gray-50, #fafafa);
+  appearance: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  font-family: inherit;
+}
+
+.apple-select:focus {
+  outline: none;
+  border-color: #007AFF;
+  background-color: white;
+  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.15);
+}
+
+.apple-select:disabled {
+  background-color: var(--gray-100, #f5f5f7);
+  color: var(--gray-400, #aeaeb2);
   cursor: not-allowed;
 }
 
-.btn-primary {
-  background-color: var(--primary-600, #4f46e5);
+.select-chevron {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400, #aeaeb2);
+  pointer-events: none;
+}
+
+/* ─── Footer ─── */
+.apple-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.btn-apple-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.8125rem 1.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: white;
+  background: linear-gradient(180deg, #3395FF 0%, #007AFF 100%);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  letter-spacing: -0.01em;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-700, #4338ca);
+.btn-apple-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #007AFF 0%, #0066D6 100%);
+  transform: scale(0.985);
 }
 
-.btn-secondary {
-  background-color: white;
-  color: var(--gray-700, #374151);
-  border-color: var(--gray-300, #d1d5db);
+.btn-apple-primary:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--gray-50, #f9fafb);
+.btn-apple-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Loading Spinner */
-.spinner {
+.btn-apple-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #007AFF;
+  cursor: pointer;
+  border-radius: 0.625rem;
+  transition: all 0.15s;
+}
+
+.btn-apple-text:hover:not(:disabled) {
+  background: rgba(0, 122, 255, 0.06);
+}
+
+.btn-apple-text:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Loading Spinner ─── */
+.apple-spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.25);
   border-top-color: white;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: apple-spin 0.75s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 
-@keyframes spin {
+@keyframes apple-spin {
   to { transform: rotate(360deg); }
 }
 
-/* 響應式設計 */
+/* ─── Responsive ─── */
 @media (max-width: 640px) {
   .date-range {
     flex-direction: column;
     gap: 0.5rem;
   }
 
-  .date-separator {
+  .date-arrow {
     display: none;
+  }
+
+  .segmented-control {
+    border-radius: 0.5rem;
+  }
+
+  .segment {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.75rem;
   }
 }
 </style>

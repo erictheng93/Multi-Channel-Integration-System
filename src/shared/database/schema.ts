@@ -41,6 +41,7 @@ export const customers = sqliteTable('customers', {
   metadata: text('metadata'), // JSON string for platform-specific data
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 }, (table) => ({
   platformUserUnique: unique().on(table.platform, table.platformUserId),
 }));

@@ -104,9 +104,37 @@ export async function exportMessages(filters: ExportFilters = {}): Promise<ApiRe
 
 /**
  * 取得匯出篩選用的客戶列表
+ * 使用 /customers 端點（/messages/export/customers 在 shared schema 缺少 deletedAt 欄位，查詢會失敗）
+ * 回應格式: { success, data: { customers: [...], count } }
  */
 export async function getExportCustomers(): Promise<ApiResponse<ExportCustomerOption[]>> {
-  return apiClient.get<ExportCustomerOption[]>('/messages/export/customers')
+  try {
+    const result = await apiClient.get<{
+      customers: Array<{
+        id: number
+        displayName: string | null
+        platform: string | null
+        platformUserId: string | null
+      }>
+      count: number
+    }>('/customers?pageSize=200')
+
+    if (result.success && result.data?.customers) {
+      return {
+        success: true,
+        data: result.data.customers.map(c => ({
+          id: c.id,
+          displayName: c.displayName,
+          platform: c.platform,
+          platformUserId: c.platformUserId
+        }))
+      }
+    }
+
+    return { success: false, error: result.error || '無法載入用戶列表' }
+  } catch {
+    return { success: false, error: '載入用戶列表失敗' }
+  }
 }
 
 /**

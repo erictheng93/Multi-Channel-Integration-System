@@ -1,12 +1,9 @@
 <!--
-  SystemSettings.refactored.vue
+  SystemSettings.vue
 
-  Refactored System Settings main component
-  Uses Controller Pattern + Component Composition architecture
-
-  Size: ~100 lines (down from 1,822 lines)
-  Components: 8 reusable components
-  Controller: useSystemSettingsController composable
+  Shell layout for System Settings with nested route pages.
+  Instantiates the controller once and provides it to all child routes via inject.
+  Sub-navigation lives in AppLayout sidebar (expandable menu, like Reports).
 -->
 
 <template>
@@ -20,95 +17,29 @@
       />
 
       <div class="settings-content">
-        <SettingsNav
-          v-model="controller.activeTab.value"
-          :tabs="controller.tabs.value"
-        />
-
-        <div class="settings-panel">
-          <!-- General Settings Tab -->
-          <GeneralSettingsForm
-            v-if="controller.activeTab.value === 'general'"
-            :settings="controller.settings.general"
-            :saving="controller.saving.value"
-            @save="controller.saveGeneralSettings"
-          />
-
-          <!-- Integrations Tab -->
-          <div
-            v-if="controller.activeTab.value === 'integrations'"
-            class="integrations-container"
+        <router-view v-slot="{ Component }">
+          <transition
+            name="settings-fade"
+            mode="out-in"
           >
-            <LineIntegrationForm
-              :settings="controller.settings.integrations.line"
-              :saving="controller.saving.value"
-              :testing="controller.testing.value"
-              @save="controller.saveLineSettings"
-              @test="controller.testLineIntegration"
-              @clear="controller.clearLineCredentials"
-            />
-
-            <FacebookIntegrationForm
-              :settings="controller.settings.integrations.facebook"
-              :saving="controller.saving.value"
-              :testing="controller.testing.value"
-              @save="controller.saveFacebookSettings"
-              @test="controller.testFacebookIntegration"
-              @clear="controller.clearFacebookCredentials"
-            />
-          </div>
-
-          <!-- Advanced Settings Tab -->
-          <AdvancedSettingsForm
-            v-if="controller.activeTab.value === 'advanced'"
-            :settings="controller.settings.advanced"
-            :saving="controller.saving.value"
-            @save="controller.saveAdvancedSettings"
-          />
-
-          <!-- System Maintenance Tab -->
-          <div
-            v-if="controller.activeTab.value === 'system'"
-            class="system-container"
-          >
-            <BackupManager
-              :backups="controller.backups.value"
-              :processing="controller.processing.value"
-              @backup="controller.backupDatabase"
-              @restore="controller.restoreDatabase"
-              @backup-credentials="controller.backupCredentials"
-            />
-
-            <CacheManager
-              :processing="controller.processing.value"
-              @clear-cache="controller.clearCache"
-              @health-check="controller.healthCheck"
-              @restart="controller.restartSystem"
-            />
-          </div>
-        </div>
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, provide } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
-import {
-  SettingsHeader,
-  SettingsNav,
-  GeneralSettingsForm,
-  LineIntegrationForm,
-  FacebookIntegrationForm,
-  AdvancedSettingsForm,
-  BackupManager,
-  CacheManager
-} from '@/components/system-settings'
+import { SettingsHeader } from '@/components/system-settings'
+import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 
-// Controller
+// Controller — single instance shared with all child routes
 const controller = useSystemSettingsController()
+provide(SETTINGS_CONTROLLER_KEY, controller)
 
 // Lifecycle
 onMounted(() => controller.initialize())
@@ -117,35 +48,38 @@ onUnmounted(() => controller.cleanup())
 
 <style scoped>
 .system-settings {
-  padding: 1.5rem;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
 .settings-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.settings-panel {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  padding: 1.5rem 2rem;
   min-height: 400px;
 }
 
-.integrations-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/* Page transition */
+.settings-fade-enter-active,
+.settings-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.system-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.settings-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.settings-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 @media (max-width: 768px) {
-  .system-settings {
+  .settings-content {
     padding: 1rem;
+    border-radius: 8px;
   }
 }
 </style>

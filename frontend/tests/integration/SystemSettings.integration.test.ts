@@ -1,14 +1,15 @@
 /**
  * System Settings Integration Tests
  *
- * End-to-end tests for the complete SystemSettings component
- * Tests user workflows and component interactions
+ * End-to-end tests for the complete SystemSettings shell + sidebar + routed pages
+ * Tests user workflows and component interactions via nested routes
  *
  * Total: 8 tests
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import SystemSettings from '@/views/SystemSettings.vue'
 import type { SystemSettings as SystemSettingsType, Backup } from '@/types/system-settings'
 
@@ -40,9 +41,6 @@ vi.mock('@/api/system', () => ({
   }
 }))
 
-// Credentials API is exported from system.ts
-// No separate credentials mock needed
-
 // Mock i18n
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -63,6 +61,56 @@ vi.mock('@/composables/useConfirmDialog', () => ({
     confirmWarning: vi.fn().mockResolvedValue(true)
   })
 }))
+
+/**
+ * Create a router with the nested settings routes for testing
+ */
+function createTestRouter(initialRoute = '/settings/general') {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      {
+        path: '/settings',
+        component: SystemSettings,
+        children: [
+          { path: '', redirect: '/settings/general' },
+          {
+            path: 'general',
+            name: 'SettingsGeneral',
+            component: () => import('@/components/system-settings/pages/GeneralSettingsPage.vue')
+          },
+          { path: 'integrations', redirect: '/settings/integrations/line' },
+          {
+            path: 'integrations/line',
+            name: 'SettingsIntegrationsLine',
+            component: () => import('@/components/system-settings/pages/LineIntegrationPage.vue')
+          },
+          {
+            path: 'integrations/facebook',
+            name: 'SettingsIntegrationsFacebook',
+            component: () => import('@/components/system-settings/pages/FacebookIntegrationPage.vue')
+          },
+          {
+            path: 'advanced',
+            name: 'SettingsAdvanced',
+            component: () => import('@/components/system-settings/pages/AdvancedSettingsPage.vue')
+          },
+          { path: 'maintenance', redirect: '/settings/maintenance/backup' },
+          {
+            path: 'maintenance/backup',
+            name: 'SettingsMaintenanceBackup',
+            component: () => import('@/components/system-settings/pages/BackupPage.vue')
+          },
+          {
+            path: 'maintenance/cache',
+            name: 'SettingsMaintenanceCache',
+            component: () => import('@/components/system-settings/pages/CacheMaintenancePage.vue')
+          }
+        ]
+      }
+    ]
+  })
+}
 
 describe('SystemSettings Integration Tests', () => {
   const mockSettings: SystemSettingsType = {
@@ -115,6 +163,11 @@ describe('SystemSettings Integration Tests', () => {
       data: mockSettings
     })
 
+    vi.mocked(credentialsApi.getAllCredentials).mockResolvedValue({
+      success: true,
+      data: {}
+    })
+
     vi.mocked(systemApi.getBackups).mockResolvedValue({
       success: true,
       data: mockBackups
@@ -131,33 +184,48 @@ describe('SystemSettings Integration Tests', () => {
   })
 
   it('should load and display settings on mount', async () => {
-    const wrapper = mount(SystemSettings)
+    const router = createTestRouter()
+    await router.push('/settings/general')
+    await router.isReady()
+
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
     await flushPromises()
 
     expect(wrapper.find('.system-settings').exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'SettingsHeader' }).exists()).toBe(true)
-    expect(wrapper.findComponent({ name: 'SettingsNav' }).exists()).toBe(true)
   })
 
-  it('should switch between tabs correctly', async () => {
-    const wrapper = mount(SystemSettings)
+  it('should switch between tabs correctly via router navigation', async () => {
+    const router = createTestRouter()
+    await router.push('/settings/general')
+    await router.isReady()
+
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
     await flushPromises()
 
-    // Initial tab should be general
+    // Initial route should show general page
     expect(wrapper.findComponent({ name: 'GeneralSettingsForm' }).exists()).toBe(true)
 
-    // Switch to integrations tab
-    const nav = wrapper.findComponent({ name: 'SettingsNav' })
-    await nav.vm.$emit('update:modelValue', 'integrations')
-    await wrapper.vm.$nextTick()
+    // Navigate to LINE integration
+    await router.push('/settings/integrations/line')
+    await flushPromises()
 
     expect(wrapper.findComponent({ name: 'LineIntegrationForm' }).exists()).toBe(true)
-    expect(wrapper.findComponent({ name: 'FacebookIntegrationForm' }).exists()).toBe(true)
   })
 
   it('should save general settings successfully', async () => {
     const { systemApi } = await import('@/api/system')
-    const wrapper = mount(SystemSettings)
+    const router = createTestRouter()
+    await router.push('/settings/general')
+    await router.isReady()
+
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
     await flushPromises()
 
     const generalForm = wrapper.findComponent({ name: 'GeneralSettingsForm' })
@@ -168,32 +236,29 @@ describe('SystemSettings Integration Tests', () => {
   })
 
   it('should test LINE integration', async () => {
-    const { systemApi } = await import('@/api/system')
-    const wrapper = mount(SystemSettings)
-    await flushPromises()
+    const router = createTestRouter()
+    await router.push('/settings/integrations/line')
+    await router.isReady()
 
-    // Switch to integrations tab
-    const nav = wrapper.findComponent({ name: 'SettingsNav' })
-    await nav.vm.$emit('update:modelValue', 'integrations')
-    await wrapper.vm.$nextTick()
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
     await flushPromises()
 
     const lineForm = wrapper.findComponent({ name: 'LineIntegrationForm' })
-
-    // Note: In integration tests, emitting events on child VMs may not trigger parent handlers
-    // This test verifies the component structure is correct
     expect(lineForm.exists()).toBe(true)
   })
 
   it('should save advanced settings', async () => {
     const { systemApi } = await import('@/api/system')
-    const wrapper = mount(SystemSettings)
-    await flushPromises()
+    const router = createTestRouter()
+    await router.push('/settings/advanced')
+    await router.isReady()
 
-    // Switch to advanced tab
-    const nav = wrapper.findComponent({ name: 'SettingsNav' })
-    await nav.vm.$emit('update:modelValue', 'advanced')
-    await wrapper.vm.$nextTick()
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
+    await flushPromises()
 
     const advancedForm = wrapper.findComponent({ name: 'AdvancedSettingsForm' })
     await advancedForm.vm.$emit('save')
@@ -213,13 +278,14 @@ describe('SystemSettings Integration Tests', () => {
       }
     })
 
-    const wrapper = mount(SystemSettings)
-    await flushPromises()
+    const router = createTestRouter()
+    await router.push('/settings/maintenance/backup')
+    await router.isReady()
 
-    // Switch to system tab
-    const nav = wrapper.findComponent({ name: 'SettingsNav' })
-    await nav.vm.$emit('update:modelValue', 'system')
-    await wrapper.vm.$nextTick()
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
+    await flushPromises()
 
     const backupManager = wrapper.findComponent({ name: 'BackupManager' })
     await backupManager.vm.$emit('backup')
@@ -229,27 +295,16 @@ describe('SystemSettings Integration Tests', () => {
   })
 
   it('should clear cache', async () => {
-    const { systemApi } = await import('@/api/system')
-    vi.mocked(systemApi.clearCache).mockResolvedValue({
-      success: true,
-      data: {
-        clearedItems: 100
-      }
+    const router = createTestRouter()
+    await router.push('/settings/maintenance/cache')
+    await router.isReady()
+
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
     })
-
-    const wrapper = mount(SystemSettings)
-    await flushPromises()
-
-    // Switch to system tab
-    const nav = wrapper.findComponent({ name: 'SettingsNav' })
-    await nav.vm.$emit('update:modelValue', 'system')
-    await wrapper.vm.$nextTick()
     await flushPromises()
 
     const cacheManager = wrapper.findComponent({ name: 'CacheManager' })
-
-    // Note: In integration tests, emitting events on child VMs may not trigger parent handlers
-    // This test verifies the component structure and navigation works correctly
     expect(cacheManager.exists()).toBe(true)
   })
 
@@ -268,13 +323,14 @@ describe('SystemSettings Integration Tests', () => {
       }
     })
 
-    const wrapper = mount(SystemSettings)
-    await flushPromises()
+    const router = createTestRouter()
+    await router.push('/settings/maintenance/cache')
+    await router.isReady()
 
-    // Switch to system tab
-    const nav = wrapper.findComponent({ name: 'SettingsNav' })
-    await nav.vm.$emit('update:modelValue', 'system')
-    await wrapper.vm.$nextTick()
+    const wrapper = mount(SystemSettings, {
+      global: { plugins: [router] }
+    })
+    await flushPromises()
 
     const cacheManager = wrapper.findComponent({ name: 'CacheManager' })
     await cacheManager.vm.$emit('health-check')

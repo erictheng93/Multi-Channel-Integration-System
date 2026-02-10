@@ -77,13 +77,62 @@ const router = createRouter({
     },
     {
       path: '/settings',
-      name: 'SystemSettings',
       component: () => import('@/views/SystemSettings.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
         title: '系統設定'
-      }
+      },
+      children: [
+        {
+          path: '',
+          redirect: '/settings/general'
+        },
+        {
+          path: 'general',
+          name: 'SettingsGeneral',
+          component: () => import('@/components/system-settings/pages/GeneralSettingsPage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: '一般設定' }
+        },
+        {
+          path: 'integrations',
+          redirect: '/settings/integrations/line'
+        },
+        {
+          path: 'integrations/line',
+          name: 'SettingsIntegrationsLine',
+          component: () => import('@/components/system-settings/pages/LineIntegrationPage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: 'LINE OA 整合' }
+        },
+        {
+          path: 'integrations/facebook',
+          name: 'SettingsIntegrationsFacebook',
+          component: () => import('@/components/system-settings/pages/FacebookIntegrationPage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: 'Facebook 整合' }
+        },
+        {
+          path: 'advanced',
+          name: 'SettingsAdvanced',
+          component: () => import('@/components/system-settings/pages/AdvancedSettingsPage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: '進階設定' }
+        },
+        {
+          path: 'maintenance',
+          redirect: '/settings/maintenance/backup'
+        },
+        {
+          path: 'maintenance/backup',
+          name: 'SettingsMaintenanceBackup',
+          component: () => import('@/components/system-settings/pages/BackupPage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: '備份管理' }
+        },
+        {
+          path: 'maintenance/cache',
+          name: 'SettingsMaintenanceCache',
+          component: () => import('@/components/system-settings/pages/CacheMaintenancePage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: '快取管理' }
+        }
+      ]
     },
     {
       path: '/api-monitor',
@@ -184,6 +233,15 @@ const router = createRouter({
           meta: {
             requiresAuth: true,
             title: '生成報表'
+          }
+        },
+        {
+          path: 'export',
+          name: 'ReportExport',
+          component: () => import('@/components/reports/ReportExport.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '匯出對話記錄'
           }
         },
         {

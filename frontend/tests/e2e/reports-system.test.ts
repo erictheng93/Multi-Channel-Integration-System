@@ -245,23 +245,22 @@ describe('報表系統端到端測試', () => {
     it('應該正確渲染主頁面結構', async () => {
       const wrapper = await testEnv.mountComponent(Reports);
 
-      // 檢查主要元素
-      expect(wrapper.find('.reports-main').exists()).toBe(true);
-      expect(wrapper.find('.reports-header').exists()).toBe(true);
-      expect(wrapper.find('.page-title').text()).toContain('報表系統');
-      expect(wrapper.find('.sub-navigation').exists()).toBe(true);
-      expect(wrapper.find('.reports-content').exists()).toBe(true);
+      // Reports.vue is now a passthrough wrapper using AppLayout
+      expect(wrapper.find('.app-layout').exists()).toBe(true);
+      expect(wrapper.find('.main-content').exists()).toBe(true);
+      expect(wrapper.find('.page-content').exists()).toBe(true);
     });
 
     it('應該正確渲染子導航項目', async () => {
       const wrapper = await testEnv.mountComponent(Reports);
 
-      const navItems = wrapper.findAll('.sub-nav-item');
+      // Navigation is now in AppLayout's sidebar submenu
+      const navItems = wrapper.findAll('.submenu-item');
       expect(navItems.length).toBeGreaterThan(0);
 
       // 檢查導航項目內容
       const expectedNavItems = ['儀表板', '模板', '生成報表'];
-      const navTexts = navItems.map(item => item.find('.nav-label').text());
+      const navTexts = navItems.map(item => item.text().trim());
 
       expectedNavItems.forEach(expectedText => {
         expect(navTexts).toContain(expectedText);
@@ -537,8 +536,8 @@ describe('報表系統端到端測試', () => {
       await new Promise(resolve => setTimeout(resolve, 200));
       await wrapper.vm.$nextTick();
 
-      // 基本檢查
-      expect(wrapper.find('.reports-main').exists()).toBe(true);
+      // 基本檢查 - Reports now uses AppLayout wrapper
+      expect(wrapper.find('.app-layout').exists()).toBe(true);
     });
 
     it('應該在平板設備上正確顯示', async () => {
@@ -581,8 +580,8 @@ describe('報表系統端到端測試', () => {
 
       await wrapper.vm.$nextTick();
 
-      // 基本檢查
-      expect(wrapper.find('.reports-main').exists()).toBe(true);
+      // 基本檢查 - Reports now uses AppLayout wrapper
+      expect(wrapper.find('.app-layout').exists()).toBe(true);
     });
 
     it('應該提供適當的 ARIA 標籤', async () => {
