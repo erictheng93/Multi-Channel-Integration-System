@@ -35,7 +35,7 @@ describe('Export API Module', () => {
     // Mock localStorage.getItem for auth token (vitest.setup.ts replaces localStorage with a mock)
     if (window.localStorage && typeof window.localStorage.getItem === 'function') {
       (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
-        if (key === 'auth_token') return 'test-token-123'
+        if (key === 'token') return 'test-token-123'
         return null
       })
     }
@@ -251,17 +251,17 @@ describe('Export API Module', () => {
 
   describe('getExportCustomers()', () => {
     it('應該呼叫正確的端點', async () => {
-      const mockData = [
+      const mockItems = [
         { id: 1, displayName: 'Customer A', platform: 'line', platformUserId: 'U123' },
         { id: 2, displayName: 'Customer B', platform: 'line', platformUserId: 'U456' }
       ]
-      vi.mocked(apiClient.get).mockResolvedValue({ success: true, data: mockData })
+      vi.mocked(apiClient.get).mockResolvedValue({ success: true, data: { items: mockItems, total: 2 } })
 
       const result = await getExportCustomers()
 
-      expect(apiClient.get).toHaveBeenCalledWith('/messages/export/customers')
+      expect(apiClient.get).toHaveBeenCalledWith('/customers?pageSize=200')
       expect(result.success).toBe(true)
-      expect(result.data).toEqual(mockData)
+      expect(result.data).toEqual(mockItems)
     })
 
     it('應該處理 API 錯誤', async () => {
@@ -274,7 +274,7 @@ describe('Export API Module', () => {
     })
 
     it('應該處理空列表', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ success: true, data: [] })
+      vi.mocked(apiClient.get).mockResolvedValue({ success: true, data: { items: [], total: 0 } })
 
       const result = await getExportCustomers()
 

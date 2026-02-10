@@ -75,6 +75,10 @@ export const useConversationsStore = defineStore('conversations', () => {
     platform: undefined,
     teamId: undefined
   })
+
+  // Active filters set by controller - used by all fetch paths (polling, refresh, silent refresh)
+  // This ensures background fetches respect the user's selected filter
+  const activeFilters = ref<ConversationFilters>({})
   const pagination = ref({
     page: 1,
     pageSize: 20,
@@ -764,19 +768,24 @@ export const useConversationsStore = defineStore('conversations', () => {
   
   // New methods for different loading scenarios
   const refreshConversations = async () => {
-    console.log('🔄 [ConversationsStore] User refresh triggered')
-    await fetchConversations(undefined, 1, false)
+    console.log('🔄 [ConversationsStore] User refresh triggered, activeFilters:', activeFilters.value)
+    await fetchConversations(activeFilters.value, 1, false)
   }
-  
+
   const loadMoreConversations = async () => {
     const nextPage = pagination.value.page + 1
     console.log(`📄 [ConversationsStore] Loading page ${nextPage}`)
     await fetchConversations(undefined, nextPage, true)
   }
-  
+
   const silentRefresh = async () => {
-    console.log('🔕 [ConversationsStore] Silent background refresh')
-    await fetchConversations(undefined, 1, false)
+    console.log('🔕 [ConversationsStore] Silent background refresh, activeFilters:', activeFilters.value)
+    await fetchConversations(activeFilters.value, 1, false)
+  }
+
+  const setActiveFilters = (newFilters: ConversationFilters) => {
+    activeFilters.value = { ...newFilters }
+    console.log('🎯 [ConversationsStore] Active filters updated:', activeFilters.value)
   }
 
   const fetchConversation = async (id: string) => {
@@ -1828,9 +1837,16 @@ export const useConversationsStore = defineStore('conversations', () => {
    */
   const pollConversations = async () => {
     try {
+      // Build query params respecting activeFilters so polling doesn't overwrite filtered views
+      const cleanFilters: Record<string, unknown> = {}
+      if (activeFilters.value.status) cleanFilters.status = activeFilters.value.status
+      if (activeFilters.value.platform) cleanFilters.platform = activeFilters.value.platform
+      if (activeFilters.value.teamId) cleanFilters.teamId = activeFilters.value.teamId
+
       const response = await conversationApi.list({
         page: 1,
-        pageSize: 50
+        pageSize: 50,
+        ...cleanFilters
       })
 
       if (response.success && response.data) {
@@ -2085,6 +2101,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     refresh,
     refreshConversations,
     silentRefresh,
+    setActiveFilters,
+    activeFilters,
     clearMessages,
     setConversations,
     clearError,

@@ -5,7 +5,8 @@
  * Includes all settings, integrations, backups, and UI state types
  */
 
-import type { Component } from 'vue'
+import type { Component, InjectionKey } from 'vue'
+import type { useSystemSettingsController } from '@/composables/useSystemSettingsController'
 
 // ============================================================================
 // Settings Data Types
@@ -327,6 +328,20 @@ export interface FormattedFileSize {
   unit: 'B' | 'KB' | 'MB' | 'GB'
   display: string
 }
+
+// ============================================================================
+// Controller Injection Types
+// ============================================================================
+
+/**
+ * Return type of useSystemSettingsController composable
+ */
+export type SystemSettingsController = ReturnType<typeof useSystemSettingsController>
+
+/**
+ * InjectionKey for sharing the settings controller across route children
+ */
+export const SETTINGS_CONTROLLER_KEY: InjectionKey<SystemSettingsController> = Symbol('settingsController')
 
 // ============================================================================
 // Note: All types are already exported individually above

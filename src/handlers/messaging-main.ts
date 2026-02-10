@@ -317,6 +317,7 @@ app.get('/export/customers', jwtAuth, async (c) => {
         platformUserId: customers.platformUserId
       })
       .from(customers)
+      .where(isNull(customers.deletedAt))
       .orderBy(customers.displayName)
       .limit(200);
 
