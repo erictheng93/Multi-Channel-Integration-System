@@ -298,8 +298,17 @@ const animationDelay = ref(0)
 const loading = computed(() => conversationsStore.loading)
 const conversations = computed(() => conversationsStore.conversations)
 
-// 🎯 平滑載入系統：顯示的對話列表
-const displayedConversations = computed(() => conversations.value)
+// 🎯 平滑載入系統：顯示的對話列表（含前端篩選防護）
+const displayedConversations = computed(() => {
+  let result = conversations.value
+  if (filters.value.status) {
+    result = result.filter(c => c.status === filters.value.status)
+  }
+  if (filters.value.platform) {
+    result = result.filter(c => c.platform === filters.value.platform)
+  }
+  return result
+})
 
 // 🎯 監聽對話變化並處理動畫邏輯
 watch(conversations, (currentConversations) => {

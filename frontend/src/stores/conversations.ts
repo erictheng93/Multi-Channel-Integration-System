@@ -662,6 +662,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   const fetchConversations = async (newFilters?: ConversationFilters, page = 1, append = false) => {
     if (newFilters) {
       filters.value = { ...newFilters }
+      activeFilters.value = { ...newFilters }
     }
 
     loading.value = true
