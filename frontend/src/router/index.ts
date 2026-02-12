@@ -195,6 +195,30 @@ const router = createRouter({
         title: '通知中心'
       }
     },
+    // ==================== 資料管理路由 ====================
+    {
+      path: '/data',
+      component: () => import('@/views/DataManagement.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '資料管理'
+      },
+      children: [
+        {
+          path: '',
+          redirect: '/data/export'
+        },
+        {
+          path: 'export',
+          name: 'DataExport',
+          component: () => import('@/components/data-management/DataExport.vue'),
+          meta: {
+            requiresAuth: true,
+            title: '匯出對話記錄'
+          }
+        }
+      ]
+    },
     // ==================== 報表系統路由 (嵌套結構 - 獨層 Sidebar) ====================
     {
       path: '/reports',
@@ -237,12 +261,7 @@ const router = createRouter({
         },
         {
           path: 'export',
-          name: 'ReportExport',
-          component: () => import('@/components/reports/ReportExport.vue'),
-          meta: {
-            requiresAuth: true,
-            title: '匯出對話記錄'
-          }
+          redirect: '/data/export'
         },
         {
           path: ':id',

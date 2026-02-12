@@ -1,5 +1,5 @@
 /**
- * ReportExport.vue 單元測試
+ * DataExport.vue 單元測試
  *
  * 測試覆蓋範圍：
  * - 頁面基礎渲染（標題、描述、按鈕）
@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { VueWrapper } from '@vue/test-utils'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import ReportExport from '@/components/reports/ReportExport.vue'
+import DataExport from '@/components/data-management/DataExport.vue'
 
 // Mock ExportDialog to avoid deep component tree
 vi.mock('@/components/conversation/ExportDialog.vue', () => ({
@@ -30,7 +30,7 @@ vi.mock('@/components/conversation/ExportDialog.vue', () => ({
   }
 }))
 
-describe('ReportExport.vue', () => {
+describe('DataExport.vue', () => {
   let wrapper: VueWrapper | null = null
 
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe('ReportExport.vue', () => {
   })
 
   function createWrapper() {
-    return mount(ReportExport)
+    return mount(DataExport)
   }
 
   // ==================== 頁面基礎渲染 ====================
@@ -53,7 +53,7 @@ describe('ReportExport.vue', () => {
   describe('頁面基礎渲染', () => {
     it('應該成功渲染頁面', () => {
       wrapper = createWrapper()
-      expect(wrapper.find('.report-export').exists()).toBe(true)
+      expect(wrapper.find('.data-export').exists()).toBe(true)
     })
 
     it('應該顯示頁面標題', () => {
@@ -158,8 +158,6 @@ describe('ReportExport.vue', () => {
       expect(userFeature).toBeTruthy()
     })
   })
-
-  // Tips section removed from component by design decision
 
   // ==================== ExportDialog 互動 ====================
 

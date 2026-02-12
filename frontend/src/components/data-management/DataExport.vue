@@ -1,8 +1,8 @@
-<!-- 匯出對話記錄 - 報表系統子頁面 -->
+<!-- 匯出對話記錄 - 資料管理子頁面 -->
 <!-- Launcher page that opens the existing ExportDialog modal -->
 
 <template>
-  <div class="report-export">
+  <div class="data-export">
     <!-- 頁面標題 -->
     <div class="page-header">
       <div class="header-content">
@@ -58,7 +58,7 @@
         </div>
         <div class="format-action">
           <span class="action-text">點擊匯出</span>
-          <span class="action-arrow">→</span>
+          <span class="action-arrow">&rarr;</span>
         </div>
       </div>
     </div>
@@ -161,7 +161,7 @@ function openExportWithFormat(format: 'json' | 'csv' | 'txt') {
 </script>
 
 <style scoped>
-.report-export {
+.data-export {
   max-width: 1200px;
 }
 
