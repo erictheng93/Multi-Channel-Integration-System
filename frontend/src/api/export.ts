@@ -6,7 +6,7 @@ import type { ApiResponse } from '@/types'
 
 // ==================== 型別定義 ====================
 
-export type ExportFormat = 'json' | 'csv' | 'txt'
+export type ExportFormat = 'json' | 'csv' | 'txt' | 'pdf'
 
 export interface ExportFilters {
   format?: ExportFormat
@@ -48,8 +48,9 @@ export async function exportMessages(filters: ExportFilters = {}): Promise<ApiRe
   const params = new URLSearchParams()
 
   const format = filters.format || 'json'
-  if (['json', 'csv', 'txt'].includes(format)) {
-    params.append('format', format)
+  if (['json', 'csv', 'txt', 'pdf'].includes(format)) {
+    // PDF 在前端產生，後端只需要 JSON 資料
+    params.append('format', format === 'pdf' ? 'json' : format)
   }
 
   if (filters.conversationId && /^[a-zA-Z0-9-_]+$/.test(filters.conversationId)) {
@@ -180,4 +181,77 @@ export async function getExportCustomers(): Promise<ApiResponse<ExportCustomerOp
  */
 export async function getExportAgents(): Promise<ApiResponse<ExportAgentOption[]>> {
   return apiClient.get<ExportAgentOption[]>('/messages/export/agents')
+}
+
+// ==================== PDF 匯出用 ====================
+
+import type { PdfExportData } from '@/services/pdfExportService'
+
+/**
+ * 取得匯出用 JSON 資料（供前端 PDF 產生使用）
+ * 使用 format=json 取得結構化資料，而非 blob
+ */
+export async function fetchExportData(filters: ExportFilters = {}): Promise<ApiResponse<PdfExportData>> {
+  const params = new URLSearchParams()
+  params.append('format', 'json')
+
+  if (filters.conversationId && /^[a-zA-Z0-9-_]+$/.test(filters.conversationId)) {
+    params.append('conversationId', filters.conversationId)
+  }
+
+  if (filters.dateFrom && !isNaN(Date.parse(filters.dateFrom))) {
+    params.append('dateFrom', filters.dateFrom)
+  }
+
+  if (filters.dateTo && !isNaN(Date.parse(filters.dateTo))) {
+    params.append('dateTo', filters.dateTo)
+  }
+
+  if (filters.customerId && /^\d+$/.test(filters.customerId)) {
+    params.append('customerId', filters.customerId)
+  }
+
+  if (filters.agentId && /^[a-zA-Z0-9-_]+$/.test(filters.agentId)) {
+    params.append('agentId', filters.agentId)
+  }
+
+  if (filters.limit && filters.limit > 0 && filters.limit <= 5000) {
+    params.append('limit', filters.limit.toString())
+  }
+
+  const queryString = params.toString()
+
+  try {
+    const token = localStorage.getItem('token')
+    const baseUrl = import.meta.env.DEV ? '/api' : `${(await import('@/config/runtime')).getBackendUrl()}/api`
+
+    const response = await fetch(`${baseUrl}/messages/export${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (!response.ok) {
+      const sanitizedError = response.status === 403
+        ? '權限不足'
+        : response.status === 404
+        ? '匯出端點不存在'
+        : '匯出失敗'
+      return { success: false, error: sanitizedError }
+    }
+
+    const json = await response.json()
+
+    if (!json.success || !json.data) {
+      return { success: false, error: json.error || '匯出資料格式錯誤' }
+    }
+
+    return { success: true, data: json.data as PdfExportData }
+  } catch {
+    return {
+      success: false,
+      error: '匯出請求失敗，請檢查網路連線'
+    }
+  }
 }

@@ -3,7 +3,7 @@
  *
  * 測試覆蓋範圍：
  * - 頁面基礎渲染（標題、描述、按鈕）
- * - 三種格式說明卡片
+ * - 四種格式說明卡片（JSON, CSV, TXT, PDF）
  * - 功能說明區和使用提示
  * - 點擊「開始匯出」按鈕打開 ExportDialog
  * - 點擊格式卡片打開 ExportDialog
@@ -81,10 +81,10 @@ describe('DataExport.vue', () => {
   // ==================== 格式說明卡片 ====================
 
   describe('格式說明卡片', () => {
-    it('應該渲染三張格式卡片', () => {
+    it('應該渲染四張格式卡片', () => {
       wrapper = createWrapper()
       const cards = wrapper.findAll('.format-card')
-      expect(cards.length).toBe(3)
+      expect(cards.length).toBe(4)
     })
 
     it('應該包含 JSON 格式卡片', () => {
@@ -111,17 +111,25 @@ describe('DataExport.vue', () => {
       expect(txtCard!.text()).toContain('純文字')
     })
 
+    it('應該包含 PDF 格式卡片', () => {
+      wrapper = createWrapper()
+      const cards = wrapper.findAll('.format-card')
+      const pdfCard = cards.find(c => c.text().includes('PDF'))
+      expect(pdfCard).toBeTruthy()
+      expect(pdfCard!.text()).toContain('可攜式')
+    })
+
     it('每張卡片應該有使用場景標籤', () => {
       wrapper = createWrapper()
       const tags = wrapper.findAll('.usecase-tag')
-      // 4 usecases per format * 3 formats = 12
-      expect(tags.length).toBe(12)
+      // 4 usecases per format * 4 formats = 16
+      expect(tags.length).toBe(16)
     })
 
     it('每張卡片應該有「點擊匯出」提示', () => {
       wrapper = createWrapper()
       const actions = wrapper.findAll('.format-action')
-      expect(actions.length).toBe(3)
+      expect(actions.length).toBe(4)
       actions.forEach(action => {
         expect(action.text()).toContain('點擊匯出')
       })

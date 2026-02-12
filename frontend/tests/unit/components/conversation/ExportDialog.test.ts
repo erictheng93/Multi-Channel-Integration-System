@@ -131,7 +131,7 @@ describe('ExportDialog.vue', () => {
       await nextTick()
 
       const segments = document.querySelectorAll('.segment')
-      expect(segments.length).toBe(3) // JSON, CSV, TXT
+      expect(segments.length).toBe(4) // JSON, CSV, TXT, PDF
     })
 
     it('應該渲染日期範圍輸入', async () => {
